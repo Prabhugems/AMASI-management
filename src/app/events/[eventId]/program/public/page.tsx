@@ -23,6 +23,7 @@ import {
   Download,
   HelpCircle,
   Calendar,
+  CalendarPlus,
   MapPin,
   Clock,
   User,
@@ -38,6 +39,7 @@ import {
   ExternalLink,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { exportSessionsToCalendar } from "@/lib/calendar-export"
 
 type Session = {
   id: string
@@ -296,6 +298,21 @@ export default function PublicProgramPage() {
     return grouped
   }, [filteredSessions])
 
+  // Export to calendar
+  const handleExportCalendar = () => {
+    if (!sessions || !event) return
+    const calendarSessions = sessions.map(s => ({
+      id: s.id,
+      title: s.session_name,
+      description: s.description || undefined,
+      start_time: `${s.session_date}T${s.start_time}`,
+      end_time: `${s.session_date}T${s.end_time}`,
+      hall: s.hall ? { name: s.hall } : null,
+      speakers: s.speakers ? s.speakers.split(",").map(name => ({ name: name.trim() })) : null,
+    }))
+    exportSessionsToCalendar(calendarSessions, event.name)
+  }
+
   // Group sessions by track for the selected day
   const sessionsByTrack = useMemo(() => {
     const grouped: Record<string, { track: Track | null; sessions: Session[] }> = {}
@@ -420,6 +437,14 @@ export default function PublicProgramPage() {
             </div>
 
             <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                onClick={handleExportCalendar}
+              >
+                <CalendarPlus className="h-4 w-4 mr-2" />
+                Add to Calendar
+              </Button>
               <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" asChild>
                 <a href={`/events/${eventId}/program/print`} target="_blank">
                   <Download className="h-4 w-4 mr-2" />
