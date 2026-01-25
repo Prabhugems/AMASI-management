@@ -1,0 +1,287 @@
+"use client"
+
+import { useState } from "react"
+import { useParams } from "next/navigation"
+import Link from "next/link"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { createClient } from "@/lib/supabase/client"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Award,
+  Loader2,
+  Plus,
+  Search,
+  MoreHorizontal,
+  Edit,
+  Copy,
+  Trash2,
+  CheckCircle,
+  XCircle,
+} from "lucide-react"
+import { toast } from "sonner"
+
+type Template = {
+  id: string
+  name: string
+  size: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export default function CertificateTemplatesPage() {
+  const params = useParams()
+  const eventId = params.eventId as string
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+
+  const [search, setSearch] = useState("")
+
+  // Fetch templates
+  const { data: templates, isLoading } = useQuery({
+    queryKey: ["certificate-templates-list", eventId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("certificate_templates")
+        .select("*")
+        .eq("event_id", eventId)
+        .order("updated_at", { ascending: false })
+
+      return (data || []) as Template[]
+    },
+  })
+
+  // Delete template
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from("certificate_templates")
+        .delete()
+        .eq("id", id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["certificate-templates-list", eventId] })
+      toast.success("Template deleted")
+    },
+    onError: () => {
+      toast.error("Failed to delete template")
+    },
+  })
+
+  // Toggle active
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error } = await (supabase as any)
+        .from("certificate_templates")
+        .update({ is_active })
+        .eq("id", id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["certificate-templates-list", eventId] })
+      toast.success("Template updated")
+    },
+  })
+
+  // Duplicate template
+  const duplicateMutation = useMutation({
+    mutationFn: async (template: Template) => {
+      const { data: original } = await (supabase as any)
+        .from("certificate_templates")
+        .select("*")
+        .eq("id", template.id)
+        .single()
+
+      if (!original) throw new Error("Template not found")
+
+      const { id, created_at, updated_at, ...rest } = original
+      const { error } = await (supabase as any)
+        .from("certificate_templates")
+        .insert({ ...rest, name: `${template.name} (Copy)` })
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["certificate-templates-list", eventId] })
+      toast.success("Template duplicated")
+    },
+  })
+
+  const filteredTemplates = templates?.filter(t =>
+    t.name.toLowerCase().includes(search.toLowerCase())
+  ) || []
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Certificate Templates</h1>
+          <p className="text-muted-foreground">Manage your saved certificate designs</p>
+        </div>
+        <Link href={`/events/${eventId}/certificates/designer`}>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            New Template
+          </Button>
+        </Link>
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search templates..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* Templates Table */}
+      {filteredTemplates.length === 0 ? (
+        <div className="text-center py-12 bg-card rounded-lg border border-dashed">
+          <Award className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">No templates found</h3>
+          <p className="text-muted-foreground mb-4">
+            {search ? "Try a different search term" : "Create your first certificate template"}
+          </p>
+          {!search && (
+            <Link href={`/events/${eventId}/certificates/designer`}>
+              <Button>Create Template</Button>
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="bg-card rounded-lg border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>Name</TableHead>
+                <TableHead>Size</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Last Modified</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredTemplates.map((template) => (
+                <TableRow key={template.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Award className="h-5 w-5 text-purple-500" />
+                      <span className="font-medium">{template.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {template.size || "A4 Landscape"}
+                  </TableCell>
+                  <TableCell>
+                    {template.is_active ? (
+                      <span className="inline-flex items-center gap-1 text-green-600 text-sm">
+                        <CheckCircle className="h-4 w-4" />
+                        Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-muted-foreground text-sm">
+                        <XCircle className="h-4 w-4" />
+                        Inactive
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(template.updated_at)}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/events/${eventId}/certificates/designer?template=${template.id}`}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => duplicateMutation.mutate(template)}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => toggleActiveMutation.mutate({
+                            id: template.id,
+                            is_active: !template.is_active,
+                          })}
+                        >
+                          {template.is_active ? (
+                            <>
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Deactivate
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Activate
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => {
+                            if (confirm("Delete this template?")) {
+                              deleteMutation.mutate(template.id)
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  )
+}

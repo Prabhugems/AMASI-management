@@ -1,0 +1,395 @@
+import { NextRequest, NextResponse } from "next/server"
+import { createAdminClient } from "@/lib/supabase/server"
+import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { shortenSpeakerPortalUrl } from "@/lib/linkila"
+
+interface SpeakerInvitationData {
+  registration_id: string
+  speaker_name: string
+  speaker_email: string
+  event_id: string
+  event_name: string
+  event_start_date: string
+  event_end_date: string
+  event_venue?: string
+  portal_token: string
+  sessions?: Array<{
+    session_name: string
+    session_date: string
+    start_time: string
+    end_time: string
+    hall?: string
+  }>
+}
+
+// Format time to 12-hour format
+function formatTime(time: string) {
+  if (!time) return ""
+  const [hours, minutes] = time.split(":")
+  const h = parseInt(hours)
+  const ampm = h >= 12 ? "PM" : "AM"
+  const h12 = h % 12 || 12
+  return `${h12}:${minutes} ${ampm}`
+}
+
+// Format date
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
+}
+
+// POST /api/email/speaker-invitation - Send speaker invitation email
+export async function POST(request: NextRequest) {
+  try {
+    const body: SpeakerInvitationData = await request.json()
+
+    const {
+      registration_id,
+      speaker_name,
+      speaker_email,
+      event_id,
+      event_name,
+      event_start_date,
+      event_end_date,
+      event_venue,
+      portal_token,
+      sessions = [],
+    } = body
+
+    if (!speaker_email || !portal_token || !event_name) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      )
+    }
+
+    // Generate portal URL and shorten it
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const fullPortalUrl = `${baseUrl}/speaker/${portal_token}`
+    const portalUrl = await shortenSpeakerPortalUrl(fullPortalUrl, speaker_name, event_name)
+
+    // Format event dates
+    const startDate = formatDate(event_start_date)
+    const endDate = formatDate(event_end_date)
+    const eventDateRange = event_start_date === event_end_date
+      ? startDate
+      : `${startDate} - ${endDate}`
+
+    // Build sessions HTML
+    const sessionsHtml = sessions.length > 0 ? `
+      <h2 style="color: #1f2937; margin: 25px 0 15px 0; font-size: 18px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">Your Sessions</h2>
+      <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+        <thead>
+          <tr style="background-color: #f3f4f6;">
+            <th style="padding: 12px 10px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Date & Time</th>
+            <th style="padding: 12px 10px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Topic</th>
+            <th style="padding: 12px 10px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Hall</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sessions.map(session => `
+            <tr>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top;">
+                <div style="font-weight: 600; color: #1f2937;">${formatDate(session.session_date)}</div>
+                <div style="color: #6b7280; font-size: 13px;">${formatTime(session.start_time)} - ${formatTime(session.end_time)}</div>
+              </td>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #e5e7eb; color: #1f2937;">${session.session_name}</td>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 13px;">${session.hall || "-"}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    ` : ""
+
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
+        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td align="center" style="padding: 40px 20px;">
+              <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
+
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); padding: 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 26px; font-weight: bold;">You're Invited to Speak!</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px;">${event_name}</p>
+                  </td>
+                </tr>
+
+                <!-- Main Content -->
+                <tr>
+                  <td style="background-color: white; padding: 30px;">
+
+                    <!-- Greeting -->
+                    <p style="color: #1f2937; font-size: 16px; margin: 0 0 20px 0; line-height: 1.6;">
+                      Dear <strong>${speaker_name}</strong>,
+                    </p>
+                    <p style="color: #4b5563; font-size: 15px; margin: 0 0 25px 0; line-height: 1.6;">
+                      We are honored to invite you as a speaker at <strong>${event_name}</strong>. Your expertise and insights would greatly enrich our event, and we would be delighted to have you share your knowledge with our attendees.
+                    </p>
+
+                    <!-- Event Details -->
+                    <div style="background-color: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+                      <h2 style="color: #1f2937; margin: 0 0 15px 0; font-size: 16px;">Event Details</h2>
+                      <table role="presentation" style="width: 100%;">
+                        <tr>
+                          <td style="padding: 6px 0; color: #6b7280; width: 100px; font-size: 14px;">Event</td>
+                          <td style="padding: 6px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${event_name}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Date</td>
+                          <td style="padding: 6px 0; color: #1f2937; font-size: 14px;">${eventDateRange}</td>
+                        </tr>
+                        ${event_venue ? `
+                        <tr>
+                          <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Venue</td>
+                          <td style="padding: 6px 0; color: #1f2937; font-size: 14px;">${event_venue}</td>
+                        </tr>
+                        ` : ""}
+                      </table>
+                    </div>
+
+                    <!-- Sessions -->
+                    ${sessionsHtml}
+
+                    <!-- CTA Button -->
+                    <div style="text-align: center; margin: 30px 0;">
+                      <p style="color: #4b5563; font-size: 14px; margin: 0 0 15px 0;">
+                        Please respond to this invitation using the button below:
+                      </p>
+                      <a href="${portalUrl}" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+                        View Invitation & Respond
+                      </a>
+                    </div>
+
+                    <!-- What you can do -->
+                    <div style="background-color: #faf5ff; border: 1px solid #e9d5ff; border-radius: 12px; padding: 20px; margin: 25px 0;">
+                      <h3 style="color: #7c3aed; margin: 0 0 12px 0; font-size: 15px;">Through the portal, you can:</h3>
+                      <ul style="margin: 0; padding: 0 0 0 20px; color: #6b7280; font-size: 14px; line-height: 1.8;">
+                        <li>Accept or decline the invitation</li>
+                        <li>View your assigned session details</li>
+                        <li>Request travel & accommodation assistance</li>
+                        <li>Update your contact information</li>
+                      </ul>
+                    </div>
+
+                    <!-- Deadline note -->
+                    <p style="color: #6b7280; font-size: 13px; margin: 20px 0 0 0; text-align: center;">
+                      Please respond at your earliest convenience so we can finalize the event schedule.
+                    </p>
+
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #1f2937; padding: 25px 30px; border-radius: 0 0 16px 16px; text-align: center;">
+                    <p style="color: #9ca3af; margin: 0 0 10px 0; font-size: 14px;">
+                      If you have any questions, please contact us.
+                    </p>
+                    <p style="color: #6b7280; margin: 0 0 15px 0; font-size: 12px;">
+                      This invitation was sent to ${speaker_email}
+                    </p>
+                    <p style="color: #6b7280; margin: 0; font-size: 12px;">
+                      &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `
+
+    // Send email via configured provider (Blastable or Resend)
+    if (isEmailEnabled()) {
+      const result = await sendEmail({
+        to: speaker_email,
+        subject: `Speaker Invitation - ${event_name}`,
+        html: emailHtml,
+      })
+
+      if (!result.success) {
+        console.error("Email send error:", result.error)
+        return NextResponse.json({
+          success: false,
+          error: "Failed to send email",
+          details: result.error
+        }, { status: 500 })
+      }
+
+      console.log(`Speaker invitation sent to ${speaker_email} - ID: ${result.id}`)
+
+      // Update registration to mark invitation as sent
+      if (registration_id) {
+        const supabase = await createAdminClient()
+        await (supabase as any)
+          .from("registrations")
+          .update({
+            custom_fields: {
+              invitation_sent: new Date().toISOString(),
+              invitation_email_id: result.id,
+            }
+          })
+          .eq("id", registration_id)
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Invitation email sent",
+        email_id: result.id
+      })
+    } else {
+      console.log(`[DEV] Would send speaker invitation to ${speaker_email}`)
+      console.log(`[DEV] Portal URL: ${portalUrl}`)
+      return NextResponse.json({
+        success: true,
+        message: "Email skipped (no API key configured)",
+        dev_mode: true,
+        portal_url: portalUrl
+      })
+    }
+  } catch (error) {
+    console.error("Error in POST /api/email/speaker-invitation:", error)
+    return NextResponse.json(
+      { error: "Failed to send invitation email" },
+      { status: 500 }
+    )
+  }
+}
+
+// POST /api/email/speaker-invitation/bulk - Send bulk invitations
+export async function PUT(request: NextRequest) {
+  try {
+    const { registration_ids, event_id } = await request.json()
+
+    if (!registration_ids || !Array.isArray(registration_ids) || registration_ids.length === 0) {
+      return NextResponse.json(
+        { error: "registration_ids array is required" },
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createAdminClient()
+
+    // Get event details
+    const { data: event } = await (supabase as any)
+      .from("events")
+      .select("id, name, start_date, end_date, venue_name")
+      .eq("id", event_id)
+      .single()
+
+    if (!event) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 })
+    }
+
+    // Get registrations with speaker details
+    const { data: registrations } = await (supabase as any)
+      .from("registrations")
+      .select("*")
+      .in("id", registration_ids)
+      .eq("event_id", event_id)
+
+    if (!registrations || registrations.length === 0) {
+      return NextResponse.json({ error: "No registrations found" }, { status: 404 })
+    }
+
+    // Get all sessions for this event to match with speakers
+    const { data: sessions } = await (supabase as any)
+      .from("sessions")
+      .select("*")
+      .eq("event_id", event_id)
+      .order("session_date")
+      .order("start_time")
+
+    const results = {
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+      errors: [] as string[],
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
+    for (const reg of registrations) {
+      const portalToken = reg.custom_fields?.portal_token
+
+      if (!portalToken) {
+        results.skipped++
+        results.errors.push(`${reg.attendee_email}: No portal token`)
+        continue
+      }
+
+      // Find sessions for this speaker (match by email in description)
+      const speakerSessions = sessions?.filter((s: any) => {
+        const desc = s.description?.toLowerCase() || ""
+        return desc.includes(reg.attendee_email.toLowerCase())
+      }) || []
+
+      // Prepare invitation data
+      const invitationData: SpeakerInvitationData = {
+        registration_id: reg.id,
+        speaker_name: reg.attendee_name,
+        speaker_email: reg.attendee_email,
+        event_id: event.id,
+        event_name: event.name,
+        event_start_date: event.start_date,
+        event_end_date: event.end_date,
+        event_venue: event.venue_name,
+        portal_token: portalToken,
+        sessions: speakerSessions.map((s: any) => ({
+          session_name: s.session_name,
+          session_date: s.session_date,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          hall: s.hall,
+        })),
+      }
+
+      // Send invitation
+      try {
+        const response = await fetch(`${baseUrl}/api/email/speaker-invitation`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(invitationData),
+        })
+
+        const result = await response.json()
+
+        if (result.success) {
+          results.sent++
+        } else {
+          results.failed++
+          results.errors.push(`${reg.attendee_email}: ${result.error}`)
+        }
+      } catch (err: any) {
+        results.failed++
+        results.errors.push(`${reg.attendee_email}: ${err.message}`)
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      results,
+    })
+  } catch (error: any) {
+    console.error("Error in bulk speaker invitation:", error)
+    return NextResponse.json(
+      { error: error.message || "Failed to send bulk invitations" },
+      { status: 500 }
+    )
+  }
+}

@@ -1,101 +1,202 @@
-import Image from "next/image";
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
+import { createClient } from "@/lib/supabase/client"
+import { DashboardLayout } from "@/components/layout/dashboard-layout"
+import {
+  BarChart3,
+  Activity,
+  GraduationCap,
+  Award,
+  Users,
+  Calendar,
+  Download,
+  Mail,
+  Loader2,
+} from "lucide-react"
+import { getGreeting } from "@/lib/utils"
+import { usePermissions } from "@/hooks/use-permissions"
+
+// Dashboard components
+import { AlertsPanel } from "@/components/dashboard/alerts-panel"
+import { WhosOnlineWidget } from "@/components/dashboard/whos-online-widget"
+import { EventsTable } from "@/components/dashboard/events-table"
+import { StatCard } from "@/components/dashboard/stat-card"
+import { RecentFacultyTable } from "@/components/dashboard/recent-faculty-table"
+import { TasksWidget } from "@/components/dashboard/tasks-widget"
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const supabase = createClient()
+  const router = useRouter()
+  const { isEventScoped, eventIds, isLoading: permissionsLoading, userName } = usePermissions()
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Fetch live stats from Supabase (must be before any early returns)
+  const { data: stats, error: statsError } = useQuery({
+    enabled: !permissionsLoading && !isEventScoped,
+    queryKey: ["dashboard-stats"],
+    queryFn: async () => {
+      const [membersResult, facultyResult, eventsResult, delegatesResult] = await Promise.all([
+        supabase.from("members").select("*", { count: "exact", head: true }),
+        supabase.from("faculty").select("*", { count: "exact", head: true }),
+        supabase.from("events").select("*", { count: "exact", head: true }),
+        supabase.from("participants").select("*", { count: "exact", head: true }),
+      ])
+
+      // Log any errors for debugging (only if error has message)
+      if (membersResult.error?.message) console.error("Members error:", membersResult.error.message)
+      if (facultyResult.error?.message) console.error("Faculty error:", facultyResult.error.message)
+      if (eventsResult.error?.message) console.error("Events error:", eventsResult.error.message)
+      if (delegatesResult.error?.message) console.error("Delegates error:", delegatesResult.error.message)
+
+      return {
+        members: membersResult.count ?? 0,
+        faculty: facultyResult.count ?? 0,
+        events: eventsResult.count ?? 0,
+        delegates: delegatesResult.count ?? 0,
+      }
+    },
+  })
+
+  // Redirect event-scoped users to their event dashboard
+  useEffect(() => {
+    if (!permissionsLoading && isEventScoped && eventIds.length > 0) {
+      // Redirect to the first event they have access to
+      router.replace(`/events/${eventIds[0]}`)
+    }
+  }, [isEventScoped, eventIds, permissionsLoading, router])
+
+  // Log stats error if any
+  if (statsError) console.error("Stats query error:", statsError)
+
+  // Show loading while checking permissions
+  if (permissionsLoading || (isEventScoped && eventIds.length > 0)) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Loading your dashboard...</p>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+      </DashboardLayout>
+    )
+  }
+
+  return (
+    <DashboardLayout>
+      {/* Welcome Header - Paper Dashboard Style */}
+      <div className="mb-6">
+        <h4 className="text-lg text-muted-foreground font-normal">{getGreeting()}, {userName || "Admin"}</h4>
+        <p className="text-sm text-muted-foreground/70">Here&apos;s your AMASI dashboard overview</p>
+      </div>
+
+      {/* Animated Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <StatCard
+          icon={Users}
+          value={stats?.members || 0}
+          label="Total Members"
+          subtext="Live from database"
+          trend={12}
+          color="rose"
+          delay={0}
+        />
+        <StatCard
+          icon={GraduationCap}
+          value={stats?.faculty || 0}
+          label="Faculty Database"
+          subtext="Master database"
+          trend={8}
+          color="amber"
+          delay={100}
+        />
+        <StatCard
+          icon={Calendar}
+          value={stats?.events || 0}
+          label="Active Events"
+          subtext="Planning/Ongoing"
+          trend={null}
+          color="teal"
+          delay={200}
+        />
+        <StatCard
+          icon={Award}
+          value={stats?.delegates || 0}
+          label="Total Attendees"
+          subtext="All events"
+          trend={5}
+          color="violet"
+          delay={300}
+        />
+      </div>
+
+      {/* Alerts Panel */}
+      <div className="mb-6">
+        <AlertsPanel />
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Left Column - 2/3 width */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Events Table */}
+          <EventsTable />
+
+          {/* Faculty Table */}
+          <RecentFacultyTable />
+        </div>
+
+        {/* Right Column - 1/3 width */}
+        <div className="space-y-6">
+          {/* Who's Online Widget */}
+          <WhosOnlineWidget />
+
+          {/* Tasks Widget */}
+          <TasksWidget />
+        </div>
+      </div>
+
+      {/* Quick Actions - Paper Dashboard Style */}
+      <div className="paper-card card-animated">
+        <div className="p-5 border-b border-border">
+          <h5 className="text-base font-semibold text-foreground mb-1">Quick Actions</h5>
+          <p className="text-sm text-muted-foreground">Common tasks at your fingertips</p>
+        </div>
+        <div className="p-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <button className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
+                <Download className="h-5 w-5 text-primary" />
+              </div>
+              <span className="text-sm font-medium text-foreground">Import CSV</span>
+            </button>
+            <button className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
+              <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center group-hover:bg-success/20 group-hover:scale-110 transition-all duration-300">
+                <Mail className="h-5 w-5 text-success" />
+              </div>
+              <span className="text-sm font-medium text-foreground">Bulk Email</span>
+            </button>
+            <button className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
+              <div className="h-12 w-12 rounded-full bg-info/10 flex items-center justify-center group-hover:bg-info/20 group-hover:scale-110 transition-all duration-300">
+                <BarChart3 className="h-5 w-5 text-info" />
+              </div>
+              <span className="text-sm font-medium text-foreground">Reports</span>
+            </button>
+            <button className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
+              <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 group-hover:scale-110 transition-all duration-300">
+                <Award className="h-5 w-5 text-warning" />
+              </div>
+              <span className="text-sm font-medium text-foreground">Certificates</span>
+            </button>
+          </div>
+        </div>
+        <div className="card-stats-footer px-5 pb-4">
+          <Activity className="h-4 w-4 inline-block mr-1 text-muted-foreground" />
+          <span>Last activity 2 min ago</span>
+        </div>
+      </div>
+    </DashboardLayout>
+  )
 }

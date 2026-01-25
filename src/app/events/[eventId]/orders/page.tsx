@@ -1,0 +1,648 @@
+"use client"
+
+import { useState } from "react"
+import { useParams } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
+import { createClient } from "@/lib/supabase/client"
+import { format } from "date-fns"
+import {
+  Search,
+  Filter,
+  Download,
+  RefreshCw,
+  CreditCard,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  ChevronRight,
+  Mail,
+  Phone,
+  Calendar,
+  IndianRupee,
+  Receipt,
+  User,
+  Ticket,
+  MoreHorizontal,
+  Eye,
+  Send,
+  Trash2,
+  AlertTriangle,
+  Package,
+} from "lucide-react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { SlideOver, SlideOverSection, SlideOverFooter } from "@/components/ui/slide-over"
+import { cn } from "@/lib/utils"
+
+interface OrderAddon {
+  id: string
+  addon_name: string
+  variant_name?: string
+  quantity: number
+  unit_price: number
+  total_price: number
+}
+
+interface Order {
+  id: string
+  payment_number: string
+  payer_name: string
+  payer_email: string
+  payer_phone?: string
+  amount: number
+  currency: string
+  tax_amount: number
+  discount_amount: number
+  net_amount: number
+  status: string
+  payment_method: string
+  razorpay_payment_id?: string
+  razorpay_order_id?: string
+  completed_at?: string
+  created_at: string
+  registrations?: {
+    id: string
+    registration_number: string
+    first_name: string
+    last_name: string
+    email: string
+    ticket_type?: {
+      name: string
+      price: number
+    }
+  }[]
+  addons?: OrderAddon[]
+}
+
+const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  completed: { label: "Paid", color: "bg-success/10 text-success", icon: CheckCircle2 },
+  pending: { label: "Pending", color: "bg-warning/10 text-warning", icon: Clock },
+  failed: { label: "Failed", color: "bg-destructive/10 text-destructive", icon: XCircle },
+  refunded: { label: "Refunded", color: "bg-info/10 text-info", icon: RefreshCw },
+}
+
+export default function OrdersPage() {
+  const params = useParams()
+  const eventId = params.eventId as string
+  const supabase = createClient()
+
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null)
+
+  // Delete order function - uses API to bypass RLS
+  const handleDeleteOrder = async (orderId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+
+    if (!confirm("Are you sure you want to delete this order? This will also delete any associated registrations.")) {
+      return
+    }
+
+    setDeletingOrderId(orderId)
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "DELETE",
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to delete order")
+      }
+
+      toast.success("Order deleted successfully")
+      refetch()
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder(null)
+      }
+    } catch (error: any) {
+      console.error("Error deleting order:", error)
+      toast.error(error.message || "Failed to delete order")
+    } finally {
+      setDeletingOrderId(null)
+    }
+  }
+
+  // Fetch orders (payments) for this event
+  const { data: orders, isLoading, refetch } = useQuery({
+    queryKey: ["event-orders", eventId, search, statusFilter],
+    queryFn: async () => {
+      // First try to fetch payments with event_id
+      let query = supabase
+        .from("payments")
+        .select("*")
+        .eq("event_id", eventId)
+        .order("created_at", { ascending: false })
+
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter)
+      }
+
+      if (search) {
+        query = query.or(`payer_name.ilike.%${search}%,payer_email.ilike.%${search}%,payment_number.ilike.%${search}%`)
+      }
+
+      const { data: paymentsData, error: paymentsError } = await query
+
+      if (paymentsError) {
+        console.error("Error fetching payments:", paymentsError)
+        return []
+      }
+
+      if (!paymentsData || paymentsData.length === 0) {
+        return []
+      }
+
+      // Fetch associated registrations for these payments
+      const paymentIds = paymentsData.map((p: any) => p.id)
+      const { data: regsData } = await supabase
+        .from("registrations")
+        .select(`
+          id,
+          payment_id,
+          registration_number,
+          attendee_name,
+          attendee_email,
+          ticket_type:ticket_types (
+            name,
+            price
+          )
+        `)
+        .in("payment_id", paymentIds)
+
+      // Get registration IDs to fetch addons
+      const registrationIds = regsData?.map((r: any) => r.id) || []
+
+      // Fetch addons for these registrations
+      const { data: addonsData } = await supabase
+        .from("registration_addons")
+        .select(`
+          id,
+          registration_id,
+          quantity,
+          price,
+          addon:addons(name, price)
+        `)
+        .in("registration_id", registrationIds)
+
+      // Map addons by registration_id for quick lookup
+      const addonsByRegistration: Record<string, any[]> = {}
+      if (addonsData) {
+        addonsData.forEach((addon: any) => {
+          if (!addonsByRegistration[addon.registration_id]) {
+            addonsByRegistration[addon.registration_id] = []
+          }
+          const qty = addon.quantity || 1
+          const totalPrice = addon.price || 0
+          const unitPrice = qty > 0 ? totalPrice / qty : (addon.addon?.price || 0)
+          addonsByRegistration[addon.registration_id].push({
+            id: addon.id,
+            addon_name: addon.addon?.name || "Add-on",
+            variant_name: null,
+            quantity: qty,
+            unit_price: unitPrice,
+            total_price: totalPrice,
+          })
+        })
+      }
+
+      // Merge registrations and addons with payments
+      const ordersWithRegs = paymentsData.map((payment: any) => {
+        const regs = regsData?.filter((r: any) => r.payment_id === payment.id) || []
+
+        // Collect all addons for this payment's registrations
+        const allAddons: OrderAddon[] = []
+        regs.forEach((reg: any) => {
+          const regAddons = addonsByRegistration[reg.id] || []
+          allAddons.push(...regAddons)
+        })
+
+        return {
+          ...payment,
+          registrations: regs.map((r: any) => ({
+            id: r.id,
+            registration_number: r.registration_number,
+            first_name: r.attendee_name?.split(" ")[0] || "",
+            last_name: r.attendee_name?.split(" ").slice(1).join(" ") || "",
+            email: r.attendee_email,
+            ticket_type: r.ticket_type
+          })),
+          addons: allAddons
+        }
+      })
+
+      return ordersWithRegs as Order[]
+    },
+  })
+
+  // Stats
+  const stats = {
+    total: orders?.length || 0,
+    completed: orders?.filter((o) => o.status === "completed").length || 0,
+    pending: orders?.filter((o) => o.status === "pending").length || 0,
+    revenue: orders?.filter((o) => o.status === "completed").reduce((sum, o) => sum + o.net_amount, 0) || 0,
+  }
+
+  const getStatusBadge = (status: string) => {
+    const config = statusConfig[status] || statusConfig.pending
+    const Icon = config.icon
+    return (
+      <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium", config.color)}>
+        <Icon className="w-3 h-3" />
+        {config.label}
+      </span>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Orders</h1>
+          <p className="text-muted-foreground">
+            View and manage ticket purchases and payments
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          <Button variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="paper-card p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Receipt className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-xs text-muted-foreground">Total Orders</p>
+            </div>
+          </div>
+        </div>
+        <div className="paper-card p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-success/10">
+              <CheckCircle2 className="w-5 h-5 text-success" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.completed}</p>
+              <p className="text-xs text-muted-foreground">Paid Orders</p>
+            </div>
+          </div>
+        </div>
+        <div className="paper-card p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-warning/10">
+              <Clock className="w-5 h-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.pending}</p>
+              <p className="text-xs text-muted-foreground">Pending</p>
+            </div>
+          </div>
+        </div>
+        <div className="paper-card p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-info/10">
+              <IndianRupee className="w-5 h-5 text-info" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">₹{stats.revenue.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Revenue</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, email, or order #..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40">
+            <Filter className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="Filter" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="completed">Paid</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="refunded">Refunded</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Orders Table */}
+      <div className="paper-card overflow-hidden">
+        {isLoading ? (
+          <div className="p-8 text-center">
+            <RefreshCw className="w-8 h-8 mx-auto animate-spin text-muted-foreground" />
+            <p className="mt-2 text-muted-foreground">Loading orders...</p>
+          </div>
+        ) : orders && orders.length > 0 ? (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase">Order</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase">Customer</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase">Tickets</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase">Amount</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase">Status</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase">Date</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr
+                  key={order.id}
+                  className={cn(
+                    "border-b hover:bg-muted/30 cursor-pointer transition-colors",
+                    selectedOrder?.id === order.id && "bg-primary/5"
+                  )}
+                  onClick={() => setSelectedOrder(order)}
+                >
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-mono text-sm">{order.payment_number}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div>
+                      <p className="font-medium text-sm">{order.payer_name}</p>
+                      <p className="text-xs text-muted-foreground">{order.payer_email}</p>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="text-sm">
+                      {order.registrations?.length || 0} ticket(s)
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="font-semibold">₹{order.net_amount.toLocaleString()}</span>
+                  </td>
+                  <td className="py-3 px-4">{getStatusBadge(order.status)}</td>
+                  <td className="py-3 px-4">
+                    <span className="text-sm text-muted-foreground">
+                      {format(new Date(order.created_at), "dd MMM yyyy")}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setSelectedOrder(order)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Send className="w-4 h-4 mr-2" />
+                          Send Receipt
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Download className="w-4 h-4 mr-2" />
+                          Download Invoice
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => handleDeleteOrder(order.id, e)}
+                          className="text-destructive focus:text-destructive"
+                          disabled={deletingOrderId === order.id}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          {deletingOrderId === order.id ? "Deleting..." : "Delete Order"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="p-8 text-center">
+            <Receipt className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+            <h3 className="font-medium text-foreground">No orders yet</h3>
+            <p className="text-sm text-muted-foreground">
+              Orders will appear here when attendees purchase tickets
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Order Details Slide Over */}
+      <SlideOver
+        open={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        title={`Order ${selectedOrder?.payment_number || ""}`}
+      >
+        {selectedOrder && (
+          <div className="space-y-6">
+            {/* Status Badge */}
+            <div className="flex items-center justify-between">
+              {getStatusBadge(selectedOrder.status)}
+              <span className="text-sm text-muted-foreground">
+                {format(new Date(selectedOrder.created_at), "dd MMM yyyy, h:mm a")}
+              </span>
+            </div>
+
+            {/* Customer Info */}
+            <SlideOverSection title="Customer" icon={User}>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-semibold">
+                      {selectedOrder.payer_name.charAt(0)}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-medium">{selectedOrder.payer_name}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Mail className="w-4 h-4" />
+                    <a href={`mailto:${selectedOrder.payer_email}`} className="hover:text-primary">
+                      {selectedOrder.payer_email}
+                    </a>
+                  </div>
+                  {selectedOrder.payer_phone && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="w-4 h-4" />
+                      <a href={`tel:${selectedOrder.payer_phone}`} className="hover:text-primary">
+                        {selectedOrder.payer_phone}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </SlideOverSection>
+
+            {/* Tickets/Registrations */}
+            <SlideOverSection title="Tickets" icon={Ticket}>
+              {selectedOrder.registrations && selectedOrder.registrations.length > 0 ? (
+                <div className="space-y-3">
+                  {selectedOrder.registrations.map((reg) => (
+                    <div
+                      key={reg.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                    >
+                      <div>
+                        <p className="font-medium text-sm">
+                          {reg.first_name} {reg.last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {reg.ticket_type?.name || "Standard Ticket"}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {reg.registration_number}
+                        </p>
+                      </div>
+                      <p className="font-semibold">
+                        ₹{reg.ticket_type?.price?.toLocaleString() || "0"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No tickets found</p>
+              )}
+            </SlideOverSection>
+
+            {/* Add-ons */}
+            {selectedOrder.addons && selectedOrder.addons.length > 0 && (
+              <SlideOverSection title="Add-ons" icon={Package}>
+                <div className="space-y-3">
+                  {selectedOrder.addons.map((addon) => (
+                    <div
+                      key={addon.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                    >
+                      <div>
+                        <p className="font-medium text-sm">
+                          {addon.addon_name}
+                          {addon.variant_name && (
+                            <span className="text-muted-foreground ml-1">
+                              ({addon.variant_name})
+                            </span>
+                          )}
+                        </p>
+                        {addon.quantity > 1 && (
+                          <p className="text-xs text-muted-foreground">
+                            Qty: {addon.quantity} × ₹{addon.unit_price.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      <p className="font-semibold">
+                        ₹{addon.total_price.toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </SlideOverSection>
+            )}
+
+            {/* Payment Summary */}
+            <SlideOverSection title="Payment Summary" icon={Receipt}>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>₹{selectedOrder.amount.toLocaleString()}</span>
+                </div>
+                {selectedOrder.tax_amount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Tax (GST)</span>
+                    <span>₹{selectedOrder.tax_amount.toLocaleString()}</span>
+                  </div>
+                )}
+                {selectedOrder.discount_amount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Discount</span>
+                    <span className="text-success">-₹{selectedOrder.discount_amount.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="border-t pt-2 mt-2">
+                  <div className="flex justify-between font-semibold">
+                    <span>Total Paid</span>
+                    <span className="text-primary">₹{selectedOrder.net_amount.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            </SlideOverSection>
+
+            {/* Payment Details */}
+            <SlideOverSection title="Payment Details" icon={CreditCard}>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Method</span>
+                  <span className="capitalize">{selectedOrder.payment_method}</span>
+                </div>
+                {selectedOrder.razorpay_payment_id && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Razorpay ID</span>
+                    <span className="font-mono text-xs">{selectedOrder.razorpay_payment_id}</span>
+                  </div>
+                )}
+                {selectedOrder.completed_at && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Paid On</span>
+                    <span>{format(new Date(selectedOrder.completed_at), "dd MMM yyyy, h:mm a")}</span>
+                  </div>
+                )}
+              </div>
+            </SlideOverSection>
+
+            {/* Actions */}
+            <SlideOverFooter>
+              <Button variant="outline" className="flex-1">
+                <Send className="w-4 h-4 mr-2" />
+                Send Receipt
+              </Button>
+              <Button variant="outline" className="flex-1">
+                <Download className="w-4 h-4 mr-2" />
+                Download
+              </Button>
+            </SlideOverFooter>
+          </div>
+        )}
+      </SlideOver>
+    </div>
+  )
+}

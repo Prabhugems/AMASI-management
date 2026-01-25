@@ -2,26 +2,780 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+/* Paper Dashboard Pro Inspired Theme */
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Clean Professional Color Palette - High Contrast */
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary - Professional Blue */
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Light Gray */
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 20% 94%;
+    --accent-foreground: 222 47% 11%;
+
+    /* Status Colors - Vibrant and Clear */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+
+    --radius: 8px;
+
+    /* Sidebar - Dark Professional */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 221 83% 53%;
+    --sidebar-muted: 215 20% 65%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 20%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 12%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 15%;
+    --sidebar-ring: 217 91% 60%;
+    --sidebar-muted: 215 20% 55%;
+  }
+
+  /* Theme Color: Blue */
+  .theme-blue {
+    --primary: 200 65% 55%;
+    --ring: 200 65% 55%;
+    --sidebar-primary: 200 65% 55%;
+  }
+  .dark.theme-blue {
+    --primary: 200 70% 50%;
+    --ring: 200 70% 50%;
+    --sidebar-primary: 200 70% 50%;
+  }
+
+  /* Theme Color: Green */
+  .theme-green {
+    --primary: 145 40% 48%;
+    --ring: 145 40% 48%;
+    --sidebar-primary: 145 40% 48%;
+  }
+  .dark.theme-green {
+    --primary: 145 45% 45%;
+    --ring: 145 45% 45%;
+    --sidebar-primary: 145 45% 45%;
+  }
+
+  /* Theme Color: Rose/Danger */
+  .theme-rose {
+    --primary: 18 82% 54%;
+    --ring: 18 82% 54%;
+    --sidebar-primary: 18 82% 54%;
+  }
+  .dark.theme-rose {
+    --primary: 18 75% 50%;
+    --ring: 18 75% 50%;
+    --sidebar-primary: 18 75% 50%;
+  }
+
+  /* Theme Color: Amber/Warning */
+  .theme-amber {
+    --primary: 42 88% 55%;
+    --primary-foreground: 25 40% 20%;
+    --ring: 42 88% 55%;
+    --sidebar-primary: 42 88% 55%;
+  }
+  .dark.theme-amber {
+    --primary: 42 85% 50%;
+    --ring: 42 85% 50%;
+    --sidebar-primary: 42 85% 50%;
+  }
+
+  /* Theme Color: Cyan/Info */
+  .theme-cyan {
+    --primary: 195 55% 55%;
+    --ring: 195 55% 55%;
+    --sidebar-primary: 195 55% 55%;
+  }
+  .dark.theme-cyan {
+    --primary: 195 60% 50%;
+    --ring: 195 60% 50%;
+    --sidebar-primary: 195 60% 50%;
+  }
+
+  /* Theme Color: Violet */
+  .theme-violet {
+    --primary: 270 50% 60%;
+    --ring: 270 50% 60%;
+    --sidebar-primary: 270 50% 60%;
+  }
+  .dark.theme-violet {
+    --primary: 270 55% 55%;
+    --ring: 270 55% 55%;
+    --sidebar-primary: 270 55% 55%;
+  }
+
+  /* Theme Color: Orange */
+  .theme-orange {
+    --primary: 28 90% 55%;
+    --ring: 28 90% 55%;
+    --sidebar-primary: 28 90% 55%;
+  }
+  .dark.theme-orange {
+    --primary: 28 85% 50%;
+    --ring: 28 85% 50%;
+    --sidebar-primary: 28 85% 50%;
+  }
+
+  /* Sidebar Colors - High Contrast Variants */
+  .sidebar-dark {
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-muted: 215 20% 65%;
+  }
+
+  .sidebar-blue {
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-muted: 215 20% 65%;
+  }
+
+  .sidebar-slate {
+    --sidebar-background: 215 28% 17%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-accent: 215 25% 23%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 215 25% 23%;
+    --sidebar-muted: 215 20% 65%;
+  }
+
+  .sidebar-gray {
+    --sidebar-background: 220 13% 18%;
+    --sidebar-foreground: 220 13% 95%;
+    --sidebar-accent: 220 13% 25%;
+    --sidebar-accent-foreground: 220 13% 95%;
+    --sidebar-border: 220 13% 25%;
+    --sidebar-muted: 220 10% 60%;
+  }
+
+  .sidebar-zinc {
+    --sidebar-background: 240 6% 10%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-accent: 240 5% 17%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 5% 17%;
+    --sidebar-muted: 240 4% 55%;
+  }
+
+  .sidebar-neutral {
+    --sidebar-background: 0 0% 9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-muted: 0 0% 55%;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Paper Dashboard Typography */
+  h1 {
+    @apply text-3xl font-bold text-foreground tracking-tight;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold text-foreground tracking-tight;
+  }
+
+  h3 {
+    @apply text-xl font-semibold text-foreground;
+  }
+
+  h4 {
+    @apply text-lg font-semibold text-foreground;
+  }
+
+  h5 {
+    @apply text-base font-semibold text-foreground;
+  }
+
+  h6 {
+    @apply text-sm font-semibold text-foreground;
+  }
+}
+
+@layer components {
+  /* Paper Dashboard Card Style */
+  .paper-card {
+    @apply bg-card rounded-xl border-0 shadow-sm;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .paper-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Icon Big - Paper Dashboard Style */
+  .icon-big {
+    @apply flex items-center justify-center w-16 h-16 rounded-full text-3xl;
+  }
+
+  .icon-big.icon-primary { @apply bg-primary/20 text-primary; }
+  .icon-big.icon-success { @apply bg-success/20 text-success; }
+  .icon-big.icon-info { @apply bg-info/20 text-info; }
+  .icon-big.icon-warning { @apply bg-warning/20 text-warning; }
+  .icon-big.icon-danger { @apply bg-destructive/20 text-destructive; }
+
+  /* Numbers - Paper Dashboard Style */
+  .numbers {
+    @apply text-right;
+  }
+
+  .numbers p {
+    @apply text-sm text-muted-foreground mb-0;
+  }
+
+  .numbers .value {
+    @apply text-2xl font-bold text-foreground;
+  }
+
+  /* Stats Footer */
+  .card-stats-footer {
+    @apply pt-3 mt-3 border-t border-border text-sm text-muted-foreground;
+  }
+
+  /* Circle Chart Card */
+  .card-circle {
+    @apply text-center py-4;
+  }
+
+  /* Label Badges - Paper Dashboard */
+  .label-primary { @apply bg-primary text-primary-foreground; }
+  .label-success { @apply bg-success text-success-foreground; }
+  .label-info { @apply bg-info text-info-foreground; }
+  .label-warning { @apply bg-warning text-warning-foreground; }
+  .label-danger { @apply bg-destructive text-destructive-foreground; }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.2);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+
+  /* Paper Dashboard Transitions */
+  .transition-paper {
+    transition: all 300ms cubic-bezier(0.34, 1.61, 0.7, 1);
+  }
+
+  /* Soft shadows */
+  .shadow-paper {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .shadow-paper-hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Animated Card */
+  .card-animated {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .card-animated:hover {
+    @apply -translate-y-1;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Stagger Animation for Lists */
+  .stagger-item {
+    animation: fade-in-up 0.4s ease-out both;
+  }
+
+  .stagger-item:nth-child(1) { animation-delay: 0ms; }
+  .stagger-item:nth-child(2) { animation-delay: 50ms; }
+  .stagger-item:nth-child(3) { animation-delay: 100ms; }
+  .stagger-item:nth-child(4) { animation-delay: 150ms; }
+  .stagger-item:nth-child(5) { animation-delay: 200ms; }
+  .stagger-item:nth-child(6) { animation-delay: 250ms; }
+  .stagger-item:nth-child(7) { animation-delay: 300ms; }
+  .stagger-item:nth-child(8) { animation-delay: 350ms; }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Hover Lift Effect */
+  .hover-lift {
+    @apply transition-all duration-300;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-0.5 shadow-lg;
+  }
+
+  /* Shimmer Loading Effect */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Gradient Text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--info)) 100%);
+  }
+
+  /* Glow Effect */
+  .glow {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .glow-success {
+    box-shadow: 0 0 20px hsl(var(--success) / 0.3);
+  }
+
+  .glow-warning {
+    box-shadow: 0 0 20px hsl(var(--warning) / 0.3);
+  }
+
+  .glow-danger {
+    box-shadow: 0 0 20px hsl(var(--destructive) / 0.3);
+  }
+
+  /* Glassmorphism */
+  .glass {
+    @apply backdrop-blur-xl bg-background/80 border border-border/50;
+  }
+
+  /* Number Counter Animation */
+  .counter {
+    animation: count-up 0.5s ease-out;
+  }
+
+  @keyframes count-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Button Press Effect */
+  .btn-press {
+    @apply transition-transform active:scale-95;
+  }
+
+  /* Ripple Effect */
+  .ripple {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ripple::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, hsl(var(--primary) / 0.3) 0%, transparent 70%);
+    transform: scale(0);
+    opacity: 0;
+    transition: transform 0.5s, opacity 0.3s;
+  }
+
+  .ripple:active::after {
+    transform: scale(4);
+    opacity: 1;
+    transition: transform 0s, opacity 0s;
+  }
+
+  /* Pulse Dot Animation */
+  .pulse-dot {
+    @apply relative;
+  }
+
+  .pulse-dot::before {
+    content: "";
+    @apply absolute inset-0 rounded-full animate-ping;
+    background: inherit;
+    opacity: 0.4;
+  }
+
+  /* Slide In Animation Classes */
+  .animate-in {
+    animation-duration: 0.3s;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
+  }
+
+  .slide-in-from-top-2 {
+    animation-name: slide-in-from-top;
+  }
+
+  .slide-in-from-bottom-2 {
+    animation-name: slide-in-from-bottom;
+  }
+
+  @keyframes slide-in-from-top {
+    from { transform: translateY(-8px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes slide-in-from-bottom {
+    from { transform: translateY(8px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  /* Focus Ring */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Primary Gradient Utilities - Uses theme color */
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
+  }
+
+  .bg-gradient-primary-vivid {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--ring)) 50%, hsl(var(--primary) / 0.9) 100%);
+  }
+
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--ring)) 100%);
+  }
+
+  .shadow-primary-glow {
+    box-shadow: 0 10px 40px -10px hsl(var(--primary) / 0.4);
+  }
+
+  .shadow-primary-glow-lg {
+    box-shadow: 0 20px 60px -15px hsl(var(--primary) / 0.5);
+  }
+
+  .border-primary-glow {
+    border-color: hsl(var(--primary) / 0.5);
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.2);
+  }
+
+  .ring-primary-glow {
+    --tw-ring-color: hsl(var(--primary) / 0.3);
+  }
+
+  /* Primary color with opacity variants */
+  .bg-primary-5 { background-color: hsl(var(--primary) / 0.05); }
+  .bg-primary-10 { background-color: hsl(var(--primary) / 0.1); }
+  .bg-primary-20 { background-color: hsl(var(--primary) / 0.2); }
+  .bg-primary-30 { background-color: hsl(var(--primary) / 0.3); }
+
+  .text-primary-light { color: hsl(var(--primary) / 0.7); }
+  .text-primary-muted { color: hsl(var(--primary) / 0.5); }
+
+  /* Sliding Card Transition */
+  .ease-slide {
+    transition-timing-function: cubic-bezier(0.28, -0.03, 0, 0.99);
+  }
+}
+
+/* ================================
+   PRINT STYLES - Hide app shell
+   ================================ */
+@media print {
+  /* Force color printing */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Hide sidebar completely */
+  [data-sidebar],
+  .event-sidebar,
+  aside {
+    display: none !important;
+    width: 0 !important;
+  }
+
+  /* Hide header */
+  header,
+  .app-header,
+  [data-header] {
+    display: none !important;
+  }
+
+  /* Remove sidebar padding from main content */
+  .pl-64,
+  .pl-16,
+  [class*="pl-"] {
+    padding-left: 0 !important;
+  }
+
+  /* Make content full width */
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Hide print buttons and controls */
+  .no-print,
+  button:has(.print-icon) {
+    display: none !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 10mm 15mm;
+  }
+
+  /* Ensure backgrounds print */
+  .bg-blue-900,
+  .bg-blue-600,
+  .bg-pink-600,
+  .bg-green-600,
+  .bg-gray-600,
+  .bg-blue-100,
+  .bg-gray-100,
+  .bg-gray-50,
+  .bg-green-50 {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .avoid-page-break {
+    page-break-inside: avoid;
+  }
+
+  /* Table improvements */
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Journey Itinerary Print Styles */
+  #journey-itinerary {
+    background: white !important;
+    color: black !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  #journey-itinerary * {
+    color: inherit;
+  }
+
+  /* Timeline line for print */
+  #journey-itinerary .bg-gradient-to-b {
+    background: #e5e7eb !important;
+  }
+
+  /* Timeline circles for print */
+  #journey-itinerary .rounded-full {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure cards have borders in print */
+  #journey-itinerary [class*="rounded-lg"] {
+    border: 1px solid #e5e7eb !important;
+    background: #f9fafb !important;
+  }
+
+  /* ================================
+     SPEAKER PORTAL PRINT ONLY ITINERARY
+     ================================ */
+  /* When printing from speaker portal, hide everything except journey itinerary */
+  body:has(#journey-itinerary) > *:not(:has(#journey-itinerary)) {
+    display: none !important;
+  }
+
+  /* Hide all cards in speaker portal except journey itinerary */
+  body:has(#journey-itinerary) .min-h-screen > * {
+    display: none !important;
+  }
+
+  /* Show only the itinerary container */
+  body:has(#journey-itinerary) .min-h-screen > *:has(#journey-itinerary) {
+    display: block !important;
+  }
+
+  /* Hide header/footer sections in speaker portal */
+  body:has(#journey-itinerary) .bg-white\/5,
+  body:has(#journey-itinerary) [class*="bg-white/5"]:not(#journey-itinerary *) {
+    display: none !important;
+  }
+
+  /* Hide all cards except journey itinerary */
+  body:has(#journey-itinerary) [class*="bg-white/10"]:not(#journey-itinerary):not(:has(#journey-itinerary)) {
+    display: none !important;
+  }
+
+  /* Make itinerary full width and visible */
+  #journey-itinerary {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: white !important;
+    z-index: 9999 !important;
+  }
+
+  /* Show itinerary content */
+  #journey-itinerary,
+  #journey-itinerary * {
+    visibility: visible !important;
+  }
+
+  /* Override dark background */
+  body:has(#journey-itinerary) {
+    background: white !important;
   }
 }
