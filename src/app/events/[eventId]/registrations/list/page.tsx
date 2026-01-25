@@ -105,9 +105,11 @@ interface Registration {
   payment_status: "pending" | "completed" | "failed" | "refunded"
   checked_in: boolean
   checked_in_at: string | null
+  confirmed_at: string | null
   discount_code_id: string | null
   notes: string | null
   created_at: string
+  updated_at: string | null
   badge_url: string | null
   badge_generated_at: string | null
   certificate_url: string | null
@@ -1627,15 +1629,22 @@ export default function RegistrationsPage() {
           <div className="space-y-6">
             {/* Status Badge */}
             <div className="flex items-center justify-between">
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-sm font-medium border-0 capitalize",
-                  getStatusColor(selectedRegistration.status)
+              <div className="flex flex-col gap-0.5">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-sm font-medium border-0 capitalize",
+                    getStatusColor(selectedRegistration.status)
+                  )}
+                >
+                  {selectedRegistration.status}
+                </Badge>
+                {selectedRegistration.status === "confirmed" && selectedRegistration.confirmed_at && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Confirmed {format(new Date(selectedRegistration.confirmed_at), "dd MMM yyyy")}
+                  </span>
                 )}
-              >
-                {selectedRegistration.status}
-              </Badge>
+              </div>
               <span className="text-sm text-muted-foreground">
                 {format(new Date(selectedRegistration.created_at), "dd MMM yyyy, h:mm a")}
               </span>

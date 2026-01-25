@@ -97,6 +97,7 @@ type Speaker = {
   attendee_phone: string | null
   attendee_designation: string | null
   status: string
+  confirmed_at: string | null
   custom_fields: {
     topic?: string
     portal_token?: string
@@ -259,6 +260,7 @@ export default function SpeakersPage() {
           attendee_phone,
           attendee_designation,
           status,
+          confirmed_at,
           custom_fields,
           created_at,
           ticket_type:ticket_types(name)
@@ -1395,31 +1397,38 @@ export default function SpeakersPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border cursor-pointer hover:opacity-80",
-                            getStatusColor(speaker.status)
-                          )}>
-                            {getStatusIcon(speaker.status)}
-                            <span className="capitalize">{speaker.status}</span>
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, status: "pending" })}>
-                            <Clock className="h-4 w-4 mr-2 text-amber-500" />
-                            Pending
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, status: "confirmed" })}>
-                            <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                            Confirmed
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, status: "declined" })}>
-                            <XCircle className="h-4 w-4 mr-2 text-red-500" />
-                            Declined
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex flex-col gap-1">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className={cn(
+                              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border cursor-pointer hover:opacity-80",
+                              getStatusColor(speaker.status)
+                            )}>
+                              {getStatusIcon(speaker.status)}
+                              <span className="capitalize">{speaker.status}</span>
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, status: "pending" })}>
+                              <Clock className="h-4 w-4 mr-2 text-amber-500" />
+                              Pending
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, status: "confirmed" })}>
+                              <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                              Confirmed
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, status: "declined" })}>
+                              <XCircle className="h-4 w-4 mr-2 text-red-500" />
+                              Declined
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        {speaker.status === "confirmed" && speaker.confirmed_at && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(speaker.confirmed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Button

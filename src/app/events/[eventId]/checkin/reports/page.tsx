@@ -61,6 +61,8 @@ type CheckinRecord = {
   checkin_list_id: string
   registration_id: string
   checked_in_at: string
+  checked_in_by: string | null
+  checked_out_at: string | null
   registration?: Registration
 }
 
@@ -120,6 +122,8 @@ export default function CheckinReportsPage() {
           checkin_list_id,
           registration_id,
           checked_in_at,
+          checked_in_by,
+          checked_out_at,
           registration:registrations(id, attendee_name, ticket_type:ticket_types(id, name))
         `)
         .in("checkin_list_id", listIds)
@@ -287,7 +291,7 @@ export default function CheckinReportsPage() {
   // Get check-in details for a registration from checkin_records
   const getCheckinDetails = (regId: string) => {
     const records = (checkinRecords || []).filter((r) => r.registration_id === regId)
-    if (records.length === 0) return { lists: "", times: "" }
+    if (records.length === 0) return { lists: "", times: "", checkedInBy: "" }
 
     // Get list names from checkinLists
     const listNames = records.map((record) => {
@@ -295,13 +299,16 @@ export default function CheckinReportsPage() {
       return list?.name || "Unknown"
     })
 
-    // Get earliest check-in time
+    // Get earliest check-in time and who checked them in
     const times = records.map((r) => r.checked_in_at).filter(Boolean).sort()
     const earliestTime = times[0]
+    const checkedInByList = records.map((r) => r.checked_in_by).filter(Boolean)
+    const checkedInBy = [...new Set(checkedInByList)].join(", ")
 
     return {
       lists: listNames.join(", "),
       times: earliestTime ? new Date(earliestTime).toLocaleString() : "",
+      checkedInBy,
     }
   }
 
@@ -319,11 +326,12 @@ export default function CheckinReportsPage() {
       "Checked In",
       "Checked In Lists",
       "Checked In At",
+      "Checked In By",
     ]
 
     const rows = registrations.map((r) => {
       const isCheckedIn = stats.checkedInRegIds.has(r.id)
-      const { lists, times } = getCheckinDetails(r.id)
+      const { lists, times, checkedInBy } = getCheckinDetails(r.id)
       return [
         r.registration_number,
         r.attendee_name,
@@ -334,6 +342,7 @@ export default function CheckinReportsPage() {
         isCheckedIn ? "Yes" : "No",
         lists,
         times,
+        checkedInBy,
       ]
     })
 
@@ -367,10 +376,11 @@ export default function CheckinReportsPage() {
       "Ticket Type",
       "Checked In Lists",
       "Checked In At",
+      "Checked In By",
     ]
 
     const rows = checkedInRegs.map((r) => {
-      const { lists, times } = getCheckinDetails(r.id)
+      const { lists, times, checkedInBy } = getCheckinDetails(r.id)
       return [
         r.registration_number,
         r.attendee_name,
@@ -380,6 +390,7 @@ export default function CheckinReportsPage() {
         r.ticket_type?.name || "",
         lists,
         times,
+        checkedInBy,
       ]
     })
 

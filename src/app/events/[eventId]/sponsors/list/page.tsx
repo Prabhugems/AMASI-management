@@ -98,6 +98,8 @@ type Sponsor = {
   payment_status: string
   tier_id: string | null
   notes: string | null
+  confirmed_at: string | null
+  created_at: string
   sponsor_tiers?: Tier | null
   sponsor_contacts?: Contact[]
 }
@@ -400,15 +402,17 @@ export default function SponsorsListPage() {
 
   // Export
   const exportSponsors = () => {
-    const headers = ["Name", "Tier", "Status", "Email", "Phone", "Amount Agreed", "Amount Paid"]
+    const headers = ["Name", "Tier", "Status", "Confirmed Date", "Email", "Phone", "Amount Agreed", "Amount Paid", "Created At"]
     const rows = filteredSponsors.map(s => [
       s.name,
       s.sponsor_tiers?.name || "",
       s.status,
+      s.confirmed_at ? new Date(s.confirmed_at).toLocaleDateString("en-IN") : "",
       s.company_email || "",
       s.company_phone || "",
       s.amount_agreed,
       s.amount_paid,
+      s.created_at ? new Date(s.created_at).toLocaleDateString("en-IN") : "",
     ])
     const csv = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n")
     const blob = new Blob([csv], { type: "text/csv" })
@@ -584,9 +588,16 @@ export default function SponsorsListPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge className={cn("text-white", statusInfo?.color)}>
-                        {statusInfo?.label}
-                      </Badge>
+                      <div className="flex flex-col items-start gap-0.5">
+                        <Badge className={cn("text-white", statusInfo?.color)}>
+                          {statusInfo?.label}
+                        </Badge>
+                        {sponsor.status === "confirmed" && sponsor.confirmed_at && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(sponsor.confirmed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>

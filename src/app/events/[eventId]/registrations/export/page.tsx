@@ -32,10 +32,14 @@ const EXPORT_FIELDS = [
   { id: "attendee_designation", label: "Designation", default: true },
   { id: "ticket_type", label: "Ticket Type", default: true },
   { id: "status", label: "Status", default: true },
+  { id: "payment_status", label: "Payment Status", default: false },
   { id: "total_amount", label: "Amount", default: false },
   { id: "checked_in", label: "Checked In", default: false },
+  { id: "checked_in_at", label: "Checked In At", default: false },
   { id: "badge_printed", label: "Badge Printed", default: false },
   { id: "created_at", label: "Registration Date", default: false },
+  { id: "confirmed_at", label: "Confirmed Date", default: false },
+  { id: "updated_at", label: "Last Updated", default: false },
 ]
 
 export default function ExportRegistrationsPage() {
