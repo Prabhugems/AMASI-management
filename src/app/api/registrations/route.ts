@@ -55,6 +55,13 @@ async function generateRegistrationNumber(supabase: Awaited<ReturnType<typeof cr
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
+
+    // Authentication check
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
 
     const eventId = searchParams.get("event_id")
@@ -64,6 +71,42 @@ export async function GET(request: NextRequest) {
     // Validate event_id if provided
     if (eventId && !isValidUUID(eventId)) {
       return NextResponse.json({ error: "Invalid event_id format" }, { status: 400 })
+    }
+
+    // Authorization check - verify user has access to this event
+    if (eventId) {
+      const { data: event } = await (supabase as any)
+        .from("events")
+        .select("id, created_by")
+        .eq("id", eventId)
+        .single()
+
+      if (!event) {
+        return NextResponse.json({ error: "Event not found" }, { status: 404 })
+      }
+
+      // Check if user is the creator or a team member
+      const isCreator = event.created_by === user.id
+
+      if (!isCreator) {
+        // Check if user is a team member with access
+        const { data: teamMember } = await (supabase as any)
+          .from("team_members")
+          .select("id, event_ids, permissions")
+          .eq("email", user.email?.toLowerCase())
+          .eq("is_active", true)
+          .single()
+
+        const hasEventAccess = teamMember && (
+          !teamMember.event_ids || // No event restriction = all events
+          teamMember.event_ids.length === 0 ||
+          teamMember.event_ids.includes(eventId)
+        )
+
+        if (!hasEventAccess) {
+          return NextResponse.json({ error: "You don't have access to this event" }, { status: 403 })
+        }
+      }
     }
 
     // Validate and clamp pagination
