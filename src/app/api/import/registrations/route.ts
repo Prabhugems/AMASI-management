@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 interface ImportRow {
   name: string
@@ -14,6 +15,13 @@ interface ImportRow {
 
 // POST /api/import/registrations - Import registrations for an event
 export async function POST(request: NextRequest) {
+  // Rate limit: bulk tier for import operations
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "bulk")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     // Authentication check - only authenticated users can import
     const supabaseAuth = await createServerSupabaseClient()

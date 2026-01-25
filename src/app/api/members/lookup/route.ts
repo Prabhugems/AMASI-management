@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { checkRateLimit, getClientIp, createRateLimitHeaders, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // GET /api/members/lookup?email=xxx
 export async function GET(request: NextRequest) {
+  // Rate limit: strict tier to prevent email enumeration
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "strict")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
   // Create client inside handler to ensure env vars are loaded
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

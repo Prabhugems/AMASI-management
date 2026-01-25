@@ -1,8 +1,16 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // POST - Check if email already has registrations for an event
 export async function POST(request: NextRequest) {
+  // Rate limit: strict tier to prevent email enumeration
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "strict")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const supabase = await createServerSupabaseClient()
     const body = await request.json()

@@ -2,6 +2,7 @@ import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/se
 import { NextRequest, NextResponse } from "next/server"
 import { onRegistration } from "@/lib/services/auto-send"
 import { validatePagination, sanitizeSearchInput, isValidUUID } from "@/lib/validation"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 type EventSettings = {
   customize_registration_id: boolean
@@ -170,6 +171,13 @@ function generatePaymentNumber(): string {
 
 // POST - Create new registration
 export async function POST(request: NextRequest) {
+  // Rate limit: public tier for registration creation
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "public")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const supabase = await createServerSupabaseClient()
     const body = await request.json()

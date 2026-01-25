@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import { logActivity } from "@/lib/activity-logger"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 interface Placeholder {
   id: string
@@ -134,6 +135,13 @@ const A4_HEIGHT = 842
 
 // POST /api/badges/generate - Generate PDF badges
 export async function POST(request: NextRequest) {
+  // Rate limit: bulk tier for badge generation (resource intensive)
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "bulk")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const body = await request.json()
     const { event_id, template_id, registration_ids, single_registration_id, badges_per_page = 1, store_badges = false } = body

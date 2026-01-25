@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // Allowed file extensions for security
 const ALLOWED_EXTENSIONS = [
@@ -17,6 +18,13 @@ const BLOCKED_EXTENSIONS = [
 ]
 
 export async function POST(request: NextRequest) {
+  // Rate limit: authenticated tier for file uploads
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "authenticated")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     // Authentication check - require logged in user for file uploads
     const supabaseAuth = await createServerSupabaseClient()

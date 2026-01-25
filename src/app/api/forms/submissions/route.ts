@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -72,6 +73,13 @@ export async function GET(request: NextRequest) {
 
 // POST /api/forms/submissions - Submit a form (public endpoint)
 export async function POST(request: NextRequest) {
+  // Rate limit: public tier for form submissions
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "public")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const supabase: SupabaseClient = await createServerSupabaseClient()
     const body = await request.json()
