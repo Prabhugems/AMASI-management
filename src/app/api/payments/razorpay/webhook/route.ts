@@ -349,6 +349,15 @@ async function handlePaymentCaptured(razorpayPayment: any) {
 // HANDLER: Payment Failed
 // ============================================================
 async function handlePaymentFailed(razorpayPayment: any) {
+  // Fetch existing payment to preserve metadata
+  const { data: existingPayment } = await supabase
+    .from("payments")
+    .select("metadata")
+    .eq("razorpay_order_id", razorpayPayment.order_id)
+    .single()
+
+  const existingMetadata = (existingPayment as any)?.metadata || {}
+
   await supabase
     .from("payments")
     .update({
@@ -356,6 +365,7 @@ async function handlePaymentFailed(razorpayPayment: any) {
       razorpay_payment_id: razorpayPayment.id,
       failed_at: new Date().toISOString(),
       metadata: {
+        ...existingMetadata, // PRESERVE existing metadata
         webhook_event: "payment.failed",
         error_code: razorpayPayment.error_code,
         error_description: razorpayPayment.error_description,
