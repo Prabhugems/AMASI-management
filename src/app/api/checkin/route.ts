@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { validatePagination, sanitizeSearchInput, isValidUUID } from "@/lib/validation"
 
 // GET /api/checkin - Search for attendees (with check-in status for a specific list)
 export async function GET(request: NextRequest) {
@@ -10,15 +11,33 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get("q")
     const ticketTypeId = searchParams.get("ticket_type_id")
     const checkedIn = searchParams.get("checked_in")
-    const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "50")
 
+    // Validate required fields
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
 
+    // Validate UUID formats
+    if (!isValidUUID(eventId)) {
+      return NextResponse.json({ error: "Invalid event_id format" }, { status: 400 })
+    }
+
+    if (checkinListId && !isValidUUID(checkinListId)) {
+      return NextResponse.json({ error: "Invalid checkin_list_id format" }, { status: 400 })
+    }
+
+    if (ticketTypeId && ticketTypeId !== "all" && !isValidUUID(ticketTypeId)) {
+      return NextResponse.json({ error: "Invalid ticket_type_id format" }, { status: 400 })
+    }
+
+    // Validate and clamp pagination
+    const { page, limit, offset } = validatePagination(
+      searchParams.get("page"),
+      searchParams.get("limit") || "50",
+      200 // Max limit for checkin queries
+    )
+
     const supabase = await createAdminClient()
-    const offset = (page - 1) * limit
 
     // Get the check-in list to filter by ticket types and addons if needed
     let allowedTicketTypes: string[] | null = null
@@ -123,7 +142,8 @@ export async function GET(request: NextRequest) {
 
     // Apply additional filters
     if (query) {
-      dbQuery = dbQuery.or(`attendee_name.ilike.%${query}%,attendee_email.ilike.%${query}%,registration_number.ilike.%${query}%,attendee_phone.ilike.%${query}%`)
+      const sanitizedQuery = sanitizeSearchInput(query)
+      dbQuery = dbQuery.or(`attendee_name.ilike.%${sanitizedQuery}%,attendee_email.ilike.%${sanitizedQuery}%,registration_number.ilike.%${sanitizedQuery}%,attendee_phone.ilike.%${sanitizedQuery}%`)
     }
 
     if (ticketTypeId && ticketTypeId !== "all") {

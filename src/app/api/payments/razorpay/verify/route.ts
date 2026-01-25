@@ -455,12 +455,43 @@ async function createRegistrationFromPayment(paymentData: any, metadata: any) {
 }
 
 // ============================================================
-// HELPER: Increment ticket quantity_sold (with idempotency)
+// HELPER: Increment ticket quantity_sold (ATOMIC with RPC)
 // ============================================================
 async function incrementTicketSold(ticketTypeId: string, quantity: number, paymentId: string) {
   if (!ticketTypeId) return
 
-  // Check if we already incremented for this payment (idempotency)
+  try {
+    // Use atomic RPC function to prevent race conditions
+    const { data, error } = await supabase.rpc('increment_ticket_sold_atomic', {
+      p_ticket_type_id: ticketTypeId,
+      p_payment_id: paymentId,
+      p_quantity: quantity,
+    })
+
+    if (error) {
+      // Fallback to non-atomic update if RPC doesn't exist yet
+      console.log(`[VERIFY] RPC not available, using fallback: ${error.message}`)
+      await incrementTicketSoldFallback(ticketTypeId, quantity, paymentId)
+      return
+    }
+
+    const result = data as any
+    if (result?.success) {
+      console.log(`[VERIFY] Atomically incremented ticket ${ticketTypeId} by ${quantity}`)
+    } else if (result?.reason === 'already_processed') {
+      console.log(`[VERIFY] Ticket increment already processed for payment: ${paymentId}`)
+    } else {
+      console.log(`[VERIFY] Ticket increment failed: ${result?.reason}`)
+    }
+  } catch (err) {
+    console.error(`[VERIFY] Error in atomic increment:`, err)
+    // Fallback
+    await incrementTicketSoldFallback(ticketTypeId, quantity, paymentId)
+  }
+}
+
+// Fallback for when RPC is not yet deployed
+async function incrementTicketSoldFallback(ticketTypeId: string, quantity: number, paymentId: string) {
   const { data: ticket } = await supabase
     .from("ticket_types")
     .select("quantity_sold, metadata")
@@ -472,25 +503,23 @@ async function incrementTicketSold(ticketTypeId: string, quantity: number, payme
   const ticketData = ticket as any
   const processedPayments = ticketData.metadata?.processed_payments || []
 
-  // Skip if already processed
   if (processedPayments.includes(paymentId)) {
-    console.log(`[VERIFY] Ticket increment already processed for payment: ${paymentId}`)
+    console.log(`[VERIFY] Fallback: Already processed for payment: ${paymentId}`)
     return
   }
 
-  // Update with idempotency tracking
   await supabase
     .from("ticket_types")
     .update({
       quantity_sold: (ticketData.quantity_sold || 0) + quantity,
       metadata: {
         ...ticketData.metadata,
-        processed_payments: [...processedPayments, paymentId].slice(-100), // Keep last 100
+        processed_payments: [...processedPayments, paymentId].slice(-100),
       },
     })
     .eq("id", ticketTypeId)
 
-  console.log(`[VERIFY] Incremented ticket ${ticketTypeId} by ${quantity}`)
+  console.log(`[VERIFY] Fallback incremented ticket ${ticketTypeId} by ${quantity}`)
 }
 
 // ============================================================

@@ -575,11 +575,43 @@ async function createRegistrationFromPayment(paymentData: any, metadata: any) {
 }
 
 // ============================================================
-// HELPER: Increment ticket quantity_sold (with idempotency)
+// HELPER: Increment ticket quantity_sold (ATOMIC with RPC)
 // ============================================================
 async function incrementTicketSold(ticketTypeId: string, quantity: number, paymentId: string) {
   if (!ticketTypeId) return
 
+  try {
+    // Use atomic RPC function to prevent race conditions
+    const { data, error } = await supabase.rpc('increment_ticket_sold_atomic', {
+      p_ticket_type_id: ticketTypeId,
+      p_payment_id: paymentId,
+      p_quantity: quantity,
+    })
+
+    if (error) {
+      // Fallback to non-atomic update if RPC doesn't exist yet
+      console.log(`[WEBHOOK] RPC not available, using fallback: ${error.message}`)
+      await incrementTicketSoldFallback(ticketTypeId, quantity, paymentId)
+      return
+    }
+
+    const result = data as any
+    if (result?.success) {
+      console.log(`[WEBHOOK] Atomically incremented ticket ${ticketTypeId} by ${quantity}`)
+    } else if (result?.reason === 'already_processed') {
+      console.log(`[WEBHOOK] Ticket increment already processed for payment: ${paymentId}`)
+    } else {
+      console.log(`[WEBHOOK] Ticket increment failed: ${result?.reason}`)
+    }
+  } catch (err) {
+    console.error(`[WEBHOOK] Error in atomic increment:`, err)
+    // Fallback
+    await incrementTicketSoldFallback(ticketTypeId, quantity, paymentId)
+  }
+}
+
+// Fallback for when RPC is not yet deployed
+async function incrementTicketSoldFallback(ticketTypeId: string, quantity: number, paymentId: string) {
   const { data: ticket } = await supabase
     .from("ticket_types")
     .select("quantity_sold, metadata")
@@ -591,9 +623,8 @@ async function incrementTicketSold(ticketTypeId: string, quantity: number, payme
   const ticketData = ticket as any
   const processedPayments = ticketData.metadata?.processed_payments || []
 
-  // Skip if already processed (idempotency)
   if (processedPayments.includes(paymentId)) {
-    console.log(`[WEBHOOK] Ticket increment already processed for payment: ${paymentId}`)
+    console.log(`[WEBHOOK] Fallback: Already processed for payment: ${paymentId}`)
     return
   }
 
@@ -608,7 +639,7 @@ async function incrementTicketSold(ticketTypeId: string, quantity: number, payme
     })
     .eq("id", ticketTypeId)
 
-  console.log(`[WEBHOOK] Incremented ticket ${ticketTypeId} by ${quantity}`)
+  console.log(`[WEBHOOK] Fallback incremented ticket ${ticketTypeId} by ${quantity}`)
 }
 
 // ============================================================
