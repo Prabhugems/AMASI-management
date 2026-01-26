@@ -47,18 +47,45 @@ export default function OrderReportsPage() {
       const paymentIds = payments.map((p: any) => p.id)
       const { data: regs } = await (supabase as any)
         .from("registrations")
-        .select("payment_id, registration_number, attendee_name, ticket_type:ticket_types(name)")
+        .select("id, payment_id, registration_number, attendee_name, attendee_email, attendee_phone, unit_price, total_amount, ticket_type:ticket_types(name, price)")
         .in("payment_id", paymentIds)
+
+      // Fetch addons for registrations
+      const regIds = regs?.map((r: any) => r.id) || []
+      const { data: addons } = await (supabase as any)
+        .from("registration_addons")
+        .select("registration_id, quantity, price, addon:addons(name)")
+        .in("registration_id", regIds)
+
+      // Map addons by registration
+      const addonsByReg: Record<string, any[]> = {}
+      addons?.forEach((a: any) => {
+        if (!addonsByReg[a.registration_id]) addonsByReg[a.registration_id] = []
+        addonsByReg[a.registration_id].push({
+          name: a.addon?.name || "Add-on",
+          quantity: a.quantity || 1,
+          price: a.price || 0,
+        })
+      })
 
       // Map registrations to payments
       return payments.map((payment: any) => {
         const paymentRegs = regs?.filter((r: any) => r.payment_id === payment.id) || []
+        const allAddons: any[] = []
+        paymentRegs.forEach((r: any) => {
+          const regAddons = addonsByReg[r.id] || []
+          allAddons.push(...regAddons)
+        })
         return {
           ...payment,
           registrations: paymentRegs,
+          addons: allAddons,
           ticket_count: paymentRegs.length,
           ticket_names: paymentRegs.map((r: any) => r.ticket_type?.name || "").filter(Boolean).join(", "),
           attendee_names: paymentRegs.map((r: any) => r.attendee_name || "").filter(Boolean).join(", "),
+          registration_numbers: paymentRegs.map((r: any) => r.registration_number || "").filter(Boolean).join(", "),
+          addon_names: allAddons.map((a: any) => a.name).join(", "),
+          addon_total: allAddons.reduce((sum: number, a: any) => sum + (a.price || 0), 0),
         }
       })
     },
@@ -127,15 +154,20 @@ export default function OrderReportsPage() {
       "Payer Name",
       "Payer Email",
       "Payer Phone",
-      "Tickets",
-      "Attendees",
+      "Registration Numbers",
+      "Ticket Count",
+      "Ticket Types",
+      "Attendee Names",
+      "Addons",
+      "Addon Amount",
       "Subtotal",
       "Tax",
       "Discount",
       "Net Amount",
       "Status",
       "Payment Method",
-      "Razorpay ID",
+      "Razorpay Order ID",
+      "Razorpay Payment ID",
       "Order Date",
       "Completed At",
     ]
@@ -144,14 +176,19 @@ export default function OrderReportsPage() {
       `"${(o.payer_name || '').replace(/"/g, '""')}"`,
       o.payer_email || "",
       o.payer_phone || "",
+      `"${(o.registration_numbers || '').replace(/"/g, '""')}"`,
       o.ticket_count || 0,
+      `"${(o.ticket_names || '').replace(/"/g, '""')}"`,
       `"${(o.attendee_names || '').replace(/"/g, '""')}"`,
+      `"${(o.addon_names || '').replace(/"/g, '""')}"`,
+      o.addon_total || 0,
       o.amount || 0,
       o.tax_amount || 0,
       o.discount_amount || 0,
       o.net_amount || 0,
       o.status || "",
       o.payment_method || "",
+      o.razorpay_order_id || "",
       o.razorpay_payment_id || "",
       o.created_at ? format(new Date(o.created_at), "dd/MM/yyyy HH:mm") : "",
       o.completed_at ? format(new Date(o.completed_at), "dd/MM/yyyy HH:mm") : "",
@@ -275,21 +312,23 @@ export default function OrderReportsPage() {
         </div>
       </div>
 
-      {/* Recent Orders Table */}
-      <div className="bg-card border rounded-lg">
+      {/* Orders Table */}
+      <div className="bg-card border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Order #</TableHead>
               <TableHead>Payer</TableHead>
+              <TableHead>Reg Numbers</TableHead>
               <TableHead>Tickets</TableHead>
+              <TableHead>Addons</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Date</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders?.slice(0, 50).map((order: any) => (
+            {orders?.slice(0, 100).map((order: any) => (
               <TableRow key={order.id}>
                 <TableCell className="font-mono text-sm">{order.payment_number}</TableCell>
                 <TableCell>
@@ -298,8 +337,23 @@ export default function OrderReportsPage() {
                     <p className="text-xs text-muted-foreground">{order.payer_email}</p>
                   </div>
                 </TableCell>
-                <TableCell>{order.ticket_count}</TableCell>
-                <TableCell className="text-right">{(order.net_amount || 0).toLocaleString()}</TableCell>
+                <TableCell>
+                  <p className="font-mono text-xs">{order.registration_numbers || "-"}</p>
+                </TableCell>
+                <TableCell>
+                  <div>
+                    <p className="text-sm">{order.ticket_count} ticket(s)</p>
+                    <p className="text-xs text-muted-foreground truncate max-w-[150px]">{order.ticket_names || "-"}</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {order.addon_names ? (
+                    <p className="text-xs truncate max-w-[120px]">{order.addon_names}</p>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right font-medium">{(order.net_amount || 0).toLocaleString()}</TableCell>
                 <TableCell>
                   <span className={`px-2 py-1 rounded-full text-xs ${
                     order.status === "completed" ? "bg-green-100 text-green-800" :
@@ -310,14 +364,14 @@ export default function OrderReportsPage() {
                     {order.status}
                   </span>
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-sm">
                   {order.created_at ? format(new Date(order.created_at), "dd MMM yyyy") : "-"}
                 </TableCell>
               </TableRow>
             ))}
             {(!orders || orders.length === 0) && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   No orders found
                 </TableCell>
               </TableRow>
