@@ -36,7 +36,7 @@ export default function RegistrationReportsPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, registration_number, attendee_name, attendee_email, attendee_phone, status, total_amount, created_at, ticket_type:ticket_types(name)")
+        .select("*, ticket_type:ticket_types(name)")
         .eq("event_id", eventId)
         .order("created_at", { ascending: false })
 
