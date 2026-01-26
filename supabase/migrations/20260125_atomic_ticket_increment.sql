@@ -1,6 +1,9 @@
 -- Atomic ticket increment function to prevent race conditions
 -- This function uses row-level locking to ensure safe concurrent updates
 
+-- Drop existing function if exists (to recreate with correct signature)
+DROP FUNCTION IF EXISTS increment_ticket_sold_atomic(UUID, UUID, INTEGER);
+
 CREATE OR REPLACE FUNCTION increment_ticket_sold_atomic(
   p_ticket_type_id UUID,
   p_payment_id UUID,
@@ -8,25 +11,40 @@ CREATE OR REPLACE FUNCTION increment_ticket_sold_atomic(
 )
 RETURNS JSONB
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
   v_current_sold INTEGER;
   v_quantity_total INTEGER;
-  v_processed_payments TEXT[];
-  v_result JSONB;
+  v_metadata JSONB;
+  v_processed_payments JSONB;
+  v_payment_exists BOOLEAN;
 BEGIN
   -- Lock the row for update to prevent concurrent modifications
   SELECT
-    quantity_sold,
+    COALESCE(quantity_sold, 0),
     quantity_total,
-    COALESCE((metadata->>'processed_payments')::TEXT[], ARRAY[]::TEXT[])
-  INTO v_current_sold, v_quantity_total, v_processed_payments
+    COALESCE(metadata, '{}'::jsonb)
+  INTO v_current_sold, v_quantity_total, v_metadata
   FROM ticket_types
   WHERE id = p_ticket_type_id
   FOR UPDATE;
 
+  -- Check if ticket exists
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'reason', 'ticket_not_found'
+    );
+  END IF;
+
+  -- Get processed payments array from metadata
+  v_processed_payments := COALESCE(v_metadata->'processed_payments', '[]'::jsonb);
+
   -- Check if payment was already processed (idempotency)
-  IF p_payment_id::TEXT = ANY(v_processed_payments) THEN
+  v_payment_exists := v_processed_payments ? p_payment_id::TEXT;
+
+  IF v_payment_exists THEN
     RETURN jsonb_build_object(
       'success', false,
       'reason', 'already_processed',
@@ -44,21 +62,27 @@ BEGIN
     );
   END IF;
 
+  -- Add payment to processed list (keep last 100)
+  v_processed_payments := v_processed_payments || to_jsonb(p_payment_id::TEXT);
+
+  -- Trim to last 100 if needed
+  IF jsonb_array_length(v_processed_payments) > 100 THEN
+    v_processed_payments := (
+      SELECT jsonb_agg(elem)
+      FROM (
+        SELECT elem
+        FROM jsonb_array_elements(v_processed_payments) AS elem
+        ORDER BY 1 DESC
+        LIMIT 100
+      ) sub
+    );
+  END IF;
+
   -- Update the ticket count atomically
   UPDATE ticket_types
   SET
-    quantity_sold = COALESCE(quantity_sold, 0) + p_quantity,
-    metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
-      'processed_payments',
-      (SELECT jsonb_agg(elem) FROM (
-        SELECT unnest(
-          array_append(
-            v_processed_payments[array_length(v_processed_payments, 1) - 99:], -- Keep last 100
-            p_payment_id::TEXT
-          )
-        ) AS elem
-      ) sub)
-    ),
+    quantity_sold = v_current_sold + p_quantity,
+    metadata = v_metadata || jsonb_build_object('processed_payments', v_processed_payments),
     updated_at = NOW()
   WHERE id = p_ticket_type_id;
 
@@ -67,11 +91,18 @@ BEGIN
     'quantity_sold', v_current_sold + p_quantity,
     'incremented_by', p_quantity
   );
+
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object(
+    'success', false,
+    'reason', 'error',
+    'message', SQLERRM
+  );
 END;
 $$;
 
 -- Grant execute permission
-GRANT EXECUTE ON FUNCTION increment_ticket_sold_atomic TO authenticated;
-GRANT EXECUTE ON FUNCTION increment_ticket_sold_atomic TO service_role;
+GRANT EXECUTE ON FUNCTION increment_ticket_sold_atomic(UUID, UUID, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION increment_ticket_sold_atomic(UUID, UUID, INTEGER) TO service_role;
 
-COMMENT ON FUNCTION increment_ticket_sold_atomic IS 'Atomically increment ticket_sold with idempotency check using payment_id';
+COMMENT ON FUNCTION increment_ticket_sold_atomic IS 'Atomically increment ticket_sold with idempotency check using payment_id. Uses row-level locking to prevent race conditions.';
