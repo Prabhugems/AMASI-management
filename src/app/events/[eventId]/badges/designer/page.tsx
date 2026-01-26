@@ -1234,7 +1234,7 @@ export default function BadgeDesignerPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select(`id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_institution, attendee_designation, ticket_type_id, ticket_types (name)`)
+        .select(`id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_institution, attendee_designation, ticket_type_id, ticket_types (name), registration_addons (addon_id, addons (name))`)
         .eq("event_id", eventId)
         .order("registration_number", { ascending: true })
         .limit(100)
@@ -1279,6 +1279,14 @@ export default function BadgeDesignerPage() {
     result = result.replace(/\{\{institution\}\}/g, registration?.attendee_institution || "Institution")
     result = result.replace(/\{\{designation\}\}/g, registration?.attendee_designation || "Designation")
     result = result.replace(/\{\{event_name\}\}/g, event?.name || "Event Name")
+
+    // Addons - comma-separated list of purchased addon names
+    const addonNames = (registration?.registration_addons || [])
+      .map((ra: any) => ra.addons?.name)
+      .filter(Boolean)
+      .join(", ")
+    result = result.replace(/\{\{addons\}\}/g, addonNames || "")
+
     if (event?.start_date && event?.end_date) {
       const start = new Date(event.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
       const end = new Date(event.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
