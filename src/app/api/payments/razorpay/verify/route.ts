@@ -151,12 +151,12 @@ export async function POST(request: NextRequest) {
     // ============================================================
     // STEP 5: Fetch payment details from Razorpay (double-check)
     // ============================================================
-    let razorpayPayment: any
+    let razorpayPayment: any = null
     try {
       razorpayPayment = await fetchPayment(razorpay_payment_id, credentials)
 
-      // Verify payment status from Razorpay
-      if (razorpayPayment.status !== "captured" && razorpayPayment.status !== "authorized") {
+      // Verify payment status from Razorpay (only if we got a response)
+      if (razorpayPayment && razorpayPayment.status !== "captured" && razorpayPayment.status !== "authorized") {
         console.error(`[VERIFY] Payment not captured. Status: ${razorpayPayment.status}`)
         return NextResponse.json(
           { error: `Payment not captured. Status: ${razorpayPayment.status}` },
@@ -598,7 +598,7 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
     if (eventSettings?.auto_send_receipt !== false) {
       try {
         console.log(`[AUTO] Sending receipt for registration ${regData.registration_number}`)
-        await fetch(`${baseUrl}/api/email/registration-confirmation`, {
+        const receiptResult = await fetch(`${baseUrl}/api/email/registration-confirmation`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -616,7 +616,11 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
             payment_status: "completed",
           }),
         })
-        console.log(`[AUTO] Receipt sent for ${regData.registration_number}`)
+        if (receiptResult.ok) {
+          console.log(`[AUTO] Receipt sent for ${regData.registration_number}`)
+        } else {
+          console.error(`[AUTO] Failed to send receipt for ${regData.registration_number}: ${receiptResult.status}`)
+        }
       } catch (emailError) {
         console.error(`[AUTO] Failed to send receipt:`, emailError)
       }
@@ -649,12 +653,16 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
             console.log(`[AUTO] Badge generated for ${regData.registration_number}`)
 
             if (eventSettings?.auto_email_badge) {
-              await fetch(`${baseUrl}/api/badges/email`, {
+              const badgeEmailResult = await fetch(`${baseUrl}/api/badges/email`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ registration_id: registrationId }),
               })
-              console.log(`[AUTO] Badge email sent for ${regData.registration_number}`)
+              if (badgeEmailResult.ok) {
+                console.log(`[AUTO] Badge email sent for ${regData.registration_number}`)
+              } else {
+                console.error(`[AUTO] Failed to send badge email for ${regData.registration_number}: ${badgeEmailResult.status}`)
+              }
             }
           } else {
             console.error(`[AUTO] Badge generation failed:`, await badgeResult.text())
@@ -704,7 +712,7 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
             }
 
             if (eventSettings?.auto_email_certificate && regData.attendee_email) {
-              await fetch(`${baseUrl}/api/certificates/email`, {
+              const certEmailResult = await fetch(`${baseUrl}/api/certificates/email`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -714,7 +722,11 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
                   event_name: regData.events?.name,
                 }),
               })
-              console.log(`[AUTO] Certificate email sent for ${regData.registration_number}`)
+              if (certEmailResult.ok) {
+                console.log(`[AUTO] Certificate email sent for ${regData.registration_number}`)
+              } else {
+                console.error(`[AUTO] Failed to send certificate email for ${regData.registration_number}: ${certEmailResult.status}`)
+              }
             }
           } else {
             console.error(`[AUTO] Certificate generation failed:`, await certResult.text())

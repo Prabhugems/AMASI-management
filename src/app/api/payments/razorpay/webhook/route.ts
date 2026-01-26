@@ -752,7 +752,7 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
     // Auto-send receipt
     if (eventSettings?.auto_send_receipt !== false) {
       try {
-        await fetch(`${baseUrl}/api/email/registration-confirmation`, {
+        const receiptResult = await fetch(`${baseUrl}/api/email/registration-confirmation`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -770,7 +770,11 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
             payment_status: "completed",
           }),
         })
-        console.log(`[AUTO] Receipt sent for ${regData.registration_number}`)
+        if (receiptResult.ok) {
+          console.log(`[AUTO] Receipt sent for ${regData.registration_number}`)
+        } else {
+          console.error(`[AUTO] Failed to send receipt for ${regData.registration_number}: ${receiptResult.status}`)
+        }
       } catch (emailError) {
         console.error(`[AUTO] Failed to send receipt:`, emailError)
       }
@@ -799,11 +803,14 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
           })
 
           if (badgeResult.ok && eventSettings?.auto_email_badge) {
-            await fetch(`${baseUrl}/api/badges/email`, {
+            const badgeEmailResult = await fetch(`${baseUrl}/api/badges/email`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ registration_id: registrationId }),
             })
+            if (!badgeEmailResult.ok) {
+              console.error(`[AUTO] Failed to email badge for registration ${registrationId}: ${badgeEmailResult.status}`)
+            }
           }
         }
       } catch (badgeError) {
@@ -847,7 +854,7 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
             }
 
             if (eventSettings?.auto_email_certificate && regData.attendee_email) {
-              await fetch(`${baseUrl}/api/certificates/email`, {
+              const certEmailResult = await fetch(`${baseUrl}/api/certificates/email`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -857,6 +864,9 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
                   event_name: regData.events?.name,
                 }),
               })
+              if (!certEmailResult.ok) {
+                console.error(`[AUTO] Failed to email certificate for registration ${registrationId}: ${certEmailResult.status}`)
+              }
             }
           }
         }
