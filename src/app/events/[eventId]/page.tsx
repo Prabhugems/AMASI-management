@@ -249,7 +249,7 @@ export default function EventDashboardPage() {
     {
       id: 4,
       label: "Tickets",
-      completed: (ticketsAndAddonsStats?.activeTickets || 0) > 0,
+      completed: (ticketsAndAddonsStats?.tickets || 0) > 0, // Consider completed if any tickets exist
       link: `/events/${eventId}/tickets`,
     },
     {
@@ -449,7 +449,13 @@ export default function EventDashboardPage() {
           icon={Ticket}
           value={ticketsAndAddonsStats?.tickets || 0}
           label="Ticket Types"
-          subtext="Available"
+          subtext={
+            (ticketsAndAddonsStats?.activeTickets || 0) > 0
+              ? `${ticketsAndAddonsStats?.activeTickets} active`
+              : (ticketsAndAddonsStats?.tickets || 0) > 0
+                ? "All paused"
+                : "None created"
+          }
           trend={null}
           color="indigo"
           delay={300}
