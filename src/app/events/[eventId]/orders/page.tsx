@@ -254,7 +254,7 @@ export default function OrdersPage() {
 
       // Merge registrations and addons with payments
       const ordersWithRegs = paymentsData.map((payment: any) => {
-        let regs = regsData?.filter((r: any) => r.payment_id === payment.id) || []
+        let regs: any[] = regsData?.filter((r: any) => r.payment_id === payment.id) || []
         let allAddons: OrderAddon[] = []
 
         // For addon purchases, link to the existing registration
@@ -724,9 +724,17 @@ export default function OrdersPage() {
                 <Send className="w-4 h-4 mr-2" />
                 Send Receipt
               </Button>
-              <Button variant="outline" className="flex-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  if (selectedOrder) {
+                    window.open(`/api/orders/${selectedOrder.id}/receipt`, "_blank")
+                  }
+                }}
+              >
                 <Download className="w-4 h-4 mr-2" />
-                Download
+                Download Receipt
               </Button>
             </SlideOverFooter>
           </div>

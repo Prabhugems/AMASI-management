@@ -305,7 +305,8 @@ export default function DelegatePortalPage() {
 
     setDownloadingReceipt(true)
     try {
-      const res = await fetch(`/api/receipt/${selectedRegistration.registration_number}`)
+      // Use final-receipt endpoint for consolidated receipt (ticket + all addons + payment history)
+      const res = await fetch(`/api/registrations/${selectedRegistration.id}/final-receipt`)
 
       if (!res.ok) {
         const data = await res.json()

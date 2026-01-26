@@ -2064,6 +2064,16 @@ export default function RegistrationsPage() {
                 )}
                 Email Badge
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  window.open(`/api/registrations/${selectedRegistration.id}/final-receipt`, "_blank")
+                }}
+              >
+                <FileDown className="w-4 h-4 mr-2" />
+                Final Receipt
+              </Button>
               {!selectedRegistration.checked_in && (
                 <>
                   <Button variant="outline" size="sm" onClick={openSwitchTicketDialog}>
