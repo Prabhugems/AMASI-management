@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // GET /api/communications/check-tables
-// Diagnostic endpoint to check if communications tables exist
+// Diagnostic endpoint to check if communications tables exist (requires admin)
 export async function GET() {
+  // Require admin access for diagnostic endpoints
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   try {
     const supabase = await createAdminClient()
 

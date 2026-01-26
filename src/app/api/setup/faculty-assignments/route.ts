@@ -1,7 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 export async function POST() {
+  // Require admin access for setup endpoints
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   try {
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,6 +52,10 @@ export async function POST() {
 }
 
 export async function GET() {
+  // Require admin access for setup endpoints
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   try {
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

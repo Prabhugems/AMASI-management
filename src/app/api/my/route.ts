@@ -26,7 +26,9 @@ export async function GET(request: NextRequest) {
 
     // Determine search type
     const isEmail = query.includes("@")
-    const isPhone = /^\d{10}$/.test(query.replace(/[\s\-\+]/g, "").slice(-10))
+    // Support international formats: +91XXXXXXXXXX, 91XXXXXXXXXX, or just 10 digits
+    const cleanedPhone = query.replace(/[\s\-\+\(\)]/g, "")
+    const isPhone = /^\d{10,15}$/.test(cleanedPhone) && !isEmail
 
     let registrationQuery = (supabase as any)
       .from("registrations")
@@ -77,9 +79,9 @@ export async function GET(request: NextRequest) {
     if (isEmail) {
       registrationQuery = registrationQuery.ilike("attendee_email", query)
     } else if (isPhone) {
-      // Clean phone number and search
-      const cleanPhone = query.replace(/[\s\-\+]/g, "").slice(-10)
-      registrationQuery = registrationQuery.ilike("attendee_phone", `%${cleanPhone}`)
+      // Use last 10 digits for search (handles +91, 91 prefixes)
+      const searchPhone = cleanedPhone.slice(-10)
+      registrationQuery = registrationQuery.ilike("attendee_phone", `%${searchPhone}`)
     } else {
       // Search by registration number
       registrationQuery = registrationQuery.ilike("registration_number", query)

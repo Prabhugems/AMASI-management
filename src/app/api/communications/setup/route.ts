@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // POST /api/communications/setup
-// Creates the communications tables if they don't exist
+// Creates the communications tables if they don't exist (requires admin)
 export async function POST() {
+  // Require admin access for setup endpoints
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   try {
     const supabase = await createAdminClient()
 
