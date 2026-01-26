@@ -1,12 +1,11 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
-// GET - List discount codes for an event
+// GET - List discount codes for an event (requires event access)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
-
     const eventId = searchParams.get("event_id")
 
     if (!eventId) {
@@ -15,6 +14,12 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Check authorization
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
+
+    const supabase = await createServerSupabaseClient()
 
     const { data, error } = await (supabase as any)
       .from("discount_codes")
@@ -32,10 +37,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create new discount code
+// POST - Create new discount code (requires event access)
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient()
     const body = await request.json()
 
     const {
@@ -59,6 +63,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Check authorization
+    const { error: authError } = await requireEventAccess(event_id)
+    if (authError) return authError
+
+    const supabase = await createServerSupabaseClient()
 
     const { data, error } = await (supabase as any)
       .from("discount_codes")

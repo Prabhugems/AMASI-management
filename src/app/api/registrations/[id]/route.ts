@@ -1,13 +1,25 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireEventAccess, getEventIdFromRegistration } from "@/lib/auth/api-auth"
 
-// GET - Get single registration
+// GET - Get single registration (requires event access)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
+
+    // Get event ID from registration
+    const eventId = await getEventIdFromRegistration(id)
+    if (!eventId) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+
+    // Check authorization
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
+
     const supabase = await createServerSupabaseClient()
 
     const { data, error } = await (supabase as any)
@@ -34,13 +46,24 @@ export async function GET(
   }
 }
 
-// PATCH - Update registration
+// PATCH - Update registration (requires event access)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
+
+    // Get event ID from registration
+    const eventId = await getEventIdFromRegistration(id)
+    if (!eventId) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+
+    // Check authorization
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
+
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
 
@@ -137,13 +160,24 @@ export async function PATCH(
   }
 }
 
-// DELETE - Delete registration
+// DELETE - Delete registration (requires event access)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
+
+    // Get event ID from registration
+    const eventId = await getEventIdFromRegistration(id)
+    if (!eventId) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+
+    // Check authorization
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
+
     const supabase = await createServerSupabaseClient()
 
     const { error } = await (supabase as any)

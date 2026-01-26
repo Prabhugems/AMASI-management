@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireEventAccess, getEventIdFromRegistration } from "@/lib/auth/api-auth"
 
 // GET - Fetch addons for a registration
 export async function GET(
@@ -8,6 +9,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+
+    // Get event ID from registration and check authorization
+    const eventId = await getEventIdFromRegistration(id)
+    if (!eventId) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
+
     const supabase = await createServerSupabaseClient()
 
     const { data, error } = await (supabase as any)
@@ -36,6 +47,16 @@ export async function POST(
 ) {
   try {
     const { id: registrationId } = await params
+
+    // Get event ID from registration and check authorization
+    const eventId = await getEventIdFromRegistration(registrationId)
+    if (!eventId) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
+
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
 
@@ -141,6 +162,16 @@ export async function DELETE(
 ) {
   try {
     const { id: registrationId } = await params
+
+    // Get event ID from registration and check authorization
+    const eventId = await getEventIdFromRegistration(registrationId)
+    if (!eventId) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
+
     const supabase = await createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
 

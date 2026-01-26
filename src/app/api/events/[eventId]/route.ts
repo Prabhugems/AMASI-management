@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 // GET /api/events/[eventId] - Get event details
 export async function GET(
@@ -8,6 +9,11 @@ export async function GET(
 ) {
   try {
     const { eventId } = await params
+
+    // Check authorization
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
+
     const supabase = await createAdminClient()
 
     const { data: event, error } = await (supabase as any)

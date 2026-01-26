@@ -166,3 +166,95 @@ export async function requireSuperAdmin(): Promise<AuthResult> {
 
   return result
 }
+
+/**
+ * Check if user has access to a specific event
+ * Super admins have access to all events
+ * Event admins have access to events they created or are team members of
+ */
+export async function requireEventAccess(eventId: string): Promise<AuthResult> {
+  const result = await getApiUser()
+
+  if (result.error) {
+    return result
+  }
+
+  if (!result.user) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+  }
+
+  // Super admins have access to all events
+  if (result.user.is_super_admin) {
+    return result
+  }
+
+  // Check if user created the event or is a team member
+  const adminClient = await createAdminClient()
+
+  // Check event ownership
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: event } = await (adminClient as any)
+    .from('events')
+    .select('id, created_by')
+    .eq('id', eventId)
+    .maybeSingle()
+
+  if (!event) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: 'Event not found' },
+        { status: 404 }
+      )
+    }
+  }
+
+  // Check if user is the event creator
+  if (event.created_by === result.user.id) {
+    return result
+  }
+
+  // Check if user is a team member for this event
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: teamMember } = await (adminClient as any)
+    .from('team_members')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('user_id', result.user.id)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (teamMember) {
+    return result
+  }
+
+  return {
+    user: null,
+    error: NextResponse.json(
+      { error: 'Forbidden - You do not have access to this event' },
+      { status: 403 }
+    )
+  }
+}
+
+/**
+ * Get event ID from a registration ID
+ */
+export async function getEventIdFromRegistration(registrationId: string): Promise<string | null> {
+  const adminClient = await createAdminClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (adminClient as any)
+    .from('registrations')
+    .select('event_id')
+    .eq('id', registrationId)
+    .maybeSingle()
+
+  return data?.event_id || null
+}
