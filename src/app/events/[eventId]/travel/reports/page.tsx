@@ -31,7 +31,10 @@ import { toast } from "sonner"
 
 type Guest = {
   id: string
+  registration_number: string
   attendee_name: string
+  attendee_email: string
+  attendee_phone: string
   custom_fields: {
     travel_details?: {
       mode?: string
@@ -64,10 +67,10 @@ export default function TravelReportsPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, attendee_name, custom_fields")
+        .select("id, registration_number, attendee_name, attendee_email, attendee_phone, custom_fields")
         .eq("event_id", eventId)
 
-      return (data || []).filter((g: Guest) =>
+      return (data || []).filter((g: any) =>
         g.custom_fields?.travel_details ||
         g.custom_fields?.booking
       ) as Guest[]
@@ -164,37 +167,34 @@ export default function TravelReportsPage() {
     return new Date(dateStr).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
   }
 
-  const exportReport = () => {
-    if (!report) return
+  const exportCSV = () => {
+    if (!guests) return
 
-    let content = "TRAVEL REPORT\n"
-    content += "=".repeat(50) + "\n\n"
+    const headers = ["Reg Number", "Name", "Email", "Phone", "Travel Mode", "Arrival Date", "Departure Date", "Onward Status", "Onward Cost", "Return Status", "Return Cost"]
+    const rows = guests.map((g: Guest) => {
+      const t = g.custom_fields?.travel_details || {}
+      const b = g.custom_fields?.booking || {}
+      return [
+        g.registration_number || "",
+        `"${(g.attendee_name || '').replace(/"/g, '""')}"`,
+        g.attendee_email || "",
+        g.attendee_phone || "",
+        t.mode || "flight",
+        b.onward_departure_date || t.arrival_date || "",
+        b.return_departure_date || t.departure_date || "",
+        b.onward_status || "pending",
+        b.onward_cost || 0,
+        b.return_status || "pending",
+        b.return_cost || 0,
+      ]
+    })
 
-    content += "SUMMARY\n"
-    content += "-".repeat(30) + "\n"
-    content += `Total Travelers: ${report.total}\n`
-    content += `By Flight: ${report.byMode.flight}\n`
-    content += `By Train: ${report.byMode.train}\n`
-    content += `Self Arranged: ${report.byMode.self}\n\n`
-
-    content += "COSTS\n"
-    content += "-".repeat(30) + "\n"
-    content += `Flights: ₹${report.costs.flight.toLocaleString()}\n`
-    content += `Trains: ₹${report.costs.train.toLocaleString()}\n`
-    content += `Hotels: ₹${report.costs.hotel.toLocaleString()}\n`
-    content += `Transport: ₹${report.costs.transport.toLocaleString()}\n`
-    content += `TOTAL: ₹${report.costs.total.toLocaleString()}\n\n`
-
-    content += "BOOKING STATUS\n"
-    content += "-".repeat(30) + "\n"
-    content += `Onward - Pending: ${report.status.onward.pending}, Booked: ${report.status.onward.booked}, Confirmed: ${report.status.onward.confirmed}\n`
-    content += `Return - Pending: ${report.status.return.pending}, Booked: ${report.status.return.booked}, Confirmed: ${report.status.return.confirmed}\n`
-
-    const blob = new Blob([content], { type: "text/plain" })
+    const csv = [headers, ...rows].map(row => row.join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `travel-report-${new Date().toISOString().split("T")[0]}.txt`
+    a.download = `travel-report-${new Date().toISOString().split("T")[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
     toast.success("Report exported")
@@ -221,7 +221,7 @@ export default function TravelReportsPage() {
           <h1 className="text-2xl font-bold">Travel Reports</h1>
           <p className="text-muted-foreground">Analytics and cost summaries</p>
         </div>
-        <Button variant="outline" onClick={exportReport}><Download className="h-4 w-4 mr-2" />Export</Button>
+        <Button variant="outline" onClick={exportCSV}><Download className="h-4 w-4 mr-2" />Export CSV</Button>
       </div>
 
       {/* Summary */}

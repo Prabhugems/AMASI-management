@@ -28,7 +28,10 @@ import { toast } from "sonner"
 
 type Guest = {
   id: string
+  registration_number: string
   attendee_name: string
+  attendee_email: string
+  attendee_phone: string
   custom_fields: {
     assigned_hotel_id?: string
     travel_details?: {
@@ -69,10 +72,10 @@ export default function AccommodationReportsPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, attendee_name, custom_fields")
+        .select("id, registration_number, attendee_name, attendee_email, attendee_phone, custom_fields")
         .eq("event_id", eventId)
 
-      return (data || []).filter((g: Guest) =>
+      return (data || []).filter((g: any) =>
         g.custom_fields?.travel_details?.hotel_required ||
         g.custom_fields?.assigned_hotel_id ||
         g.custom_fields?.booking?.hotel_name
@@ -200,42 +203,36 @@ export default function AccommodationReportsPage() {
   }, [guests])
 
   // Export full report
-  const exportReport = () => {
-    if (!summary || !hotelBreakdown) return
+  const exportCSV = () => {
+    if (!guests) return
 
-    let content = "ACCOMMODATION REPORT\n"
-    content += "=".repeat(50) + "\n\n"
-
-    content += "SUMMARY\n"
-    content += "-".repeat(30) + "\n"
-    content += `Total Guests Requiring Accommodation: ${summary.totalGuests}\n`
-    content += `Assigned to Hotels: ${summary.assignedGuests}\n`
-    content += `Pending Assignment: ${summary.pendingGuests}\n`
-    content += `Total Room Nights: ${summary.totalNights}\n`
-    content += `Total Accommodation Cost: ₹${summary.totalCost.toLocaleString()}\n`
-    content += `Overall Occupancy Rate: ${summary.occupancyRate}%\n\n`
-
-    content += "HOTEL-WISE BREAKDOWN\n"
-    content += "-".repeat(30) + "\n"
-    hotelBreakdown.forEach(h => {
-      content += `\n${h.name}\n`
-      content += `  Rooms: ${h.assignedRooms}/${h.totalRooms} (${h.occupancy}% occupied)\n`
-      content += `  Guests: ${h.guests}\n`
-      content += `  Nights: ${h.nights}\n`
-      content += `  Cost: ₹${h.cost.toLocaleString()}\n`
+    const headers = ["Reg Number", "Name", "Email", "Phone", "Hotel", "Room Type", "Check-in", "Check-out", "Nights", "Cost", "Status"]
+    const rows = guests.map((g: Guest) => {
+      const b = g.custom_fields?.booking || {}
+      const t = g.custom_fields?.travel_details || {}
+      const checkin = b.hotel_checkin || t.arrival_date || ""
+      const checkout = b.hotel_checkout || t.departure_date || ""
+      return [
+        g.registration_number || "",
+        `"${(g.attendee_name || '').replace(/"/g, '""')}"`,
+        g.attendee_email || "",
+        g.attendee_phone || "",
+        b.hotel_name || "",
+        b.hotel_room_type || "",
+        checkin,
+        checkout,
+        getNights(g),
+        b.hotel_cost || 0,
+        b.hotel_status || "pending",
+      ]
     })
 
-    content += "\n\nDATE-WISE CHECK-IN/OUT\n"
-    content += "-".repeat(30) + "\n"
-    dateWise.forEach(d => {
-      content += `${d.date}: Check-in: ${d.checkIn}, Check-out: ${d.checkOut}\n`
-    })
-
-    const blob = new Blob([content], { type: "text/plain" })
+    const csv = [headers, ...rows].map(row => row.join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `accommodation-report-${new Date().toISOString().split("T")[0]}.txt`
+    a.download = `accommodation-report-${new Date().toISOString().split("T")[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
     toast.success("Report exported")
@@ -275,9 +272,9 @@ export default function AccommodationReportsPage() {
           <h1 className="text-2xl font-bold">Accommodation Reports</h1>
           <p className="text-muted-foreground">Analytics and summaries</p>
         </div>
-        <Button variant="outline" onClick={exportReport}>
+        <Button variant="outline" onClick={exportCSV}>
           <Download className="h-4 w-4 mr-2" />
-          Export Report
+          Export CSV
         </Button>
       </div>
 

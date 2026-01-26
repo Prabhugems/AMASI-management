@@ -37,7 +37,7 @@ export default function SpeakerReportsPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, attendee_name, attendee_designation, custom_fields")
+        .select("id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_designation, status, custom_fields")
         .eq("event_id", eventId)
         .or("attendee_designation.ilike.%speaker%,attendee_designation.ilike.%faculty%,attendee_designation.ilike.%chairperson%,attendee_designation.ilike.%moderator%")
 
@@ -82,32 +82,28 @@ export default function SpeakerReportsPage() {
     }
   }, [speakers])
 
-  const exportReport = () => {
-    if (!stats) return
+  const exportCSV = () => {
+    if (!speakers) return
 
-    let content = "SPEAKER REPORT\n"
-    content += "=".repeat(50) + "\n\n"
+    const headers = ["Reg Number", "Name", "Email", "Phone", "Designation", "Status", "Invitation Status", "Travel Booked", "Hotel Booked"]
+    const rows = speakers.map((s: any) => [
+      s.registration_number || "",
+      `"${(s.attendee_name || '').replace(/"/g, '""')}"`,
+      s.attendee_email || "",
+      s.attendee_phone || "",
+      s.attendee_designation || "",
+      s.status || "",
+      s.custom_fields?.invitation_status || "pending",
+      s.custom_fields?.booking?.onward_status === "booked" || s.custom_fields?.booking?.onward_status === "confirmed" ? "Yes" : "No",
+      s.custom_fields?.accommodation?.status === "booked" || s.custom_fields?.accommodation?.status === "confirmed" ? "Yes" : "No",
+    ])
 
-    content += "SUMMARY\n"
-    content += "-".repeat(30) + "\n"
-    content += `Total Speakers: ${stats.total}\n`
-    content += `Confirmed: ${stats.confirmed}\n`
-    content += `Pending Confirmation: ${stats.pending}\n`
-    content += `Travel Booked: ${stats.travelBooked}\n`
-    content += `Hotel Booked: ${stats.hotelBooked}\n`
-    content += `Documents Complete: ${stats.docsComplete}\n\n`
-
-    content += "BY DESIGNATION\n"
-    content += "-".repeat(30) + "\n"
-    stats.byDesignation.forEach(([designation, count]) => {
-      content += `${designation}: ${count}\n`
-    })
-
-    const blob = new Blob([content], { type: "text/plain" })
+    const csv = [headers, ...rows].map(row => row.join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `speaker-report-${new Date().toISOString().split("T")[0]}.txt`
+    a.download = `speaker-report-${new Date().toISOString().split("T")[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
     toast.success("Report exported")
@@ -140,9 +136,9 @@ export default function SpeakerReportsPage() {
           <h1 className="text-2xl font-bold">Speaker Reports</h1>
           <p className="text-muted-foreground">Analytics and statistics</p>
         </div>
-        <Button variant="outline" onClick={exportReport}>
+        <Button variant="outline" onClick={exportCSV}>
           <Download className="h-4 w-4 mr-2" />
-          Export
+          Export CSV
         </Button>
       </div>
 
