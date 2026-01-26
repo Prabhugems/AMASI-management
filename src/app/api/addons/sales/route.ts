@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     // Fetch sales data from registration_addons using admin client
     const { data: salesData, error: salesError } = await supabase
       .from("registration_addons")
-      .select("addon_id, quantity, price")
+      .select("addon_id, quantity, unit_price, total_price, addon:addons(price)")
       .in("addon_id", addonIds)
 
     if (salesError) {
@@ -53,8 +53,11 @@ export async function GET(request: NextRequest) {
         if (!salesByAddon[sale.addon_id]) {
           salesByAddon[sale.addon_id] = { sold: 0, revenue: 0 }
         }
-        salesByAddon[sale.addon_id].sold += sale.quantity || 1
-        salesByAddon[sale.addon_id].revenue += parseFloat(sale.price) || 0
+        const qty = sale.quantity || 1
+        const addonPrice = sale.addon?.price || 0
+        const totalPrice = sale.total_price || (addonPrice * qty)
+        salesByAddon[sale.addon_id].sold += qty
+        salesByAddon[sale.addon_id].revenue += totalPrice
       })
     }
 

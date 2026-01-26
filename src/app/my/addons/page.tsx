@@ -238,7 +238,7 @@ function PurchaseAddonsContent() {
         },
         theme: { color: "#6366F1" },
         handler: async (response: any) => {
-          // Verify payment
+          // Verify payment - this also adds the addons automatically
           const verifyRes = await fetch("/api/payments/razorpay/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -252,21 +252,11 @@ function PurchaseAddonsContent() {
           const verifyData = await verifyRes.json()
 
           if (verifyData.success) {
-            // Add addons to registration
-            const addRes = await fetch(`/api/registrations/${registration.id}/addons`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ addons: addonsArray }),
-            })
-
-            if (!addRes.ok) {
-              throw new Error("Payment successful but failed to add addons. Please contact support.")
-            }
-
             setSuccess(true)
           } else {
-            setError("Payment verification failed. Please contact support.")
+            setError(verifyData.error || "Payment verification failed. Please contact support.")
           }
+          setIsProcessing(false)
         },
         modal: {
           ondismiss: () => setIsProcessing(false),

@@ -54,7 +54,7 @@ export default function AddonReportsPage() {
 
       const { data } = await (supabase as any)
         .from("registration_addons")
-        .select("addon_id, quantity, price")
+        .select("addon_id, quantity, unit_price, total_price, addon:addons(price)")
         .in("addon_id", addonIds.map((a: any) => a.id))
 
       return data || []
@@ -71,8 +71,11 @@ export default function AddonReportsPage() {
       if (!salesByAddon[s.addon_id]) {
         salesByAddon[s.addon_id] = { quantity: 0, revenue: 0 }
       }
-      salesByAddon[s.addon_id].quantity += s.quantity || 1
-      salesByAddon[s.addon_id].revenue += parseFloat(s.price) || 0
+      const qty = s.quantity || 1
+      const addonPrice = s.addon?.price || 0
+      const totalPrice = s.total_price || (addonPrice * qty)
+      salesByAddon[s.addon_id].quantity += qty
+      salesByAddon[s.addon_id].revenue += totalPrice
     })
 
     const totalAddons = addons.length

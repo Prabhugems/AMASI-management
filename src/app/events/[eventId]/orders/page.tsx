@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useParams } from "next/navigation"
+import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { format } from "date-fns"
@@ -28,6 +29,7 @@ import {
   Trash2,
   AlertTriangle,
   Package,
+  HelpCircle,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -188,6 +190,17 @@ export default function OrdersPage() {
       // Get registration IDs to fetch addons
       const registrationIds = regsData?.map((r: any) => r.id) || []
 
+      // For addon purchases, get registration IDs from payment metadata
+      const addonPurchaseRegIds: string[] = []
+      paymentsData.forEach((p: any) => {
+        if (p.payment_type === "addon_purchase" && p.metadata?.registration_id) {
+          addonPurchaseRegIds.push(p.metadata.registration_id)
+        }
+      })
+
+      // Combine all registration IDs
+      const allRegistrationIds = [...new Set([...registrationIds, ...addonPurchaseRegIds])]
+
       // Fetch addons for these registrations
       const { data: addonsData } = await supabase
         .from("registration_addons")
@@ -195,10 +208,11 @@ export default function OrdersPage() {
           id,
           registration_id,
           quantity,
-          price,
+          unit_price,
+          total_price,
           addon:addons(name, price)
         `)
-        .in("registration_id", registrationIds)
+        .in("registration_id", allRegistrationIds.length > 0 ? allRegistrationIds : ['none'])
 
       // Map addons by registration_id for quick lookup
       const addonsByRegistration: Record<string, any[]> = {}
@@ -208,8 +222,9 @@ export default function OrdersPage() {
             addonsByRegistration[addon.registration_id] = []
           }
           const qty = addon.quantity || 1
-          const totalPrice = addon.price || 0
-          const unitPrice = qty > 0 ? totalPrice / qty : (addon.addon?.price || 0)
+          const addonPrice = addon.addon?.price || 0
+          const unitPrice = addon.unit_price || addonPrice
+          const totalPrice = addon.total_price || (addonPrice * qty)
           addonsByRegistration[addon.registration_id].push({
             id: addon.id,
             addon_name: addon.addon?.name || "Add-on",
@@ -221,16 +236,51 @@ export default function OrdersPage() {
         })
       }
 
+      // Fetch registrations for addon purchases (to show linked registration info)
+      let addonPurchaseRegs: any[] = []
+      if (addonPurchaseRegIds.length > 0) {
+        const { data: addonRegs } = await supabase
+          .from("registrations")
+          .select(`
+            id,
+            registration_number,
+            attendee_name,
+            attendee_email,
+            ticket_type:ticket_types (name, price)
+          `)
+          .in("id", addonPurchaseRegIds)
+        addonPurchaseRegs = addonRegs || []
+      }
+
       // Merge registrations and addons with payments
       const ordersWithRegs = paymentsData.map((payment: any) => {
-        const regs = regsData?.filter((r: any) => r.payment_id === payment.id) || []
+        let regs = regsData?.filter((r: any) => r.payment_id === payment.id) || []
+        let allAddons: OrderAddon[] = []
 
-        // Collect all addons for this payment's registrations
-        const allAddons: OrderAddon[] = []
-        regs.forEach((reg: any) => {
-          const regAddons = addonsByRegistration[reg.id] || []
-          allAddons.push(...regAddons)
-        })
+        // For addon purchases, link to the existing registration
+        if (payment.payment_type === "addon_purchase" && payment.metadata?.registration_id) {
+          const linkedReg = addonPurchaseRegs.find((r: any) => r.id === payment.metadata.registration_id)
+          if (linkedReg) {
+            regs = [linkedReg]
+          }
+          // Get addons purchased in this payment (from metadata)
+          const purchasedAddonIds = payment.metadata?.addons_selection?.map((a: any) => a.addonId) || []
+          const regAddons = addonsByRegistration[payment.metadata.registration_id] || []
+          // Filter to only show addons from this payment
+          allAddons = regAddons.filter((a: any) => {
+            // If we have addon selection info, use it. Otherwise show all.
+            if (purchasedAddonIds.length > 0) {
+              return true // Show all since we can't easily match by addon_id here
+            }
+            return true
+          })
+        } else {
+          // Collect all addons for this payment's registrations
+          regs.forEach((reg: any) => {
+            const regAddons = addonsByRegistration[reg.id] || []
+            allAddons.push(...regAddons)
+          })
+        }
 
         return {
           ...payment,
@@ -280,6 +330,12 @@ export default function OrdersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href={`/events/${eventId}/orders/instructions`}>
+            <Button variant="ghost" size="sm">
+              <HelpCircle className="w-4 h-4 mr-2" />
+              Guide
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
@@ -409,7 +465,10 @@ export default function OrdersPage() {
                   </td>
                   <td className="py-3 px-4">
                     <span className="text-sm">
-                      {order.registrations?.length || 0} ticket(s)
+                      {(order as any).payment_type === "addon_purchase"
+                        ? <span className="text-info">Addon Purchase</span>
+                        : `${order.registrations?.length || 0} ticket(s)`
+                      }
                     </span>
                   </td>
                   <td className="py-3 px-4">
@@ -515,16 +574,16 @@ export default function OrdersPage() {
               </div>
             </SlideOverSection>
 
-            {/* Tickets/Registrations */}
-            <SlideOverSection title="Tickets" icon={Ticket}>
-              {selectedOrder.registrations && selectedOrder.registrations.length > 0 ? (
-                <div className="space-y-3">
-                  {selectedOrder.registrations.map((reg) => (
-                    <div
-                      key={reg.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
-                    >
-                      <div>
+            {/* Tickets/Registrations - Different display for addon purchases */}
+            {(selectedOrder as any).payment_type === "addon_purchase" ? (
+              <SlideOverSection title="Linked Registration" icon={Ticket}>
+                {selectedOrder.registrations && selectedOrder.registrations.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedOrder.registrations.map((reg) => (
+                      <div
+                        key={reg.id}
+                        className="p-3 rounded-lg bg-muted/30"
+                      >
                         <p className="font-medium text-sm">
                           {reg.first_name} {reg.last_name}
                         </p>
@@ -534,17 +593,47 @@ export default function OrdersPage() {
                         <p className="text-xs text-muted-foreground font-mono">
                           {reg.registration_number}
                         </p>
+                        <p className="text-xs text-info mt-1">
+                          Add-on purchase for existing registration
+                        </p>
                       </div>
-                      <p className="font-semibold">
-                        ₹{reg.ticket_type?.price?.toLocaleString() || "0"}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No tickets found</p>
-              )}
-            </SlideOverSection>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Registration details not found</p>
+                )}
+              </SlideOverSection>
+            ) : (
+              <SlideOverSection title="Tickets" icon={Ticket}>
+                {selectedOrder.registrations && selectedOrder.registrations.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedOrder.registrations.map((reg) => (
+                      <div
+                        key={reg.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                      >
+                        <div>
+                          <p className="font-medium text-sm">
+                            {reg.first_name} {reg.last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {reg.ticket_type?.name || "Standard Ticket"}
+                          </p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {reg.registration_number}
+                          </p>
+                        </div>
+                        <p className="font-semibold">
+                          ₹{reg.ticket_type?.price?.toLocaleString() || "0"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No tickets found</p>
+                )}
+              </SlideOverSection>
+            )}
 
             {/* Add-ons */}
             {selectedOrder.addons && selectedOrder.addons.length > 0 && (

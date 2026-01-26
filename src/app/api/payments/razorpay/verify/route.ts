@@ -207,6 +207,38 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================
+    // STEP 7.5: Handle ADDON-ONLY purchases (existing registration)
+    // ============================================================
+    if (paymentData.payment_type === "addon_purchase" && existingMetadata.registration_id) {
+      console.log(`[VERIFY] Processing addon-only purchase for registration: ${existingMetadata.registration_id}`)
+
+      // Add addons to the existing registration
+      if (existingMetadata.addons_selection?.length > 0) {
+        await createRegistrationAddons(
+          existingMetadata.registration_id,
+          existingMetadata.addons_selection
+        )
+      }
+
+      // Get registration details for response
+      const { data: existingReg } = await supabase
+        .from("registrations")
+        .select("id, registration_number")
+        .eq("id", existingMetadata.registration_id)
+        .single()
+
+      return NextResponse.json({
+        success: true,
+        payment_id: paymentData.id,
+        payment_number: paymentData.payment_number,
+        registration_id: existingReg?.id || existingMetadata.registration_id,
+        registration_number: existingReg?.registration_number || existingMetadata.registration_number,
+        status: "completed",
+        message: "Addon purchase verified successfully",
+      })
+    }
+
+    // ============================================================
     // STEP 8: Handle INDIVIDUAL registration
     // ============================================================
 
@@ -528,19 +560,28 @@ async function incrementTicketSoldFallback(ticketTypeId: string, quantity: numbe
 async function createRegistrationAddons(registrationId: string, addonsSelection: any[]) {
   if (!addonsSelection || addonsSelection.length === 0) return
 
-  // Check if addons already exist for this registration
-  const { data: existing } = await supabase
+  // Get existing addons to avoid duplicates
+  const { data: existingAddons } = await supabase
     .from("registration_addons")
-    .select("id")
+    .select("addon_id, addon_variant_id")
     .eq("registration_id", registrationId)
-    .limit(1)
 
-  if (existing && existing.length > 0) {
-    console.log(`[VERIFY] Addons already exist for registration: ${registrationId}`)
+  const existingKeys = new Set(
+    (existingAddons || []).map((a: any) => `${a.addon_id}-${a.addon_variant_id || 'null'}`)
+  )
+
+  // Filter out addons that already exist
+  const newAddons = addonsSelection.filter((addon: any) => {
+    const key = `${addon.addonId}-${addon.variantId || 'null'}`
+    return !existingKeys.has(key)
+  })
+
+  if (newAddons.length === 0) {
+    console.log(`[VERIFY] All addons already exist for registration: ${registrationId}`)
     return
   }
 
-  const addonRecords = addonsSelection.map((addon: any) => ({
+  const addonRecords = newAddons.map((addon: any) => ({
     registration_id: registrationId,
     addon_id: addon.addonId,
     addon_variant_id: addon.variantId || null,

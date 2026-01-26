@@ -386,20 +386,21 @@ export default function RegistrationsPage() {
         .select(`
           id,
           quantity,
-          price,
+          unit_price,
+          total_price,
           addon:addons(id, name, is_course, price)
         `)
         .eq("registration_id", selectedRegistration.id)
 
       if (error) throw error
-      // Map price to unit_price/total_price for UI compatibility
+      // Use stored prices, fallback to addon price if not set
       return (data || []).map((item: any) => {
         const qty = item.quantity || 1
-        const totalPrice = item.price || 0
+        const addonPrice = item.addon?.price || 0
         return {
           ...item,
-          unit_price: qty > 0 ? totalPrice / qty : (item.addon?.price || 0),
-          total_price: totalPrice,
+          unit_price: item.unit_price || addonPrice,
+          total_price: item.total_price || (addonPrice * qty),
         }
       })
     },
@@ -1829,7 +1830,10 @@ export default function RegistrationsPage() {
                 <div className="border-t pt-2 mt-2">
                   <div className="flex justify-between font-semibold">
                     <span>Total</span>
-                    <span className="text-primary">₹{selectedRegistration.total_amount.toLocaleString()}</span>
+                    <span className="text-primary">₹{(
+                      selectedRegistration.total_amount +
+                      (registrationAddons?.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0) || 0)
+                    ).toLocaleString()}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-3">

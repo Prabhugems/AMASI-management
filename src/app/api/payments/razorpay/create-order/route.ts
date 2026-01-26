@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
       addons, // Array of {addonId, variantId?, quantity, unitPrice, totalPrice}
       discount_code,
       idempotency_key: clientIdempotencyKey, // Optional client-provided key
+      metadata: clientMetadata, // Client-provided metadata (for addon purchases)
     } = body
 
     if (!payer_name || !payer_email) {
@@ -354,6 +355,9 @@ export async function POST(request: NextRequest) {
           idempotency_key: idempotencyKey,
           // Store addons selection for registration creation
           addons_selection: addons && Array.isArray(addons) && addons.length > 0 ? addons : null,
+          // For addon-only purchases: store existing registration ID
+          registration_id: clientMetadata?.registration_id || null,
+          registration_number: clientMetadata?.registration_number || null,
         },
       } as any)
       .select()

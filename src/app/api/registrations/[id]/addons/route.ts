@@ -98,19 +98,45 @@ export async function POST(
       return NextResponse.json({ error: "Registration not found" }, { status: 404 })
     }
 
-    // Prepare addon records
+    // Fetch addon prices from database (for admin-added addons without prices)
+    const addonIds = addonsToSave.map((a: any) => a.addonId || a.addon_id)
+    const { data: addonPrices } = await (supabase as any)
+      .from("addons")
+      .select("id, price")
+      .in("id", addonIds)
+
+    const priceMap: Record<string, number> = {}
+    if (addonPrices) {
+      addonPrices.forEach((a: any) => {
+        priceMap[a.id] = a.price || 0
+      })
+    }
+
+    // Prepare addon records with proper pricing
     const addonRecords = addonsToSave.map((addon: {
-      addonId: string
+      addonId?: string
+      addon_id?: string
       variantId?: string
-      quantity: number
-      unitPrice: number
-      totalPrice: number
-    }) => ({
-      registration_id: registrationId,
-      addon_id: addon.addonId,
-      quantity: addon.quantity,
-      price: addon.totalPrice, // Use totalPrice as the price column
-    }))
+      addon_variant_id?: string
+      quantity?: number
+      unitPrice?: number
+      totalPrice?: number
+    }) => {
+      const addonId = addon.addonId || addon.addon_id
+      const qty = addon.quantity || 1
+      // Use provided price, or fetch from database
+      const unitPrice = addon.unitPrice || priceMap[addonId!] || 0
+      const totalPrice = addon.totalPrice || (unitPrice * qty)
+
+      return {
+        registration_id: registrationId,
+        addon_id: addonId,
+        addon_variant_id: addon.variantId || addon.addon_variant_id || null,
+        quantity: qty,
+        unit_price: unitPrice,
+        total_price: totalPrice,
+      }
+    })
 
     // Insert addons (upsert to handle duplicates)
     const { data, error } = await (supabase as any)

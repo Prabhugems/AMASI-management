@@ -59,19 +59,21 @@ export async function GET(
     .select(`
       id,
       quantity,
-      price,
-      addon:addons(id, name, price)
+      unit_price,
+      total_price,
+      addon:addons(id, name, price),
+      addon_variant:addon_variants(id, name, price_adjustment)
     `)
     .eq("registration_id", registration.id)
 
-  // Map to expected format with unit_price/total_price
+  // Map to expected format - use stored prices, fallback to addon price
   const registrationAddons = rawAddons?.map((a: any) => {
     const qty = a.quantity || 1
-    const totalPrice = a.price || 0
+    const addonPrice = a.addon?.price || 0
     return {
       ...a,
-      unit_price: qty > 0 ? totalPrice / qty : (a.addon?.price || 0),
-      total_price: totalPrice,
+      unit_price: a.unit_price || addonPrice,
+      total_price: a.total_price || (addonPrice * qty),
     }
   })
 

@@ -54,17 +54,20 @@ export default function OrderReportsPage() {
       const regIds = regs?.map((r: any) => r.id) || []
       const { data: addons } = await (supabase as any)
         .from("registration_addons")
-        .select("registration_id, quantity, price, addon:addons(name)")
+        .select("registration_id, quantity, unit_price, total_price, addon:addons(name, price)")
         .in("registration_id", regIds)
 
       // Map addons by registration
       const addonsByReg: Record<string, any[]> = {}
       addons?.forEach((a: any) => {
         if (!addonsByReg[a.registration_id]) addonsByReg[a.registration_id] = []
+        const qty = a.quantity || 1
+        const addonPrice = a.addon?.price || 0
         addonsByReg[a.registration_id].push({
           name: a.addon?.name || "Add-on",
-          quantity: a.quantity || 1,
-          price: a.price || 0,
+          quantity: qty,
+          unit_price: a.unit_price || addonPrice,
+          price: a.total_price || (addonPrice * qty),
         })
       })
 

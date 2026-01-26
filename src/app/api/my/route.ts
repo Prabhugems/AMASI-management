@@ -107,7 +107,8 @@ export async function GET(request: NextRequest) {
         id,
         registration_id,
         quantity,
-        price,
+        unit_price,
+        total_price,
         addon:addons(id, name, is_course, price)
       `)
       .in("registration_id", registrationIds)
@@ -119,13 +120,12 @@ export async function GET(request: NextRequest) {
         if (!addonsByRegistration[addon.registration_id]) {
           addonsByRegistration[addon.registration_id] = []
         }
-        // Map price to unit_price/total_price for UI compatibility
         const qty = addon.quantity || 1
-        const totalPrice = addon.price || 0
+        const addonPrice = addon.addon?.price || 0
         addonsByRegistration[addon.registration_id].push({
           ...addon,
-          unit_price: qty > 0 ? totalPrice / qty : (addon.addon?.price || 0),
-          total_price: totalPrice,
+          unit_price: addon.unit_price || addonPrice,
+          total_price: addon.total_price || (addonPrice * qty),
         })
       }
     }
