@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { getApiUser } from "@/lib/auth/api-auth"
 
-// POST /api/upload - Upload file to Supabase Storage
+// POST /api/upload - Upload file to Supabase Storage (requires authentication)
 export async function POST(request: NextRequest) {
+  // Require authentication for file uploads
+  const { user, error: authError } = await getApiUser()
+  if (authError) return authError
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   try {
     const formData = await request.formData()
     const file = formData.get("file") as File

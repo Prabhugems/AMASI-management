@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // GET /api/my?q=email_or_phone_or_regnum - Look up delegate by email, phone, or registration number
 export async function GET(request: NextRequest) {
+  // Rate limit to prevent enumeration attacks
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "strict")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const query = searchParams.get("q")?.trim()

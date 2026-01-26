@@ -67,17 +67,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // For test emails, return OTP directly without sending email
-    if (isTestEmail(email)) {
+    // For test emails in development, return OTP directly without sending email
+    const isDevelopment = process.env.NODE_ENV === "development"
+    if (isTestEmail(email) && isDevelopment) {
       const otp = generateOTP()
       const key = `${email}:${form_id || 'global'}`
       otpStore.set(key, { otp, expires: Date.now() + 10 * 60 * 1000, attempts: 1 })
-      console.log(`[TEST] OTP for ${email}: ${otp}`)
       return NextResponse.json({
         success: true,
         message: "Test mode - use the OTP shown",
         dev_otp: otp
       })
+    }
+
+    // Block test emails in production
+    if (isTestEmail(email)) {
+      return NextResponse.json(
+        { error: "Please use a valid email address" },
+        { status: 400 }
+      )
     }
 
     // Rate limiting - max 3 OTPs per email per 10 minutes
@@ -130,31 +138,48 @@ export async function POST(request: NextRequest) {
         // Check if Resend returned an error
         if (result.error) {
           console.error("Resend API error:", result.error)
+          // In production, don't expose OTP even on error
+          if (isDevelopment) {
+            return NextResponse.json({
+              success: true,
+              message: "Email service error - use this code",
+              dev_otp: otp
+            })
+          }
+          return NextResponse.json(
+            { error: "Failed to send verification email. Please try again." },
+            { status: 500 }
+          )
+        }
+      } catch (emailError) {
+        console.error("Resend error:", emailError)
+        // In production, don't expose OTP on error
+        if (isDevelopment) {
           return NextResponse.json({
             success: true,
-            message: "Email service error - use this code",
+            message: "Verification code generated",
             dev_otp: otp
           })
         }
-
-        console.log(`OTP sent to ${email} - ID: ${result.data?.id}`)
-      } catch (emailError) {
-        console.error("Resend error:", emailError)
-        // Still return success but include dev_otp for testing
-        return NextResponse.json({
-          success: true,
-          message: "Verification code generated",
-          dev_otp: otp // Show OTP if email fails
-        })
+        return NextResponse.json(
+          { error: "Failed to send verification email. Please try again." },
+          { status: 500 }
+        )
       }
     } else {
-      // No Resend API key - show OTP in response for development
-      console.log(`[DEV] OTP for ${email}: ${otp}`)
-      return NextResponse.json({
-        success: true,
-        message: "Verification code generated (dev mode)",
-        dev_otp: otp
-      })
+      // No Resend API key
+      if (isDevelopment) {
+        return NextResponse.json({
+          success: true,
+          message: "Verification code generated (dev mode)",
+          dev_otp: otp
+        })
+      }
+      // In production without email service, fail gracefully
+      return NextResponse.json(
+        { error: "Email service not configured" },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({

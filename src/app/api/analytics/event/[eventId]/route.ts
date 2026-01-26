@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
-// GET /api/analytics/event/[eventId] - Get event analytics
+// GET /api/analytics/event/[eventId] - Get event analytics (requires event access)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
     const { eventId } = await params
+
+    // Check authorization
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
+
     const supabase = await createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
 

@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
-// GET - Fetch addon sales data (bypasses RLS)
+// GET - Fetch addon sales data (requires event access)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -10,6 +11,10 @@ export async function GET(request: NextRequest) {
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
+
+    // Check authorization
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 
