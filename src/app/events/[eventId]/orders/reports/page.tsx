@@ -76,12 +76,17 @@ export default function OrderReportsPage() {
           const regAddons = addonsByReg[r.id] || []
           allAddons.push(...regAddons)
         })
+        // Calculate ticket amount (sum of unit prices)
+        const ticketAmount = paymentRegs.reduce((sum: number, r: any) => sum + (r.unit_price || r.ticket_type?.price || 0), 0)
+
         return {
           ...payment,
           registrations: paymentRegs,
           addons: allAddons,
           ticket_count: paymentRegs.length,
           ticket_names: paymentRegs.map((r: any) => r.ticket_type?.name || "").filter(Boolean).join(", "),
+          ticket_prices: paymentRegs.map((r: any) => r.unit_price || r.ticket_type?.price || 0).join(", "),
+          ticket_amount: ticketAmount,
           attendee_names: paymentRegs.map((r: any) => r.attendee_name || "").filter(Boolean).join(", "),
           registration_numbers: paymentRegs.map((r: any) => r.registration_number || "").filter(Boolean).join(", "),
           addon_names: allAddons.map((a: any) => a.name).join(", "),
@@ -157,6 +162,8 @@ export default function OrderReportsPage() {
       "Registration Numbers",
       "Ticket Count",
       "Ticket Types",
+      "Ticket Prices",
+      "Ticket Amount",
       "Attendee Names",
       "Addons",
       "Addon Amount",
@@ -179,6 +186,8 @@ export default function OrderReportsPage() {
       `"${(o.registration_numbers || '').replace(/"/g, '""')}"`,
       o.ticket_count || 0,
       `"${(o.ticket_names || '').replace(/"/g, '""')}"`,
+      `"${(o.ticket_prices || '').replace(/"/g, '""')}"`,
+      o.ticket_amount || 0,
       `"${(o.attendee_names || '').replace(/"/g, '""')}"`,
       `"${(o.addon_names || '').replace(/"/g, '""')}"`,
       o.addon_total || 0,
