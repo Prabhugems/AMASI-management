@@ -36,8 +36,9 @@ export default function RegistrationReportsPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, status, total_amount, created_at, ticket_type:ticket_types(name)")
+        .select("id, registration_number, attendee_name, attendee_email, attendee_phone, status, total_amount, created_at, ticket_type:ticket_types(name)")
         .eq("event_id", eventId)
+        .order("created_at", { ascending: false })
 
       return data || []
     },
@@ -90,36 +91,27 @@ export default function RegistrationReportsPage() {
     }
   }, [registrations])
 
-  const exportReport = () => {
-    if (!stats) return
+  const exportCSV = () => {
+    if (!registrations) return
 
-    let content = "REGISTRATION REPORT\n"
-    content += "=".repeat(50) + "\n\n"
+    const headers = ["Reg Number", "Name", "Email", "Phone", "Ticket Type", "Status", "Amount", "Registered At"]
+    const rows = registrations.map((r: any) => [
+      r.registration_number || "",
+      `"${r.attendee_name || ''}"`,
+      r.attendee_email || "",
+      r.attendee_phone || "",
+      r.ticket_type?.name || "",
+      r.status || "",
+      r.total_amount || 0,
+      r.created_at ? new Date(r.created_at).toLocaleDateString("en-IN") : "",
+    ])
 
-    content += "SUMMARY\n"
-    content += "-".repeat(30) + "\n"
-    content += `Total Registrations: ${stats.total}\n`
-    content += `Confirmed: ${stats.confirmed}\n`
-    content += `Total Revenue: ₹${stats.revenue.toLocaleString()}\n`
-    content += `Avg Ticket Price: ₹${Math.round(stats.avgTicketPrice).toLocaleString()}\n\n`
-
-    content += "BY TICKET TYPE\n"
-    content += "-".repeat(30) + "\n"
-    stats.byTicket.forEach(([ticket, data]) => {
-      content += `${ticket}: ${data.count} (₹${data.revenue.toLocaleString()})\n`
-    })
-
-    content += "\nBY STATUS\n"
-    content += "-".repeat(30) + "\n"
-    stats.byStatus.forEach(([status, count]) => {
-      content += `${status}: ${count}\n`
-    })
-
-    const blob = new Blob([content], { type: "text/plain" })
+    const csv = [headers, ...rows].map(row => row.join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `registration-report-${new Date().toISOString().split("T")[0]}.txt`
+    a.download = `registration-report-${new Date().toISOString().split("T")[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
     toast.success("Report exported")
@@ -152,9 +144,9 @@ export default function RegistrationReportsPage() {
           <h1 className="text-2xl font-bold">Registration Reports</h1>
           <p className="text-muted-foreground">Analytics and insights</p>
         </div>
-        <Button variant="outline" onClick={exportReport}>
+        <Button variant="outline" onClick={exportCSV}>
           <Download className="h-4 w-4 mr-2" />
-          Export
+          Export CSV
         </Button>
       </div>
 
