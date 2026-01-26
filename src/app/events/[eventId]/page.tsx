@@ -77,23 +77,39 @@ export default function EventDashboardPage() {
     enabled: !!eventId,
   })
 
-  // Fetch faculty stats from faculty_assignments table
+  // Fetch faculty stats from both faculty_assignments AND speaker registrations
   const { data: facultyStats, isLoading: isLoadingFaculty } = useQuery({
     queryKey: ["event-faculty-stats", eventId],
     queryFn: async () => {
-      const { data: allAssignments, error } = await supabase
+      // Check faculty_assignments table
+      const { data: assignments } = await supabase
         .from("faculty_assignments")
         .select("id, status")
         .eq("event_id", eventId)
 
-      if (error || !allAssignments || !Array.isArray(allAssignments)) {
-        return { total: 0, confirmed: 0 }
+      // Also check registrations with speaker/faculty designations
+      const { data: speakerRegs } = await supabase
+        .from("registrations")
+        .select("id, status")
+        .eq("event_id", eventId)
+        .or("attendee_designation.ilike.%speaker%,attendee_designation.ilike.%faculty%,attendee_designation.ilike.%chairperson%,attendee_designation.ilike.%panelist%,attendee_designation.ilike.%moderator%")
+
+      const assignmentsList = Array.isArray(assignments) ? assignments : []
+      const speakersList = Array.isArray(speakerRegs) ? speakerRegs : []
+
+      // Combine both sources (avoid double counting if someone is in both)
+      const totalFromAssignments = assignmentsList.length
+      const confirmedFromAssignments = assignmentsList.filter((f: any) => f.status === "confirmed").length
+
+      const totalFromSpeakers = speakersList.length
+      const confirmedFromSpeakers = speakersList.filter((r: any) => r.status === "confirmed").length
+
+      // If faculty_assignments has data, use it; otherwise use speaker registrations
+      if (totalFromAssignments > 0) {
+        return { total: totalFromAssignments, confirmed: confirmedFromAssignments }
       }
 
-      return {
-        total: allAssignments.length,
-        confirmed: allAssignments.filter((f: any) => f.status === "confirmed").length,
-      }
+      return { total: totalFromSpeakers, confirmed: confirmedFromSpeakers }
     },
     enabled: !!eventId,
   })
