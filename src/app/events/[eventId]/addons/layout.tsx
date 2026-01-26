@@ -13,10 +13,12 @@ import {
   Loader2,
   Calendar,
   MapPin,
+  BarChart3,
 } from "lucide-react"
 
 const sidebarItems = [
   { title: "Manage Addons", href: "", icon: Package, description: "Create and manage add-ons" },
+  { title: "Sales & Reports", href: "/reports", icon: BarChart3, description: "View addon sales data" },
   { title: "Settings", href: "/settings", icon: Settings, description: "Addon settings & defaults" },
   { title: "Instructions", href: "/instructions", icon: BookOpen, description: "How to use addons" },
 ]

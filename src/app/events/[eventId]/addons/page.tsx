@@ -169,16 +169,28 @@ export default function AddonsPage() {
 
       if (error) throw error
 
-      // Fetch sales data via API (bypasses RLS)
+      // Fetch sales data directly from registration_addons
       let salesByAddon: Record<string, { sold: number; revenue: number }> = {}
-      try {
-        const salesResponse = await fetch(`/api/addons/sales?event_id=${eventId}`)
-        if (salesResponse.ok) {
-          const salesResult = await salesResponse.json()
-          salesByAddon = salesResult.sales || {}
+      if (data && data.length > 0) {
+        const addonIds = data.map((a: any) => a.id)
+        const { data: salesData } = await (supabase as any)
+          .from("registration_addons")
+          .select("addon_id, quantity, unit_price, total_price, addon:addons(price)")
+          .in("addon_id", addonIds)
+
+        if (salesData) {
+          salesData.forEach((sale: any) => {
+            if (!salesByAddon[sale.addon_id]) {
+              salesByAddon[sale.addon_id] = { sold: 0, revenue: 0 }
+            }
+            const qty = sale.quantity || 1
+            const addonPrice = sale.addon?.price || 0
+            // total_price is already qty * unit_price, or calculate from unit_price/addon price
+            const totalPrice = sale.total_price || (sale.unit_price ? sale.unit_price * qty : addonPrice * qty)
+            salesByAddon[sale.addon_id].sold += qty
+            salesByAddon[sale.addon_id].revenue += totalPrice
+          })
         }
-      } catch (salesError) {
-        console.error("Failed to fetch addon sales:", salesError)
       }
 
       // Fetch variants for each addon
