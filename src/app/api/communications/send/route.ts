@@ -4,6 +4,7 @@ import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { sendWhatsAppMessage, WhatsAppConfig } from "@/lib/services/whatsapp"
 import { sendSMS, SMSConfig } from "@/lib/services/sms"
 import { sendWebhook, buildCommunicationPayload } from "@/lib/services/webhook"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface SendRequest {
   event_id: string
@@ -113,6 +114,19 @@ export async function POST(request: NextRequest) {
             }
 
             if (settings?.whatsapp_provider) {
+              // Validate required fields based on provider
+              const provider = settings.whatsapp_provider
+              if (provider === "meta" && (!settings.whatsapp_phone_number_id || !settings.whatsapp_access_token)) {
+                results.failed++
+                results.errors.push(`${reg.attendee_name}: WhatsApp Meta provider not configured (missing phone_number_id or access_token)`)
+                continue
+              }
+              if (provider === "twilio" && (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number)) {
+                results.failed++
+                results.errors.push(`${reg.attendee_name}: WhatsApp Twilio provider not configured`)
+                continue
+              }
+
               const whatsappConfig: WhatsAppConfig = {
                 provider: settings.whatsapp_provider,
                 phoneNumberId: settings.whatsapp_phone_number_id,
@@ -144,6 +158,19 @@ export async function POST(request: NextRequest) {
             }
 
             if (settings?.sms_provider) {
+              // Validate required fields based on provider
+              const smsProvider = settings.sms_provider
+              if (smsProvider === "twilio" && (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number)) {
+                results.failed++
+                results.errors.push(`${reg.attendee_name}: SMS Twilio provider not configured`)
+                continue
+              }
+              if ((smsProvider === "msg91" || smsProvider === "textlocal") && !settings.sms_api_key) {
+                results.failed++
+                results.errors.push(`${reg.attendee_name}: SMS provider ${smsProvider} not configured (missing api_key)`)
+                continue
+              }
+
               const smsConfig: SMSConfig = {
                 provider: settings.sms_provider,
                 accountSid: settings.twilio_account_sid,
@@ -269,7 +296,7 @@ function buildEmailHtml(event: any, message: string): string {
               <tr>
                 <td style="background-color: #1f2937; padding: 20px 30px; border-radius: 0 0 16px 16px; text-align: center;">
                   <p style="color: #6b7280; margin: 0; font-size: 12px;">
-                    &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
+                    &copy; ${new Date().getFullYear()} ${COMPANY_CONFIG.name}. All rights reserved.
                   </p>
                 </td>
               </tr>

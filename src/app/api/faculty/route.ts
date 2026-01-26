@@ -1,5 +1,6 @@
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { DEFAULTS } from '@/lib/config'
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
         specialty: specialty || null,
         city: city || null,
         state: state || null,
-        country: country || 'India',
+        country: country || DEFAULTS.country,
         bio: bio || null,
         status: 'active',
         source: 'manual_add',

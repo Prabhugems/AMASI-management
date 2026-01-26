@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { DEFAULTS } from "@/lib/config"
 
 interface FacultyImportRow {
   name: string
@@ -70,12 +71,12 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Check if faculty already exists
+        // Check if faculty already exists (use maybeSingle since record may not exist)
         const { data: existing } = await (supabase as any)
           .from("faculty")
           .select("id")
           .eq("email", row.email.toLowerCase())
-          .single()
+          .maybeSingle()
 
         if (existing) {
           // Update existing faculty
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
               specialty: row.specialty || null,
               city: row.city || null,
               state: row.state || null,
-              country: row.country || "India",
+              country: row.country || DEFAULTS.country,
               status: row.status?.toLowerCase() || "active",
               is_reviewer: row.is_reviewer === "true" || row.is_reviewer === true || row.is_reviewer === "yes",
               updated_at: new Date().toISOString(),
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
           specialty: row.specialty || null,
           city: row.city || null,
           state: row.state || null,
-          country: row.country || "India",
+          country: row.country || DEFAULTS.country,
           status: row.status?.toLowerCase() || "active",
           is_reviewer: row.is_reviewer === "true" || row.is_reviewer === true || row.is_reviewer === "yes",
           total_events: 0,

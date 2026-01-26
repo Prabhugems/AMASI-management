@@ -81,9 +81,19 @@ function applyTextCase(text: string, textCase?: string): string {
 
 // Get base URL for verification links
 function getBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000"
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  // Only use localhost in development
+  if (process.env.NODE_ENV === "development") {
+    return "http://localhost:3000"
+  }
+  // Fallback for production without proper config
+  console.warn("No NEXT_PUBLIC_APP_URL or VERCEL_URL configured, using relative paths")
+  return ""
 }
 
 // Replace placeholders in text

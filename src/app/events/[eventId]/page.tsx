@@ -81,12 +81,14 @@ export default function EventDashboardPage() {
   const { data: facultyStats, isLoading: isLoadingFaculty } = useQuery({
     queryKey: ["event-faculty-stats", eventId],
     queryFn: async () => {
-      const { data: allAssignments } = await supabase
+      const { data: allAssignments, error } = await supabase
         .from("faculty_assignments")
         .select("id, status")
         .eq("event_id", eventId)
 
-      if (!allAssignments) return { total: 0, confirmed: 0 }
+      if (error || !allAssignments || !Array.isArray(allAssignments)) {
+        return { total: 0, confirmed: 0 }
+      }
 
       return {
         total: allAssignments.length,
@@ -100,12 +102,14 @@ export default function EventDashboardPage() {
   const { data: attendeeStats, isLoading: isLoadingAttendees } = useQuery({
     queryKey: ["event-attendee-stats", eventId],
     queryFn: async () => {
-      const { data: allRegistrations } = await supabase
+      const { data: allRegistrations, error } = await supabase
         .from("registrations")
         .select("id, checked_in")
         .eq("event_id", eventId)
 
-      if (!allRegistrations) return { total: 0, checkedIn: 0 }
+      if (error || !allRegistrations || !Array.isArray(allRegistrations)) {
+        return { total: 0, checkedIn: 0 }
+      }
 
       return {
         total: allRegistrations.length,

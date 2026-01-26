@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { DEFAULTS } from "@/lib/config"
 
 // Generate registration number
 async function generateRegistrationNumber(supabase: any, eventId: string): Promise<string> {
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
           attendee_email: email,
           attendee_phone: faculty.phone || null,
           attendee_designation: "Speaker",
-          attendee_country: "India",
+          attendee_country: DEFAULTS.country,
           quantity: 1,
           unit_price: 0,
           tax_amount: 0,

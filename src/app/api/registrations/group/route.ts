@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
 import { createOrder, generatePaymentNumber, RazorpayCredentials } from "@/lib/services/razorpay"
+import { DEFAULTS } from "@/lib/config"
 
 // Create admin client for server-side operations (bypasses RLS)
 const supabase = createClient(
@@ -285,7 +286,7 @@ export async function POST(request: NextRequest) {
         attendee_designation: attendee.attendee_designation,
         attendee_city: attendee.attendee_city,
         attendee_state: attendee.attendee_state,
-        attendee_country: attendee.attendee_country || "India",
+        attendee_country: attendee.attendee_country || DEFAULTS.country,
         quantity: 1,
         unit_price: unitPrice,
         tax_amount: taxAmount,

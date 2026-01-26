@@ -54,9 +54,23 @@ export async function PATCH(
 
     if (error) {
       console.error("Update error:", error)
+      // Handle not found error specifically
+      if (error.code === "PGRST116") {
+        return NextResponse.json(
+          { error: "Assignment not found" },
+          { status: 404 }
+        )
+      }
       return NextResponse.json(
         { error: error.message },
         { status: 500 }
+      )
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        { error: "Assignment not found" },
+        { status: 404 }
       )
     }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
+import { DEFAULTS } from "@/lib/config"
 
 type EventSettings = {
   customize_registration_id: boolean
@@ -41,13 +42,13 @@ async function generateRegistrationNumber(supabase: Awaited<ReturnType<typeof cr
     return `${prefix}${regNumber}${suffix}`
   }
 
-  // Default format: FAC-YYYYMMDD-XXXX
+  // Default format: REG-YYYYMMDD-XXXX (for registrations)
   const date = new Date()
   const dateStr = date.getFullYear().toString() +
     (date.getMonth() + 1).toString().padStart(2, "0") +
     date.getDate().toString().padStart(2, "0")
   const random = Math.floor(1000 + Math.random() * 9000)
-  return `FAC-${dateStr}-${random}`
+  return `REG-${dateStr}-${random}`
 }
 
 export async function POST(request: NextRequest) {
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
             title: faculty.title || null,
             email: faculty.email,
             phone: faculty.phone || null,
-            country: "India",
+            country: DEFAULTS.country,
             status: "active",
             total_events: 0,
             total_sessions: 0,
@@ -260,7 +261,7 @@ export async function POST(request: NextRequest) {
               attendee_email: email,
               attendee_phone: faculty.phone || null,
               attendee_designation: "Speaker", // Role for this event
-              attendee_country: "India",
+              attendee_country: DEFAULTS.country,
               quantity: 1,
               unit_price: 0, // Speaker tickets are typically free
               tax_amount: 0,

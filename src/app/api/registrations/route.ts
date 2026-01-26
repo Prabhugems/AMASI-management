@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { onRegistration } from "@/lib/services/auto-send"
 import { validatePagination, sanitizeSearchInput, isValidUUID } from "@/lib/validation"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { DEFAULTS } from "@/lib/config"
 
 type EventSettings = {
   customize_registration_id: boolean
@@ -409,7 +410,7 @@ export async function POST(request: NextRequest) {
         attendee_designation,
         attendee_city,
         attendee_state,
-        attendee_country: attendee_country || "India",
+        attendee_country: attendee_country || DEFAULTS.country,
         quantity,
         unit_price,
         tax_amount,
