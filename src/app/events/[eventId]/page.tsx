@@ -77,20 +77,20 @@ export default function EventDashboardPage() {
     enabled: !!eventId,
   })
 
-  // Fetch faculty stats from faculty table
+  // Fetch faculty stats from faculty_assignments table
   const { data: facultyStats, isLoading: isLoadingFaculty } = useQuery({
     queryKey: ["event-faculty-stats", eventId],
     queryFn: async () => {
-      const { data: allFaculty } = await supabase
-        .from("faculty")
+      const { data: allAssignments } = await supabase
+        .from("faculty_assignments")
         .select("id, status")
         .eq("event_id", eventId)
 
-      if (!allFaculty) return { total: 0, confirmed: 0 }
+      if (!allAssignments) return { total: 0, confirmed: 0 }
 
       return {
-        total: allFaculty.length,
-        confirmed: allFaculty.filter((f: any) => f.status === "confirmed").length,
+        total: allAssignments.length,
+        confirmed: allAssignments.filter((f: any) => f.status === "confirmed").length,
       }
     },
     enabled: !!eventId,
