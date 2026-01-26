@@ -47,9 +47,13 @@ export async function POST(request: NextRequest) {
     // SECURITY: Calculate amount server-side - never trust client amount
     let calculatedAmount = 0
     let ticketDetails: any[] = []
+    let taxPercentage = 18 // Default GST rate
 
-    // Require tickets for amount calculation - don't fall back to client amount
-    if (!tickets || !Array.isArray(tickets) || tickets.length === 0) {
+    // For addon-only purchases, skip ticket requirement
+    const isAddonPurchase = payment_type === "addon_purchase"
+
+    // Require tickets for registration payments, but not for addon-only purchases
+    if (!isAddonPurchase && (!tickets || !Array.isArray(tickets) || tickets.length === 0)) {
       return NextResponse.json(
         { error: "Tickets are required for payment" },
         { status: 400 }
@@ -122,9 +126,10 @@ export async function POST(request: NextRequest) {
       // Calculate addons amount (if provided)
       let addonsSubtotal = 0
       let addonsTax = 0
-      const taxPercentage = ticketDetails.length > 0
-        ? (ticketTypes.find((t: any) => t.id === ticketDetails[0].ticket_type_id)?.tax_percentage || 18)
-        : 18
+      // Use ticket tax rate if available
+      if (ticketDetails.length > 0) {
+        taxPercentage = ticketTypes.find((t: any) => t.id === ticketDetails[0].ticket_type_id)?.tax_percentage || 18
+      }
 
       if (addons && Array.isArray(addons) && addons.length > 0) {
         // Fetch addon prices from database to validate
@@ -183,6 +188,30 @@ export async function POST(request: NextRequest) {
       }
 
       calculatedAmount = subtotal + totalTax - discountAmount
+    }
+
+    // Handle addon-only purchases (no tickets)
+    if (isAddonPurchase && addons && Array.isArray(addons) && addons.length > 0) {
+      // Fetch addon prices from database to validate
+      const addonIds = addons.map((a: any) => a.addonId)
+      const { data: addonData } = await supabase
+        .from("addons")
+        .select("id, price, name, is_active")
+        .in("id", addonIds)
+
+      if (addonData) {
+        let addonsSubtotal = 0
+        for (const addonSelection of addons) {
+          const addon = addonData.find((a: any) => a.id === addonSelection.addonId)
+          if (addon && addon.is_active) {
+            // Use server-side price, not client-provided
+            const addonPrice = addon.price * (addonSelection.quantity || 1)
+            addonsSubtotal += addonPrice
+          }
+        }
+        const addonsTax = Math.round((addonsSubtotal * taxPercentage) / 100)
+        calculatedAmount = addonsSubtotal + addonsTax
+      }
     }
 
     // Validate amount is positive
