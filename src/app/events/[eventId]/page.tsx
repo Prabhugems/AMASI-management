@@ -249,7 +249,7 @@ export default function EventDashboardPage() {
     {
       id: 4,
       label: "Tickets",
-      completed: (ticketsAndAddonsStats?.tickets || 0) > 0, // Consider completed if any tickets exist
+      completed: (ticketsAndAddonsStats?.activeTickets || 0) > 0, // Only complete when tickets are active (on sale)
       link: `/events/${eventId}/tickets`,
     },
     {
