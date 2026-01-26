@@ -94,12 +94,14 @@ export default function RegistrationReportsPage() {
   const exportCSV = () => {
     if (!registrations) return
 
-    const headers = ["Reg Number", "Name", "Email", "Phone", "Ticket Type", "Status", "Amount", "Registered At"]
+    const headers = ["Reg Number", "Name", "Email", "Phone", "Institution", "Designation", "Ticket Type", "Status", "Amount", "Registered At"]
     const rows = registrations.map((r: any) => [
       r.registration_number || "",
-      `"${r.attendee_name || ''}"`,
+      `"${(r.attendee_name || '').replace(/"/g, '""')}"`,
       r.attendee_email || "",
       r.attendee_phone || "",
+      `"${(r.attendee_institution || '').replace(/"/g, '""')}"`,
+      `"${(r.attendee_designation || '').replace(/"/g, '""')}"`,
       r.ticket_type?.name || "",
       r.status || "",
       r.total_amount || 0,
