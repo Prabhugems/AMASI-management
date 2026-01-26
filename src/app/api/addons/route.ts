@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
 
+    // Fetch addons with their ticket links
     let query = supabase
       .from("addons")
       .select(`
@@ -30,7 +31,10 @@ export async function GET(request: NextRequest) {
         has_variants,
         is_active,
         is_course,
-        ticket_type_ids
+        addon_ticket_links (
+          ticket_type_id,
+          max_quantity_per_attendee
+        )
       `)
       .eq("event_id", eventId)
       .order("sort_order", { ascending: true })
@@ -50,20 +54,36 @@ export async function GET(request: NextRequest) {
     let filteredData = data || []
     if (ticketTypeId) {
       filteredData = filteredData.filter((addon: any) => {
-        // If addon has no ticket_type_ids restriction, it's available for all
-        if (!addon.ticket_type_ids || addon.ticket_type_ids.length === 0) {
+        const links = addon.addon_ticket_links || []
+        // If addon has no ticket links, it's available for all ticket types
+        if (links.length === 0) {
           return true
         }
         // Check if the ticket type is in the allowed list
-        return addon.ticket_type_ids.includes(ticketTypeId)
+        return links.some((link: any) => link.ticket_type_id === ticketTypeId)
       })
     }
 
-    // Transform data
-    const addons = filteredData.map((addon: any) => ({
-      ...addon,
-      variants: [], // Variants not implemented yet
-    }))
+    // Transform data - include max quantity from ticket link if available
+    const addons = filteredData.map((addon: any) => {
+      const links = addon.addon_ticket_links || []
+      let maxQty = addon.max_quantity || 10
+
+      // If filtering by ticket type, use the link's max quantity
+      if (ticketTypeId && links.length > 0) {
+        const link = links.find((l: any) => l.ticket_type_id === ticketTypeId)
+        if (link?.max_quantity_per_attendee) {
+          maxQty = link.max_quantity_per_attendee
+        }
+      }
+
+      return {
+        ...addon,
+        max_quantity: maxQty,
+        addon_ticket_links: undefined, // Don't expose internal data
+        variants: [], // Variants not implemented yet
+      }
+    })
 
     return NextResponse.json({ data: addons })
   } catch (error: any) {

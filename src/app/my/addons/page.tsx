@@ -210,10 +210,10 @@ function PurchaseAddonsContent() {
           event_id: registration.event?.id,
           payer_name: registration.attendee_name,
           payer_email: registration.attendee_email,
+          addons: addonsArray, // Must be at top level for API to read
           metadata: {
             registration_id: registration.id,
             registration_number: registration.registration_number,
-            addons: addonsArray,
           },
         }),
       })
