@@ -50,7 +50,8 @@ interface Registration {
   registration_number: string
   attendee_name: string
   attendee_email: string
-  ticket_type?: { name: string }
+  ticket_type_id?: string
+  ticket_type?: { id: string; name: string }
   event?: {
     id: string
     name: string
@@ -108,8 +109,13 @@ function PurchaseAddonsContent() {
 
         setRegistration(reg)
 
-        // Fetch available addons
-        const addonsRes = await fetch(`/api/addons?event_id=${eventId}&active=true`)
+        // Fetch available addons (filtered by ticket type if applicable)
+        const ticketTypeId = reg.ticket_type_id || reg.ticket_type?.id
+        let addonsUrl = `/api/addons?event_id=${eventId}&active=true`
+        if (ticketTypeId) {
+          addonsUrl += `&ticket_type_id=${ticketTypeId}`
+        }
+        const addonsRes = await fetch(addonsUrl)
         const addonsData = await addonsRes.json()
 
         if (addonsRes.ok) {

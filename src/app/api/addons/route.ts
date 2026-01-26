@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
     const activeOnly = searchParams.get("active") === "true"
+    const ticketTypeId = searchParams.get("ticket_type_id") // Filter by ticket type
 
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
@@ -28,7 +29,8 @@ export async function GET(request: NextRequest) {
         image_url,
         has_variants,
         is_active,
-        is_course
+        is_course,
+        ticket_type_ids
       `)
       .eq("event_id", eventId)
       .order("sort_order", { ascending: true })
@@ -44,8 +46,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Filter addons by ticket type if specified
+    let filteredData = data || []
+    if (ticketTypeId) {
+      filteredData = filteredData.filter((addon: any) => {
+        // If addon has no ticket_type_ids restriction, it's available for all
+        if (!addon.ticket_type_ids || addon.ticket_type_ids.length === 0) {
+          return true
+        }
+        // Check if the ticket type is in the allowed list
+        return addon.ticket_type_ids.includes(ticketTypeId)
+      })
+    }
+
     // Transform data
-    const addons = (data || []).map((addon: any) => ({
+    const addons = filteredData.map((addon: any) => ({
       ...addon,
       variants: [], // Variants not implemented yet
     }))
