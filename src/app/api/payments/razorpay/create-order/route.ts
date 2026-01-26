@@ -287,8 +287,8 @@ export async function POST(request: NextRequest) {
 
       const eventData = event as any
 
-      // Check if registration is open
-      if (eventData?.registration_open === false) {
+      // Check if registration is open (skip for addon purchases - they're already registered)
+      if (eventData?.registration_open === false && !isAddonPurchase) {
         return NextResponse.json(
           { error: "Registration is closed for this event" },
           { status: 403 }
