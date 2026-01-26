@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Script from "next/script"
 import {
   Search,
   Loader2,
@@ -25,6 +26,8 @@ import {
   Package,
   Plus,
   ShoppingCart,
+  CreditCard,
+  AlertCircle,
 } from "lucide-react"
 
 interface RegistrationAddon {
@@ -93,6 +96,12 @@ interface Registration {
   addons?: RegistrationAddon[]
 }
 
+declare global {
+  interface Window {
+    Razorpay: any
+  }
+}
+
 export default function DelegatePortalPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(false)
@@ -103,6 +112,99 @@ export default function DelegatePortalPage() {
   const [downloadingBadge, setDownloadingBadge] = useState(false)
   const [downloadingCert, setDownloadingCert] = useState(false)
   const [downloadingReceipt, setDownloadingReceipt] = useState(false)
+  const [paymentLoading, setPaymentLoading] = useState(false)
+
+  const handleRetryPayment = async (reg: Registration) => {
+    if (!reg.total_amount || reg.total_amount <= 0) return
+
+    setPaymentLoading(true)
+
+    try {
+      // Create new Razorpay order for retry
+      const res = await fetch("/api/payments/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: reg.total_amount,
+          currency: "INR",
+          event_id: reg.event?.id,
+          payer_name: reg.attendee_name,
+          payer_email: reg.attendee_email,
+          payer_phone: reg.attendee_phone,
+          metadata: {
+            registration_id: reg.id,
+            retry: true,
+          },
+        }),
+      })
+
+      const orderData = await res.json()
+
+      if (!res.ok || !orderData.success) {
+        throw new Error(orderData.error || "Failed to create payment order")
+      }
+
+      // Load Razorpay script if not loaded
+      if (!window.Razorpay) {
+        const script = document.createElement("script")
+        script.src = "https://checkout.razorpay.com/v1/checkout.js"
+        script.async = true
+        document.body.appendChild(script)
+        await new Promise((resolve) => (script.onload = resolve))
+      }
+
+      const options = {
+        key: orderData.key,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: reg.event?.name || "Event Registration",
+        description: `Payment for ${reg.ticket_type?.name || "Registration"}`,
+        order_id: orderData.order_id,
+        prefill: {
+          name: reg.attendee_name,
+          email: reg.attendee_email,
+          contact: reg.attendee_phone || "",
+        },
+        handler: async (response: any) => {
+          // Verify payment
+          const verifyRes = await fetch("/api/payments/razorpay/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          })
+
+          if (verifyRes.ok) {
+            alert("Payment successful! Your registration is confirmed.")
+            // Refresh registration data
+            const form = document.createElement("form")
+            form.style.display = "none"
+            document.body.appendChild(form)
+            window.location.reload()
+          } else {
+            alert("Payment verification failed. Please contact support.")
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setPaymentLoading(false)
+          },
+        },
+        theme: {
+          color: "#6366F1",
+        },
+      }
+
+      const razorpay = new window.Razorpay(options)
+      razorpay.open()
+    } catch (err: any) {
+      alert(err.message || "Failed to initiate payment")
+      setPaymentLoading(false)
+    }
+  }
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -546,6 +648,36 @@ export default function DelegatePortalPage() {
                 {registration.payment_status === "completed" ? "Paid" : "Pending"}
               </span>
             </div>
+
+            {/* Payment Retry Section */}
+            {registration.payment_status !== "completed" && registration.total_amount && registration.total_amount > 0 && (
+              <div className="py-3 px-4 bg-amber-50 rounded-xl my-3">
+                <div className="flex items-center gap-2 text-amber-700 mb-2">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="font-medium text-sm">Payment Required</span>
+                </div>
+                <p className="text-xs text-amber-600 mb-3">
+                  Complete payment to confirm your registration.
+                </p>
+                <button
+                  onClick={() => handleRetryPayment(registration)}
+                  disabled={paymentLoading}
+                  className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-semibold text-sm flex items-center justify-center gap-2 hover:from-amber-600 hover:to-orange-600 disabled:opacity-50"
+                >
+                  {paymentLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4" />
+                      Pay Rs.{registration.total_amount.toLocaleString("en-IN")}
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
 
             {registration.total_amount && registration.total_amount > 0 && (
               <div className="flex items-center justify-between py-2 border-b border-gray-100">

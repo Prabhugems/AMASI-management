@@ -531,6 +531,69 @@ export default function EventDashboardPage() {
         </div>
       </div>
 
+      {/* Public Links */}
+      <div className="paper-card card-animated">
+        <div className="p-5 border-b border-border">
+          <h5 className="text-base font-semibold text-foreground mb-1">
+            Public Links
+          </h5>
+          <p className="text-sm text-muted-foreground">
+            Share these links with delegates and attendees
+          </p>
+        </div>
+        <div className="p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <a
+              href="/my"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 border border-indigo-200/50 transition-all duration-300 group"
+            >
+              <div className="h-10 w-10 rounded-full bg-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-500/30 transition-all">
+                <Users className="h-5 w-5 text-indigo-600" />
+              </div>
+              <div className="flex-1">
+                <span className="text-sm font-semibold text-foreground block">Delegate Portal</span>
+                <span className="text-xs text-muted-foreground">Badge, certificate & status</span>
+              </div>
+              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+            </a>
+            {event?.slug && (
+              <a
+                href={`/register/${event.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 hover:from-green-500/20 hover:to-emerald-500/20 border border-green-200/50 transition-all duration-300 group"
+              >
+                <div className="h-10 w-10 rounded-full bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/30 transition-all">
+                  <Ticket className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <span className="text-sm font-semibold text-foreground block">Registration Page</span>
+                  <span className="text-xs text-muted-foreground">Public registration form</span>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </a>
+            )}
+            <a
+              href={`/p/${eventId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-cyan-500/10 hover:from-blue-500/20 hover:to-cyan-500/20 border border-blue-200/50 transition-all duration-300 group"
+            >
+              <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center group-hover:bg-blue-500/30 transition-all">
+                <Calendar className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <span className="text-sm font-semibold text-foreground block">Program Schedule</span>
+                <span className="text-xs text-muted-foreground">Public session schedule</span>
+              </div>
+              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* Event Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Event Info */}
