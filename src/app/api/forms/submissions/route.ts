@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -25,13 +26,27 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+    // First, get the form to check event_id for authorization
+    const { data: form } = await supabase
+      .from("forms")
+      .select("event_id")
+      .eq("id", formId)
+      .single()
+
+    if (!form) {
+      return NextResponse.json({ error: "Form not found" }, { status: 404 })
+    }
+
+    // Check authorization via event access
+    if (form.event_id) {
+      const { error: authError } = await requireEventAccess(form.event_id)
+      if (authError) return authError
+    } else {
+      // Form not linked to event - require admin
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
     }
 
     let query = supabase
