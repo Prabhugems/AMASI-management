@@ -27,6 +27,15 @@ function LoginForm() {
   const [sent, setSent] = React.useState(false)
   const [error, setError] = React.useState("")
 
+  // If login page receives a code param, redirect to auth callback
+  React.useEffect(() => {
+    const code = searchParams.get("code")
+    if (code) {
+      const callbackUrl = `/auth/callback?code=${code}${redirectTo ? `&next=${redirectTo}` : ""}`
+      router.replace(callbackUrl)
+    }
+  }, [searchParams, router, redirectTo])
+
   // Redirect if already authenticated
   React.useEffect(() => {
     if (isAuthenticated && !authLoading) {
