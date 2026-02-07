@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { requireEventAccess } from "@/lib/auth/api-auth"
 
 // Use service role for travel agent access (bypasses RLS)
 const supabase = createClient(
@@ -20,9 +19,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Check authorization
-    const { error: authError } = await requireEventAccess(eventId)
-    if (authError) return authError
+    // Validate event_id is a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(eventId)) {
+      return NextResponse.json(
+        { error: "Invalid event ID" },
+        { status: 400 }
+      )
+    }
 
     // Verify event exists
     const { data: event, error: eventError } = await supabase

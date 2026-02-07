@@ -299,6 +299,24 @@ const EVENT_PERMISSIONS = [
     ],
     path: "/events/[id]/registrations"
   },
+  {
+    value: "abstracts",
+    label: "Abstracts",
+    icon: BookOpen,
+    color: "text-orange-500",
+    bg: "bg-orange-500",
+    bgLight: "bg-orange-50 border-orange-200",
+    description: "Manage abstract submissions & reviews",
+    access: [
+      "View all abstract submissions",
+      "Review & score abstracts",
+      "Accept/reject abstracts",
+      "Configure abstract settings",
+      "Manage abstract categories",
+      "Export abstract data",
+    ],
+    path: "/events/[id]/abstracts"
+  },
 ]
 
 const PERMISSIONS = [...TRAVEL_PERMISSIONS, ...EVENT_PERMISSIONS]

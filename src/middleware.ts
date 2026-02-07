@@ -79,6 +79,21 @@ export async function middleware(request: NextRequest) {
     '/api/print',          // Print lookup API (public for desktop app)
     '/api/print-stations', // Print station APIs (public for kiosk/desktop app)
     '/print-station',      // Print station download page
+    '/travel-agent',       // Travel agent portal (token-based)
+    '/flight-agent',       // Flight agent portal (token-based)
+    '/train-agent',        // Train agent portal (token-based)
+    '/cab-agent',          // Cab/transfer agent portal (token-based)
+    '/speaker-portal',     // Speaker portal (token-based)
+    '/speaker',            // Speaker page (token-based)
+    '/hall-coordinator',   // Hall coordinator portal (token-based)
+    '/driver-portal',      // Driver portal (phone-based)
+    '/print',              // Print/badge pages (token-based)
+    '/badge',              // Badge pages (token-based)
+    '/v',                  // Certificate verification (token-based)
+    '/checkin/access',     // Check-in access (token-based)
+    '/api/travel-agent',   // Travel agent APIs (used by agent portals)
+    '/abstract-reviewer',  // Abstract reviewer portal (token-based)
+    '/api/abstract-reviewer', // Abstract reviewer APIs
   ]
   const isPublicRoute = publicRoutes.some(
     (route) =>

@@ -24,8 +24,10 @@ import {
   Settings,
   Bell,
   Eye,
+  Link2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface AbstractSettings {
   event_id: string
@@ -146,23 +148,37 @@ export default function AbstractSettingsPage() {
             Configure deadlines, limits, and submission guidelines
           </p>
         </div>
-        <Button
-          onClick={() => saveMutation.mutate(formData)}
-          disabled={!hasChanges || saveMutation.isPending}
-          className="gap-2"
-        >
-          {saveMutation.isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4" />
-              Save Changes
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const url = `${window.location.origin}/abstract-reviewer/${eventId}`
+              navigator.clipboard.writeText(url)
+              toast.success("Reviewer link copied to clipboard!")
+            }}
+            className="gap-2"
+          >
+            <Link2 className="h-4 w-4" />
+            Copy Reviewer Link
+          </Button>
+          <Button
+            onClick={() => saveMutation.mutate(formData)}
+            disabled={!hasChanges || saveMutation.isPending}
+            className="gap-2"
+          >
+            {saveMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Success/Error Messages */}
