@@ -16,6 +16,10 @@
 # production
 /build
 
+# electron app builds
+print-station-app/dist/
+print-station-app/node_modules/
+
 # misc
 .DS_Store
 *.pem
