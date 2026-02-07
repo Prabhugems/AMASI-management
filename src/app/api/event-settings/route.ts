@@ -58,6 +58,8 @@ export async function GET(request: NextRequest) {
         // Registration control
         allow_duplicate_email: true, // Allow same email to register multiple times
         show_duplicate_warning: true, // Show warning when email already registered
+        // Module toggles
+        enable_abstracts: false,
       })
     }
 
@@ -94,6 +96,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Use admin client to bypass RLS for permission checks and saves
+    const adminClient: SupabaseClient = await createAdminClient()
+
     // Verify user has access to this event (is creator or team member)
     const { data: event, error: eventError } = await supabase
       .from("events")
@@ -111,29 +116,27 @@ export async function POST(request: NextRequest) {
     // Check if user is the event creator
     const isCreator = event.created_by === user.id
 
-    // Check if user is a team member for this event
+    // Check if user is a team member for this event (use admin client to bypass RLS)
     let isTeamMember = false
-    if (!isCreator) {
-      const { data: teamMembership } = await supabase
-        .from("team_members")
-        .select("id")
-        .eq("event_id", body.event_id)
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .maybeSingle()
+    const { data: teamMembership } = await adminClient
+      .from("team_members")
+      .select("id, role")
+      .eq("event_id", body.event_id)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle()
 
-      isTeamMember = !!teamMembership
-    }
+    isTeamMember = !!teamMembership
 
-    if (!isCreator && !isTeamMember) {
+    // Allow access if: user is creator, OR user is team member, OR event has no creator set (legacy events)
+    const hasAccess = isCreator || isTeamMember || event.created_by === null
+
+    if (!hasAccess) {
       return NextResponse.json(
         { error: "You don't have permission to modify this event's settings" },
         { status: 403 }
       )
     }
-
-    // Use admin client to bypass RLS
-    const adminClient: SupabaseClient = await createAdminClient()
 
     const payload: Record<string, any> = {
       event_id: body.event_id,
@@ -160,6 +163,8 @@ export async function POST(request: NextRequest) {
     // Registration control
     if (body.allow_duplicate_email !== undefined) payload.allow_duplicate_email = body.allow_duplicate_email
     if (body.show_duplicate_warning !== undefined) payload.show_duplicate_warning = body.show_duplicate_warning
+    // Module toggles
+    if (body.enable_abstracts !== undefined) payload.enable_abstracts = body.enable_abstracts
 
     const { data, error } = await adminClient
       .from("event_settings")
@@ -168,9 +173,9 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error("Error saving event settings:", error)
+      console.error("Error saving event settings:", error.message, error.details, error.hint)
       return NextResponse.json(
-        { error: "Failed to save settings" },
+        { error: "Failed to save settings", details: error.message },
         { status: 500 }
       )
     }

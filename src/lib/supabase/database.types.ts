@@ -797,6 +797,292 @@ export interface Database {
         }
       }
     }
+    abstract_categories: {
+      Row: {
+        id: string
+        event_id: string
+        name: string
+        description: string | null
+        max_submissions: number | null
+        sort_order: number
+        is_active: boolean
+        created_at: string
+        updated_at: string
+      }
+      Insert: {
+        id?: string
+        event_id: string
+        name: string
+        description?: string | null
+        max_submissions?: number | null
+        sort_order?: number
+        is_active?: boolean
+        created_at?: string
+        updated_at?: string
+      }
+      Update: {
+        id?: string
+        event_id?: string
+        name?: string
+        description?: string | null
+        max_submissions?: number | null
+        sort_order?: number
+        is_active?: boolean
+        created_at?: string
+        updated_at?: string
+      }
+    }
+    abstracts: {
+      Row: {
+        id: string
+        event_id: string
+        registration_id: string | null
+        category_id: string | null
+        abstract_number: string
+        title: string
+        abstract_text: string
+        keywords: string[] | null
+        presentation_type: string
+        presenting_author_name: string
+        presenting_author_email: string
+        presenting_author_affiliation: string | null
+        presenting_author_phone: string | null
+        status: string
+        decision_date: string | null
+        decision_notes: string | null
+        accepted_as: string | null
+        session_id: string | null
+        session_date: string | null
+        session_time: string | null
+        session_location: string | null
+        file_url: string | null
+        file_name: string | null
+        file_size: number | null
+        submitted_at: string
+        updated_at: string
+        created_at: string
+      }
+      Insert: {
+        id?: string
+        event_id: string
+        registration_id?: string | null
+        category_id?: string | null
+        abstract_number?: string
+        title: string
+        abstract_text: string
+        keywords?: string[] | null
+        presentation_type?: string
+        presenting_author_name: string
+        presenting_author_email: string
+        presenting_author_affiliation?: string | null
+        presenting_author_phone?: string | null
+        status?: string
+        decision_date?: string | null
+        decision_notes?: string | null
+        accepted_as?: string | null
+        session_id?: string | null
+        session_date?: string | null
+        session_time?: string | null
+        session_location?: string | null
+        file_url?: string | null
+        file_name?: string | null
+        file_size?: number | null
+        submitted_at?: string
+        updated_at?: string
+        created_at?: string
+      }
+      Update: {
+        id?: string
+        event_id?: string
+        registration_id?: string | null
+        category_id?: string | null
+        abstract_number?: string
+        title?: string
+        abstract_text?: string
+        keywords?: string[] | null
+        presentation_type?: string
+        presenting_author_name?: string
+        presenting_author_email?: string
+        presenting_author_affiliation?: string | null
+        presenting_author_phone?: string | null
+        status?: string
+        decision_date?: string | null
+        decision_notes?: string | null
+        accepted_as?: string | null
+        session_id?: string | null
+        session_date?: string | null
+        session_time?: string | null
+        session_location?: string | null
+        file_url?: string | null
+        file_name?: string | null
+        file_size?: number | null
+        submitted_at?: string
+        updated_at?: string
+        created_at?: string
+      }
+    }
+    abstract_authors: {
+      Row: {
+        id: string
+        abstract_id: string
+        author_order: number
+        name: string
+        email: string | null
+        affiliation: string | null
+        is_presenting: boolean
+        created_at: string
+      }
+      Insert: {
+        id?: string
+        abstract_id: string
+        author_order?: number
+        name: string
+        email?: string | null
+        affiliation?: string | null
+        is_presenting?: boolean
+        created_at?: string
+      }
+      Update: {
+        id?: string
+        abstract_id?: string
+        author_order?: number
+        name?: string
+        email?: string | null
+        affiliation?: string | null
+        is_presenting?: boolean
+        created_at?: string
+      }
+    }
+    abstract_reviews: {
+      Row: {
+        id: string
+        abstract_id: string
+        reviewer_id: string | null
+        reviewer_name: string | null
+        reviewer_email: string | null
+        score_originality: number | null
+        score_methodology: number | null
+        score_relevance: number | null
+        score_clarity: number | null
+        overall_score: number | null
+        recommendation: string | null
+        comments_to_author: string | null
+        comments_private: string | null
+        reviewed_at: string | null
+        created_at: string
+        updated_at: string
+      }
+      Insert: {
+        id?: string
+        abstract_id: string
+        reviewer_id?: string | null
+        reviewer_name?: string | null
+        reviewer_email?: string | null
+        score_originality?: number | null
+        score_methodology?: number | null
+        score_relevance?: number | null
+        score_clarity?: number | null
+        overall_score?: number | null
+        recommendation?: string | null
+        comments_to_author?: string | null
+        comments_private?: string | null
+        reviewed_at?: string | null
+        created_at?: string
+        updated_at?: string
+      }
+      Update: {
+        id?: string
+        abstract_id?: string
+        reviewer_id?: string | null
+        reviewer_name?: string | null
+        reviewer_email?: string | null
+        score_originality?: number | null
+        score_methodology?: number | null
+        score_relevance?: number | null
+        score_clarity?: number | null
+        overall_score?: number | null
+        recommendation?: string | null
+        comments_to_author?: string | null
+        comments_private?: string | null
+        reviewed_at?: string | null
+        created_at?: string
+        updated_at?: string
+      }
+    }
+    abstract_settings: {
+      Row: {
+        event_id: string
+        submission_opens_at: string | null
+        submission_deadline: string | null
+        revision_deadline: string | null
+        notification_date: string | null
+        max_submissions_per_person: number
+        max_authors: number
+        word_limit: number
+        require_registration: boolean
+        require_addon_id: string | null
+        allowed_file_types: string[]
+        max_file_size_mb: number
+        presentation_types: string[]
+        review_enabled: boolean
+        reviewers_per_abstract: number
+        blind_review: boolean
+        submission_guidelines: string | null
+        author_guidelines: string | null
+        notify_on_submission: boolean
+        notify_on_decision: boolean
+        created_at: string
+        updated_at: string
+      }
+      Insert: {
+        event_id: string
+        submission_opens_at?: string | null
+        submission_deadline?: string | null
+        revision_deadline?: string | null
+        notification_date?: string | null
+        max_submissions_per_person?: number
+        max_authors?: number
+        word_limit?: number
+        require_registration?: boolean
+        require_addon_id?: string | null
+        allowed_file_types?: string[]
+        max_file_size_mb?: number
+        presentation_types?: string[]
+        review_enabled?: boolean
+        reviewers_per_abstract?: number
+        blind_review?: boolean
+        submission_guidelines?: string | null
+        author_guidelines?: string | null
+        notify_on_submission?: boolean
+        notify_on_decision?: boolean
+        created_at?: string
+        updated_at?: string
+      }
+      Update: {
+        event_id?: string
+        submission_opens_at?: string | null
+        submission_deadline?: string | null
+        revision_deadline?: string | null
+        notification_date?: string | null
+        max_submissions_per_person?: number
+        max_authors?: number
+        word_limit?: number
+        require_registration?: boolean
+        require_addon_id?: string | null
+        allowed_file_types?: string[]
+        max_file_size_mb?: number
+        presentation_types?: string[]
+        review_enabled?: boolean
+        reviewers_per_abstract?: number
+        blind_review?: boolean
+        submission_guidelines?: string | null
+        author_guidelines?: string | null
+        notify_on_submission?: boolean
+        notify_on_decision?: boolean
+        created_at?: string
+        updated_at?: string
+      }
+    }
     Views: {
       [_ in never]: never
     }

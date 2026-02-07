@@ -161,16 +161,22 @@ export async function GET(request: NextRequest) {
         .from("payments")
         .select(`
           id,
+          payment_number,
           payer_name,
+          payer_email,
           amount,
+          net_amount,
           status,
           payment_method,
+          razorpay_order_id,
+          razorpay_payment_id,
           created_at,
           event_id,
+          metadata,
           events (name, short_name)
         `)
         .ilike("payer_email", query)
-        .eq("status", "pending")
+        .in("status", ["pending", "failed"])
         .order("created_at", { ascending: false })
 
       pendingPayments = payments || []

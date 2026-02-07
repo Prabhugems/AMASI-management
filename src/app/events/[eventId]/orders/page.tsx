@@ -30,6 +30,11 @@ import {
   AlertTriangle,
   Package,
   HelpCircle,
+  ShieldCheck,
+  Loader2,
+  CheckCircle,
+  Info,
+  ExternalLink,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -48,6 +53,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { SlideOver, SlideOverSection, SlideOverFooter } from "@/components/ui/slide-over"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
 interface OrderAddon {
@@ -107,6 +119,13 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null)
 
+  // Payment verification
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false)
+  const [verifyOrder, setVerifyOrder] = useState<Order | null>(null)
+  const [verifyPaymentId, setVerifyPaymentId] = useState("")
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [verifyResult, setVerifyResult] = useState<any>(null)
+
   // Delete order function - uses API to bypass RLS
   const handleDeleteOrder = async (orderId: string, e?: React.MouseEvent) => {
     e?.stopPropagation()
@@ -137,6 +156,50 @@ export default function OrdersPage() {
       toast.error(error.message || "Failed to delete order")
     } finally {
       setDeletingOrderId(null)
+    }
+  }
+
+  // Open verify dialog
+  const openVerifyDialog = (order: Order, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setVerifyOrder(order)
+    setVerifyPaymentId(order.razorpay_payment_id || "")
+    setVerifyResult(null)
+    setVerifyDialogOpen(true)
+  }
+
+  // Verify payment with Razorpay
+  const handleVerifyPayment = async () => {
+    if (!verifyOrder) return
+
+    setIsVerifying(true)
+    setVerifyResult(null)
+    try {
+      const res = await fetch(`/api/payments/${verifyOrder.id}/verify-manual`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          razorpay_payment_id: verifyPaymentId.trim() || undefined,
+        }),
+      })
+
+      const result = await res.json()
+      setVerifyResult(result)
+
+      if (result.verified) {
+        toast.success("Payment verified and marked as completed!")
+        refetch()
+      } else if (result.status === "already_completed") {
+        toast.info("Payment is already completed")
+      } else if (result.status === "not_found_on_gateway") {
+        toast.error("Payment not found on Razorpay")
+      } else {
+        toast.warning(result.message || "Verification completed")
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Verification failed")
+    } finally {
+      setIsVerifying(false)
     }
   }
 
@@ -500,6 +563,12 @@ export default function OrdersPage() {
                           <Download className="w-4 h-4 mr-2" />
                           Download Invoice
                         </DropdownMenuItem>
+                        {(order.status === "failed" || order.status === "pending") && (
+                          <DropdownMenuItem onClick={(e) => openVerifyDialog(order, e)}>
+                            <ShieldCheck className="w-4 h-4 mr-2" />
+                            Verify Payment
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={(e) => handleDeleteOrder(order.id, e)}
                           className="text-destructive focus:text-destructive"
@@ -720,6 +789,20 @@ export default function OrdersPage() {
 
             {/* Actions */}
             <SlideOverFooter>
+              {(selectedOrder?.status === "failed" || selectedOrder?.status === "pending") && (
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    if (selectedOrder) {
+                      setSelectedOrder(null)
+                      openVerifyDialog(selectedOrder)
+                    }
+                  }}
+                >
+                  <ShieldCheck className="w-4 h-4 mr-2" />
+                  Verify Payment
+                </Button>
+              )}
               <Button variant="outline" className="flex-1">
                 <Send className="w-4 h-4 mr-2" />
                 Send Receipt
@@ -740,6 +823,174 @@ export default function OrdersPage() {
           </div>
         )}
       </SlideOver>
+
+      {/* Payment Verify Dialog */}
+      <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              Verify Payment
+            </DialogTitle>
+          </DialogHeader>
+
+          {verifyOrder && (
+            <div className="space-y-4">
+              {/* Order Info */}
+              <div className="bg-muted rounded-lg p-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Order</span>
+                  <span className="font-medium">{verifyOrder.payment_number}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Customer</span>
+                  <span>{verifyOrder.payer_name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Email</span>
+                  <span>{verifyOrder.payer_email}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Amount</span>
+                  <span className="font-medium">₹{verifyOrder.net_amount?.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Status</span>
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-full text-xs font-medium",
+                    statusConfig[verifyOrder.status]?.color
+                  )}>
+                    {statusConfig[verifyOrder.status]?.label || verifyOrder.status}
+                  </span>
+                </div>
+                {verifyOrder.razorpay_order_id && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Razorpay Order</span>
+                    <span className="font-mono text-xs">{verifyOrder.razorpay_order_id}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment ID Input */}
+              <div>
+                <label className="block text-sm font-medium mb-1.5">
+                  Razorpay Payment ID
+                </label>
+                <Input
+                  value={verifyPaymentId}
+                  onChange={(e) => setVerifyPaymentId(e.target.value)}
+                  placeholder="pay_XXXXXXXXXXXXXX"
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {verifyOrder.razorpay_payment_id
+                    ? "Auto-filled from our records. You can change it if needed."
+                    : "Enter the Razorpay Payment ID from the dashboard or customer."}
+                </p>
+              </div>
+
+              {/* Verification Result */}
+              {verifyResult && (
+                <div className={cn(
+                  "rounded-lg p-3 space-y-2",
+                  verifyResult.verified ? "bg-emerald-50 border border-emerald-200" :
+                  verifyResult.status === "already_completed" ? "bg-blue-50 border border-blue-200" :
+                  "bg-red-50 border border-red-200"
+                )}>
+                  <div className="flex items-start gap-2">
+                    {verifyResult.verified ? (
+                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                    ) : verifyResult.status === "already_completed" ? (
+                      <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={cn(
+                        "text-sm font-medium",
+                        verifyResult.verified ? "text-emerald-700" :
+                        verifyResult.status === "already_completed" ? "text-blue-700" :
+                        "text-red-700"
+                      )}>
+                        {verifyResult.message}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Gateway Details */}
+                  {verifyResult.razorpay_payment_id && (
+                    <div className="mt-2 pt-2 border-t border-current/10 space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Gateway Status</span>
+                        <span className={cn(
+                          "font-medium",
+                          verifyResult.status === "captured" ? "text-emerald-600" :
+                          verifyResult.status === "failed" ? "text-red-600" :
+                          "text-amber-600"
+                        )}>
+                          {verifyResult.status}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Gateway Amount</span>
+                        <span>₹{verifyResult.amount?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Payment Method</span>
+                        <span>{verifyResult.method || "--"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Payment ID</span>
+                        <span className="font-mono">{verifyResult.razorpay_payment_id}</span>
+                      </div>
+                      {verifyResult.email && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Payer Email</span>
+                          <span>{verifyResult.email}</span>
+                        </div>
+                      )}
+                      {verifyResult.amount_mismatch && (
+                        <div className="mt-1 p-2 bg-amber-100 rounded text-amber-700 font-medium">
+                          {verifyResult.warning}
+                        </div>
+                      )}
+                      {verifyResult.registrations_confirmed && (
+                        <div className="mt-1 text-emerald-600 font-medium">
+                          {verifyResult.registrations_confirmed} registration(s) confirmed
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVerifyDialogOpen(false)}>
+              {verifyResult ? "Close" : "Cancel"}
+            </Button>
+            {(!verifyResult || !verifyResult.verified) && verifyResult?.status !== "already_completed" && (
+              <Button
+                onClick={handleVerifyPayment}
+                disabled={isVerifying}
+              >
+                {isVerifying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4 mr-2" />
+                    Verify with Razorpay
+                  </>
+                )}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

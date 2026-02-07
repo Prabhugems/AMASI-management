@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import { useParams } from "next/navigation"
+import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,8 @@ import {
   IndianRupee,
   TrendingUp,
   ShoppingCart,
+  Users,
+  ChevronRight,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -34,8 +37,9 @@ export default function AddonReportsPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("addons")
-        .select("id, name, price, quantity_total, is_course, status")
+        .select("id, name, price, is_course, is_active")
         .eq("event_id", eventId)
+        .order("sort_order", { ascending: true })
 
       return data || []
     },
@@ -104,7 +108,7 @@ export default function AddonReportsPage() {
         a.price || 0,
         addonSales.quantity,
         addonSales.revenue,
-        a.status || "active",
+        a.is_active !== false ? "Active" : "Inactive",
       ]
     })
 
@@ -190,14 +194,22 @@ export default function AddonReportsPage() {
               <TableHead className="text-right">Sold</TableHead>
               <TableHead className="text-right">Revenue</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="text-right">Purchasers</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {addons?.map((addon: any) => {
               const addonSales = stats?.salesByAddon[addon.id] || { quantity: 0, revenue: 0 }
               return (
-                <TableRow key={addon.id}>
-                  <TableCell className="font-medium">{addon.name}</TableCell>
+                <TableRow key={addon.id} className="hover:bg-muted/50">
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/events/${eventId}/addons/${addon.id}/participants`}
+                      className="text-primary hover:underline"
+                    >
+                      {addon.name}
+                    </Link>
+                  </TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       addon.is_course ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
@@ -210,17 +222,26 @@ export default function AddonReportsPage() {
                   <TableCell className="text-right">₹{addonSales.revenue.toLocaleString()}</TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 rounded-full text-xs ${
-                      addon.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                      addon.is_active !== false ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
                     }`}>
-                      {addon.status || "active"}
+                      {addon.is_active !== false ? "Active" : "Inactive"}
                     </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Link href={`/events/${eventId}/addons/${addon.id}/participants`}>
+                      <Button variant="ghost" size="sm" className="gap-1">
+                        <Users className="h-4 w-4" />
+                        View
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
                   </TableCell>
                 </TableRow>
               )
             })}
             {(!addons || addons.length === 0) && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   No addons found
                 </TableCell>
               </TableRow>

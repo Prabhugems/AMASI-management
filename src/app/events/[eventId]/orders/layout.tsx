@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
   BarChart3,
+  BookOpen,
   ChevronLeft,
   ShoppingCart,
 } from "lucide-react"
@@ -13,6 +14,7 @@ import {
 const sidebarItems = [
   { title: "All Orders", href: "", icon: LayoutDashboard },
   { title: "Reports", href: "/reports", icon: BarChart3 },
+  { title: "Orders & Payments Guide", href: "/instructions", icon: BookOpen },
 ]
 
 export default function OrdersLayout({ children }: { children: React.ReactNode }) {

@@ -50,6 +50,16 @@ export async function POST(request: NextRequest) {
         .eq("event_id", event_id)
     }
 
+    // Ensure template_data is properly formatted as an object
+    const templateDataToSave = typeof template_data === "string"
+      ? JSON.parse(template_data)
+      : (template_data || { backgroundColor: "#ffffff", elements: [] })
+
+    console.log("Saving template_data:", {
+      received_type: typeof template_data,
+      elements_count: templateDataToSave.elements?.length || 0,
+    })
+
     const { data, error } = await (supabase as any)
       .from("badge_templates")
       .insert({
@@ -58,7 +68,7 @@ export async function POST(request: NextRequest) {
         description: description || null,
         size: size || "4x3",
         template_image_url: template_image_url || null,
-        template_data: template_data || {},
+        template_data: templateDataToSave,
         ticket_type_ids: ticket_type_ids || null,
         is_default: is_default || false,
       })
@@ -122,7 +132,16 @@ export async function PUT(request: NextRequest) {
     if (description !== undefined) updateData.description = description
     if (size !== undefined) updateData.size = size
     if (template_image_url !== undefined) updateData.template_image_url = template_image_url
-    if (template_data !== undefined) updateData.template_data = template_data
+    if (template_data !== undefined) {
+      // Ensure template_data is properly formatted as an object
+      updateData.template_data = typeof template_data === "string"
+        ? JSON.parse(template_data)
+        : template_data
+      console.log("Updating template_data:", {
+        received_type: typeof template_data,
+        elements_count: updateData.template_data.elements?.length || 0,
+      })
+    }
     if (ticket_type_ids !== undefined) updateData.ticket_type_ids = ticket_type_ids
     if (is_default !== undefined) updateData.is_default = is_default
 

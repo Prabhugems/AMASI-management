@@ -31,6 +31,7 @@ import {
   Activity,
   Pin,
   PinOff,
+  BookOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +43,7 @@ type NavItem = {
   href: string
   icon: LucideIcon
   statusKey?: string // Key to check in setupStatus
+  moduleKey?: string // Key to check in moduleSettings for conditional display
 }
 
 type EventData = {
@@ -61,6 +63,11 @@ type SetupStatus = {
   badges: boolean // true = has default badge template
   certificates: boolean // true = has certificate template
   communications: boolean // true = has message templates
+  abstracts: boolean // true = has abstract categories configured
+}
+
+type ModuleSettings = {
+  enable_abstracts: boolean
 }
 
 const navItems: NavItem[] = [
@@ -70,6 +77,7 @@ const navItems: NavItem[] = [
   { label: "Orders", href: "/orders", icon: ShoppingCart },
   { label: "Attendees", href: "/registrations", icon: UserCheck },
   { label: "Forms", href: "/forms", icon: FileText },
+  { label: "Abstracts", href: "/abstracts", icon: BookOpen, statusKey: "abstracts", moduleKey: "enable_abstracts" },
   { label: "Speakers", href: "/speakers", icon: Mic },
   { label: "Program", href: "/program", icon: Calendar },
   { label: "Checkin Hub", href: "/checkin", icon: QrCode },
@@ -140,6 +148,7 @@ export function EventSidebar() {
         badgeTemplatesResult,
         certificateTemplatesResult,
         messageTemplatesResult,
+        abstractCategoriesResult,
       ] = await Promise.all([
         // Check for active (on sale) tickets
         supabase
@@ -163,6 +172,12 @@ export function EventSidebar() {
           .from("message_templates")
           .select("*", { count: "exact", head: true })
           .eq("event_id", eventId),
+        // Check for abstract categories
+        supabase
+          .from("abstract_categories")
+          .select("*", { count: "exact", head: true })
+          .eq("event_id", eventId)
+          .eq("is_active", true),
       ])
 
       return {
@@ -170,6 +185,7 @@ export function EventSidebar() {
         badges: (badgeTemplatesResult.count || 0) > 0,
         certificates: (certificateTemplatesResult.count || 0) > 0,
         communications: (messageTemplatesResult.count || 0) > 0,
+        abstracts: (abstractCategoriesResult.count || 0) > 0,
       }
     },
     enabled: !!eventId,
@@ -177,11 +193,41 @@ export function EventSidebar() {
     refetchOnWindowFocus: true,
   })
 
+  // Fetch module settings for conditional nav display
+  const { data: moduleSettings, refetch: refetchModules } = useQuery({
+    queryKey: ["event-module-settings", eventId],
+    queryFn: async (): Promise<ModuleSettings> => {
+      const { data } = await supabase
+        .from("event_settings")
+        .select("enable_abstracts")
+        .eq("event_id", eventId)
+        .single()
+
+      const settings = data as { enable_abstracts?: boolean } | null
+      return {
+        enable_abstracts: settings?.enable_abstracts ?? false,
+      }
+    },
+    enabled: !!eventId,
+    staleTime: 30000,
+    refetchOnWindowFocus: true,
+  })
+
   useEffect(() => {
-    const handleEventUpdate = () => refetch()
+    const handleEventUpdate = () => {
+      refetch()
+      refetchModules()
+    }
     window.addEventListener("event-settings-saved", handleEventUpdate)
     return () => window.removeEventListener("event-settings-saved", handleEventUpdate)
-  }, [refetch])
+  }, [refetch, refetchModules])
+
+  // Filter nav items based on module settings
+  const visibleNavItems = navItems.filter((item) => {
+    if (!item.moduleKey) return true
+    if (!moduleSettings) return false
+    return moduleSettings[item.moduleKey as keyof ModuleSettings] === true
+  })
 
   const basePath = `/events/${eventId}`
   const isExpanded = isHovered || isPinned
@@ -315,7 +361,7 @@ export function EventSidebar() {
         "flex-1 py-3 space-y-0.5 overflow-y-auto scrollbar-thin transition-all duration-300",
         isExpanded ? "px-3" : "px-2"
       )}>
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive = isItemActive(item)
           const href = `${basePath}${item.href}`
           // Check if this item needs attention (has statusKey and status is false)

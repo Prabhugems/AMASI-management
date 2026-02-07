@@ -779,3 +779,131 @@ export interface FieldPaletteItem {
   category: "basic" | "choice" | "advanced" | "layout"
   defaultSettings?: Partial<FormField>
 }
+
+// =====================================================
+// ABSTRACT MANAGEMENT TYPES
+// =====================================================
+
+export type AbstractStatus = 'submitted' | 'under_review' | 'revision_requested' | 'accepted' | 'rejected' | 'withdrawn'
+export type PresentationType = 'oral' | 'poster' | 'video' | 'either'
+export type ReviewRecommendation = 'accept' | 'reject' | 'revise' | 'undecided'
+
+export interface Abstract {
+  id: string
+  event_id: string
+  registration_id: string | null
+  category_id: string | null
+  abstract_number: string
+  title: string
+  abstract_text: string
+  keywords: string[] | null
+  presentation_type: PresentationType
+  presenting_author_name: string
+  presenting_author_email: string
+  presenting_author_affiliation: string | null
+  presenting_author_phone: string | null
+  status: AbstractStatus
+  decision_date: string | null
+  decision_notes: string | null
+  accepted_as: string | null
+  session_id: string | null
+  session_date: string | null
+  session_time: string | null
+  session_location: string | null
+  file_url: string | null
+  file_name: string | null
+  file_size: number | null
+  submitted_at: string
+  updated_at: string
+  created_at: string
+  // Relations
+  category?: AbstractCategory
+  authors?: AbstractAuthor[]
+  reviews?: AbstractReview[]
+}
+
+export interface AbstractAuthor {
+  id: string
+  abstract_id: string
+  author_order: number
+  name: string
+  email: string | null
+  affiliation: string | null
+  is_presenting: boolean
+  created_at: string
+}
+
+export interface AbstractReview {
+  id: string
+  abstract_id: string
+  reviewer_id: string | null
+  reviewer_name: string | null
+  reviewer_email: string | null
+  score_originality: number | null
+  score_methodology: number | null
+  score_relevance: number | null
+  score_clarity: number | null
+  overall_score: number | null
+  recommendation: ReviewRecommendation | null
+  comments_to_author: string | null
+  comments_private: string | null
+  reviewed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AbstractSettings {
+  event_id: string
+  submission_opens_at: string | null
+  submission_deadline: string | null
+  revision_deadline: string | null
+  notification_date: string | null
+  max_submissions_per_person: number
+  max_authors: number
+  word_limit: number
+  require_registration: boolean
+  require_addon_id: string | null
+  allowed_file_types: string[]
+  max_file_size_mb: number
+  presentation_types: string[]
+  review_enabled: boolean
+  reviewers_per_abstract: number
+  blind_review: boolean
+  submission_guidelines: string | null
+  author_guidelines: string | null
+  notify_on_submission: boolean
+  notify_on_decision: boolean
+}
+
+export interface AbstractCategory {
+  id: string
+  event_id: string
+  name: string
+  description: string | null
+  max_submissions: number | null
+  sort_order: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface AbstractFilters {
+  event_id: string
+  status?: AbstractStatus
+  category_id?: string
+  presentation_type?: PresentationType
+  search?: string
+  email?: string
+}
+
+export interface AbstractStats {
+  total: number
+  submitted: number
+  under_review: number
+  revision_requested: number
+  accepted: number
+  rejected: number
+  withdrawn: number
+  average_score: number | null
+  with_reviews: number
+}

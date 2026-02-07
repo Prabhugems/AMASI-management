@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Script from "next/script"
 import {
   Search,
@@ -28,6 +28,9 @@ import {
   ShoppingCart,
   CreditCard,
   AlertCircle,
+  ShieldCheck,
+  XCircle,
+  BookOpen,
 } from "lucide-react"
 
 interface RegistrationAddon {
@@ -113,6 +116,52 @@ export default function DelegatePortalPage() {
   const [downloadingCert, setDownloadingCert] = useState(false)
   const [downloadingReceipt, setDownloadingReceipt] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
+
+  // Payment verification
+  const [showVerifyForm, setShowVerifyForm] = useState(false)
+  const [verifyRpId, setVerifyRpId] = useState("")
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [verifyResult, setVerifyResult] = useState<{ status: string; message: string } | null>(null)
+
+  const handleVerifyPayment = async () => {
+    if (!verifyRpId.trim() && pendingPayments.length === 0) return
+
+    setIsVerifying(true)
+    setVerifyResult(null)
+    try {
+      const res = await fetch("/api/payments/verify-public", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          razorpay_payment_id: verifyRpId.trim() || undefined,
+          payment_id: pendingPayments.length > 0 ? pendingPayments[0].id : undefined,
+          email: searchQuery.trim().toLowerCase(),
+        }),
+      })
+
+      const result = await res.json()
+      setVerifyResult(result)
+
+      if (result.status === "verified") {
+        // Payment was recovered! Refresh the page after a short delay
+        setTimeout(() => {
+          setShowVerifyForm(false)
+          setVerifyResult(null)
+          setVerifyRpId("")
+          // Re-trigger search to show updated registration
+          const form = document.querySelector("form")
+          if (form) form.requestSubmit()
+        }, 3000)
+      }
+    } catch (error: any) {
+      setVerifyResult({
+        status: "error",
+        message: "Verification failed. Please try again.",
+      })
+    } finally {
+      setIsVerifying(false)
+    }
+  }
 
   const handleRetryPayment = async (reg: Registration) => {
     if (!reg.total_amount || reg.total_amount <= 0) return
@@ -386,7 +435,7 @@ export default function DelegatePortalPage() {
 
             {/* Show pending payments if registration not found */}
             {pendingPayments.length > 0 && (
-              <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                 <div className="flex items-center gap-2 text-amber-700 font-medium mb-2">
                   <Clock className="w-4 h-4" />
                   Payment Pending
@@ -395,19 +444,114 @@ export default function DelegatePortalPage() {
                   We found {pendingPayments.length} incomplete payment(s). Your payment may not have completed successfully.
                 </p>
                 {pendingPayments.map((p) => (
-                  <div key={p.id} className="text-xs bg-white p-2 rounded border border-amber-100 mb-2">
+                  <div key={p.id} className="text-xs bg-white p-3 rounded-lg border border-amber-100 mb-2">
                     <div className="flex justify-between">
                       <span className="text-gray-600">{p.events?.name || "Event"}</span>
-                      <span className="font-medium">Rs.{p.amount.toLocaleString("en-IN")}</span>
+                      <span className="font-medium">₹{p.amount.toLocaleString("en-IN")}</span>
                     </div>
-                    <div className="text-gray-500 mt-1">
-                      {new Date(p.created_at).toLocaleDateString("en-IN")} - {p.payment_number}
+                    <div className="flex justify-between mt-1">
+                      <span className="text-gray-500">
+                        {new Date(p.created_at).toLocaleDateString("en-IN")}
+                      </span>
+                      <span className="text-gray-500">{p.payment_number}</span>
+                    </div>
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                        <XCircle className="w-3 h-3" />
+                        {p.status === "failed" ? "Failed" : "Pending"}
+                      </span>
                     </div>
                   </div>
                 ))}
-                <p className="text-xs text-amber-600 mt-2">
-                  If amount was deducted, please contact support with payment details.
-                </p>
+
+                {/* Verify Payment Section */}
+                {!showVerifyForm ? (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs text-amber-600">
+                      If money was deducted from your account, you can verify your payment:
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowVerifyForm(true)}
+                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      Verify My Payment
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-3 p-3 bg-white rounded-lg border border-amber-200 space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Razorpay Payment ID
+                      </label>
+                      <input
+                        type="text"
+                        value={verifyRpId}
+                        onChange={(e) => setVerifyRpId(e.target.value)}
+                        placeholder="pay_XXXXXXXXXXXXXX"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Check your UPI app, bank SMS, or email for this ID. Leave blank to auto-check.
+                      </p>
+                    </div>
+
+                    {/* Verify Result */}
+                    {verifyResult && (
+                      <div className={`p-3 rounded-lg text-sm ${
+                        verifyResult.status === "verified"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : verifyResult.status === "already_completed"
+                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                          : "bg-red-50 text-red-700 border border-red-200"
+                      }`}>
+                        <div className="flex items-start gap-2">
+                          {verifyResult.status === "verified" ? (
+                            <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                          ) : verifyResult.status === "already_completed" ? (
+                            <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                          )}
+                          <p>{verifyResult.message}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowVerifyForm(false)
+                          setVerifyResult(null)
+                          setVerifyRpId("")
+                        }}
+                        className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleVerifyPayment}
+                        disabled={isVerifying}
+                        className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {isVerifying ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Checking...
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="w-4 h-4" />
+                            Submit
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -509,6 +653,35 @@ export default function DelegatePortalPage() {
               </button>
             ))}
           </div>
+
+          {/* Pending Payments */}
+          {pendingPayments.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-4">
+              <div className="flex items-center gap-2 text-amber-700 font-medium mb-2">
+                <Clock className="w-4 h-4" />
+                {pendingPayments.length} Pending Payment{pendingPayments.length > 1 ? "s" : ""}
+              </div>
+              <p className="text-xs text-amber-600 mb-3">
+                These payments were not completed. Select a registration above to verify.
+              </p>
+              {pendingPayments.map((p) => (
+                <div key={p.id} className="text-xs bg-white p-3 rounded-lg border border-amber-100 mb-2 last:mb-0">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">{p.events?.name || "Event"}</span>
+                    <span className="font-medium">Rs.{p.amount.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-gray-500 font-mono">{p.payment_number}</span>
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-medium ${
+                      p.status === "failed" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                    }`}>
+                      {p.status === "failed" ? "Failed" : "Pending"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     )
@@ -786,6 +959,13 @@ export default function DelegatePortalPage() {
           </div>
         </div>
 
+        {/* Abstract Submissions Section */}
+        <AbstractSubmissions
+          eventId={event?.id}
+          email={registration.attendee_email}
+          registrationNumber={registration.registration_number}
+        />
+
         {/* Download Buttons */}
         <div className="grid grid-cols-3 gap-3">
           {/* Badge Download */}
@@ -848,6 +1028,129 @@ export default function DelegatePortalPage() {
           </button>
         </div>
 
+        {/* Pending Payments Section */}
+        {pendingPayments.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-xl p-6">
+            <div className="flex items-center gap-2 text-amber-700 font-semibold mb-3">
+              <Clock className="w-5 h-5" />
+              Pending Payments ({pendingPayments.length})
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              These payments were not completed. If money was deducted, you can verify below.
+            </p>
+            <div className="space-y-3">
+              {pendingPayments.map((p) => (
+                <div key={p.id} className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{p.events?.name || "Event Payment"}</p>
+                      <p className="text-xs text-gray-500 font-mono mt-0.5">{p.payment_number}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">Rs.{p.amount.toLocaleString("en-IN")}</p>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
+                        p.status === "failed" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                      }`}>
+                        <XCircle className="w-3 h-3" />
+                        {p.status === "failed" ? "Failed" : "Pending"}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {new Date(p.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Verify Payment */}
+            {!showVerifyForm ? (
+              <div className="mt-4">
+                <p className="text-xs text-amber-600 mb-2">
+                  If money was deducted from your account, you can verify your payment:
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowVerifyForm(true)}
+                  className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Verify My Payment
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 p-3 bg-white rounded-lg border border-amber-200 space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Razorpay Payment ID
+                  </label>
+                  <input
+                    type="text"
+                    value={verifyRpId}
+                    onChange={(e) => setVerifyRpId(e.target.value)}
+                    placeholder="pay_XXXXXXXXXXXXXX"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Check your UPI app, bank SMS, or email for this ID. Leave blank to auto-check.
+                  </p>
+                </div>
+
+                {verifyResult && (
+                  <div className={`p-3 rounded-lg text-sm ${
+                    verifyResult.status === "verified"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      : verifyResult.status === "already_completed"
+                      ? "bg-blue-50 text-blue-700 border border-blue-200"
+                      : "bg-red-50 text-red-700 border border-red-200"
+                  }`}>
+                    <div className="flex items-start gap-2">
+                      {verifyResult.status === "verified" || verifyResult.status === "already_completed" ? (
+                        <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      )}
+                      <p>{verifyResult.message}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowVerifyForm(false)
+                      setVerifyResult(null)
+                      setVerifyRpId("")
+                    }}
+                    className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleVerifyPayment}
+                    disabled={isVerifying}
+                    className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isVerifying ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Checking...
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        Submit
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Program Schedule Link */}
         {event && (
           <a
@@ -876,6 +1179,204 @@ export default function DelegatePortalPage() {
           <p>Print your badge and bring it to the event venue.</p>
           <p className="mt-1">Certificates are available after event completion.</p>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Abstract Submissions Component
+function AbstractSubmissions({
+  eventId,
+  email,
+  registrationNumber,
+}: {
+  eventId?: string
+  email: string
+  registrationNumber: string
+}) {
+  const [abstracts, setAbstracts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [settings, setSettings] = useState<any>(null)
+  const [abstractSettings, setAbstractSettings] = useState<any>(null)
+
+  useEffect(() => {
+    if (!eventId) return
+
+    const fetchData = async () => {
+      try {
+        // Check if abstracts are enabled
+        const settingsRes = await fetch(`/api/event-settings?event_id=${eventId}`)
+        const settingsData = await settingsRes.json()
+        setSettings(settingsData)
+
+        if (!settingsData?.enable_abstracts) {
+          setLoading(false)
+          return
+        }
+
+        // Fetch abstract settings for deadline
+        const absSettingsRes = await fetch(`/api/abstract-settings/${eventId}`)
+        const absSettingsData = await absSettingsRes.json()
+        setAbstractSettings(absSettingsData)
+
+        // Fetch user's abstracts
+        const abstractsRes = await fetch(
+          `/api/abstracts?event_id=${eventId}&email=${encodeURIComponent(email.toLowerCase())}`
+        )
+        const abstractsData = await abstractsRes.json()
+        setAbstracts(abstractsData || [])
+      } catch (error) {
+        console.error("Failed to fetch abstracts:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [eventId, email])
+
+  if (loading) {
+    return null
+  }
+
+  if (!settings?.enable_abstracts) {
+    return null
+  }
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
+  }
+
+  const statusColors: Record<string, { bg: string; text: string }> = {
+    submitted: { bg: "bg-blue-100", text: "text-blue-700" },
+    under_review: { bg: "bg-yellow-100", text: "text-yellow-700" },
+    revision_requested: { bg: "bg-orange-100", text: "text-orange-700" },
+    accepted: { bg: "bg-green-100", text: "text-green-700" },
+    rejected: { bg: "bg-red-100", text: "text-red-700" },
+    withdrawn: { bg: "bg-gray-100", text: "text-gray-600" },
+  }
+
+  const maxSubmissions = abstractSettings?.max_submissions_per_person || 3
+  const canSubmitMore = abstracts.filter((a) => a.status !== "withdrawn").length < maxSubmissions
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+            <BookOpen className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">Abstract Submissions</h3>
+            {abstractSettings?.submission_deadline && (
+              <p className="text-xs text-gray-500">
+                Deadline: {formatDate(abstractSettings.submission_deadline)}
+              </p>
+            )}
+          </div>
+        </div>
+        {canSubmitMore && (
+          <a
+            href={`/events/${eventId}/submit-abstract`}
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Submit New
+          </a>
+        )}
+      </div>
+
+      {abstracts.length > 0 ? (
+        <div className="space-y-3">
+          {abstracts.map((abstract) => {
+            const status = statusColors[abstract.status] || statusColors.submitted
+            return (
+              <div
+                key={abstract.id}
+                className="p-4 bg-gray-50 rounded-xl border border-gray-100"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-xs text-emerald-600">
+                        {abstract.abstract_number}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 text-xs font-medium rounded-full capitalize ${status.bg} ${status.text}`}
+                      >
+                        {abstract.status.replace("_", " ")}
+                      </span>
+                      {abstract.accepted_as && (
+                        <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 capitalize">
+                          {abstract.accepted_as}
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-medium text-gray-900 line-clamp-2">
+                      {abstract.title}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {abstract.category?.name || "No category"} • Submitted{" "}
+                      {formatDate(abstract.submitted_at)}
+                    </p>
+                  </div>
+                </div>
+
+                {abstract.status === "revision_requested" && abstract.decision_notes && (
+                  <div className="mt-3 p-3 bg-orange-50 rounded-lg border border-orange-100">
+                    <p className="text-xs font-medium text-orange-700 mb-1">Revision Requested:</p>
+                    <p className="text-sm text-orange-600">{abstract.decision_notes}</p>
+                  </div>
+                )}
+
+                {abstract.status === "accepted" && (abstract.session_date || abstract.session_location) && (
+                  <div className="mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                    <p className="text-xs font-medium text-emerald-700 mb-1">Presentation Details:</p>
+                    <div className="text-sm text-emerald-600">
+                      {abstract.session_date && (
+                        <p className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {formatDate(abstract.session_date)}
+                          {abstract.session_time && ` at ${abstract.session_time}`}
+                        </p>
+                      )}
+                      {abstract.session_location && (
+                        <p className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {abstract.session_location}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-6">
+          <BookOpen className="w-10 h-10 mx-auto text-gray-300 mb-2" />
+          <p className="text-sm text-gray-500 mb-3">No abstracts submitted yet</p>
+          {canSubmitMore && (
+            <a
+              href={`/events/${eventId}/submit-abstract`}
+              className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Submit Your First Abstract
+            </a>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4 pt-3 border-t border-gray-100 text-center">
+        <p className="text-xs text-gray-500">
+          {abstracts.filter((a) => a.status !== "withdrawn").length} of {maxSubmissions} submissions used
+        </p>
       </div>
     </div>
   )

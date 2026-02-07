@@ -90,6 +90,7 @@ import {
   Wand2,
   CheckCircle,
   Package,
+  AlertTriangle,
 } from "lucide-react"
 import JsBarcode from "jsbarcode"
 import { cn } from "@/lib/utils"
@@ -1177,12 +1178,21 @@ export default function BadgeDesignerPage() {
     if (templateIdFromUrl && savedTemplates && !templateLoaded) {
       const templateToLoad = savedTemplates.find((t: any) => t.id === templateIdFromUrl)
       if (templateToLoad) {
-        const data = templateToLoad.template_data || {}
+        // Parse template_data if it's a string (can happen with JSONB columns)
+        let data = templateToLoad.template_data || {}
+        if (typeof data === "string") {
+          try {
+            data = JSON.parse(data)
+          } catch (e) {
+            console.error("Failed to parse template_data:", e)
+            data = {}
+          }
+        }
         // Debug logging for auto-load
         console.log("Auto-loading template from URL:", {
           id: templateToLoad.id,
           name: templateToLoad.name,
-          template_data: templateToLoad.template_data,
+          template_data: data,
           template_data_type: typeof templateToLoad.template_data,
           elements: data.elements,
           elements_count: data.elements?.length || 0,
@@ -1199,7 +1209,13 @@ export default function BadgeDesignerPage() {
         setHasUnsavedChanges(false)
         setSelectedTicketTypes(templateToLoad.ticket_type_ids || [])
         setTemplateLoaded(true)
-        toast.success(`Auto-loaded: ${templateToLoad.name} (${data.elements?.length || 0} elements)`)
+
+        // Show appropriate message based on elements
+        if (!data.elements || data.elements.length === 0) {
+          toast.warning(`Template "${templateToLoad.name}" has no design elements. The design was not saved properly. Please add elements and save.`, { duration: 6000 })
+        } else {
+          toast.success(`Loaded: ${templateToLoad.name} (${data.elements.length} elements)`)
+        }
       }
     }
   }, [templateIdFromUrl, savedTemplates, templateLoaded])
@@ -1236,8 +1252,7 @@ export default function BadgeDesignerPage() {
         .from("registrations")
         .select(`id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_institution, attendee_designation, ticket_type_id, ticket_types (name), registration_addons (addon_id, addons (name))`)
         .eq("event_id", eventId)
-        .order("registration_number", { ascending: true })
-        .limit(100)
+        .order("created_at", { ascending: false })
       return data || []
     },
   })
@@ -1685,12 +1700,21 @@ export default function BadgeDesignerPage() {
   }
 
   const loadTemplate = (t: any) => {
-    const data = t.template_data || {}
+    // Parse template_data if it's a string (can happen with JSONB columns)
+    let data = t.template_data || {}
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(data)
+      } catch (e) {
+        console.error("Failed to parse template_data:", e)
+        data = {}
+      }
+    }
     // Debug logging
     console.log("Loading template:", {
       id: t.id,
       name: t.name,
-      template_data: t.template_data,
+      template_data: data,
       template_data_type: typeof t.template_data,
       elements: data.elements,
       elements_count: data.elements?.length || 0,
@@ -1707,7 +1731,13 @@ export default function BadgeDesignerPage() {
     setHasUnsavedChanges(false) // Loaded template has no unsaved changes
     setSelectedTicketTypes(t.ticket_type_ids || [])
     setIsTemplateDialogOpen(false)
-    toast.success(`Loaded: ${t.name} (${data.elements?.length || 0} elements)`)
+
+    // Show appropriate message based on elements
+    if (!data.elements || data.elements.length === 0) {
+      toast.warning(`Template "${t.name}" has no design elements. The design was not saved properly. Please add elements and save.`, { duration: 6000 })
+    } else {
+      toast.success(`Loaded: ${t.name} (${data.elements.length} elements)`)
+    }
   }
 
   const deleteTemplateById = async (id: string) => {
@@ -1725,6 +1755,161 @@ export default function BadgeDesignerPage() {
       toast.error(error.message)
     }
   }
+
+  // Repair template - add default elements to empty template
+  const repairTemplate = () => {
+    const badgeSize = BADGE_SIZES[template.size] || BADGE_SIZES["4x3"]
+    const width = badgeSize.width
+    const height = badgeSize.height
+
+    // Create default elements based on badge size
+    const defaultElements: BadgeElement[] = [
+      // Header background
+      {
+        id: `repair-${Date.now()}-0`,
+        type: "shape",
+        x: 0,
+        y: 0,
+        width: width,
+        height: height * 0.22,
+        backgroundColor: "#6366f1",
+        shapeType: "rectangle",
+        zIndex: 1,
+        visible: true,
+      },
+      // Event name
+      {
+        id: `repair-${Date.now()}-1`,
+        type: "text",
+        x: 20,
+        y: 15,
+        width: width - 40,
+        height: 30,
+        content: "{{event_name}}",
+        fontSize: 16,
+        fontWeight: "bold",
+        align: "center",
+        color: "#ffffff",
+        zIndex: 2,
+        visible: true,
+      },
+      // Event date
+      {
+        id: `repair-${Date.now()}-2`,
+        type: "text",
+        x: 20,
+        y: 45,
+        width: width - 40,
+        height: 20,
+        content: "{{event_date}}",
+        fontSize: 11,
+        fontWeight: "normal",
+        align: "center",
+        color: "#e0e7ff",
+        zIndex: 2,
+        visible: true,
+      },
+      // Name
+      {
+        id: `repair-${Date.now()}-3`,
+        type: "text",
+        x: 20,
+        y: height * 0.28,
+        width: width - 40,
+        height: 45,
+        content: "{{name}}",
+        fontSize: 26,
+        fontWeight: "bold",
+        align: "center",
+        color: "#1e1b4b",
+        zIndex: 1,
+        visible: true,
+        textCase: "uppercase",
+      },
+      // Ticket type badge
+      {
+        id: `repair-${Date.now()}-4`,
+        type: "shape",
+        x: width * 0.15,
+        y: height * 0.48,
+        width: width * 0.7,
+        height: 32,
+        backgroundColor: "#6366f1",
+        borderRadius: 16,
+        shapeType: "rectangle",
+        zIndex: 1,
+        visible: true,
+      },
+      {
+        id: `repair-${Date.now()}-5`,
+        type: "text",
+        x: width * 0.15,
+        y: height * 0.48 + 6,
+        width: width * 0.7,
+        height: 24,
+        content: "{{ticket_type}}",
+        fontSize: 14,
+        fontWeight: "bold",
+        align: "center",
+        color: "#ffffff",
+        zIndex: 2,
+        visible: true,
+        textCase: "uppercase",
+      },
+      // QR Code
+      {
+        id: `repair-${Date.now()}-6`,
+        type: "qr_code",
+        x: (width - 90) / 2,
+        y: height * 0.62,
+        width: 90,
+        height: 90,
+        content: "{{checkin_url}}",
+        zIndex: 1,
+        visible: true,
+      },
+      // Registration number
+      {
+        id: `repair-${Date.now()}-7`,
+        type: "text",
+        x: 20,
+        y: height - 35,
+        width: width - 40,
+        height: 20,
+        content: "{{registration_number}}",
+        fontSize: 12,
+        fontWeight: "bold",
+        align: "center",
+        color: "#6366f1",
+        zIndex: 1,
+        visible: true,
+      },
+      // Footer line
+      {
+        id: `repair-${Date.now()}-8`,
+        type: "shape",
+        x: 0,
+        y: height - 12,
+        width: width,
+        height: 12,
+        backgroundColor: "#6366f1",
+        shapeType: "rectangle",
+        zIndex: 1,
+        visible: true,
+      },
+    ]
+
+    setTemplate((prev) => ({
+      ...prev,
+      backgroundColor: "#ffffff",
+      elements: defaultElements,
+    }))
+    setHasUnsavedChanges(true)
+    toast.success("Template repaired with default design! Click Save to keep changes.")
+  }
+
+  // Check if template needs repair (has no elements)
+  const needsRepair = template.elements.length === 0 && savedTemplateId
 
   const generatePdf = async () => {
     if (!savedTemplateId) { toast.error("Please save the template first"); return }
@@ -2373,11 +2558,29 @@ export default function BadgeDesignerPage() {
               )}
               {template.elements.sort((a, b) => a.zIndex - b.zIndex).map(renderElement)}
               {template.elements.length === 0 && !previewMode && (
-                <div className="absolute inset-0 flex items-center justify-center text-muted-foreground pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                   <div className="text-center">
-                    <Sparkles className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                    <p className="font-medium">Start designing</p>
-                    <p className="text-sm text-muted-foreground">Add elements from the left panel</p>
+                    {needsRepair ? (
+                      <>
+                        <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-amber-500" />
+                        <p className="font-medium text-amber-600">Template has no design</p>
+                        <p className="text-sm text-muted-foreground mb-4">The design was not saved properly</p>
+                        <button
+                          onClick={repairTemplate}
+                          className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium text-sm flex items-center gap-2 mx-auto"
+                        >
+                          <Wand2 className="h-4 w-4" />
+                          Repair with Default Design
+                        </button>
+                        <p className="text-xs text-muted-foreground mt-3">Or add elements manually from the left panel</p>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                        <p className="font-medium">Start designing</p>
+                        <p className="text-sm text-muted-foreground">Add elements from the left panel</p>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

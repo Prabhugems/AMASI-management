@@ -36,6 +36,8 @@ import {
   Users,
   FileText,
   Trash2,
+  Blocks,
+  BookOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -149,6 +151,7 @@ export default function SettingsPage() {
     { id: "datetime", label: "Date & Time", icon: Calendar },
     { id: "location", label: "Location", icon: MapPin },
     { id: "registration", label: "Registration", icon: Users },
+    { id: "modules", label: "Modules", icon: Blocks },
     { id: "automation", label: "Automation", icon: Bell },
     { id: "branding", label: "Branding", icon: Palette },
     { id: "links", label: "Links & Contact", icon: Link2 },
@@ -595,6 +598,11 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Modules Section */}
+          {activeSection === "modules" && (
+            <ModulesSection eventId={eventId} />
           )}
 
           {/* Automation Section */}
@@ -1121,6 +1129,143 @@ function AutomationSection({ eventId }: { eventId: string }) {
             <>
               <Save className="h-4 w-4" />
               Save Automation Settings
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// Modules Section Component
+function ModulesSection({ eventId }: { eventId: string }) {
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+  const [saving, setSaving] = useState(false)
+
+  // Fetch event settings
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["event-module-settings", eventId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("event_settings")
+        .select("enable_abstracts")
+        .eq("event_id", eventId)
+        .single()
+
+      if (error && error.code !== "PGRST116") throw error
+      return data || { enable_abstracts: false }
+    },
+    enabled: !!eventId,
+  })
+
+  const [formData, setFormData] = useState({
+    enable_abstracts: false,
+  })
+
+  useEffect(() => {
+    if (settings) {
+      setFormData({
+        enable_abstracts: settings.enable_abstracts ?? false,
+      })
+    }
+  }, [settings])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch("/api/event-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId, ...formData }),
+      })
+      if (!res.ok) throw new Error("Failed to save")
+      await queryClient.invalidateQueries({ queryKey: ["event-module-settings", eventId] })
+      await queryClient.invalidateQueries({ queryKey: ["event-setup-status", eventId] })
+      // Dispatch event to trigger sidebar update
+      window.dispatchEvent(new CustomEvent("event-settings-saved"))
+    } catch (error) {
+      console.error("Failed to save module settings:", error)
+    }
+    setSaving(false)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+      <div className="flex items-center gap-3 pb-4 border-b border-border">
+        <div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
+          <Blocks className="h-5 w-5 text-violet-500" />
+        </div>
+        <div>
+          <h3 className="font-semibold">Event Modules</h3>
+          <p className="text-sm text-muted-foreground">Enable optional features for this event</p>
+        </div>
+      </div>
+
+      {/* Info Box */}
+      <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-xl">
+        <p className="text-sm text-blue-800 dark:text-blue-200">
+          <strong>About Modules:</strong> Modules are optional features that can be enabled per event.
+          When enabled, they appear in the sidebar and provide additional functionality.
+        </p>
+      </div>
+
+      <div className="grid gap-4">
+        {/* Abstract Management Module */}
+        <div className="flex items-start justify-between p-4 bg-secondary/30 rounded-xl border border-border">
+          <div className="flex-1 pr-4">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <p className="font-medium">Abstract Management</p>
+              {formData.enable_abstracts && (
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Enabled</span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Allow delegates to submit research abstracts, papers, posters, and videos for review.
+            </p>
+            <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+              <strong>Features include:</strong> Abstract submission form, category management, review workflow,
+              accept/reject decisions, presenter assignments, and integration with certificates.
+            </div>
+          </div>
+          <Switch
+            checked={formData.enable_abstracts}
+            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enable_abstracts: checked }))}
+          />
+        </div>
+
+        {/* Future modules placeholder */}
+        <div className="p-4 border border-dashed border-border rounded-xl opacity-50">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Blocks className="h-4 w-4" />
+            <p className="text-sm font-medium">More modules coming soon</p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Sponsorship, Exhibition, Awards, and more modules will be available in future updates.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-4 border-t border-border">
+        <Button onClick={handleSave} disabled={saving} className="gap-2">
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              Save Module Settings
             </>
           )}
         </Button>

@@ -18,6 +18,10 @@ import {
   Eye,
   Send,
   X,
+  AlertTriangle,
+  AlertCircle,
+  Info,
+  ShieldCheck,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -60,6 +64,22 @@ export default function GenerateBadgesPage() {
   const [previewRegistration, setPreviewRegistration] = useState<Registration | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isLoadingPreview, setIsLoadingPreview] = useState(false)
+  const [validationResult, setValidationResult] = useState<{
+    valid: boolean
+    errors: { type: string; field: string; message: string; details?: string }[]
+    warnings: { type: string; field: string; message: string; details?: string }[]
+    stats: {
+      totalRegistrations: number
+      registrationsWithIssues: number
+      missingNames: number
+      missingInstitutions: number
+      missingPhones: number
+      missingEmails: number
+      missingAddons: number
+    }
+  } | null>(null)
+  const [isValidating, setIsValidating] = useState(false)
+  const [showValidation, setShowValidation] = useState(false)
 
   // Fetch templates
   const { data: templates } = useQuery({
@@ -148,6 +168,41 @@ export default function GenerateBadgesPage() {
     )
   }
 
+  // Validate badges before generating
+  const validateBadges = async () => {
+    if (!selectedTemplate) {
+      toast.error("Please select a badge template")
+      return null
+    }
+
+    setIsValidating(true)
+    setShowValidation(true)
+    try {
+      const res = await fetch("/api/badges/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          template_id: selectedTemplate,
+          registration_ids: selectedRegistrations.length > 0 ? selectedRegistrations : undefined,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Validation failed")
+      }
+
+      const result = await res.json()
+      setValidationResult(result)
+      return result
+    } catch (error: any) {
+      toast.error("Failed to validate badges")
+      return null
+    } finally {
+      setIsValidating(false)
+    }
+  }
+
   const handleGenerate = async () => {
     if (!selectedTemplate) {
       toast.error("Please select a badge template")
@@ -155,6 +210,13 @@ export default function GenerateBadgesPage() {
     }
     if (selectedRegistrations.length === 0) {
       toast.error("Please select at least one attendee")
+      return
+    }
+
+    // Validate first
+    const validation = await validateBadges()
+    if (validation && !validation.valid) {
+      toast.error("Please fix validation errors before generating")
       return
     }
 
@@ -380,8 +442,9 @@ export default function GenerateBadgesPage() {
                       // Default template - show all
                       setSelectedTicketTypes([])
                     }
-                    // Clear selection when template changes
+                    // Clear selection and validation when template changes
                     setSelectedRegistrations([])
+                    setValidationResult(null)
                   }}
                   className="w-full px-3 py-2 bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 >
@@ -551,6 +614,110 @@ export default function GenerateBadgesPage() {
                   Email All With Badges
                 </button>
               </div>
+            </div>
+
+            {/* Validation Panel */}
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">Pre-Generation Check</h3>
+                <button
+                  onClick={validateBadges}
+                  disabled={isValidating || !selectedTemplate}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isValidating ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="w-3 h-3" />
+                  )}
+                  Validate
+                </button>
+              </div>
+
+              {!validationResult && !isValidating && (
+                <p className="text-xs text-muted-foreground">
+                  Click validate to check for issues before generating badges.
+                </p>
+              )}
+
+              {isValidating && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Checking...
+                </div>
+              )}
+
+              {validationResult && !isValidating && (
+                <div className="space-y-3">
+                  {/* Status */}
+                  <div className={`flex items-center gap-2 p-2 rounded-lg ${
+                    validationResult.valid
+                      ? "bg-emerald-500/10 text-emerald-700"
+                      : "bg-red-500/10 text-red-700"
+                  }`}>
+                    {validationResult.valid ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4" />
+                    )}
+                    <span className="text-sm font-medium">
+                      {validationResult.valid
+                        ? "Ready to generate"
+                        : `${validationResult.errors.length} issue(s) found`}
+                    </span>
+                  </div>
+
+                  {/* Errors */}
+                  {validationResult.errors.length > 0 && (
+                    <div className="space-y-2">
+                      {validationResult.errors.map((err, i) => (
+                        <div key={i} className="flex items-start gap-2 p-2 bg-red-50 rounded-lg text-xs">
+                          <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-red-700">{err.message}</p>
+                            {err.details && (
+                              <p className="text-red-600 mt-0.5">{err.details}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Warnings */}
+                  {validationResult.warnings.length > 0 && (
+                    <div className="space-y-2">
+                      {validationResult.warnings.map((warn, i) => (
+                        <div key={i} className="flex items-start gap-2 p-2 bg-amber-50 rounded-lg text-xs">
+                          {warn.type === "info" ? (
+                            <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                          ) : (
+                            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                          )}
+                          <div>
+                            <p className="font-medium text-amber-700">{warn.message}</p>
+                            {warn.details && (
+                              <p className="text-amber-600 mt-0.5">{warn.details}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Stats */}
+                  {validationResult.stats.totalRegistrations > 0 && (
+                    <div className="text-xs text-muted-foreground pt-2 border-t border-border">
+                      <p>{validationResult.stats.totalRegistrations} registrations checked</p>
+                      {validationResult.stats.registrationsWithIssues > 0 && (
+                        <p className="text-amber-600">
+                          {validationResult.stats.registrationsWithIssues} with missing data
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
