@@ -113,7 +113,8 @@ export default function CheckinHubPage() {
     queryKey: ["checkin-lists-active", eventId],
     queryFn: async () => {
       const res = await fetch(`/api/checkin-lists?event_id=${eventId}&active_only=true`)
-      return res.json() as Promise<CheckinList[]>
+      const data = await res.json()
+      return Array.isArray(data) ? data as CheckinList[] : []
     },
     refetchInterval: 3000
   })
