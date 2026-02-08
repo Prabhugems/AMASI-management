@@ -112,6 +112,19 @@ export async function getApiUser(): Promise<AuthResult> {
     }
   }
 
+  // Auto-link unlinked team_members records by matching email
+  try {
+    const linkClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (linkClient as any)
+      .from('team_members')
+      .update({ user_id: authUser.id })
+      .eq('email', authUser.email)
+      .is('user_id', null)
+  } catch {
+    // Non-critical - don't block login if linking fails
+  }
+
   return {
     user: userProfile as unknown as AuthUser,
     error: null
