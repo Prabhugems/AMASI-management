@@ -151,13 +151,15 @@ export default function EventsPage() {
     switch (status) {
       case "ongoing":
         return "bg-success/20 text-success"
-      case "planning":
-        return "bg-warning/20 text-warning"
-      case "registration_open":
+      case "active":
         return "bg-info/20 text-info"
+      case "setup":
+        return "bg-warning/20 text-warning"
+      case "draft":
+        return "bg-secondary text-secondary-foreground"
       case "completed":
         return "bg-muted text-muted-foreground"
-      case "cancelled":
+      case "archived":
         return "bg-destructive/20 text-destructive"
       default:
         return "bg-secondary text-secondary-foreground"
@@ -235,11 +237,11 @@ export default function EventsPage() {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="planning">Planning</SelectItem>
-                <SelectItem value="registration_open">Registration Open</SelectItem>
+                <SelectItem value="setup">Setup</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="ongoing">Ongoing</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -350,7 +352,27 @@ export default function EventsPage() {
                         <CopyPlus className="h-4 w-4 mr-2" />
                         Duplicate Event
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          if (confirm(`Archive "${event.short_name || event.name}"? It will be hidden from active events.`)) {
+                            fetch(`/api/events/${event.id}/settings`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ status: "archived" }),
+                            }).then((res) => {
+                              if (res.ok) {
+                                toast.success("Event archived")
+                                queryClient.invalidateQueries({ queryKey: ["events"] })
+                                queryClient.invalidateQueries({ queryKey: ["events-stats"] })
+                              } else {
+                                toast.error("Failed to archive event")
+                              }
+                            })
+                          }
+                        }}
+                      >
                         Archive
                       </DropdownMenuItem>
                     </DropdownMenuContent>
