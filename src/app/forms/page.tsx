@@ -259,7 +259,30 @@ export default function FormsPage() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          try {
+                            const res = await fetch("/api/forms", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                name: `${form.name} (Copy)`,
+                                description: form.description,
+                                form_type: form.form_type,
+                                event_id: form.event_id,
+                                status: "draft",
+                              }),
+                            })
+                            if (!res.ok) throw new Error("Failed to duplicate")
+                            const newForm = await res.json()
+                            queryClient.invalidateQueries({ queryKey: ["forms"] })
+                            toast.success("Form duplicated")
+                            router.push(`/forms/${newForm.id}/edit`)
+                          } catch {
+                            toast.error("Failed to duplicate form")
+                          }
+                        }}
+                      >
                         <Copy className="w-4 h-4 mr-2" />
                         Duplicate
                       </DropdownMenuItem>

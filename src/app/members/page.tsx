@@ -471,7 +471,19 @@ export default function MembersPage() {
           <div className="flex-shrink-0 px-4 py-3 border-t border-border bg-secondary/30">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>{members?.length || 0} members showing</span>
-              <Button variant="ghost" size="sm" className="h-7 text-xs">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const emails = members?.map((m) => m.email).filter(Boolean).join(",")
+                  if (emails) {
+                    window.open(`mailto:${emails}`)
+                  } else {
+                    toast.error("No member emails found")
+                  }
+                }}
+              >
                 <Mail className="h-3.5 w-3.5 mr-1.5" />
                 Bulk Email
               </Button>
@@ -704,17 +716,65 @@ export default function MembersPage() {
                       Edit
                     </Link>
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      if (selectedMember.email) {
+                        window.open(`mailto:${selectedMember.email}`)
+                      } else {
+                        toast.error("No email address")
+                      }
+                    }}
+                  >
                     <Mail className="h-4 w-4 mr-2" />
                     Email
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={async () => {
+                      const newExpiry = new Date()
+                      newExpiry.setFullYear(newExpiry.getFullYear() + 1)
+                      const { error } = await (supabase as any)
+                        .from("members")
+                        .update({ status: "active", expiry_date: newExpiry.toISOString().split("T")[0] })
+                        .eq("id", selectedMember.id)
+                      if (error) {
+                        toast.error("Failed to renew membership")
+                      } else {
+                        toast.success(`${selectedMember.name}'s membership renewed for 1 year`)
+                        queryClient.invalidateQueries({ queryKey: ["members"] })
+                        setSelectedMember({ ...selectedMember, status: "active", expiry_date: newExpiry.toISOString().split("T")[0] })
+                      }
+                    }}
+                  >
                     <CreditCard className="h-4 w-4 mr-2" />
                     Renew
                   </Button>
                 </div>
                 {selectedMember.status === "active" && (
-                  <Button variant="ghost" size="sm" className="w-full mt-2 text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full mt-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={async () => {
+                      if (!confirm(`Deactivate ${selectedMember.name}? Their membership will be set to inactive.`)) return
+                      const { error } = await (supabase as any)
+                        .from("members")
+                        .update({ status: "inactive" })
+                        .eq("id", selectedMember.id)
+                      if (error) {
+                        toast.error("Failed to deactivate member")
+                      } else {
+                        toast.success(`${selectedMember.name} has been deactivated`)
+                        setSelectedMember(null)
+                        queryClient.invalidateQueries({ queryKey: ["members"] })
+                      }
+                    }}
+                  >
                     <XCircle className="h-4 w-4 mr-2" />
                     Deactivate Member
                   </Button>

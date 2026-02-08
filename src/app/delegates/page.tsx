@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
@@ -77,6 +79,8 @@ export default function GlobalAttendeesPage() {
   const [activeTab, setActiveTab] = useState("details")
 
   const supabase = createClient()
+  const queryClient = useQueryClient()
+  const router = useRouter()
 
   // Fetch events for dropdown
   const { data: events } = useQuery({
@@ -530,19 +534,64 @@ export default function GlobalAttendeesPage() {
                   {/* Quick Actions */}
                   <SlideOverSection title="Quick Actions" className="border-t border-border">
                     <div className="grid grid-cols-2 gap-3">
-                      <Button variant="outline" size="sm" className="justify-start">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="justify-start"
+                        disabled={selectedAttendee.checked_in}
+                        onClick={async () => {
+                          const { error } = await (supabase as any)
+                            .from("participants")
+                            .update({ checked_in: true, checked_in_at: new Date().toISOString() })
+                            .eq("id", selectedAttendee.id)
+                          if (error) {
+                            toast.error("Failed to check in")
+                          } else {
+                            toast.success(`${selectedAttendee.name} checked in`)
+                            queryClient.invalidateQueries({ queryKey: ["delegates"] })
+                            setSelectedAttendee({ ...selectedAttendee, checked_in: true, checked_in_at: new Date().toISOString() })
+                          }
+                        }}
+                      >
                         <QrCode className="h-4 w-4 mr-2" />
-                        Check In
+                        {selectedAttendee.checked_in ? "Checked In" : "Check In"}
                       </Button>
-                      <Button variant="outline" size="sm" className="justify-start">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="justify-start"
+                        onClick={() => {
+                          if (selectedAttendee.event_id) {
+                            router.push(`/events/${selectedAttendee.event_id}/badges`)
+                          } else {
+                            toast.error("No event associated")
+                          }
+                        }}
+                      >
                         <Printer className="h-4 w-4 mr-2" />
                         Print Badge
                       </Button>
-                      <Button variant="outline" size="sm" className="justify-start">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="justify-start"
+                        onClick={() => {
+                          if (selectedAttendee.event_id) {
+                            router.push(`/events/${selectedAttendee.event_id}/certificates`)
+                          } else {
+                            toast.error("No event associated")
+                          }
+                        }}
+                      >
                         <Award className="h-4 w-4 mr-2" />
                         Certificate
                       </Button>
-                      <Button variant="outline" size="sm" className="justify-start">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="justify-start"
+                        onClick={() => window.open(`mailto:${selectedAttendee.email}`)}
+                      >
                         <Send className="h-4 w-4 mr-2" />
                         Send Email
                       </Button>

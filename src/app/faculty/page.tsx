@@ -533,7 +533,19 @@ export default function FacultyPage() {
           <div className="flex-shrink-0 px-4 py-3 border-t border-border bg-secondary/30">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>{faculty?.length || 0} faculty showing</span>
-              <Button variant="ghost" size="sm" className="h-7 text-xs">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const emails = faculty?.map((f) => f.email).filter(Boolean).join(",")
+                  if (emails) {
+                    window.open(`mailto:${emails}`)
+                  } else {
+                    toast.error("No faculty emails found")
+                  }
+                }}
+              >
                 <Mail className="h-3.5 w-3.5 mr-1.5" />
                 Bulk Email
               </Button>
@@ -764,13 +776,36 @@ export default function FacultyPage() {
                     <Send className="h-4 w-4 mr-2" />
                     Invite
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => window.open(`mailto:${selectedFaculty.email}`)}
+                  >
                     <Mail className="h-4 w-4 mr-2" />
                     Email
                   </Button>
                 </div>
                 {selectedFaculty.status !== "blacklisted" && (
-                  <Button variant="ghost" size="sm" className="w-full mt-2 text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full mt-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={async () => {
+                      if (!confirm(`Blacklist ${selectedFaculty.name}? They will be excluded from future invitations.`)) return
+                      const { error } = await (supabase as any)
+                        .from("faculty")
+                        .update({ status: "blacklisted" })
+                        .eq("id", selectedFaculty.id)
+                      if (error) {
+                        toast.error("Failed to blacklist faculty")
+                      } else {
+                        toast.success(`${selectedFaculty.name} has been blacklisted`)
+                        setSelectedFaculty(null)
+                        queryClient.invalidateQueries({ queryKey: ["faculty"] })
+                      }
+                    }}
+                  >
                     <Ban className="h-4 w-4 mr-2" />
                     Blacklist Faculty
                   </Button>
