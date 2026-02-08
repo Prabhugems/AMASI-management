@@ -8,7 +8,6 @@ import {
   Calendar,
   GraduationCap,
   UserCheck,
-  Settings,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -43,7 +42,6 @@ const mainNavItems = [
     children: [
       { name: "All Events", href: "/events" },
       { name: "Create Event", href: "/events/new" },
-      { name: "Calendar", href: "/calendar" },
     ],
   },
   {
@@ -51,8 +49,7 @@ const mainNavItems = [
     icon: IdCard,
     children: [
       { name: "All Members", href: "/members" },
-      { name: "Import", href: "/members/import" },
-      { name: "Reports", href: "/members/reports" },
+      { name: "Add Member", href: "/members/new" },
     ],
   },
   {
@@ -61,7 +58,7 @@ const mainNavItems = [
     children: [
       { name: "Directory", href: "/faculty" },
       { name: "Add Faculty", href: "/faculty/new" },
-      { name: "Invitations", href: "/faculty/invitations" },
+      { name: "Import", href: "/faculty/import" },
     ],
   },
   {
@@ -70,7 +67,6 @@ const mainNavItems = [
     children: [
       { name: "All Attendees", href: "/delegates" },
       { name: "By Event", href: "/delegates?view=by-event" },
-      { name: "Import CSV", href: "/delegates/import" },
     ],
   },
   {
@@ -78,7 +74,6 @@ const mainNavItems = [
     icon: FileText,
     children: [
       { name: "All Forms", href: "/forms" },
-      { name: "Templates", href: "/forms/templates" },
     ],
   },
   {
@@ -99,7 +94,6 @@ const mainNavItems = [
 
 const quickNavItems = [
   { name: "Help", href: "/help", icon: HelpCircle },
-  { name: "Settings", href: "/settings", icon: Settings },
 ]
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
@@ -192,18 +186,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {!collapsed && userMenuOpen && (
           <div className="mt-3 space-y-1 pl-14">
             <p className="text-xs text-sidebar-muted/60 truncate mb-2">{userEmail}</p>
-            <Link
-              href="/profile"
-              className="block text-sm text-sidebar-muted hover:text-sidebar-foreground transition-colors py-1"
-            >
-              My Profile
-            </Link>
-            <Link
-              href="/settings"
-              className="block text-sm text-sidebar-muted hover:text-sidebar-foreground transition-colors py-1"
-            >
-              Settings
-            </Link>
           </div>
         )}
       </div>

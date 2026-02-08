@@ -251,9 +251,9 @@ export async function GET(
     const paymentDetails = [
       ["Ticket Type", ticket?.name || "Standard"],
       ["Quantity", String(registration.quantity || 1)],
-      ["Base Amount", `₹${ticketPrice.toLocaleString("en-IN")}`],
-      ["Tax (GST)", `₹${taxAmount.toLocaleString("en-IN")}`],
-      ["Total Amount", `₹${totalAmount.toLocaleString("en-IN")}`],
+      ["Base Amount", `Rs. ${ticketPrice.toLocaleString("en-IN")}`],
+      ["Tax (GST)", `Rs. ${taxAmount.toLocaleString("en-IN")}`],
+      ["Total Amount", `Rs. ${totalAmount.toLocaleString("en-IN")}`],
       ["Payment Status", registration.payment_status || "Pending"],
       ["Payment Method", registration.payment_method || "-"],
     ]

@@ -332,7 +332,7 @@ export default function GroupRegistrationPage() {
 
       // Handle FREE registration
       if (totals.total === 0) {
-        const response = await fetch("/api/registration/group", {
+        const response = await fetch("/api/registrations/group", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...payload, payment_method: "free" }),
@@ -405,7 +405,7 @@ export default function GroupRegistrationPage() {
 
           if (verifyData.success) {
             // Create group registration after successful payment
-            const regResponse = await fetch("/api/registration/group", {
+            const regResponse = await fetch("/api/registrations/group", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
