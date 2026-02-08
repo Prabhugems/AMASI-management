@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input"
 import {
   Calendar,
   Users,
-  Settings,
   Search,
   Plus,
   FileText,
@@ -198,16 +197,6 @@ export function useDefaultCommands(): CommandItem[] {
         keywords: ["members", "faculty"],
         group: "Navigation",
       },
-      {
-        id: "settings",
-        label: "Go to Settings",
-        icon: Settings,
-        shortcut: "⌘,",
-        onSelect: () => router.push("/settings"),
-        keywords: ["settings", "preferences"],
-        group: "Navigation",
-      },
-
       // Actions
       {
         id: "new-event",

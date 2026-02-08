@@ -57,7 +57,7 @@ export default function AbstractsLayout({ children }: { children: React.ReactNod
         .from("event_settings")
         .select("enable_abstracts")
         .eq("event_id", eventId)
-        .single()
+        .maybeSingle()
       return data as { enable_abstracts: boolean } | null
     },
   })

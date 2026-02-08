@@ -102,7 +102,7 @@ export default function EventsPage() {
       const { count: active } = await supabase
         .from("events")
         .select("*", { count: "exact", head: true })
-        .in("status", ["planning", "registration_open", "ongoing"])
+        .in("status", ["setup", "draft", "active", "ongoing"])
       const { count: completed } = await supabase
         .from("events")
         .select("*", { count: "exact", head: true })

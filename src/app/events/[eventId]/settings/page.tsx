@@ -1151,9 +1151,9 @@ function ModulesSection({ eventId }: { eventId: string }) {
         .from("event_settings")
         .select("enable_abstracts")
         .eq("event_id", eventId)
-        .single()
+        .maybeSingle()
 
-      if (error && error.code !== "PGRST116") throw error
+      if (error) throw error
       return data || { enable_abstracts: false }
     },
     enabled: !!eventId,

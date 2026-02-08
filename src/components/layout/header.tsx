@@ -18,7 +18,6 @@ import {
   ChevronDown,
   LogOut,
   User,
-  Settings,
   HelpCircle,
   Shield,
   Calendar,
@@ -361,8 +360,6 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                   {/* Menu Items */}
                   <div className="p-2">
                     {[
-                      { icon: User, label: "Profile", href: "/profile" },
-                      { icon: Settings, label: "Settings", href: "/settings" },
                       { icon: HelpCircle, label: "Help & Support", href: "/help" },
                     ].map((item) => (
                       <button

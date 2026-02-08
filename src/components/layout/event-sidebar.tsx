@@ -201,7 +201,7 @@ export function EventSidebar() {
         .from("event_settings")
         .select("enable_abstracts")
         .eq("event_id", eventId)
-        .single()
+        .maybeSingle()
 
       const settings = data as { enable_abstracts?: boolean } | null
       return {
