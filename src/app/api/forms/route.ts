@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -112,12 +112,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate event_id is a valid UUID if provided
+    const eventId = body.event_id
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (eventId && !uuidRegex.test(eventId)) {
+      return NextResponse.json(
+        { error: "Invalid event_id format" },
+        { status: 400 }
+      )
+    }
+
     const formData = {
       name: body.name,
       description: body.description,
       slug,
       form_type: body.form_type || "standalone",
-      event_id: body.event_id || null,
+      event_id: eventId || null,
       status: body.status || "draft",
       is_public: body.is_public ?? true,
       requires_auth: body.requires_auth ?? false,
@@ -136,7 +146,10 @@ export async function POST(request: NextRequest) {
       created_by: user.id,
     }
 
-    const { data: form, error } = await supabase
+    // Use admin client to bypass RLS for form creation
+    const adminClient: SupabaseClient = await createAdminClient()
+
+    const { data: form, error } = await adminClient
       .from("forms")
       .insert(formData)
       .select()
@@ -171,7 +184,7 @@ export async function POST(request: NextRequest) {
         settings: field.settings,
       }))
 
-      const { error: fieldsError } = await supabase
+      const { error: fieldsError } = await adminClient
         .from("form_fields")
         .insert(fieldsToInsert)
 
