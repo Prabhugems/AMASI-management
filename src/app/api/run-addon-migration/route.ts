@@ -5,8 +5,8 @@ import { createClient } from "@supabase/supabase-js"
 export async function POST() {
   try {
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
+      process.env.SUPABASE_SERVICE_ROLE_KEY!.trim(),
       {
         db: {
           schema: 'public'
@@ -41,8 +41,8 @@ export async function POST() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!.trim(),
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()}`,
         },
         body: JSON.stringify({
           sql: `

@@ -71,7 +71,7 @@ export function validateEnv(): { valid: boolean; errors: string[]; warnings: str
  * Get a required environment variable, throwing if not set
  */
 export function getRequiredEnv(name: string): string {
-  const value = process.env[name]
+  const value = process.env[name]?.trim()
   if (!value || value === '' || value.includes('placeholder')) {
     throw new Error(`Missing required environment variable: ${name}`)
   }
@@ -82,7 +82,7 @@ export function getRequiredEnv(name: string): string {
  * Get an optional environment variable with a default
  */
 export function getOptionalEnv(name: string, defaultValue: string = ''): string {
-  const value = process.env[name]
+  const value = process.env[name]?.trim()
   if (!value || value === '' || value.includes('placeholder')) {
     return defaultValue
   }

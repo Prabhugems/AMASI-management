@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
 
     // Use service role key for storage uploads (allows bypassing RLS)
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
+      process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
     )
 
     const formData = await request.formData()

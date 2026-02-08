@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
   }
   // Create client inside handler to ensure env vars are loaded
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
+    process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
   )
   try {
     const { searchParams } = new URL(request.url)

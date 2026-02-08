@@ -5,12 +5,12 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js"
 // Create admin client for server-side operations
 // IMPORTANT: Webhook handler requires service role key for proper database access
 function getSupabaseAdmin(): SupabaseClient {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
   if (!serviceRoleKey) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for webhook processing")
   }
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
     serviceRoleKey
   )
 }

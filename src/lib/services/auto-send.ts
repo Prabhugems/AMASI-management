@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js"
 import { sendEmail } from "@/lib/email"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim()
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
 
 type TriggerType = "on_registration" | "on_payment" | "on_checkin" | "on_certificate_ready" | "days_before_event"
 
