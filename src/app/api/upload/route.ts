@@ -1,8 +1,26 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseClient = any
+const BUCKET_NAME = "uploads"
+
+async function ensureBucketExists(adminClient: any) {
+  // Check if bucket already exists
+  const { data: buckets } = await adminClient.storage.listBuckets()
+  const exists = buckets?.some((b: any) => b.name === BUCKET_NAME)
+
+  if (!exists) {
+    console.log(`Bucket "${BUCKET_NAME}" not found, creating...`)
+    const { error } = await adminClient.storage.createBucket(BUCKET_NAME, {
+      public: true,
+      fileSizeLimit: 50 * 1024 * 1024, // 50MB
+    })
+    if (error && !error.message?.includes("already exists")) {
+      console.error("Bucket creation error:", error)
+      throw new Error(`Failed to create storage bucket: ${error.message}`)
+    }
+    console.log(`Bucket "${BUCKET_NAME}" created successfully`)
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,11 +37,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
 
-    // Validate file size (max 300MB)
-    const maxSize = 300 * 1024 * 1024
+    // Validate file size (max 50MB for Vercel serverless)
+    const maxSize = 50 * 1024 * 1024
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: "File too large. Maximum size is 300MB" },
+        { error: "File too large. Maximum size is 50MB" },
         { status: 400 }
       )
     }
@@ -46,7 +64,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const adminClient: SupabaseClient = await createAdminClient()
+    const adminClient = await createAdminClient()
+
+    // Ensure storage bucket exists before uploading
+    await ensureBucketExists(adminClient)
 
     // Generate unique filename
     const timestamp = Date.now()
@@ -58,8 +79,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
 
     // Upload to Supabase Storage
-    const { data, error } = await adminClient.storage
-      .from("uploads")
+    const { error } = await (adminClient as any).storage
+      .from(BUCKET_NAME)
       .upload(fileName, buffer, {
         contentType: file.type,
         upsert: false,
@@ -67,61 +88,15 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Upload error:", error)
-
-      // If bucket doesn't exist, create it
-      if (error.message?.includes("not found")) {
-        // Try to create the bucket
-        const { error: bucketError } = await adminClient.storage.createBucket("uploads", {
-          public: true,
-          fileSizeLimit: 300 * 1024 * 1024, // 300MB
-        })
-
-        if (bucketError && !bucketError.message?.includes("already exists")) {
-          console.error("Bucket creation error:", bucketError)
-          return NextResponse.json(
-            { error: "Failed to initialize storage" },
-            { status: 500 }
-          )
-        }
-
-        // Retry upload
-        const { data: retryData, error: retryError } = await adminClient.storage
-          .from("uploads")
-          .upload(fileName, buffer, {
-            contentType: file.type,
-            upsert: false,
-          })
-
-        if (retryError) {
-          console.error("Retry upload error:", retryError)
-          return NextResponse.json(
-            { error: "Failed to upload file" },
-            { status: 500 }
-          )
-        }
-
-        // Get public URL
-        const { data: urlData } = adminClient.storage
-          .from("uploads")
-          .getPublicUrl(fileName)
-
-        return NextResponse.json({
-          url: urlData.publicUrl,
-          fileName: file.name,
-          fileSize: file.size,
-          filePath: fileName,
-        })
-      }
-
       return NextResponse.json(
-        { error: "Failed to upload file" },
+        { error: `Upload failed: ${error.message}` },
         { status: 500 }
       )
     }
 
     // Get public URL
-    const { data: urlData } = adminClient.storage
-      .from("uploads")
+    const { data: urlData } = (adminClient as any).storage
+      .from(BUCKET_NAME)
       .getPublicUrl(fileName)
 
     return NextResponse.json({
@@ -130,10 +105,10 @@ export async function POST(request: NextRequest) {
       fileSize: file.size,
       filePath: fileName,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in POST /api/upload:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     )
   }
