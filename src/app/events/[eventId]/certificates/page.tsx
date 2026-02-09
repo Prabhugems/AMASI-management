@@ -42,17 +42,14 @@ export default function CertificatesOverviewPage() {
     },
   })
 
-  // Fetch certificate templates
+  // Fetch certificate templates via API route (bypasses RLS)
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ["certificate-templates", eventId],
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("certificate_templates")
-        .select("id, name")
-        .eq("event_id", eventId)
-        .eq("is_active", true)
-
-      return data || []
+      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`)
+      if (!res.ok) throw new Error("Failed to fetch templates")
+      const allTemplates = await res.json()
+      return allTemplates.filter((t: any) => t.is_active) as { id: string; name: string }[]
     },
   })
 

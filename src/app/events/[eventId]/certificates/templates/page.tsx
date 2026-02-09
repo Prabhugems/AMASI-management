@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -47,34 +46,25 @@ type Template = {
 export default function CertificateTemplatesPage() {
   const params = useParams()
   const eventId = params.eventId as string
-  const supabase = createClient()
   const queryClient = useQueryClient()
 
   const [search, setSearch] = useState("")
 
-  // Fetch templates
+  // Fetch templates via API route (bypasses RLS)
   const { data: templates, isLoading } = useQuery({
     queryKey: ["certificate-templates-list", eventId],
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("certificate_templates")
-        .select("*")
-        .eq("event_id", eventId)
-        .order("updated_at", { ascending: false })
-
-      return (data || []) as Template[]
+      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`)
+      if (!res.ok) throw new Error("Failed to fetch templates")
+      return (await res.json()) as Template[]
     },
   })
 
-  // Delete template
+  // Delete template via API route
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from("certificate_templates")
-        .delete()
-        .eq("id", id)
-
-      if (error) throw error
+      const res = await fetch(`/api/certificate-templates?id=${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Failed to delete template")
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["certificate-templates-list", eventId] })
@@ -85,15 +75,15 @@ export default function CertificateTemplatesPage() {
     },
   })
 
-  // Toggle active
+  // Toggle active via API route
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await (supabase as any)
-        .from("certificate_templates")
-        .update({ is_active })
-        .eq("id", id)
-
-      if (error) throw error
+      const res = await fetch("/api/certificate-templates", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_active, event_id: eventId }),
+      })
+      if (!res.ok) throw new Error("Failed to update template")
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["certificate-templates-list", eventId] })
@@ -101,23 +91,23 @@ export default function CertificateTemplatesPage() {
     },
   })
 
-  // Duplicate template
+  // Duplicate template via API route
   const duplicateMutation = useMutation({
     mutationFn: async (template: Template) => {
-      const { data: original } = await (supabase as any)
-        .from("certificate_templates")
-        .select("*")
-        .eq("id", template.id)
-        .single()
-
+      // Fetch full template data via API
+      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`)
+      if (!res.ok) throw new Error("Failed to fetch templates")
+      const allTemplates = await res.json()
+      const original = allTemplates.find((t: any) => t.id === template.id)
       if (!original) throw new Error("Template not found")
 
       const { id, created_at, updated_at, ...rest } = original
-      const { error } = await (supabase as any)
-        .from("certificate_templates")
-        .insert({ ...rest, name: `${template.name} (Copy)` })
-
-      if (error) throw error
+      const createRes = await fetch("/api/certificate-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...rest, name: `${template.name} (Copy)` }),
+      })
+      if (!createRes.ok) throw new Error("Failed to duplicate template")
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["certificate-templates-list", eventId] })
