@@ -174,6 +174,17 @@ function EventCard({ event, isDark, index }: { event: PublicEvent; isDark: boole
               {priceDisplay}
             </span>
           </div>
+
+          {/* Event Logo */}
+          {event.logo_url && (
+            <div className="absolute bottom-3 left-3">
+              <img
+                src={event.logo_url}
+                alt={event.name}
+                className="h-10 w-10 rounded-lg bg-white object-contain shadow-md border border-white"
+              />
+            </div>
+          )}
         </div>
 
         {/* Content */}

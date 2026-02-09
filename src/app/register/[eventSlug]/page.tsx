@@ -450,15 +450,6 @@ export default function EventDetailsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Back Button */}
-      <Link
-        href="/register"
-        className="inline-flex items-center gap-2 mb-6 text-sm font-medium text-gray-600 transition-colors hover:text-emerald-600"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to all events
-      </Link>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
@@ -499,6 +490,17 @@ export default function EventDetailsPage() {
             >
               <Share2 className="w-5 h-5" />
             </button>
+
+            {/* Event Logo */}
+            {event.logo_url && (
+              <div className="absolute bottom-4 left-4">
+                <img
+                  src={event.logo_url}
+                  alt={event.name}
+                  className="h-16 w-16 rounded-xl bg-white object-contain shadow-lg border-2 border-white"
+                />
+              </div>
+            )}
           </div>
 
           {/* Event Title & Info */}
