@@ -687,6 +687,7 @@ export default function SettingsPage() {
                   <ImageUpload
                     value={formData.logo_url || ""}
                     onChange={(url) => updateField("logo_url", url)}
+                    eventId={eventId}
                     folder={`events/${eventId}/logo`}
                     aspectRatio="square"
                   />
@@ -706,6 +707,7 @@ export default function SettingsPage() {
                   <ImageUpload
                     value={formData.banner_url || ""}
                     onChange={(url) => updateField("banner_url", url)}
+                    eventId={eventId}
                     folder={`events/${eventId}/banner`}
                     aspectRatio="banner"
                   />

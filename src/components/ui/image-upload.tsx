@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 interface ImageUploadProps {
   value?: string
   onChange: (url: string) => void
+  eventId?: string
   folder?: string
   aspectRatio?: "square" | "banner" | "auto"
   placeholder?: string
@@ -16,6 +17,7 @@ interface ImageUploadProps {
 export function ImageUpload({
   value,
   onChange,
+  eventId,
   folder = "events",
   aspectRatio = "auto",
   placeholder = "Upload image or paste URL",
@@ -37,8 +39,10 @@ export function ImageUpload({
     try {
       const formData = new FormData()
       formData.append("file", file)
-      formData.append("bucket", "event-assets")
-      formData.append("folder", folder)
+      if (eventId) {
+        formData.append("event_id", eventId)
+      }
+      formData.append("type", folder)
 
       const res = await fetch("/api/upload", {
         method: "POST",

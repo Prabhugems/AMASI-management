@@ -36,10 +36,12 @@ export async function POST(request: NextRequest) {
       "image/jpeg",
       "image/jpg",
       "image/png",
+      "image/gif",
+      "image/webp",
     ]
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: "Invalid file type. Allowed: PDF, MP4, MOV, JPEG, PNG" },
+        { error: "Invalid file type. Allowed: PDF, MP4, MOV, JPEG, PNG, GIF, WebP" },
         { status: 400 }
       )
     }
