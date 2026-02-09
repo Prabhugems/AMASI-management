@@ -6,7 +6,6 @@ import { formatDistanceToNow } from "date-fns"
 import { useTheme } from "next-themes"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
-import { createClient } from "@/lib/supabase/client"
 
 // Status Indicator
 function StatusIndicator({ status, size = "md" }: { status: string; size?: "sm" | "md" | "lg" }) {
@@ -169,15 +168,22 @@ function TeamMemberRow({
         </button>
       </div>
 
-      {/* Time */}
+      {/* Time / Login Status */}
       <span
         className={`
         text-xs transition-all duration-300
-        ${isDark ? "text-slate-500" : "text-gray-400"}
+        ${member.time === "Never logged in"
+          ? (isDark ? "text-amber-400/80" : "text-amber-600")
+          : (isDark ? "text-slate-500" : "text-gray-400")}
         ${isHovered ? "opacity-0" : "opacity-100"}
       `}
       >
-        {member.time}
+        {member.time === "Never logged in" ? (
+          <span className="flex items-center gap-1">
+            <LogIn className="w-3 h-3" />
+            Pending
+          </span>
+        ) : member.time}
       </span>
     </div>
   )
@@ -277,68 +283,48 @@ const MEMBER_COLORS = ["emerald", "amber", "rose", "blue", "indigo", "violet"]
 export function WhosOnlineWidget() {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const supabase = createClient()
 
   // Prevent hydration mismatch
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Fetch team members from database
+  // Fetch team members with real auth login data from server API
   type TeamMemberType = {
-    id: string; name: string; email: string; role: string; is_active: boolean; created_at: string
-    last_login_at?: string | null; last_active_at?: string | null; login_count?: number
+    id: string; name: string; email: string; role: string; is_active: boolean
+    has_logged_in: boolean; last_sign_in_at: string | null; last_active_at: string | null
   }
   const { data: teamMembersData, isLoading } = useQuery({
     queryKey: ["team-members-online"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("team_members")
-        .select("id, name, email, role, is_active, created_at")
-        .order("created_at", { ascending: false })
-      if (error) throw error
-      const members = (data || []) as TeamMemberType[]
-
-      // Fetch login activity from users table
-      const emails = members.map(m => m.email.toLowerCase())
-      if (emails.length > 0) {
-        const { data: users } = await supabase
-          .from("users")
-          .select("email, last_login_at, last_active_at, login_count")
-          .in("email", emails)
-        if (users) {
-          const userMap = new Map<string, any>(users.map((u: any) => [u.email?.toLowerCase(), u]))
-          for (const member of members) {
-            const user = userMap.get(member.email.toLowerCase())
-            if (user) {
-              member.last_login_at = user.last_login_at
-              member.last_active_at = user.last_active_at
-              member.login_count = user.login_count ?? 0
-            }
-          }
-        }
-      }
-
-      return members
+      const res = await fetch("/api/team/status")
+      if (!res.ok) throw new Error("Failed to fetch team status")
+      const json = await res.json()
+      return json.members as TeamMemberType[]
     },
-    refetchInterval: 60000, // Refresh every 60 seconds for live status
+    refetchInterval: 60000, // Refresh every 60 seconds
   })
 
-  // Determine live status from last_active_at
+  // Determine live status from last_active_at and login history
   const getLoginStatus = (member: TeamMemberType) => {
     if (!member.is_active) return "offline"
-    if (!member.last_active_at) return "offline"
-    const diff = Date.now() - new Date(member.last_active_at).getTime()
-    if (diff < 15 * 60 * 1000) return "online"   // Active in last 15 min
-    if (diff < 60 * 60 * 1000) return "away"      // Active in last hour
+    if (!member.has_logged_in) return "offline"
+    if (member.last_active_at) {
+      const diff = Date.now() - new Date(member.last_active_at).getTime()
+      if (diff < 15 * 60 * 1000) return "online"   // Active in last 15 min
+      if (diff < 60 * 60 * 1000) return "away"      // Active in last hour
+    }
     return "offline"
   }
 
   const getTimeLabel = (member: TeamMemberType) => {
     const status = getLoginStatus(member)
     if (status === "online") return "Online"
-    if (!member.last_login_at) return "Never"
-    return formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true })
+    if (!member.has_logged_in) return "Never logged in"
+    if (member.last_sign_in_at) {
+      return formatDistanceToNow(new Date(member.last_sign_in_at), { addSuffix: true })
+    }
+    return "Never"
   }
 
   // Transform database data to widget format
@@ -354,6 +340,8 @@ export function WhosOnlineWidget() {
   const isDark = mounted ? resolvedTheme === "dark" : false
   const onlineCount = teamMembers.filter((m) => m.status === "online").length
   const offlineCount = teamMembers.filter((m) => m.status === "offline").length
+  const loggedInCount = (teamMembersData || []).filter((m) => m.has_logged_in).length
+  const neverLoggedInCount = (teamMembersData || []).filter((m) => !m.has_logged_in && m.is_active).length
 
   if (isLoading) {
     return (
@@ -423,7 +411,7 @@ export function WhosOnlineWidget() {
               </div>
             </div>
             <p className={`text-xs ${isDark ? "text-slate-500" : "text-gray-500"}`}>
-              {onlineCount} online • {offlineCount} offline
+              {loggedInCount}/{teamMembers.length} logged in{onlineCount > 0 ? ` • ${onlineCount} online now` : ""}{neverLoggedInCount > 0 ? ` • ${neverLoggedInCount} pending` : ""}
             </p>
           </div>
         </div>
