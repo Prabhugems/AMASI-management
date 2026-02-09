@@ -143,37 +143,54 @@ export default function GenerateCertificatesPage() {
 
     setGenerating(true)
     try {
-      // TODO: Implement actual certificate generation
-      // This would typically call a server action or API to generate PDFs
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const registrationIds = Array.from(selectedAttendees)
 
-      // Update registration records
-      const updates = Array.from(selectedAttendees).map(id => ({
-        id,
-        custom_fields: {
-          certificate_generated: true,
-          certificate_generated_at: new Date().toISOString(),
-        },
-      }))
+      // Call the certificate generation API
+      const response = await fetch("/api/certificates/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          template_id: selectedTemplate,
+          registration_ids: registrationIds,
+        }),
+      })
 
-      for (const update of updates) {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || "Failed to generate certificates")
+      }
+
+      // Download the generated PDF
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `certificates-${eventId.slice(0, 8)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      // Mark registrations as certificate generated
+      for (const id of registrationIds) {
         await (supabase as any)
           .from("registrations")
           .update({
             custom_fields: {
-              ...attendees?.find(a => a.id === update.id)?.custom_fields,
+              ...attendees?.find(a => a.id === id)?.custom_fields,
               certificate_generated: true,
               certificate_generated_at: new Date().toISOString(),
             },
           })
-          .eq("id", update.id)
+          .eq("id", id)
       }
 
       queryClient.invalidateQueries({ queryKey: ["certificate-attendees", eventId] })
-      toast.success(`Generated ${selectedAttendees.size} certificates`)
+      toast.success(`Generated and downloaded ${selectedAttendees.size} certificates`)
       setSelectedAttendees(new Set())
-    } catch (error) {
-      toast.error("Failed to generate certificates")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate certificates")
     } finally {
       setGenerating(false)
     }

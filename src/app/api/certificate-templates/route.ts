@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         template_data: template_data || {},
         ticket_type_ids: ticket_type_ids || null,
         is_default: is_default || false,
+        is_active: true,
       })
       .select()
       .single()
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, name, description, size, template_image_url, template_data, ticket_type_ids, is_default, event_id } = body
+    const { id, name, description, size, template_image_url, template_data, ticket_type_ids, is_default, is_active, event_id } = body
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
@@ -105,6 +106,7 @@ export async function PUT(request: NextRequest) {
     if (template_data !== undefined) updateData.template_data = template_data
     if (ticket_type_ids !== undefined) updateData.ticket_type_ids = ticket_type_ids
     if (is_default !== undefined) updateData.is_default = is_default
+    if (is_active !== undefined) updateData.is_active = is_active
 
     const { data, error } = await (supabase as any)
       .from("certificate_templates")
