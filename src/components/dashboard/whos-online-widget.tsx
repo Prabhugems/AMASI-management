@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, MessageCircle, Video, ChevronRight, Activity, Loader2 } from "lucide-react"
+import { Users, MessageCircle, Video, ChevronRight, Activity, Loader2, LogIn } from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
 import { useTheme } from "next-themes"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
@@ -234,9 +235,9 @@ function OnlineAvatarsRow({ members, isDark }: { members: TeamMemberWidget[]; is
       {/* Status Text */}
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium ${isDark ? "text-white" : "text-gray-900"}`}>
-          {members.filter((m) => m.status === "online").length} active
+          {members.filter((m) => m.status === "online").length} online
         </p>
-        <p className={`text-xs ${isDark ? "text-slate-500" : "text-gray-500"}`}>Team members with access</p>
+        <p className={`text-xs ${isDark ? "text-slate-500" : "text-gray-500"}`}>Logged in right now</p>
       </div>
 
       {/* Manage Team Link */}
@@ -284,7 +285,10 @@ export function WhosOnlineWidget() {
   }, [])
 
   // Fetch team members from database
-  type TeamMemberType = { id: string; name: string; email: string; role: string; is_active: boolean; created_at: string }
+  type TeamMemberType = {
+    id: string; name: string; email: string; role: string; is_active: boolean; created_at: string
+    last_login_at?: string | null; last_active_at?: string | null; login_count?: number
+  }
   const { data: teamMembersData, isLoading } = useQuery({
     queryKey: ["team-members-online"],
     queryFn: async () => {
@@ -293,18 +297,58 @@ export function WhosOnlineWidget() {
         .select("id, name, email, role, is_active, created_at")
         .order("created_at", { ascending: false })
       if (error) throw error
-      return (data || []) as TeamMemberType[]
+      const members = (data || []) as TeamMemberType[]
+
+      // Fetch login activity from users table
+      const emails = members.map(m => m.email.toLowerCase())
+      if (emails.length > 0) {
+        const { data: users } = await supabase
+          .from("users")
+          .select("email, last_login_at, last_active_at, login_count")
+          .in("email", emails)
+        if (users) {
+          const userMap = new Map<string, any>(users.map((u: any) => [u.email?.toLowerCase(), u]))
+          for (const member of members) {
+            const user = userMap.get(member.email.toLowerCase())
+            if (user) {
+              member.last_login_at = user.last_login_at
+              member.last_active_at = user.last_active_at
+              member.login_count = user.login_count ?? 0
+            }
+          }
+        }
+      }
+
+      return members
     },
+    refetchInterval: 60000, // Refresh every 60 seconds for live status
   })
+
+  // Determine live status from last_active_at
+  const getLoginStatus = (member: TeamMemberType) => {
+    if (!member.is_active) return "offline"
+    if (!member.last_active_at) return "offline"
+    const diff = Date.now() - new Date(member.last_active_at).getTime()
+    if (diff < 15 * 60 * 1000) return "online"   // Active in last 15 min
+    if (diff < 60 * 60 * 1000) return "away"      // Active in last hour
+    return "offline"
+  }
+
+  const getTimeLabel = (member: TeamMemberType) => {
+    const status = getLoginStatus(member)
+    if (status === "online") return "Online"
+    if (!member.last_login_at) return "Never"
+    return formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true })
+  }
 
   // Transform database data to widget format
   const teamMembers = (teamMembersData || []).map((member, index) => ({
     id: member.id,
     name: member.name,
     role: ROLE_LABELS[member.role] || member.role,
-    status: member.is_active ? "online" : "offline",
+    status: getLoginStatus(member),
     color: ROLE_COLORS[member.role] || MEMBER_COLORS[index % MEMBER_COLORS.length],
-    time: member.is_active ? "Active" : "Inactive",
+    time: getTimeLabel(member),
   }))
 
   const isDark = mounted ? resolvedTheme === "dark" : false
@@ -379,7 +423,7 @@ export function WhosOnlineWidget() {
               </div>
             </div>
             <p className={`text-xs ${isDark ? "text-slate-500" : "text-gray-500"}`}>
-              {onlineCount} active • {offlineCount} inactive
+              {onlineCount} online • {offlineCount} offline
             </p>
           </div>
         </div>

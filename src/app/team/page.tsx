@@ -120,6 +120,9 @@ type TeamMember = {
   permissions?: string[]
   is_active: boolean
   created_at: string
+  last_login_at?: string | null
+  last_active_at?: string | null
+  login_count?: number
 }
 
 const TRAVEL_PERMISSIONS = [
@@ -436,7 +439,29 @@ export default function TeamPage() {
         .select("*")
         .order("created_at", { ascending: false })
       if (error) throw error
-      return data as TeamMember[]
+      const members = data as TeamMember[]
+
+      // Fetch login activity from users table by matching emails
+      const emails = members.map(m => m.email.toLowerCase())
+      if (emails.length > 0) {
+        const { data: users } = await (supabase as any)
+          .from("users")
+          .select("email, last_login_at, last_active_at, login_count")
+          .in("email", emails)
+        if (users) {
+          const userMap = new Map<string, any>(users.map((u: any) => [u.email?.toLowerCase(), u]))
+          for (const member of members) {
+            const user = userMap.get(member.email.toLowerCase())
+            if (user) {
+              member.last_login_at = user.last_login_at
+              member.last_active_at = user.last_active_at
+              member.login_count = user.login_count ?? 0
+            }
+          }
+        }
+      }
+
+      return members
     },
   })
 
@@ -751,7 +776,8 @@ export default function TeamPage() {
                   <TableHead>Role</TableHead>
                   <TableHead>Permissions</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Added</TableHead>
+                  <TableHead>Last Active</TableHead>
+                  <TableHead>Logins</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -840,8 +866,31 @@ export default function TeamPage() {
                           {member.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(member.created_at), { addSuffix: true })}
+                      <TableCell>
+                        {member.last_login_at ? (
+                          <div className="flex items-center gap-2">
+                            {member.last_active_at && (new Date().getTime() - new Date(member.last_active_at).getTime()) < 15 * 60 * 1000 && (
+                              <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                              </span>
+                            )}
+                            <span className="text-sm text-muted-foreground">
+                              {formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true })}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground/50">Never</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {(member.login_count ?? 0) > 0 ? (
+                          <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-700">
+                            {member.login_count}
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground/50">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -935,16 +984,29 @@ export default function TeamPage() {
 
                     {/* Quick stats */}
                     <div className="flex items-center gap-4 mt-4 pt-4 border-t">
-                      {member.phone && (
+                      {member.last_login_at ? (
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <Phone className="h-3.5 w-3.5" />
-                          <span className="truncate">{member.phone}</span>
+                          {member.last_active_at && (new Date().getTime() - new Date(member.last_active_at).getTime()) < 15 * 60 * 1000 ? (
+                            <span className="relative flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                            </span>
+                          ) : (
+                            <Activity className="h-3.5 w-3.5" />
+                          )}
+                          <span>{formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true })}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground/50">
+                          <Activity className="h-3.5 w-3.5" />
+                          <span>Never logged in</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground ml-auto">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span>{formatDistanceToNow(new Date(member.created_at), { addSuffix: true })}</span>
-                      </div>
+                      {(member.login_count ?? 0) > 0 && (
+                        <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-600 ml-auto">
+                          {member.login_count} login{member.login_count !== 1 ? "s" : ""}
+                        </Badge>
+                      )}
                     </div>
 
                     {/* Permissions preview */}
@@ -1204,10 +1266,60 @@ export default function TeamPage() {
                     </div>
                   )}
 
+                  {/* Login Activity */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Login Activity</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded-xl bg-slate-50">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Last Login</p>
+                        </div>
+                        <p className="text-sm font-medium">
+                          {selectedMember.last_login_at
+                            ? formatDistanceToNow(new Date(selectedMember.last_login_at), { addSuffix: true })
+                            : "Never"}
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Zap className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Last Active</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {selectedMember.last_active_at && (new Date().getTime() - new Date(selectedMember.last_active_at).getTime()) < 15 * 60 * 1000 && (
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </span>
+                          )}
+                          <p className="text-sm font-medium">
+                            {selectedMember.last_active_at
+                              ? formatDistanceToNow(new Date(selectedMember.last_active_at), { addSuffix: true })
+                              : "Never"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50">
+                        <div className="flex items-center gap-2 mb-1">
+                          <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Total Logins</p>
+                        </div>
+                        <p className="text-sm font-medium">{selectedMember.login_count ?? 0}</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Member Since</p>
+                        </div>
+                        <p className="text-sm font-medium">{format(new Date(selectedMember.created_at), "MMM d, yyyy")}</p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Meta */}
                   <div className="pt-4 border-t">
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>Added {format(new Date(selectedMember.created_at), "MMMM d, yyyy")}</span>
                       <span className="font-mono text-xs">{selectedMember.id.slice(0, 8)}</span>
                     </div>
                   </div>
