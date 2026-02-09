@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -30,6 +31,32 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error && user) {
+      // Update login activity using admin client to bypass RLS
+      try {
+        const adminClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
+        )
+        const now = new Date().toISOString()
+        // Get current login count first
+        const { data: currentUser } = await adminClient
+          .from('users')
+          .select('login_count')
+          .eq('id', user.id)
+          .single()
+        await adminClient
+          .from('users')
+          .update({
+            last_login_at: now,
+            last_active_at: now,
+            login_count: (currentUser?.login_count || 0) + 1,
+          })
+          .eq('id', user.id)
+      } catch (e) {
+        // Don't block login if tracking fails
+        console.error('Failed to update login activity:', e)
+      }
+
       // If there's an explicit next URL, use it
       if (next) {
         return NextResponse.redirect(new URL(next, requestUrl.origin))
