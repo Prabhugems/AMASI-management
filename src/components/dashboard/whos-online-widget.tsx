@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, MessageCircle, Video, ChevronRight, Activity, Loader2, LogIn } from "lucide-react"
+import { Users, MessageCircle, Video, ChevronRight, Activity, Loader2, LogIn, LogOut } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { useTheme } from "next-themes"
 import Link from "next/link"
@@ -29,6 +29,11 @@ function StatusIndicator({ status, size = "md" }: { status: string; size?: "sm" 
     busy: {
       color: "bg-rose-500",
       ring: "ring-rose-500/30",
+      pulse: false,
+    },
+    logged_out: {
+      color: "bg-orange-400",
+      ring: "ring-orange-400/30",
       pulse: false,
     },
     offline: {
@@ -174,7 +179,9 @@ function TeamMemberRow({
         text-xs transition-all duration-300
         ${member.time === "Never logged in"
           ? (isDark ? "text-amber-400/80" : "text-amber-600")
-          : (isDark ? "text-slate-500" : "text-gray-400")}
+          : member.status === "logged_out"
+            ? (isDark ? "text-orange-400/80" : "text-orange-600")
+            : (isDark ? "text-slate-500" : "text-gray-400")}
         ${isHovered ? "opacity-0" : "opacity-100"}
       `}
       >
@@ -182,6 +189,11 @@ function TeamMemberRow({
           <span className="flex items-center gap-1">
             <LogIn className="w-3 h-3" />
             Pending
+          </span>
+        ) : member.status === "logged_out" ? (
+          <span className="flex items-center gap-1">
+            <LogOut className="w-3 h-3" />
+            {member.time}
           </span>
         ) : member.time}
       </span>
@@ -293,6 +305,7 @@ export function WhosOnlineWidget() {
   type TeamMemberType = {
     id: string; name: string; email: string; role: string; is_active: boolean
     has_logged_in: boolean; last_sign_in_at: string | null; last_active_at: string | null
+    logged_out_at: string | null
   }
   const { data: teamMembersData, isLoading } = useQuery({
     queryKey: ["team-members-online"],
@@ -305,29 +318,42 @@ export function WhosOnlineWidget() {
     refetchInterval: 60000, // Refresh every 60 seconds
   })
 
-  // Determine live status from last_active_at and login history
+  // Determine live status from last_active_at, logged_out_at, and login history
   const getLoginStatus = (member: TeamMemberType) => {
     if (!member.is_active) return "offline"
-    if (!member.has_logged_in) return "offline"
+    if (!member.has_logged_in) return "never"
     if (member.last_active_at) {
       const diff = Date.now() - new Date(member.last_active_at).getTime()
       if (diff < 15 * 60 * 1000) return "online"   // Active in last 15 min
       if (diff < 60 * 60 * 1000) return "away"      // Active in last hour
     }
+    // Check if explicitly logged out
+    if (member.logged_out_at) return "logged_out"
     return "offline"
   }
 
   const getTimeLabel = (member: TeamMemberType) => {
     const status = getLoginStatus(member)
     if (status === "online") return "Online"
-    if (!member.has_logged_in) return "Never logged in"
+    if (status === "never") return "Never logged in"
+    if (status === "logged_out" && member.logged_out_at) {
+      return formatDistanceToNow(new Date(member.logged_out_at), { addSuffix: true })
+    }
+    if (member.last_active_at) {
+      return formatDistanceToNow(new Date(member.last_active_at), { addSuffix: true })
+    }
     if (member.last_sign_in_at) {
       return formatDistanceToNow(new Date(member.last_sign_in_at), { addSuffix: true })
     }
     return "Never"
   }
 
-  // Transform database data to widget format
+  // Status sort priority: online=0, away=1, logged_out=2, offline=3, never=4
+  const STATUS_SORT_ORDER: Record<string, number> = {
+    online: 0, away: 1, logged_out: 2, offline: 3, never: 4,
+  }
+
+  // Transform database data to widget format and sort by status priority
   const teamMembers = (teamMembersData || []).map((member, index) => ({
     id: member.id,
     name: member.name,
@@ -335,13 +361,25 @@ export function WhosOnlineWidget() {
     status: getLoginStatus(member),
     color: ROLE_COLORS[member.role] || MEMBER_COLORS[index % MEMBER_COLORS.length],
     time: getTimeLabel(member),
-  }))
+    _lastActivity: member.last_active_at || member.logged_out_at || member.last_sign_in_at || null,
+  })).sort((a, b) => {
+    const orderA = STATUS_SORT_ORDER[a.status] ?? 3
+    const orderB = STATUS_SORT_ORDER[b.status] ?? 3
+    if (orderA !== orderB) return orderA - orderB
+    // Within same status, sort by most recent activity
+    if (a._lastActivity && b._lastActivity) {
+      return new Date(b._lastActivity).getTime() - new Date(a._lastActivity).getTime()
+    }
+    if (a._lastActivity) return -1
+    if (b._lastActivity) return 1
+    return 0
+  })
 
   const isDark = mounted ? resolvedTheme === "dark" : false
   const onlineCount = teamMembers.filter((m) => m.status === "online").length
-  const offlineCount = teamMembers.filter((m) => m.status === "offline").length
+  const offlineCount = teamMembers.filter((m) => m.status === "offline" || m.status === "logged_out").length
   const loggedInCount = (teamMembersData || []).filter((m) => m.has_logged_in).length
-  const neverLoggedInCount = (teamMembersData || []).filter((m) => !m.has_logged_in && m.is_active).length
+  const neverLoggedInCount = teamMembers.filter((m) => m.status === "never").length
 
   if (isLoading) {
     return (

@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
           .update({
             last_login_at: now,
             last_active_at: now,
+            logged_out_at: null,
             login_count: (currentUser?.login_count || 0) + 1,
           })
           .eq('id', user.id)

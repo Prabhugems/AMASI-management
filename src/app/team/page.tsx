@@ -104,10 +104,37 @@ import {
   ClipboardList,
   MapPin,
   QrCode,
+  LogOut,
+  Wifi,
+  WifiOff,
+  CircleDot,
 } from "lucide-react"
 import { toast } from "sonner"
 import { format, formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
+
+// Get login-aware status for a team member
+function getLoginStatus(member: TeamMember): "online" | "away" | "logged_out" | "offline" | "pending" | "deactivated" {
+  if (!member.is_active) return "deactivated"
+  if (!member.last_login_at) return "pending"
+  if (member.last_active_at) {
+    const diff = Date.now() - new Date(member.last_active_at).getTime()
+    if (diff < 15 * 60 * 1000) return "online"
+    if (diff < 60 * 60 * 1000) return "away"
+  }
+  if (member.logged_out_at) return "logged_out"
+  return "offline"
+}
+
+// Login status badge config
+const LOGIN_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: any; pulse?: boolean }> = {
+  online: { label: "Online", color: "text-green-700", bgColor: "bg-green-100", icon: Wifi, pulse: true },
+  away: { label: "Away", color: "text-amber-700", bgColor: "bg-amber-100", icon: Clock },
+  logged_out: { label: "Logged out", color: "text-orange-700", bgColor: "bg-orange-100", icon: LogOut },
+  offline: { label: "Offline", color: "text-slate-600", bgColor: "bg-slate-100", icon: WifiOff },
+  pending: { label: "Pending", color: "text-blue-700", bgColor: "bg-blue-100", icon: CircleDot },
+  deactivated: { label: "Deactivated", color: "text-red-700", bgColor: "bg-red-100", icon: UserX },
+}
 
 type TeamMember = {
   id: string
@@ -122,6 +149,7 @@ type TeamMember = {
   created_at: string
   last_login_at?: string | null
   last_active_at?: string | null
+  logged_out_at?: string | null
   login_count?: number
 }
 
@@ -446,7 +474,7 @@ export default function TeamPage() {
       if (emails.length > 0) {
         const { data: users } = await (supabase as any)
           .from("users")
-          .select("email, last_login_at, last_active_at, login_count")
+          .select("email, last_login_at, last_active_at, logged_out_at, login_count")
           .in("email", emails)
         if (users) {
           const userMap = new Map<string, any>(users.map((u: any) => [u.email?.toLowerCase(), u]))
@@ -455,6 +483,7 @@ export default function TeamPage() {
             if (user) {
               member.last_login_at = user.last_login_at
               member.last_active_at = user.last_active_at
+              member.logged_out_at = user.logged_out_at
               member.login_count = user.login_count ?? 0
             }
           }
@@ -862,26 +891,56 @@ export default function TeamPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={member.is_active ? "default" : "secondary"} className={cn("text-xs", member.is_active ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-slate-100 text-slate-600")}>
-                          {member.is_active ? "Active" : "Inactive"}
-                        </Badge>
+                        {(() => {
+                          const status = getLoginStatus(member)
+                          const config = LOGIN_STATUS_CONFIG[status]
+                          const StatusIcon = config.icon
+                          return (
+                            <Badge variant="secondary" className={cn("text-xs gap-1", config.bgColor, config.color)}>
+                              {config.pulse ? (
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                                </span>
+                              ) : (
+                                <StatusIcon className="h-3 w-3" />
+                              )}
+                              {config.label}
+                            </Badge>
+                          )
+                        })()}
                       </TableCell>
                       <TableCell>
-                        {member.last_login_at ? (
-                          <div className="flex items-center gap-2">
-                            {member.last_active_at && (new Date().getTime() - new Date(member.last_active_at).getTime()) < 15 * 60 * 1000 && (
-                              <span className="relative flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                        {(() => {
+                          const status = getLoginStatus(member)
+                          if (status === "online") {
+                            return (
+                              <span className="text-sm text-green-600 font-medium">Active now</span>
+                            )
+                          }
+                          if (status === "logged_out" && member.logged_out_at) {
+                            return (
+                              <span className="text-sm text-muted-foreground">
+                                Logged out {formatDistanceToNow(new Date(member.logged_out_at), { addSuffix: true })}
                               </span>
-                            )}
-                            <span className="text-sm text-muted-foreground">
-                              {formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true })}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground/50">Never</span>
-                        )}
+                            )
+                          }
+                          if (member.last_active_at) {
+                            return (
+                              <span className="text-sm text-muted-foreground">
+                                {formatDistanceToNow(new Date(member.last_active_at), { addSuffix: true })}
+                              </span>
+                            )
+                          }
+                          if (member.last_login_at) {
+                            return (
+                              <span className="text-sm text-muted-foreground">
+                                {formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true })}
+                              </span>
+                            )
+                          }
+                          return <span className="text-sm text-muted-foreground/50">Never</span>
+                        })()}
                       </TableCell>
                       <TableCell>
                         {(member.login_count ?? 0) > 0 ? (
@@ -952,7 +1011,12 @@ export default function TeamPage() {
                         </Avatar>
                         <div className={cn(
                           "absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white",
-                          member.is_active ? "bg-green-500" : "bg-slate-400"
+                          getLoginStatus(member) === "online" ? "bg-green-500" :
+                          getLoginStatus(member) === "away" ? "bg-amber-500" :
+                          getLoginStatus(member) === "logged_out" ? "bg-orange-400" :
+                          getLoginStatus(member) === "pending" ? "bg-blue-400" :
+                          getLoginStatus(member) === "deactivated" ? "bg-red-400" :
+                          "bg-slate-400"
                         )} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -984,24 +1048,31 @@ export default function TeamPage() {
 
                     {/* Quick stats */}
                     <div className="flex items-center gap-4 mt-4 pt-4 border-t">
-                      {member.last_login_at ? (
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          {member.last_active_at && (new Date().getTime() - new Date(member.last_active_at).getTime()) < 15 * 60 * 1000 ? (
-                            <span className="relative flex h-2.5 w-2.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                      {(() => {
+                        const status = getLoginStatus(member)
+                        const config = LOGIN_STATUS_CONFIG[status]
+                        const StatusIcon = config.icon
+                        return (
+                          <div className="flex items-center gap-1.5 text-sm">
+                            {config.pulse ? (
+                              <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                              </span>
+                            ) : (
+                              <StatusIcon className={cn("h-3.5 w-3.5", config.color)} />
+                            )}
+                            <span className={config.color}>
+                              {status === "online" ? "Online now" :
+                               status === "logged_out" && member.logged_out_at ? `Logged out ${formatDistanceToNow(new Date(member.logged_out_at), { addSuffix: true })}` :
+                               status === "pending" ? "Never logged in" :
+                               member.last_active_at ? formatDistanceToNow(new Date(member.last_active_at), { addSuffix: true }) :
+                               member.last_login_at ? formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true }) :
+                               config.label}
                             </span>
-                          ) : (
-                            <Activity className="h-3.5 w-3.5" />
-                          )}
-                          <span>{formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true })}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground/50">
-                          <Activity className="h-3.5 w-3.5" />
-                          <span>Never logged in</span>
-                        </div>
-                      )}
+                          </div>
+                        )
+                      })()}
                       {(member.login_count ?? 0) > 0 && (
                         <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-600 ml-auto">
                           {member.login_count} login{member.login_count !== 1 ? "s" : ""}
@@ -1196,6 +1267,30 @@ export default function TeamPage() {
                       </div>
                       <Switch checked={selectedMember.is_active} onCheckedChange={(checked) => toggleActive.mutate({ id: selectedMember.id, is_active: checked })} />
                     </div>
+                    {/* Login Status */}
+                    {(() => {
+                      const status = getLoginStatus(selectedMember)
+                      const config = LOGIN_STATUS_CONFIG[status]
+                      const StatusIcon = config.icon
+                      return (
+                        <div className={cn("flex items-center gap-3 p-3 rounded-xl mt-2", config.bgColor)}>
+                          {config.pulse ? (
+                            <span className="relative flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
+                            </span>
+                          ) : (
+                            <StatusIcon className={cn("h-4 w-4", config.color)} />
+                          )}
+                          <span className={cn("text-sm font-medium", config.color)}>
+                            {config.label}
+                            {status === "logged_out" && selectedMember.logged_out_at && (
+                              <span className="font-normal"> {formatDistanceToNow(new Date(selectedMember.logged_out_at), { addSuffix: true })}</span>
+                            )}
+                          </span>
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Permissions */}
@@ -1299,6 +1394,17 @@ export default function TeamPage() {
                               : "Never"}
                           </p>
                         </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50">
+                        <div className="flex items-center gap-2 mb-1">
+                          <LogOut className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Last Logout</p>
+                        </div>
+                        <p className="text-sm font-medium">
+                          {selectedMember.logged_out_at
+                            ? formatDistanceToNow(new Date(selectedMember.logged_out_at), { addSuffix: true })
+                            : "Never"}
+                        </p>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-50">
                         <div className="flex items-center gap-2 mb-1">

@@ -99,6 +99,8 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
   // Handle sign out
   const handleSignOut = async () => {
     try {
+      // Track logout before signing out (session must still be valid)
+      await fetch("/api/track-logout", { method: "POST" }).catch(() => {})
       await supabase.auth.signOut()
       toast.success("Signed out successfully")
       router.push("/login")

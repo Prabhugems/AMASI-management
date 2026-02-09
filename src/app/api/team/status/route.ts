@@ -63,13 +63,16 @@ export async function GET() {
     const emails = (teamMembers || []).map(m => m.email.toLowerCase())
     const { data: usersData } = await adminClient
       .from('users')
-      .select('email, last_active_at')
+      .select('email, last_active_at, logged_out_at')
       .in('email', emails.length > 0 ? emails : [''])
 
-    const activeMap = new Map<string, string | null>()
+    const activeMap = new Map<string, { last_active_at: string | null; logged_out_at: string | null }>()
     for (const u of usersData || []) {
       if (u.email) {
-        activeMap.set(u.email.toLowerCase(), u.last_active_at)
+        activeMap.set(u.email.toLowerCase(), {
+          last_active_at: u.last_active_at,
+          logged_out_at: u.logged_out_at,
+        })
       }
     }
 
@@ -77,6 +80,7 @@ export async function GET() {
     const members = (teamMembers || []).map(member => {
       const emailKey = member.email.toLowerCase()
       const auth = authMap.get(emailKey)
+      const activity = activeMap.get(emailKey)
       return {
         id: member.id,
         name: member.name,
@@ -85,7 +89,8 @@ export async function GET() {
         is_active: member.is_active,
         has_logged_in: !!auth?.last_sign_in_at,
         last_sign_in_at: auth?.last_sign_in_at ?? null,
-        last_active_at: activeMap.get(emailKey) ?? null,
+        last_active_at: activity?.last_active_at ?? null,
+        logged_out_at: activity?.logged_out_at ?? null,
       }
     })
 
