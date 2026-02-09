@@ -82,9 +82,33 @@ export async function GET(
 
     let y = height - 50
 
-    // Header - Organization Name
+    // Header - Event Logo + Organization Name
+    let logoXOffset = 50
+    const event = registration.events as any
+    if (event?.logo_url) {
+      try {
+        const logoResponse = await fetch(event.logo_url)
+        if (logoResponse.ok) {
+          const logoBytes = await logoResponse.arrayBuffer()
+          const uint8 = new Uint8Array(logoBytes)
+          const isPNG = uint8[0] === 0x89 && uint8[1] === 0x50
+          const isJPG = uint8[0] === 0xFF && uint8[1] === 0xD8
+          let logoImage
+          if (isPNG) logoImage = await pdfDoc.embedPng(logoBytes)
+          else if (isJPG) logoImage = await pdfDoc.embedJpg(logoBytes)
+          if (logoImage) {
+            const logoSize = 40
+            page.drawImage(logoImage, { x: 50, y: y - 15, width: logoSize, height: logoSize })
+            logoXOffset = 50 + logoSize + 10
+          }
+        }
+      } catch (e) {
+        console.error("Failed to embed logo in receipt:", e)
+      }
+    }
+
     page.drawText("AMASI", {
-      x: 50,
+      x: logoXOffset,
       y,
       size: 24,
       font: fontBold,
@@ -92,7 +116,7 @@ export async function GET(
     })
 
     page.drawText("Association of Minimal Access Surgeons of India", {
-      x: 50,
+      x: logoXOffset,
       y: y - 20,
       size: 10,
       font: fontRegular,
@@ -153,7 +177,6 @@ export async function GET(
     })
 
     y -= 25
-    const event = registration.events as any
     page.drawText(event?.name || "Event", {
       x: 50,
       y,

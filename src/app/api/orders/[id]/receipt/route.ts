@@ -37,7 +37,7 @@ export async function GET(
       created_at,
       event_id,
       metadata,
-      events (name, short_name, start_date, end_date, venue_name, city)
+      events (name, short_name, start_date, end_date, venue_name, city, logo_url)
     `)
     .eq("id", id)
     .single()
@@ -197,9 +197,37 @@ export async function GET(
     color: isAddonPurchase ? infoColor : primaryColor,
   })
 
+  // Embed event logo in header
+  let headerTextX = 50
+  if (event?.logo_url) {
+    try {
+      const logoResponse = await fetch(event.logo_url)
+      if (logoResponse.ok) {
+        const logoBytes = await logoResponse.arrayBuffer()
+        const uint8 = new Uint8Array(logoBytes)
+        const isPNG = uint8[0] === 0x89 && uint8[1] === 0x50
+        const isJPG = uint8[0] === 0xFF && uint8[1] === 0xD8
+        let logoImage
+        if (isPNG) logoImage = await pdfDoc.embedPng(logoBytes)
+        else if (isJPG) logoImage = await pdfDoc.embedJpg(logoBytes)
+        if (logoImage) {
+          const logoSize = 50
+          page.drawImage(logoImage, {
+            x: width - 50 - logoSize,
+            y: height - 85,
+            width: logoSize,
+            height: logoSize,
+          })
+        }
+      }
+    } catch (e) {
+      console.error("Failed to embed logo in order receipt:", e)
+    }
+  }
+
   const receiptTitle = isAddonPurchase ? "ADD-ON PURCHASE RECEIPT" : "PAYMENT RECEIPT"
   page.drawText(receiptTitle, {
-    x: 50,
+    x: headerTextX,
     y: height - 55,
     size: 20,
     font: helveticaBold,
@@ -207,7 +235,7 @@ export async function GET(
   })
 
   page.drawText(event?.short_name || event?.name || "Event", {
-    x: 50,
+    x: headerTextX,
     y: height - 78,
     size: 11,
     font: helvetica,
