@@ -40,6 +40,17 @@ function applyTextCase(text: string, textCase?: string): string {
   }
 }
 
+// Get the base URL for verification links
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  return "http://localhost:3000"
+}
+
 // Replace placeholders in text
 function replacePlaceholders(text: string, registration: any, event: any): string {
   if (!text) return ""
@@ -53,6 +64,10 @@ function replacePlaceholders(text: string, registration: any, event: any): strin
   result = result.replace(/\{\{institution\}\}/g, registration.attendee_institution || "")
   result = result.replace(/\{\{designation\}\}/g, registration.attendee_designation || "")
   result = result.replace(/\{\{event_name\}\}/g, event?.name || "")
+
+  // Verification URL - encodes the registration number into a scannable verification link
+  const verificationUrl = `${getBaseUrl()}/v/${encodeURIComponent(registration.registration_number || "")}`
+  result = result.replace(/\{\{verification_url\}\}/g, verificationUrl)
 
   // Event date
   if (event?.start_date && event?.end_date) {
@@ -132,7 +147,46 @@ export async function POST(request: NextRequest) {
     // Get certificate size
     const certSize = CERTIFICATE_SIZES[template.size] || CERTIFICATE_SIZES["A4-landscape"]
     const templateData = template.template_data || {}
-    const elements = templateData.elements || []
+    let elements = templateData.elements || []
+
+    // Ensure QR code with verification URL is always present
+    const hasQRCode = elements.some((el: any) => el.type === "qr_code")
+    if (!hasQRCode) {
+      elements = [
+        ...elements,
+        {
+          type: "qr_code",
+          x: 670, // bottom-right area (in pixels at 96 DPI)
+          y: 540,
+          width: 80,
+          height: 80,
+          content: "{{verification_url}}",
+          zIndex: 999,
+        },
+      ]
+    }
+
+    // Ensure registration number text is always present
+    const hasRegNumber = elements.some((el: any) =>
+      el.type === "text" && el.content?.includes("{{registration_number}}")
+    )
+    if (!hasRegNumber) {
+      elements = [
+        ...elements,
+        {
+          type: "text",
+          x: 650,
+          y: 625,
+          width: 120,
+          height: 20,
+          content: "{{registration_number}}",
+          fontSize: 10,
+          color: "#9ca3af",
+          align: "center",
+          zIndex: 999,
+        },
+      ]
+    }
 
     // Scale factor: template uses pixels at 96 DPI, PDF uses points at 72 DPI
     const scaleFactor = 72 / 96
@@ -245,7 +299,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (element.type === "qr_code") {
-          const qrContent = replacePlaceholders(element.content || "{{registration_number}}", registration, event)
+          const qrContent = replacePlaceholders(element.content || "{{verification_url}}", registration, event)
           try {
             const qrDataUrl = await QRCode.toDataURL(qrContent, { width: Math.round(width * 2), margin: 1, errorCorrectionLevel: "M" })
             const qrBase64 = qrDataUrl.split(",")[1]
