@@ -25,7 +25,7 @@ const nextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()', // Restrict features
+            value: 'camera=(self), microphone=(), geolocation=()', // Allow camera for QR scanning
           },
           {
             key: 'Strict-Transport-Security',
