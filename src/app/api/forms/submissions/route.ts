@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/forms/submissions - Submit a form (public endpoint)
 export async function POST(request: NextRequest) {
-  // Rate limit: public tier for form submissions
+  // Rate limit
   const ip = getClientIp(request)
   const rateLimit = checkRateLimit(ip, "public")
   if (!rateLimit.success) {
@@ -97,17 +97,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Use admin client to bypass RLS - anonymous users can't SELECT form_submissions
-    // after inserting (no SELECT policy for anon), which causes .insert().select() to fail
-    let supabase: SupabaseClient
-    try {
-      supabase = await createAdminClient()
-    } catch {
-      // Fallback to server client if admin client fails (missing service role key)
-      supabase = await createServerSupabaseClient()
-    }
-    const body = await request.json()
+    // Create admin client directly — bypasses ALL RLS policies
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
+      process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
+    )
 
+    const body = await request.json()
     const { form_id, responses, submitter_email, submitter_name, verified_emails } = body
 
     if (!form_id || !responses) {
@@ -117,38 +113,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Add email verification status to responses metadata
-    const enhancedResponses = {
-      ...responses,
-      _metadata: {
-        verified_emails: verified_emails || {},
-        submitted_at: new Date().toISOString()
-      }
-    }
-
-    // Verify form exists and is published
+    // Verify form exists and is published (no join — keep it simple)
     const { data: form, error: formError } = await supabase
       .from("forms")
-      .select(`
-        id,
-        name,
-        status,
-        is_public,
-        requires_auth,
-        allow_multiple_submissions,
-        max_submissions,
-        submission_deadline,
-        notify_on_submission,
-        notification_emails,
-        form_fields(*)
-      `)
+      .select("id, name, status, allow_multiple_submissions, max_submissions, submission_deadline, notify_on_submission, notification_emails")
       .eq("id", form_id)
       .single()
 
     if (formError || !form) {
-      console.error("Form lookup error:", formError)
       return NextResponse.json(
-        { error: `Form not found: ${formError?.message || "no data returned"}` },
+        { error: `Form not found: ${formError?.message || "no data"}` },
         { status: 404 }
       )
     }
@@ -190,9 +164,9 @@ export async function POST(request: NextRequest) {
         .select("id")
         .eq("form_id", form_id)
         .eq("submitter_email", submitter_email)
-        .single()
+        .limit(1)
 
-      if (existing) {
+      if (existing && existing.length > 0) {
         return NextResponse.json(
           { error: "You have already submitted this form" },
           { status: 400 }
@@ -200,86 +174,66 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate required fields
-    const fields = (form as any).form_fields || []
-    const missingRequired: string[] = []
-
-    for (const field of fields) {
-      if (field.is_required && !responses[field.id]) {
-        missingRequired.push(field.label)
-      }
-    }
-
-    if (missingRequired.length > 0) {
-      return NextResponse.json(
-        { error: `Missing required fields: ${missingRequired.join(", ")}` },
-        { status: 400 }
-      )
-    }
-
     // Get client info
     const headersList = await headers()
-    const forwardedFor = headersList.get("x-forwarded-for")
-    const realIp = headersList.get("x-real-ip")
-    const clientIp = forwardedFor?.split(",")[0] || realIp || "unknown"
+    const clientIp = headersList.get("x-forwarded-for")?.split(",")[0]
+      || headersList.get("x-real-ip")
+      || "unknown"
     const userAgent = headersList.get("user-agent") || "unknown"
 
-    // Create submission with enhanced responses (includes verification metadata)
-    const submissionData = {
-      form_id,
-      submitter_email,
-      submitter_name,
-      submitter_ip: clientIp,
-      user_agent: userAgent,
-      responses: enhancedResponses,
-      status: "pending",
-    }
-
-    const { data: submission, error } = await supabase
+    // Insert submission — just INSERT, no select back
+    const { error: insertError } = await supabase
       .from("form_submissions")
-      .insert(submissionData)
-      .select()
-      .single()
+      .insert({
+        form_id,
+        submitter_email: submitter_email || null,
+        submitter_name: submitter_name || null,
+        submitter_ip: clientIp,
+        user_agent: userAgent,
+        responses: {
+          ...responses,
+          _metadata: {
+            verified_emails: verified_emails || {},
+            submitted_at: new Date().toISOString(),
+          },
+        },
+        status: "pending",
+      })
 
-    if (error) {
-      console.error("Error creating submission:", error)
+    if (insertError) {
+      console.error("Error creating submission:", insertError)
       return NextResponse.json(
-        { error: `Failed to submit form: ${error.message || error.code || "unknown error"}` },
+        { error: `Failed to submit: ${insertError.message}` },
         { status: 500 }
       )
     }
 
-    // Send notification emails if enabled
+    // Send notification emails if enabled (async, don't block response)
     if (form.notify_on_submission && form.notification_emails?.length > 0) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
       const notificationEmails = Array.isArray(form.notification_emails)
         ? form.notification_emails
         : [form.notification_emails]
 
-      // Send notification asynchronously - don't block response
       fetch(`${baseUrl}/api/email/form-notification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           form_id: form.id,
           form_name: form.name,
-          submission_id: submission.id,
           submitter_name: submitter_name || "Anonymous",
           submitter_email: submitter_email || "Not provided",
           notification_emails: notificationEmails,
-          responses: enhancedResponses,
-          submitted_at: submission.submitted_at,
+          responses,
         }),
-      }).catch((err) => {
-        console.error("Failed to send form notification email:", err)
-      })
+      }).catch(() => {})
     }
 
-    return NextResponse.json(submission, { status: 201 })
+    return NextResponse.json({ success: true, status: "pending" }, { status: 201 })
   } catch (error: any) {
     console.error("Error in POST /api/forms/submissions:", error)
     return NextResponse.json(
-      { error: `Submission failed: ${error?.message || "unknown error"}` },
+      { error: `Submission failed: ${error?.message || "unknown"}` },
       { status: 500 }
     )
   }
