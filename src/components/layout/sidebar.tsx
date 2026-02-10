@@ -24,6 +24,8 @@ import { usePermissions } from "@/hooks/use-permissions"
 interface SidebarProps {
   collapsed: boolean
   onToggle: () => void
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
 const mainNavItems = [
@@ -94,7 +96,7 @@ const quickNavItems = [
   { name: "Help", href: "/help", icon: HelpCircle },
 ]
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const [openMenus, setOpenMenus] = React.useState<string[]>(["Dashboard"])
   const [userMenuOpen, setUserMenuOpen] = React.useState(false)
@@ -129,12 +131,22 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }
 
   return (
-    <aside
-      className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-sidebar transition-all duration-300 ease-in-out flex flex-col",
-        collapsed ? "w-20" : "w-64"
+    <>
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={onMobileClose}
+        />
       )}
-    >
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 h-screen bg-sidebar transition-all duration-300 ease-in-out flex flex-col",
+          collapsed ? "lg:w-20" : "lg:w-64",
+          // Mobile: hidden by default, slide in when open
+          mobileOpen ? "w-64 translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}
+      >
       {/* Logo */}
       <div className="flex h-16 items-center px-4 border-b border-sidebar-border">
         <Link href="/" className="flex items-center gap-3">
@@ -228,6 +240,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         <li key={child.href}>
                           <Link
                             href={child.href}
+                            onClick={onMobileClose}
                             className={cn(
                               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
                               childActive
@@ -259,6 +272,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    onClick={onMobileClose}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
                       isActive
@@ -293,5 +307,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </button>
       </div>
     </aside>
+    </>
   )
 }

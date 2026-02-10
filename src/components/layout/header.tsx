@@ -23,6 +23,7 @@ import {
   Calendar,
   Briefcase,
   Clock,
+  Menu,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -30,6 +31,7 @@ import { toast } from "sonner"
 
 interface HeaderProps {
   sidebarCollapsed: boolean
+  onMobileMenuToggle?: () => void
 }
 
 // Role display config
@@ -39,7 +41,7 @@ const ROLE_DISPLAY: Record<string, { label: string; icon: React.ElementType; col
   coordinator: { label: "Event Coordinator", icon: Calendar, color: "text-emerald-500" },
 }
 
-export function Header({ sidebarCollapsed }: HeaderProps) {
+export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
   const { theme, setTheme } = useTheme()
   const { color, setColor, sidebarColor, setSidebarColor } = useThemeColor()
   const [showThemeMenu, setShowThemeMenu] = React.useState(false)
@@ -121,13 +123,19 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
   return (
     <header
       className={cn(
-        "fixed top-0 right-0 z-30 h-16 bg-background/80 backdrop-blur-xl border-b border-border transition-all duration-300 print:hidden",
-        sidebarCollapsed ? "left-20" : "left-64"
+        "fixed top-0 right-0 z-30 h-16 bg-background/80 backdrop-blur-xl border-b border-border transition-all duration-300 print:hidden left-0",
+        sidebarCollapsed ? "lg:left-20" : "lg:left-64"
       )}
     >
-      <div className="flex h-full items-center justify-between px-6">
-        {/* Search */}
-        <div className="flex items-center gap-4 flex-1 max-w-xl">
+      <div className="flex h-full items-center justify-between px-3 sm:px-6">
+        {/* Mobile menu button + Search */}
+        <div className="flex items-center gap-2 sm:gap-4 flex-1 max-w-xl">
+          <button
+            onClick={onMobileMenuToggle}
+            className="flex lg:hidden h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors flex-shrink-0"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
