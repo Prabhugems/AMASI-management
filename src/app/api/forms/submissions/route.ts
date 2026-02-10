@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
@@ -96,7 +97,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase: SupabaseClient = await createServerSupabaseClient()
+    // Use admin client to bypass RLS - anonymous users can't SELECT form_submissions
+    // after inserting (no SELECT policy for anon), which causes .insert().select() to fail
+    const supabase: SupabaseClient = await createAdminClient()
     const body = await request.json()
 
     const { form_id, responses, submitter_email, submitter_name, verified_emails } = body
