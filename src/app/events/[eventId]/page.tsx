@@ -334,6 +334,14 @@ export default function EventDashboardPage() {
               View Page
             </Button>
           )}
+          <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(`/api/events/${eventId}/invitation-pdf`, '_blank')}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Invitation
+            </Button>
           <Button variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
             Export

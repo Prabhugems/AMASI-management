@@ -22,6 +22,7 @@ import {
   CheckCircle,
   Loader2,
   ExternalLink,
+  Download,
 } from "lucide-react"
 import { TicketSelector } from "@/components/registration/ticket-selector"
 import { RegistrationTypeSelector } from "@/components/registration/registration-type-selector"
@@ -546,6 +547,16 @@ export default function EventDetailsPage() {
                   </p>
                 </div>
               </div>
+
+              <a
+                href={`/api/events/${event.id}/invitation-pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium mt-1"
+              >
+                <Download className="w-4 h-4" />
+                Download Invitation
+              </a>
             </div>
           </div>
 
