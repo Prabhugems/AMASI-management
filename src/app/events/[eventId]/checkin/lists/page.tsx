@@ -115,13 +115,6 @@ export default function CheckinListsPage() {
     },
   })
 
-  // Auto-select first list
-  useEffect(() => {
-    if (lists?.length && !selectedListId && !isCreating) {
-      setSelectedListId(lists[0].id)
-    }
-  }, [lists, selectedListId, isCreating])
-
   // Load selected list data into form
   useEffect(() => {
     if (selectedListId && lists) {
@@ -180,10 +173,8 @@ export default function CheckinListsPage() {
 
       if (isCreating) {
         toast.success("List created")
-        if (newList) {
-          setSelectedListId(newList.id)
-          setIsCreating(false)
-        }
+        setIsCreating(false)
+        setSelectedListId(null)
       } else {
         if (newList?.cleanedUp > 0) {
           toast.success(`List updated. ${newList.cleanedUp} orphaned check-in${newList.cleanedUp > 1 ? 's' : ''} removed.`)
