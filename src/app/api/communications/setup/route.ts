@@ -118,7 +118,7 @@ export async function POST() {
     console.error('Setup error:', error)
     return NextResponse.json({
       success: false,
-      error: error.message,
+      error: "Setup failed",
       hint: "The exec_sql function may not exist. You need to run the migration SQL directly in the Supabase SQL Editor.",
       sql_file: "/supabase/migrations/20260116_communications.sql"
     }, { status: 500 })

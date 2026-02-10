@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-// Create admin client for server-side operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).trim()
-)
+import { createAdminClient } from "@/lib/supabase/server"
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const supabaseClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = supabaseClient as any
     const { eventId } = await params
     const body = await request.json()
     const {
@@ -75,6 +72,9 @@ export async function GET(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const supabaseClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = supabaseClient as any
     const { eventId } = await params
 
     const { data, error } = await supabase

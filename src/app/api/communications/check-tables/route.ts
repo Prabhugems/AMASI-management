@@ -59,7 +59,7 @@ export async function GET() {
   } catch (error: any) {
     return NextResponse.json({
       success: false,
-      error: error.message,
+      error: "Failed to check communications tables",
     }, { status: 500 })
   }
 }

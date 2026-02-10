@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/email"
+import { escapeHtml } from "@/lib/string-utils"
 
 export const dynamic = "force-dynamic"
 
@@ -57,12 +58,12 @@ export async function POST(request: NextRequest) {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">${eventName}</h1>
+            <h1 style="color: white; margin: 0; font-size: 28px;">${escapeHtml(eventName || "")}</h1>
             <p style="color: rgba(255,255,255,0.8); margin: 10px 0 0 0;">${eventDate}</p>
           </div>
 
           <div style="background: #f8f9fa; padding: 30px; border: 1px solid #e9ecef;">
-            <h2 style="color: #333; margin: 0 0 20px 0;">Hello ${registration.attendee_name}!</h2>
+            <h2 style="color: #333; margin: 0 0 20px 0;">Hello ${escapeHtml(registration.attendee_name || "")}!</h2>
             <p style="color: #666; line-height: 1.6;">
               Your event badge is ready! You can download and print it before arriving at the event.
             </p>
@@ -71,28 +72,28 @@ export async function POST(request: NextRequest) {
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 8px 0; color: #666; width: 40%;">Name:</td>
-                  <td style="padding: 8px 0; color: #333; font-weight: bold;">${registration.attendee_name}</td>
+                  <td style="padding: 8px 0; color: #333; font-weight: bold;">${escapeHtml(registration.attendee_name || "")}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #666;">Registration #:</td>
-                  <td style="padding: 8px 0; color: #333; font-weight: bold;">${registration.registration_number}</td>
+                  <td style="padding: 8px 0; color: #333; font-weight: bold;">${escapeHtml(registration.registration_number || "")}</td>
                 </tr>
                 ${registration.attendee_designation ? `
                 <tr>
                   <td style="padding: 8px 0; color: #666;">Designation:</td>
-                  <td style="padding: 8px 0; color: #333;">${registration.attendee_designation}</td>
+                  <td style="padding: 8px 0; color: #333;">${escapeHtml(registration.attendee_designation || "")}</td>
                 </tr>
                 ` : ""}
                 ${registration.attendee_institution ? `
                 <tr>
                   <td style="padding: 8px 0; color: #666;">Institution:</td>
-                  <td style="padding: 8px 0; color: #333;">${registration.attendee_institution}</td>
+                  <td style="padding: 8px 0; color: #333;">${escapeHtml(registration.attendee_institution || "")}</td>
                 </tr>
                 ` : ""}
                 ${registration.ticket_type?.name ? `
                 <tr>
                   <td style="padding: 8px 0; color: #666;">Ticket Type:</td>
-                  <td style="padding: 8px 0; color: #333;">${registration.ticket_type.name}</td>
+                  <td style="padding: 8px 0; color: #333;">${escapeHtml(registration.ticket_type.name || "")}</td>
                 </tr>
                 ` : ""}
               </table>
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
 
             ${venue ? `
             <p style="color: #666; line-height: 1.6;">
-              <strong>Venue:</strong> ${venue}
+              <strong>Venue:</strong> ${escapeHtml(venue || "")}
             </p>
             ` : ""}
 
@@ -135,6 +136,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("Error sending badge email:", error)
-    return NextResponse.json({ error: error.message || "Failed to send badge" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to send badge" }, { status: 500 })
   }
 }

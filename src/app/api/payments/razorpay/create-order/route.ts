@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createOrder, generatePaymentNumber, RazorpayCredentials } from "@/lib/services/razorpay"
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/server"
 import crypto from "crypto"
-
-// Create admin client for server-side operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).trim()
-)
 
 // Generate idempotency key from payment details
 function generateIdempotencyKey(email: string, amount: number, ticketIds: string[]): string {
@@ -20,6 +14,9 @@ const DUPLICATE_WINDOW_MS = 5 * 60 * 1000
 
 export async function POST(request: NextRequest) {
   try {
+    const supabaseClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = supabaseClient as any
     const body = await request.json()
     const {
       amount: clientAmount, // Don't trust this - will validate

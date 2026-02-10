@@ -1,11 +1,5 @@
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
-
-// Create admin client with service role key to bypass RLS
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
-)
 
 // DELETE - Delete an order and associated registrations
 export async function DELETE(
@@ -13,6 +7,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabaseAdminClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabaseAdmin = supabaseAdminClient as any
     const { id } = await params
     console.log(`[DELETE ORDER] Deleting order: ${id}`)
 
@@ -69,7 +66,7 @@ export async function DELETE(
     if (paymentError) {
       console.error("[DELETE ORDER] Error deleting payment:", paymentError)
       return NextResponse.json(
-        { error: paymentError.message },
+        { error: "Failed to delete order" },
         { status: 500 }
       )
     }
@@ -85,7 +82,7 @@ export async function DELETE(
   } catch (error: any) {
     console.error("[DELETE ORDER] Error:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to delete order" },
+      { error: "Failed to delete order" },
       { status: 500 }
     )
   }
@@ -97,6 +94,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabaseAdminClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabaseAdmin = supabaseAdminClient as any
     const { id } = await params
 
     const { data, error } = await supabaseAdmin
@@ -119,11 +119,11 @@ export async function GET(
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to fetch order" }, { status: 500 })
     }
 
     return NextResponse.json({ data })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch order" }, { status: 500 })
   }
 }

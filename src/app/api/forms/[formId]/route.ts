@@ -1,5 +1,6 @@
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireFormAccess } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -11,6 +12,10 @@ export async function GET(
 ) {
   try {
     const { formId } = await params
+
+    const { error: authError } = await requireFormAccess(formId)
+    if (authError) return authError
+
     const supabase: SupabaseClient = await createServerSupabaseClient()
 
     const { data: form, error } = await supabase
@@ -67,16 +72,9 @@ export async function PATCH(
 ) {
   try {
     const { formId } = await params
-    const supabase: SupabaseClient = await createServerSupabaseClient()
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const { error: authError } = await requireFormAccess(formId)
+    if (authError) return authError
 
     const body = await request.json()
 
@@ -120,7 +118,7 @@ export async function PATCH(
       console.error("Form ID:", formId)
       console.error("Updates:", JSON.stringify(updates))
       return NextResponse.json(
-        { error: "Failed to update form", details: error.message, code: error.code },
+        { error: "Failed to update form" },
         { status: 500 }
       )
     }
@@ -150,18 +148,13 @@ export async function DELETE(
 ) {
   try {
     const { formId } = await params
-    const supabase: SupabaseClient = await createServerSupabaseClient()
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const { error: authError } = await requireFormAccess(formId)
+    if (authError) return authError
 
-    const { error } = await supabase
+    const adminClient: SupabaseClient = await createAdminClient()
+
+    const { error } = await adminClient
       .from("forms")
       .delete()
       .eq("id", formId)

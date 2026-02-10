@@ -1,13 +1,7 @@
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { createOrder, generatePaymentNumber, RazorpayCredentials } from "@/lib/services/razorpay"
 import { DEFAULTS } from "@/lib/config"
-
-// Create admin client for server-side operations (bypasses RLS)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).trim()
-)
 
 interface Attendee {
   ticket_type_id: string
@@ -47,6 +41,9 @@ function generateOrderNumber(): string {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabaseClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = supabaseClient as any
     const body: GroupRegistrationRequest = await request.json()
     const { event_id, buyer, attendees, discount_code, payment_method = "free" } = body
 
@@ -95,7 +92,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Create ticket lookup map
-    const ticketMap = new Map(ticketTypes.map(t => [t.id, t]))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ticketMap = new Map<string, any>(ticketTypes.map((t: any) => [t.id, t]))
 
     // Validate all tickets exist and are active
     for (const attendee of attendees) {
@@ -465,6 +463,9 @@ export async function POST(request: NextRequest) {
 // GET - Get group registration details by order ID
 export async function GET(request: NextRequest) {
   try {
+    const supabaseClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = supabaseClient as any
     const { searchParams } = new URL(request.url)
     const orderId = searchParams.get("order_id")
     const buyerId = searchParams.get("buyer_id")

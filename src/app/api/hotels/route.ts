@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(hotelsWithCounts || [])
   } catch (error: any) {
     console.error("Error fetching hotels:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process hotel request" }, { status: 500 })
   }
 }
 
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data)
   } catch (error: any) {
     console.error("Error creating hotel:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process hotel request" }, { status: 500 })
   }
 }
 
@@ -93,7 +93,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(data)
   } catch (error: any) {
     console.error("Error updating hotel:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process hotel request" }, { status: 500 })
   }
 }
 
@@ -118,6 +118,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error("Error deleting hotel:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process hotel request" }, { status: 500 })
   }
 }

@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to fetch registrations" }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
       offset,
     })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch registrations" }, { status: 500 })
   }
 }
 
@@ -431,7 +431,7 @@ export async function POST(request: NextRequest) {
       if (payment?.id) {
         await (supabase as any).from("payments").delete().eq("id", payment.id)
       }
-      return NextResponse.json({ error: regError.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to create registration" }, { status: 500 })
     }
 
     // NOTE: Ticket quantity_sold is updated when payment is verified (not here)
@@ -568,6 +568,6 @@ export async function POST(request: NextRequest) {
       requires_payment: ticket.price > 0 && payment_method !== "free",
     })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process registration" }, { status: 500 })
   }
 }

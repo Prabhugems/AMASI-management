@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/server"
 import { jsPDF } from "jspdf"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
-)
 
 // Format date
 function formatDate(dateStr: string | null | undefined, includeDay = true): string {
@@ -31,6 +26,9 @@ export async function GET(
   { params }: { params: Promise<{ registrationId: string }> }
 ) {
   const { registrationId } = await params
+  const supabaseClient = await createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = supabaseClient as any
 
   try {
     // Fetch registration with event details

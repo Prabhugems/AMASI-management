@@ -1,5 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { createClient } from "@supabase/supabase-js"
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
@@ -97,11 +96,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Create admin client directly — bypasses ALL RLS policies
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-      process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
-    )
+    const supabaseClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = supabaseClient as any
 
     const body = await request.json()
     const { form_id, responses, submitter_email, submitter_name, verified_emails } = body
@@ -233,7 +230,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Error in POST /api/forms/submissions:", error)
     return NextResponse.json(
-      { error: `Submission failed: ${error?.message || "unknown"}` },
+      { error: "Submission failed" },
       { status: 500 }
     )
   }

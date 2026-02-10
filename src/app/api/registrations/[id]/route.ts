@@ -33,7 +33,7 @@ export async function GET(
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process registration request" }, { status: 500 })
     }
 
     if (!data) {
@@ -42,7 +42,7 @@ export async function GET(
 
     return NextResponse.json({ data })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process registration request" }, { status: 500 })
   }
 }
 
@@ -116,7 +116,7 @@ export async function PATCH(
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process registration request" }, { status: 500 })
     }
 
     // If status changed to "confirmed", update ticket quantity_sold
@@ -156,7 +156,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, data })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process registration request" }, { status: 500 })
   }
 }
 
@@ -186,11 +186,11 @@ export async function DELETE(
       .eq("id", id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process registration request" }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process registration request" }, { status: 500 })
   }
 }

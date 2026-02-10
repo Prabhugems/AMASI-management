@@ -257,6 +257,72 @@ export async function requireEventAccess(eventId: string): Promise<AuthResult> {
 }
 
 /**
+ * Check if user has access to a specific form
+ * Super admins have access to all forms
+ * If form has event_id, delegates to requireEventAccess
+ * If no event_id, only the creator has access
+ */
+export async function requireFormAccess(formId: string): Promise<AuthResult> {
+  const result = await getApiUser()
+
+  if (result.error) {
+    return result
+  }
+
+  if (!result.user) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+  }
+
+  // Super admins have access to all forms
+  if (result.user.is_super_admin) {
+    return result
+  }
+
+  const adminClient = await createAdminClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: form } = await (adminClient as any)
+    .from('forms')
+    .select('id, event_id, created_by')
+    .eq('id', formId)
+    .maybeSingle()
+
+  if (!form) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: 'Form not found' },
+        { status: 404 }
+      )
+    }
+  }
+
+  // If form has event_id, delegate to event access check
+  if (form.event_id) {
+    return requireEventAccess(form.event_id)
+  }
+
+  // If no event_id, only the creator has access
+  if (form.created_by === result.user.id) {
+    return result
+  }
+
+  return {
+    user: null,
+    error: NextResponse.json(
+      { error: 'Forbidden - You do not have access to this form' },
+      { status: 403 }
+    )
+  }
+}
+
+/**
  * Get event ID from a registration ID
  */
 export async function getEventIdFromRegistration(registrationId: string): Promise<string | null> {

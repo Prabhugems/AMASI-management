@@ -21,7 +21,7 @@ export async function GET(
       .order("start_time")
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process sessions" }, { status: 500 })
     }
 
     // Find duplicates (same name + date + time + hall)
@@ -78,7 +78,7 @@ export async function POST(
       .order("created_at", { ascending: true })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process sessions" }, { status: 500 })
     }
 
     // Find duplicates (same name + date + time + hall)

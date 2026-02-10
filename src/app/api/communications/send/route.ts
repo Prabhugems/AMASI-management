@@ -6,6 +6,8 @@ import { sendSMS, SMSConfig } from "@/lib/services/sms"
 import { sendWebhook, buildCommunicationPayload } from "@/lib/services/webhook"
 import { COMPANY_CONFIG } from "@/lib/config"
 import { requireEventAccess } from "@/lib/auth/api-auth"
+import { escapeHtml } from "@/lib/string-utils"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 interface SendRequest {
   event_id: string
@@ -18,6 +20,12 @@ interface SendRequest {
 
 // POST /api/communications/send
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "bulk")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const body: SendRequest = await request.json()
     const { event_id, channel, recipient_ids, subject, message, template_id } = body
@@ -267,7 +275,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, results })
   } catch (error: any) {
     console.error("Error in POST /api/communications/send:", error)
-    return NextResponse.json({ error: error.message || "Failed to send messages" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to send messages" }, { status: 500 })
   }
 }
 
@@ -287,13 +295,13 @@ function buildEmailHtml(event: any, message: string): string {
               <!-- Header -->
               <tr>
                 <td style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-                  <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${event.short_name || event.name}</h1>
+                  <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${escapeHtml(event.short_name || event.name || "")}</h1>
                 </td>
               </tr>
               <!-- Content -->
               <tr>
                 <td style="background-color: white; padding: 30px;">
-                  <div style="color: #1f2937; font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${message}</div>
+                  <div style="color: #1f2937; font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${escapeHtml(message || "")}</div>
                 </td>
               </tr>
               <!-- Footer -->

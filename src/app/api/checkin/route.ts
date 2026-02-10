@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
     const { data: registrations, error, count } = await dbQuery
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to search attendees" }, { status: 500 })
     }
 
     // Get check-in records for this list (for all fetched registrations)
@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("Error searching attendees:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to search attendees" }, { status: 500 })
   }
 }
 
@@ -337,7 +337,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (insertError) {
-        return NextResponse.json({ error: insertError.message }, { status: 500 })
+        return NextResponse.json({ error: "Failed to check in attendee" }, { status: 500 })
       }
 
       return NextResponse.json({
@@ -368,7 +368,7 @@ export async function POST(request: NextRequest) {
         .eq("id", existingRecord.id)
 
       if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 500 })
+        return NextResponse.json({ error: "Failed to check out attendee" }, { status: 500 })
       }
 
       return NextResponse.json({
@@ -380,7 +380,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error: any) {
     console.error("Error checking in attendee:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process check-in" }, { status: 500 })
   }
 }
 
@@ -422,7 +422,7 @@ export async function PATCH(request: NextRequest) {
           .insert(records)
 
         if (error) {
-          return NextResponse.json({ error: error.message }, { status: 500 })
+          return NextResponse.json({ error: "Failed to bulk check in" }, { status: 500 })
         }
       }
 
@@ -443,7 +443,7 @@ export async function PATCH(request: NextRequest) {
         .select()
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: "Failed to bulk check out" }, { status: 500 })
       }
 
       return NextResponse.json({
@@ -454,6 +454,6 @@ export async function PATCH(request: NextRequest) {
     }
   } catch (error: any) {
     console.error("Error bulk checking in:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process bulk check-in" }, { status: 500 })
   }
 }

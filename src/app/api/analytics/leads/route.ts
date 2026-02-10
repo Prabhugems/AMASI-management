@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("Error in POST /api/analytics/leads:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process leads request" }, { status: 500 })
   }
 }
 
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process leads request" }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("Error in GET /api/analytics/leads:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process leads request" }, { status: 500 })
   }
 }
 
@@ -183,12 +183,12 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process leads request" }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, data })
   } catch (error: any) {
     console.error("Error in PATCH /api/analytics/leads:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process leads request" }, { status: 500 })
   }
 }

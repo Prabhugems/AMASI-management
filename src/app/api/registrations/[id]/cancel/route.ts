@@ -225,6 +225,6 @@ export async function POST(
     })
   } catch (error: any) {
     console.error("Error cancelling registration:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to cancel registration" }, { status: 500 })
   }
 }

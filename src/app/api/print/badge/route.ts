@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/server"
 import net from "net"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).trim()
-)
 
 // POST /api/print/badge - Lookup registration and print badge with template
 export async function POST(request: NextRequest) {
   try {
+    const supabaseClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = supabaseClient as any
     const body = await request.json()
     const { code, printer_ip, printer_port = 9100 } = body
 
@@ -105,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error: any) {
     console.error("Print badge error:", error)
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    return NextResponse.json({ success: false, error: "Failed to print badge" }, { status: 500 })
   }
 }
 

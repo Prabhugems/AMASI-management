@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAccess } from "@/lib/auth/api-auth"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 export async function DELETE(request: NextRequest) {
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "strict")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
@@ -26,7 +33,7 @@ export async function DELETE(request: NextRequest) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: "Failed to clear sessions" },
         { status: 500 }
       )
     }
@@ -35,7 +42,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error: any) {
     console.error("Clear error:", error)
     return NextResponse.json(
-      { error: error.message || "Clear failed" },
+      { error: "Clear failed" },
       { status: 500 }
     )
   }

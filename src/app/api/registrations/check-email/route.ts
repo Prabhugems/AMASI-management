@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Error in check-email:", error)
     return NextResponse.json(
-      { error: error.message },
+      { error: "Failed to check email" },
       { status: 500 }
     )
   }

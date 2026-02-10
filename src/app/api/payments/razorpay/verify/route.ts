@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyPaymentSignature, fetchPayment, RazorpayCredentials } from "@/lib/services/razorpay"
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/server"
 
-// Create admin client for server-side operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).trim()
-)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let supabase: any
 
 // Generate registration number
 function generateRegistrationNumber(prefix?: string): string {
@@ -47,6 +44,7 @@ async function getNextRegistrationNumber(eventId: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
+    supabase = await createAdminClient() as any
     const body = await request.json()
     const {
       razorpay_order_id,

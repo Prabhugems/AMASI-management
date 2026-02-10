@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { logEmail } from "@/lib/email-tracking"
+import { escapeHtml } from "@/lib/string-utils"
 
 interface FacultyReminderData {
   assignment_id: string
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
                     <h1 style="color: white; margin: 0; font-size: 26px; font-weight: bold;">Friendly Reminder</h1>
-                    <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px;">${event_name}</p>
+                    <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px;">${escapeHtml(event_name || "")}</p>
                   </td>
                 </tr>
 
@@ -130,11 +131,11 @@ export async function POST(request: NextRequest) {
                   <td style="background-color: white; padding: 30px;">
 
                     <p style="color: #1f2937; font-size: 16px; margin: 0 0 15px 0; line-height: 1.6;">
-                      Dear <strong>${assignment.faculty_name}</strong>,
+                      Dear <strong>${escapeHtml(assignment.faculty_name || "")}</strong>,
                     </p>
 
                     <p style="color: #4b5563; font-size: 15px; margin: 0 0 20px 0; line-height: 1.6;">
-                      This is a gentle reminder about your invitation as a <strong>${roleLabel}</strong> at <strong>${event_name}</strong>. We haven't received your response yet.
+                      This is a gentle reminder about your invitation as a <strong>${escapeHtml(roleLabel || "")}</strong> at <strong>${escapeHtml(event_name || "")}</strong>. We haven't received your response yet.
                     </p>
 
                     <!-- Session Details -->
@@ -143,12 +144,12 @@ export async function POST(request: NextRequest) {
                       <table role="presentation" style="width: 100%; border-collapse: collapse;">
                         <tr>
                           <td style="padding: 8px 0; color: #78350f; width: 35%;">Session:</td>
-                          <td style="padding: 8px 0; color: #1f2937; font-weight: 500;">${assignment.session_name || "To be confirmed"}</td>
+                          <td style="padding: 8px 0; color: #1f2937; font-weight: 500;">${escapeHtml(assignment.session_name || "To be confirmed")}</td>
                         </tr>
                         ${assignment.topic_title ? `
                         <tr>
                           <td style="padding: 8px 0; color: #78350f;">Topic:</td>
-                          <td style="padding: 8px 0; color: #1f2937;">${assignment.topic_title}</td>
+                          <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(assignment.topic_title || "")}</td>
                         </tr>
                         ` : ""}
                         <tr>
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
                         ${assignment.hall ? `
                         <tr>
                           <td style="padding: 8px 0; color: #78350f;">Hall:</td>
-                          <td style="padding: 8px 0; color: #1f2937;">${assignment.hall}</td>
+                          <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(assignment.hall || "")}</td>
                         </tr>
                         ` : ""}
                       </table>

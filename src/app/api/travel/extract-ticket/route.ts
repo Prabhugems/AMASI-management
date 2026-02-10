@@ -927,7 +927,7 @@ export async function POST(request: NextRequest) {
     console.error("Ticket extraction error:", error)
     return NextResponse.json({
       success: false,
-      error: error.message || "Failed to extract ticket details",
+      error: "Failed to extract ticket details",
     }, { status: 500 })
   }
 }

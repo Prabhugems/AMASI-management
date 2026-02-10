@@ -31,12 +31,12 @@ export async function GET(
       .eq("registration_id", id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process addon request" }, { status: 500 })
     }
 
     return NextResponse.json({ data })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process addon request" }, { status: 500 })
   }
 }
 
@@ -148,7 +148,7 @@ export async function POST(
       .select()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process addon request" }, { status: 500 })
     }
 
     // Update registration custom_fields to mark addons as recovered
@@ -177,7 +177,7 @@ export async function POST(
       message: `${addonRecords.length} addon(s) saved successfully`
     })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process addon request" }, { status: 500 })
   }
 }
 
@@ -221,11 +221,11 @@ export async function DELETE(
     const { error } = await query
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process addon request" }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, message: "Addon removed" })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process addon request" }, { status: 500 })
   }
 }

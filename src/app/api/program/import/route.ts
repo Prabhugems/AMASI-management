@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { parse } from "csv-parse/sync"
 import { requireEventAccess } from "@/lib/auth/api-auth"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 type CSVRow = {
   Date?: string
@@ -93,6 +94,12 @@ function normalizeName(name: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "bulk")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const formData = await request.formData()
     const file = formData.get("file") as File
@@ -384,7 +391,7 @@ export async function POST(request: NextRequest) {
       if (error) {
         console.error("Insert error:", error)
         return NextResponse.json(
-          { error: error.message, inserted: insertedCount },
+          { error: "Failed to import sessions", inserted: insertedCount },
           { status: 500 }
         )
       }
@@ -514,7 +521,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Import error:", error)
     return NextResponse.json(
-      { error: error.message || "Import failed" },
+      { error: "Import failed" },
       { status: 500 }
     )
   }

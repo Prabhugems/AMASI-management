@@ -313,6 +313,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(results)
   } catch (error: any) {
     console.error("Error in POST /api/import/registrations:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to import registrations" }, { status: 500 })
   }
 }

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { requireEventAccess } from "@/lib/auth/api-auth"
+import { escapeHtml } from "@/lib/string-utils"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 interface BulkEmailData {
   event_id: string
@@ -12,6 +14,12 @@ interface BulkEmailData {
 
 // POST /api/email/bulk - Send bulk emails to registrations
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "bulk")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const body: BulkEmailData = await request.json()
     const { event_id, subject, message, recipient_ids } = body
@@ -78,14 +86,14 @@ export async function POST(request: NextRequest) {
                   <!-- Header -->
                   <tr>
                     <td style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-                      <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${event.short_name || event.name}</h1>
+                      <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${escapeHtml(event.short_name || event.name || "")}</h1>
                     </td>
                   </tr>
 
                   <!-- Main Content -->
                   <tr>
                     <td style="background-color: white; padding: 30px;">
-                      <div style="color: #1f2937; font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${personalizedMessage}</div>
+                      <div style="color: #1f2937; font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${escapeHtml(personalizedMessage || "")}</div>
                     </td>
                   </tr>
 
@@ -155,7 +163,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Error in POST /api/email/bulk:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to send bulk emails" },
+      { error: "Failed to send bulk emails" },
       { status: 500 }
     )
   }

@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-// Create admin client for server-side operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).trim()
-)
+import { createAdminClient } from "@/lib/supabase/server"
 
 /**
  * POST /api/events/[eventId]/duplicate
@@ -15,6 +9,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
+  const supabaseClient = await createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = supabaseClient as any
   try {
     const { eventId } = await params
     const body = await request.json().catch(() => ({}))
@@ -77,7 +74,7 @@ export async function POST(
     if (createError || !newEvent) {
       console.error("Failed to create event:", createError)
       return NextResponse.json(
-        { error: createError?.message || "Failed to create event" },
+        { error: "Failed to duplicate event" },
         { status: 500 }
       )
     }
@@ -242,7 +239,7 @@ export async function POST(
   } catch (error: any) {
     console.error("Event duplication error:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to duplicate event" },
+      { error: "Failed to duplicate event" },
       { status: 500 }
     )
   }

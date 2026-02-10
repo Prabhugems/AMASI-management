@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process print station request" }, { status: 500 })
     }
 
     // Get total registrations for progress calculation
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(stationsWithStats)
   } catch (error: any) {
     console.error("Error fetching print stations:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process print station request" }, { status: 500 })
   }
 }
 
@@ -140,13 +140,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process print station request" }, { status: 500 })
     }
 
     return NextResponse.json(station)
   } catch (error: any) {
     console.error("Error creating print station:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process print station request" }, { status: 500 })
   }
 }
 
@@ -183,13 +183,13 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process print station request" }, { status: 500 })
     }
 
     return NextResponse.json(station)
   } catch (error: any) {
     console.error("Error updating print station:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process print station request" }, { status: 500 })
   }
 }
 
@@ -211,13 +211,13 @@ export async function DELETE(request: NextRequest) {
       .eq("id", id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process print station request" }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error("Error deleting print station:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process print station request" }, { status: 500 })
   }
 }
 
@@ -247,7 +247,7 @@ export async function PATCH(request: NextRequest) {
         .single()
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: "Failed to process print station request" }, { status: 500 })
       }
 
       return NextResponse.json(station)
@@ -271,7 +271,7 @@ export async function PATCH(request: NextRequest) {
         .single()
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: "Failed to process print station request" }, { status: 500 })
       }
 
       return NextResponse.json(station)
@@ -280,6 +280,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 })
   } catch (error: any) {
     console.error("Error patching print station:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process print station request" }, { status: 500 })
   }
 }

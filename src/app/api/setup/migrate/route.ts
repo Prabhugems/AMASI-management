@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("Migration error:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process migration request" }, { status: 500 })
   }
 }
 
@@ -96,6 +96,6 @@ export async function GET() {
       message: allGood ? "All migrations applied" : "Some migrations pending",
     })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process migration request" }, { status: 500 })
   }
 }

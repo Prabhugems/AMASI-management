@@ -37,7 +37,7 @@ export async function GET(
 
     if (eventResult.error || !eventResult.data) {
       console.error("Event lookup error:", eventResult.error)
-      return NextResponse.json({ error: "Event not found", details: eventResult.error?.message }, { status: 404 })
+      return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
 
     return NextResponse.json({

@@ -143,7 +143,7 @@ export async function POST(
     })
   } catch (error: any) {
     console.error("Error sending test email:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process email template test" }, { status: 500 })
   }
 }
 
@@ -181,6 +181,6 @@ export async function GET(
     })
   } catch (error: any) {
     console.error("Error getting template preview:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process email template test" }, { status: 500 })
   }
 }

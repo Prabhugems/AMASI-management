@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient, createServerSupabaseClient } from "@/lib/supabase/server"
 import { eventCreateSchema, formatZodError } from "@/lib/schemas"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 /**
  * POST /api/events - Create a new event
  */
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "authenticated")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     // Authenticate user
     const supabase = await createServerSupabaseClient()
@@ -66,7 +73,7 @@ export async function POST(request: NextRequest) {
     if (createError || !event) {
       console.error("Failed to create event:", createError)
       return NextResponse.json(
-        { error: createError?.message || "Failed to create event" },
+        { error: "Failed to create event" },
         { status: 500 }
       )
     }
@@ -79,7 +86,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Event creation error:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to create event" },
+      { error: "Failed to create event" },
       { status: 500 }
     )
   }

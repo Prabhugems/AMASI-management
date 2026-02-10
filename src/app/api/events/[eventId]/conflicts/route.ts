@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
-)
+import { createAdminClient } from "@/lib/supabase/server"
 
 type Session = {
   id: string
@@ -62,6 +57,9 @@ export async function GET(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   const { eventId } = await params
+  const supabaseClient = await createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = supabaseClient as any
 
   try {
     // Fetch all sessions with their speakers

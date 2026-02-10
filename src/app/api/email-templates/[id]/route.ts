@@ -21,7 +21,7 @@ export async function GET(
     return NextResponse.json(data)
   } catch (error: any) {
     console.error("Error fetching email template:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process email template request" }, { status: 500 })
   }
 }
 
@@ -84,7 +84,7 @@ export async function PUT(
     return NextResponse.json(data)
   } catch (error: any) {
     console.error("Error updating email template:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process email template request" }, { status: 500 })
   }
 }
 
@@ -121,6 +121,6 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error("Error deleting email template:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process email template request" }, { status: 500 })
   }
 }

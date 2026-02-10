@@ -20,7 +20,7 @@ export async function GET(
 
     if (error) {
       console.error("Error fetching faculty:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to fetch faculty assignments" }, { status: 500 })
     }
 
     return NextResponse.json(data || [])

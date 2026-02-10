@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { shortenSpeakerPortalUrl } from "@/lib/linkila"
+import { escapeHtml } from "@/lib/string-utils"
 
 interface SpeakerInvitationData {
   registration_id: string
@@ -98,8 +99,8 @@ export async function POST(request: NextRequest) {
                 <div style="font-weight: 600; color: #1f2937;">${formatDate(session.session_date)}</div>
                 <div style="color: #6b7280; font-size: 13px;">${formatTime(session.start_time)} - ${formatTime(session.end_time)}</div>
               </td>
-              <td style="padding: 12px 10px; border-bottom: 1px solid #e5e7eb; color: #1f2937;">${session.session_name}</td>
-              <td style="padding: 12px 10px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 13px;">${session.hall || "-"}</td>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #e5e7eb; color: #1f2937;">${escapeHtml(session.session_name || "")}</td>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 13px;">${escapeHtml(session.hall || "-")}</td>
             </tr>
           `).join("")}
         </tbody>
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); padding: 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
                     <h1 style="color: white; margin: 0; font-size: 26px; font-weight: bold;">You're Invited to Speak!</h1>
-                    <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px;">${event_name}</p>
+                    <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px;">${escapeHtml(event_name || "")}</p>
                   </td>
                 </tr>
 
@@ -133,10 +134,10 @@ export async function POST(request: NextRequest) {
 
                     <!-- Greeting -->
                     <p style="color: #1f2937; font-size: 16px; margin: 0 0 20px 0; line-height: 1.6;">
-                      Dear <strong>${speaker_name}</strong>,
+                      Dear <strong>${escapeHtml(speaker_name || "")}</strong>,
                     </p>
                     <p style="color: #4b5563; font-size: 15px; margin: 0 0 25px 0; line-height: 1.6;">
-                      We are honored to invite you as a speaker at <strong>${event_name}</strong>. Your expertise and insights would greatly enrich our event, and we would be delighted to have you share your knowledge with our attendees.
+                      We are honored to invite you as a speaker at <strong>${escapeHtml(event_name || "")}</strong>. Your expertise and insights would greatly enrich our event, and we would be delighted to have you share your knowledge with our attendees.
                     </p>
 
                     <!-- Event Details -->
@@ -145,7 +146,7 @@ export async function POST(request: NextRequest) {
                       <table role="presentation" style="width: 100%;">
                         <tr>
                           <td style="padding: 6px 0; color: #6b7280; width: 100px; font-size: 14px;">Event</td>
-                          <td style="padding: 6px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${event_name}</td>
+                          <td style="padding: 6px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${escapeHtml(event_name || "")}</td>
                         </tr>
                         <tr>
                           <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Date</td>
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest) {
                         ${event_venue ? `
                         <tr>
                           <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Venue</td>
-                          <td style="padding: 6px 0; color: #1f2937; font-size: 14px;">${event_venue}</td>
+                          <td style="padding: 6px 0; color: #1f2937; font-size: 14px;">${escapeHtml(event_venue || "")}</td>
                         </tr>
                         ` : ""}
                       </table>
@@ -199,7 +200,7 @@ export async function POST(request: NextRequest) {
                       If you have any questions, please contact us.
                     </p>
                     <p style="color: #6b7280; margin: 0 0 15px 0; font-size: 12px;">
-                      This invitation was sent to ${speaker_email}
+                      This invitation was sent to ${escapeHtml(speaker_email || "")}
                     </p>
                     <p style="color: #6b7280; margin: 0; font-size: 12px;">
                       &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
@@ -389,7 +390,7 @@ export async function PUT(request: NextRequest) {
   } catch (error: any) {
     console.error("Error in bulk speaker invitation:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to send bulk invitations" },
+      { error: "Failed to send bulk invitations" },
       { status: 500 }
     )
   }

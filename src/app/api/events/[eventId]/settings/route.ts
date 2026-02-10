@@ -45,12 +45,12 @@ export async function PATCH(
 
     if (error) {
       console.error("Error updating event settings:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to update event settings" }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, data })
   } catch (error: any) {
     console.error("Error in PATCH /api/events/[eventId]/settings:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to update event settings" }, { status: 500 })
   }
 }

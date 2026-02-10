@@ -17,12 +17,12 @@ export async function GET(
       .order("price", { ascending: true })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to fetch tickets" }, { status: 500 })
     }
 
     return NextResponse.json(tickets || [])
   } catch (error: any) {
     console.error("Error in GET /api/events/[eventId]/tickets:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch tickets" }, { status: 500 })
   }
 }

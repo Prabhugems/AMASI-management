@@ -62,7 +62,7 @@ export async function PATCH(
         )
       }
       return NextResponse.json(
-        { error: error.message },
+        { error: "Failed to update assignment" },
         { status: 500 }
       )
     }
@@ -81,7 +81,7 @@ export async function PATCH(
   } catch (error: any) {
     console.error("Error updating assignment:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to update assignment" },
+      { error: "Failed to update assignment" },
       { status: 500 }
     )
   }
@@ -110,7 +110,7 @@ export async function DELETE(
     if (error) {
       console.error("Delete error:", error)
       return NextResponse.json(
-        { error: error.message },
+        { error: "Failed to delete assignment" },
         { status: 500 }
       )
     }
@@ -119,7 +119,7 @@ export async function DELETE(
   } catch (error: any) {
     console.error("Error deleting assignment:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to delete assignment" },
+      { error: "Failed to delete assignment" },
       { status: 500 }
     )
   }

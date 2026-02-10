@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
 import { renderEmailTemplate } from "@/lib/email-templates"
+import { escapeHtml } from "@/lib/string-utils"
 
 // Initialize Resend
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
                     <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">Registration Confirmed!</h1>
-                    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Thank you for registering, ${attendee_name}!</p>
+                    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Thank you for registering, ${escapeHtml(attendee_name || "")}!</p>
                   </td>
                 </tr>
 
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
                     <table role="presentation" style="width: 100%; margin-bottom: 25px;">
                       <tr>
                         <td style="padding: 8px 0; color: #6b7280; width: 120px;">Event</td>
-                        <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">${event_name}</td>
+                        <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">${escapeHtml(event_name || "")}</td>
                       </tr>
                       <tr>
                         <td style="padding: 8px 0; color: #6b7280;">Date</td>
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
                       </tr>
                       <tr>
                         <td style="padding: 8px 0; color: #6b7280;">Venue</td>
-                        <td style="padding: 8px 0; color: #1f2937;">${event_venue || "To be announced"}</td>
+                        <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(event_venue || "To be announced")}</td>
                       </tr>
                     </table>
 
@@ -158,7 +159,7 @@ export async function POST(request: NextRequest) {
                     <table role="presentation" style="width: 100%; margin-bottom: 25px;">
                       <tr>
                         <td style="padding: 8px 0; color: #6b7280; width: 120px;">Ticket Type</td>
-                        <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">${ticket_name}</td>
+                        <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">${escapeHtml(ticket_name || "")}</td>
                       </tr>
                       <tr>
                         <td style="padding: 8px 0; color: #6b7280;">Quantity</td>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { logEmail } from "@/lib/email-tracking"
+import { escapeHtml } from "@/lib/string-utils"
 
 // POST /api/certificates/email - Send certificate email to attendee
 export async function POST(request: NextRequest) {
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
                   <td style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
                     <div style="font-size: 48px; margin-bottom: 15px;">🎓</div>
                     <h1 style="color: white; margin: 0; font-size: 26px; font-weight: bold;">Certificate of Participation</h1>
-                    <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px;">${eventName}</p>
+                    <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px;">${escapeHtml(eventName || "")}</p>
                   </td>
                 </tr>
 
@@ -92,11 +93,11 @@ export async function POST(request: NextRequest) {
                   <td style="background-color: white; padding: 30px;">
 
                     <p style="color: #1f2937; font-size: 16px; margin: 0 0 15px 0; line-height: 1.6;">
-                      Dear <strong>${registration.attendee_name}</strong>,
+                      Dear <strong>${escapeHtml(registration.attendee_name || "")}</strong>,
                     </p>
 
                     <p style="color: #4b5563; font-size: 15px; margin: 0 0 20px 0; line-height: 1.6;">
-                      Thank you for attending <strong>${eventName}</strong>${eventDate ? ` on ${eventDate}` : ""}${venue ? ` at ${venue}` : ""}.
+                      Thank you for attending <strong>${escapeHtml(eventName || "")}</strong>${eventDate ? ` on ${eventDate}` : ""}${venue ? ` at ${escapeHtml(venue || "")}` : ""}.
                       We are pleased to share your certificate of participation.
                     </p>
 
@@ -105,22 +106,22 @@ export async function POST(request: NextRequest) {
                       <table role="presentation" style="width: 100%; border-collapse: collapse;">
                         <tr>
                           <td style="padding: 8px 0; color: #065f46; width: 40%;">Name:</td>
-                          <td style="padding: 8px 0; color: #1f2937; font-weight: bold;">${registration.attendee_name}</td>
+                          <td style="padding: 8px 0; color: #1f2937; font-weight: bold;">${escapeHtml(registration.attendee_name || "")}</td>
                         </tr>
                         <tr>
                           <td style="padding: 8px 0; color: #065f46;">Registration #:</td>
-                          <td style="padding: 8px 0; color: #1f2937; font-weight: bold;">${registration.registration_number}</td>
+                          <td style="padding: 8px 0; color: #1f2937; font-weight: bold;">${escapeHtml(registration.registration_number || "")}</td>
                         </tr>
                         ${registration.attendee_designation ? `
                         <tr>
                           <td style="padding: 8px 0; color: #065f46;">Designation:</td>
-                          <td style="padding: 8px 0; color: #1f2937;">${registration.attendee_designation}</td>
+                          <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(registration.attendee_designation || "")}</td>
                         </tr>
                         ` : ""}
                         ${registration.attendee_institution ? `
                         <tr>
                           <td style="padding: 8px 0; color: #065f46;">Institution:</td>
-                          <td style="padding: 8px 0; color: #1f2937;">${registration.attendee_institution}</td>
+                          <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(registration.attendee_institution || "")}</td>
                         </tr>
                         ` : ""}
                       </table>
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="background-color: #1f2937; padding: 25px 30px; border-radius: 0 0 16px 16px; text-align: center;">
                     <p style="color: #9ca3af; margin: 0 0 10px 0; font-size: 14px;">
-                      Thank you for being part of ${eventName}!
+                      Thank you for being part of ${escapeHtml(eventName || "")}!
                     </p>
                     <p style="color: #6b7280; margin: 0; font-size: 12px;">
                       &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
@@ -218,6 +219,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (error: any) {
     console.error("Error sending certificate email:", error)
-    return NextResponse.json({ error: error.message || "Failed to send certificate" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to send certificate" }, { status: 500 })
   }
 }

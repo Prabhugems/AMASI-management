@@ -1,5 +1,6 @@
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireFormAccess } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -11,6 +12,10 @@ export async function GET(
 ) {
   try {
     const { formId } = await params
+
+    const { error: authError } = await requireFormAccess(formId)
+    if (authError) return authError
+
     const supabase: SupabaseClient = await createServerSupabaseClient()
 
     const { data: fields, error } = await supabase
@@ -44,17 +49,11 @@ export async function POST(
 ) {
   try {
     const { formId } = await params
+
+    const { error: formAuthError } = await requireFormAccess(formId)
+    if (formAuthError) return formAuthError
+
     const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
     const body = await request.json()
 
     // Get current max sort_order
@@ -119,17 +118,11 @@ export async function PATCH(
 ) {
   try {
     const { formId } = await params
+
+    const { error: formAuthError } = await requireFormAccess(formId)
+    if (formAuthError) return formAuthError
+
     const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
     const body = await request.json()
 
     if (!body.id) {
@@ -187,17 +180,11 @@ export async function DELETE(
 ) {
   try {
     const { formId } = await params
+
+    const { error: formAuthError } = await requireFormAccess(formId)
+    if (formAuthError) return formAuthError
+
     const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
     const { searchParams } = new URL(request.url)
     const fieldId = searchParams.get("field_id")
 
@@ -239,17 +226,11 @@ export async function PUT(
 ) {
   try {
     const { formId } = await params
+
+    const { error: formAuthError } = await requireFormAccess(formId)
+    if (formAuthError) return formAuthError
+
     const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
     const body = await request.json()
 
     if (!Array.isArray(body.fields)) {

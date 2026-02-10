@@ -68,7 +68,7 @@ export async function GET(
     })
   } catch (error: any) {
     console.error("Speaker portal API error:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch speaker data" }, { status: 500 })
   }
 }
 
@@ -188,6 +188,6 @@ export async function PUT(
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error("Speaker portal update error:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to update speaker data" }, { status: 500 })
   }
 }

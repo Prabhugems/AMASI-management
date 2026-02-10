@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp, createRateLimitHeaders, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // GET /api/members/lookup?email=xxx
@@ -10,11 +10,9 @@ export async function GET(request: NextRequest) {
   if (!rateLimit.success) {
     return rateLimitExceededResponse(rateLimit)
   }
-  // Create client inside handler to ensure env vars are loaded
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-    process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
-  )
+  const supabaseClient = await createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = supabaseClient as any
   try {
     const { searchParams } = new URL(request.url)
     const email = searchParams.get("email")

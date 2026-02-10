@@ -23,12 +23,12 @@ export async function POST(request: NextRequest) {
       .select("id")
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to delete registrations" }, { status: 500 })
     }
 
     return NextResponse.json({ deleted: data?.length || 0 })
   } catch (error: any) {
     console.error("Error deleting imported registrations:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to delete registrations" }, { status: 500 })
   }
 }

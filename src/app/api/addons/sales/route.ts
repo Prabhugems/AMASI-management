@@ -64,6 +64,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ sales: salesByAddon })
   } catch (error: any) {
     console.error("Addon sales error:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch addon sales" }, { status: 500 })
   }
 }

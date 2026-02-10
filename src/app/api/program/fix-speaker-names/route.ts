@@ -55,6 +55,6 @@ export async function POST(request: NextRequest) {
       total: registrations.length,
     })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fix speaker names" }, { status: 500 })
   }
 }

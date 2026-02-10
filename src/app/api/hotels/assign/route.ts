@@ -64,6 +64,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("Error assigning guests:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to assign guests to hotel" }, { status: 500 })
   }
 }

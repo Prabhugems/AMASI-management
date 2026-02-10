@@ -46,7 +46,7 @@ export async function POST() {
     return NextResponse.json({
       success: false,
       error: "Failed to check/create tables",
-      message: error instanceof Error ? error.message : "Unknown error"
+      message: "Failed to process request"
     }, { status: 500 })
   }
 }
@@ -89,7 +89,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json({
       exists: false,
-      error: error instanceof Error ? error.message : "Unknown error"
+      error: "Failed to check table status"
     })
   }
 }

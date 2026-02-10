@@ -1,22 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyWebhookSignature } from "@/lib/services/razorpay"
-import { createClient, SupabaseClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/server"
 
-// Create admin client for server-side operations
-// IMPORTANT: Webhook handler requires service role key for proper database access
-function getSupabaseAdmin(): SupabaseClient {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-  if (!serviceRoleKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for webhook processing")
-  }
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-    serviceRoleKey
-  )
-}
-
-// Lazy initialization to allow error handling in route handler
-let supabase: SupabaseClient
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let supabase: any
 
 // Razorpay webhook events we handle
 type WebhookEvent =
@@ -135,13 +122,7 @@ async function getNextRegistrationNumber(eventId: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    // Initialize supabase admin client (requires service role key)
-    try {
-      supabase = getSupabaseAdmin()
-    } catch (error) {
-      console.error("[WEBHOOK] Supabase initialization failed:", error)
-      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
-    }
+    supabase = await createAdminClient() as any
 
     // Get raw body for signature verification
     const rawBody = await request.text()

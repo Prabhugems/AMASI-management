@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Upload error:", error)
       return NextResponse.json(
-        { error: `Upload failed: ${error.message}` },
+        { error: "Upload failed" },
         { status: 500 }
       )
     }
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Error in POST /api/upload:", error)
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: "Internal server error" },
       { status: 500 }
     )
   }

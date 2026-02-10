@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // GET - List email templates
 export async function GET(request: NextRequest) {
@@ -30,12 +31,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data || [])
   } catch (error: any) {
     console.error("Error fetching email templates:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process email template request" }, { status: 500 })
   }
 }
 
 // POST - Create new email template
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "authenticated")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   const supabase = await createServerSupabaseClient()
 
   try {
@@ -101,6 +108,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data)
   } catch (error: any) {
     console.error("Error creating email template:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process email template request" }, { status: 500 })
   }
 }

@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-// Use service role for public reviewer access (bypasses RLS)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
-)
+import { createAdminClient } from "@/lib/supabase/server"
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -14,6 +8,9 @@ export async function GET(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const supabaseClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = supabaseClient as any
     const { eventId } = await params
 
     if (!uuidRegex.test(eventId)) {
@@ -109,7 +106,7 @@ export async function GET(
   } catch (error: any) {
     console.error("Abstract reviewer GET error:", error)
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: "Internal server error" },
       { status: 500 }
     )
   }
@@ -120,6 +117,9 @@ export async function POST(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const supabaseClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = supabaseClient as any
     const { eventId } = await params
 
     if (!uuidRegex.test(eventId)) {
@@ -235,7 +235,7 @@ export async function POST(
   } catch (error: any) {
     console.error("Abstract reviewer POST error:", error)
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: "Internal server error" },
       { status: 500 }
     )
   }

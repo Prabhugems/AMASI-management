@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/server"
 
 // One-time migration endpoint - DELETE AFTER USE
 export async function POST() {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-      process.env.SUPABASE_SERVICE_ROLE_KEY!.trim(),
-      {
-        db: {
-          schema: 'public'
-        }
-      }
-    )
+    const supabase = await createAdminClient()
 
     // Test if columns already exist
     const { data: _testData, error: testError } = await supabase

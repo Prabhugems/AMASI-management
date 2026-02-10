@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireFormAccess } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -11,16 +12,11 @@ export async function POST(
 ) {
   try {
     const { formId } = await params
-    const supabase: SupabaseClient = await createServerSupabaseClient()
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const { error: authError } = await requireFormAccess(formId)
+    if (authError) return authError
+
+    const supabase: SupabaseClient = await createServerSupabaseClient()
 
     // Verify form exists and has at least one field
     const { data: form, error: formError } = await supabase
@@ -83,16 +79,11 @@ export async function DELETE(
 ) {
   try {
     const { formId } = await params
-    const supabase: SupabaseClient = await createServerSupabaseClient()
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const { error: authError } = await requireFormAccess(formId)
+    if (authError) return authError
+
+    const supabase: SupabaseClient = await createServerSupabaseClient()
 
     const { data: form, error } = await supabase
       .from("forms")

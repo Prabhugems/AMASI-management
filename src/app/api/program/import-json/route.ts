@@ -375,7 +375,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Insert error:", error)
       return NextResponse.json(
-        { error: error.message },
+        { error: "Failed to import sessions" },
         { status: 500 }
       )
     }
@@ -398,7 +398,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Import error:", error)
     return NextResponse.json(
-      { error: error.message || "Import failed" },
+      { error: "Import failed" },
       { status: 500 }
     )
   }

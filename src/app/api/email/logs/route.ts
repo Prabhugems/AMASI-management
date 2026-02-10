@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Error fetching email logs:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to fetch email logs" }, { status: 500 })
     }
 
     // Calculate stats
@@ -62,6 +62,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("Error in GET /api/email/logs:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch email logs" }, { status: 500 })
   }
 }

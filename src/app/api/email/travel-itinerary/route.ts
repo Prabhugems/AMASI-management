@@ -3,6 +3,7 @@ import { Resend } from "resend"
 import { createAdminClient } from "@/lib/supabase/server"
 import { logEmail } from "@/lib/email-tracking"
 import { generateTravelItineraryICS } from "@/lib/ics-generator"
+import { escapeHtml } from "@/lib/string-utils"
 
 // Initialize Resend
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -127,12 +128,12 @@ export async function POST(request: NextRequest) {
           <table role="presentation" style="width: 100%;">
             <tr>
               <td style="padding: 8px 0; color: #6b7280; width: 130px; font-size: 14px;">Airline</td>
-              <td style="padding: 8px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${booking.onward_airline || ""} ${booking.onward_flight_number || ""}</td>
+              <td style="padding: 8px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${escapeHtml(booking.onward_airline || "")} ${escapeHtml(booking.onward_flight_number || "")}</td>
             </tr>
             ${booking.onward_pnr ? `
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">PNR</td>
-              <td style="padding: 8px 0; color: #1f2937; font-weight: 700; font-size: 16px; font-family: monospace; letter-spacing: 1px;">${booking.onward_pnr}</td>
+              <td style="padding: 8px 0; color: #1f2937; font-weight: 700; font-size: 16px; font-family: monospace; letter-spacing: 1px;">${escapeHtml(booking.onward_pnr || "")}</td>
             </tr>
             ` : ""}
             ${booking.onward_eticket ? `
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
             ` : ""}
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">From</td>
-              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;"><strong>${booking.onward_from_city || "-"}</strong></td>
+              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;"><strong>${escapeHtml(booking.onward_from_city || "-")}</strong></td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Departure</td>
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">To</td>
-              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;"><strong>${booking.onward_to_city || "-"}</strong></td>
+              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;"><strong>${escapeHtml(booking.onward_to_city || "-")}</strong></td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Arrival</td>
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
             ${booking.onward_seat ? `
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Seat</td>
-              <td style="padding: 8px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${booking.onward_seat}</td>
+              <td style="padding: 8px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${escapeHtml(booking.onward_seat || "")}</td>
             </tr>
             ` : ""}
           </table>
@@ -179,12 +180,12 @@ export async function POST(request: NextRequest) {
           <table role="presentation" style="width: 100%;">
             <tr>
               <td style="padding: 8px 0; color: #6b7280; width: 130px; font-size: 14px;">Airline</td>
-              <td style="padding: 8px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${booking.return_airline || ""} ${booking.return_flight_number || ""}</td>
+              <td style="padding: 8px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${escapeHtml(booking.return_airline || "")} ${escapeHtml(booking.return_flight_number || "")}</td>
             </tr>
             ${booking.return_pnr ? `
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">PNR</td>
-              <td style="padding: 8px 0; color: #1f2937; font-weight: 700; font-size: 16px; font-family: monospace; letter-spacing: 1px;">${booking.return_pnr}</td>
+              <td style="padding: 8px 0; color: #1f2937; font-weight: 700; font-size: 16px; font-family: monospace; letter-spacing: 1px;">${escapeHtml(booking.return_pnr || "")}</td>
             </tr>
             ` : ""}
             ${booking.return_eticket ? `
@@ -195,7 +196,7 @@ export async function POST(request: NextRequest) {
             ` : ""}
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">From</td>
-              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;"><strong>${booking.return_from_city || "-"}</strong></td>
+              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;"><strong>${escapeHtml(booking.return_from_city || "-")}</strong></td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Departure</td>
@@ -203,7 +204,7 @@ export async function POST(request: NextRequest) {
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">To</td>
-              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;"><strong>${booking.return_to_city || "-"}</strong></td>
+              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;"><strong>${escapeHtml(booking.return_to_city || "-")}</strong></td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Arrival</td>
@@ -212,7 +213,7 @@ export async function POST(request: NextRequest) {
             ${booking.return_seat ? `
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Seat</td>
-              <td style="padding: 8px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${booking.return_seat}</td>
+              <td style="padding: 8px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${escapeHtml(booking.return_seat || "")}</td>
             </tr>
             ` : ""}
           </table>
@@ -231,24 +232,24 @@ export async function POST(request: NextRequest) {
           <table role="presentation" style="width: 100%;">
             <tr>
               <td style="padding: 8px 0; color: #6b7280; width: 130px; font-size: 14px;">Hotel</td>
-              <td style="padding: 8px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${booking.hotel_name}</td>
+              <td style="padding: 8px 0; color: #1f2937; font-weight: 600; font-size: 14px;">${escapeHtml(booking.hotel_name || "")}</td>
             </tr>
             ${booking.hotel_address ? `
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Address</td>
-              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;">${booking.hotel_address}</td>
+              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;">${escapeHtml(booking.hotel_address || "")}</td>
             </tr>
             ` : ""}
             ${booking.hotel_phone ? `
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Phone</td>
-              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;">${booking.hotel_phone}</td>
+              <td style="padding: 8px 0; color: #1f2937; font-size: 14px;">${escapeHtml(booking.hotel_phone || "")}</td>
             </tr>
             ` : ""}
             ${booking.hotel_confirmation ? `
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Confirmation</td>
-              <td style="padding: 8px 0; color: #1f2937; font-weight: 700; font-size: 16px; font-family: monospace; letter-spacing: 1px;">${booking.hotel_confirmation}</td>
+              <td style="padding: 8px 0; color: #1f2937; font-weight: 700; font-size: 16px; font-family: monospace; letter-spacing: 1px;">${escapeHtml(booking.hotel_confirmation || "")}</td>
             </tr>
             ` : ""}
             <tr>
@@ -262,7 +263,7 @@ export async function POST(request: NextRequest) {
             ${booking.hotel_room_type ? `
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Room Type</td>
-              <td style="padding: 8px 0; color: #1f2937; font-size: 14px; text-transform: capitalize;">${booking.hotel_room_type}</td>
+              <td style="padding: 8px 0; color: #1f2937; font-size: 14px; text-transform: capitalize;">${escapeHtml(booking.hotel_room_type || "")}</td>
             </tr>
             ` : ""}
           </table>
@@ -281,13 +282,13 @@ export async function POST(request: NextRequest) {
           ${booking.pickup_required ? `
           <div style="margin-bottom: ${booking.drop_required ? '15px' : '0'}; ${booking.drop_required ? 'padding-bottom: 15px; border-bottom: 1px solid #e5e7eb;' : ''}">
             <h3 style="color: #059669; margin: 0 0 8px 0; font-size: 14px;">Airport Pickup</h3>
-            <p style="color: #1f2937; margin: 0; font-size: 14px;">${booking.pickup_details || "Arranged - Details will be shared closer to your arrival"}</p>
+            <p style="color: #1f2937; margin: 0; font-size: 14px;">${escapeHtml(booking.pickup_details || "Arranged - Details will be shared closer to your arrival")}</p>
           </div>
           ` : ""}
           ${booking.drop_required ? `
           <div>
             <h3 style="color: #059669; margin: 0 0 8px 0; font-size: 14px;">Airport Drop</h3>
-            <p style="color: #1f2937; margin: 0; font-size: 14px;">${booking.drop_details || "Arranged - Details will be shared closer to your departure"}</p>
+            <p style="color: #1f2937; margin: 0; font-size: 14px;">${escapeHtml(booking.drop_details || "Arranged - Details will be shared closer to your departure")}</p>
           </div>
           ` : ""}
         </div>
@@ -311,7 +312,7 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); padding: 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
                     <h1 style="color: white; margin: 0; font-size: 26px; font-weight: bold;">Your Travel Itinerary</h1>
-                    <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px;">${event_name}</p>
+                    <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px;">${escapeHtml(event_name || "")}</p>
                   </td>
                 </tr>
 
@@ -321,10 +322,10 @@ export async function POST(request: NextRequest) {
 
                     <!-- Greeting -->
                     <p style="color: #1f2937; font-size: 16px; margin: 0 0 10px 0; line-height: 1.6;">
-                      Dear <strong>${speaker_name}</strong>,
+                      Dear <strong>${escapeHtml(speaker_name || "")}</strong>,
                     </p>
                     <p style="color: #4b5563; font-size: 15px; margin: 0 0 25px 0; line-height: 1.6;">
-                      Please find your complete travel itinerary for <strong>${event_name}</strong> (${eventDateRange})${event_venue ? ` at ${event_venue}` : ""}.
+                      Please find your complete travel itinerary for <strong>${escapeHtml(event_name || "")}</strong> (${eventDateRange})${event_venue ? ` at ${escapeHtml(event_venue || "")}` : ""}.
                     </p>
 
                     <!-- Travel Details -->
@@ -364,10 +365,10 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="background-color: #1f2937; padding: 25px 30px; border-radius: 0 0 16px 16px; text-align: center;">
                     <p style="color: #9ca3af; margin: 0 0 10px 0; font-size: 14px;">
-                      Safe travels! We look forward to seeing you at ${event_name}.
+                      Safe travels! We look forward to seeing you at ${escapeHtml(event_name || "")}.
                     </p>
                     <p style="color: #6b7280; margin: 0 0 15px 0; font-size: 12px;">
-                      This itinerary was sent to ${speaker_email}
+                      This itinerary was sent to ${escapeHtml(speaker_email || "")}
                     </p>
                     <p style="color: #6b7280; margin: 0; font-size: 12px;">
                       &copy; ${new Date().getFullYear()} AMASI. All rights reserved.

@@ -1261,6 +1261,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("AI Import error:", error)
-    return NextResponse.json({ error: error.message || "Import failed" }, { status: 500 })
+    return NextResponse.json({ error: "Import failed" }, { status: 500 })
   }
 }

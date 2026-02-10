@@ -22,12 +22,12 @@ export async function GET(request: NextRequest) {
       .or("total_amount.eq.0,registration_number.ilike.%FMASA%")
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to count registrations" }, { status: 500 })
     }
 
     return NextResponse.json({ count: count || 0 })
   } catch (error: any) {
     console.error("Error counting imported registrations:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to count registrations" }, { status: 500 })
   }
 }

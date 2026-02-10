@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Error fetching badge templates:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process badge template request" }, { status: 500 })
     }
 
     return NextResponse.json(data || [], {
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("Error fetching badge templates:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process badge template request" }, { status: 500 })
   }
 }
 
@@ -82,13 +82,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process badge template request" }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (error: any) {
     console.error("Error creating badge template:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process badge template request" }, { status: 500 })
   }
 }
 
@@ -166,13 +166,13 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process badge template request" }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (error: any) {
     console.error("Error updating badge template:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process badge template request" }, { status: 500 })
   }
 }
 
@@ -211,12 +211,12 @@ export async function DELETE(request: NextRequest) {
       .eq("id", id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process badge template request" }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error("Error deleting badge template:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to process badge template request" }, { status: 500 })
   }
 }

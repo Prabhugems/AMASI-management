@@ -433,8 +433,7 @@ _Team AMASI_`,
     if (error) {
       console.error("Error inserting templates:", error)
       return NextResponse.json({
-        error: `Failed to create templates: ${error.message || error.code || JSON.stringify(error)}`,
-        details: error
+        error: "Failed to create templates"
       }, { status: 500 })
     }
 
@@ -445,6 +444,6 @@ _Team AMASI_`,
     })
   } catch (error: any) {
     console.error("Error seeding templates:", error)
-    return NextResponse.json({ error: error.message || "Failed to seed templates" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to seed templates" }, { status: 500 })
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { escapeHtml } from "@/lib/string-utils"
 
 interface FormNotificationData {
   form_id: string
@@ -59,8 +60,8 @@ export async function POST(request: NextRequest) {
           ? JSON.stringify(value, null, 2)
           : String(value || 'Not provided')
         return `<tr>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 500; color: #374151; width: 30%;">${key}</td>
-          <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280;">${displayValue}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 500; color: #374151; width: 30%;">${escapeHtml(key || "")}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280;">${escapeHtml(displayValue || "")}</td>
         </tr>`
       })
       .join("")
@@ -82,17 +83,17 @@ export async function POST(request: NextRequest) {
             <!-- Content -->
             <div style="padding: 24px;">
               <p style="color: #374151; margin-bottom: 16px;">
-                A new submission has been received for <strong>${form_name}</strong>.
+                A new submission has been received for <strong>${escapeHtml(form_name || "")}</strong>.
               </p>
 
               <table style="width: 100%; margin-bottom: 24px;">
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280;">Submitted by:</td>
-                  <td style="padding: 8px 0; color: #374151; font-weight: 500;">${submitter_name}</td>
+                  <td style="padding: 8px 0; color: #374151; font-weight: 500;">${escapeHtml(submitter_name || "")}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280;">Email:</td>
-                  <td style="padding: 8px 0; color: #374151;">${submitter_email}</td>
+                  <td style="padding: 8px 0; color: #374151;">${escapeHtml(submitter_email || "")}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280;">Submitted at:</td>

@@ -1,25 +1,11 @@
-import { createServerClient } from '@supabase/ssr'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll() },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          },
-        },
-      }
-    )
+    const supabaseServerClient = await createServerSupabaseClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = supabaseServerClient as any
 
     // Verify the requesting user is authenticated
     const { data: { user } } = await supabase.auth.getUser()
@@ -27,10 +13,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
-    )
+    const adminClientRaw = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adminClient = adminClientRaw as any
 
     // Fetch team members
     const { data: teamMembers, error: teamError } = await adminClient
@@ -60,7 +45,8 @@ export async function GET() {
     }
 
     // Also fetch last_active_at from users table
-    const emails = (teamMembers || []).map(m => m.email.toLowerCase())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const emails = (teamMembers || []).map((m: any) => m.email.toLowerCase())
     const { data: usersData } = await adminClient
       .from('users')
       .select('email, last_active_at, logged_out_at')
@@ -77,7 +63,8 @@ export async function GET() {
     }
 
     // Merge data
-    const members = (teamMembers || []).map(member => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const members = (teamMembers || []).map((member: any) => {
       const emailKey = member.email.toLowerCase()
       const auth = authMap.get(emailKey)
       const activity = activeMap.get(emailKey)

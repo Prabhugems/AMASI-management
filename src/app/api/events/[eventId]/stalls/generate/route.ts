@@ -56,7 +56,7 @@ export async function POST(
     .select()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ error: "Failed to generate stalls" }, { status: 400 })
   }
 
   return NextResponse.json({

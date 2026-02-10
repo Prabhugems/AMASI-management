@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).trim()
-)
+import { createAdminClient } from "@/lib/supabase/server"
 
 // GET /api/addons - Get addons for an event (public endpoint for delegate portal)
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createAdminClient()
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
     const activeOnly = searchParams.get("active") === "true"
@@ -47,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Error fetching addons:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to fetch addons" }, { status: 500 })
     }
 
     // Filter addons by ticket type if specified
@@ -88,6 +84,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: addons })
   } catch (error: any) {
     console.error("Error in addons API:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch addons" }, { status: 500 })
   }
 }

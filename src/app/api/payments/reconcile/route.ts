@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/server"
 
-// Create admin client for server-side operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).trim()
-)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let supabase: any
 
 // Generate registration number
 function generateRegistrationNumber(): string {
@@ -30,6 +27,7 @@ interface ReconciliationResult {
  */
 export async function POST(request: NextRequest) {
   try {
+    supabase = await createAdminClient() as any
     const body = await request.json().catch(() => ({}))
     const {
       fix = false, // If true, auto-fix issues. If false, just report
@@ -173,7 +171,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("[RECONCILE] Error:", error)
     return NextResponse.json(
-      { error: error.message || "Reconciliation failed" },
+      { error: "Reconciliation failed" },
       { status: 500 }
     )
   }

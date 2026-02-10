@@ -19,7 +19,7 @@ export async function POST(
       .order("created_at", { ascending: true })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process faculty assignments" }, { status: 500 })
     }
 
     // Find duplicates (same session_id + faculty_name + role)
@@ -75,7 +75,7 @@ export async function GET(
       .eq("event_id", eventId)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to process faculty assignments" }, { status: 500 })
     }
 
     // Find duplicates

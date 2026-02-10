@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Error saving event settings:", error.message, error.details, error.hint)
       return NextResponse.json(
-        { error: "Failed to save settings", details: error.message },
+        { error: "Failed to save settings" },
         { status: 500 }
       )
     }

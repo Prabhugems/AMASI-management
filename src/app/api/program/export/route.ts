@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: "Failed to fetch sessions" },
         { status: 500 }
       )
     }
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error("Export error:", error)
     return NextResponse.json(
-      { error: error.message || "Export failed" },
+      { error: "Export failed" },
       { status: 500 }
     )
   }

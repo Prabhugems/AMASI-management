@@ -1,5 +1,6 @@
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -7,6 +8,9 @@ type SupabaseClient = any
 // GET /api/forms - List all forms
 export async function GET(request: NextRequest) {
   try {
+    const { user: authUser, error: authError } = await getApiUser()
+    if (authError) return authError
+
     const supabase: SupabaseClient = await createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
 
@@ -79,16 +83,11 @@ export async function GET(request: NextRequest) {
 // POST /api/forms - Create a new form
 export async function POST(request: NextRequest) {
   try {
-    const supabase: SupabaseClient = await createServerSupabaseClient()
+    const { user: authUser, error: authErr } = await getApiUser()
+    if (authErr) return authErr
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const supabase: SupabaseClient = await createServerSupabaseClient()
+    const user = { id: authUser!.id, email: authUser!.email }
 
     const body = await request.json()
 

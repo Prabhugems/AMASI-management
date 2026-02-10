@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-// Use service role for travel agent access (bypasses RLS)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-  process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
-)
+import { createAdminClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createAdminClient()
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 
@@ -67,7 +62,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error("Travel agent speakers error:", error)
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: "Internal server error" },
       { status: 500 }
     )
   }

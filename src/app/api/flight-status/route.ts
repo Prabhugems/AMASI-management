@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     if (data.error) {
       return NextResponse.json(
-        { error: data.error.message || "Failed to fetch flight status" },
+        { error: "Failed to fetch flight status" },
         { status: 400 }
       )
     }
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error("Flight status error:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to fetch flight status" },
+      { error: "Failed to fetch flight status" },
       { status: 500 }
     )
   }
