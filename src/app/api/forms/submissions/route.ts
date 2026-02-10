@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
@@ -96,7 +97,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase: SupabaseClient = await createServerSupabaseClient()
+    // Use admin client to bypass RLS - anonymous users can't SELECT form_submissions
+    // after inserting (no SELECT policy for anon), which causes .insert().select() to fail
+    let supabase: SupabaseClient
+    try {
+      supabase = await createAdminClient()
+    } catch {
+      // Fallback to server client if admin client fails (missing service role key)
+      supabase = await createServerSupabaseClient()
+    }
     const body = await request.json()
 
     const { form_id, responses, submitter_email, submitter_name, verified_emails } = body
@@ -137,8 +146,9 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (formError || !form) {
+      console.error("Form lookup error:", formError)
       return NextResponse.json(
-        { error: "Form not found" },
+        { error: `Form not found: ${formError?.message || "no data returned"}` },
         { status: 404 }
       )
     }
@@ -234,7 +244,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Error creating submission:", error)
       return NextResponse.json(
-        { error: "Failed to submit form" },
+        { error: `Failed to submit form: ${error.message || error.code || "unknown error"}` },
         { status: 500 }
       )
     }
@@ -266,10 +276,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(submission, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in POST /api/forms/submissions:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: `Submission failed: ${error?.message || "unknown error"}` },
       { status: 500 }
     )
   }
