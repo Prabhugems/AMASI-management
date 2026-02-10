@@ -56,7 +56,7 @@ export default function CertificateTemplatesPage() {
   const { data: templates, isLoading, error: fetchError, refetch } = useQuery({
     queryKey: ["certificate-templates-list", eventId],
     queryFn: async () => {
-      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`)
+      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`, { cache: "no-store" })
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
         throw new Error(errData.error || "Failed to fetch templates")
@@ -65,7 +65,8 @@ export default function CertificateTemplatesPage() {
     },
     retry: 2,
     staleTime: 0,
-    refetchOnMount: true,
+    refetchOnMount: "always",
+    gcTime: 0,
   })
 
   // Delete template via API route

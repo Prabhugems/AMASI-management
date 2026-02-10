@@ -513,13 +513,14 @@ export default function CertificateDesignerPage() {
   const { data: savedTemplates, isLoading: isLoadingTemplates } = useQuery({
     queryKey: ["certificate-templates", eventId],
     queryFn: async () => {
-      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`)
+      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`, { cache: "no-store" })
       if (!res.ok) return []
       return res.json()
     },
     retry: 2,
     staleTime: 0,
-    refetchOnMount: true,
+    refetchOnMount: "always",
+    gcTime: 0,
   })
 
   const { data: registrations } = useQuery({

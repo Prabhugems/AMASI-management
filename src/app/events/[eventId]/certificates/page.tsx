@@ -43,12 +43,14 @@ export default function CertificatesOverviewPage() {
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ["certificate-templates", eventId],
     queryFn: async () => {
-      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`)
+      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`, { cache: "no-store" })
       if (!res.ok) return []
       const allTemplates = await res.json()
       return allTemplates.filter((t: any) => t.is_active !== false) as { id: string; name: string }[]
     },
     retry: 2,
+    staleTime: 0,
+    refetchOnMount: "always",
   })
 
   // Stats
