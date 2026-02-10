@@ -54,9 +54,9 @@ export async function GET(request: NextRequest) {
     const isActive = member.status === "active"
 
     // Mask phone number for privacy (show only last 4 digits)
-    const maskPhone = (phone: string | null) => {
-      if (!phone) return null
-      const digits = phone.replace(/\D/g, '')
+    const maskPhone = (phone: string | number | null) => {
+      if (!phone && phone !== 0) return null
+      const digits = String(phone).replace(/\D/g, '')
       if (digits.length < 4) return '****'
       return '******' + digits.slice(-4)
     }

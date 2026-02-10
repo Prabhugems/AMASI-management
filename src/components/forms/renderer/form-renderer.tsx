@@ -195,6 +195,10 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
   const lookupMember = async (email: string, emailFieldId: string) => {
     try {
       const response = await fetch(`/api/members/lookup?email=${encodeURIComponent(email)}`)
+      if (!response.ok) {
+        console.error("Member lookup API error:", response.status)
+        return
+      }
       const data = await response.json()
 
       // Find the "Are you member" field to auto-set it
@@ -523,6 +527,9 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
     visibleFields.forEach((field) => {
       if (["heading", "paragraph", "divider"].includes(field.field_type)) return
+
+      // Skip fields hidden by verified member data (they are auto-filled)
+      if (verifiedMember?.hiddenFieldIds?.includes(field.id)) return
 
       const value = responses[field.id]
       const strValue = String(value || "")
