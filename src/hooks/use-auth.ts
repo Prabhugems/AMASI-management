@@ -84,14 +84,17 @@ export function useAuth() {
     }
   }, [supabase, fetchProfile])
 
-  const signInWithMagicLink = async (email: string) => {
+  const signInWithMagicLink = async (email: string, redirectTo?: string) => {
     if (!isSupabaseConfigured()) {
       throw new Error('Supabase is not configured. Please add your Supabase credentials to .env.local')
     }
+    const callbackUrl = redirectTo
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
+      : `${window.location.origin}/auth/callback`
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: callbackUrl,
       },
     })
     if (error) throw error

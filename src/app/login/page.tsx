@@ -49,7 +49,7 @@ function LoginForm() {
     setError("")
 
     try {
-      await signInWithMagicLink(email)
+      await signInWithMagicLink(email, redirectTo !== "/" ? redirectTo : undefined)
       setSent(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send magic link")

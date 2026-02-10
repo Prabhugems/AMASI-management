@@ -395,25 +395,25 @@ export default function CheckinScanPage() {
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
       <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <Link
                 href={`/events/${eventId}/checkin/${listId}`}
-                className="p-2 hover:bg-gray-700 rounded-lg"
+                className="p-1.5 sm:p-2 hover:bg-gray-700 rounded-lg flex-shrink-0"
               >
                 <ArrowLeft className="w-5 h-5" />
               </Link>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-bold">{stats?.list.name || "Check-in Scanner"}</h1>
+                  <h1 className="text-sm sm:text-lg font-bold truncate">{stats?.list.name || "Check-in Scanner"}</h1>
                   {checkoutMode && (
-                    <span className="px-2 py-0.5 bg-red-600 text-white text-xs font-medium rounded-full">
-                      CHECK-OUT MODE
+                    <span className="px-2 py-0.5 bg-red-600 text-white text-xs font-medium rounded-full flex-shrink-0">
+                      CHECK-OUT
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-400">{event?.name}</p>
+                <p className="text-xs sm:text-sm text-gray-400 truncate">{event?.name}</p>
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
@@ -581,9 +581,9 @@ export default function CheckinScanPage() {
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)]">
+      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)]">
         {/* Main Scanner Area */}
-        <div className="flex-1 p-4 sm:p-8">
+        <div className="flex-1 p-3 sm:p-8">
           {/* Mode Indicator */}
           {checkoutMode && (
             <div className="max-w-xl mx-auto mb-4 p-3 bg-red-900/50 border border-red-500 rounded-xl text-center">
@@ -596,24 +596,24 @@ export default function CheckinScanPage() {
           )}
 
           {/* Stats Bar */}
-          <div className="flex items-center justify-center gap-4 sm:gap-8 mb-6 sm:mb-8">
+          <div className="flex items-center justify-center gap-3 sm:gap-8 mb-4 sm:mb-8">
             <div className="text-center">
-              <div className="text-3xl sm:text-5xl font-bold text-green-400">{stats?.checkedIn || 0}</div>
-              <div className="text-xs sm:text-sm text-gray-400">Checked In</div>
+              <div className="text-2xl sm:text-5xl font-bold text-green-400">{stats?.checkedIn || 0}</div>
+              <div className="text-[10px] sm:text-sm text-gray-400">Checked In</div>
             </div>
-            <div className="text-4xl sm:text-6xl text-gray-600">/</div>
+            <div className="text-3xl sm:text-6xl text-gray-600">/</div>
             <div className="text-center">
-              <div className="text-3xl sm:text-5xl font-bold">{stats?.total || 0}</div>
-              <div className="text-xs sm:text-sm text-gray-400">Total</div>
+              <div className="text-2xl sm:text-5xl font-bold">{stats?.total || 0}</div>
+              <div className="text-[10px] sm:text-sm text-gray-400">Total</div>
             </div>
-            <div className="hidden sm:block ml-4 sm:ml-8 text-center">
-              <div className="text-3xl sm:text-5xl font-bold text-amber-400">{stats?.notCheckedIn || 0}</div>
-              <div className="text-xs sm:text-sm text-gray-400">Remaining</div>
+            <div className="ml-2 sm:ml-8 text-center">
+              <div className="text-2xl sm:text-5xl font-bold text-amber-400">{stats?.notCheckedIn || 0}</div>
+              <div className="text-[10px] sm:text-sm text-gray-400">Remaining</div>
             </div>
           </div>
 
           {/* Progress Bar */}
-          <div className="max-w-xl mx-auto mb-6 sm:mb-8">
+          <div className="max-w-xl mx-auto mb-4 sm:mb-8">
             <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-500"
@@ -660,7 +660,7 @@ export default function CheckinScanPage() {
           )}
 
           {/* Search Input */}
-          <form onSubmit={handleManualSearch} className="max-w-xl mx-auto mb-6 sm:mb-8">
+          <form onSubmit={handleManualSearch} className="max-w-xl mx-auto mb-4 sm:mb-8">
             <div className="relative">
               {checkoutMode ? (
                 <LogOut className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-red-400" />
@@ -694,7 +694,7 @@ export default function CheckinScanPage() {
           {/* Scan Result */}
           {scanResult && (
             <div
-              className={`max-w-xl mx-auto p-6 rounded-2xl relative overflow-hidden ${
+              className={`max-w-xl mx-auto p-4 sm:p-6 rounded-2xl relative overflow-hidden ${
                 scanResult.type === "success"
                   ? "bg-gradient-to-br from-green-900/80 to-emerald-900/80 border-2 border-green-500"
                   : scanResult.type === "already"
@@ -807,7 +807,7 @@ export default function CheckinScanPage() {
           {/* Instructions */}
           {!scanResult && (
             <div className="max-w-xl mx-auto text-center text-gray-500">
-              <div className={`w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 rounded-full flex items-center justify-center ${
+              <div className={`w-20 h-20 sm:w-32 sm:h-32 mx-auto mb-3 sm:mb-4 rounded-full flex items-center justify-center ${
                 checkoutMode ? "bg-red-900/30" : "bg-gray-800"
               }`}>
                 {checkoutMode ? (
