@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // GET /api/checkin/access/[accessToken] - Validate staff access token and get checkin list info
 // This is like Tito's "Set-up with QR code" feature for volunteers
@@ -7,6 +8,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ accessToken: string }> }
 ) {
+  // Rate limit to prevent brute force token guessing
+  const clientIp = getClientIp(request)
+  const rateLimit = checkRateLimit(`checkin-access:${clientIp}`, "strict")
+  if (!rateLimit.success) return rateLimitExceededResponse(rateLimit)
+
   const { accessToken } = await params
 
   if (!accessToken || accessToken.length < 10) {

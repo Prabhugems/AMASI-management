@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { isValidUUID } from "@/lib/validation"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 // GET /api/checkin/stats - Get check-in statistics for a specific list
 export async function GET(request: NextRequest) {
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
+
   try {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
     const checkinListId = searchParams.get("checkin_list_id")
 
-    if (!eventId) {
-      return NextResponse.json({ error: "event_id is required" }, { status: 400 })
+    if (!eventId || !isValidUUID(eventId)) {
+      return NextResponse.json({ error: "Valid event_id is required" }, { status: 400 })
     }
 
-    if (!checkinListId) {
-      return NextResponse.json({ error: "checkin_list_id is required" }, { status: 400 })
+    if (!checkinListId || !isValidUUID(checkinListId)) {
+      return NextResponse.json({ error: "Valid checkin_list_id is required" }, { status: 400 })
     }
 
     const supabase = await createAdminClient()
@@ -78,16 +83,19 @@ export async function GET(request: NextRequest) {
     const { data: eligibleRegs, count: totalCount } = await totalQuery
 
     // Get checked-in count for this list - only for ELIGIBLE registrations
+    // Count distinct registration_ids to avoid inflated counts when allow_multiple_checkins is on
     let checkedInCount = 0
     if (eligibleRegs && eligibleRegs.length > 0) {
       const eligibleRegIds = eligibleRegs.map((r: any) => r.id)
-      const { count } = await (supabase as any)
+      const { data: checkedInRecords } = await (supabase as any)
         .from("checkin_records")
-        .select("*", { count: "exact", head: true })
+        .select("registration_id")
         .eq("checkin_list_id", checkinListId)
         .in("registration_id", eligibleRegIds)
         .is("checked_out_at", null)
-      checkedInCount = count || 0
+      // Count distinct registration_ids
+      const distinctRegIds = new Set((checkedInRecords || []).map((r: any) => r.registration_id))
+      checkedInCount = distinctRegIds.size
     }
 
     // Get stats by ticket type
@@ -138,13 +146,14 @@ export async function GET(request: NextRequest) {
 
       let ticketCheckedIn = 0
       if (regIds.length > 0) {
-        const { count } = await (supabase as any)
+        const { data: ticketCheckinRecords } = await (supabase as any)
           .from("checkin_records")
-          .select("*", { count: "exact", head: true })
+          .select("registration_id")
           .eq("checkin_list_id", checkinListId)
           .in("registration_id", regIds)
           .is("checked_out_at", null)
-        ticketCheckedIn = count || 0
+        const distinctTicketRegIds = new Set((ticketCheckinRecords || []).map((r: any) => r.registration_id))
+        ticketCheckedIn = distinctTicketRegIds.size
       }
 
       ticketStats.push({

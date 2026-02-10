@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // GET /api/verify/[token] - Verify a registration token and return attendee info
 // This is what gets called when a QR code is scanned
@@ -9,6 +10,11 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params
+
+  // Rate limit public lookups
+  const clientIp = getClientIp(request)
+  const rateLimit = checkRateLimit(`verify:${clientIp}`, "public")
+  if (!rateLimit.success) return rateLimitExceededResponse(rateLimit)
 
   if (!token || token.length < 3) {
     return NextResponse.json(
@@ -132,6 +138,11 @@ export async function POST(
     )
   }
 
+  // Rate limit
+  const clientIp = getClientIp(request)
+  const rateLimit = checkRateLimit(`verify-post:${clientIp}`, "public")
+  if (!rateLimit.success) return rateLimitExceededResponse(rateLimit)
+
   const body = await request.json()
   const {
     checkin_list_id,
@@ -143,8 +154,16 @@ export async function POST(
 
   const supabase = await createAdminClient()
 
-  // Verify staff access token if provided
-  if (access_token) {
+  // Require either a valid access_token or checkin_list_id for check-in operations
+  if (!access_token) {
+    return NextResponse.json(
+      { success: false, error: "Staff access token is required" },
+      { status: 401 }
+    )
+  }
+
+  // Verify staff access token
+  {
     const { data: checkinList, error: listError } = await (supabase as any)
       .from("checkin_lists")
       .select("id, event_id, name, access_token_expires_at")
@@ -260,7 +279,7 @@ export async function POST(
       .is("checked_out_at", null)
       .maybeSingle()
 
-    if (existingRecord && !listSettings?.allow_multiple_checkins) {
+    if (existingRecord && listSettings?.allow_multiple_checkins !== true) {
       const checkedInTime = new Date(existingRecord.checked_in_at).toLocaleTimeString("en-IN", {
         hour: "2-digit",
         minute: "2-digit"

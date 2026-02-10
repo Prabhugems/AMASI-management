@@ -49,7 +49,6 @@ export default function TrackAttendeePage() {
 
   const [searchInput, setSearchInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
-  const [_searching, _setSearching] = useState(false)
 
   // Fetch check-in lists for this event
   const { data: lists } = useQuery({

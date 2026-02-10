@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { validatePagination, sanitizeSearchInput, isValidUUID } from "@/lib/validation"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 // GET /api/checkin - Search for attendees (with check-in status for a specific list)
 export async function GET(request: NextRequest) {
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
+
   try {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
@@ -200,16 +204,19 @@ export async function GET(request: NextRequest) {
 
 // POST /api/checkin - Check in/out an attendee to a specific list
 export async function POST(request: NextRequest) {
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
+
   try {
     const body = await request.json()
     const { registration_id, registration_number, event_id, checkin_list_id, action, user_id } = body
 
-    if (!event_id) {
-      return NextResponse.json({ error: "event_id is required" }, { status: 400 })
+    if (!event_id || !isValidUUID(event_id)) {
+      return NextResponse.json({ error: "Valid event_id is required" }, { status: 400 })
     }
 
-    if (!checkin_list_id) {
-      return NextResponse.json({ error: "checkin_list_id is required" }, { status: 400 })
+    if (!checkin_list_id || !isValidUUID(checkin_list_id)) {
+      return NextResponse.json({ error: "Valid checkin_list_id is required" }, { status: 400 })
     }
 
     if (!registration_id && !registration_number) {
@@ -244,18 +251,12 @@ export async function POST(request: NextRequest) {
     const { data: registration, error: findError } = await query.single()
 
     if (findError || !registration) {
-      return NextResponse.json({
-        error: "Attendee not found",
-        registration_number: registration_number || registration_id
-      }, { status: 404 })
+      return NextResponse.json({ error: "Check-in failed: attendee not found" }, { status: 404 })
     }
 
     // Check if registration is confirmed
     if (registration.status !== "confirmed") {
-      return NextResponse.json({
-        error: `Cannot check in: Registration status is "${registration.status}"`,
-        registration
-      }, { status: 400 })
+      return NextResponse.json({ error: "Check-in failed: registration is not confirmed" }, { status: 400 })
     }
 
     // Verify the check-in list exists and check ticket type restrictions
@@ -386,6 +387,9 @@ export async function POST(request: NextRequest) {
 
 // PATCH /api/checkin - Bulk check-in to a specific list
 export async function PATCH(request: NextRequest) {
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
+
   try {
     const body = await request.json()
     const { event_id, checkin_list_id, registration_ids, action, user_id } = body

@@ -305,11 +305,6 @@ export default function CheckinHubPage() {
     return gradients[index % gradients.length]
   }
 
-  const _getAccentColor = (index: number) => {
-    const colors = ["orange", "blue", "purple", "green", "red", "indigo"]
-    return colors[index % colors.length]
-  }
-
   // Calculate totals
   const totalStats = checkinLists?.reduce(
     (acc, list) => ({

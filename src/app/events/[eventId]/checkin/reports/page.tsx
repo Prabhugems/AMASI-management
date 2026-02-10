@@ -62,7 +62,6 @@ export default function CheckinReportsPage() {
   const eventId = params.eventId as string
   const supabase = createClient()
 
-  const [_selectedList, _setSelectedList] = useState<string>("all")
   const [dateFilter, setDateFilter] = useState<string>("")
 
   // Fetch check-in lists

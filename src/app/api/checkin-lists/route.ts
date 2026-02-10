@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 // GET /api/checkin-lists - Get all check-in lists for an event
 export async function GET(request: NextRequest) {
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
+
   try {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
@@ -102,6 +106,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/checkin-lists - Create a new check-in list
 export async function POST(request: NextRequest) {
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
+
   try {
     const body = await request.json()
     const { event_id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, allow_multiple_checkins } = body
@@ -151,6 +158,9 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/checkin-lists - Update a check-in list
 export async function PUT(request: NextRequest) {
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
+
   try {
     const body = await request.json()
     const { id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, is_active, allow_multiple_checkins, sort_order } = body
@@ -246,6 +256,9 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/checkin-lists - Delete a check-in list
 export async function DELETE(request: NextRequest) {
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
+
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
