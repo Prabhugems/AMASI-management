@@ -157,7 +157,7 @@ export async function POST(
         .from("registrations")
         .select("custom_fields")
         .eq("id", registrationId)
-        .single()
+        .maybeSingle()
 
       await (supabase as any)
         .from("registrations")

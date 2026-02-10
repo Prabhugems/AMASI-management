@@ -26,11 +26,13 @@ export function formatDateTime(date: Date | string): string {
 }
 
 export function formatTime(time: string): string {
+  if (!time || !time.includes(":")) return time || ""
   const [hours, minutes] = time.split(":")
   const h = parseInt(hours)
+  if (isNaN(h)) return time
   const ampm = h >= 12 ? "PM" : "AM"
   const hour = h % 12 || 12
-  return `${hour}:${minutes} ${ampm}`
+  return `${hour}:${minutes || "00"} ${ampm}`
 }
 
 export function truncate(str: string, length: number): string {

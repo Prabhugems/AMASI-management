@@ -97,7 +97,7 @@ export default function AllAttendeesPage() {
       a.attendee_name.toLowerCase().includes(searchLower) ||
       a.attendee_email.toLowerCase().includes(searchLower) ||
       a.registration_number.toLowerCase().includes(searchLower) ||
-      (a.attendee_phone && a.attendee_phone.includes(search))
+      (a.attendee_phone && String(a.attendee_phone).includes(search))
     )
   }, [attendees, search])
 

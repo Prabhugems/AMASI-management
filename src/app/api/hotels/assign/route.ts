@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
           .from("registrations")
           .select("custom_fields")
           .eq("id", guestId)
-          .single()
+          .maybeSingle()
 
         // Update with hotel assignment
         const { error } = await (supabase as any)

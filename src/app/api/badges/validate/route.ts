@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Check phone (if used in template)
-            if (usedPlaceholders.phone && (!reg.attendee_phone || reg.attendee_phone.trim() === "")) {
+            if (usedPlaceholders.phone && (!reg.attendee_phone || String(reg.attendee_phone).trim() === "")) {
               stats.missingPhones++
               hasIssue = true
             }

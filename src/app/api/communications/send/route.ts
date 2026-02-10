@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       .from("communication_settings")
       .select("*")
       .eq("event_id", event_id)
-      .single()
+      .maybeSingle()
 
     // Get registrations
     const { data: registrations } = await (supabase as any)

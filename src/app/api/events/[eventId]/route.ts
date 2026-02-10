@@ -20,7 +20,7 @@ export async function GET(
       .from("events")
       .select("*")
       .eq("id", eventId)
-      .single()
+      .maybeSingle()
 
     if (error || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })

@@ -94,7 +94,7 @@ function replacePlaceholders(text: string, registration: any, event: any): strin
   result = result.replace(/\{\{registration_number\}\}/g, registration.registration_number || "")
   result = result.replace(/\{\{ticket_type\}\}/g, registration.ticket_types?.name || "")
   result = result.replace(/\{\{email\}\}/g, registration.attendee_email || "")
-  result = result.replace(/\{\{phone\}\}/g, registration.attendee_phone || "")
+  result = result.replace(/\{\{phone\}\}/g, String(registration.attendee_phone || ""))
   result = result.replace(/\{\{institution\}\}/g, registration.attendee_institution || "")
   result = result.replace(/\{\{designation\}\}/g, registration.attendee_designation || "")
   result = result.replace(/\{\{event_name\}\}/g, event?.name || "")

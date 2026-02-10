@@ -97,7 +97,7 @@ export async function getEmailTemplate(
       .eq("template_type", templateType)
       .eq("is_active", true)
       .eq("is_default", true)
-      .single()
+      .maybeSingle()
 
     if (eventTemplate) {
       return eventTemplate
@@ -112,7 +112,7 @@ export async function getEmailTemplate(
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (anyEventTemplate) {
       return anyEventTemplate
@@ -126,7 +126,7 @@ export async function getEmailTemplate(
     .is("event_id", null)
     .eq("template_type", templateType)
     .eq("is_default", true)
-    .single()
+    .maybeSingle()
 
   return globalTemplate || null
 }
@@ -246,12 +246,13 @@ export function buildSpeakerVariables(
   }
 
   const formatTime = (time?: string) => {
-    if (!time) return ""
+    if (!time || !time.includes(":")) return time || ""
     const [hours, minutes] = time.split(":")
     const hour = parseInt(hours)
+    if (isNaN(hour)) return time
     const ampm = hour >= 12 ? "PM" : "AM"
     const hour12 = hour % 12 || 12
-    return `${hour12}:${minutes} ${ampm}`
+    return `${hour12}:${minutes || "00"} ${ampm}`
   }
 
   const sessionTime =

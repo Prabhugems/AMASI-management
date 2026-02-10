@@ -56,7 +56,7 @@ export async function GET(
     query = query.ilike("registration_number", token)
   }
 
-  const { data: registration, error } = await query.single()
+  const { data: registration, error } = await query.maybeSingle()
 
   if (error || !registration) {
     return NextResponse.json(
@@ -80,7 +80,7 @@ export async function GET(
       .from("badge_templates")
       .select("id, name")
       .eq("id", registration.badge_template_id)
-      .single()
+      .maybeSingle()
     template = data
   } else {
     // Get default template for event
@@ -89,7 +89,7 @@ export async function GET(
       .select("id, name")
       .eq("event_id", registration.event_id)
       .eq("is_default", true)
-      .single()
+      .maybeSingle()
     template = data
   }
 

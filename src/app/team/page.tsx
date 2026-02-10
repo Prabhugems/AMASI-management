@@ -456,7 +456,7 @@ export default function TeamPage() {
       const members = data as TeamMember[]
 
       // Fetch login activity from users table by matching emails
-      const emails = members.map(m => m.email.toLowerCase())
+      const emails = members.map(m => (m.email || "").toLowerCase())
       if (emails.length > 0) {
         const { data: users } = await (supabase as any)
           .from("users")
@@ -465,7 +465,7 @@ export default function TeamPage() {
         if (users) {
           const userMap = new Map<string, any>(users.map((u: any) => [u.email?.toLowerCase(), u]))
           for (const member of members) {
-            const user = userMap.get(member.email.toLowerCase())
+            const user = userMap.get((member.email || "").toLowerCase())
             if (user) {
               member.last_login_at = user.last_login_at
               member.last_active_at = user.last_active_at
@@ -591,7 +591,7 @@ export default function TeamPage() {
 
   const filteredMembers = useMemo(() => {
     return (teamMembers || []).filter(m => {
-      const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.email.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesSearch = (m.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || (m.email || "").toLowerCase().includes(searchQuery.toLowerCase())
       const matchesStatus = statusFilter === "all" || (statusFilter === "active" && m.is_active) || (statusFilter === "inactive" && !m.is_active)
       return matchesSearch && matchesStatus
     })

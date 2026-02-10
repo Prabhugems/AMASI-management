@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .or(`qr_code.eq.${code},id.eq.${code},registration_number.eq.${code}`)
-      .single()
+      .maybeSingle()
 
     if (error || !registration) {
       // Try partial match on registration number
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         `)
         .ilike("registration_number", `%${code}%`)
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (partialMatch) {
         return NextResponse.json({

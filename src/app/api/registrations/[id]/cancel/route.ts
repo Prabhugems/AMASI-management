@@ -59,7 +59,7 @@ export async function POST(
         .from("payments")
         .select("*")
         .eq("id", registration.payment_id)
-        .single()
+        .maybeSingle()
       payment = paymentData
     }
 
@@ -175,7 +175,7 @@ export async function POST(
           .from("ticket_types")
           .select("quantity_sold")
           .eq("id", registration.ticket_type_id)
-          .single()
+          .maybeSingle()
 
         if (ticket && ticket.quantity_sold > 0) {
           await (supabase as any)

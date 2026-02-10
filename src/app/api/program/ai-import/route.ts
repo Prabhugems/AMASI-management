@@ -192,8 +192,9 @@ function parseTime(timeStr: string): { start: string | null; end: string | null;
 
 // Convert time string to minutes
 function timeToMinutes(time: string): number {
+  if (!time || !time.includes(":")) return 0
   const [h, m] = time.split(":").map(Number)
-  return h * 60 + (m || 0)
+  return (h || 0) * 60 + (m || 0)
 }
 
 // Convert minutes to time string

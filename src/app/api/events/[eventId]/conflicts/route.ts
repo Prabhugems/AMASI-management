@@ -41,8 +41,9 @@ function getOverlapMinutes(
   if (date1 !== date2) return 0
 
   const toMinutes = (time: string) => {
+    if (!time || !time.includes(":")) return 0
     const [h, m] = time.split(":").map(Number)
-    return h * 60 + m
+    return (h || 0) * 60 + (m || 0)
   }
 
   const s1 = toMinutes(start1)

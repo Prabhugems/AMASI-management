@@ -203,7 +203,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
       // Find the "Are you member" field to auto-set it
       const memberQuestionField = fields.find(f => {
-        const label = f.label.toLowerCase()
+        const label = (f.label || "").toLowerCase()
         return label.includes("member of amasi") || label.includes("are you member") || label.includes("amasi member")
       })
 
@@ -224,7 +224,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
         if (memberQuestionField) {
           // Find the "yes" option value (could be "Yes", "yes", "YES", etc.)
           const yesOption = memberQuestionField.options?.find(
-            (opt: { value: string; label: string }) => opt.value.toLowerCase() === 'yes' || opt.label.toLowerCase() === 'yes'
+            (opt: { value: string; label: string }) => (opt.value || "").toLowerCase() === 'yes' || (opt.label || "").toLowerCase() === 'yes'
           )
           const yesValue = yesOption?.value || 'yes'
           setResponses(prev => ({ ...prev, [memberQuestionField.id]: yesValue }))
@@ -246,7 +246,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
         console.log("[Member Lookup] Fields to match:", fields.map(f => f.label))
 
         fields.forEach(field => {
-          const fieldLabel = field.label.toLowerCase().trim()
+          const fieldLabel = (field.label || "").toLowerCase().trim()
 
           for (const [memberKey, matchLabels] of fieldMappings) {
             // Check if field label matches any of the patterns
@@ -383,7 +383,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
   // Find the membership question field and check its value
   const membershipStatus = useMemo(() => {
     const memberQuestionField = fields.find(f => {
-      const label = f.label.toLowerCase()
+      const label = (f.label || "").toLowerCase()
       return label.includes("member of amasi") || label.includes("are you member") || label.includes("amasi member")
     })
 
@@ -451,7 +451,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
     const hiddenFieldIds: string[] = []
 
     fields.forEach(field => {
-      const label = field.label.toLowerCase().trim()
+      const label = (field.label || "").toLowerCase().trim()
 
       // Hide "Are you member" question
       if (label.includes("member of amasi") || label.includes("are you member") || label.includes("amasi member")) {
@@ -794,9 +794,9 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
       case "select":
         // Check if this is a "member" question field and if email has been verified
-        const isMemberQuestion = field.label.toLowerCase().includes("member of amasi") ||
-                                  field.label.toLowerCase().includes("are you member") ||
-                                  field.label.toLowerCase().includes("amasi member")
+        const isMemberQuestion = (field.label || "").toLowerCase().includes("member of amasi") ||
+                                  (field.label || "").toLowerCase().includes("are you member") ||
+                                  (field.label || "").toLowerCase().includes("amasi member")
         const hasVerifiedEmail = Object.values(emailVerificationState).some(
           state => state.status === 'verified' && state.memberFound !== undefined
         )

@@ -72,7 +72,7 @@ export async function PATCH(
       .from("registrations")
       .select("status, ticket_type_id, quantity")
       .eq("id", id)
-      .single()
+      .maybeSingle()
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 })
@@ -126,7 +126,7 @@ export async function PATCH(
         .from("ticket_types")
         .select("quantity_sold, quantity_total")
         .eq("id", currentReg.ticket_type_id)
-        .single()
+        .maybeSingle()
 
       if (ticket) {
         await (supabase as any)
@@ -144,7 +144,7 @@ export async function PATCH(
         .from("ticket_types")
         .select("quantity_sold")
         .eq("id", currentReg.ticket_type_id)
-        .single()
+        .maybeSingle()
 
       if (ticket) {
         await (supabase as any)

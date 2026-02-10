@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       .from("payments")
       .select("*")
       .eq("razorpay_order_id", razorpay_order_id)
-      .single()
+      .maybeSingle()
 
     if (fetchError || !pendingPayment) {
       console.error(`[VERIFY] Payment not found for order: ${razorpay_order_id}`)
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         .from("registrations")
         .select("id, registration_number")
         .eq("payment_id", paymentData.id)
-        .single()
+        .maybeSingle()
 
       return NextResponse.json({
         success: true,
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
         .from("events")
         .select("razorpay_key_id, razorpay_key_secret")
         .eq("id", paymentData.event_id)
-        .single()
+        .maybeSingle()
 
       const eventData = event as any
       if (eventData?.razorpay_key_id && eventData?.razorpay_key_secret) {

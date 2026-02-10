@@ -883,9 +883,9 @@ function AutomationSection({ eventId }: { eventId: string }) {
         .from("event_settings")
         .select("auto_send_receipt, auto_generate_badge, auto_email_badge, auto_generate_certificate, auto_email_certificate")
         .eq("event_id", eventId)
-        .single()
+        .maybeSingle()
 
-      if (error && error.code !== "PGRST116") throw error
+      if (error) throw error
       return data || {
         auto_send_receipt: true,
         auto_generate_badge: false,

@@ -51,7 +51,7 @@ export async function PUT(
       .from("email_templates")
       .select("event_id, category")
       .eq("id", id)
-      .single()
+      .maybeSingle()
 
     // If setting as default, unset other defaults for this category
     if (is_default && existing?.event_id) {
@@ -102,7 +102,7 @@ export async function DELETE(
       .from("email_templates")
       .select("event_id, is_default")
       .eq("id", id)
-      .single()
+      .maybeSingle()
 
     if (!template?.event_id && template?.is_default) {
       return NextResponse.json(

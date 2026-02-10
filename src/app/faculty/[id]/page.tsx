@@ -107,7 +107,7 @@ export default function FacultyDetailPage() {
                 Faculty Details
               </h1>
               <p className="text-sm text-muted-foreground">
-                {faculty.title} {faculty.name}
+                {faculty.title ? `${faculty.title} ` : ""}{faculty.name}
               </p>
             </div>
           </div>
@@ -125,7 +125,7 @@ export default function FacultyDetailPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <User className="h-5 w-5" />
-                {faculty.title} {faculty.name}
+                {faculty.title ? `${faculty.title} ` : ""}{faculty.name}
               </CardTitle>
               {getStatusBadge(faculty.status)}
             </div>

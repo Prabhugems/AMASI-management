@@ -42,7 +42,7 @@ export async function GET(
       .from("abstract_settings")
       .select("blind_review, review_enabled, reviewers_per_abstract")
       .eq("event_id", eventId)
-      .single()
+      .maybeSingle()
 
     // Fetch abstracts with relations
     const { data: abstracts, error: abstractsError } = await supabase

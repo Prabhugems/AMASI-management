@@ -181,9 +181,13 @@ export default function DriverAssignmentsPage() {
 
       // Sort by date and time
       result.sort((a, b) => {
+        if (!a.date || !b.date) return 0
         const dateA = new Date(a.date + " " + (a.time || "00:00"))
         const dateB = new Date(b.date + " " + (b.time || "00:00"))
-        return dateA.getTime() - dateB.getTime()
+        const timeA = dateA.getTime()
+        const timeB = dateB.getTime()
+        if (isNaN(timeA) || isNaN(timeB)) return 0
+        return timeA - timeB
       })
 
       return result

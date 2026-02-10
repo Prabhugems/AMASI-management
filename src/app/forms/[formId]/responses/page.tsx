@@ -155,7 +155,10 @@ export default function FormResponsesPage() {
         sub.submitter_email || "",
         ...fields.map((f) => {
           const value = sub.responses[f.id]
-          if (Array.isArray(value)) return value.join("; ")
+          if (Array.isArray(value)) {
+            return value.map((v) => (typeof v === "object" ? (v?.name || v?.url || JSON.stringify(v)) : v)).join("; ")
+          }
+          if (typeof value === "object" && value !== null) return JSON.stringify(value)
           return String(value || "")
         }),
       ]
@@ -178,9 +181,11 @@ export default function FormResponsesPage() {
     const searchLower = search.toLowerCase()
     if (sub.submitter_email?.toLowerCase().includes(searchLower)) return true
     if (sub.submitter_name?.toLowerCase().includes(searchLower)) return true
-    return Object.values(sub.responses).some((v) =>
-      String(v).toLowerCase().includes(searchLower)
-    )
+    return Object.values(sub.responses).some((v) => {
+      if (Array.isArray(v)) return v.some((item) => String(typeof item === "object" ? JSON.stringify(item) : item).toLowerCase().includes(searchLower))
+      if (typeof v === "object" && v !== null) return JSON.stringify(v).toLowerCase().includes(searchLower)
+      return String(v).toLowerCase().includes(searchLower)
+    })
   })
 
   const getFieldValue = (submission: FormSubmission, fieldId: string) => {

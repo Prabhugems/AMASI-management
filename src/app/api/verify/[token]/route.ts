@@ -57,7 +57,7 @@ export async function GET(
     query = query.ilike("registration_number", token)
   }
 
-  const { data: registration, error } = await query.single()
+  const { data: registration, error } = await query.maybeSingle()
 
   if (error || !registration) {
     return NextResponse.json(
@@ -82,7 +82,7 @@ export async function GET(
       .from("certificate_templates")
       .select("id, name")
       .eq("event_id", registration.event_id)
-      .neq("is_active", false)
+      .eq("is_active", true)
       .limit(1)
       .single()
     if (certTemplate) {
@@ -196,7 +196,7 @@ export async function POST(
     query2 = query2.ilike("registration_number", token)
   }
 
-  const { data: registration, error: regError } = await query2.single()
+  const { data: registration, error: regError } = await query2.maybeSingle()
 
   if (regError || !registration) {
     // Log failed attempt
@@ -258,7 +258,7 @@ export async function POST(
       .eq("checkin_list_id", checkin_list_id)
       .eq("registration_id", registration.id)
       .is("checked_out_at", null)
-      .single()
+      .maybeSingle()
 
     if (existingRecord && !listSettings?.allow_multiple_checkins) {
       const checkedInTime = new Date(existingRecord.checked_in_at).toLocaleTimeString("en-IN", {

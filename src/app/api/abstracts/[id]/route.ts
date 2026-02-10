@@ -28,7 +28,7 @@ export async function GET(
         .select("id")
         .eq("email", user.email.toLowerCase())
         .eq("is_active", true)
-        .single()
+        .maybeSingle()
       isTeamMember = !!teamMember
     }
 
@@ -96,7 +96,7 @@ export async function PUT(
       .select("id")
       .eq("email", user.email?.toLowerCase())
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
     const isTeamMember = !!teamMember
 
     // Get current abstract
@@ -104,7 +104,7 @@ export async function PUT(
       .from("abstracts")
       .select("*, event_id")
       .eq("id", id)
-      .single()
+      .maybeSingle()
 
     if (!abstract) {
       return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
@@ -131,7 +131,7 @@ export async function PUT(
         .from("abstract_settings")
         .select("submission_deadline")
         .eq("event_id", abstract.event_id)
-        .single()
+        .maybeSingle()
 
       if (settings?.submission_deadline) {
         const deadline = new Date(settings.submission_deadline)

@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         .from("forms")
         .select("slug")
         .eq("slug", slug)
-        .single()
+        .maybeSingle()
 
       if (existing) {
         slug = `${slug}-${Date.now()}`

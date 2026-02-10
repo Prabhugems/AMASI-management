@@ -181,7 +181,7 @@ export default function GenerateCertificatesPage() {
           .update({
             certificate_generated_at: now,
             custom_fields: {
-              ...attendees?.find(a => a.id === id)?.custom_fields,
+              ...(attendees?.find(a => a.id === id)?.custom_fields || {}),
               certificate_generated: true,
               certificate_generated_at: now,
             },
