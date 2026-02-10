@@ -294,8 +294,14 @@ export default function DelegatePortalPage() {
       const res = await fetch(`/api/badge/${token}/download`)
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to download badge")
+        let errorMsg = "Failed to download badge"
+        try {
+          const data = await res.json()
+          errorMsg = data.error || errorMsg
+        } catch {
+          // Response was not JSON
+        }
+        throw new Error(errorMsg)
       }
 
       const blob = await res.blob()
@@ -326,8 +332,14 @@ export default function DelegatePortalPage() {
         const res = await fetch(`/api/certificate/${selectedRegistration.registration_number}/download`)
 
         if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error || "Certificate not available yet")
+          let errorMsg = "Certificate not available yet"
+          try {
+            const data = await res.json()
+            errorMsg = data.error || errorMsg
+          } catch {
+            // Response was not JSON (e.g. HTML error page)
+          }
+          throw new Error(errorMsg)
         }
 
         const blob = await res.blob()
