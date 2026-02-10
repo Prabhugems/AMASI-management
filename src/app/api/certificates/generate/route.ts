@@ -4,6 +4,8 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import { logActivity } from "@/lib/activity-logger"
 
+export const dynamic = "force-dynamic"
+
 // Certificate sizes in points (72 points = 1 inch)
 const CERTIFICATE_SIZES: Record<string, { width: number; height: number }> = {
   "A4-landscape": { width: 842, height: 595 },

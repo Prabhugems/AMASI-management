@@ -5,6 +5,8 @@ import QRCode from "qrcode"
 import { logActivity } from "@/lib/activity-logger"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
+export const dynamic = "force-dynamic"
+
 interface Placeholder {
   id: string
   type: "text" | "qr_code" | "image" | "shape" | "line" | "barcode" | "photo"

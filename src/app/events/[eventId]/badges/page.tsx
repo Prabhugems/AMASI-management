@@ -64,6 +64,8 @@ export default function BadgesOverviewPage() {
 
       return data || []
     },
+    staleTime: 0,
+    refetchOnMount: "always",
   })
 
   // Stats

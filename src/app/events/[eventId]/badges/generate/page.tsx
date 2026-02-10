@@ -85,7 +85,7 @@ export default function GenerateBadgesPage() {
   const { data: templates } = useQuery({
     queryKey: ["badge-templates", eventId],
     queryFn: async () => {
-      const res = await fetch(`/api/badge-templates?event_id=${eventId}`)
+      const res = await fetch(`/api/badge-templates?event_id=${eventId}`, { cache: "no-store" })
       const data = await res.json()
       const list = (data.data || data || []) as BadgeTemplate[]
       // Auto-select default template
@@ -95,6 +95,8 @@ export default function GenerateBadgesPage() {
       }
       return list
     },
+    staleTime: 0,
+    refetchOnMount: "always",
   })
 
   // Fetch ticket types

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 
+export const dynamic = "force-dynamic"
+
 interface ValidationError {
   type: "error" | "warning" | "info"
   field: string

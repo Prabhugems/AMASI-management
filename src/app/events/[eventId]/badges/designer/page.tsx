@@ -1167,10 +1167,12 @@ export default function BadgeDesignerPage() {
   const { data: savedTemplates, isLoading: isLoadingTemplates } = useQuery({
     queryKey: ["badge-templates", eventId],
     queryFn: async () => {
-      const res = await fetch(`/api/badge-templates?event_id=${eventId}`)
+      const res = await fetch(`/api/badge-templates?event_id=${eventId}`, { cache: "no-store" })
       if (!res.ok) return []
       return res.json()
     },
+    staleTime: 0,
+    refetchOnMount: "always",
   })
 
   // Auto-load template from URL parameter

@@ -93,16 +93,18 @@ export default function BadgeTemplatesPage() {
   const { data: templates, isLoading, error } = useQuery({
     queryKey: ["badge-templates", eventId],
     queryFn: async () => {
-      const res = await fetch(`/api/badge-templates?event_id=${eventId}`)
+      const res = await fetch(`/api/badge-templates?event_id=${eventId}`, { cache: "no-store" })
       if (!res.ok) {
-        throw new Error("Failed to fetch templates")
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || "Failed to fetch templates")
       }
       const data = await res.json()
       // API returns array directly
       return Array.isArray(data) ? data : (data.data || []) as BadgeTemplate[]
     },
     retry: 2,
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 0,
+    refetchOnMount: "always",
   })
 
   // Delete mutation
