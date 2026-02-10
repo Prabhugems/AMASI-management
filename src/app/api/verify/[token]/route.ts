@@ -82,7 +82,7 @@ export async function GET(
       .from("certificate_templates")
       .select("id, name")
       .eq("event_id", registration.event_id)
-      .neq("is_active", false)
+      .eq("is_active", true)
       .limit(1)
       .single()
     if (certTemplate) {

@@ -49,11 +49,11 @@ export async function POST(request: NextRequest) {
     // Get event settings for duplicate email policy
     const { data: settings } = await (supabase as any)
       .from("events")
-      .select("registration_settings")
+      .select("settings")
       .eq("id", event_id)
       .single()
 
-    const regSettings = settings?.registration_settings || {}
+    const regSettings = (settings?.settings as Record<string, unknown>) || {}
     const allowDuplicate = regSettings.allow_duplicate_email !== false
     const showWarning = regSettings.show_duplicate_warning !== false
 
