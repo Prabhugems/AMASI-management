@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       .eq("event_id", event_id)
       .eq("code", code.toUpperCase())
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
 
     if (error || !discount) {
       return NextResponse.json(

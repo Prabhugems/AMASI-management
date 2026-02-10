@@ -329,10 +329,18 @@ export async function POST(request: NextRequest) {
 
       // Update discount code usage
       if (discountCodeId) {
-        await supabase
+        const { data: discount } = await supabase
           .from("discount_codes")
-          .update({ current_uses: supabase.rpc("increment_discount_uses", { discount_id: discountCodeId }) })
+          .select("current_uses")
           .eq("id", discountCodeId)
+          .single()
+
+        if (discount) {
+          await supabase
+            .from("discount_codes")
+            .update({ current_uses: (discount.current_uses || 0) + registrations.length })
+            .eq("id", discountCodeId)
+        }
       }
     }
 

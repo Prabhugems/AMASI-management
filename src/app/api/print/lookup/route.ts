@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         `)
         .ilike("registration_number", `%${code}%`)
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (partialMatch) {
         return NextResponse.json({

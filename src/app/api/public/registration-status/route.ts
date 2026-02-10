@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
         .from("ticket_types")
         .select("id, name, price")
         .eq("id", registration.ticket_type_id)
-        .single()
+        .maybeSingle()
 
       ticket_type = ticketData
     }
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
         .from("events")
         .select("id, name, start_date, end_date, venue_name, city")
         .eq("id", registration.event_id)
-        .single()
+        .maybeSingle()
 
       event = eventData
     }
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
         .from("payments")
         .select("id, payment_number, status, net_amount, razorpay_order_id")
         .eq("id", registration.payment_id)
-        .single()
+        .maybeSingle()
 
       payment = paymentData
     }

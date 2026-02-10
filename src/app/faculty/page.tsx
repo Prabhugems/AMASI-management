@@ -246,7 +246,7 @@ export default function FacultyPage() {
         .select("id")
         .eq("event_id", inviteEventId)
         .eq("attendee_email", selectedFaculty.email)
-        .single()
+        .maybeSingle()
 
       if (existing) {
         throw new Error("Faculty is already registered for this event")

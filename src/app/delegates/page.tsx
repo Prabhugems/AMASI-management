@@ -403,7 +403,7 @@ export default function GlobalAttendeesPage() {
           <div className="p-4 border-t border-border bg-secondary/20">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>{attendees?.length || 0} attendees showing</span>
-              <span>{stats?.total?.toLocaleString() || 0} total across all events</span>
+              <span>{(stats?.total || 0).toLocaleString()} total across all events</span>
             </div>
           </div>
         </div>

@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         .select("id, name, email, role")
         .eq("email", user.email?.toLowerCase())
         .eq("is_active", true)
-        .single()
+        .maybeSingle()
 
       if (teamMember) {
         isTeamMember = true
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
         .eq("event_id", body.event_id)
         .eq("attendee_email", body.presenting_author_email.toLowerCase())
         .eq("status", "confirmed")
-        .single()
+        .maybeSingle()
 
       if (!registration) {
         return NextResponse.json(
