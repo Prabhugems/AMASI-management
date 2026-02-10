@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       .from("events")
       .select("settings")
       .eq("id", event_id)
-      .single()
+      .maybeSingle()
 
     const regSettings = (settings?.settings as Record<string, unknown>) || {}
     const allowDuplicate = regSettings.allow_duplicate_email !== false

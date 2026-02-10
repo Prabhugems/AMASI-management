@@ -224,7 +224,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
         if (memberQuestionField) {
           // Find the "yes" option value (could be "Yes", "yes", "YES", etc.)
           const yesOption = memberQuestionField.options?.find(
-            (opt: { value: string; label: string }) => opt.value.toLowerCase() === 'yes' || opt.label.toLowerCase() === 'yes'
+            (opt: { value: string; label: string }) => (opt.value || "").toLowerCase() === 'yes' || (opt.label || "").toLowerCase() === 'yes'
           )
           const yesValue = yesOption?.value || 'yes'
           setResponses(prev => ({ ...prev, [memberQuestionField.id]: yesValue }))

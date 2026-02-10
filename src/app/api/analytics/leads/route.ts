@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       .select("id, status")
       .eq("event_id", event_id)
       .eq("email", email.toLowerCase())
-      .single()
+      .maybeSingle()
 
     if (existingLead) {
       // Update existing lead with new info if provided

@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       .select("id")
       .eq("email", user.email?.toLowerCase())
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
     if (!teamMember) {
       return NextResponse.json(
         { error: "Only team members can manage categories" },
@@ -163,7 +163,7 @@ export async function PUT(request: NextRequest) {
       .select("id")
       .eq("email", user.email?.toLowerCase())
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
     if (!teamMember) {
       return NextResponse.json(
         { error: "Only team members can manage categories" },
@@ -235,7 +235,7 @@ export async function DELETE(request: NextRequest) {
       .select("id")
       .eq("email", user.email?.toLowerCase())
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
     if (!teamMember) {
       return NextResponse.json(
         { error: "Only team members can manage categories" },

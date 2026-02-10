@@ -97,7 +97,7 @@ export async function getEmailTemplate(
       .eq("template_type", templateType)
       .eq("is_active", true)
       .eq("is_default", true)
-      .single()
+      .maybeSingle()
 
     if (eventTemplate) {
       return eventTemplate
@@ -112,7 +112,7 @@ export async function getEmailTemplate(
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (anyEventTemplate) {
       return anyEventTemplate
@@ -126,7 +126,7 @@ export async function getEmailTemplate(
     .is("event_id", null)
     .eq("template_type", templateType)
     .eq("is_default", true)
-    .single()
+    .maybeSingle()
 
   return globalTemplate || null
 }

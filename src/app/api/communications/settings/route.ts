@@ -94,9 +94,9 @@ export async function GET(request: NextRequest) {
       .from("communication_settings")
       .select("*")
       .eq("event_id", eventId)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== "PGRST116") {
+    if (error) {
       console.error("Error fetching communication settings:", error)
       return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 })
     }
@@ -144,7 +144,7 @@ export async function PUT(request: NextRequest) {
       .from("communication_settings")
       .select("id")
       .eq("event_id", event_id)
-      .single()
+      .maybeSingle()
 
     // Filter out masked values (don't update if still masked)
     const cleanedData: Record<string, any> = {}

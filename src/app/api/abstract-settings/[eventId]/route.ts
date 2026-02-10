@@ -25,9 +25,9 @@ export async function GET(
       .from("abstract_settings")
       .select("*")
       .eq("event_id", eventId)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== "PGRST116") {
+    if (error) {
       console.error("Error fetching abstract settings:", error)
       return NextResponse.json(
         { error: "Failed to fetch settings" },

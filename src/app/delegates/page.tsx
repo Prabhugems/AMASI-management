@@ -517,7 +517,7 @@ export default function GlobalAttendeesPage() {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Registered</span>
                         <span className="font-medium">
-                          {format(new Date(selectedAttendee.created_at), "d MMM yyyy")}
+                          {selectedAttendee.created_at ? format(new Date(selectedAttendee.created_at), "d MMM yyyy") : "-"}
                         </span>
                       </div>
                       {selectedAttendee.check_in_time && (

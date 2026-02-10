@@ -244,8 +244,8 @@ export default function ConflictsPage() {
   const filteredFacultyConflicts = useMemo(() => {
     if (!search) return analysis.facultyConflicts
     return analysis.facultyConflicts.filter(c =>
-      c.facultyName.toLowerCase().includes(search.toLowerCase()) ||
-      c.sessions.some(s => s.name.toLowerCase().includes(search.toLowerCase()))
+      (c.facultyName || "").toLowerCase().includes(search.toLowerCase()) ||
+      c.sessions.some(s => (s.name || "").toLowerCase().includes(search.toLowerCase()))
     )
   }, [analysis.facultyConflicts, search])
 

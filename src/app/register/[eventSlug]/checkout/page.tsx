@@ -769,7 +769,7 @@ export default function CheckoutPage() {
                       setIsCustomFormValid(true)
                       // Extract email and name from responses if available
                       const emailField = ticketForm.fields.find(f => f.field_type === 'email')
-                      const nameField = ticketForm.fields.find(f => f.label.toLowerCase().includes('name'))
+                      const nameField = ticketForm.fields.find(f => (f.label || "").toLowerCase().includes('name'))
                       const phoneField = ticketForm.fields.find(f => f.field_type === 'phone')
 
                       if (emailField && responses[emailField.id]) {
