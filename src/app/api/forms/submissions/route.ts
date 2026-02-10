@@ -225,21 +225,23 @@ export async function POST(request: NextRequest) {
     const userAgent = headersList.get("user-agent") || "unknown"
 
     // Create submission with enhanced responses (includes verification metadata)
+    const submissionId = crypto.randomUUID()
+    const submittedAt = new Date().toISOString()
     const submissionData = {
+      id: submissionId,
       form_id,
-      submitter_email,
-      submitter_name,
+      submitter_email: submitter_email || null,
+      submitter_name: submitter_name || null,
       submitter_ip: clientIp,
       user_agent: userAgent,
       responses: enhancedResponses,
       status: "pending",
+      submitted_at: submittedAt,
     }
 
-    const { data: submission, error } = await supabase
+    const { error } = await supabase
       .from("form_submissions")
       .insert(submissionData)
-      .select()
-      .single()
 
     if (error) {
       console.error("Error creating submission:", error)
@@ -263,19 +265,19 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           form_id: form.id,
           form_name: form.name,
-          submission_id: submission.id,
+          submission_id: submissionId,
           submitter_name: submitter_name || "Anonymous",
           submitter_email: submitter_email || "Not provided",
           notification_emails: notificationEmails,
           responses: enhancedResponses,
-          submitted_at: submission.submitted_at,
+          submitted_at: submittedAt,
         }),
       }).catch((err) => {
         console.error("Failed to send form notification email:", err)
       })
     }
 
-    return NextResponse.json(submission, { status: 201 })
+    return NextResponse.json({ id: submissionId, status: "pending", submitted_at: submittedAt }, { status: 201 })
   } catch (error: any) {
     console.error("Error in POST /api/forms/submissions:", error)
     return NextResponse.json(
