@@ -147,46 +147,7 @@ export async function POST(request: NextRequest) {
     // Get certificate size
     const certSize = CERTIFICATE_SIZES[template.size] || CERTIFICATE_SIZES["A4-landscape"]
     const templateData = template.template_data || {}
-    let elements = templateData.elements || []
-
-    // Ensure QR code with verification URL is always present
-    const hasQRCode = elements.some((el: any) => el.type === "qr_code")
-    if (!hasQRCode) {
-      elements = [
-        ...elements,
-        {
-          type: "qr_code",
-          x: 670, // bottom-right area (in pixels at 96 DPI)
-          y: 540,
-          width: 80,
-          height: 80,
-          content: "{{verification_url}}",
-          zIndex: 999,
-        },
-      ]
-    }
-
-    // Ensure registration number text is always present
-    const hasRegNumber = elements.some((el: any) =>
-      el.type === "text" && el.content?.includes("{{registration_number}}")
-    )
-    if (!hasRegNumber) {
-      elements = [
-        ...elements,
-        {
-          type: "text",
-          x: 650,
-          y: 625,
-          width: 120,
-          height: 20,
-          content: "{{registration_number}}",
-          fontSize: 10,
-          color: "#9ca3af",
-          align: "center",
-          zIndex: 999,
-        },
-      ]
-    }
+    const elements = templateData.elements || []
 
     // Scale factor: template uses pixels at 96 DPI, PDF uses points at 72 DPI
     const scaleFactor = 72 / 96

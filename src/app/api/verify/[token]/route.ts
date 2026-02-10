@@ -75,6 +75,23 @@ export async function GET(
     }, { status: 400 })
   }
 
+  // Check if certificate templates exist for this event
+  let certificateTemplate: { id: string; name: string } | null = null
+  try {
+    const { data: certTemplate } = await (supabase as any)
+      .from("certificate_templates")
+      .select("id, name")
+      .eq("event_id", registration.event_id)
+      .neq("is_active", false)
+      .limit(1)
+      .single()
+    if (certTemplate) {
+      certificateTemplate = certTemplate
+    }
+  } catch {
+    // No certificate template found - that's fine
+  }
+
   // Return attendee info (without sensitive data like token)
   return NextResponse.json({
     valid: true,
@@ -90,7 +107,12 @@ export async function GET(
       checked_in_at: registration.checked_in_at,
       ticket_type: registration.ticket_types,
       event: registration.events,
-    }
+    },
+    certificate: certificateTemplate ? {
+      available: true,
+      template_id: certificateTemplate.id,
+      template_name: certificateTemplate.name,
+    } : { available: false },
   })
 }
 

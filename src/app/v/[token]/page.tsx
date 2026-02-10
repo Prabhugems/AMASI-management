@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { CheckCircle, Loader2, Calendar, MapPin, Ticket, Clock, ShieldCheck, ShieldX, Hash, Building2, Briefcase } from "lucide-react"
+import { CheckCircle, Loader2, Calendar, MapPin, Ticket, Clock, ShieldCheck, ShieldX, Hash, Building2, Briefcase, Download, Award } from "lucide-react"
 
 interface VerificationResult {
   valid: boolean
@@ -26,6 +26,11 @@ interface VerificationResult {
       venue?: string
     }
   }
+  certificate?: {
+    available: boolean
+    template_id?: string
+    template_name?: string
+  }
 }
 
 export default function VerifyPage() {
@@ -34,6 +39,7 @@ export default function VerifyPage() {
 
   const [loading, setLoading] = useState(true)
   const [result, setResult] = useState<VerificationResult | null>(null)
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     async function verifyToken() {
@@ -52,6 +58,43 @@ export default function VerifyPage() {
       verifyToken()
     }
   }, [token])
+
+  const downloadCertificate = async () => {
+    if (!result?.registration || !result.certificate?.template_id) return
+
+    setDownloading(true)
+    try {
+      const res = await fetch("/api/certificates/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: result.registration.event?.id,
+          template_id: result.certificate.template_id,
+          single_registration_id: result.registration.id,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || "Failed to generate certificate")
+      }
+
+      // Download the PDF
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `certificate-${result.registration.registration_number}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      alert(err.message || "Failed to download certificate. Please try again.")
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -85,6 +128,7 @@ export default function VerifyPage() {
 
   const { registration } = result
   const event = registration.event
+  const hasCertificate = result.certificate?.available
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-IN", {
@@ -202,6 +246,33 @@ export default function VerifyPage() {
               )}
             </div>
           </div>
+
+          {/* Download Certificate Button */}
+          {hasCertificate && (
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <button
+                onClick={downloadCertificate}
+                disabled={downloading}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold py-3 px-4 rounded-xl transition-all disabled:opacity-50"
+              >
+                {downloading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Generating Certificate...
+                  </>
+                ) : (
+                  <>
+                    <Award className="w-5 h-5" />
+                    Download Certificate
+                    <Download className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-gray-400 text-center mt-2">
+                Your certificate will be downloaded as a PDF
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
