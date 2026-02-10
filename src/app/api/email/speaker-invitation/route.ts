@@ -24,12 +24,13 @@ interface SpeakerInvitationData {
 
 // Format time to 12-hour format
 function formatTime(time: string) {
-  if (!time) return ""
+  if (!time || !time.includes(":")) return time || ""
   const [hours, minutes] = time.split(":")
   const h = parseInt(hours)
+  if (isNaN(h)) return time
   const ampm = h >= 12 ? "PM" : "AM"
   const h12 = h % 12 || 12
-  return `${h12}:${minutes} ${ampm}`
+  return `${h12}:${minutes || "00"} ${ampm}`
 }
 
 // Format date

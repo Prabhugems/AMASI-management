@@ -196,7 +196,7 @@ export async function POST(
     query2 = query2.ilike("registration_number", token)
   }
 
-  const { data: registration, error: regError } = await query2.single()
+  const { data: registration, error: regError } = await query2.maybeSingle()
 
   if (regError || !registration) {
     // Log failed attempt

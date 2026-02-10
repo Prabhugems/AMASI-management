@@ -62,7 +62,7 @@ interface Attendee {
   category: string | null
   status: string | null
   checked_in: boolean
-  checked_in_at: string | null
+  check_in_time: string | null
   institution: string | null
   designation: string | null
   city: string | null
@@ -520,11 +520,11 @@ export default function GlobalAttendeesPage() {
                           {format(new Date(selectedAttendee.created_at), "d MMM yyyy")}
                         </span>
                       </div>
-                      {selectedAttendee.checked_in_at && (
+                      {selectedAttendee.check_in_time && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Checked In At</span>
                           <span className="font-medium">
-                            {format(new Date(selectedAttendee.checked_in_at), "d MMM yyyy, h:mm a")}
+                            {format(new Date(selectedAttendee.check_in_time), "d MMM yyyy, h:mm a")}
                           </span>
                         </div>
                       )}
@@ -542,14 +542,14 @@ export default function GlobalAttendeesPage() {
                         onClick={async () => {
                           const { error } = await (supabase as any)
                             .from("participants")
-                            .update({ checked_in: true, checked_in_at: new Date().toISOString() })
+                            .update({ checked_in: true, check_in_time: new Date().toISOString() })
                             .eq("id", selectedAttendee.id)
                           if (error) {
                             toast.error("Failed to check in")
                           } else {
                             toast.success(`${selectedAttendee.name} checked in`)
                             queryClient.invalidateQueries({ queryKey: ["delegates"] })
-                            setSelectedAttendee({ ...selectedAttendee, checked_in: true, checked_in_at: new Date().toISOString() })
+                            setSelectedAttendee({ ...selectedAttendee, checked_in: true, check_in_time: new Date().toISOString() })
                           }
                         }}
                       >

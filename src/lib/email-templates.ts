@@ -246,12 +246,13 @@ export function buildSpeakerVariables(
   }
 
   const formatTime = (time?: string) => {
-    if (!time) return ""
+    if (!time || !time.includes(":")) return time || ""
     const [hours, minutes] = time.split(":")
     const hour = parseInt(hours)
+    if (isNaN(hour)) return time
     const ampm = hour >= 12 ? "PM" : "AM"
     const hour12 = hour % 12 || 12
-    return `${hour12}:${minutes} ${ampm}`
+    return `${hour12}:${minutes || "00"} ${ampm}`
   }
 
   const sessionTime =
