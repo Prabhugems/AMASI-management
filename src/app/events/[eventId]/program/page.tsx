@@ -21,7 +21,6 @@ import {
   Presentation,
   Users,
   Loader2,
-  MapPin,
   Plus,
   CheckCircle2,
   XCircle,

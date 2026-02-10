@@ -437,7 +437,7 @@ export default function ProgramImportPage() {
 
       // Show detailed success message
       if (useAIImport && data.imported) {
-        const { sessions, halls, coordinators, faculty } = data.imported
+        const { sessions, halls, coordinators: _coordinators, faculty } = data.imported
         const analysisMsg = data.analysis?.issuesSummary?.total > 0
           ? ` | ${data.analysis.issuesSummary.total} timing issues found`
           : ""
