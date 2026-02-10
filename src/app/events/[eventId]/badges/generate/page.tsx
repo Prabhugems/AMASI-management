@@ -79,7 +79,7 @@ export default function GenerateBadgesPage() {
     }
   } | null>(null)
   const [isValidating, setIsValidating] = useState(false)
-  const [showValidation, setShowValidation] = useState(false)
+  const [, setShowValidation] = useState(false)
 
   // Fetch templates
   const { data: templates } = useQuery({
@@ -195,7 +195,7 @@ export default function GenerateBadgesPage() {
       const result = await res.json()
       setValidationResult(result)
       return result
-    } catch (error: any) {
+    } catch {
       toast.error("Failed to validate badges")
       return null
     } finally {
@@ -347,7 +347,7 @@ export default function GenerateBadgesPage() {
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       setPreviewUrl(url)
-    } catch (error) {
+    } catch {
       toast.error("Failed to load preview")
       setShowPreview(false)
     } finally {

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQueryClient, useMutation } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -42,9 +42,7 @@ import {
   User,
   Users,
   Calendar,
-  Trash2,
   Eye,
-  Mail,
   Phone,
   Sparkles,
 } from "lucide-react"
@@ -439,7 +437,7 @@ export default function ProgramImportPage() {
 
       // Show detailed success message
       if (useAIImport && data.imported) {
-        const { sessions, halls, coordinators, faculty } = data.imported
+        const { sessions, halls, coordinators: _coordinators, faculty } = data.imported
         const analysisMsg = data.analysis?.issuesSummary?.total > 0
           ? ` | ${data.analysis.issuesSummary.total} timing issues found`
           : ""

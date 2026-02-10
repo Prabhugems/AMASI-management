@@ -24,8 +24,6 @@ import {
   CreditCard,
   Calendar,
   TrendingUp,
-  CheckCircle,
-  Clock,
 } from "lucide-react"
 import { toast } from "sonner"
 

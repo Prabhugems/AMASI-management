@@ -11,10 +11,8 @@ import {
   ArrowLeft,
   User,
   Mail,
-  Phone,
   Building,
   MapPin,
-  Ticket,
   Shield,
   Loader2,
   CheckCircle,
@@ -123,7 +121,7 @@ export default function CheckoutPage() {
     setMounted(true)
   }, [])
 
-  const isDark = mounted ? resolvedTheme === "dark" : false
+  const _isDark = mounted ? resolvedTheme === "dark" : false
   const supabase = createClient()
 
   // Get checkout data from session storage
@@ -399,7 +397,7 @@ export default function CheckoutPage() {
         setDiscountError(data.error || "Invalid discount code")
         setDiscountApplied(null)
       }
-    } catch (err) {
+    } catch (_err) {
       setDiscountError("Failed to validate discount code")
     } finally {
       setIsValidatingDiscount(false)

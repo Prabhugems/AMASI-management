@@ -9,9 +9,6 @@ import Script from "next/script"
 import {
   ArrowLeft,
   User,
-  Mail,
-  Phone,
-  Building,
   Plus,
   Trash2,
   Users,
@@ -270,7 +267,7 @@ export default function GroupRegistrationPage() {
         setDiscountError(data.error || "Invalid discount code")
         setDiscountApplied(null)
       }
-    } catch (err) {
+    } catch (_err) {
       setDiscountError("Failed to validate discount code")
     } finally {
       setIsValidatingDiscount(false)

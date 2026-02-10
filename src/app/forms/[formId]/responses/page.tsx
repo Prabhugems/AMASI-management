@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { format } from "date-fns"
 import Link from "next/link"
@@ -18,7 +18,6 @@ import {
   MoreHorizontal,
   Mail,
   Filter,
-  ChevronDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -64,7 +63,6 @@ const statusConfig = {
 
 export default function FormResponsesPage() {
   const params = useParams()
-  const router = useRouter()
   const queryClient = useQueryClient()
   const formId = params.formId as string
 

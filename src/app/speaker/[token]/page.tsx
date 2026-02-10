@@ -39,7 +39,6 @@ import {
   User,
   AlertCircle,
   CreditCard,
-  Utensils,
   Upload,
   FileText,
   Trash2,
@@ -51,13 +50,10 @@ import {
   Check,
   Printer,
   Download,
-  ArrowDown,
-  Circle,
   CalendarPlus,
 } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { cn } from "@/lib/utils"
-import { FlightSelector } from "@/components/flight-selector"
 import { CitySelector } from "@/components/city-selector"
 import { SmartFlightAssist } from "@/components/smart-flight-assist"
 import { InsertChat } from "@/components/insert-chat"
@@ -86,7 +82,7 @@ function FlightPreferenceUpload({
   disabled?: boolean
 }) {
   const [isUploading, setIsUploading] = useState(false)
-  const queryClient = useQueryClient()
+  const _queryClient = useQueryClient()
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

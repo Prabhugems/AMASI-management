@@ -625,7 +625,7 @@ function normalizeFlightNumber(flightNumber: string): string | null {
 async function lookupFromAviationStack(
   flightNumber: string,
   apiKey: string,
-  date?: string
+  _date?: string
 ): Promise<FlightInfo | null> {
   const [airlineCode, flightNum] = flightNumber.split("-")
   const url = `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${airlineCode}${flightNum}&limit=1`

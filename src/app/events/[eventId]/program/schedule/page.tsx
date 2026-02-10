@@ -20,7 +20,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import {
   Select,
@@ -32,14 +31,6 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   Calendar,
   Clock,
   Plus,
@@ -47,16 +38,10 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  User,
-  GraduationCap,
   MapPin,
-  FileText,
-  ChevronLeft,
-  ChevronRight,
   Search,
   Download,
   Printer,
-  Filter,
   Layers,
   ExternalLink,
   Globe,
@@ -68,17 +53,14 @@ import {
   Building,
   CheckSquare,
   Users,
-  Presentation,
   Video,
   Coffee,
   Award,
   Mic2,
   BookOpen,
   Wrench,
-  Timer,
   CalendarDays,
   AlignLeft,
-  GripVertical,
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -331,7 +313,7 @@ export default function ProgramPage() {
 
   // Bulk selection helpers
   const allSelected = filteredSessions.length > 0 && selectedIds.size === filteredSessions.length
-  const someSelected = selectedIds.size > 0 && selectedIds.size < filteredSessions.length
+  const _someSelected = selectedIds.size > 0 && selectedIds.size < filteredSessions.length
 
   const toggleSelectAll = () => {
     if (allSelected) {

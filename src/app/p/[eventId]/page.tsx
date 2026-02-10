@@ -19,7 +19,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Download,
   HelpCircle,
   Calendar,
   MapPin,
@@ -34,7 +33,6 @@ import {
   Award,
   Filter,
   X,
-  ExternalLink,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -166,7 +164,7 @@ const THEME_CONFIG = {
 
 const getSessionIcon = (sessionName: string, sessionType: string | null) => {
   const name = (sessionName || "").toLowerCase()
-  const type = (sessionType || "").toLowerCase()
+  const _type = (sessionType || "").toLowerCase()
 
   if (name.includes("panel") || name.includes("debate")) return MessageSquare
   if (name.includes("live") || name.includes("video")) return Video

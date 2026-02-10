@@ -7,7 +7,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -24,11 +23,9 @@ import {
   Search,
   X,
   MapPin,
-  Maximize2,
   RotateCcw,
   Check,
   Clock,
-  AlertCircle,
   Pencil,
 } from "lucide-react"
 import { cn } from "@/lib/utils"

@@ -10,12 +10,10 @@ import {
   Building2,
   Award,
   Grid3X3,
-  Users,
   ArrowRight,
   Loader2,
   Plus,
   CheckCircle,
-  Clock,
   IndianRupee,
   TrendingUp,
 } from "lucide-react"

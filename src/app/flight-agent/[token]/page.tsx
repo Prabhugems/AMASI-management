@@ -35,23 +35,17 @@ import {
   CheckCircle,
   Clock,
   Phone,
-  Mail,
   Calendar,
   ExternalLink,
   Check,
   X,
   User,
-  Send,
   PlaneTakeoff,
   PlaneLanding,
-  Upload,
-  Trash2,
   AlertCircle,
   Sparkles,
   AlertTriangle,
-  FileText,
 } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -258,7 +252,7 @@ export default function FlightAgentPortal() {
       } else {
         toast.error(result.error || "Could not extract ticket details")
       }
-    } catch (error: any) {
+    } catch (_error: any) {
       toast.error("Failed to extract ticket")
     } finally {
       setIsExtracting(false)

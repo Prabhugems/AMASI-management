@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
@@ -9,7 +9,6 @@ import {
   QrCode,
   Printer,
   CheckCircle,
-  Clock,
   Pencil,
   Trash2,
   ArrowLeft,
@@ -21,18 +20,13 @@ import {
   Check,
   X,
   Link2,
-  Play,
-  Eye,
   RefreshCw,
   Layers,
   Tag,
   FileText,
-  Settings,
   Key,
   Power,
   PowerOff,
-  Users,
-  ChevronDown,
   Monitor,
   Download
 } from "lucide-react"
@@ -100,7 +94,7 @@ const PAPER_SIZES = [
 
 export default function PrintStationHubPage() {
   const params = useParams()
-  const router = useRouter()
+  const _router = useRouter()
   const queryClient = useQueryClient()
   const eventId = params.eventId as string
 

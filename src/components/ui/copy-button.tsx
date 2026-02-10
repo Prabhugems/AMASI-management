@@ -10,7 +10,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { copyToClipboard, copyEmails, copyPhones, copyLink } from "@/lib/clipboard"
+import { copyToClipboard, copyEmails, copyLink } from "@/lib/clipboard"
 
 interface CopyButtonProps {
   value: string

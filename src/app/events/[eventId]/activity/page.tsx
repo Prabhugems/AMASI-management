@@ -18,7 +18,6 @@ import {
   Search,
   Loader2,
   User,
-  Calendar,
   Filter,
   RefreshCw,
   ChevronLeft,
@@ -35,10 +34,8 @@ import {
   Upload,
   Send,
   Bell,
-  Clock,
   CheckCircle,
   XCircle,
-  AlertCircle,
   FileText,
   CreditCard,
 } from "lucide-react"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,6 @@ import {
   Plane,
   RefreshCw,
   Clock,
-  MapPin,
   AlertCircle,
   CheckCircle,
   XCircle,

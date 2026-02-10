@@ -39,8 +39,6 @@ import {
   Search,
   Plane,
   MapPin,
-  Calendar,
-  ArrowRight,
   User,
   Phone,
   Mail,
@@ -49,8 +47,6 @@ import {
   Share2,
   PlaneTakeoff,
   PlaneLanding,
-  Navigation,
-  ExternalLink,
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"

@@ -188,7 +188,7 @@ export async function PUT(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { channel, provider, credentials, event_id } = body
+    const { channel, provider, credentials, event_id: _event_id } = body
 
     // Test the connection based on channel and provider
     let testResult = { success: false, message: "" }

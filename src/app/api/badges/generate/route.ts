@@ -32,19 +32,6 @@ interface Placeholder {
   shapeType?: "rectangle" | "circle" | "triangle"
 }
 
-interface BadgeTemplate {
-  id: string
-  name: string
-  size: string
-  template_image_url: string | null
-  template_data: {
-    width?: number
-    height?: number
-    backgroundColor?: string
-    elements?: Placeholder[]
-  }
-}
-
 // Badge sizes in points (72 points = 1 inch)
 const BADGE_SIZES: Record<string, { width: number; height: number }> = {
   "4x3": { width: 288, height: 216 },

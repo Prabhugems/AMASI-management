@@ -53,16 +53,10 @@ import {
   Trash2,
   Search,
   Download,
-  CheckCircle,
-  Clock,
-  XCircle,
   Globe,
   Phone,
   Mail,
-  Users,
-  IndianRupee,
   AlertTriangle,
-  ExternalLink,
   UserPlus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"

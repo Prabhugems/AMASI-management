@@ -8,19 +8,14 @@ import {
   Plus,
   QrCode,
   Users,
-  CheckCircle,
-  Clock,
   Pencil,
   Trash2,
   Coffee,
   UtensilsCrossed,
   Utensils,
   CalendarDays,
-  ArrowLeft,
-  Zap,
   Activity,
   BarChart3,
-  List,
   Sparkles,
   Copy,
   ExternalLink,
@@ -35,10 +30,7 @@ import {
   RefreshCw,
   Timer,
   UserCheck,
-  ChevronRight,
   Wifi,
-  Radio,
-  CircleDot
 } from "lucide-react"
 import { HelpTooltip } from "@/components/ui/help-tooltip"
 
@@ -313,7 +305,7 @@ export default function CheckinHubPage() {
     return gradients[index % gradients.length]
   }
 
-  const getAccentColor = (index: number) => {
+  const _getAccentColor = (index: number) => {
     const colors = ["orange", "blue", "purple", "green", "red", "indigo"]
     return colors[index % colors.length]
   }

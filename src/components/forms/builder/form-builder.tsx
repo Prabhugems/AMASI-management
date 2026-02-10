@@ -25,7 +25,6 @@ import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import {
   Save,
-  Eye,
   Globe,
   ArrowLeft,
   Loader2,
@@ -38,7 +37,6 @@ import {
   Check,
   MoreVertical,
   PanelLeftClose,
-  PanelLeft,
   ChevronLeft,
   ChevronRight,
   Share2,
@@ -60,12 +58,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
 
 interface FormBuilderProps {
   form: Form
@@ -82,7 +74,7 @@ export function FormBuilder({
   onSave,
   backUrl = "/forms",
 }: FormBuilderProps) {
-  const router = useRouter()
+  const _router = useRouter()
   const [form, setForm] = useState<Form>(initialForm)
   const [fields, setFields] = useState<FormField[]>(initialFields)
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
@@ -273,7 +265,7 @@ export function FormBuilder({
       setForm({ ...form, status: "draft" })
       setIsDirty(false)
       toast.success("Form unpublished")
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to unpublish form")
     } finally {
       setIsSaving(false)

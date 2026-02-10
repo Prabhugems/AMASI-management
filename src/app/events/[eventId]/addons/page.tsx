@@ -35,7 +35,6 @@ import {
   IndianRupee,
   GripVertical,
   MoreVertical,
-  Upload,
   X,
   Image as ImageIcon,
   Layers,
@@ -170,7 +169,7 @@ export default function AddonsPage() {
       if (error) throw error
 
       // Fetch sales data directly from registration_addons
-      let salesByAddon: Record<string, { sold: number; revenue: number }> = {}
+      const salesByAddon: Record<string, { sold: number; revenue: number }> = {}
       if (data && data.length > 0) {
         const addonIds = data.map((a: any) => a.id)
         const { data: salesData } = await (supabase as any)

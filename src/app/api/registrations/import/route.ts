@@ -38,7 +38,7 @@ interface ImportRegistration {
 export async function POST(request: NextRequest) {
   try {
     // Require admin authentication
-    const { user, error: authError } = await requireAdmin()
+    const { user: _user, error: authError } = await requireAdmin()
     if (authError) return authError
 
     const supabase = await createAdminClient()
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get default ticket if ticket_type_id provided
-    let defaultTicket = ticket_type_id
+    const defaultTicket = ticket_type_id
       ? (ticketTypes as any[]).find((t: any) => t.id === ticket_type_id)
       : ticketTypes[0]
 
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
         const registrationNumber = generateRegistrationNumber()
         const shouldNotify = reg.notify?.toUpperCase() === 'Y'
 
-        const { data: newReg, error: regError } = await db
+        const { data: _newReg, error: regError } = await db
           .from("registrations")
           .insert({
             registration_number: registrationNumber,
@@ -324,7 +324,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   // Require admin authentication
-  const { user, error: authError } = await requireAdmin()
+  const { user: _user, error: authError } = await requireAdmin()
   if (authError) return authError
 
   const supabase = await createAdminClient()
@@ -342,7 +342,7 @@ export async function GET(request: NextRequest) {
       .eq("event_id", eventId)
       .order("sort_order", { ascending: true })
 
-    const ticketNames = tickets?.map((t: any) => t.name).join(" | ") || "Ticket Name"
+    const _ticketNames = tickets?.map((t: any) => t.name).join(" | ") || "Ticket Name"
 
     const csvTemplate = `ticket,name,email,phone,designation,institution,city,state,country,notify
 ${tickets?.[0]?.name || "Speaker"},Dr. John Smith,john@example.com,+91 9876543210,Professor,Medical College,Mumbai,Maharashtra,India,Y

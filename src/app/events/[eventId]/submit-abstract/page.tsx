@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useParams } from "next/navigation"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import Link from "next/link"
@@ -20,12 +20,8 @@ import {
   FileText,
   User,
   Mail,
-  Building2,
-  Phone,
   Plus,
   X,
-  Tag,
-  Calendar,
   Clock,
   BookOpen,
   Upload,
@@ -109,7 +105,7 @@ export default function SubmitAbstractPage() {
   })
 
   // Fetch abstract settings
-  const { data: settings, isLoading: settingsLoading } = useQuery({
+  const { data: settings, isLoading: _settingsLoading } = useQuery({
     queryKey: ["abstract-settings-public", eventId],
     queryFn: async () => {
       const res = await fetch(`/api/abstract-settings/${eventId}`)

@@ -51,8 +51,6 @@ import {
   Plug,
   Wifi,
   AlertTriangle,
-  CheckCircle,
-  Clock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"

@@ -15,7 +15,7 @@ export async function POST() {
     )
 
     // Test if columns already exist
-    const { data: testData, error: testError } = await supabase
+    const { data: _testData, error: testError } = await supabase
       .from('addons')
       .select('is_course')
       .limit(1)
@@ -30,7 +30,7 @@ export async function POST() {
     // Columns don't exist, need to run migration via raw SQL
     // Since Supabase JS client doesn't support raw SQL, we'll do it via REST
 
-    const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const _projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL!
       .replace('https://', '')
       .replace('.supabase.co', '')
 

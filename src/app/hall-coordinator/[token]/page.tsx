@@ -17,12 +17,10 @@ import {
 } from "@/components/ui/dialog"
 import {
   Building2,
-  Loader2,
   Calendar,
   Clock,
   CheckCircle,
   PlayCircle,
-  AlertCircle,
   RefreshCw,
   Phone,
   UserCheck,
@@ -41,30 +39,15 @@ import {
   Radio,
   List,
   PhoneCall,
-  Wifi,
-  WifiOff,
   Volume2,
   Lightbulb,
   ThermometerSun,
   SkipForward,
   CheckCheck,
-  Megaphone,
   Headphones,
   Wrench,
-  User,
   Zap,
-  Activity,
   Target,
-  TrendingUp,
-  Eye,
-  Bell,
-  Settings,
-  BarChart3,
-  PieChart,
-  ArrowUp,
-  ArrowDown,
-  Flame,
-  Star,
   Shield,
   Sparkles,
 } from "lucide-react"
@@ -178,8 +161,8 @@ export default function HallControlDashboard() {
   const [issueDialogOpen, setIssueDialogOpen] = useState(false)
   const [selectedIssueType, setSelectedIssueType] = useState<string | null>(null)
   const [issueDescription, setIssueDescription] = useState("")
-  const [audienceDialogOpen, setAudienceDialogOpen] = useState(false)
-  const [audienceCount, setAudienceCount] = useState("")
+  const [_audienceDialogOpen, _setAudienceDialogOpen] = useState(false)
+  const [_audienceCount, _setAudienceCount] = useState("")
   const [localIssues, setLocalIssues] = useState<Issue[]>([])
 
   // Real-time clock
@@ -501,7 +484,7 @@ export default function HallControlDashboard() {
 
     const addPerson = (name: string, role: string, directPhone?: string | null, directEmail?: string) => {
       // Clean name
-      let cleanName = name.trim()
+      const cleanName = name.trim()
         .replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?|smt\.?)\s+/i, match => match) // Keep titles
         .replace(/[*_#]+/g, "") // Remove markdown
         .replace(/\s+/g, " ") // Normalize spaces
@@ -785,7 +768,7 @@ export default function HallControlDashboard() {
 
           {/* Day Selector */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
-            {dayGroups.map((day, i) => (
+            {dayGroups.map((day, _i) => (
               <button
                 key={day.date}
                 onClick={() => setSelectedDay(day.date)}
@@ -986,10 +969,10 @@ export default function HallControlDashboard() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {(nextSession ? [nextSession, ...upcomingSessions.filter(s => s.id !== nextSession.id)] : upcomingSessions).slice(0, 5).map((session, i) => {
+                  {(nextSession ? [nextSession, ...upcomingSessions.filter(s => s.id !== nextSession.id)] : upcomingSessions).slice(0, 5).map((session, _i) => {
                     const status = getStatusInfo(session.coordinator_status)
                     const checklist = session.coordinator_checklist || {}
-                    const checkCount = Object.values(checklist).filter(Boolean).length
+                    const _checkCount = Object.values(checklist).filter(Boolean).length
                     const hasDelay = cascadeDelay > 0
                     return (
                       <div

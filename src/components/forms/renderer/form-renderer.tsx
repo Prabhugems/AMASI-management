@@ -578,7 +578,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
     }
   }
 
-  const primaryColor = form.primary_color || "#8B5CF6"
+  const _primaryColor = form.primary_color || "#8B5CF6"
 
   const renderField = (field: FormField) => {
     const value = responses[field.id]

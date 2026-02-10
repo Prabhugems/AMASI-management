@@ -46,7 +46,7 @@ export type FlightStatusDisplay = {
 }
 
 // Get flight status by flight number
-export async function getFlightStatus(flightNumber: string, date?: string): Promise<FlightStatusDisplay | null> {
+export async function getFlightStatus(flightNumber: string, _date?: string): Promise<FlightStatusDisplay | null> {
   if (!AIRLABS_API_KEY) {
     console.warn("AirLabs API key not configured")
     return null

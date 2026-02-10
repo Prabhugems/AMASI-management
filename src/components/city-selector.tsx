@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { MapPin, ChevronDown, X, Plane, Search } from "lucide-react"
-import { INDIAN_CITIES, AIRPORT_INFO } from "@/lib/airline-api"
+import { INDIAN_CITIES } from "@/lib/airline-api"
 
 type CitySelectorProps = {
   value: string

@@ -9,11 +9,9 @@ import {
   Plus,
   Search,
   MoreHorizontal,
-  Eye,
   Edit2,
   Copy,
   Trash2,
-  Globe,
   FileText,
   Users,
   Filter,
@@ -81,7 +79,7 @@ export default function FormsPage() {
   })
 
   // Fetch forms
-  const { data: forms, isLoading, refetch } = useQuery({
+  const { data: forms, isLoading } = useQuery({
     queryKey: ["forms", search, typeFilter, statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams()

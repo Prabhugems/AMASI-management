@@ -3,7 +3,6 @@
 import { FormField, ConditionalLogic, ConditionalRule } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -63,7 +62,7 @@ export function ConditionalLogicEditor({
     (f) => !["heading", "paragraph", "divider"].includes(f.field_type)
   )
 
-  const getFieldLabel = (fieldId: string) => {
+  const _getFieldLabel = (fieldId: string) => {
     const field = fields.find((f) => f.id === fieldId)
     return field?.label || "Unknown field"
   }
@@ -313,7 +312,7 @@ export function ConditionalLogicEditor({
                         {/* Rules */}
                         <div className="space-y-2">
                           {field.conditional_logic?.rules?.map((rule, ruleIndex) => {
-                            const ruleField = fields.find(
+                            const _ruleField = fields.find(
                               (f) => f.id === rule.field_id
                             )
                             const ruleFieldOptions = getFieldOptions(rule.field_id)

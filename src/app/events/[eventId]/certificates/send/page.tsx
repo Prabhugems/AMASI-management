@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { useParams } from "next/navigation"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,10 +21,8 @@ import {
   Loader2,
   Search,
   CheckCircle,
-  Clock,
   Users,
   Mail,
-  AlertCircle,
   Award,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -166,7 +164,7 @@ export default function SendCertificatesPage() {
         toast.error(`Failed to send to ${failCount} attendee${failCount > 1 ? "s" : ""}`)
       }
       setSelectedAttendees(new Set())
-    } catch (error) {
+    } catch {
       toast.error("Failed to send certificates")
     } finally {
       setSending(false)

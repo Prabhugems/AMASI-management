@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,9 +24,7 @@ import {
   Loader2,
   Mail,
   Send,
-  ArrowLeft,
   CheckCircle2,
-  Clock3,
   Users,
   AlertCircle,
   Eye,
@@ -90,7 +88,7 @@ export default function SendInvitationsPage() {
   const [emailSubject, setEmailSubject] = useState("Invitation: {{event_name}} - {{role}} Confirmation")
   const [emailBody, setEmailBody] = useState(DEFAULT_EMAIL_TEMPLATE)
   const [sending, setSending] = useState(false)
-  const [showPreview, setShowPreview] = useState(false)
+  const [_showPreview, _setShowPreview] = useState(false)
 
   // Fetch event
   const { data: event } = useQuery({
@@ -229,7 +227,7 @@ export default function SendInvitationsPage() {
       return
     }
 
-    const selected = filteredAssignments.filter(a => selectedIds.has(a.id))
+    const _selected = filteredAssignments.filter(a => selectedIds.has(a.id))
 
     setSending(true)
     try {
@@ -253,7 +251,7 @@ export default function SendInvitationsPage() {
         const error = await response.json()
         toast.error(error.message || "Failed to send invitations")
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Error sending invitations")
     } finally {
       setSending(false)

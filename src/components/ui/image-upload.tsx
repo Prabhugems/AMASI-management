@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Upload, X, Link, Loader2, Image as ImageIcon } from "lucide-react"
+import { Upload, X, Link, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface ImageUploadProps {
@@ -20,7 +20,7 @@ export function ImageUpload({
   eventId,
   folder = "events",
   aspectRatio = "auto",
-  placeholder = "Upload image or paste URL",
+  placeholder: _placeholder = "Upload image or paste URL",
   className,
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false)

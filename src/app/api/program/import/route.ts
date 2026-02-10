@@ -70,7 +70,7 @@ function getPhone(row: CSVRow): string | null {
     row["Phone"] ||
     row["phone"] ||
     row["Mobile"] ||
-    Object.entries(row).find(([k, v]) => k.toLowerCase().includes("mobile") || k.toLowerCase().includes("phone"))?.[1] ||
+    Object.entries(row).find(([k, _v]) => k.toLowerCase().includes("mobile") || k.toLowerCase().includes("phone"))?.[1] ||
     null
 
   if (!phone) return null
@@ -128,11 +128,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Detect CSV format based on columns
-    const firstRow = records[0]
-    const hasRoleColumn = "Role" in firstRow || "role" in firstRow
-    const hasTimeRange = firstRow["Time"]?.includes("-") || firstRow["time"]?.includes("-")
-
     // Group sessions by unique key (date + hall + session + time + topic)
     const sessionMap = new Map<SessionKey, SessionData>()
 
@@ -173,7 +168,7 @@ export async function POST(request: NextRequest) {
       // Try DD.MM.YYYY format (AMASICON)
       let dateMatch = dateStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/)
       if (dateMatch) {
-        const [_, day, month, year] = dateMatch
+        const [_match, day, month, year] = dateMatch
         parsedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
       }
 
@@ -181,7 +176,7 @@ export async function POST(request: NextRequest) {
       if (!parsedDate) {
         dateMatch = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
         if (dateMatch) {
-          const [_, day, month, year] = dateMatch
+          const [_match, day, month, year] = dateMatch
           parsedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
         }
       }
@@ -202,14 +197,14 @@ export async function POST(request: NextRequest) {
       // Time range format
       const timeRangeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/)
       if (timeRangeMatch) {
-        const [_, startH, startM, endH, endM] = timeRangeMatch
+        const [_match, startH, startM, endH, endM] = timeRangeMatch
         startTime = `${startH.padStart(2, "0")}:${startM}:00`
         endTime = `${endH.padStart(2, "0")}:${endM}:00`
       } else {
         // Single time format
         const singleTimeMatch = timeStr.match(/(\d{1,2}):(\d{2})/)
         if (singleTimeMatch) {
-          const [_, hours, minutes] = singleTimeMatch
+          const [_match, hours, minutes] = singleTimeMatch
           startTime = `${hours.padStart(2, "0")}:${minutes}:00`
           endTime = startTime
         }
@@ -442,7 +437,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Process each faculty
-      for (const [_, faculty] of facultyMap) {
+      for (const [_key, faculty] of facultyMap) {
         // Skip if no email and no phone (no useful contact info)
         if (!faculty.email && !faculty.phone) continue
 

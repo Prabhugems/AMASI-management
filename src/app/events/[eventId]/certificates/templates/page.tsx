@@ -31,6 +31,8 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -38,7 +40,7 @@ type Template = {
   id: string
   name: string
   size: string
-  is_active: boolean
+  is_active?: boolean
   created_at: string
   updated_at: string
 }
@@ -51,13 +53,20 @@ export default function CertificateTemplatesPage() {
   const [search, setSearch] = useState("")
 
   // Fetch templates via API route (bypasses RLS)
-  const { data: templates, isLoading } = useQuery({
+  const { data: templates, isLoading, error: fetchError, refetch } = useQuery({
     queryKey: ["certificate-templates-list", eventId],
     queryFn: async () => {
-      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`)
-      if (!res.ok) throw new Error("Failed to fetch templates")
+      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`, { cache: "no-store" })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || "Failed to fetch templates")
+      }
       return (await res.json()) as Template[]
     },
+    retry: 2,
+    staleTime: 0,
+    refetchOnMount: "always",
+    gcTime: 0,
   })
 
   // Delete template via API route
@@ -162,8 +171,23 @@ export default function CertificateTemplatesPage() {
         />
       </div>
 
+      {/* Error State */}
+      {fetchError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-medium text-red-800">Failed to load templates</p>
+            <p className="text-sm text-red-600">{fetchError.message}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      )}
+
       {/* Templates Table */}
-      {filteredTemplates.length === 0 ? (
+      {!fetchError && filteredTemplates.length === 0 && (
         <div className="text-center py-12 bg-card rounded-lg border border-dashed">
           <Award className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">No templates found</h3>
@@ -176,7 +200,8 @@ export default function CertificateTemplatesPage() {
             </Link>
           )}
         </div>
-      ) : (
+      )}
+      {filteredTemplates.length > 0 && (
         <div className="bg-card rounded-lg border overflow-hidden">
           <Table>
             <TableHeader>
@@ -201,7 +226,7 @@ export default function CertificateTemplatesPage() {
                     {template.size || "A4 Landscape"}
                   </TableCell>
                   <TableCell>
-                    {template.is_active ? (
+                    {template.is_active !== false ? (
                       <span className="inline-flex items-center gap-1 text-green-600 text-sm">
                         <CheckCircle className="h-4 w-4" />
                         Active
@@ -237,10 +262,10 @@ export default function CertificateTemplatesPage() {
                         <DropdownMenuItem
                           onClick={() => toggleActiveMutation.mutate({
                             id: template.id,
-                            is_active: !template.is_active,
+                            is_active: template.is_active === false ? true : false,
                           })}
                         >
-                          {template.is_active ? (
+                          {template.is_active !== false ? (
                             <>
                               <XCircle className="h-4 w-4 mr-2" />
                               Deactivate

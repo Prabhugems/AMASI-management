@@ -21,7 +21,6 @@ import {
   Camera,
 } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 
 type CheckinResult = {
   success: boolean
@@ -187,7 +186,7 @@ export default function KioskPage() {
         message: "Check-in successful!",
         registration,
       })
-    } catch (error) {
+    } catch (_error) {
       setResult({
         success: false,
         message: "Something went wrong. Please try again.",

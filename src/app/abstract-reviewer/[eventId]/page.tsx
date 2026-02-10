@@ -180,7 +180,7 @@ export default function AbstractReviewerPortal() {
 
   const event = portalData?.event
   const settings = portalData?.settings
-  const abstracts = portalData?.abstracts || []
+  const abstracts = useMemo(() => portalData?.abstracts || [], [portalData?.abstracts])
 
   // Categories list for filter
   const categories = useMemo(() => {

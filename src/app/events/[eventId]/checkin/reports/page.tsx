@@ -7,13 +7,6 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Table,
   TableBody,
   TableCell,
@@ -29,13 +22,11 @@ import {
   CheckCircle,
   Clock,
   TrendingUp,
-  Calendar,
   Ticket,
   List,
   FileSpreadsheet,
   FileText,
   RefreshCw,
-  Filter,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -71,7 +62,7 @@ export default function CheckinReportsPage() {
   const eventId = params.eventId as string
   const supabase = createClient()
 
-  const [selectedList, setSelectedList] = useState<string>("all")
+  const [_selectedList, _setSelectedList] = useState<string>("all")
   const [dateFilter, setDateFilter] = useState<string>("")
 
   // Fetch check-in lists

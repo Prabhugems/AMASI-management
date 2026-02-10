@@ -15,10 +15,8 @@ import {
   AlertTriangle,
   Calendar,
   Clock,
-  MapPin,
   User,
   Building2,
-  Check,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -105,7 +103,7 @@ export default function RespondPage() {
           setSubmitted(true)
         }
 
-      } catch (err) {
+      } catch (_err) {
         setError("Failed to load invitation details")
       } finally {
         setLoading(false)
@@ -183,7 +181,7 @@ export default function RespondPage() {
       setSubmitted(true)
       toast.success("Your responses have been recorded. Thank you!")
 
-    } catch (err) {
+    } catch (_err) {
       toast.error("Failed to submit responses. Please try again.")
     } finally {
       setSubmitting(false)

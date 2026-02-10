@@ -214,7 +214,7 @@ export default function SpeakerPortalPage() {
                             asChild
                           >
                             <a
-                              href={getPortalUrl(speaker.custom_fields?.portal_token!)}
+                              href={getPortalUrl(speaker.custom_fields?.portal_token ?? '')}
                               target="_blank"
                               rel="noopener noreferrer"
                             >

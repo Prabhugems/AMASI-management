@@ -45,7 +45,6 @@ import {
   Clock,
 } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 
 type Guest = {
   id: string
@@ -212,7 +211,7 @@ export default function RoomingListPage() {
     const headers = ["Hotel", "Room", "Type", "Guest Name", "Phone", "Check-in", "Check-out", "Sharing With"]
 
     const rows: string[][] = []
-    Object.entries(groupedByHotel).forEach(([_, group]) => {
+    Object.entries(groupedByHotel).forEach(([, group]) => {
       group.guests.forEach((guest) => {
         rows.push([
           group.name,

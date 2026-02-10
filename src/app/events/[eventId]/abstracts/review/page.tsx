@@ -25,9 +25,7 @@ import {
   AlertCircle,
   Star,
   ChevronRight,
-  FileText,
   User,
-  Clock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 

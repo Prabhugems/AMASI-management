@@ -116,7 +116,7 @@ export function ShareDialog({
           text: description,
           url,
         })
-      } catch (err) {
+      } catch (_err) {
         // User cancelled or error
       }
     }
@@ -211,7 +211,7 @@ export function ShareButton({
       try {
         await navigator.share({ title, text, url })
         return
-      } catch (err) {
+      } catch (_err) {
         // Fallback to copy
       }
     }

@@ -91,7 +91,7 @@ export default function EventFormsPage() {
   })
 
   // Fetch forms for this event
-  const { data: forms, isLoading, refetch } = useQuery({
+  const { data: forms, isLoading, refetch: _refetch } = useQuery({
     queryKey: ["event-forms", eventId, search],
     queryFn: async () => {
       let query = supabase

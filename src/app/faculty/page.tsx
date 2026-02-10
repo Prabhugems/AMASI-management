@@ -39,7 +39,6 @@ import {
   Briefcase,
   Star,
   Edit,
-  ExternalLink,
   Send,
   Ban,
   CheckCircle,

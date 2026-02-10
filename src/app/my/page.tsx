@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Script from "next/script"
 import {
   Search,
   Loader2,
@@ -10,7 +9,6 @@ import {
   Ticket,
   Calendar,
   MapPin,
-  Download,
   Award,
   FileText,
   CheckCircle,
@@ -153,7 +151,7 @@ export default function DelegatePortalPage() {
           if (form) form.requestSubmit()
         }, 3000)
       }
-    } catch (error: any) {
+    } catch (_error: any) {
       setVerifyResult({
         status: "error",
         message: "Verification failed. Please try again.",
@@ -1188,7 +1186,7 @@ export default function DelegatePortalPage() {
 function AbstractSubmissions({
   eventId,
   email,
-  registrationNumber,
+  registrationNumber: _registrationNumber,
 }: {
   eventId?: string
   email: string

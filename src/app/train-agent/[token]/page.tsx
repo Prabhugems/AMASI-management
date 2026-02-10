@@ -37,11 +37,9 @@ import {
   Phone,
   Calendar,
   Check,
-  X,
   User,
   AlertCircle,
   Sparkles,
-  AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -98,7 +96,7 @@ export default function TrainAgentPortal() {
   // AI Extraction
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isExtracting, setIsExtracting] = useState(false)
-  const [extractionResult, setExtractionResult] = useState<any>(null)
+  const [_extractionResult, setExtractionResult] = useState<any>(null)
 
   const [trainForm, setTrainForm] = useState({
     status: "pending",

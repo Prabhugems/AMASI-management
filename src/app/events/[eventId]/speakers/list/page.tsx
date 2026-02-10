@@ -48,7 +48,6 @@ import {
   MoreVertical,
   Trash2,
   Loader2,
-  Mic,
   Users,
   Send,
   Copy,
@@ -72,8 +71,6 @@ import {
   Download,
   ArrowUpDown,
   CheckSquare,
-  Square,
-  MinusSquare,
   FileSpreadsheet,
   MessageSquare,
   Tag,
@@ -429,7 +426,7 @@ export default function SpeakersPage() {
       URL.revokeObjectURL(url)
 
       toast.success(`Exported ${rows.length} speakers`)
-    } catch (error) {
+    } catch (_error) {
       toast.error("Export failed")
     } finally {
       setIsExporting(false)

@@ -108,7 +108,7 @@ export async function PUT(
 // POST /api/abstracts/[id]/decision/bulk - Bulk decision for multiple abstracts
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params: _params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase: SupabaseClient = await createServerSupabaseClient()

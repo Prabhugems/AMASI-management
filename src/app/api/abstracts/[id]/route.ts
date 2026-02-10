@@ -56,7 +56,7 @@ export async function GET(
     // If user is not an authenticated team member, strip comments_private from reviews
     if (!isTeamMember && data.reviews && Array.isArray(data.reviews)) {
       data.reviews = data.reviews.map((review: any) => {
-        const { comments_private, ...rest } = review
+        const { comments_private: _comments_private, ...rest } = review
         return rest
       })
     }

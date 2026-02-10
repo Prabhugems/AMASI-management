@@ -49,7 +49,7 @@ export default function TrackAttendeePage() {
 
   const [searchInput, setSearchInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
-  const [searching, setSearching] = useState(false)
+  const [_searching, _setSearching] = useState(false)
 
   // Fetch check-in lists for this event
   const { data: lists } = useQuery({
@@ -67,7 +67,7 @@ export default function TrackAttendeePage() {
   })
 
   // Search for registrations
-  const { data: searchResults, isLoading: searchLoading, refetch } = useQuery({
+  const { data: searchResults, isLoading: searchLoading, refetch: _refetch } = useQuery({
     queryKey: ["track-attendee", eventId, searchQuery],
     queryFn: async () => {
       if (!searchQuery.trim()) return []

@@ -15,7 +15,6 @@ import {
   FileText,
   Image,
   Presentation,
-  Upload,
   Save,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -77,7 +76,7 @@ export default function SpeakerPortalPage() {
         setBioText(data.speaker.bio_text || "")
         setPhotoUrl(data.speaker.photo_url || "")
         setPresentationUrl(data.speaker.presentation_url || "")
-      } catch (err) {
+      } catch (_err) {
         setError("Failed to load portal")
       } finally {
         setLoading(false)
@@ -121,7 +120,7 @@ export default function SpeakerPortalPage() {
 
       setSaved(true)
       toast.success("Your information has been saved!")
-    } catch (err) {
+    } catch (_err) {
       toast.error("Failed to save. Please try again.")
     } finally {
       setSaving(false)
@@ -151,7 +150,7 @@ export default function SpeakerPortalPage() {
     )
   }
 
-  const isComplete = speaker.bio_submitted && speaker.photo_submitted
+  const _isComplete = speaker.bio_submitted && speaker.photo_submitted
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">

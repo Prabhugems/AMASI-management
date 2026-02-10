@@ -4,7 +4,7 @@ import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { DayPicker, CaptionProps, useNavigation } from "react-day-picker"
 import { cn } from "@/lib/utils"
-import { format, setMonth, setYear } from "date-fns"
+import { setMonth, setYear } from "date-fns"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   fromYear?: number
@@ -65,8 +65,8 @@ function Calendar({
   className,
   classNames,
   showOutsideDays = true,
-  fromYear,
-  toYear,
+  fromYear: _fromYear,
+  toYear: _toYear,
   ...props
 }: CalendarProps) {
   return (
@@ -113,8 +113,8 @@ function Calendar({
       }}
       components={{
         Caption: CustomCaption,
-        IconLeft: ({ ...props }) => <ChevronLeft className="h-5 w-5 text-gray-700" />,
-        IconRight: ({ ...props }) => <ChevronRight className="h-5 w-5 text-gray-700" />,
+        IconLeft: ({ ..._props }) => <ChevronLeft className="h-5 w-5 text-gray-700" />,
+        IconRight: ({ ..._props }) => <ChevronRight className="h-5 w-5 text-gray-700" />,
       }}
       {...props}
     />

@@ -54,7 +54,7 @@ async function generateRegistrationNumber(supabase: Awaited<ReturnType<typeof cr
 export async function POST(request: NextRequest) {
   try {
     // Require admin authentication
-    const { user, error: authError } = await requireAdmin()
+    const { user: _user, error: authError } = await requireAdmin()
     if (authError) return authError
 
     const { event_id, sessions, createSpeakerRegistrations = false } = await request.json()

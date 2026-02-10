@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { useParams } from "next/navigation"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,7 +31,6 @@ import {
   CheckCircle,
   Clock,
   Users,
-  FileDown,
   AlertCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -80,12 +79,15 @@ export default function GenerateCertificatesPage() {
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ["certificate-templates-active", eventId],
     queryFn: async () => {
-      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`)
-      if (!res.ok) throw new Error("Failed to fetch templates")
+      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`, { cache: "no-store" })
+      if (!res.ok) return []
       const allTemplates = await res.json()
       // Filter to only active templates
-      return allTemplates.filter((t: any) => t.is_active) as { id: string; name: string }[]
+      return allTemplates.filter((t: any) => t.is_active !== false) as { id: string; name: string }[]
     },
+    retry: 2,
+    staleTime: 0,
+    refetchOnMount: "always",
   })
 
   // Filter attendees

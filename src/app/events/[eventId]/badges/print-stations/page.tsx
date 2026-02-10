@@ -22,7 +22,6 @@ import {
   CheckCircle,
   Clock,
   Users,
-  Plus,
   Zap,
   QrCode,
   User,

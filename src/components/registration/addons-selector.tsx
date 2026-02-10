@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Package, Plus, Minus, GraduationCap, Award, Info } from "lucide-react"
+import { useMemo } from "react"
+import { Package, Plus, Minus, GraduationCap, Award } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface Addon {

@@ -8,12 +8,12 @@ export default function PrintStationDownloadPage() {
 
   // Update these URLs after uploading to GitHub Releases
   // For now, files are in: print-station-app/dist/
-  const DOWNLOAD_URLS = {
+  const _DOWNLOAD_URLS = {
     mac: "#mac-download",  // Will be updated after GitHub upload
     windows: "#windows-download"  // Will be updated after GitHub upload
   }
 
-  const [showInstructions, setShowInstructions] = useState(false)
+  const [_showInstructions, _setShowInstructions] = useState(false)
 
   const steps = [
     {

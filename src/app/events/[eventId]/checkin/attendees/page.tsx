@@ -31,7 +31,6 @@ import {
   Eye,
   Send,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 type Attendee = {
@@ -132,7 +131,7 @@ export default function AllAttendeesPage() {
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       setBadgePdfUrl(url)
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to generate badge preview")
       setShowBadgeModal(false)
     } finally {

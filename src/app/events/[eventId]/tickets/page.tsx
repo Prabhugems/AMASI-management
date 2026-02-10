@@ -33,12 +33,9 @@ import {
   Users,
   Calendar,
   ExternalLink,
-  Eye,
   EyeOff,
-  Clock,
   TrendingUp,
   Zap,
-  Link,
   Copy,
   Check,
   BarChart3,
@@ -304,7 +301,7 @@ export default function TicketsPage() {
           form_id: data.form_id || null,
           exclusivity_group: data.exclusivity_group || null,
         }
-        const { data: result, error } = await (supabase as any)
+        const { data: _result, error } = await (supabase as any)
           .from("ticket_types")
           .update(updateData)
           .eq("id", data.id)
@@ -452,7 +449,7 @@ export default function TicketsPage() {
       if (error) throw error
       return data
     },
-    onSuccess: (newTicket) => {
+    onSuccess: (_newTicket) => {
       queryClient.invalidateQueries({ queryKey: ["event-tickets", eventId] })
       setSelectedTicket(null)
       toast.success("Ticket duplicated! Edit it to customize.")
@@ -512,7 +509,7 @@ export default function TicketsPage() {
     setIsCreateOpen(true)
   }
 
-  const getStatusColor = (status: string) => {
+  const _getStatusColor = (status: string) => {
     switch (status) {
       case "active": return "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
       case "paused": return "bg-amber-500/10 text-amber-600 border-amber-500/20"

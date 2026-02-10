@@ -95,7 +95,7 @@ export async function middleware(request: NextRequest) {
     '/abstract-reviewer',  // Abstract reviewer portal (token-based)
     '/api/abstract-reviewer', // Abstract reviewer APIs
   ]
-  const isPublicRoute = publicRoutes.some(
+  const _isPublicRoute = publicRoutes.some(
     (route) =>
       request.nextUrl.pathname === route ||
       request.nextUrl.pathname.startsWith(`${route}/`)

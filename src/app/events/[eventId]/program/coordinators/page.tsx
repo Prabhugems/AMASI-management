@@ -43,15 +43,14 @@ import {
   Search,
   MoreHorizontal,
   Edit,
-  Trash2,
   Copy,
   ExternalLink,
-  Link2,
   RefreshCw,
   CheckCircle,
   Mail,
   Phone,
   Users,
+  Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 

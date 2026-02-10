@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback } from "react"
-import { Upload, FileSpreadsheet, X, AlertCircle, CheckCircle2, Download, Loader2, ArrowRight, ChevronDown } from "lucide-react"
+import { Upload, FileSpreadsheet, X, AlertCircle, CheckCircle2, Download, Loader2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -183,7 +183,7 @@ export function CSVImportDynamic({
       setColumnMappings(autoMappings)
 
       setStep("mapping")
-    } catch (err) {
+    } catch (_err) {
       setError("Failed to parse the file. Please ensure it's a valid CSV.")
     } finally {
       setIsUploading(false)
@@ -286,7 +286,7 @@ export function CSVImportDynamic({
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
-  const getMappingOptions = () => {
+  const _getMappingOptions = () => {
     const options = [
       { value: "skip", label: "⊘ Skip this column", group: "action" },
     ]
