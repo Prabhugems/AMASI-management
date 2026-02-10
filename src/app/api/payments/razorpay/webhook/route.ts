@@ -67,7 +67,7 @@ async function getWebhookSecret(orderId: string): Promise<string | null> {
     }
   }
 
-  return process.env.RAZORPAY_WEBHOOK_SECRET || null
+  return process.env.RAZORPAY_WEBHOOK_SECRET?.trim() || null
 }
 
 /**
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
         : null)
 
     // Get the appropriate webhook secret
-    const webhookSecret = orderId ? await getWebhookSecret(orderId) : process.env.RAZORPAY_WEBHOOK_SECRET
+    const webhookSecret = orderId ? await getWebhookSecret(orderId) : process.env.RAZORPAY_WEBHOOK_SECRET?.trim()
 
     if (!webhookSecret) {
       console.error("[WEBHOOK] No webhook secret configured")
@@ -154,8 +154,8 @@ export async function POST(request: NextRequest) {
     const isValid = verifyWebhookSignature(rawBody, signature, webhookSecret)
     if (!isValid) {
       // Try with default secret as fallback
-      const defaultValid = process.env.RAZORPAY_WEBHOOK_SECRET
-        ? verifyWebhookSignature(rawBody, signature, process.env.RAZORPAY_WEBHOOK_SECRET)
+      const defaultValid = process.env.RAZORPAY_WEBHOOK_SECRET?.trim()
+        ? verifyWebhookSignature(rawBody, signature, process.env.RAZORPAY_WEBHOOK_SECRET?.trim())
         : false
 
       if (!defaultValid) {

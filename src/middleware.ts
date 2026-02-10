@@ -70,10 +70,7 @@ export async function middleware(request: NextRequest) {
   const publicRoutes = [
     '/login',
     '/auth/callback',
-    '/auth/confirm',
-    '/invitation',
     '/register',           // Public event registration
-    '/membership',         // Public membership signup
     '/respond',            // Speaker/faculty confirmation response page
     '/api/payments',       // Payment APIs (webhook needs public access)
     '/api/print',          // Print lookup API (public for desktop app)
@@ -134,8 +131,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
-     * - api routes
+     * - static assets (svg, png, jpg, etc.)
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

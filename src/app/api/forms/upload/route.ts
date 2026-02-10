@@ -1,6 +1,5 @@
-import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // Dangerous extensions to block
@@ -31,10 +30,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Use service role key for storage uploads (allows bypassing RLS)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-      process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
-    )
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createAdminClient()) as any
 
     const formData = await request.formData()
     const file = formData.get("file") as File | null
