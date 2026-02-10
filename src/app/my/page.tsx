@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   XCircle,
   BookOpen,
+  ScrollText,
 } from "lucide-react"
 
 interface RegistrationAddon {
@@ -113,6 +114,7 @@ export default function DelegatePortalPage() {
   const [downloadingBadge, setDownloadingBadge] = useState(false)
   const [downloadingCert, setDownloadingCert] = useState(false)
   const [downloadingReceipt, setDownloadingReceipt] = useState(false)
+  const [downloadingInvitation, setDownloadingInvitation] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
 
   // Payment verification
@@ -385,6 +387,35 @@ export default function DelegatePortalPage() {
       alert(err.message)
     } finally {
       setDownloadingReceipt(false)
+    }
+  }
+
+  const handleDownloadInvitation = async () => {
+    if (!selectedRegistration?.event?.id) return
+
+    setDownloadingInvitation(true)
+    try {
+      const res = await fetch(
+        `/api/events/${selectedRegistration.event.id}/invitation-pdf?registration_id=${selectedRegistration.id}`
+      )
+
+      if (!res.ok) {
+        throw new Error("Failed to download invitation")
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `Invitation-${selectedRegistration.registration_number}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setDownloadingInvitation(false)
     }
   }
 
@@ -977,25 +1008,42 @@ export default function DelegatePortalPage() {
         />
 
         {/* Download Buttons */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Invitation Download */}
+          <button
+            onClick={handleDownloadInvitation}
+            disabled={downloadingInvitation || registration.status !== "confirmed"}
+            className="bg-white rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+          >
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-200 transition-colors">
+              {downloadingInvitation ? (
+                <RefreshCw className="w-6 h-6 text-blue-600 animate-spin" />
+              ) : (
+                <ScrollText className="w-6 h-6 text-blue-600" />
+              )}
+            </div>
+            <h3 className="font-semibold text-gray-900 text-sm mb-1">Invitation</h3>
+            <p className="text-xs text-blue-600">Download</p>
+          </button>
+
           {/* Badge Download */}
           <button
             onClick={handleDownloadBadge}
             disabled={downloadingBadge || registration.status !== "confirmed"}
-            className="bg-white rounded-2xl shadow-xl p-6 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+            className="bg-white rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
           >
-            <div className="w-14 h-14 bg-indigo-100 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-indigo-200 transition-colors">
+            <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:bg-indigo-200 transition-colors">
               {downloadingBadge ? (
-                <RefreshCw className="w-7 h-7 text-indigo-600 animate-spin" />
+                <RefreshCw className="w-6 h-6 text-indigo-600 animate-spin" />
               ) : (
-                <FileText className="w-7 h-7 text-indigo-600" />
+                <FileText className="w-6 h-6 text-indigo-600" />
               )}
             </div>
-            <h3 className="font-semibold text-gray-900 mb-1">Badge</h3>
+            <h3 className="font-semibold text-gray-900 text-sm mb-1">Badge</h3>
             {registration.badge_generated_at ? (
-              <p className="text-xs text-green-600">Ready to download</p>
+              <p className="text-xs text-green-600">Ready</p>
             ) : (
-              <p className="text-xs text-gray-500">Generate & Download</p>
+              <p className="text-xs text-gray-500">Download</p>
             )}
           </button>
 

@@ -64,6 +64,10 @@ export async function GET(
     return rateLimitExceededResponse(rateLimit)
   }
 
+  // Optional: personalize for a specific registration
+  const { searchParams } = new URL(request.url)
+  const registrationId = searchParams.get("registration_id")
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
 
@@ -78,6 +82,25 @@ export async function GET(
 
     if (error || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
+    }
+
+    // Fetch attendee info if registration_id is provided
+    let attendee: { name: string; designation?: string; institution?: string; registration_number?: string } | null = null
+    if (registrationId) {
+      const { data: reg } = await supabase
+        .from("registrations")
+        .select("attendee_name, attendee_designation, attendee_institution, registration_number")
+        .eq("id", registrationId)
+        .eq("event_id", eventId)
+        .single()
+      if (reg) {
+        attendee = {
+          name: reg.attendee_name,
+          designation: reg.attendee_designation,
+          institution: reg.attendee_institution,
+          registration_number: reg.registration_number,
+        }
+      }
     }
 
     // Create PDF
@@ -142,18 +165,45 @@ export async function GET(
 
     y += 15
 
+    // === ADDRESSEE (if personalized) ===
+    if (attendee) {
+      doc.setTextColor(...darkColor)
+      doc.setFontSize(11)
+      doc.setFont("helvetica", "bold")
+      doc.text("To,", margin, y)
+      y += 6
+      doc.setFont("helvetica", "normal")
+      doc.text(attendee.name, margin, y)
+      y += 5
+      if (attendee.designation) {
+        doc.setFontSize(10)
+        doc.text(attendee.designation, margin, y)
+        y += 5
+      }
+      if (attendee.institution) {
+        doc.setFontSize(10)
+        doc.text(attendee.institution, margin, y)
+        y += 5
+      }
+      y += 5
+    }
+
     // === SALUTATION ===
     doc.setTextColor(...darkColor)
     doc.setFontSize(12)
     doc.setFont("helvetica", "normal")
-    doc.text("Dear Sir/Madam,", margin, y)
+    const salutation = attendee ? `Dear ${attendee.name},` : "Dear Sir/Madam,"
+    doc.text(salutation, margin, y)
 
     y += 10
 
     // === BODY ===
     const orgName = event.short_name || "the organizing committee"
     const editionText = event.edition ? ` (${event.edition} Edition)` : ""
-    const bodyText = `We are pleased to invite you to attend "${event.name}"${editionText}, organized by ${orgName}. This ${event.event_type || "event"} brings together professionals, academicians, and researchers for knowledge exchange and collaborative learning.`
+    const invitePhrase = attendee
+      ? `We are pleased to confirm your participation in`
+      : `We are pleased to invite you to attend`
+    const bodyText = `${invitePhrase} "${event.name}"${editionText}, organized by ${orgName}. This ${event.event_type || "event"} brings together professionals, academicians, and researchers for knowledge exchange and collaborative learning.`
 
     doc.setFontSize(11)
     doc.setFont("helvetica", "normal")
@@ -168,6 +218,7 @@ export async function GET(
 
     // Calculate box height dynamically
     let detailLines = 3 // Date, Venue, City always present
+    if (attendee?.registration_number) detailLines++
     const boxPadding = 6
     const lineHeight = 8
     const boxHeight = boxPadding * 2 + detailLines * lineHeight + 4
@@ -210,6 +261,15 @@ export async function GET(
       doc.text("Location:", margin + 6, y)
       doc.setFont("helvetica", "normal")
       doc.text(location, margin + 30, y)
+      y += lineHeight
+    }
+
+    // Registration number (if personalized)
+    if (attendee?.registration_number) {
+      doc.setFont("helvetica", "bold")
+      doc.text("Reg. No:", margin + 6, y)
+      doc.setFont("helvetica", "normal")
+      doc.text(attendee.registration_number, margin + 30, y)
       y += lineHeight
     }
 
@@ -299,7 +359,10 @@ export async function GET(
 
     // Generate PDF buffer
     const pdfBuffer = Buffer.from(doc.output("arraybuffer"))
-    const filename = `Invitation-${(event.name || "Event").replace(/[^a-zA-Z0-9]/g, "_")}.pdf`
+    const namePart = attendee
+      ? `${attendee.name.replace(/[^a-zA-Z0-9]/g, "_")}-`
+      : ""
+    const filename = `Invitation-${namePart}${(event.name || "Event").replace(/[^a-zA-Z0-9]/g, "_")}.pdf`
 
     return new NextResponse(pdfBuffer, {
       headers: {
