@@ -195,6 +195,10 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
   const lookupMember = async (email: string, emailFieldId: string) => {
     try {
       const response = await fetch(`/api/members/lookup?email=${encodeURIComponent(email)}`)
+      if (!response.ok) {
+        console.error("Member lookup API error:", response.status)
+        return
+      }
       const data = await response.json()
 
       // Find the "Are you member" field to auto-set it
@@ -292,7 +296,8 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
           })
         }
       } else {
-        // Member NOT found - update state and show message
+        // Member NOT found in local database - don't auto-block
+        // The member may exist in the main AMASI system but not yet synced
         setEmailVerificationState(prev => ({
           ...prev,
           [emailFieldId]: {
@@ -302,17 +307,10 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
           }
         }))
 
-        // Auto-set "Are you member" to No (use lowercase to match option value)
-        if (memberQuestionField) {
-          const noOption = memberQuestionField.options?.find(
-            (opt: { value: string; label: string }) => opt.value.toLowerCase() === 'no' || opt.label.toLowerCase() === 'no'
-          )
-          const noValue = noOption?.value || 'no'
-          setResponses(prev => ({ ...prev, [memberQuestionField.id]: noValue }))
-        }
-
-        toast.info("No AMASI membership found for this email", {
-          description: "You can continue as a non-member or apply for membership at amasi.org",
+        // Don't auto-set "Are you member" to No — let the user choose
+        // They may be a member whose data isn't synced to this database yet
+        toast.info("We couldn't automatically verify your membership", {
+          description: "If you're an AMASI member, please select 'Yes' and enter your details manually",
           duration: 8000
         })
       }
@@ -394,13 +392,16 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
     const value = String(responses[memberQuestionField.id] || "").toLowerCase()
     const isNonMember = value === "no"
 
-    // Also check if email verification found no member
+    // Check if email verification found no member in local DB
     const emailVerified = Object.values(emailVerificationState).find(s => s.status === 'verified')
     const memberNotFound = emailVerified?.memberFound === false
 
+    // Only block if user explicitly selected "No" for membership question
+    // Don't block just because the member isn't in the local database —
+    // they may exist in the main AMASI system but not be synced yet
     return {
       fieldId: memberQuestionField.id,
-      isNonMember: isNonMember || memberNotFound,
+      isNonMember: isNonMember,
       memberNotFound
     }
   }, [fields, responses, emailVerificationState])
@@ -523,6 +524,9 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
     visibleFields.forEach((field) => {
       if (["heading", "paragraph", "divider"].includes(field.field_type)) return
+
+      // Skip fields hidden by verified member data (they are auto-filled)
+      if (verifiedMember?.hiddenFieldIds?.includes(field.id)) return
 
       const value = responses[field.id]
       const strValue = String(value || "")

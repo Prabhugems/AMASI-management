@@ -17,6 +17,9 @@ import {
   Calendar,
   Hash,
   Shield,
+  Mail,
+  Building2,
+  Ticket,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -25,15 +28,17 @@ export default function VerifyCertificatePage() {
   const eventId = params.eventId as string
   const supabase = createClient()
 
-  const [certificateId, setCertificateId] = useState("")
+  const [searchValue, setSearchValue] = useState("")
   const [searching, setSearching] = useState(false)
   const [result, setResult] = useState<{
     valid: boolean
     attendee?: {
       name: string
       email: string
+      registration_number: string
       designation?: string
-      issued_at?: string
+      institution?: string
+      ticket_type?: string
     }
     error?: string
   } | null>(null)
@@ -44,7 +49,7 @@ export default function VerifyCertificatePage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("events")
-        .select("id, title")
+        .select("id, name, start_date, end_date")
         .eq("id", eventId)
         .single()
 
@@ -53,8 +58,9 @@ export default function VerifyCertificatePage() {
   })
 
   const verifyCertificate = async () => {
-    if (!certificateId.trim()) {
-      toast.error("Enter a certificate ID")
+    const query = searchValue.trim()
+    if (!query) {
+      toast.error("Enter a registration number or email")
       return
     }
 
@@ -62,26 +68,39 @@ export default function VerifyCertificatePage() {
     setResult(null)
 
     try {
-      // Search for registration with this certificate ID
-      const { data, error } = await (supabase as any)
+      // Determine search type: email contains @, otherwise treat as registration number
+      const isEmail = query.includes("@")
+
+      let registrationQuery = (supabase as any)
         .from("registrations")
-        .select("id, attendee_name, attendee_email, attendee_designation, custom_fields")
+        .select(`
+          id,
+          registration_number,
+          attendee_name,
+          attendee_email,
+          attendee_designation,
+          attendee_institution,
+          status,
+          ticket_type_id,
+          ticket_types (name)
+        `)
         .eq("event_id", eventId)
-        .or(`id.eq.${certificateId},custom_fields->certificate_id.eq.${certificateId}`)
-        .single()
+        .eq("status", "confirmed")
+
+      if (isEmail) {
+        registrationQuery = registrationQuery.ilike("attendee_email", query)
+      } else {
+        registrationQuery = registrationQuery.ilike("registration_number", query)
+      }
+
+      const { data, error } = await registrationQuery.single()
 
       if (error || !data) {
         setResult({
           valid: false,
-          error: "Certificate not found. Please check the ID and try again.",
-        })
-        return
-      }
-
-      if (!data.custom_fields?.certificate_generated) {
-        setResult({
-          valid: false,
-          error: "No certificate has been issued for this registration.",
+          error: isEmail
+            ? "No confirmed registration found with this email for this event."
+            : "No confirmed registration found with this registration number.",
         })
         return
       }
@@ -91,11 +110,13 @@ export default function VerifyCertificatePage() {
         attendee: {
           name: data.attendee_name,
           email: data.attendee_email,
+          registration_number: data.registration_number,
           designation: data.attendee_designation,
-          issued_at: data.custom_fields?.certificate_generated_at,
+          institution: data.attendee_institution,
+          ticket_type: data.ticket_types?.name,
         },
       })
-    } catch (error) {
+    } catch {
       setResult({
         valid: false,
         error: "An error occurred while verifying. Please try again.",
@@ -105,13 +126,20 @@ export default function VerifyCertificatePage() {
     }
   }
 
-  const formatDate = (dateStr: string | undefined) => {
-    if (!dateStr) return "Unknown"
-    return new Date(dateStr).toLocaleDateString("en-IN", {
+  const formatEventDate = () => {
+    if (!event?.start_date) return null
+    const start = new Date(event.start_date).toLocaleDateString("en-IN", {
       day: "numeric",
-      month: "long",
+      month: "short",
       year: "numeric",
     })
+    if (!event.end_date) return start
+    const end = new Date(event.end_date).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
+    return `${start} - ${end}`
   }
 
   return (
@@ -131,7 +159,7 @@ export default function VerifyCertificatePage() {
             </div>
             <h2 className="text-lg font-semibold">Certificate Verification</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Enter the certificate ID or scan the QR code
+              Enter the registration number or email address
             </p>
           </div>
 
@@ -139,9 +167,9 @@ export default function VerifyCertificatePage() {
             <div className="relative">
               <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Enter Certificate ID..."
-                value={certificateId}
-                onChange={(e) => setCertificateId(e.target.value)}
+                placeholder="Registration number or email..."
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && verifyCertificate()}
                 className="pl-10"
               />
@@ -166,8 +194,8 @@ export default function VerifyCertificatePage() {
           </div>
 
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <QrCode className="h-4 w-4" />
-            <span>You can also scan the QR code on the certificate</span>
+            <QrCode className="h-4 w-4 flex-shrink-0" />
+            <span>Scan the QR code on the certificate to verify instantly via the verification link</span>
           </div>
         </div>
 
@@ -182,7 +210,7 @@ export default function VerifyCertificatePage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-green-800">Valid Certificate</h3>
-                    <p className="text-sm text-green-600">This certificate is authentic</p>
+                    <p className="text-sm text-green-600">This certificate is authentic and verified</p>
                   </div>
                 </div>
 
@@ -198,23 +226,59 @@ export default function VerifyCertificatePage() {
                     </div>
                   </div>
 
+                  {result.attendee?.institution && (
+                    <div className="flex items-center gap-3">
+                      <Building2 className="h-4 w-4 text-green-600" />
+                      <div>
+                        <p className="text-sm text-green-600">Institution</p>
+                        <p className="font-medium text-green-800">{result.attendee.institution}</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-3">
-                    <Award className="h-4 w-4 text-green-600" />
+                    <Mail className="h-4 w-4 text-green-600" />
                     <div>
-                      <p className="text-sm text-green-600">Event</p>
-                      <p className="font-medium text-green-800">{event?.title || "Event"}</p>
+                      <p className="text-sm text-green-600">Email</p>
+                      <p className="font-medium text-green-800">{result.attendee?.email}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <Calendar className="h-4 w-4 text-green-600" />
+                    <Hash className="h-4 w-4 text-green-600" />
                     <div>
-                      <p className="text-sm text-green-600">Issued On</p>
-                      <p className="font-medium text-green-800">
-                        {formatDate(result.attendee?.issued_at)}
-                      </p>
+                      <p className="text-sm text-green-600">Registration Number</p>
+                      <p className="font-mono font-medium text-green-800">{result.attendee?.registration_number}</p>
                     </div>
                   </div>
+
+                  {result.attendee?.ticket_type && (
+                    <div className="flex items-center gap-3">
+                      <Ticket className="h-4 w-4 text-green-600" />
+                      <div>
+                        <p className="text-sm text-green-600">Ticket Type</p>
+                        <p className="font-medium text-green-800">{result.attendee.ticket_type}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3">
+                    <Award className="h-4 w-4 text-green-600" />
+                    <div>
+                      <p className="text-sm text-green-600">Event</p>
+                      <p className="font-medium text-green-800">{event?.name || "Event"}</p>
+                    </div>
+                  </div>
+
+                  {formatEventDate() && (
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-4 w-4 text-green-600" />
+                      <div>
+                        <p className="text-sm text-green-600">Event Date</p>
+                        <p className="font-medium text-green-800">{formatEventDate()}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -224,7 +288,7 @@ export default function VerifyCertificatePage() {
                     <XCircle className="h-6 w-6 text-red-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-red-800">Invalid Certificate</h3>
+                    <h3 className="font-semibold text-red-800">Not Found</h3>
                     <p className="text-sm text-red-600">{result.error}</p>
                   </div>
                 </div>
@@ -239,9 +303,10 @@ export default function VerifyCertificatePage() {
         <div className="bg-muted/50 rounded-lg p-4">
           <h4 className="font-medium mb-2">About Certificate Verification</h4>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Each certificate has a unique ID encoded in its QR code</li>
-            <li>• Verification confirms the certificate was officially issued</li>
-            <li>• Invalid results may indicate a forged or tampered certificate</li>
+            <li>• Each certificate has a QR code with a verification link</li>
+            <li>• You can verify by scanning the QR code or entering the registration number</li>
+            <li>• You can also search by email address</li>
+            <li>• Only confirmed registrations can be verified</li>
           </ul>
         </div>
       </div>

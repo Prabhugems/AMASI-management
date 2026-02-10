@@ -153,7 +153,7 @@ const PRE_BUILT_TEMPLATES: { name: string; description: string; elements: Omit<C
       { type: "text", x: 150, y: 630, width: 250, height: 25, content: "Signature", fontSize: 14, color: "#6b7280", align: "center", zIndex: 1 },
       { type: "line", x: 723, y: 620, width: 250, height: 1, color: "#374151", zIndex: 1 },
       { type: "text", x: 723, y: 630, width: 250, height: 25, content: "Date: {{issue_date}}", fontSize: 14, color: "#6b7280", align: "center", zIndex: 1 },
-      { type: "qr_code", x: 500, y: 580, width: 80, height: 80, content: "{{registration_number}}", zIndex: 1 },
+      { type: "qr_code", x: 500, y: 580, width: 80, height: 80, content: "{{verification_url}}", zIndex: 1 },
       { type: "text", x: 480, y: 665, width: 120, height: 20, content: "{{registration_number}}", fontSize: 10, color: "#9ca3af", align: "center", zIndex: 1 },
     ]
   },
@@ -171,7 +171,7 @@ const PRE_BUILT_TEMPLATES: { name: string; description: string; elements: Omit<C
       { type: "text", x: 100, y: 430, width: 923, height: 50, content: "{{event_name}}", fontSize: 26, fontWeight: "bold", color: "#111827", align: "center", zIndex: 1 },
       { type: "text", x: 100, y: 500, width: 923, height: 30, content: "{{event_date}}", fontSize: 16, color: "#6b7280", align: "center", zIndex: 1 },
       { type: "shape", x: 0, y: 674, width: 1123, height: 120, backgroundColor: "#7c3aed", gradient: { enabled: true, type: "linear", colors: ["#db2777", "#7c3aed"], angle: 135 }, shapeType: "rectangle", zIndex: 0 },
-      { type: "qr_code", x: 520, y: 580, width: 70, height: 70, content: "{{registration_number}}", zIndex: 1 },
+      { type: "qr_code", x: 520, y: 580, width: 70, height: 70, content: "{{verification_url}}", zIndex: 1 },
       { type: "text", x: 100, y: 710, width: 450, height: 30, content: "Certificate No: {{registration_number}}", fontSize: 14, color: "#ffffff", align: "left", zIndex: 1 },
       { type: "text", x: 573, y: 710, width: 450, height: 30, content: "Issued: {{issue_date}}", fontSize: 14, color: "#ffffff", align: "right", zIndex: 1 },
     ]
@@ -190,7 +190,7 @@ const PRE_BUILT_TEMPLATES: { name: string; description: string; elements: Omit<C
       { type: "text", x: 100, y: 430, width: 923, height: 30, content: "has participated in", fontSize: 16, color: "#9ca3af", align: "center", zIndex: 1 },
       { type: "text", x: 100, y: 480, width: 923, height: 45, content: "{{event_name}}", fontSize: 24, fontWeight: "bold", color: "#111827", align: "center", zIndex: 1 },
       { type: "text", x: 100, y: 550, width: 923, height: 25, content: "{{event_date}}", fontSize: 14, color: "#9ca3af", align: "center", zIndex: 1 },
-      { type: "qr_code", x: 520, y: 620, width: 60, height: 60, content: "{{registration_number}}", zIndex: 1 },
+      { type: "qr_code", x: 520, y: 620, width: 60, height: 60, content: "{{verification_url}}", zIndex: 1 },
       { type: "text", x: 100, y: 700, width: 450, height: 20, content: "{{registration_number}}", fontSize: 12, color: "#d1d5db", align: "left", zIndex: 1 },
       { type: "text", x: 573, y: 700, width: 450, height: 20, content: "{{issue_date}}", fontSize: 12, color: "#d1d5db", align: "right", zIndex: 1 },
     ]
@@ -211,7 +211,7 @@ const PRE_BUILT_TEMPLATES: { name: string; description: string; elements: Omit<C
       { type: "text", x: 100, y: 470, width: 923, height: 30, content: "{{event_date}}", fontSize: 18, fontWeight: "bold", color: "#059669", align: "center", zIndex: 1 },
       { type: "line", x: 150, y: 600, width: 250, height: 1, color: "#374151", zIndex: 1 },
       { type: "text", x: 150, y: 610, width: 250, height: 25, content: "Organizer Signature", fontSize: 12, color: "#6b7280", align: "center", zIndex: 1 },
-      { type: "qr_code", x: 500, y: 560, width: 80, height: 80, content: "{{registration_number}}", zIndex: 1 },
+      { type: "qr_code", x: 500, y: 560, width: 80, height: 80, content: "{{verification_url}}", zIndex: 1 },
       { type: "line", x: 723, y: 600, width: 250, height: 1, color: "#374151", zIndex: 1 },
       { type: "text", x: 723, y: 610, width: 250, height: 25, content: "Director Signature", fontSize: 12, color: "#6b7280", align: "center", zIndex: 1 },
       { type: "shape", x: 0, y: 714, width: 1123, height: 80, backgroundColor: "#059669", shapeType: "rectangle", zIndex: 0 },
@@ -573,6 +573,9 @@ export default function CertificateDesignerPage() {
     result = result.replace(/\{\{institution\}\}/g, registration?.attendee_institution || "Institution")
     result = result.replace(/\{\{designation\}\}/g, registration?.attendee_designation || "Designation")
     result = result.replace(/\{\{event_name\}\}/g, event?.name || "Event Name")
+    // Verification URL for QR codes
+    const regNumber = registration?.registration_number || "REG001"
+    result = result.replace(/\{\{verification_url\}\}/g, `${window.location.origin}/v/${regNumber}`)
     if (event?.start_date && event?.end_date) {
       const start = new Date(event.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
       const end = new Date(event.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
@@ -702,7 +705,7 @@ export default function CertificateDesignerPage() {
       y: certSize.height - size - 20,
       width: size,
       height: size,
-      content: "{{registration_number}}",
+      content: "{{verification_url}}",
       zIndex: template.elements.length + 1,
     }
     setTemplate((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))

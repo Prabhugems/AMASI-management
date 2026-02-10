@@ -4,6 +4,8 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import { logActivity } from "@/lib/activity-logger"
 
+export const dynamic = "force-dynamic"
+
 // Certificate sizes in points (72 points = 1 inch)
 const CERTIFICATE_SIZES: Record<string, { width: number; height: number }> = {
   "A4-landscape": { width: 842, height: 595 },
@@ -38,6 +40,17 @@ function applyTextCase(text: string, textCase?: string): string {
   }
 }
 
+// Get the base URL for verification links
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  return "http://localhost:3000"
+}
+
 // Replace placeholders in text
 function replacePlaceholders(text: string, registration: any, event: any): string {
   if (!text) return ""
@@ -51,6 +64,10 @@ function replacePlaceholders(text: string, registration: any, event: any): strin
   result = result.replace(/\{\{institution\}\}/g, registration.attendee_institution || "")
   result = result.replace(/\{\{designation\}\}/g, registration.attendee_designation || "")
   result = result.replace(/\{\{event_name\}\}/g, event?.name || "")
+
+  // Verification URL - encodes the registration number into a scannable verification link
+  const verificationUrl = `${getBaseUrl()}/v/${encodeURIComponent(registration.registration_number || "")}`
+  result = result.replace(/\{\{verification_url\}\}/g, verificationUrl)
 
   // Event date
   if (event?.start_date && event?.end_date) {
@@ -243,7 +260,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (element.type === "qr_code") {
-          const qrContent = replacePlaceholders(element.content || "{{registration_number}}", registration, event)
+          const qrContent = replacePlaceholders(element.content || "{{verification_url}}", registration, event)
           try {
             const qrDataUrl = await QRCode.toDataURL(qrContent, { width: Math.round(width * 2), margin: 1, errorCorrectionLevel: "M" })
             const qrBase64 = qrDataUrl.split(",")[1]

@@ -42,6 +42,7 @@ type Attendee = {
   attendee_email: string
   attendee_designation?: string
   status: string
+  certificate_generated_at: string | null
   custom_fields: {
     certificate_generated?: boolean
     certificate_url?: string
@@ -66,7 +67,7 @@ export default function GenerateCertificatesPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, attendee_name, attendee_email, attendee_designation, status, custom_fields")
+        .select("id, attendee_name, attendee_email, attendee_designation, status, certificate_generated_at, custom_fields")
         .eq("event_id", eventId)
         .eq("status", "confirmed")
         .order("attendee_name")
@@ -98,7 +99,7 @@ export default function GenerateCertificatesPage() {
         a.attendee_name.toLowerCase().includes(search.toLowerCase()) ||
         a.attendee_email.toLowerCase().includes(search.toLowerCase())
 
-      const generated = a.custom_fields?.certificate_generated
+      const generated = !!a.certificate_generated_at
       const matchesFilter =
         filter === "all" ||
         (filter === "pending" && !generated) ||
@@ -111,7 +112,7 @@ export default function GenerateCertificatesPage() {
   // Stats
   const stats = useMemo(() => {
     if (!attendees) return { total: 0, generated: 0, pending: 0 }
-    const generated = attendees.filter(a => a.custom_fields?.certificate_generated).length
+    const generated = attendees.filter(a => !!a.certificate_generated_at).length
     return {
       total: attendees.length,
       generated,
@@ -127,7 +128,7 @@ export default function GenerateCertificatesPage() {
   }
 
   const selectAllPending = () => {
-    const pending = filteredAttendees.filter(a => !a.custom_fields?.certificate_generated)
+    const pending = filteredAttendees.filter(a => !a.certificate_generated_at)
     setSelectedAttendees(new Set(pending.map(a => a.id)))
   }
 
@@ -173,14 +174,16 @@ export default function GenerateCertificatesPage() {
       URL.revokeObjectURL(url)
 
       // Mark registrations as certificate generated
+      const now = new Date().toISOString()
       for (const id of registrationIds) {
         await (supabase as any)
           .from("registrations")
           .update({
+            certificate_generated_at: now,
             custom_fields: {
               ...attendees?.find(a => a.id === id)?.custom_fields,
               certificate_generated: true,
-              certificate_generated_at: new Date().toISOString(),
+              certificate_generated_at: now,
             },
           })
           .eq("id", id)
@@ -333,7 +336,7 @@ export default function GenerateCertificatesPage() {
           </TableHeader>
           <TableBody>
             {filteredAttendees.map((attendee) => {
-              const generated = attendee.custom_fields?.certificate_generated
+              const generated = !!attendee.certificate_generated_at
 
               return (
                 <TableRow key={attendee.id} className={cn(!generated && "bg-amber-50/30")}>

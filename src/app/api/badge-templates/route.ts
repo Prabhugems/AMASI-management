@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 
+// Force dynamic - never cache this route
+export const dynamic = "force-dynamic"
+
 // GET /api/badge-templates - Get all templates for an event
 export async function GET(request: NextRequest) {
   try {
@@ -20,10 +23,13 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (error) {
+      console.error("Error fetching badge templates:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data || [])
+    return NextResponse.json(data || [], {
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    })
   } catch (error: any) {
     console.error("Error fetching badge templates:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
