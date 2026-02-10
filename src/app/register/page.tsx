@@ -77,7 +77,7 @@ const SORT_OPTIONS = [
   { value: "name_asc", label: "Name (A-Z)" },
 ]
 
-function EventCard({ event, isDark, index }: { event: PublicEvent; isDark: boolean; index: number }) {
+function EventCard({ event, isDark: _isDark, index }: { event: PublicEvent; isDark: boolean; index: number }) {
   const [isHovered, setIsHovered] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
 

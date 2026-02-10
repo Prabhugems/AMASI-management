@@ -75,8 +75,6 @@ import {
   Briefcase,
   Calendar,
   MapPin,
-  Mail,
-  Phone,
   Lightbulb,
   ZoomIn,
   ZoomOut,
@@ -324,7 +322,7 @@ export default function CertificateDesignerPage() {
   const [previewSearch, setPreviewSearch] = useState("")
   const [snapEnabled, setSnapEnabled] = useState(true)
   const [snapGuides, setSnapGuides] = useState<{ horizontal: number[]; vertical: number[] }>({ horizontal: [], vertical: [] })
-  const [showRulers, setShowRulers] = useState(true)
+  const [showRulers, _setShowRulers] = useState(true)
   const [isPreBuiltDialogOpen, setIsPreBuiltDialogOpen] = useState(false)
   const [exportFormat, setExportFormat] = useState<"pdf" | "png" | "jpg">("pdf")
   const [certificatesPerPage, setCertificatesPerPage] = useState(1)
@@ -519,6 +517,9 @@ export default function CertificateDesignerPage() {
       if (!res.ok) return []
       return res.json()
     },
+    retry: 2,
+    staleTime: 0,
+    refetchOnMount: true,
   })
 
   const { data: registrations } = useQuery({
@@ -937,10 +938,11 @@ export default function CertificateDesignerPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
-      if (!res.ok) throw new Error("Failed to save")
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to save template")
       setSavedTemplateId(data.id)
       queryClient.invalidateQueries({ queryKey: ["certificate-templates", eventId] })
+      queryClient.invalidateQueries({ queryKey: ["certificate-templates-list", eventId] })
       toast.success("Template saved!")
     } catch (error: any) {
       toast.error(error.message)
@@ -970,6 +972,7 @@ export default function CertificateDesignerPage() {
     try {
       await fetch(`/api/certificate-templates?id=${id}`, { method: "DELETE" })
       queryClient.invalidateQueries({ queryKey: ["certificate-templates", eventId] })
+      queryClient.invalidateQueries({ queryKey: ["certificate-templates-list", eventId] })
       if (savedTemplateId === id) {
         setSavedTemplateId(null)
         setTemplate({ id: "", name: "New Certificate Template", size: "A4-landscape", backgroundColor: "#ffffff", backgroundImageUrl: null, elements: [] })
@@ -2243,7 +2246,7 @@ function QRCodePreview({ value, size }: { value: string; size: number }) {
   return <img src={qrUrl} alt="QR" className="w-full h-full object-contain" />
 }
 
-function BarcodePreview({ value, format, width, height }: { value: string; format: string; width: number; height: number }) {
+function BarcodePreview({ value, format, height }: { value: string; format: string; width: number; height: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     if (canvasRef.current && value) {
@@ -2256,7 +2259,7 @@ function BarcodePreview({ value, format, width, height }: { value: string; forma
           fontSize: 12,
           margin: 5,
         })
-      } catch (e) {
+      } catch {
         // Invalid barcode value
       }
     }

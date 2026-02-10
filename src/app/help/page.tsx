@@ -14,7 +14,6 @@ import {
   Settings,
   CreditCard,
   Plane,
-  Hotel,
   Award,
   MessageSquare,
   BarChart3,
@@ -23,11 +22,8 @@ import {
   Lightbulb,
   AlertCircle,
   CheckCircle2,
-  ArrowRight,
-  ExternalLink,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 interface HelpSection {
@@ -442,7 +438,7 @@ const helpSections: HelpSection[] = [
 
 export default function HelpPage() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedSection, setSelectedSection] = useState<string | null>(null)
+  const [_selectedSection, _setSelectedSection] = useState<string | null>(null)
   const [selectedArticle, setSelectedArticle] = useState<HelpArticle | null>(null)
 
   const filteredSections = helpSections.filter(section =>

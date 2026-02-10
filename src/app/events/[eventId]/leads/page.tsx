@@ -7,16 +7,12 @@ import {
   ArrowLeft,
   Users,
   Mail,
-  Phone,
-  Calendar,
   Search,
   Download,
-  MoreVertical,
   CheckCircle,
   Clock,
   XCircle,
   RefreshCw,
-  UserPlus,
 } from "lucide-react"
 
 interface Lead {
@@ -43,7 +39,7 @@ export default function EventLeadsPage({
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [_selectedLead, setSelectedLead] = useState<Lead | null>(null)
 
   // Fetch event details
   const { data: event } = useQuery({

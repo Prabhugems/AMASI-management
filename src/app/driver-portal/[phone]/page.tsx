@@ -7,7 +7,6 @@ import {
   Car,
   Loader2,
   Phone,
-  MapPin,
   Calendar,
   Clock,
   User,
@@ -19,7 +18,6 @@ import {
   ChevronLeft,
   CheckCircle2,
   AlertCircle,
-  ExternalLink,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -70,7 +68,7 @@ export default function DriverAssignmentsPage() {
   const supabase = createClient()
 
   // Fetch all assignments for this driver
-  const { data: assignments, isLoading, error } = useQuery({
+  const { data: assignments, isLoading } = useQuery({
     queryKey: ["driver-assignments", phone],
     queryFn: async () => {
       const normalizedPhone = phone.replace(/[^\d+]/g, "")

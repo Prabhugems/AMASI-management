@@ -7,9 +7,7 @@ import {
   Package,
   Plus,
   Settings,
-  Clock,
   Users,
-  IndianRupee,
   CheckCircle,
   AlertCircle,
   Lightbulb,
@@ -19,9 +17,8 @@ import {
   Award,
   Ticket,
 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 
 export default function AddonInstructionsPage() {
   const params = useParams()

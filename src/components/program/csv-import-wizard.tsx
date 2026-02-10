@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
@@ -25,7 +24,6 @@ import {
   ArrowRight,
   Check,
   AlertCircle,
-  X,
   Eye,
   EyeOff,
   Edit2,
@@ -200,7 +198,7 @@ export function CSVImportWizard({
       setCsvData(data)
       setFieldMapping(autoDetectMapping(headers))
       setStep("map")
-    } catch (err) {
+    } catch (_err) {
       setError("Failed to parse CSV file")
     }
   }
@@ -236,14 +234,14 @@ export function CSVImportWizard({
               // Parse date+time from start_time like "30/1/2026 09:00"
               const startMatch = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*(\d{1,2}):(\d{2})/)
               if (startMatch) {
-                const [_, day, month, year, hours, minutes] = startMatch
+                const [, day, month, year, hours, minutes] = startMatch
                 transformed.session_date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
                 transformed.start_time = `${hours.padStart(2, "0")}:${minutes}:00`
               } else {
                 // Time range format like "10:00-12:30" or "10:00 - 12:30"
                 const timeRangeMatch = value.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/)
                 if (timeRangeMatch) {
-                  const [_, startH, startM, endH, endM] = timeRangeMatch
+                  const [, startH, startM, endH, endM] = timeRangeMatch
                   transformed.start_time = `${startH.padStart(2, "0")}:${startM}:00`
                   transformed.end_time = `${endH.padStart(2, "0")}:${endM}:00`
                 } else {
@@ -284,31 +282,31 @@ export function CSVImportWizard({
 
               if (dateISOMatch) {
                 // YYYY-MM-DD format
-                const [_, year, month, day] = dateISOMatch
+                const [, year, month, day] = dateISOMatch
                 transformed.session_date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
               } else if (dateSlashMatch4) {
                 // DD/MM/YYYY format
-                const [_, day, month, year] = dateSlashMatch4
+                const [, day, month, year] = dateSlashMatch4
                 transformed.session_date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
               } else if (dateDotMatch4) {
                 // DD.MM.YYYY format
-                const [_, day, month, year] = dateDotMatch4
+                const [, day, month, year] = dateDotMatch4
                 transformed.session_date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
               } else if (dateDashMatch4) {
                 // DD-MM-YYYY format
-                const [_, day, month, year] = dateDashMatch4
+                const [, day, month, year] = dateDashMatch4
                 transformed.session_date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
               } else if (dateSlashMatch2) {
                 // DD/MM/YY format (2-digit year)
-                const [_, day, month, year] = dateSlashMatch2
+                const [, day, month, year] = dateSlashMatch2
                 transformed.session_date = `${expandYear(year)}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
               } else if (dateDotMatch2) {
                 // DD.MM.YY format (2-digit year) - used in some AMASICON rows
-                const [_, day, month, year] = dateDotMatch2
+                const [, day, month, year] = dateDotMatch2
                 transformed.session_date = `${expandYear(year)}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
               } else if (dateDashMatch2) {
                 // DD-MM-YY format (2-digit year)
-                const [_, day, month, year] = dateDashMatch2
+                const [, day, month, year] = dateDashMatch2
                 transformed.session_date = `${expandYear(year)}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
               }
               break
@@ -436,7 +434,7 @@ export function CSVImportWizard({
   }
 
   // Include a skipped row by fixing its data
-  const includeSkippedRow = (rowIndex: number) => {
+  const _includeSkippedRow = (rowIndex: number) => {
     excludedRows.delete(rowIndex)
     setExcludedRows(new Set(excludedRows))
   }

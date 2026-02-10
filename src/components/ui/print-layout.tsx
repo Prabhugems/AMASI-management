@@ -34,7 +34,7 @@ export function PrintLayout({
   children,
   className,
   pageSize = "A4",
-  orientation = "portrait",
+  orientation: _orientation = "portrait",
   margin = "10mm",
   showPrintButton = false,
   printButtonPosition = "top-right",

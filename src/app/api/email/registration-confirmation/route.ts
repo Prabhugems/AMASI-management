@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { renderEmailTemplate, renderTemplate } from "@/lib/email-templates"
+import { renderEmailTemplate } from "@/lib/email-templates"
 
 // Initialize Resend
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null

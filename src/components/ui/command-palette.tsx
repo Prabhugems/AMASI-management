@@ -59,7 +59,7 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
-  const router = useRouter()
+  const _router = useRouter()
 
   const actualOpen = open ?? isOpen
   const setActualOpen = onOpenChange ?? setIsOpen

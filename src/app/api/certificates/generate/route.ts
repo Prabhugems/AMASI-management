@@ -4,50 +4,6 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import { logActivity } from "@/lib/activity-logger"
 
-interface Placeholder {
-  id: string
-  type: "text" | "qr_code" | "image" | "shape" | "line" | "barcode" | "photo"
-  x: number
-  y: number
-  width: number
-  height: number
-  content?: string
-  fontSize?: number
-  fontWeight?: "normal" | "bold"
-  fontStyle?: "normal" | "italic"
-  textCase?: "none" | "uppercase" | "lowercase" | "capitalize"
-  color?: string
-  backgroundColor?: string
-  align?: "left" | "center" | "right"
-  imageUrl?: string
-  borderWidth?: number
-  borderColor?: string
-  borderRadius?: number
-  opacity?: number
-  lineStyle?: "solid" | "dashed" | "dotted"
-  rotation?: number
-  shapeType?: "rectangle" | "circle" | "rounded" | "triangle"
-  gradient?: {
-    enabled: boolean
-    type: "linear" | "radial"
-    colors: string[]
-    angle?: number
-  }
-}
-
-interface CertificateTemplate {
-  id: string
-  name: string
-  size: string
-  template_image_url: string | null
-  template_data: {
-    width?: number
-    height?: number
-    backgroundColor?: string
-    elements?: Placeholder[]
-  }
-}
-
 // Certificate sizes in points (72 points = 1 inch)
 const CERTIFICATE_SIZES: Record<string, { width: number; height: number }> = {
   "A4-landscape": { width: 842, height: 595 },

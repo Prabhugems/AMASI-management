@@ -10,9 +10,7 @@ import {
   Search,
   X,
   Download,
-  Filter,
   Settings2,
-  MoreHorizontal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -21,10 +19,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 
 // Column definition

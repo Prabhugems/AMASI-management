@@ -193,7 +193,7 @@ export default function CategoriesPage() {
 
     try {
       // Create all categories from the template in parallel
-      const results = await Promise.all(
+      await Promise.all(
         template.categories.map(async (cat) => {
           const res = await fetch("/api/abstract-categories", {
             method: "POST",
@@ -305,7 +305,7 @@ export default function CategoriesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {categories.map((category, index) => (
+              {categories.map((category) => (
                 <TableRow key={category.id}>
                   <TableCell>
                     <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />

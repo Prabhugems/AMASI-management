@@ -10,7 +10,6 @@ import {
   Users,
   UserPlus,
   CheckCircle,
-  Clock,
   Send,
   Plane,
   Hotel,

@@ -62,7 +62,7 @@ export async function GET(
   const { eventId } = await params
   const searchParams = request.nextUrl.searchParams
   const speakerEmail = searchParams.get("speaker") // Optional: filter by speaker email
-  const token = searchParams.get("token") // Optional: speaker portal token for auth
+  const _token = searchParams.get("token") // Optional: speaker portal token for auth
 
   try {
     // Fetch event details
@@ -77,7 +77,7 @@ export async function GET(
     }
 
     // Fetch sessions
-    let sessionsQuery = supabase
+    const sessionsQuery = supabase
       .from("sessions")
       .select(`
         id,

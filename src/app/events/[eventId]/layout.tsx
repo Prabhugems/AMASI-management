@@ -1,7 +1,6 @@
 "use client"
 
 import { usePathname, useParams, useRouter } from "next/navigation"
-import { useEffect } from "react"
 import { EventSidebar } from "@/components/layout/event-sidebar"
 import { Header } from "@/components/layout/header"
 import { usePermissions } from "@/hooks/use-permissions"

@@ -50,9 +50,7 @@ import {
   Ticket,
   Phone,
   Building2,
-  Calendar,
   Edit2,
-  FileText,
   Upload,
   FileSpreadsheet,
   ExternalLink,
@@ -63,21 +61,17 @@ import {
   MailOpen,
   MousePointerClick,
   AlertCircle,
-  History,
-  Smartphone,
-  Monitor,
-  ScanLine,
   Award,
   FileDown,
   ImageIcon,
-  CheckSquare,
-  Square,
   X,
   BadgeCheck,
   Users,
+  CheckSquare,
+  FileText,
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
-import { SlideOver, SlideOverSection, SlideOverTabs, SlideOverFooter } from "@/components/ui/slide-over"
+import { SlideOver, SlideOverSection, SlideOverFooter } from "@/components/ui/slide-over"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { format } from "date-fns"
@@ -137,7 +131,7 @@ export default function RegistrationsPage() {
   const [ticketFilter, setTicketFilter] = useState<string>("all")
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("details")
+  const [_activeTab, _setActiveTab] = useState("details")
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [editData, setEditData] = useState<Partial<Registration>>({})
   const [isImportOpen, setIsImportOpen] = useState(false)
@@ -148,7 +142,7 @@ export default function RegistrationsPage() {
   const [isPrintingBadge, setIsPrintingBadge] = useState<string | null>(null)
   const [isEmailingBadge, setIsEmailingBadge] = useState<string | null>(null)
   const [isGeneratingBadge, setIsGeneratingBadge] = useState<string | null>(null)
-  const [isGeneratingCertificate, setIsGeneratingCertificate] = useState<string | null>(null)
+  const [_isGeneratingCertificate, _setIsGeneratingCertificate] = useState<string | null>(null)
   const [isSwitchTicketOpen, setIsSwitchTicketOpen] = useState(false)
   const [switchToTicketId, setSwitchToTicketId] = useState<string>("")
   const [isTransferEventOpen, setIsTransferEventOpen] = useState(false)
@@ -157,8 +151,8 @@ export default function RegistrationsPage() {
 
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [isBulkActionOpen, setIsBulkActionOpen] = useState(false)
-  const [bulkAction, setBulkAction] = useState<string>("")
+  const [_isBulkActionOpen, setIsBulkActionOpen] = useState(false)
+  const [_bulkAction, _setBulkAction] = useState<string>("")
   const [bulkActionLoading, setBulkActionLoading] = useState(false)
 
   // Add addon state
@@ -166,7 +160,7 @@ export default function RegistrationsPage() {
   const [selectedAddonId, setSelectedAddonId] = useState<string>("")
   const [selectedVariantId, setSelectedVariantId] = useState<string>("")
   const [addonQuantity, setAddonQuantity] = useState(1)
-  const [isAddingAddon, setIsAddingAddon] = useState(false)
+  const [_isAddingAddon, _setIsAddingAddon] = useState(false)
 
   // Fetch default badge template
   const { data: badgeTemplates } = useQuery({
@@ -527,7 +521,7 @@ export default function RegistrationsPage() {
   })
 
   // Fetch check-in history for selected registration
-  const { data: checkinHistory } = useQuery({
+  const { data: _checkinHistory } = useQuery({
     queryKey: ["registration-checkins", selectedRegistration?.id],
     queryFn: async () => {
       try {
@@ -596,7 +590,7 @@ export default function RegistrationsPage() {
   })
 
   // Check-in mutation
-  const checkIn = useMutation({
+  const _checkIn = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (supabase as any)
         .from("registrations")

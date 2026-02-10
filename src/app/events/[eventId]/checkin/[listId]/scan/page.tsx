@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation } from "@tanstack/react-query"
 import {
   ArrowLeft,
   QrCode,
@@ -11,7 +11,6 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Users,
   Volume2,
   VolumeX,
   Maximize,
@@ -67,7 +66,6 @@ interface RecentScan {
 export default function CheckinScanPage() {
   const params = useParams()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const eventId = params.eventId as string
   const listId = params.listId as string
 

@@ -4,7 +4,6 @@ import { useState, useMemo } from "react"
 import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
@@ -22,13 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   AlertTriangle,
   Loader2,
@@ -157,7 +149,7 @@ export default function ConflictsPage() {
       })
 
       // Check for overlaps on each date
-      for (const [date, daySchedules] of byDate) {
+      for (const [_date, daySchedules] of byDate) {
         // Sort by start time
         const sorted = daySchedules.sort((a, b) =>
           timeToMinutes(a.session.start_time) - timeToMinutes(b.session.start_time)
@@ -211,7 +203,7 @@ export default function ConflictsPage() {
       }
     })
 
-    for (const [key, hallSessionList] of hallSessions) {
+    for (const [_key, hallSessionList] of hallSessions) {
       const sorted = hallSessionList.sort((a, b) =>
         timeToMinutes(a.start_time) - timeToMinutes(b.start_time)
       )
@@ -389,7 +381,7 @@ export default function ConflictsPage() {
                     </div>
 
                     <div className="grid gap-2">
-                      {conflict.sessions.map((session, sIdx) => (
+                      {conflict.sessions.map((session, _sIdx) => (
                         <div
                           key={session.id}
                           className="flex items-center gap-4 p-2 bg-white dark:bg-gray-900 rounded border"

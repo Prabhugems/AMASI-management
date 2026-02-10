@@ -104,7 +104,7 @@ function StatusBadge({ status, isDark }: { status: string; isDark: boolean }) {
 // ============================================
 // ROLE BADGE
 // ============================================
-function RoleBadge({ role, isDark }: { role: string; isDark: boolean }) {
+function _RoleBadge({ role, isDark }: { role: string; isDark: boolean }) {
   const config: Record<string, { bg: string; text: string }> = {
     Faculty: {
       bg: "bg-primary-20",
@@ -152,7 +152,7 @@ function Avatar({
   name,
   color,
   size = "md",
-  isDark,
+  isDark: _isDark,
 }: {
   name: string
   color: string

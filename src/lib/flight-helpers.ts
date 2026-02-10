@@ -6,7 +6,7 @@
  * - Generate search URLs
  */
 
-import { AIRPORT_INFO, INDIAN_CITIES, getAirportCode } from "./airline-api"
+import { AIRPORT_INFO, getAirportCode } from "./airline-api"
 
 // Common connecting hubs in India
 const CONNECTING_HUBS = ["DEL", "BOM", "BLR", "CCU", "HYD", "MAA"]

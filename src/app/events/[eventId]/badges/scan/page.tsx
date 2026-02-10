@@ -14,7 +14,6 @@ import {
   Loader2,
   User,
   Badge as BadgeIcon,
-  Calendar,
   Hash,
   Shield,
   Camera,
@@ -46,7 +45,7 @@ export default function ScanBadgePage() {
   } | null>(null)
 
   // Fetch event details
-  const { data: event } = useQuery({
+  useQuery({
     queryKey: ["event-details", eventId],
     queryFn: async () => {
       const { data } = await (supabase as any)
@@ -116,7 +115,7 @@ export default function ScanBadgePage() {
           checked_in_at: data.checked_in_at,
         },
       })
-    } catch (error) {
+    } catch {
       setResult({
         valid: false,
         error: "An error occurred while verifying. Please try again.",
@@ -150,7 +149,7 @@ export default function ScanBadgePage() {
         },
       })
       toast.success(`${result.registration.name} checked in!`)
-    } catch (error) {
+    } catch {
       toast.error("Failed to check in")
     }
   }

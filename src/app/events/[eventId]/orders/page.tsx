@@ -15,10 +15,8 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
-  ChevronRight,
   Mail,
   Phone,
-  Calendar,
   IndianRupee,
   Receipt,
   User,
@@ -27,14 +25,12 @@ import {
   Eye,
   Send,
   Trash2,
-  AlertTriangle,
   Package,
   HelpCircle,
   ShieldCheck,
   Loader2,
   CheckCircle,
   Info,
-  ExternalLink,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -330,7 +326,7 @@ export default function OrdersPage() {
           const purchasedAddonIds = payment.metadata?.addons_selection?.map((a: any) => a.addonId) || []
           const regAddons = addonsByRegistration[payment.metadata.registration_id] || []
           // Filter to only show addons from this payment
-          allAddons = regAddons.filter((a: any) => {
+          allAddons = regAddons.filter((_a: any) => {
             // If we have addon selection info, use it. Otherwise show all.
             if (purchasedAddonIds.length > 0) {
               return true // Show all since we can't easily match by addon_id here

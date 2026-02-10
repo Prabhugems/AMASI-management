@@ -26,7 +26,6 @@ import {
 import {
   Search,
   Users,
-  UserCheck,
   IdCard,
   RefreshCw,
   Vote,
@@ -185,7 +184,7 @@ export default function AddFacultyFromMemberPage() {
       if (error) throw error
       return data
     },
-    onSuccess: (data) => {
+    onSuccess: (_data) => {
       toast.success(`${selectedMember?.name} has been added as faculty`)
       queryClient.invalidateQueries({ queryKey: ["faculty"] })
       setIsConvertModalOpen(false)

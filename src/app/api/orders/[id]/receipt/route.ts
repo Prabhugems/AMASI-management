@@ -198,7 +198,7 @@ export async function GET(
   })
 
   // Embed event logo in header
-  let headerTextX = 50
+  const headerTextX = 50
   if (event?.logo_url) {
     try {
       const logoResponse = await fetch(event.logo_url)

@@ -43,7 +43,7 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   // Initialize with stored values to prevent flash
   const [color, setColorState] = React.useState<ThemeColor>(() => getStoredThemeColor())
   const [sidebarColor, setSidebarColorState] = React.useState<SidebarColor>(() => getStoredSidebarColor())
-  const [mounted, setMounted] = React.useState(false)
+  const [_mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
     setMounted(true)

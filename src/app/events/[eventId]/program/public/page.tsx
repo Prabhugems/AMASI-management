@@ -36,7 +36,6 @@ import {
   Award,
   Filter,
   X,
-  ExternalLink,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { exportSessionsToCalendar } from "@/lib/calendar-export"
@@ -169,7 +168,7 @@ const THEME_CONFIG = {
 
 const getSessionIcon = (sessionName: string, sessionType: string | null) => {
   const name = (sessionName || "").toLowerCase()
-  const type = (sessionType || "").toLowerCase()
+  const _type = (sessionType || "").toLowerCase()
 
   if (name.includes("panel") || name.includes("debate")) return MessageSquare
   if (name.includes("live") || name.includes("video")) return Video

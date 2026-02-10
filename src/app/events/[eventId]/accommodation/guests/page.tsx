@@ -53,7 +53,6 @@ import {
   User,
   BedDouble,
   CalendarDays,
-  CreditCard,
   CheckSquare,
   Square,
   Car,

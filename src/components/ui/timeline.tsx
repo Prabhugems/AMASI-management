@@ -3,7 +3,7 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { formatRelativeTime, formatDateTime } from "@/lib/formatters"
-import { Check, Clock, AlertCircle, Circle, LucideIcon } from "lucide-react"
+import { Check, Clock, Circle, LucideIcon } from "lucide-react"
 
 interface TimelineItem {
   id: string | number

@@ -10,7 +10,6 @@ import {
   Plane,
   Train,
   Car,
-  Clock,
   CheckCircle,
   Check,
   CreditCard,
@@ -19,7 +18,6 @@ import {
   Loader2,
   AlertCircle,
   FileCheck,
-  X,
   Send,
   Calendar,
   ExternalLink,
@@ -29,7 +27,6 @@ import {
   TrendingUp,
   CircleDot,
   FileSpreadsheet,
-  Download,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"

@@ -24,7 +24,6 @@ import {
   Plane,
   Hotel,
   Car,
-  Calendar,
   CheckCircle,
   Clock,
   Mail,

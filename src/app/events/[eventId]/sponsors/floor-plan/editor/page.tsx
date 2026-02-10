@@ -46,14 +46,12 @@ import {
   Building2,
   Save,
   X,
-  RotateCcw,
   Download,
   Plus,
   Trash2,
   ArrowLeft,
   Lock,
   Unlock,
-  Layers,
   LayoutGrid,
   DoorOpen,
   Camera,
@@ -67,8 +65,6 @@ import {
   Rows3,
   Edit3,
   Trash,
-  CheckSquare,
-  Square,
   AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -403,7 +399,7 @@ export default function FloorPlanEditorPage() {
     mutationFn: async () => {
       const stallsToCreate = []
       const stallWidth = 120
-      const stallHeight = 96
+      const _stallHeight = 96
       const spacing = 20
 
       for (let i = 0; i < rowForm.count; i++) {
@@ -860,7 +856,7 @@ export default function FloorPlanEditorPage() {
             const isSelected = selectedStalls.has(stall.id)
             const isDragging = draggedStall === stall.id
             const isLocked = lockedStalls.has(stall.id)
-            const tierInfo = stall.sponsors?.tier_id ? tierMap[stall.sponsors.tier_id] : null
+            const _tierInfo = stall.sponsors?.tier_id ? tierMap[stall.sponsors.tier_id] : null
 
             return (
               <div

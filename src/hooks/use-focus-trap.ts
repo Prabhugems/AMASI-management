@@ -56,7 +56,7 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(
   }, [getFocusableElements])
 
   // Focus last element
-  const focusLast = useCallback(() => {
+  const _focusLast = useCallback(() => {
     const elements = getFocusableElements()
     if (elements.length > 0) {
       elements[elements.length - 1].focus()

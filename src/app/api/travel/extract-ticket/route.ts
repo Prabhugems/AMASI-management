@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { enhanceFlightData, lookupFlight, AIRPORT_INFO } from "@/lib/airline-api"
+import { enhanceFlightData } from "@/lib/airline-api"
 import { extractTextFromImage, isOCREnabled } from "@/lib/ocr"
 
 // Parse PDF and extract text using pdf-parse v1
@@ -375,7 +375,7 @@ function getAirlineFromCode(code: string): string {
 }
 
 // Split round-trip ticket text into onward and return sections
-function splitRoundTripText(text: string): { onward: string; return_journey: string } {
+function _splitRoundTripText(text: string): { onward: string; return_journey: string } {
   // Normalize text
   const normalized = text.replace(/\r\n/g, "\n")
 
@@ -491,7 +491,7 @@ function extractFlightDetails(text: string): ExtractedFlightDetails {
 
   // First, try to extract route from "City1 - City2" or "City1 to City2" patterns
   // These are more reliable than airport code order in multi-journey PDFs
-  const cityNames = Object.values(AIRPORT_CODES).map(c => c.toLowerCase())
+  const _cityNames = Object.values(AIRPORT_CODES).map(c => c.toLowerCase())
   const routePatterns = [
     /BOOKING\s*DETAILS\s*\n?\s*([A-Za-z]+)\s*[-–]\s*([A-Za-z]+)/i,
     /([A-Za-z]+)\s*[-–]\s*([A-Za-z]+)\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i,
@@ -623,7 +623,7 @@ function extractFlightDetails(text: string): ExtractedFlightDetails {
 }
 
 // Extract train details from text
-function extractTrainDetails(text: string): ExtractedTrainDetails {
+function _extractTrainDetails(text: string): ExtractedTrainDetails {
   const result: ExtractedTrainDetails = {
     pnr: null, train_number: null, train_name: null,
     departure_station: null, departure_date: null, departure_time: null,
@@ -1073,7 +1073,7 @@ function citiesMatch(requested: string, extracted: string, extractedAirport?: st
 }
 
 // Cross-check extracted vs requested
-function performCrossCheck(extracted: any, requested: any, ticketType: string) {
+function _performCrossCheck(extracted: any, requested: any, ticketType: string) {
   const discrepancies: Array<{ field: string; requested: string | null; booked: string | null; severity: string }> = []
 
   if (ticketType === "flight") {

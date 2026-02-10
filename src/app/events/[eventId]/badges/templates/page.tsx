@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import {
@@ -10,14 +10,12 @@ import {
   Pencil,
   Trash2,
   Copy,
-  MoreVertical,
   Calendar,
   FileText,
   ArrowLeft,
   Search,
   Star,
   StarOff,
-  Wand2,
   Sparkles,
   Lock,
   LockOpen,
@@ -83,7 +81,6 @@ interface BadgeTemplate {
 
 export default function BadgeTemplatesPage() {
   const params = useParams()
-  const router = useRouter()
   const queryClient = useQueryClient()
   const eventId = params.eventId as string
 

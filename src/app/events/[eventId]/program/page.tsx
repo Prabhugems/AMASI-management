@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,14 +19,10 @@ import { cn } from "@/lib/utils"
 import {
   Calendar,
   Presentation,
-  Layers,
   Users,
   Loader2,
-  ArrowRight,
-  Clock,
   MapPin,
   Plus,
-  AlertCircle,
   CheckCircle2,
   XCircle,
   Clock3,
@@ -35,7 +31,6 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronRight,
-  Building2,
   UserCheck,
   AlertTriangle,
   Eye,
@@ -126,7 +121,7 @@ export default function ProgramDashboardPage() {
   })
 
   // Fetch tracks
-  const { data: tracks } = useQuery({
+  const { data: _tracks } = useQuery({
     queryKey: ["dashboard-tracks", eventId],
     queryFn: async () => {
       const { data } = await supabase
@@ -236,7 +231,7 @@ export default function ProgramDashboardPage() {
       } else {
         toast.error("Failed to sync assignments")
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Error syncing assignments")
     } finally {
       setSyncing(false)

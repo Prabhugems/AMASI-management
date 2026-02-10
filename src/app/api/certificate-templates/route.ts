@@ -50,21 +50,33 @@ export async function POST(request: NextRequest) {
         .eq("event_id", event_id)
     }
 
-    const { data, error } = await (supabase as any)
+    const insertData: any = {
+      event_id,
+      name,
+      description: description || null,
+      size: size || "A4-landscape",
+      template_image_url: template_image_url || null,
+      template_data: template_data || {},
+      ticket_type_ids: ticket_type_ids || null,
+      is_default: is_default || false,
+    }
+
+    // Try with is_active first, fallback without it if column doesn't exist yet
+    let result = await (supabase as any)
       .from("certificate_templates")
-      .insert({
-        event_id,
-        name,
-        description: description || null,
-        size: size || "A4-landscape",
-        template_image_url: template_image_url || null,
-        template_data: template_data || {},
-        ticket_type_ids: ticket_type_ids || null,
-        is_default: is_default || false,
-        is_active: true,
-      })
+      .insert({ ...insertData, is_active: true })
       .select()
       .single()
+
+    if (result.error?.message?.includes("is_active")) {
+      result = await (supabase as any)
+        .from("certificate_templates")
+        .insert(insertData)
+        .select()
+        .single()
+    }
+
+    const { data, error } = result
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -108,12 +120,25 @@ export async function PUT(request: NextRequest) {
     if (is_default !== undefined) updateData.is_default = is_default
     if (is_active !== undefined) updateData.is_active = is_active
 
-    const { data, error } = await (supabase as any)
+    let result = await (supabase as any)
       .from("certificate_templates")
       .update(updateData)
       .eq("id", id)
       .select()
       .single()
+
+    // If is_active column doesn't exist yet, retry without it
+    if (result.error?.message?.includes("is_active") && is_active !== undefined) {
+      delete updateData.is_active
+      result = await (supabase as any)
+        .from("certificate_templates")
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single()
+    }
+
+    const { data, error } = result
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

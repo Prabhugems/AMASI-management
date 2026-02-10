@@ -39,8 +39,6 @@ import {
   Check,
   User,
   AlertCircle,
-  Plane,
-  Train,
   MapPin,
   ArrowDown,
   ArrowUp,

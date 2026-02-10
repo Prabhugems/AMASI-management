@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { FormField, FieldOption, FieldType } from "@/lib/types"
+import { FormField, FieldOption } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,14 +16,10 @@ import {
 } from "@/components/ui/select"
 import {
   Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
 } from "@/components/ui/tabs"
 import {
   Trash2,
   Plus,
-  GripVertical,
   X,
   Settings,
   Zap,
@@ -51,7 +47,6 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  Palette,
   Minus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -87,10 +82,10 @@ export function FieldEditor({
   const showFileSettings = field.field_type === "file"
   const showHeadingSettings = field.field_type === "heading"
   const showDividerSettings = field.field_type === "divider"
-  const showDateSettings = ["date", "datetime"].includes(field.field_type)
-  const showNumberSettings = field.field_type === "number"
-  const showPhoneSettings = field.field_type === "phone"
-  const showSelectSettings = ["select", "multiselect"].includes(field.field_type)
+  const _showDateSettings = ["date", "datetime"].includes(field.field_type)
+  const _showNumberSettings = field.field_type === "number"
+  const _showPhoneSettings = field.field_type === "phone"
+  const _showSelectSettings = ["select", "multiselect"].includes(field.field_type)
   const isLayoutField = ["heading", "paragraph", "divider"].includes(field.field_type)
 
   const handleAddOption = () => {

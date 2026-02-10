@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -24,7 +23,6 @@ import {
   Users,
   CheckCircle,
   Clock,
-  Filter,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"

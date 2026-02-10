@@ -20,7 +20,6 @@ import {
   Heading,
   Text,
   Minus,
-  CreditCard,
   List,
   GripVertical,
 } from "lucide-react"
@@ -77,7 +76,7 @@ function DraggableFieldItem({ field, onAdd }: { field: FieldPaletteItemData; onA
     transform: CSS.Transform.toString(transform),
   }
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (_e: React.MouseEvent) => {
     // Only trigger if not dragging and onAdd is provided
     if (onAdd && !isDragging) {
       onAdd(field.type)

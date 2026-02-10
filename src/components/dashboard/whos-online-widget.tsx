@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, MessageCircle, Video, ChevronRight, Activity, Loader2, LogIn, LogOut } from "lucide-react"
+import { Users, MessageCircle, ChevronRight, Activity, Loader2, LogIn, LogOut } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { useTheme } from "next-themes"
 import Link from "next/link"
@@ -377,7 +377,7 @@ export function WhosOnlineWidget() {
 
   const isDark = mounted ? resolvedTheme === "dark" : false
   const onlineCount = teamMembers.filter((m) => m.status === "online").length
-  const offlineCount = teamMembers.filter((m) => m.status === "offline" || m.status === "logged_out").length
+  const _offlineCount = teamMembers.filter((m) => m.status === "offline" || m.status === "logged_out").length
   const loggedInCount = (teamMembersData || []).filter((m) => m.has_logged_in).length
   const neverLoggedInCount = teamMembers.filter((m) => m.status === "never").length
 

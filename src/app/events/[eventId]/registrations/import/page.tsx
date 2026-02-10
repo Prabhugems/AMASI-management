@@ -18,7 +18,7 @@ export default function ImportRegistrationsPage() {
   const params = useParams()
   const eventId = params.eventId as string
   const [registrationPrefix, setRegistrationPrefix] = useState("")
-  const [eventShortName, setEventShortName] = useState("")
+  const [_eventShortName, setEventShortName] = useState("")
   const [fixedAmount, setFixedAmount] = useState("")
   const [showSettings, setShowSettings] = useState(true)
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([])
@@ -45,7 +45,7 @@ export default function ImportRegistrationsPage() {
         const error = await res.json()
         toast.error(error.error || "Failed to delete")
       }
-    } catch (err) {
+    } catch (_err) {
       toast.error("Failed to delete imported registrations")
     } finally {
       setIsDeleting(false)

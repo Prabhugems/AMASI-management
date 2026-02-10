@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Bell, Check, Trash2, X, CheckCheck, Settings } from "lucide-react"
+import { Bell, Check, Trash2, X, CheckCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {

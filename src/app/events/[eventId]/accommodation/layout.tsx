@@ -18,9 +18,6 @@ import {
   LogOut,
   Calendar,
   MapPin,
-  Plane,
-  Car,
-  Train,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
@@ -57,14 +54,6 @@ const sidebarItems = [
     href: "/reports",
     icon: FileBarChart,
   },
-]
-
-// Quick links to other modules based on permissions
-const otherModules = [
-  { title: "Travel", href: "/travel", icon: Plane, permission: null },
-  { title: "Flights", href: "/travel/flights", icon: Plane, permission: "flights" },
-  { title: "Transfers", href: "/travel/transfers", icon: Car, permission: "transfers" },
-  { title: "Trains", href: "/travel/trains", icon: Train, permission: "trains" },
 ]
 
 export default function AccommodationLayout({
@@ -195,21 +184,6 @@ export default function AccommodationLayout({
       month: "short",
       year: "numeric",
     })
-  }
-
-  // Check if user has access to a specific permission
-  const hasPermission = (permission: string | null) => {
-    if (!permission) return true
-    if (userPermissions?.isAdmin) return true
-    if (userPermissions?.hasFullAccess) return true
-    // Use specific permission flags
-    switch (permission) {
-      case "hotels": return userPermissions?.hasHotelsPermission
-      case "flights": return userPermissions?.hasFlightsPermission
-      case "transfers": return userPermissions?.hasTransfersPermission
-      case "trains": return userPermissions?.hasTrainsPermission
-      default: return (userPermissions?.permissions as string[] | undefined)?.includes(permission)
-    }
   }
 
   // If user doesn't have hotels permission, show access denied

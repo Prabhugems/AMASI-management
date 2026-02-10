@@ -10,8 +10,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { FormField } from "@/lib/types"
 import { FieldPreview } from "./field-preview"
 import { cn } from "@/lib/utils"
-import { GripVertical, Trash2, Copy, Plus, Layers, Sparkles, MousePointerClick } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { GripVertical, Trash2, Copy, Plus, Sparkles, MousePointerClick } from "lucide-react"
 
 interface SortableFieldProps {
   field: FormField

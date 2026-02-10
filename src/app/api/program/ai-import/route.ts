@@ -197,7 +197,7 @@ function timeToMinutes(time: string): number {
 }
 
 // Convert minutes to time string
-function minutesToTime(minutes: number): string {
+function _minutesToTime(minutes: number): string {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:00`
@@ -538,7 +538,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    for (const [key, sessions] of hallSessions) {
+    for (const [_key, sessions] of hallSessions) {
       const sorted = sessions.sort((a, b) => timeToMinutes(a.start_time!) - timeToMinutes(b.start_time!))
       for (let i = 0; i < sorted.length - 1; i++) {
         const current = sorted[i]
@@ -626,7 +626,7 @@ export async function POST(request: NextRequest) {
 
       for (const session of sorted) {
         if (!session.start_time || !session.end_time) continue
-        const start = timeToMinutes(session.start_time)
+        const _start = timeToMinutes(session.start_time)
         const end = timeToMinutes(session.end_time)
         const sessionType = session.session_type.toLowerCase()
 
@@ -950,7 +950,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Process each faculty with smart matching
-      for (const [_, faculty] of facultyMap) {
+      for (const [_key, faculty] of facultyMap) {
         let existingMatch: any = null
         let matchedBy = ""
         let facultyTableMatch: FacultyRecord | null = null

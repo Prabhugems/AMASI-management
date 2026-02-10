@@ -10,13 +10,11 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  Settings,
   Loader2,
   Save,
   Mail,
   Bell,
   Shield,
-  FileText,
   Users,
   AlertTriangle,
   Link as LinkIcon,

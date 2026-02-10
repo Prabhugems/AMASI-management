@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { CheckCircle, XCircle, Loader2, Calendar, MapPin, Ticket, User, Building2, Briefcase, Clock, ShieldCheck, ShieldX } from "lucide-react"
+import { CheckCircle, Loader2, Calendar, MapPin, Ticket, User, Clock, ShieldCheck, ShieldX } from "lucide-react"
 
 interface VerificationResult {
   valid: boolean
@@ -41,7 +41,7 @@ export default function VerifyBadgePage() {
         const res = await fetch(`/api/verify/${token}`)
         const data = await res.json()
         setResult(data)
-      } catch (error) {
+      } catch (_error) {
         setResult({ valid: false, error: "Failed to verify badge" })
       } finally {
         setLoading(false)

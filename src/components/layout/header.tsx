@@ -25,7 +25,7 @@ import {
   Clock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { toast } from "sonner"
 
 interface HeaderProps {
@@ -104,7 +104,7 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
       await supabase.auth.signOut()
       toast.success("Signed out successfully")
       router.push("/login")
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to sign out")
     }
   }

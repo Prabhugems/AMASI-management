@@ -35,11 +35,8 @@ import {
   Send,
   Check,
   Users,
-  Clock,
-  User,
   IndianRupee,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 
 interface Participant {

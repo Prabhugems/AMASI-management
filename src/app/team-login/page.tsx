@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Mail, Loader2, CheckCircle2, Users, AlertTriangle, Plane, Calendar, UserCheck, Award } from "lucide-react"
+import { Mail, Loader2, Users, AlertTriangle, Plane, Calendar, UserCheck, Award } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/client"
 
 function TeamLoginForm() {
   const router = useRouter()
-  const searchParams = useSearchParams()
+  const _searchParams = useSearchParams()
   const supabase = createClient()
 
   const [email, setEmail] = React.useState("")

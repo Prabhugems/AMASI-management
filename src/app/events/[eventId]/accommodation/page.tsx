@@ -19,7 +19,6 @@ import {
   TrendingUp,
   AlertCircle,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
 
 type Guest = {
   id: string

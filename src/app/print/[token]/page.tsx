@@ -16,8 +16,6 @@ import {
   History,
   RefreshCw,
   Search,
-  X,
-  User,
   Building,
   Mail,
   Phone,
@@ -26,9 +24,7 @@ import {
   Layers,
   FileText,
   Wifi,
-  WifiOff,
   Clock,
-  ChevronRight,
   Power,
   Volume2,
   VolumeX,
@@ -36,7 +32,6 @@ import {
   RotateCcw,
   Eye,
   SwitchCamera,
-  Flashlight
 } from "lucide-react"
 
 interface PrintStation {
@@ -114,10 +109,10 @@ export default function PrintStationKioskPage() {
   const [scannedRegistration, setScannedRegistration] = useState<Registration | null>(null)
   const [isPrinting, setIsPrinting] = useState(false)
   const [printSuccess, setPrintSuccess] = useState(false)
-  const [printError, setPrintError] = useState<string | null>(null)
+  const [_printError, setPrintError] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(true)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [_isFullscreen, setIsFullscreen] = useState(false)
   const [reprintInfo, setReprintInfo] = useState<{ is_reprint: boolean; print_number: number } | null>(null)
   const [zplPrinting, setZplPrinting] = useState(false)
   const [zplStatus, setZplStatus] = useState<{ success: boolean; message: string } | null>(null)
@@ -128,7 +123,7 @@ export default function PrintStationKioskPage() {
 
   const inputRef = useRef<HTMLInputElement>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
-  const printFrameRef = useRef<HTMLIFrameElement>(null)
+  const _printFrameRef = useRef<HTMLIFrameElement>(null)
   const scannerContainerId = "qr-scanner-container"
 
   // Fetch station details by token - always fetch fresh to get updated templates
@@ -273,7 +268,7 @@ export default function PrintStationKioskPage() {
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3)
       oscillator.start(audioContext.currentTime)
       oscillator.stop(audioContext.currentTime + 0.3)
-    } catch (e) {
+    } catch (_e) {
       // Silently fail if audio not supported
     }
   }
@@ -292,7 +287,7 @@ export default function PrintStationKioskPage() {
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4)
       oscillator.start(audioContext.currentTime)
       oscillator.stop(audioContext.currentTime + 0.4)
-    } catch (e) {
+    } catch (_e) {
       // Silently fail if audio not supported
     }
   }
@@ -345,7 +340,7 @@ export default function PrintStationKioskPage() {
       if (scannerRef.current) {
         try {
           await scannerRef.current.stop()
-        } catch (e) {
+        } catch (_e) {
           // Ignore stop errors
         }
       }
@@ -364,7 +359,7 @@ export default function PrintStationKioskPage() {
           // QR code successfully scanned
           handleQrCodeScanned(decodedText)
         },
-        (errorMessage) => {
+        (_errorMessage) => {
           // QR code scanning in progress - ignore errors
         }
       )
@@ -472,7 +467,7 @@ export default function PrintStationKioskPage() {
     setManualInput("")
   }
 
-  const handlePrint = () => {
+  const _handlePrint = () => {
     if (!scannedRegistration) return
     setIsPrinting(true)
     printMutation.mutate(scannedRegistration.registration_number)
@@ -818,7 +813,7 @@ export default function PrintStationKioskPage() {
     return size
   }
 
-  const renderBadgeTemplate = (templateData: any, registration: Registration) => {
+  const _renderBadgeTemplate = (templateData: any, registration: Registration) => {
     // Basic template rendering - this would be more sophisticated in production
     let html = templateData.html || ""
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
 import { Minus, Plus, Clock, Users, Ticket, Check, AlertCircle, Bell } from "lucide-react"
 import { TicketType } from "@/lib/types"
-import { format, differenceInDays, differenceInHours, isPast } from "date-fns"
+import { differenceInDays, differenceInHours, isPast } from "date-fns"
 import { WaitlistForm } from "./waitlist-form"
 
 interface TicketSelectorProps {
@@ -96,7 +96,7 @@ function TicketCard({
   // Use max_per_order from ticket, default to 10 if not set
   const configuredMax = ticket.max_per_order ?? 10
   // Also respect min_per_order
-  const minPerOrder = ticket.min_per_order ?? 1
+  const _minPerOrder = ticket.min_per_order ?? 1
   // The actual max should be the minimum of: configured max and remaining stock
   const maxPerOrder = remaining !== null ? Math.min(configuredMax, remaining) : configuredMax
 

@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/select"
 import {
   Settings,
-  Globe,
   Calendar,
   MapPin,
   Image,
@@ -31,8 +30,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Copy,
-  ExternalLink,
-  Clock,
   Users,
   FileText,
   Trash2,

@@ -13,7 +13,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { Star, Upload, Minus, Mail, Phone, Hash, Calendar, Clock, FileText, PenLine, Type } from "lucide-react"
+import { Star, Upload, Mail, Phone, Hash, Calendar, Clock, FileText, PenLine, Type } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface FieldPreviewProps {
@@ -22,7 +22,7 @@ interface FieldPreviewProps {
 }
 
 // Field type icon mapping
-const fieldIcons: Record<string, React.ReactNode> = {
+const _fieldIcons: Record<string, React.ReactNode> = {
   email: <Mail className="w-4 h-4" />,
   phone: <Phone className="w-4 h-4" />,
   number: <Hash className="w-4 h-4" />,

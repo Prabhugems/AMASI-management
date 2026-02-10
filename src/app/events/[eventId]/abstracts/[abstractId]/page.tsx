@@ -1,11 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -27,7 +26,6 @@ import {
   Mail,
   Building2,
   Phone,
-  Calendar,
   Tag,
   FileText,
   CheckCircle,
@@ -36,7 +34,6 @@ import {
   AlertCircle,
   Star,
   MessageSquare,
-  Edit,
   Users,
   ExternalLink,
 } from "lucide-react"
@@ -91,7 +88,6 @@ const statusColors: Record<string, { bg: string; text: string; label: string }> 
 
 export default function AbstractDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const eventId = params.eventId as string
   const abstractId = params.abstractId as string
   const queryClient = useQueryClient()

@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -45,11 +44,7 @@ import {
   Star,
   Users,
   BarChart3,
-  Mail,
-  UserPlus,
-  Trophy,
   TrendingUp,
-  Video,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -93,7 +88,6 @@ export default function AbstractsPage() {
   const router = useRouter()
   const eventId = params.eventId as string
   const queryClient = useQueryClient()
-  const supabase = createClient()
 
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -250,16 +244,6 @@ export default function AbstractsPage() {
     link.click()
     URL.revokeObjectURL(url)
   }
-
-  // Get top scored abstracts
-  const topScored = [...abstracts]
-    .filter(a => a.reviews && a.reviews.some(r => r.overall_score))
-    .map(a => ({
-      ...a,
-      avgScore: parseFloat(getAverageScore(a.reviews) || "0")
-    }))
-    .sort((a, b) => b.avgScore - a.avgScore)
-    .slice(0, 10)
 
   return (
     <div className="p-6 space-y-6">

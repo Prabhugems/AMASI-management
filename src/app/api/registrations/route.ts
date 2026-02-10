@@ -1,4 +1,4 @@
-import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { onRegistration } from "@/lib/services/auto-send"
 import { validatePagination, sanitizeSearchInput, isValidUUID } from "@/lib/validation"
@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate pricing
-    let unit_price = ticket.price
+    const unit_price = ticket.price
     let tax_amount = 0
     let discount_amount = 0
     let discount_code_id = null
@@ -447,7 +447,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save selected addons to registration_addons table
-    let addonsSaveStatus: 'success' | 'failed' | 'none' = 'none'
+    let _addonsSaveStatus: 'success' | 'failed' | 'none' = 'none'
     if (addonsToSave && Array.isArray(addonsToSave) && addonsToSave.length > 0) {
       const addonRecords = addonsToSave.map((addon: {
         addonId: string
@@ -468,7 +468,7 @@ export async function POST(request: NextRequest) {
 
       if (addonsError) {
         console.error("Failed to save registration addons:", addonsError)
-        addonsSaveStatus = 'failed'
+        _addonsSaveStatus = 'failed'
         // Store addon data in custom_fields as backup for recovery
         await (supabase as any)
           .from("registrations")
@@ -482,7 +482,7 @@ export async function POST(request: NextRequest) {
           })
           .eq("id", registration.id)
       } else {
-        addonsSaveStatus = 'success'
+        _addonsSaveStatus = 'success'
       }
     }
 
@@ -495,7 +495,7 @@ export async function POST(request: NextRequest) {
 
     // Send registration confirmation email asynchronously but track failures
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    const emailPromise = fetch(`${baseUrl}/api/email/registration-confirmation`, {
+    const _emailPromise = fetch(`${baseUrl}/api/email/registration-confirmation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

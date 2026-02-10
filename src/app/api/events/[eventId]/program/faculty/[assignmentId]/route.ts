@@ -7,7 +7,7 @@ export async function PATCH(
   { params }: { params: Promise<{ eventId: string; assignmentId: string }> }
 ) {
   try {
-    const { user, error: authError } = await requireAdmin()
+    const { user: _user, error: authError } = await requireAdmin()
     if (authError) return authError
 
     const { eventId, assignmentId } = await params
@@ -92,7 +92,7 @@ export async function DELETE(
   { params }: { params: Promise<{ eventId: string; assignmentId: string }> }
 ) {
   try {
-    const { user, error: authError } = await requireAdmin()
+    const { user: _user, error: authError } = await requireAdmin()
     if (authError) return authError
 
     const { eventId, assignmentId } = await params

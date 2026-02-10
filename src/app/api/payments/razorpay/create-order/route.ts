@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     // SECURITY: Calculate amount server-side - never trust client amount
     let calculatedAmount = 0
-    let ticketDetails: any[] = []
+    const ticketDetails: any[] = []
     let taxPercentage = 18 // Default GST rate
 
     // For addon-only purchases, skip ticket requirement

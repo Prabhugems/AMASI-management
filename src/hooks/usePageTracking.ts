@@ -34,7 +34,7 @@ interface UsePageTrackingOptions {
 
 export function usePageTracking({ eventId, pageType = "event" }: UsePageTrackingOptions) {
   const searchParams = useSearchParams()
-  const pathname = usePathname()
+  const _pathname = usePathname()
   const tracked = useRef(false)
 
   useEffect(() => {

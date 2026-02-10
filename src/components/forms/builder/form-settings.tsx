@@ -7,13 +7,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Card,
   CardContent,
   CardDescription,
@@ -25,11 +18,7 @@ import {
   Send,
   Bell,
   Lock,
-  Clock,
-  Users,
   Mail,
-  Link,
-  Calendar,
   Shield,
 } from "lucide-react"
 import { useState } from "react"

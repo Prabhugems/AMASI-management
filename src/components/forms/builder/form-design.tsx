@@ -14,7 +14,6 @@ import {
 import {
   Palette,
   Image,
-  Upload,
   X,
   Eye,
 } from "lucide-react"
@@ -38,7 +37,7 @@ const colorPresets = [
 ]
 
 export function FormDesign({ form, onUpdate }: FormDesignProps) {
-  const [showPreview, setShowPreview] = useState(true)
+  const [_showPreview, _setShowPreview] = useState(true)
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

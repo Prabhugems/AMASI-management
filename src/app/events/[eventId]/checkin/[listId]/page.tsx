@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation } from "@tanstack/react-query"
 import {
   ArrowLeft,
   Search,
@@ -18,7 +18,6 @@ import {
   Copy,
   Check,
   Filter,
-  ChevronDown,
   UserCheck,
   UserX,
   Smartphone,
@@ -64,7 +63,6 @@ interface Stats {
 export default function CheckinListAttendeesPage() {
   const params = useParams()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const eventId = params.eventId as string
   const listId = params.listId as string
 

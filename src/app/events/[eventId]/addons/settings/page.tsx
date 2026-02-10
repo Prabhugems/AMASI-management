@@ -11,7 +11,6 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Settings,
-  IndianRupee,
   Save,
   Loader2,
   AlertCircle,

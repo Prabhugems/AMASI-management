@@ -44,10 +44,8 @@ import {
   Edit,
   Trash2,
   GripVertical,
-  IndianRupee,
   AlertTriangle,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 type Tier = {

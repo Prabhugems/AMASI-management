@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, Suspense } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Script from "next/script"
 import {
   ArrowLeft,
@@ -9,13 +9,10 @@ import {
   Loader2,
   Plus,
   Minus,
-  ShoppingCart,
   CheckCircle,
   AlertCircle,
   Shield,
-  User,
   Ticket,
-  Calendar,
   MapPin,
 } from "lucide-react"
 
@@ -69,7 +66,6 @@ declare global {
 
 function PurchaseAddonsContent() {
   const searchParams = useSearchParams()
-  const router = useRouter()
   const regNumber = searchParams.get("reg")
   const eventId = searchParams.get("event")
 

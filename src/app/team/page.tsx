@@ -3,8 +3,7 @@
 import { useState, useMemo, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
-import { SkeletonTable, SkeletonCard, SkeletonStats } from "@/components/ui/skeleton"
-import { logAudit, createChangeDiff } from "@/lib/audit-log"
+import { SkeletonTable, SkeletonCard } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -50,7 +49,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import {
   Users,
-  Plus,
   Loader2,
   Mail,
   Plane,
@@ -61,21 +59,17 @@ import {
   CheckCircle,
   Search,
   Phone,
-  Send,
   Calendar,
-  Building,
   FileText,
   Copy,
   Hotel,
   Car,
   Train,
-  Key,
   UserPlus,
   UserCheck,
   UserX,
   Sparkles,
   Link2,
-  X,
   Award,
   Clock,
   RefreshCw,
@@ -88,22 +82,14 @@ import {
   Zap,
   Activity,
   TrendingUp,
-  ExternalLink,
   LayoutGrid,
   List,
   BookOpen,
   Info,
   ArrowRight,
-  Eye,
-  Settings,
-  Download,
-  Upload,
   BarChart3,
-  Palette,
-  FolderOpen,
   ClipboardList,
   MapPin,
-  QrCode,
   LogOut,
   Wifi,
   WifiOff,

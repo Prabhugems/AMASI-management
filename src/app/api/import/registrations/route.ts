@@ -64,8 +64,6 @@ export async function POST(request: NextRequest) {
       .eq("event_id", event_id)
 
     // Get all member emails and phone numbers for auto-lookup (case-insensitive)
-    const emailsInRows = rows.map((r: any) => r.email?.toLowerCase().trim()).filter(Boolean)
-
     // Fetch members matching any of the emails (use ilike for case-insensitive)
     const { data: membersData } = await (supabase as any)
       .from("members")
@@ -115,7 +113,7 @@ export async function POST(request: NextRequest) {
         [["pg", "postgraduate"], "pg"],
       ]
 
-      for (const [csvKeywords, systemKeyword] of keywordPairs) {
+      for (const [csvKeywords, _systemKeyword] of keywordPairs) {
         // Check if CSV name contains any of the CSV keywords
         const csvHasKeyword = csvKeywords.some(k => searchName.includes(k))
         if (csvHasKeyword) {

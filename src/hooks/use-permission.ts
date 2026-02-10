@@ -37,7 +37,7 @@ interface UsePermissionReturn {
  */
 export function usePermission(permissionName: PermissionName): UsePermissionReturn {
   const [state, setState] = useState<PermissionState>("prompt")
-  const [isSupported, setIsSupported] = useState(true)
+  const [_isSupported, setIsSupported] = useState(true)
 
   // Check permission status
   const checkPermission = useCallback(async () => {
@@ -68,7 +68,7 @@ export function usePermission(permissionName: PermissionName): UsePermissionRetu
       permission.addEventListener("change", () => {
         setState(permission.state as PermissionState)
       })
-    } catch (error) {
+    } catch (_error) {
       // Permission not supported in this browser
       const fallbackState = await checkFallbackPermission(permissionName)
       setState(fallbackState)
@@ -101,7 +101,7 @@ export function usePermission(permissionName: PermissionName): UsePermissionRetu
             stream.getTracks().forEach((track) => track.stop())
             setState("granted")
             return "granted"
-          } catch (error) {
+          } catch (_error) {
             setState("denied")
             return "denied"
           }
@@ -169,7 +169,7 @@ export function usePermission(permissionName: PermissionName): UsePermissionRetu
         default:
           return state
       }
-    } catch (error) {
+    } catch (_error) {
       setState("denied")
       return "denied"
     }

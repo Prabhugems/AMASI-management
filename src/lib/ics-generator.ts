@@ -188,7 +188,7 @@ export function generateTravelItineraryICS(itinerary: {
     confirmationNumber?: string
   }
 }): string {
-  const events: string[] = []
+  const _events: string[] = []
 
   // Header
   const lines = [

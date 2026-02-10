@@ -20,7 +20,6 @@ import {
   Settings,
   IndianRupee,
   Percent,
-  FileText,
   Save,
   Loader2,
   AlertCircle,
@@ -77,7 +76,7 @@ export default function TicketSettingsPage() {
   })
 
   // Fetch available forms
-  const { data: availableForms } = useQuery({
+  const { data: _availableForms } = useQuery({
     queryKey: ["available-forms", eventId],
     queryFn: async () => {
       const { data } = await supabase

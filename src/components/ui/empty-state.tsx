@@ -12,8 +12,6 @@ import {
   Mail,
   Settings,
   AlertCircle,
-  Plus,
-  RefreshCw,
   LucideIcon,
 } from "lucide-react"
 

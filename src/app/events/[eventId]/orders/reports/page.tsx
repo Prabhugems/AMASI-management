@@ -20,7 +20,6 @@ import {
   IndianRupee,
   CheckCircle,
   Clock,
-  XCircle,
   TrendingUp,
 } from "lucide-react"
 import { toast } from "sonner"

@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       registration_id,
       speaker_name,
       speaker_email,
-      event_id,
+      event_id: _event_id,
       event_name,
       event_start_date,
       event_end_date,

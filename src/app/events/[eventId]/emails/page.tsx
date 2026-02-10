@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useParams } from "next/navigation"
 import DOMPurify from "dompurify"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -34,7 +34,6 @@ import {
   Loader2,
   Code,
   FileText,
-  CheckCircle,
   Copy,
   Star,
   AlertCircle,
@@ -241,7 +240,7 @@ export default function EmailTemplatesPage() {
       setPreviewSubject(data.subject)
       setPreviewHtml(data.body_html)
       setIsPreviewOpen(true)
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to load preview")
     }
   }

@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       event_name,
       event_start_date,
       event_end_date,
-      event_venue,
+      event_venue: _event_venue,
     } = body
 
     if (!assignment_id || !event_id || !event_name) {

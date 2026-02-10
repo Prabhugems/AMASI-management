@@ -10,8 +10,6 @@ import { format } from "date-fns"
 import {
   Calendar,
   MapPin,
-  Clock,
-  Users,
   ArrowLeft,
   ArrowRight,
   Share2,
@@ -71,7 +69,7 @@ function EmailCheckWidget({ eventId }: { eventId: string }) {
       } else {
         setError(data.error || "Failed to check email")
       }
-    } catch (err) {
+    } catch (_err) {
       setError("Failed to check email. Please try again.")
     } finally {
       setIsChecking(false)
@@ -198,7 +196,7 @@ export default function EventDetailsPage() {
     }
   }, [urlRegType])
 
-  const isDark = mounted ? resolvedTheme === "dark" : false
+  const _isDark = mounted ? resolvedTheme === "dark" : false
   const supabase = createClient()
 
   // Fetch event details
@@ -351,7 +349,7 @@ export default function EventDetailsPage() {
 
     // Convert addons map to array for storage
     const addonsSelection: SelectedAddon[] = []
-    selectedAddons.forEach((addon, key) => {
+    selectedAddons.forEach((addon, _key) => {
       addonsSelection.push(addon)
     })
 

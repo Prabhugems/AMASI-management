@@ -14,7 +14,6 @@ import {
   ArrowRight,
   Sparkles,
   Loader2,
-  QrCode,
   FileText,
   User,
   ExternalLink,
@@ -38,7 +37,7 @@ function SuccessContent() {
     setMounted(true)
   }, [])
 
-  const isDark = mounted ? resolvedTheme === "dark" : false
+  const _isDark = mounted ? resolvedTheme === "dark" : false
 
   // Fetch registration details to get ID for PDF download
   const { data: registration } = useQuery({

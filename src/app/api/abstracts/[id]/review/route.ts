@@ -52,7 +52,7 @@ export async function GET(
     // If not a team member, strip private comments from each review
     if (!isTeamMember) {
       reviews = reviews.map((r: any) => {
-        const { comments_private, ...rest } = r
+        const { comments_private: _comments_private, ...rest } = r
         return rest
       })
     }
@@ -197,7 +197,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
+    const { id: _id } = await params
     const supabase: SupabaseClient = await createServerSupabaseClient()
 
     // Check authentication

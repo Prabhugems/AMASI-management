@@ -50,7 +50,7 @@ export function StepWizard({
   className,
 }: StepWizardProps) {
   const canGoBack = currentStep > 0
-  const canGoNext = currentStep < steps.length - 1
+  const _canGoNext = currentStep < steps.length - 1
   const isLastStep = currentStep === steps.length - 1
 
   return (

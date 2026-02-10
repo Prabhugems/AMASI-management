@@ -170,7 +170,7 @@ export async function POST(
 
           sent++
         }
-      } catch (emailError) {
+      } catch (_emailError) {
         // Even if email fails, mark as invited for demo purposes
         await db
           .from("faculty_assignments")

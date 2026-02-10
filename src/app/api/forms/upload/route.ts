@@ -3,13 +3,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
-// Allowed file extensions for security
-const ALLOWED_EXTENSIONS = [
-  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg',
-  '.txt', '.csv', '.json', '.xml'
-]
-
 // Dangerous extensions to block
 const BLOCKED_EXTENSIONS = [
   '.exe', '.bat', '.cmd', '.sh', '.ps1', '.vbs', '.js', '.php',

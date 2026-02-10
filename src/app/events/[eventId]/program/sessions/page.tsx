@@ -20,7 +20,6 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
   MouseSensor,
   TouchSensor,
   useSensor,
@@ -413,7 +412,7 @@ export default function SessionsPage() {
   }, [])
 
   // Parse person contact
-  const parsePersonContact = (formatted: string, role: string = "Speaker") => {
+  const _parsePersonContact = (formatted: string, role: string = "Speaker") => {
     const match = formatted.match(/^(.+?)\s*\(([^)]+)\)$/)
     if (match) {
       const name = match[1].trim()
