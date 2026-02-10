@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { parse } from "csv-parse/sync"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 type CSVRow = {
   Date?: string
@@ -105,6 +106,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
 
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

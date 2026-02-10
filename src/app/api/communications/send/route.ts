@@ -5,6 +5,7 @@ import { sendWhatsAppMessage, WhatsAppConfig } from "@/lib/services/whatsapp"
 import { sendSMS, SMSConfig } from "@/lib/services/sms"
 import { sendWebhook, buildCommunicationPayload } from "@/lib/services/webhook"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 interface SendRequest {
   event_id: string
@@ -24,6 +25,9 @@ export async function POST(request: NextRequest) {
     if (!event_id || !channel || !recipient_ids || recipient_ids.length === 0 || !message) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
+
+    const { error: authError } = await requireEventAccess(event_id)
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 

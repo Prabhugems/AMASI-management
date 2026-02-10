@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -12,6 +13,9 @@ export async function DELETE(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 

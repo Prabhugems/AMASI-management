@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 interface BulkEmailData {
   event_id: string
@@ -21,6 +22,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const { error: authError } = await requireEventAccess(event_id)
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 
