@@ -757,39 +757,43 @@ export default function DelegatePortalPage() {
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             {event.banner_url ? (
               <div
-                className="h-32 bg-cover bg-center"
+                className="h-28 bg-cover bg-center"
                 style={{ backgroundImage: `url(${event.banner_url})` }}
               />
             ) : (
-              <div className="h-32 bg-gradient-to-r from-indigo-600 to-purple-600" />
+              <div className="h-28 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 flex items-center justify-center">
+                <h2 className="text-white/20 text-5xl font-black tracking-widest select-none">
+                  {(event.short_name || event.name).toUpperCase()}
+                </h2>
+              </div>
             )}
-            <div className="p-4 -mt-8 relative">
-              <div className="flex items-end gap-4">
+            <div className="px-5 py-4">
+              <div className="flex items-center gap-4 -mt-12">
                 {event.logo_url ? (
                   <img
                     src={event.logo_url}
                     alt={event.name}
-                    className="w-16 h-16 rounded-xl bg-white shadow-lg object-contain border-2 border-white"
+                    className="w-14 h-14 rounded-xl bg-white shadow-lg object-contain border-2 border-white flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-xl bg-indigo-600 shadow-lg flex items-center justify-center text-white text-2xl font-bold border-2 border-white">
+                  <div className="w-14 h-14 rounded-xl bg-indigo-600 shadow-lg flex items-center justify-center text-white text-xl font-bold border-2 border-white flex-shrink-0">
                     {(event.short_name || event.name)[0]}
                   </div>
                 )}
-                <div className="flex-1 pb-1">
-                  <h2 className="font-bold text-gray-900">{event.short_name || event.name}</h2>
-                  <div className="flex items-center gap-3 text-sm text-gray-600">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {formatDate(event.start_date)}
+              </div>
+              <div className="mt-3">
+                <h2 className="font-bold text-lg text-gray-900">{event.short_name || event.name}</h2>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                    {formatDate(event.start_date)}
+                  </span>
+                  {(event.venue_name || event.city) && (
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="line-clamp-1">{event.venue_name || event.city}</span>
                     </span>
-                    {event.city && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {event.city}
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
