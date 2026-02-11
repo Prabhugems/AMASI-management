@@ -349,14 +349,14 @@ export default function FacultyPage() {
         )}>
           {/* Header */}
           <div className="flex-shrink-0 p-6 border-b border-border bg-background">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Faculty</h1>
                 <p className="text-sm text-muted-foreground">
                   Master faculty database
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={handleExport}>
                   <Download className="h-4 w-4 mr-2" />
                   Export
@@ -367,7 +367,7 @@ export default function FacultyPage() {
                     Import
                   </Link>
                 </Button>
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex">
                   <Link href="/faculty/add-from-member">
                     <UserCheck className="h-4 w-4 mr-2" />
                     From Members
@@ -383,8 +383,8 @@ export default function FacultyPage() {
             </div>
 
             {/* Stats Bar */}
-            <div className="flex items-center gap-6 mb-4">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4 sm:gap-6 mb-4 overflow-x-auto">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <GraduationCap className="h-4 w-4 text-primary" />
                 </div>
@@ -393,8 +393,8 @@ export default function FacultyPage() {
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</p>
                 </div>
               </div>
-              <div className="h-8 w-px bg-border" />
-              <div className="flex items-center gap-2">
+              <div className="h-8 w-px bg-border flex-shrink-0" />
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
                   <UserCheck className="h-4 w-4 text-success" />
                 </div>
@@ -403,8 +403,8 @@ export default function FacultyPage() {
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Active</p>
                 </div>
               </div>
-              <div className="h-8 w-px bg-border" />
-              <div className="flex items-center gap-2">
+              <div className="h-8 w-px bg-border flex-shrink-0" />
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
                   <Award className="h-4 w-4 text-violet-500" />
                 </div>
@@ -427,7 +427,7 @@ export default function FacultyPage() {
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[130px] h-9">
+                <SelectTrigger className="w-full sm:w-[130px] h-9">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -438,7 +438,7 @@ export default function FacultyPage() {
                 </SelectContent>
               </Select>
               <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
-                <SelectTrigger className="w-[160px] h-9">
+                <SelectTrigger className="w-full sm:w-[160px] h-9">
                   <SelectValue placeholder="Specialty" />
                 </SelectTrigger>
                 <SelectContent>

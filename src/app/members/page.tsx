@@ -298,7 +298,7 @@ export default function MembersPage() {
         )}>
           {/* Header */}
           <div className="flex-shrink-0 p-6 border-b border-border bg-background">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Members</h1>
                 <p className="text-sm text-muted-foreground">
@@ -326,8 +326,8 @@ export default function MembersPage() {
             </div>
 
             {/* Stats Bar */}
-            <div className="flex items-center gap-6 mb-4">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4 sm:gap-6 mb-4 overflow-x-auto">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <IdCard className="h-4 w-4 text-primary" />
                 </div>
@@ -336,8 +336,8 @@ export default function MembersPage() {
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</p>
                 </div>
               </div>
-              <div className="h-8 w-px bg-border" />
-              <div className="flex items-center gap-2">
+              <div className="h-8 w-px bg-border flex-shrink-0" />
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
                   <Users className="h-4 w-4 text-success" />
                 </div>
@@ -346,8 +346,8 @@ export default function MembersPage() {
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Active</p>
                 </div>
               </div>
-              <div className="h-8 w-px bg-border" />
-              <div className="flex items-center gap-2">
+              <div className="h-8 w-px bg-border flex-shrink-0" />
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
                   <Vote className="h-4 w-4 text-violet-500" />
                 </div>
@@ -359,8 +359,8 @@ export default function MembersPage() {
             </div>
 
             {/* Search & Filters */}
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 max-w-md">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[200px] max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by name, email, or AMASI number..."
@@ -370,7 +370,7 @@ export default function MembersPage() {
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[130px] h-9">
+                <SelectTrigger className="w-full sm:w-[130px] h-9">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -381,7 +381,7 @@ export default function MembersPage() {
                 </SelectContent>
               </Select>
               <Select value={votingFilter} onValueChange={setVotingFilter}>
-                <SelectTrigger className="w-[140px] h-9">
+                <SelectTrigger className="w-full sm:w-[140px] h-9">
                   <SelectValue placeholder="Voting" />
                 </SelectTrigger>
                 <SelectContent>

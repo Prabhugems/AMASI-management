@@ -319,7 +319,8 @@ export default function TravelReportsPage() {
           <div className="px-4 py-3 border-b bg-muted/50">
             <h3 className="font-semibold flex items-center gap-2"><Calendar className="h-4 w-4" />Daily Movement</h3>
           </div>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
@@ -337,6 +338,7 @@ export default function TravelReportsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </div>
       )}
 
@@ -346,7 +348,8 @@ export default function TravelReportsPage() {
           <div className="px-4 py-3 border-b bg-muted/50">
             <h3 className="font-semibold flex items-center gap-2"><Plane className="h-4 w-4" />By Airline</h3>
           </div>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Airline</TableHead>
@@ -362,6 +365,7 @@ export default function TravelReportsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </div>
       )}
     </div>

@@ -215,7 +215,7 @@ export default function PrintStationsPage() {
       </div>
 
       {/* Attendees Table */}
-      <div className="bg-card rounded-lg border overflow-hidden">
+      <div className="bg-card rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">

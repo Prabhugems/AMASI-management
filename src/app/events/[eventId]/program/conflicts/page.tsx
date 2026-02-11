@@ -421,7 +421,8 @@ export default function ConflictsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
+                <div className="overflow-x-auto">
+                  <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
@@ -464,6 +465,7 @@ export default function ConflictsPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
                 {filteredHallOverlaps.length > 50 && (
                   <p className="text-sm text-muted-foreground mt-2 text-center">
                     Showing first 50 of {filteredHallOverlaps.length} overlaps

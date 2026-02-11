@@ -1084,7 +1084,7 @@ export default function ProgramImportPage() {
 
                 {/* Days Breakdown */}
                 {importResult.analysis.scheduleSummary.daysBreakdown?.length > 0 && (
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className="border rounded-lg overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1137,7 +1137,7 @@ export default function ProgramImportPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="border rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+                <div className="border rounded-lg overflow-x-auto max-h-60 overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>

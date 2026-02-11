@@ -343,7 +343,8 @@ export default function RoomingListPage() {
               </div>
 
               {/* Guests Table */}
-              <Table>
+              <div className="overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[80px]">Room</TableHead>
@@ -409,6 +410,7 @@ export default function RoomingListPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </div>
           ))}
         </div>

@@ -199,7 +199,7 @@ export default function FormsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <Link
             href="/"
@@ -209,17 +209,17 @@ export default function FormsPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Forms</h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Create and manage forms for registrations, surveys, and more
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={openCreateDialog}>
+          <Button variant="outline" size="sm" onClick={openCreateDialog}>
             <LayoutTemplate className="w-4 h-4 mr-2" />
-            Templates
+            <span className="hidden sm:inline">Templates</span>
           </Button>
-          <Button onClick={openCreateDialog}>
+          <Button size="sm" onClick={openCreateDialog}>
             <Plus className="w-4 h-4 mr-2" />
             Create Form
           </Button>
@@ -411,7 +411,7 @@ export default function FormsPage() {
 
       {/* Create Form Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={(open) => { if (!open) closeCreateDialog() }}>
-        <DialogContent className={cn(createStep === "template" ? "max-w-2xl" : "")}>
+        <DialogContent className={cn(createStep === "template" ? "sm:max-w-2xl" : "")}>
           {createStep === "template" ? (
             <>
               <DialogHeader>

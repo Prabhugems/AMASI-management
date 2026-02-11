@@ -458,7 +458,7 @@ function TransferTable({ guests, type, onEdit, formatDate }: { guests: Guest[]; 
   }
 
   return (
-    <div className="bg-white rounded-lg border overflow-hidden">
+    <div className="bg-white rounded-lg border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className={type === "pickup" ? "bg-green-50" : "bg-red-50"}>

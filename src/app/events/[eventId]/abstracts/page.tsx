@@ -470,7 +470,7 @@ export default function AbstractsPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-card border rounded-xl overflow-hidden">
+        <div className="bg-card border rounded-xl overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

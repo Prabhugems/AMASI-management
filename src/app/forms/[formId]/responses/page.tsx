@@ -276,7 +276,8 @@ export default function FormResponsesPage() {
               <p className="text-muted-foreground">No submissions yet</p>
             </div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[180px]">Submitted</TableHead>
@@ -374,6 +375,7 @@ export default function FormResponsesPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </div>
 

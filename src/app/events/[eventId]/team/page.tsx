@@ -428,7 +428,8 @@ export default function EventTeamPage() {
               </Button>
             </div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Member</TableHead>
@@ -541,6 +542,7 @@ export default function EventTeamPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

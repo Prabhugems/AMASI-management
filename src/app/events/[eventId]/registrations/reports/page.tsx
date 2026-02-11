@@ -194,7 +194,8 @@ export default function RegistrationReportsPage() {
               By Ticket Type
             </h3>
           </div>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Ticket</TableHead>
@@ -212,6 +213,7 @@ export default function RegistrationReportsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </div>
 
         {/* Recent Registrations by Date */}
@@ -222,7 +224,8 @@ export default function RegistrationReportsPage() {
               Recent Registration Trend
             </h3>
           </div>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
@@ -240,6 +243,7 @@ export default function RegistrationReportsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </div>
       </div>
     </div>

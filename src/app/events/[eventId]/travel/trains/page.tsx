@@ -295,7 +295,7 @@ export default function TrainsPage() {
           <p className="text-muted-foreground">Add train bookings for guests traveling by train</p>
         </div>
       ) : (
-        <div className="bg-card rounded-lg border overflow-hidden">
+        <div className="bg-card rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">

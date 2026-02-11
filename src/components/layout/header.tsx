@@ -166,7 +166,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
             {showThemeMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowThemeMenu(false)} />
-                <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-border bg-popover p-4 shadow-xl z-50 animate-in slide-in-from-top-2">
+                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border bg-popover p-4 shadow-xl z-50 animate-in slide-in-from-top-2">
                   <div className="mb-4">
                     <p className="text-xs font-semibold text-muted-foreground mb-3">Appearance</p>
                     <div className="grid grid-cols-3 gap-2">
@@ -250,7 +250,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
             {showNotifications && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-border bg-popover shadow-xl z-50 animate-in slide-in-from-top-2">
+                <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border bg-popover shadow-xl z-50 animate-in slide-in-from-top-2">
                   <div className="flex items-center justify-between p-4 border-b border-border">
                     <h3 className="font-semibold text-foreground">Notifications</h3>
                     <button className="text-xs text-primary hover:text-primary/80">Mark all read</button>
@@ -315,7 +315,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
             {showUserMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-border bg-popover shadow-xl z-50 animate-in slide-in-from-top-2">
+                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border bg-popover shadow-xl z-50 animate-in slide-in-from-top-2">
                   {/* User Info Section */}
                   <div className="p-4 border-b border-border">
                     <div className="flex items-center gap-3">

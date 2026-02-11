@@ -783,7 +783,7 @@ export default function TeamPage() {
           </div>
         ) : viewMode === "table" ? (
           /* Table View */
-          <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50 hover:bg-slate-50">
@@ -1886,7 +1886,7 @@ export default function TeamPage() {
                 </div>
                 <h3 className="text-lg font-semibold">Quick Reference</h3>
               </div>
-              <div className="rounded-xl border overflow-hidden">
+              <div className="rounded-xl border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-slate-50">

@@ -373,7 +373,7 @@ export default function EventTravelDashboard() {
           </TabsList>
 
           <TabsContent value="onward" className="mt-4">
-            <div className="paper-card overflow-hidden">
+            <div className="paper-card overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -480,7 +480,7 @@ export default function EventTravelDashboard() {
           </TabsContent>
 
           <TabsContent value="return" className="mt-4">
-            <div className="paper-card overflow-hidden">
+            <div className="paper-card overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -573,7 +573,7 @@ export default function EventTravelDashboard() {
           </TabsContent>
 
           <TabsContent value="hotel" className="mt-4">
-            <div className="paper-card overflow-hidden">
+            <div className="paper-card overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -624,7 +624,7 @@ export default function EventTravelDashboard() {
           </TabsContent>
 
           <TabsContent value="transfers" className="mt-4">
-            <div className="paper-card overflow-hidden">
+            <div className="paper-card overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

@@ -307,7 +307,7 @@ export default function RoomBlockingPage() {
           ) : null}
         </div>
       ) : (
-        <div className="bg-card rounded-lg border overflow-hidden">
+        <div className="bg-card rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">

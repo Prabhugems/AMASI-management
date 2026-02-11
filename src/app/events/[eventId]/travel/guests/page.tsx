@@ -486,7 +486,7 @@ export default function TravelGuestsPage() {
           <p className="text-muted-foreground">{speakers?.length === 0 ? "No speakers require travel" : "Adjust filters"}</p>
         </div>
       ) : (
-        <div className="bg-card rounded-lg border overflow-hidden">
+        <div className="bg-card rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">

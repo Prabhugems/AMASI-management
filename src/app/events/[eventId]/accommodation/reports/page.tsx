@@ -398,7 +398,8 @@ export default function AccommodationReportsPage() {
             Hotel-wise Breakdown
           </h3>
         </div>
-        <Table>
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Hotel</TableHead>
@@ -434,6 +435,7 @@ export default function AccommodationReportsPage() {
             ))}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {/* Date-wise Check-in/out */}
@@ -445,7 +447,8 @@ export default function AccommodationReportsPage() {
               Daily Check-in / Check-out
             </h3>
           </div>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
@@ -467,6 +470,7 @@ export default function AccommodationReportsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </div>
       )}
     </div>

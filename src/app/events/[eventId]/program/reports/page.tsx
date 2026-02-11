@@ -185,7 +185,7 @@ export default function ProgramReportsPage() {
       )}
 
       {/* Sessions Table */}
-      <div className="bg-card border rounded-lg">
+      <div className="bg-card border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

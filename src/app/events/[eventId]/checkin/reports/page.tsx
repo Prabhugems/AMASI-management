@@ -591,7 +591,8 @@ export default function CheckinReportsPage() {
               By Ticket Type
             </h3>
           </div>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Ticket Type</TableHead>
@@ -626,6 +627,7 @@ export default function CheckinReportsPage() {
               })}
             </TableBody>
           </Table>
+          </div>
         </div>
 
         {/* By Check-in List */}
@@ -641,7 +643,8 @@ export default function CheckinReportsPage() {
               No check-in lists created
             </div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>List Name</TableHead>
@@ -659,6 +662,7 @@ export default function CheckinReportsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </div>
       </div>

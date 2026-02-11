@@ -231,7 +231,8 @@ export default function SpeakerReportsPage() {
             By Designation
           </h3>
         </div>
-        <Table>
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Designation</TableHead>
@@ -247,6 +248,7 @@ export default function SpeakerReportsPage() {
             ))}
           </TableBody>
         </Table>
+        </div>
       </div>
     </div>
   )
