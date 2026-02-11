@@ -20,6 +20,8 @@ import {
   Lock,
   Mail,
   Shield,
+  Award,
+  UserCheck,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -326,6 +328,80 @@ export function FormSettings({ form, onUpdate }: FormSettingsProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Certificate & Attendance - only for event-linked forms */}
+      {form.event_id && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="w-5 h-5" />
+              Certificate & Attendance
+            </CardTitle>
+            <CardDescription>
+              Control certificate release and attendance requirements for this form
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="release_certificate">Release certificate on submission</Label>
+                <p className="text-xs text-muted-foreground">
+                  Automatically release participant&apos;s certificate when they submit this form
+                </p>
+              </div>
+              <Switch
+                id="release_certificate"
+                checked={form.release_certificate_on_submission || false}
+                onCheckedChange={(checked) =>
+                  onUpdate({ release_certificate_on_submission: checked })
+                }
+              />
+            </div>
+
+            {form.release_certificate_on_submission && (
+              <div className="ml-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="auto_email_cert" className="text-sm flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5" />
+                      Auto-email certificate
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Email the certificate to the participant immediately after submission
+                    </p>
+                  </div>
+                  <Switch
+                    id="auto_email_cert"
+                    checked={form.auto_email_certificate || false}
+                    onCheckedChange={(checked) =>
+                      onUpdate({ auto_email_certificate: checked })
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="require_checkin" className="flex items-center gap-2">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  Require check-in for submission
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Only checked-in participants can submit this form
+                </p>
+              </div>
+              <Switch
+                id="require_checkin"
+                checked={form.require_check_in_for_submission || false}
+                onCheckedChange={(checked) =>
+                  onUpdate({ require_check_in_for_submission: checked })
+                }
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Limits */}
       <Card>

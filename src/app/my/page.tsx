@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   Search,
   Loader2,
@@ -30,7 +30,14 @@ import {
   XCircle,
   BookOpen,
   ScrollText,
+  MessageSquare,
+  ChevronDown,
+  ChevronUp,
+  Lock,
 } from "lucide-react"
+import { toast } from "sonner"
+import { FormRenderer } from "@/components/forms/renderer/form-renderer"
+import { Form as FormType, FormField } from "@/lib/types"
 
 interface RegistrationAddon {
   id: string
@@ -116,6 +123,7 @@ export default function DelegatePortalPage() {
   const [downloadingReceipt, setDownloadingReceipt] = useState(false)
   const [downloadingInvitation, setDownloadingInvitation] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
+  const [certGatedByFeedback, setCertGatedByFeedback] = useState(false)
 
   // Payment verification
   const [showVerifyForm, setShowVerifyForm] = useState(false)
@@ -1011,6 +1019,14 @@ export default function DelegatePortalPage() {
           registrationNumber={registration.registration_number}
         />
 
+        {/* Feedback Forms Section */}
+        <EventFeedbackForms
+          eventId={event?.id}
+          email={registration.attendee_email}
+          attendeeName={registration.attendee_name}
+          onCertGateChange={setCertGatedByFeedback}
+        />
+
         {/* Download Buttons */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* Invitation Download */}
@@ -1054,9 +1070,14 @@ export default function DelegatePortalPage() {
           {/* Certificate Download */}
           <button
             onClick={handleDownloadCertificate}
-            disabled={downloadingCert || !registration.certificate_generated_at}
-            className="bg-white rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+            disabled={downloadingCert || !registration.certificate_generated_at || certGatedByFeedback}
+            className="bg-white rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group relative"
           >
+            {certGatedByFeedback && (
+              <div className="absolute top-2 right-2">
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
+              </div>
+            )}
             <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:bg-amber-200 transition-colors">
               {downloadingCert ? (
                 <RefreshCw className="w-6 h-6 text-amber-600 animate-spin" />
@@ -1065,7 +1086,9 @@ export default function DelegatePortalPage() {
               )}
             </div>
             <h3 className="font-semibold text-gray-900 text-sm mb-1">Certificate</h3>
-            {registration.certificate_generated_at ? (
+            {certGatedByFeedback ? (
+              <p className="text-xs text-amber-600">Submit feedback first</p>
+            ) : registration.certificate_generated_at ? (
               <p className="text-xs text-green-600">Ready</p>
             ) : (
               <p className="text-xs text-gray-500">Not yet</p>
@@ -1439,6 +1462,228 @@ function AbstractSubmissions({
         <p className="text-xs text-gray-500">
           {abstracts.filter((a) => a.status !== "withdrawn").length} of {maxSubmissions} submissions used
         </p>
+      </div>
+    </div>
+  )
+}
+
+// Event Feedback Forms Component
+function EventFeedbackForms({
+  eventId,
+  email,
+  attendeeName,
+  onCertGateChange,
+}: {
+  eventId?: string
+  email: string
+  attendeeName: string
+  onCertGateChange: (gated: boolean) => void
+}) {
+  const [forms, setForms] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expandedFormSlug, setExpandedFormSlug] = useState<string | null>(null)
+  const [formDetail, setFormDetail] = useState<{ form: any; fields: any[] } | null>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  const fetchForms = useCallback(async () => {
+    if (!eventId) {
+      setLoading(false)
+      return
+    }
+
+    try {
+      const res = await fetch(
+        `/api/forms/public?event_id=${eventId}&email=${encodeURIComponent(email.toLowerCase())}`
+      )
+      const data = await res.json()
+      const formsList = data.forms || []
+      setForms(formsList)
+
+      // Check if any unsubmitted form gates the certificate
+      const hasGatingForm = formsList.some(
+        (f: any) => f.release_certificate_on_submission && !f.submitted
+      )
+      onCertGateChange(hasGatingForm)
+    } catch (error) {
+      console.error("Failed to fetch feedback forms:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [eventId, email, onCertGateChange])
+
+  useEffect(() => {
+    fetchForms()
+  }, [fetchForms])
+
+  const handleExpandForm = async (slug: string) => {
+    if (expandedFormSlug === slug) {
+      setExpandedFormSlug(null)
+      setFormDetail(null)
+      return
+    }
+
+    setExpandedFormSlug(slug)
+    setLoadingDetail(true)
+    try {
+      const res = await fetch(`/api/forms/public/${slug}`)
+      const data = await res.json()
+      setFormDetail({ form: data.form, fields: data.fields || [] })
+    } catch (error) {
+      console.error("Failed to fetch form details:", error)
+      toast.error("Failed to load form")
+      setExpandedFormSlug(null)
+    } finally {
+      setLoadingDetail(false)
+    }
+  }
+
+  const handleSubmit = async (
+    responses: Record<string, unknown>,
+    verifiedEmails?: Record<string, string>
+  ) => {
+    if (!formDetail) return
+
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/forms/submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          form_id: formDetail.form.id,
+          responses,
+          submitter_email: email.toLowerCase(),
+          submitter_name: attendeeName,
+          verified_emails: verifiedEmails,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || "Failed to submit form")
+      }
+
+      toast.success("Form submitted successfully!")
+      setExpandedFormSlug(null)
+      setFormDetail(null)
+      // Refresh forms list to update submission status
+      await fetchForms()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit form")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) return null
+  if (forms.length === 0) return null
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+          <MessageSquare className="w-5 h-5 text-purple-600" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-gray-900">Feedback Forms</h3>
+          <p className="text-xs text-gray-500">
+            {forms.filter((f: any) => f.submitted).length} of {forms.length} completed
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {forms.map((form: any) => (
+          <div key={form.id} className="border border-gray-100 rounded-xl overflow-hidden">
+            {/* Form header row */}
+            <button
+              onClick={() => !form.submitted && handleExpandForm(form.slug)}
+              disabled={form.submitted}
+              className={`w-full flex items-center justify-between p-4 text-left transition-colors ${
+                form.submitted
+                  ? "bg-green-50 cursor-default"
+                  : "hover:bg-gray-50 cursor-pointer"
+              }`}
+            >
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {form.submitted ? (
+                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                ) : form.release_certificate_on_submission ? (
+                  <Lock className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                ) : (
+                  <MessageSquare className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 text-sm truncate">{form.name}</p>
+                  {form.description && (
+                    <p className="text-xs text-gray-500 truncate">{form.description}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                {form.submitted ? (
+                  <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                    Submitted
+                  </span>
+                ) : (
+                  <>
+                    {form.release_certificate_on_submission && (
+                      <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                        Required for certificate
+                      </span>
+                    )}
+                    {expandedFormSlug === form.slug ? (
+                      <ChevronUp className="w-4 h-4 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                    )}
+                  </>
+                )}
+              </div>
+            </button>
+
+            {/* Expanded form content */}
+            {expandedFormSlug === form.slug && (
+              <div className="border-t border-gray-100 p-4 bg-gray-50">
+                {loadingDetail ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                    <span className="ml-2 text-sm text-gray-500">Loading form...</span>
+                  </div>
+                ) : formDetail ? (
+                  <FormRenderer
+                    form={formDetail.form}
+                    fields={formDetail.fields}
+                    onSubmit={handleSubmit}
+                    isSubmitting={submitting}
+                    requireEmailVerification={false}
+                    preVerifiedEmail={email.toLowerCase()}
+                    initialValues={{
+                      // Pre-fill email field if exists
+                      ...(formDetail.fields.find((f: any) => f.field_type === "email")
+                        ? { [formDetail.fields.find((f: any) => f.field_type === "email")!.id]: email.toLowerCase() }
+                        : {}),
+                      // Pre-fill name field if exists (first short_text or text field labeled "name")
+                      ...(formDetail.fields.find(
+                        (f: any) =>
+                          (f.field_type === "short_text" || f.field_type === "text") &&
+                          f.label?.toLowerCase().includes("name")
+                      )
+                        ? {
+                            [formDetail.fields.find(
+                              (f: any) =>
+                                (f.field_type === "short_text" || f.field_type === "text") &&
+                                f.label?.toLowerCase().includes("name")
+                            )!.id]: attendeeName,
+                          }
+                        : {}),
+                    }}
+                  />
+                ) : null}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )

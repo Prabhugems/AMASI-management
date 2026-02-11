@@ -65,6 +65,8 @@ export default function EventsPage() {
     end_date: string | null
     confirmed_faculty: number
     total_delegates: number
+    registrations: { count: number }[]
+    faculty_assignments: { count: number }[]
   }
 
   // Fetch events with filters
@@ -73,7 +75,7 @@ export default function EventsPage() {
     queryFn: async () => {
       let query = supabase
         .from("events")
-        .select("*")
+        .select("*, registrations(count), faculty_assignments(count)")
         .order("start_date", { ascending: false })
 
       if (search) {
@@ -408,13 +410,13 @@ export default function EventsPage() {
                     <div className="flex items-center gap-1">
                       <GraduationCap className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">
-                        {event.confirmed_faculty || 0}
+                        {event.faculty_assignments?.[0]?.count || 0}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Users className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">
-                        {event.total_delegates || 0}
+                        {event.registrations?.[0]?.count || 0}
                       </span>
                     </div>
                   </div>

@@ -64,6 +64,9 @@ interface EventSettings {
   edition: number | null
   scientific_chairman: string | null
   organizing_chairman: string | null
+  organized_by: string | null
+  signatory_title: string | null
+  signature_image_url: string | null
 }
 
 export default function SettingsPage() {
@@ -382,6 +385,17 @@ export default function SettingsPage() {
                     )}
                   </div>
 
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Organized By</label>
+                    <Input
+                      value={formData.organized_by || ""}
+                      onChange={(e) => updateField("organized_by", e.target.value)}
+                      placeholder="AMASI, Department of Surgery, BJ Medical College"
+                      className="mt-1.5"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Used in invitation letters as &quot;organized by ...&quot;</p>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-foreground">Scientific Chairman</label>
@@ -401,6 +415,29 @@ export default function SettingsPage() {
                         className="mt-1.5"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Signatory Title</label>
+                    <Input
+                      value={formData.signatory_title || ""}
+                      onChange={(e) => updateField("signatory_title", e.target.value)}
+                      placeholder="Course Convenor"
+                      className="mt-1.5"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Title shown below the signatory name in invitations (e.g., Course Convenor, Organizing Secretary)</p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Signature Image</label>
+                    <p className="text-xs text-muted-foreground mt-1 mb-2">Upload a PNG/JPG of the convenor&apos;s signature. Rendered above the name in invitation letters.</p>
+                    <ImageUpload
+                      value={formData.signature_image_url || ""}
+                      onChange={(url) => updateField("signature_image_url", url)}
+                      eventId={eventId}
+                      folder={`events/${eventId}/signature`}
+                      aspectRatio="banner"
+                    />
                   </div>
                 </div>
               </div>

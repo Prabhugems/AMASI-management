@@ -44,6 +44,8 @@ interface FormRendererProps {
   onSubmit: (responses: Record<string, unknown>, verifiedEmails?: Record<string, string>) => void
   isSubmitting?: boolean
   requireEmailVerification?: boolean
+  initialValues?: Record<string, unknown>
+  preVerifiedEmail?: string
 }
 
 function isValidEmail(email: string): boolean {
@@ -51,8 +53,8 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email)
 }
 
-export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmailVerification = true }: FormRendererProps) {
-  const [responses, setResponses] = useState<Record<string, unknown>>({})
+export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmailVerification = true, initialValues, preVerifiedEmail }: FormRendererProps) {
+  const [responses, setResponses] = useState<Record<string, unknown>>(initialValues || {})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({})
   const [fileNames, setFileNames] = useState<Record<string, string>>({})
@@ -64,7 +66,12 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
     error?: string
     memberFound?: boolean
     memberData?: Record<string, unknown>
-  }>>({})
+  }>>(() => {
+    if (!preVerifiedEmail) return {}
+    const emailField = fields.find(f => f.field_type === 'email')
+    if (!emailField) return {}
+    return { [emailField.id]: { status: 'verified' as const, otp: '', token: 'pre-verified' } }
+  })
 
   const updateResponse = useCallback((fieldId: string, value: unknown) => {
     setResponses((prev) => ({ ...prev, [fieldId]: value }))

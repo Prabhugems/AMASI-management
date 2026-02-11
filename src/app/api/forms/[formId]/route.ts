@@ -84,6 +84,7 @@ export async function PATCH(
       "name", "description", "slug", "form_type", "event_id", "status",
       "is_public", "requires_auth", "allow_multiple_submissions",
       "is_member_form", "membership_required_strict",
+      "release_certificate_on_submission", "auto_email_certificate", "require_check_in_for_submission",
       "submit_button_text", "success_message", "redirect_url",
       "logo_url", "header_image_url", "primary_color", "background_color",
       "notify_on_submission", "notification_emails",

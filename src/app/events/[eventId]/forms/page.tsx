@@ -18,6 +18,12 @@ import {
   Users,
   RefreshCw,
   Eye,
+  LayoutTemplate,
+  ClipboardCheck,
+  UserPlus,
+  MessageSquare,
+  Mic,
+  ArrowLeft,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,6 +54,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { FORM_TEMPLATES, FormTemplateDefinition, TemplateField } from "@/lib/form-templates"
 
 const formTypeLabels: Record<string, string> = {
   event_registration: "Registration",
@@ -62,6 +69,13 @@ const statusColors: Record<string, string> = {
   archived: "bg-warning/10 text-warning",
 }
 
+const templateIcons: Record<string, React.ElementType> = {
+  ClipboardCheck,
+  UserPlus,
+  MessageSquare,
+  Mic,
+}
+
 export default function EventFormsPage() {
   const params = useParams()
   const router = useRouter()
@@ -71,6 +85,9 @@ export default function EventFormsPage() {
 
   const [search, setSearch] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [createStep, setCreateStep] = useState<"template" | "details">("template")
+  const [selectedTemplate, setSelectedTemplate] = useState<FormTemplateDefinition | null>(null)
+  const [templateFields, setTemplateFields] = useState<TemplateField[] | null>(null)
   const [newFormData, setNewFormData] = useState({
     name: "",
     description: "",
@@ -124,7 +141,7 @@ export default function EventFormsPage() {
 
   // Create form mutation
   const createForm = useMutation({
-    mutationFn: async (data: typeof newFormData) => {
+    mutationFn: async (data: typeof newFormData & { template_fields?: TemplateField[] }) => {
       const response = await fetch("/api/forms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -141,8 +158,7 @@ export default function EventFormsPage() {
     },
     onSuccess: (form) => {
       queryClient.invalidateQueries({ queryKey: ["event-forms", eventId] })
-      setIsCreateOpen(false)
-      setNewFormData({ name: "", description: "", form_type: "event_registration" })
+      closeCreateDialog()
       toast.success("Form created successfully")
       router.push(`/forms/${form.id}/edit`)
     },
@@ -168,12 +184,48 @@ export default function EventFormsPage() {
     },
   })
 
+  const closeCreateDialog = () => {
+    setIsCreateOpen(false)
+    setCreateStep("template")
+    setSelectedTemplate(null)
+    setTemplateFields(null)
+    setNewFormData({ name: "", description: "", form_type: "event_registration" })
+  }
+
+  const openCreateDialog = () => {
+    setCreateStep("template")
+    setSelectedTemplate(null)
+    setTemplateFields(null)
+    setNewFormData({ name: "", description: "", form_type: "event_registration" })
+    setIsCreateOpen(true)
+  }
+
+  const selectTemplate = (template: FormTemplateDefinition | null) => {
+    if (template) {
+      setSelectedTemplate(template)
+      setTemplateFields(template.fields)
+      setNewFormData({
+        name: template.name,
+        description: template.description,
+        form_type: template.form_type,
+      })
+    } else {
+      setSelectedTemplate(null)
+      setTemplateFields(null)
+      setNewFormData({ name: "", description: "", form_type: "event_registration" })
+    }
+    setCreateStep("details")
+  }
+
   const handleCreateForm = () => {
     if (!newFormData.name.trim()) {
       toast.error("Please enter a form name")
       return
     }
-    createForm.mutate(newFormData)
+    createForm.mutate({
+      ...newFormData,
+      ...(templateFields ? { template_fields: templateFields } : {}),
+    })
   }
 
   return (
@@ -186,7 +238,7 @@ export default function EventFormsPage() {
             Create and manage forms for {event?.short_name || event?.name || "this event"}
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
+        <Button onClick={openCreateDialog}>
           <Plus className="w-4 h-4 mr-2" />
           Create Form
         </Button>
@@ -314,7 +366,7 @@ export default function EventFormsPage() {
           <p className="text-muted-foreground mb-6">
             Create your first form for this event
           </p>
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <Button onClick={openCreateDialog}>
             <Plus className="w-4 h-4 mr-2" />
             Create Form
           </Button>
@@ -322,58 +374,139 @@ export default function EventFormsPage() {
       )}
 
       {/* Create Form Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Event Form</DialogTitle>
-            <DialogDescription className="sr-only">Create a new form for this event</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="name">Form Name</Label>
-              <Input
-                id="name"
-                value={newFormData.name}
-                onChange={(e) => setNewFormData({ ...newFormData, name: e.target.value })}
-                placeholder="e.g., Registration Form"
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Description (optional)</Label>
-              <Textarea
-                id="description"
-                value={newFormData.description}
-                onChange={(e) => setNewFormData({ ...newFormData, description: e.target.value })}
-                placeholder="Brief description of the form"
-                rows={3}
-              />
-            </div>
-            <div>
-              <Label htmlFor="type">Form Type</Label>
-              <Select
-                value={newFormData.form_type}
-                onValueChange={(value) => setNewFormData({ ...newFormData, form_type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="event_registration">Registration</SelectItem>
-                  <SelectItem value="feedback">Feedback</SelectItem>
-                  <SelectItem value="survey">Survey</SelectItem>
-                  <SelectItem value="application">Application</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateForm} disabled={createForm.isPending}>
-              {createForm.isPending ? "Creating..." : "Create Form"}
-            </Button>
-          </DialogFooter>
+      <Dialog open={isCreateOpen} onOpenChange={(open) => { if (!open) closeCreateDialog() }}>
+        <DialogContent className={cn(createStep === "template" ? "max-w-2xl" : "")}>
+          <DialogDescription className="sr-only">Create a new form for this event</DialogDescription>
+          {createStep === "template" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Choose a Template</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Blank Form */}
+                  <button
+                    onClick={() => selectTemplate(null)}
+                    className="text-left p-4 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                        <Plus className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-sm group-hover:text-primary transition-colors">Blank Form</h3>
+                        <p className="text-xs text-muted-foreground">Start from scratch</p>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Template Cards */}
+                  {FORM_TEMPLATES.map((template) => {
+                    const Icon = templateIcons[template.icon] || FileText
+                    return (
+                      <button
+                        key={template.id}
+                        onClick={() => selectTemplate(template)}
+                        className="text-left p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Icon className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-sm group-hover:text-primary transition-colors truncate">
+                              {template.name}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                {formTypeLabels[template.form_type] || template.form_type}
+                              </Badge>
+                              <span className="text-[10px] text-muted-foreground">
+                                {template.fields.length} fields
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {template.description}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCreateStep("template")}
+                    className="p-1 rounded hover:bg-secondary transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                  <DialogTitle>
+                    {selectedTemplate ? `Create from: ${selectedTemplate.name}` : "Create Event Form"}
+                  </DialogTitle>
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                {selectedTemplate && (
+                  <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg text-sm">
+                    <LayoutTemplate className="w-4 h-4 text-primary flex-shrink-0" />
+                    <span className="text-muted-foreground">
+                      This form will be pre-filled with <strong className="text-foreground">{selectedTemplate.fields.length} fields</strong> from the template. You can customize them after creation.
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="name">Form Name</Label>
+                  <Input
+                    id="name"
+                    value={newFormData.name}
+                    onChange={(e) => setNewFormData({ ...newFormData, name: e.target.value })}
+                    placeholder="e.g., Registration Form"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="description">Description (optional)</Label>
+                  <Textarea
+                    id="description"
+                    value={newFormData.description}
+                    onChange={(e) => setNewFormData({ ...newFormData, description: e.target.value })}
+                    placeholder="Brief description of the form"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="type">Form Type</Label>
+                  <Select
+                    value={newFormData.form_type}
+                    onValueChange={(value) => setNewFormData({ ...newFormData, form_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="event_registration">Registration</SelectItem>
+                      <SelectItem value="feedback">Feedback</SelectItem>
+                      <SelectItem value="survey">Survey</SelectItem>
+                      <SelectItem value="application">Application</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={closeCreateDialog}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateForm} disabled={createForm.isPending}>
+                  {createForm.isPending ? "Creating..." : "Create Form"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     // Verify form exists and is published (no join — keep it simple)
     const { data: form, error: formError } = await supabase
       .from("forms")
-      .select("id, name, status, allow_multiple_submissions, max_submissions, submission_deadline, notify_on_submission, notification_emails")
+      .select("id, name, status, allow_multiple_submissions, max_submissions, submission_deadline, notify_on_submission, notification_emails, event_id, release_certificate_on_submission, auto_email_certificate, require_check_in_for_submission")
       .eq("id", form_id)
       .single()
 
@@ -171,12 +171,43 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check-in gate: if form requires check-in, verify participant is checked in
+    if (form.require_check_in_for_submission && form.event_id && submitter_email) {
+      const { data: registration } = await supabase
+        .from("registrations")
+        .select("id, checked_in")
+        .eq("event_id", form.event_id)
+        .eq("attendee_email", submitter_email)
+        .limit(1)
+        .maybeSingle()
+
+      if (!registration) {
+        return NextResponse.json(
+          { error: "No registration found for this email. Please register for the event first." },
+          { status: 400 }
+        )
+      }
+
+      if (!registration.checked_in) {
+        return NextResponse.json(
+          { error: "You must be checked in at the event to submit this form" },
+          { status: 400 }
+        )
+      }
+    }
+
     // Get client info
     const headersList = await headers()
     const clientIp = headersList.get("x-forwarded-for")?.split(",")[0]
       || headersList.get("x-real-ip")
       || "unknown"
     const userAgent = headersList.get("user-agent") || "unknown"
+
+    // Build submission metadata
+    const submissionMetadata: Record<string, unknown> = {
+      verified_emails: verified_emails || {},
+      submitted_at: new Date().toISOString(),
+    }
 
     // Insert submission — just INSERT, no select back
     const { error: insertError } = await supabase
@@ -189,10 +220,7 @@ export async function POST(request: NextRequest) {
         user_agent: userAgent,
         responses: {
           ...responses,
-          _metadata: {
-            verified_emails: verified_emails || {},
-            submitted_at: new Date().toISOString(),
-          },
+          _metadata: submissionMetadata,
         },
         status: "pending",
       })
@@ -224,6 +252,79 @@ export async function POST(request: NextRequest) {
           responses,
         }),
       }).catch(() => {})
+    }
+
+    // Certificate release: if enabled, release certificate for the participant
+    if (form.release_certificate_on_submission && form.event_id && submitter_email) {
+      try {
+        // Find registration by email + event_id
+        const { data: registration } = await supabase
+          .from("registrations")
+          .select("id, attendee_email, certificate_url, custom_fields")
+          .eq("event_id", form.event_id)
+          .eq("attendee_email", submitter_email)
+          .limit(1)
+          .maybeSingle()
+
+        if (registration) {
+          // Mark certificate as released in custom_fields
+          const customFields = registration.custom_fields || {}
+          await supabase
+            .from("registrations")
+            .update({
+              custom_fields: {
+                ...customFields,
+                certificate_released: true,
+                certificate_released_at: new Date().toISOString(),
+                certificate_released_via: "form_submission",
+              },
+            })
+            .eq("id", registration.id)
+
+          // Update the submission metadata to record certificate release
+          // (best-effort: find and update the just-inserted submission)
+          const { data: latestSubmission } = await supabase
+            .from("form_submissions")
+            .select("id, responses")
+            .eq("form_id", form_id)
+            .eq("submitter_email", submitter_email)
+            .order("submitted_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (latestSubmission) {
+            const updatedResponses = {
+              ...latestSubmission.responses,
+              _metadata: {
+                ...(latestSubmission.responses as any)?._metadata,
+                certificate_released: true,
+              },
+            }
+            await supabase
+              .from("form_submissions")
+              .update({ responses: updatedResponses })
+              .eq("id", latestSubmission.id)
+          }
+
+          // Auto-email certificate if enabled
+          if (form.auto_email_certificate && registration.id) {
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+            fetch(`${baseUrl}/api/certificates/email`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                registration_id: registration.id,
+                event_id: form.event_id,
+              }),
+            }).catch((err) => {
+              console.error("Failed to send certificate email:", err)
+            })
+          }
+        }
+      } catch (certError) {
+        // Best-effort: don't fail the submission if certificate release fails
+        console.error("Error releasing certificate on submission:", certError)
+      }
     }
 
     return NextResponse.json({ success: true, status: "pending" }, { status: 201 })

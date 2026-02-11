@@ -18,6 +18,8 @@ import {
   MoreHorizontal,
   Mail,
   Filter,
+  Award,
+  Minus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -101,6 +103,7 @@ export default function FormResponsesPage() {
 
   const form: Form | null = formData || null
   const fields: FormField[] = formData?.fields || []
+  const showCertColumn = !!form?.release_certificate_on_submission
   const submissions: FormSubmission[] = submissionsData?.data || []
   const totalPages = submissionsData?.totalPages || 1
 
@@ -279,6 +282,11 @@ export default function FormResponsesPage() {
                   <TableHead className="w-[180px]">Submitted</TableHead>
                   <TableHead className="w-[100px]">Status</TableHead>
                   <TableHead>Email</TableHead>
+                  {showCertColumn && (
+                    <TableHead className="w-[60px] text-center">
+                      <Award className="w-4 h-4 mx-auto" />
+                    </TableHead>
+                  )}
                   {fields.slice(0, 3).map((field) => (
                     <TableHead key={field.id} className="max-w-[200px]">
                       {field.label}
@@ -311,6 +319,15 @@ export default function FormResponsesPage() {
                           {submission.submitter_email || "-"}
                         </div>
                       </TableCell>
+                      {showCertColumn && (
+                        <TableCell className="text-center">
+                          {(submission.responses as any)?._metadata?.certificate_released ? (
+                            <Award className="w-4 h-4 text-emerald-600 mx-auto" />
+                          ) : (
+                            <Minus className="w-4 h-4 text-muted-foreground mx-auto" />
+                          )}
+                        </TableCell>
+                      )}
                       {fields.slice(0, 3).map((field) => (
                         <TableCell key={field.id} className="max-w-[200px] truncate">
                           {getFieldValue(submission, field.id)}

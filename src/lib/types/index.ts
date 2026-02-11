@@ -529,6 +529,9 @@ export interface Form {
   allow_multiple_submissions: boolean
   is_member_form?: boolean // AMASI membership verification enabled
   membership_required_strict?: boolean // Block non-members from submitting (default true for exams, false for discounts)
+  release_certificate_on_submission?: boolean
+  auto_email_certificate?: boolean
+  require_check_in_for_submission?: boolean
   submit_button_text: string
   success_message: string
   redirect_url?: string
