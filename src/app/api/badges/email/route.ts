@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const venue = event?.venue_name ? `${event.venue_name}${event.city ? `, ${event.city}` : ""}` : ""
 
     // Generate URLs
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
     const badgeUrl = `${baseUrl}/api/badge/${encodeURIComponent(registration.registration_number)}/download`
     const portalUrl = `${baseUrl}/my`
 

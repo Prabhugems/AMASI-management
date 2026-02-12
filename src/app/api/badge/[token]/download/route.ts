@@ -57,7 +57,7 @@ function replacePlaceholders(text: string, registration: any, event: any): strin
   result = result.replace(/\{\{checkin_token\}\}/g, checkinToken)
 
   const baseUrl = getBaseUrl()
-  const verifyUrl = `${baseUrl}/v/${checkinToken}`
+  const verifyUrl = `${baseUrl}/v/${encodeURIComponent(checkinToken)}`
   result = result.replace(/\{\{checkin_url\}\}/g, verifyUrl)
   result = result.replace(/\{\{verify_url\}\}/g, verifyUrl)
 

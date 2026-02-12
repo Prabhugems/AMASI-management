@@ -111,8 +111,12 @@ function StatusPageContent() {
         body: JSON.stringify({
           amount: registration.payment.net_amount,
           currency: "INR",
-          receipt: registration.payment.payment_number,
-          notes: {
+          event_id: registration.event?.id,
+          payer_name: registration.attendee_name,
+          payer_email: registration.attendee_email,
+          payer_phone: registration.attendee_phone || "",
+          tickets: registration.ticket_type ? [{ id: registration.ticket_type.id, quantity: 1 }] : [],
+          metadata: {
             registration_id: registration.id,
             payment_id: registration.payment.id,
             retry: true,
@@ -136,7 +140,7 @@ function StatusPageContent() {
       }
 
       const options = {
-        key: orderData.key_id,
+        key: orderData.key,
         amount: orderData.amount,
         currency: orderData.currency,
         name: registration.event?.name || "Event Registration",

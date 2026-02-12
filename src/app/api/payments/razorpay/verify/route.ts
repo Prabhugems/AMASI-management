@@ -736,14 +736,41 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
           })
 
           if (certResult.ok) {
-            const certData = await certResult.json()
             console.log(`[AUTO] Certificate generated for ${regData.registration_number}`)
 
-            if (certData.certificate_url) {
+            // Store the certificate PDF in Supabase storage
+            try {
+              const certPdfBytes = await certResult.arrayBuffer()
+              const certFileName = `certificates/${eventId}/${registrationId}.pdf`
+              const { error: uploadError } = await supabase
+                .storage
+                .from("certificates")
+                .upload(certFileName, Buffer.from(certPdfBytes), {
+                  contentType: "application/pdf",
+                  upsert: true,
+                })
+
+              if (!uploadError) {
+                const { data: urlData } = supabase
+                  .storage
+                  .from("certificates")
+                  .getPublicUrl(certFileName)
+
+                await supabase
+                  .from("registrations")
+                  .update({
+                    certificate_url: urlData?.publicUrl,
+                    certificate_generated_at: new Date().toISOString(),
+                    certificate_template_id: (certTemplate as any).id,
+                  })
+                  .eq("id", registrationId)
+              }
+            } catch (storeError) {
+              console.error(`[AUTO] Failed to store certificate:`, storeError)
+              // Still update generation timestamp even if storage fails
               await supabase
                 .from("registrations")
                 .update({
-                  certificate_url: certData.certificate_url,
                   certificate_generated_at: new Date().toISOString(),
                   certificate_template_id: (certTemplate as any).id,
                 })
@@ -756,9 +783,7 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   registration_id: registrationId,
-                  email: regData.attendee_email,
-                  attendee_name: regData.attendee_name,
-                  event_name: regData.events?.name,
+                  event_id: eventId,
                 }),
               })
               if (certEmailResult.ok) {

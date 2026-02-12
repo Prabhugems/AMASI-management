@@ -112,7 +112,7 @@ function replacePlaceholders(text: string, registration: any, event: any): strin
 
   // Full verification URL for QR codes
   const baseUrl = getBaseUrl()
-  const verifyUrl = `${baseUrl}/v/${checkinToken}`
+  const verifyUrl = `${baseUrl}/v/${encodeURIComponent(checkinToken)}`
   result = result.replace(/\{\{checkin_url\}\}/g, verifyUrl)
   result = result.replace(/\{\{verify_url\}\}/g, verifyUrl)
 

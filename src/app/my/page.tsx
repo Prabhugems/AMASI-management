@@ -188,6 +188,7 @@ export default function DelegatePortalPage() {
           payer_name: reg.attendee_name,
           payer_email: reg.attendee_email,
           payer_phone: reg.attendee_phone,
+          tickets: reg.ticket_type ? [{ id: reg.ticket_type.id, quantity: 1 }] : [],
           metadata: {
             registration_id: reg.id,
             retry: true,
