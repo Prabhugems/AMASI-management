@@ -67,10 +67,10 @@ export default function OrdersInstructionsPage() {
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
               Registrations created by admin where payment was collected offline (cash, bank transfer, etc.).
-              These don't have Razorpay payment IDs.
+              These don&apos;t have Razorpay payment IDs.
             </p>
             <div className="mt-2 text-sm">
-              <span className="font-medium">Payment Method:</span> Shows as "offline" or "admin"
+              <span className="font-medium">Payment Method:</span> Shows as &quot;offline&quot; or &quot;admin&quot;
             </div>
           </div>
         </div>
@@ -191,8 +191,8 @@ export default function OrdersInstructionsPage() {
           <li className="flex gap-2">
             <ArrowRight className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
             <span>
-              <strong>Pending orders</strong> are automatically expired after 5 minutes. If a delegate's
-              payment didn't go through, they can retry from their delegate portal.
+              <strong>Pending orders</strong> are automatically expired after 5 minutes. If a delegate&apos;s
+              payment didn&apos;t go through, they can retry from their delegate portal.
             </span>
           </li>
           <li className="flex gap-2">

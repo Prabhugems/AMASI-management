@@ -795,7 +795,7 @@ export default function SubmitAbstractPage() {
 
             {coAuthors.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No co-authors added. Click "Add" to include co-authors.
+                No co-authors added. Click &quot;Add&quot; to include co-authors.
               </p>
             ) : (
               <div className="space-y-4">

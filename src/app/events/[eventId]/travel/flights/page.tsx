@@ -588,7 +588,7 @@ export default function FlightsPage() {
                 <div className="p-1.5 rounded-md bg-blue-100">
                   <Plane className="h-4 w-4 text-blue-600" />
                 </div>
-                <h3 className="font-semibold text-sm">Speaker's Request</h3>
+                <h3 className="font-semibold text-sm">Speaker&apos;s Request</h3>
               </div>
               {editingGuest && (() => {
                 const travel = editingGuest.custom_fields?.travel_details

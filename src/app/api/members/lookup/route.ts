@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { checkRateLimit, getClientIp, createRateLimitHeaders, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // GET /api/members/lookup?email=xxx
 export async function GET(request: NextRequest) {

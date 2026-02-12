@@ -83,7 +83,7 @@ export function NotifyMeModal({ eventId, eventName, isOpen, onClose }: NotifyMeM
             <h2 className="text-xl font-bold">Get Notified</h2>
           </div>
           <p className="text-emerald-100 text-sm">
-            We'll notify you about updates and registration reminders for this event.
+            We&apos;ll notify you about updates and registration reminders for this event.
           </p>
         </div>
 
@@ -92,8 +92,8 @@ export function NotifyMeModal({ eventId, eventName, isOpen, onClose }: NotifyMeM
           {isSuccess ? (
             <div className="text-center py-6">
               <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">You're on the list!</h3>
-              <p className="text-gray-500">We'll keep you updated about {eventName}.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">You&apos;re on the list!</h3>
+              <p className="text-gray-500">We&apos;ll keep you updated about {eventName}.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -160,7 +160,7 @@ export function NotifyMeModal({ eventId, eventName, isOpen, onClose }: NotifyMeM
               </button>
 
               <p className="text-xs text-gray-500 text-center">
-                We'll only send you updates about this event. No spam, ever.
+                We&apos;ll only send you updates about this event. No spam, ever.
               </p>
             </form>
           )}

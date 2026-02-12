@@ -581,7 +581,7 @@ export default function CommunicationsSettingsPage() {
                     onChange={(e) => setSettings({ ...settings, webhook_secret: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    We'll send X-Webhook-Signature header with HMAC-SHA256 of the payload
+                    We&apos;ll send X-Webhook-Signature header with HMAC-SHA256 of the payload
                   </p>
                 </div>
 

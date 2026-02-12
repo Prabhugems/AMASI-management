@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Create Registrations for each attendee
     const registrations: Array<Record<string, unknown>> = []
-    const registrationInserts = attendeePricing.map(({ attendee, ticket, unitPrice, taxAmount, totalAmount: attendeeTotal }) => {
+    const registrationInserts = attendeePricing.map(({ attendee, unitPrice, taxAmount, totalAmount: attendeeTotal }) => {
       const initialStatus = isFree
         ? (requiresApproval ? "pending" : "confirmed")
         : "pending"

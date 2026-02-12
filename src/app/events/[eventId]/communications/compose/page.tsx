@@ -329,7 +329,7 @@ export default function ComposeMessagePage() {
               )}
 
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <p>Use {"{{name}}"} to personalize with recipient's name</p>
+                <p>Use {"{{name}}"} to personalize with recipient&apos;s name</p>
                 {channel === "sms" && (
                   <p>{message.length} / 160 characters ({Math.ceil(message.length / 160)} segment{Math.ceil(message.length / 160) !== 1 ? "s" : ""})</p>
                 )}

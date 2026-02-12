@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 
 /**
  * Hook for matching media queries
@@ -276,17 +276,17 @@ export function useElementSize<T extends HTMLElement = HTMLDivElement>(): {
   width: number
   height: number
 } {
+  const elementRef = useRef<T | null>(null)
+  const observerRef = useRef<ResizeObserver | null>(null)
+
+  const [size, setSize] = useState({ width: 0, height: 0 })
+
   const ref = useCallback((node: T | null) => {
     if (node) {
       elementRef.current = node
       observerRef.current?.observe(node)
     }
   }, []) as unknown as React.RefObject<T>
-
-  const elementRef = { current: null as T | null }
-  const observerRef = { current: null as ResizeObserver | null }
-
-  const [size, setSize] = useState({ width: 0, height: 0 })
 
   useEffect(() => {
     observerRef.current = new ResizeObserver((entries) => {
@@ -298,6 +298,10 @@ export function useElementSize<T extends HTMLElement = HTMLDivElement>(): {
         })
       }
     })
+
+    if (elementRef.current) {
+      observerRef.current.observe(elementRef.current)
+    }
 
     return () => {
       observerRef.current?.disconnect()

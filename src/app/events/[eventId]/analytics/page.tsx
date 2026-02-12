@@ -327,7 +327,7 @@ export default function EventAnalyticsPage({
                 <p className="text-gray-500 text-sm mt-1">Interested visitors</p>
               </div>
               <p className="text-xs text-gray-500 text-center">
-                People who showed interest but haven't registered yet
+                People who showed interest but haven&apos;t registered yet
               </p>
             </div>
           </div>

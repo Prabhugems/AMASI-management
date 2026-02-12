@@ -611,6 +611,7 @@ export default function FloorPlanPage() {
                             {sponsor.logo_url ? (
                               <img
                                 src={sponsor.logo_url}
+                                alt={`${sponsor.name || 'Sponsor'} logo`}
                                 className="w-5 h-5 object-contain rounded"
                                 onError={(e) => e.currentTarget.style.display = 'none'}
                               />

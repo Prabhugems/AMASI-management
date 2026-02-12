@@ -116,7 +116,15 @@ export default function PublicFormPage() {
     onSuccess: () => {
       setIsSubmitted(true)
       if (data.form.redirect_url) {
-        window.location.href = data.form.redirect_url
+        // Validate redirect URL is same-origin or relative to prevent open redirects
+        try {
+          const redirectUrl = new URL(data.form.redirect_url, window.location.origin)
+          if (redirectUrl.origin === window.location.origin) {
+            window.location.href = redirectUrl.href
+          }
+        } catch {
+          // Invalid URL - ignore redirect
+        }
       }
     },
     onError: (error: Error) => {

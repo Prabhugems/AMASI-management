@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     // Build a map of email -> travel requirements from sessions
     // The session description format is "Name | Email | Phone"
     // We need to check if any session mentions travel requirements
-    const travelMap = new Map<string, { needsTravel: boolean; needsHotel: boolean }>()
+    const _travelMap = new Map<string, { needsTravel: boolean; needsHotel: boolean }>()
 
     // For now, we'll parse from the original CSV data stored in session metadata
     // But since we don't have that, let's check the speaker's portal page submissions

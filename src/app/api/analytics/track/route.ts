@@ -85,14 +85,13 @@ export async function POST(request: NextRequest) {
       })
 
     if (error) {
-      // Silently ignore - table might not exist yet
-      // console.error("Failed to track page view:", error)
+      console.warn("Failed to track page view:", error.message)
+      return NextResponse.json({ success: false, error: "Failed to track" }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error in POST /api/analytics/track:", error)
-    // Return success anyway - tracking shouldn't break the page
-    return NextResponse.json({ success: true })
+  } catch (_error) {
+    console.error("Error in POST /api/analytics/track:", _error)
+    return NextResponse.json({ success: false, error: "Internal error" }, { status: 500 })
   }
 }

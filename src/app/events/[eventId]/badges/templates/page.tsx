@@ -442,7 +442,7 @@ export default function BadgeTemplatesPage() {
           </div>
 
           {/* 4x6 Templates */}
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3">4" × 6" Templates</h3>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-3">4&quot; × 6&quot; Templates</h3>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mb-8">
             {PRE_BUILT_TEMPLATES.filter(t => t.size === "4x6").map((template) => (
               <Link
@@ -471,7 +471,7 @@ export default function BadgeTemplatesPage() {
           </div>
 
           {/* 4x3 Templates */}
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3">4" × 3" Templates</h3>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-3">4&quot; × 3&quot; Templates</h3>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {PRE_BUILT_TEMPLATES.filter(t => t.size === "4x3").map((template) => (
               <Link
@@ -569,7 +569,7 @@ export default function BadgeTemplatesPage() {
               <strong>{unlockTemplate.badges_generated_count || 0} badges</strong>.
             </p>
             <p className="text-muted-foreground mb-4">
-              Unlocking allows you to edit the design, but already printed badges won't be updated automatically.
+              Unlocking allows you to edit the design, but already printed badges won&apos;t be updated automatically.
               You may need to reprint affected badges.
             </p>
             <div className="flex gap-2 justify-end">

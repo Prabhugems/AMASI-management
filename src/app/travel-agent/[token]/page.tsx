@@ -1260,7 +1260,7 @@ export default function TravelAgentPortal() {
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                   <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2 text-sm">
                     <Plane className="h-4 w-4" />
-                    Speaker's Flight Preferences
+                    Speaker&apos;s Flight Preferences
                   </h4>
                   <div className="grid grid-cols-2 gap-2">
                     {editingSpeaker.custom_fields.flight_preference_images.map((url: string, index: number) => (

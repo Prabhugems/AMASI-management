@@ -91,7 +91,7 @@ function StatusPageContent() {
       }
 
       setRegistration(data.registration)
-    } catch (err) {
+    } catch (_err) {
       setError("Failed to search. Please try again.")
     } finally {
       setLoading(false)
@@ -431,7 +431,7 @@ function StatusPageContent() {
 
         {/* Help Text */}
         <div className="mt-8 text-center text-sm text-gray-500">
-          <p>Can't find your registration? Contact the event organizers for assistance.</p>
+          <p>Can&apos;t find your registration? Contact the event organizers for assistance.</p>
         </div>
       </div>
     </div>

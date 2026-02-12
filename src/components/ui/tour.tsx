@@ -72,6 +72,21 @@ export function Tour({
     }
   }, [isOpen, step, currentStep])
 
+  const handleNext = React.useCallback(() => {
+    if (isLastStep) {
+      onComplete?.()
+      onClose()
+    } else {
+      setCurrentStep((prev) => prev + 1)
+    }
+  }, [isLastStep, onComplete, onClose])
+
+  const handlePrev = React.useCallback(() => {
+    if (!isFirstStep) {
+      setCurrentStep((prev) => prev - 1)
+    }
+  }, [isFirstStep])
+
   // Keyboard navigation
   React.useEffect(() => {
     if (!isOpen) return
@@ -88,22 +103,7 @@ export function Tour({
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, currentStep])
-
-  const handleNext = () => {
-    if (isLastStep) {
-      onComplete?.()
-      onClose()
-    } else {
-      setCurrentStep((prev) => prev + 1)
-    }
-  }
-
-  const handlePrev = () => {
-    if (!isFirstStep) {
-      setCurrentStep((prev) => prev - 1)
-    }
-  }
+  }, [isOpen, onClose, handleNext, handlePrev])
 
   const handleSkip = () => {
     onClose()

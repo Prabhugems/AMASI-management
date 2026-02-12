@@ -231,7 +231,7 @@ export default function AbstractSettingsPage() {
                 onChange={(e) => updateField("revision_deadline", e.target.value ? new Date(e.target.value).toISOString() : null)}
                 className="mt-1"
               />
-              <p className="text-xs text-muted-foreground mt-1">Deadline for revisions after "revision requested"</p>
+              <p className="text-xs text-muted-foreground mt-1">Deadline for revisions after &quot;revision requested&quot;</p>
             </div>
             <div>
               <label className="text-sm font-medium">Notification Date</label>

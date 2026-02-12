@@ -230,7 +230,7 @@ export async function PUT(
     const { error: formAuthError } = await requireFormAccess(formId)
     if (formAuthError) return formAuthError
 
-    const supabase: SupabaseClient = await createServerSupabaseClient()
+    const _supabase: SupabaseClient = await createServerSupabaseClient()
     const body = await request.json()
 
     if (!Array.isArray(body.fields)) {

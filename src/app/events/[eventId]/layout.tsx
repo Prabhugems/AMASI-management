@@ -54,7 +54,7 @@ export default function EventLayout({
           </div>
           <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
           <p className="text-muted-foreground mb-6">
-            You don't have permission to access this event. Please contact an administrator if you believe this is an error.
+            You don&apos;t have permission to access this event. Please contact an administrator if you believe this is an error.
           </p>
           <Button onClick={() => router.back()}>Go Back</Button>
         </div>

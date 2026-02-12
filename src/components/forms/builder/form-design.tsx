@@ -51,7 +51,7 @@ export function FormDesign({ form, onUpdate }: FormDesignProps) {
               Colors
             </CardTitle>
             <CardDescription>
-              Customize your form's color scheme
+              Customize your form&apos;s color scheme
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -144,6 +144,7 @@ export function FormDesign({ form, onUpdate }: FormDesignProps) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image className="w-5 h-5" />
               Branding
             </CardTitle>

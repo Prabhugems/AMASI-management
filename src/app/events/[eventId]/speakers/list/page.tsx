@@ -2177,7 +2177,7 @@ export default function SpeakersPage() {
 
                     {!selectedSpeaker.custom_fields.travel_id?.full_name_as_passport && (
                       <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
-                        Speaker hasn't provided booking details yet
+                        Speaker hasn&apos;t provided booking details yet
                       </p>
                     )}
 

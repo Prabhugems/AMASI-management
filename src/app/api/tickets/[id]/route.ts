@@ -25,7 +25,7 @@ export async function GET(
     }
 
     return NextResponse.json({ data })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to process ticket request" }, { status: 500 })
   }
 }
@@ -75,7 +75,7 @@ export async function PATCH(
     }
 
     return NextResponse.json({ success: true, data })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to process ticket request" }, { status: 500 })
   }
 }
@@ -112,7 +112,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to process ticket request" }, { status: 500 })
   }
 }

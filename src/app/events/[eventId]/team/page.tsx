@@ -420,7 +420,7 @@ export default function EventTeamPage() {
               <h3 className="text-lg font-semibold mb-1">No team members yet</h3>
               <p className="text-sm text-muted-foreground mb-6 max-w-sm">
                 Add team members to give them access to manage this event.
-                They'll receive a magic link to login.
+                They&apos;ll receive a magic link to login.
               </p>
               <Button onClick={openCreateDialog}>
                 <UserPlus className="h-4 w-4 mr-2" />

@@ -87,6 +87,7 @@ export function CurrencyInput({
     if (!isFocused) {
       setDisplayValue(formatForDisplay(value))
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- formatForDisplay is stable across renders since it only uses props
   }, [value, isFocused])
 
   const handleFocus = () => {

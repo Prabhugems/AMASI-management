@@ -1180,7 +1180,7 @@ export default function HallControlDashboard() {
             </div>
 
             <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-4">
-              <h3 className="text-sm font-bold text-white/60 uppercase tracking-wider mb-4">Today's Speakers</h3>
+              <h3 className="text-sm font-bold text-white/60 uppercase tracking-wider mb-4">Today&apos;s Speakers</h3>
               <div className="space-y-2">
                 {todaySessions.flatMap(s => parseSpeakers(s)).filter((s, i, arr) => arr.findIndex(x => x.name === s.name) === i).map((speaker, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">

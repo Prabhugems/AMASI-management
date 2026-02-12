@@ -608,7 +608,7 @@ export default function ProgramImportPage() {
               {useAdvancedMode && (
                 <div className="mt-4 p-4 border rounded-lg bg-muted/30">
                   <p className="text-sm text-muted-foreground mb-3">
-                    Use manual mapping if AI detection doesn't work correctly for your CSV format.
+                    Use manual mapping if AI detection doesn&apos;t work correctly for your CSV format.
                   </p>
                   <Input
                     type="file"
@@ -889,7 +889,7 @@ export default function ProgramImportPage() {
                     </p>
                     <p className="text-sm text-purple-700 dark:text-purple-300">
                       {stats.facultyWithContact} faculty members will be created with their email/phone numbers.
-                      They'll appear in the Hall Coordinator portal with Call/WhatsApp buttons.
+                      They&apos;ll appear in the Hall Coordinator portal with Call/WhatsApp buttons.
                     </p>
                   </div>
                 </div>

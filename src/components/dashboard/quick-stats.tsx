@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Ticket, Award, Plane, Clock, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -10,7 +10,7 @@ function useCounter(end: number, duration = 1500) {
   const [count, setCount] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
 
-  const animate = () => {
+  const animate = useCallback(() => {
     setCount(0)
     setIsComplete(false)
     const start = Date.now()
@@ -23,12 +23,12 @@ function useCounter(end: number, duration = 1500) {
         setIsComplete(true)
       }
     }, 16)
-  }
+  }, [end, duration])
 
   useEffect(() => {
     const timeout = setTimeout(animate, 100)
     return () => clearTimeout(timeout)
-  }, [end])
+  }, [animate])
 
   return { count, isComplete, replay: animate }
 }

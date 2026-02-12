@@ -26,6 +26,54 @@ interface CSVImportDynamicProps {
   templateFileName?: string
 }
 
+function parseCSVLineDynamic(line: string): string[] {
+  const result: string[] = []
+  let current = ""
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    if (char === '"' && !inQuotes) {
+      inQuotes = true
+    } else if (char === '"' && inQuotes) {
+      if (line[i + 1] === '"') {
+        current += '"'
+        i++
+      } else {
+        inQuotes = false
+      }
+    } else if (char === "," && !inQuotes) {
+      result.push(current)
+      current = ""
+    } else {
+      current += char
+    }
+  }
+  result.push(current)
+  return result
+}
+
+function parseCSVDynamic(text: string): { headers: string[]; rows: Record<string, any>[] } {
+  const lines = text.split(/\r?\n/).filter(line => line.trim())
+  if (lines.length === 0) return { headers: [], rows: [] }
+
+  const headers = lines[0].split(",").map(h => h.trim().replace(/^["']|["']$/g, ""))
+
+  const rows: Record<string, any>[] = []
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCSVLineDynamic(lines[i])
+    if (values.length === headers.length) {
+      const row: Record<string, any> = {}
+      headers.forEach((header, index) => {
+        row[header] = values[index]?.trim() || ""
+      })
+      rows.push(row)
+    }
+  }
+
+  return { headers, rows }
+}
+
 export function CSVImportDynamic({
   title,
   description,
@@ -43,54 +91,6 @@ export function CSVImportDynamic({
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState<"upload" | "mapping" | "preview" | "result">("upload")
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const parseCSV = (text: string): { headers: string[]; rows: Record<string, any>[] } => {
-    const lines = text.split(/\r?\n/).filter(line => line.trim())
-    if (lines.length === 0) return { headers: [], rows: [] }
-
-    const headers = lines[0].split(",").map(h => h.trim().replace(/^["']|["']$/g, ""))
-
-    const rows: Record<string, any>[] = []
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i])
-      if (values.length === headers.length) {
-        const row: Record<string, any> = {}
-        headers.forEach((header, index) => {
-          row[header] = values[index]?.trim() || ""
-        })
-        rows.push(row)
-      }
-    }
-
-    return { headers, rows }
-  }
-
-  const parseCSVLine = (line: string): string[] => {
-    const result: string[] = []
-    let current = ""
-    let inQuotes = false
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i]
-      if (char === '"' && !inQuotes) {
-        inQuotes = true
-      } else if (char === '"' && inQuotes) {
-        if (line[i + 1] === '"') {
-          current += '"'
-          i++
-        } else {
-          inQuotes = false
-        }
-      } else if (char === "," && !inQuotes) {
-        result.push(current)
-        current = ""
-      } else {
-        current += char
-      }
-    }
-    result.push(current)
-    return result
-  }
 
   // Auto-map columns based on common patterns
   const autoMapColumns = (headers: string[]): Record<string, string> => {
@@ -167,7 +167,7 @@ export function CSVImportDynamic({
 
     try {
       const text = await selectedFile.text()
-      const { headers, rows } = parseCSV(text)
+      const { headers, rows } = parseCSVDynamic(text)
 
       if (rows.length === 0) {
         setError("No data found in the file")
@@ -420,7 +420,7 @@ export function CSVImportDynamic({
           <div className="bg-secondary/30 rounded-xl p-4">
             <h4 className="font-medium text-sm mb-3">Map CSV Columns to Fields</h4>
             <p className="text-xs text-muted-foreground mb-4">
-              We've auto-detected some mappings. Adjust as needed. Unmapped columns will be saved as custom fields.
+              We&apos;ve auto-detected some mappings. Adjust as needed. Unmapped columns will be saved as custom fields.
             </p>
 
             <div className="space-y-3">

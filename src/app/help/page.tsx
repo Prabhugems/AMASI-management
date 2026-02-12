@@ -630,7 +630,7 @@ export default function HelpPage() {
             <div className="mt-8 p-6 bg-primary/5 border border-primary/20 rounded-xl text-center">
               <h3 className="font-semibold text-lg">Still need help?</h3>
               <p className="text-muted-foreground mt-1">
-                Can't find what you're looking for? Contact our support team.
+                Can&apos;t find what you&apos;re looking for? Contact our support team.
               </p>
               <div className="mt-4 flex items-center justify-center gap-4">
                 <a

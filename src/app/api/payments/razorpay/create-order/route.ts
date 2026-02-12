@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const supabase = supabaseClient as any
     const body = await request.json()
     const {
-      amount: clientAmount, // Don't trust this - will validate
+      amount: _clientAmount, // Don't trust this - will validate
       currency = "INR",
       payment_type,
       event_id,

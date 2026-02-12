@@ -26,6 +26,54 @@ interface CSVImportProps {
   templateFileName?: string
 }
 
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ""
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    if (char === '"' && !inQuotes) {
+      inQuotes = true
+    } else if (char === '"' && inQuotes) {
+      if (line[i + 1] === '"') {
+        current += '"'
+        i++
+      } else {
+        inQuotes = false
+      }
+    } else if (char === "," && !inQuotes) {
+      result.push(current)
+      current = ""
+    } else {
+      current += char
+    }
+  }
+  result.push(current)
+  return result
+}
+
+function parseCSV(text: string): { headers: string[]; rows: Record<string, any>[] } {
+  const lines = text.split(/\r?\n/).filter(line => line.trim())
+  if (lines.length === 0) return { headers: [], rows: [] }
+
+  const headers = lines[0].split(",").map(h => h.trim().replace(/^["']|["']$/g, ""))
+
+  const rows: Record<string, any>[] = []
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCSVLine(lines[i])
+    if (values.length === headers.length) {
+      const row: Record<string, any> = {}
+      headers.forEach((header, index) => {
+        row[header] = values[index]?.trim() || ""
+      })
+      rows.push(row)
+    }
+  }
+
+  return { headers, rows }
+}
+
 export function CSVImport({
   title,
   description,
@@ -43,56 +91,6 @@ export function CSVImport({
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState<"upload" | "preview" | "result">("upload")
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const parseCSV = (text: string): { headers: string[]; rows: Record<string, any>[] } => {
-    const lines = text.split(/\r?\n/).filter(line => line.trim())
-    if (lines.length === 0) return { headers: [], rows: [] }
-
-    // Parse headers
-    const headers = lines[0].split(",").map(h => h.trim().replace(/^["']|["']$/g, ""))
-
-    // Parse rows
-    const rows: Record<string, any>[] = []
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i])
-      if (values.length === headers.length) {
-        const row: Record<string, any> = {}
-        headers.forEach((header, index) => {
-          row[header] = values[index]?.trim() || ""
-        })
-        rows.push(row)
-      }
-    }
-
-    return { headers, rows }
-  }
-
-  const parseCSVLine = (line: string): string[] => {
-    const result: string[] = []
-    let current = ""
-    let inQuotes = false
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i]
-      if (char === '"' && !inQuotes) {
-        inQuotes = true
-      } else if (char === '"' && inQuotes) {
-        if (line[i + 1] === '"') {
-          current += '"'
-          i++
-        } else {
-          inQuotes = false
-        }
-      } else if (char === "," && !inQuotes) {
-        result.push(current)
-        current = ""
-      } else {
-        current += char
-      }
-    }
-    result.push(current)
-    return result
-  }
 
   const handleFileSelect = useCallback(async (selectedFile: File) => {
     setError(null)
@@ -112,7 +110,7 @@ export function CSVImport({
       setHeaders(headers)
       setParsedData(rows)
       setStep("preview")
-    } catch (err) {
+    } catch (_err) {
       setError("Failed to parse the file. Please ensure it's a valid CSV.")
     } finally {
       setIsUploading(false)

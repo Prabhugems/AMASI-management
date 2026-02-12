@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
       limit,
       offset,
     })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to fetch registrations" }, { status: 500 })
   }
 }
@@ -567,7 +567,7 @@ export async function POST(request: NextRequest) {
       payment: payment,
       requires_payment: ticket.price > 0 && payment_method !== "free",
     })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to process registration" }, { status: 500 })
   }
 }

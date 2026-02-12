@@ -389,7 +389,7 @@ export default function BadgeSetupPage() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
-                <span>Set one template as "Default" for unassigned ticket types</span>
+                <span>Set one template as &quot;Default&quot; for unassigned ticket types</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
@@ -480,7 +480,7 @@ export default function BadgeSetupPage() {
             </div>
             <p className="text-sm text-muted-foreground">
               After generating badges, email them to attendees so they can print at home.
-              Use "Email All With Badges" for bulk sending.
+              Use &quot;Email All With Badges&quot; for bulk sending.
             </p>
           </div>
 
@@ -492,8 +492,8 @@ export default function BadgeSetupPage() {
               <h4 className="font-semibold">Quick Select</h4>
             </div>
             <p className="text-sm text-muted-foreground">
-              Use quick select buttons to filter attendees - "Without Badge" for new generation,
-              "With Badge" for emailing existing badges.
+              Use quick select buttons to filter attendees - &quot;Without Badge&quot; for new generation,
+              &quot;With Badge&quot; for emailing existing badges.
             </p>
           </div>
         </div>

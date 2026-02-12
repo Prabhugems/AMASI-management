@@ -910,7 +910,7 @@ export default function FloorPlanEditorPage() {
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <Sparkles className="h-16 w-16 text-stone-300 mb-4" />
               <h3 className="text-xl font-semibold text-stone-400">Start Building Your Floor Plan</h3>
-              <p className="text-stone-400 mt-1 mb-4">Click "Generate Layout" to create stalls instantly</p>
+              <p className="text-stone-400 mt-1 mb-4">Click &quot;Generate Layout&quot; to create stalls instantly</p>
               <Button onClick={() => setShowLayoutGenerator(true)}>
                 <LayoutGrid className="h-4 w-4 mr-2" />
                 Generate Layout
@@ -952,6 +952,7 @@ export default function FloorPlanEditorPage() {
                 {selectedStall.sponsors.logo_url ? (
                   <img
                     src={selectedStall.sponsors.logo_url}
+                    alt={`${selectedStall.sponsors.name || 'Sponsor'} logo`}
                     className="w-8 h-8 object-contain rounded bg-white"
                     onError={(e) => e.currentTarget.style.display = 'none'}
                   />

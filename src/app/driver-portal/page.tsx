@@ -58,7 +58,7 @@ export default function DriverPortalPage() {
 
       // Navigate to driver's assignments page
       router.push(`/driver-portal/${encodeURIComponent(normalizedPhone)}`)
-    } catch (err) {
+    } catch (_err) {
       setError("Something went wrong. Please try again.")
       setLoading(false)
     }

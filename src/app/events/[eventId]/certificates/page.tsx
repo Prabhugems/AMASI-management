@@ -260,7 +260,7 @@ export default function CertificatesOverviewPage() {
             Certificates Pending
           </h3>
           <p className="text-sm text-amber-600 mb-3">
-            {stats?.pending} attendees don't have their certificates generated yet.
+            {stats?.pending} attendees don&apos;t have their certificates generated yet.
           </p>
           <Link href={`${basePath}/generate`}>
             <Button size="sm" variant="outline">Generate Certificates</Button>

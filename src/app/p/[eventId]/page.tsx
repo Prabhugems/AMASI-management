@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
@@ -203,8 +203,8 @@ export default function PublicProgramPage() {
   })
 
   const event = programData?.event
-  const sessions = programData?.sessions || []
-  const tracks = programData?.tracks || []
+  const sessions = useMemo(() => programData?.sessions || [], [programData?.sessions])
+  const tracks = useMemo(() => programData?.tracks || [], [programData?.tracks])
 
   // Get unique dates
   const dates = useMemo(() => {
@@ -221,7 +221,7 @@ export default function PublicProgramPage() {
   }, [sessions])
 
   // Set default day
-  useMemo(() => {
+  useEffect(() => {
     if (dates.length > 0 && !selectedDay) {
       setSelectedDay(dates[0])
     }

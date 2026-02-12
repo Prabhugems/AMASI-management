@@ -693,7 +693,7 @@ async function logPaymentAlert(paymentId: string | null, alertType: string, mess
       status: "pending",
       created_at: new Date().toISOString(),
     } as any)
-  } catch (e) {
+  } catch (_e) {
     // Table might not exist, just log to console
   }
 }

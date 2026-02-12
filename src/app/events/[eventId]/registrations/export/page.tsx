@@ -142,7 +142,7 @@ export default function ExportRegistrationsPage() {
       }
 
       toast.success(`Exported ${registrations.length} registrations`)
-    } catch (error) {
+    } catch (_error) {
       toast.error("Export failed")
     } finally {
       setExporting(false)

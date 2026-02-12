@@ -66,13 +66,13 @@ export function WaitlistForm({
             <CheckCircle className="w-6 h-6 text-emerald-600" />
           </div>
           <div>
-            <h3 className="font-bold text-emerald-900">You're on the waitlist!</h3>
+            <h3 className="font-bold text-emerald-900">You&apos;re on the waitlist!</h3>
             <p className="text-emerald-700 mt-1">
               You are <span className="font-bold">#{success.position}</span> in line
               {ticketName && ` for ${ticketName}`}.
             </p>
             <p className="text-sm text-emerald-600 mt-2">
-              We'll notify you at <span className="font-medium">{formData.email}</span> when a spot becomes available.
+              We&apos;ll notify you at <span className="font-medium">{formData.email}</span> when a spot becomes available.
             </p>
           </div>
         </div>
@@ -197,7 +197,7 @@ export function WaitlistForm({
         </div>
 
         <p className="text-xs text-gray-500 text-center">
-          You'll be notified when a spot becomes available. No payment required now.
+          You&apos;ll be notified when a spot becomes available. No payment required now.
         </p>
       </form>
     </div>

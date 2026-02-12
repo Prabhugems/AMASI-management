@@ -244,7 +244,7 @@ function SuccessContent() {
         {/* What's Next */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-8 text-left">
           <h2 className="text-lg font-bold mb-4 text-gray-900">
-            What's Next?
+            What&apos;s Next?
           </h2>
 
           <ul className="space-y-3">

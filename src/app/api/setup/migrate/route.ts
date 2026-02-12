@@ -95,7 +95,7 @@ export async function GET() {
       status,
       message: allGood ? "All migrations applied" : "Some migrations pending",
     })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to process migration request" }, { status: 500 })
   }
 }

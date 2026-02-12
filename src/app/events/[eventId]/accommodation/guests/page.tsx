@@ -697,7 +697,7 @@ export default function AccommodationGuestsPage() {
                 <div className="p-1.5 rounded-md bg-blue-100">
                   <User className="h-4 w-4 text-blue-600" />
                 </div>
-                <h3 className="font-semibold text-sm">Guest's Request</h3>
+                <h3 className="font-semibold text-sm">Guest&apos;s Request</h3>
               </div>
               {editingBooking && (() => {
                 const travel = editingBooking.custom_fields?.travel_details

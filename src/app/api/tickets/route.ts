@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ data })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to process ticket request" }, { status: 500 })
   }
 }
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to process ticket request" }, { status: 500 })
   }
 }

@@ -166,7 +166,7 @@ export default function CertificatesLayout({ children }: { children: React.React
         <div className="text-center">
           <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-          <p className="text-muted-foreground mb-4">You don't have permission to access Certificates.</p>
+          <p className="text-muted-foreground mb-4">You don&apos;t have permission to access Certificates.</p>
           <Link href={`/events/${eventId}`} className="text-primary hover:underline">← Back to Dashboard</Link>
         </div>
       </div>

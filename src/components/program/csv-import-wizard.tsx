@@ -573,7 +573,7 @@ export function CSVImportWizard({
                   Drop your CSV file here or click to browse
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Supports any CSV format - you'll map the columns in the next step
+                  Supports any CSV format - you&apos;ll map the columns in the next step
                 </p>
                 <Input
                   id="csv-file-input"
@@ -649,7 +649,7 @@ export function CSVImportWizard({
               {!validateMapping() && (
                 <div className="flex items-center gap-2 text-amber-600 p-3 bg-amber-50 rounded mt-4">
                   <AlertCircle className="h-4 w-4" />
-                  Please map at least "Topic" and "Start Time" fields to continue
+                  Please map at least &quot;Topic&quot; and &quot;Start Time&quot; fields to continue
                 </div>
               )}
             </div>

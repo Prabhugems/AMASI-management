@@ -56,7 +56,7 @@ export async function GET() {
         : "Some tables are missing - please run the migration",
       tables: results,
     })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({
       success: false,
       error: "Failed to check communications tables",

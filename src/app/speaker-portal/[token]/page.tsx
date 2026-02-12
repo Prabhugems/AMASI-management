@@ -213,6 +213,7 @@ export default function SpeakerPortalPage() {
                 "rounded-lg p-3 text-center",
                 speaker.photo_submitted ? "bg-green-50 border border-green-200" : "bg-amber-50 border border-amber-200"
               )}>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
                 <Image className={cn(
                   "h-6 w-6 mx-auto mb-1",
                   speaker.photo_submitted ? "text-green-600" : "text-amber-600"
@@ -271,6 +272,7 @@ export default function SpeakerPortalPage() {
               {/* Photo URL */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
                   <Image className="h-4 w-4 text-purple-500" />
                   Photo URL <span className="text-red-500">*</span>
                 </Label>

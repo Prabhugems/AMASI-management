@@ -1786,7 +1786,7 @@ export default function SpeakerPortalPage() {
                         Save Flight Details
                       </Button>
                       <p className="text-xs text-white/50 text-center">
-                        We'll use these details to coordinate your airport pickup/drop.
+                        We&apos;ll use these details to coordinate your airport pickup/drop.
                       </p>
                     </>
                   )}

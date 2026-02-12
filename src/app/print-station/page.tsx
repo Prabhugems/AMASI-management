@@ -210,7 +210,7 @@ export default function PrintStationDownloadPage() {
         <div className="bg-indigo-900/30 rounded-2xl border border-indigo-800/50 p-8 mb-12">
           <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
             <Settings className="w-5 h-5 text-indigo-400" />
-            Settings You'll Need
+            Settings You&apos;ll Need
           </h2>
 
           <div className="grid md:grid-cols-2 gap-6">

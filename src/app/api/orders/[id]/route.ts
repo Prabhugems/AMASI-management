@@ -123,7 +123,7 @@ export async function GET(
     }
 
     return NextResponse.json({ data })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to fetch order" }, { status: 500 })
   }
 }

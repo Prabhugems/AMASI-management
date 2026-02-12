@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createAdminClient } from "@/lib/supabase/server"
 import net from "net"
 
 // POST /api/print-stations/zpl-print - Send ZPL to Zebra printer
@@ -159,7 +158,7 @@ ${institution ? `^FO${centerX - 200},${startY + 250}^A0N,30,30^FB400,1,0,C^FD${i
 // Generate ZPL from badge template
 function generateZPLFromTemplate(templateData: any, registration: any, station: any): string {
   const elements = templateData.elements || []
-  const bgColor = templateData.backgroundColor || "#ffffff"
+  const _bgColor = templateData.backgroundColor || "#ffffff"
   const settings = station?.print_settings || {}
   const paperSize = settings.paper_size || "4x6"
   const rotation = settings.rotation || 0

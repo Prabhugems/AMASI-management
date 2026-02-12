@@ -55,7 +55,7 @@ export async function logAudit(entry: AuditLogEntry): Promise<void> {
       // Table might not exist, log to console instead
       console.log("[AUDIT]", auditEntry)
     }
-  } catch (err) {
+  } catch (_err) {
     // Fallback to console logging
     console.log("[AUDIT]", entry)
   }

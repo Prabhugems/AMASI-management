@@ -604,7 +604,7 @@ export default function GroupRegistrationPage() {
                 <div className="text-center py-12 text-gray-500">
                   <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                   <p className="font-medium">No attendees added yet</p>
-                  <p className="text-sm">Click "Add Attendee" to start</p>
+                  <p className="text-sm">Click &quot;Add Attendee&quot; to start</p>
                 </div>
               ) : (
                 <div className="space-y-3">

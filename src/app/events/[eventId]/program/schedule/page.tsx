@@ -1522,7 +1522,7 @@ export default function ProgramPage() {
             <DialogTitle>Delete Session</DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground">
-            Are you sure you want to delete "{deletingSession?.session_name}"? This
+            Are you sure you want to delete &quot;{deletingSession?.session_name}&quot;? This
             action cannot be undone.
           </p>
           <DialogFooter>

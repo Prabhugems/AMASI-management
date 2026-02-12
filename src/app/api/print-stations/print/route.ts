@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       print_station_id,
       registration_id,
       registration_number,
-      event_id,
+      _event_id,
       token,
       device_info
     } = body
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check existing prints for reprint control
-    const { data: existingPrints, error: printError } = await (supabase as any)
+    const { data: existingPrints, error: _printError } = await (supabase as any)
       .from("print_jobs")
       .select("*")
       .eq("print_station_id", station.id)

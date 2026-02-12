@@ -51,7 +51,7 @@ export function Countdown({
   onComplete,
   className,
 }: CountdownProps) {
-  const target = typeof targetDate === "string" ? new Date(targetDate) : targetDate
+  const target = React.useMemo(() => typeof targetDate === "string" ? new Date(targetDate) : targetDate, [targetDate])
   const [timeLeft, setTimeLeft] = React.useState<TimeLeft>(() =>
     calculateTimeLeft(target)
   )
@@ -113,7 +113,7 @@ export function CountdownCompact({
   targetDate: Date | string
   className?: string
 }) {
-  const target = typeof targetDate === "string" ? new Date(targetDate) : targetDate
+  const target = React.useMemo(() => typeof targetDate === "string" ? new Date(targetDate) : targetDate, [targetDate])
   const [timeLeft, setTimeLeft] = React.useState<TimeLeft>(() =>
     calculateTimeLeft(target)
   )
@@ -151,7 +151,7 @@ export function CountdownFlip({
   onComplete,
   className,
 }: CountdownProps) {
-  const target = typeof targetDate === "string" ? new Date(targetDate) : targetDate
+  const target = React.useMemo(() => typeof targetDate === "string" ? new Date(targetDate) : targetDate, [targetDate])
   const [timeLeft, setTimeLeft] = React.useState<TimeLeft>(() =>
     calculateTimeLeft(target)
   )
@@ -214,7 +214,7 @@ function FlipUnit({ value, label }: { value: number; label: string }) {
 export function useCountdown(targetDate: Date | string): TimeLeft & {
   isComplete: boolean
 } {
-  const target = typeof targetDate === "string" ? new Date(targetDate) : targetDate
+  const target = React.useMemo(() => typeof targetDate === "string" ? new Date(targetDate) : targetDate, [targetDate])
   const [timeLeft, setTimeLeft] = React.useState<TimeLeft>(() =>
     calculateTimeLeft(target)
   )
@@ -243,7 +243,7 @@ export function TimeSince({
   date: Date | string
   className?: string
 }) {
-  const target = typeof date === "string" ? new Date(date) : date
+  const target = React.useMemo(() => typeof date === "string" ? new Date(date) : date, [date])
   const [elapsed, setElapsed] = React.useState<TimeLeft>(() => {
     const now = new Date()
     return calculateTimeLeft(new Date(now.getTime() - (now.getTime() - target.getTime())))

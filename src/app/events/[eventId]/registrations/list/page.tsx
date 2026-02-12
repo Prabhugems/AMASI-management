@@ -2317,7 +2317,7 @@ export default function RegistrationsPage() {
               Transfer to Another Event
             </DialogTitle>
             <DialogDescription>
-              Move {selectedRegistration?.attendee_name}'s registration to a different event
+              Move {selectedRegistration?.attendee_name}&apos;s registration to a different event
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

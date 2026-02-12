@@ -161,7 +161,7 @@ export default function StaffCheckinPage() {
       if (navigator.vibrate) {
         navigator.vibrate(type === "success" ? [100, 50, 100] : [200, 100, 200])
       }
-    } catch (e) {
+    } catch (_e) {
       // Ignore sound errors
     }
   }
@@ -237,7 +237,7 @@ export default function StaffCheckinPage() {
           success: false,
         }, ...prev].slice(0, 20))
       }
-    } catch (err) {
+    } catch (_err) {
       playSound("error")
       setLastResult({
         success: false,
@@ -286,7 +286,7 @@ export default function StaffCheckinPage() {
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop()
-      } catch (e) {
+      } catch (_e) {
         // Ignore
       }
     }
@@ -328,7 +328,7 @@ export default function StaffCheckinPage() {
       try {
         await scannerRef.current.stop()
         scannerRef.current = null
-      } catch (e) {
+      } catch (_e) {
         // Ignore
       }
     }
@@ -359,7 +359,7 @@ export default function StaffCheckinPage() {
     setFacingMode(prev => prev === "environment" ? "user" : "environment")
   }
 
-  const toggleMode = () => {
+  const _toggleMode = () => {
     setScanMode(prev => prev === "camera" ? "manual" : "camera")
   }
 

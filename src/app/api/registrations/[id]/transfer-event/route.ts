@@ -134,7 +134,7 @@ export async function POST(
     const oldTicketName = currentReg.ticket_type?.name || "Unknown"
     const wasConfirmed = currentReg.status === "confirmed"
     const oldTicketId = currentReg.ticket_type_id
-    const oldEventId = currentReg.event_id
+    const _oldEventId = currentReg.event_id
 
     // Update registration with new event and ticket
     const transferNote = `Transferred from "${oldEventName}" (${oldTicketName}) to "${newEvent.name}" (${newTicket.name})${notes ? ` - ${notes}` : ""}`

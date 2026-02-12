@@ -37,7 +37,6 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { FormRenderer } from "@/components/forms/renderer/form-renderer"
-import { Form as FormType, FormField } from "@/lib/types"
 
 interface RegistrationAddon {
   id: string

@@ -21,7 +21,7 @@ export function debounce<T extends (...args: any[]) => any>(
   const { leading = false, trailing = true } = options
   let timeoutId: ReturnType<typeof setTimeout> | null = null
   let lastArgs: Parameters<T> | null = null
-  let lastCallTime: number | null = null
+  let _lastCallTime: number | null = null
   let leadingCalled = false
 
   const cancel = () => {
@@ -30,7 +30,7 @@ export function debounce<T extends (...args: any[]) => any>(
       timeoutId = null
     }
     lastArgs = null
-    lastCallTime = null
+    _lastCallTime = null
     leadingCalled = false
   }
 
@@ -44,7 +44,7 @@ export function debounce<T extends (...args: any[]) => any>(
   const debounced = (...args: Parameters<T>) => {
     const now = Date.now()
     lastArgs = args
-    lastCallTime = now
+    _lastCallTime = now
 
     // Leading edge call
     if (leading && !leadingCalled) {

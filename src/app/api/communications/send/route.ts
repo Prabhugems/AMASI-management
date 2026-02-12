@@ -77,8 +77,9 @@ export async function POST(request: NextRequest) {
     // Process each recipient
     for (const reg of registrations) {
       // Personalize message
-      const personalizedMessage = message.replace(/\{\{name\}\}/gi, reg.attendee_name)
-      const personalizedSubject = subject?.replace(/\{\{name\}\}/gi, reg.attendee_name)
+      const safeName = escapeHtml(reg.attendee_name || "")
+      const personalizedMessage = message.replace(/\{\{name\}\}/gi, safeName)
+      const personalizedSubject = subject?.replace(/\{\{name\}\}/gi, safeName)
 
       let sendResult: { success: boolean; messageId?: string; error?: string } = { success: false }
       let recipient = ""

@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         description: discount.description,
       },
     })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to validate discount" }, { status: 500 })
   }
 }

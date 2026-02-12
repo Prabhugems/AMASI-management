@@ -131,7 +131,7 @@ export function useFilterPreferences<T extends Record<string, any>>(
   pageKey: string,
   defaultFilters: T
 ): [T, (filters: Partial<T>) => void, () => void] {
-  const [filters, setFilters, clearFilters] = useLocalStorage<T>(
+  const [filters, setFilters, _clearFilters] = useLocalStorage<T>(
     `filters:${pageKey}`,
     defaultFilters
   )

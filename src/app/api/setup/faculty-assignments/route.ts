@@ -62,7 +62,7 @@ export async function GET() {
     const db = supabase as any
 
     // Check table status
-    const { data, error } = await db
+    const { data: _data, error } = await db
       .from("faculty_assignments")
       .select("id")
       .limit(1)
@@ -86,7 +86,7 @@ export async function GET() {
       recordCount: count || 0
     })
 
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({
       exists: false,
       error: "Failed to check table status"

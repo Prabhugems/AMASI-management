@@ -532,7 +532,7 @@ export default function FlightAgentPortal() {
             <div className="p-5 bg-slate-50/50">
               <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
                 <Plane className="h-4 w-4 text-blue-600" />
-                Speaker's Request
+                Speaker&apos;s Request
               </h3>
               {editingSpeaker && (() => {
                 const travel = editingSpeaker.custom_fields?.travel_details

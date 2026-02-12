@@ -277,7 +277,7 @@ export default function BadgesOverviewPage() {
             Badges Pending
           </h3>
           <p className="text-sm text-amber-600 mb-3">
-            {stats?.pending} attendees don't have their badges printed yet.
+            {stats?.pending} attendees don&apos;t have their badges printed yet.
           </p>
           <Link href={`${basePath}/generate`}>
             <Button size="sm" variant="outline">Generate Badges</Button>

@@ -164,12 +164,12 @@ export default function BadgesLayout({ children }: { children: React.ReactNode }
         <div className="text-center max-w-md">
           <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-          <p className="text-muted-foreground mb-4">You don't have permission to access Badges.</p>
+          <p className="text-muted-foreground mb-4">You don&apos;t have permission to access Badges.</p>
           <p className="text-sm text-muted-foreground mb-4">
             Your current permissions: {userPermissions?.permissions?.length ? userPermissions.permissions.join(", ") : "None assigned"}
           </p>
           <p className="text-xs text-muted-foreground mb-4">
-            Contact an administrator to grant you "badges" permission or full access.
+            Contact an administrator to grant you &quot;badges&quot; permission or full access.
           </p>
           <Link href={`/events/${eventId}`} className="text-primary hover:underline">← Back to Dashboard</Link>
         </div>

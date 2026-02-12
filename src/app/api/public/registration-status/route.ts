@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
     if (isEmail) {
       // Search by email
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from("registrations")
         .select("*")
         .ilike("attendee_email", query)
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       }
     } else {
       // Search by registration number - try exact match first
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from("registrations")
         .select("*")
         .eq("registration_number", query)

@@ -35,7 +35,7 @@ export async function GET(
     }
 
     return NextResponse.json({ data })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to process addon request" }, { status: 500 })
   }
 }
@@ -176,7 +176,7 @@ export async function POST(
       data,
       message: `${addonRecords.length} addon(s) saved successfully`
     })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to process addon request" }, { status: 500 })
   }
 }
@@ -225,7 +225,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true, message: "Addon removed" })
-  } catch (error: any) {
+  } catch (_error: any) {
     return NextResponse.json({ error: "Failed to process addon request" }, { status: 500 })
   }
 }

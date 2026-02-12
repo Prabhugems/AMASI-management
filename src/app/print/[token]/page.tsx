@@ -1119,7 +1119,7 @@ export default function PrintStationKioskPage() {
                     {/* Instructions */}
                     <div className="mt-4 text-center">
                       <p className="text-sm text-muted-foreground">
-                        Point camera at attendee's QR code
+                        Point camera at attendee&apos;s QR code
                       </p>
                       {printMutation.isPending && (
                         <div className="mt-3 flex items-center justify-center gap-2 text-purple-600">

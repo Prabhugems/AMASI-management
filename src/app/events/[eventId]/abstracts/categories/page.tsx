@@ -404,7 +404,7 @@ export default function CategoriesPage() {
               <div>
                 <p className="font-medium">Active</p>
                 <p className="text-sm text-muted-foreground">
-                  Inactive categories won't appear in submission forms
+                  Inactive categories won&apos;t appear in submission forms
                 </p>
               </div>
               <Switch
@@ -444,7 +444,7 @@ export default function CategoriesPage() {
             <DialogTitle>Delete Category</DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground">
-            Are you sure you want to delete "{deleteConfirm?.name}"? This action cannot be undone.
+            Are you sure you want to delete &quot;{deleteConfirm?.name}&quot;? This action cannot be undone.
           </p>
           {deleteMutation.isError && (
             <p className="text-sm text-destructive flex items-center gap-2 p-3 bg-destructive/10 rounded-lg">

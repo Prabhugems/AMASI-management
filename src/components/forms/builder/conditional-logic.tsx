@@ -454,10 +454,10 @@ export function ConditionalLogicEditor({
           </h4>
           <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
             <li>• Fields can only depend on fields that appear before them</li>
-            <li>• Use "All" when every condition must be met</li>
-            <li>• Use "Any" when at least one condition must be met</li>
-            <li>• "Show" makes a field visible when conditions match</li>
-            <li>• "Hide" makes a field invisible when conditions match</li>
+            <li>• Use &quot;All&quot; when every condition must be met</li>
+            <li>• Use &quot;Any&quot; when at least one condition must be met</li>
+            <li>• &quot;Show&quot; makes a field visible when conditions match</li>
+            <li>• &quot;Hide&quot; makes a field invisible when conditions match</li>
           </ul>
         </CardContent>
       </Card>

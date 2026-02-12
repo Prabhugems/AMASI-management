@@ -50,7 +50,7 @@ export default function AddonInstructionsPage() {
                 <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">1</div>
                 <div>
                   <p className="font-medium">Create an Add-on</p>
-                  <p className="text-sm text-muted-foreground">Click "New Addon" to create items like workshops, meals, or merchandise</p>
+                  <p className="text-sm text-muted-foreground">Click &quot;New Addon&quot; to create items like workshops, meals, or merchandise</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -209,7 +209,7 @@ export default function AddonInstructionsPage() {
             <ul className="space-y-3">
               <li className="flex items-start gap-2">
                 <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5" />
-                <span className="text-sm">Use <strong>clear names</strong> that describe what's included (e.g., "Conference Lunch - Day 1" vs just "Lunch")</span>
+                <span className="text-sm">Use <strong>clear names</strong> that describe what&apos;s included (e.g., &quot;Conference Lunch - Day 1&quot; vs just &quot;Lunch&quot;)</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5" />
@@ -244,19 +244,19 @@ export default function AddonInstructionsPage() {
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="font-medium text-sm text-amber-800">Add-on not showing during registration?</p>
                 <p className="text-xs text-amber-700 mt-1">
-                  Check: 1) Add-on is "Active", 2) If linked to tickets, check the ticket type is correct, 3) Registration page is refreshed
+                  Check: 1) Add-on is &quot;Active&quot;, 2) If linked to tickets, check the ticket type is correct, 3) Registration page is refreshed
                 </p>
               </div>
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="font-medium text-sm text-amber-800">Variants not appearing?</p>
                 <p className="text-xs text-amber-700 mt-1">
-                  Ensure "Add-on with Variants" is selected and at least one variant is added with a name
+                  Ensure &quot;Add-on with Variants&quot; is selected and at least one variant is added with a name
                 </p>
               </div>
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="font-medium text-sm text-amber-800">Certificate not generating for course participants?</p>
                 <p className="text-xs text-amber-700 mt-1">
-                  Make sure the add-on is marked as "Course" and a certificate template is linked
+                  Make sure the add-on is marked as &quot;Course&quot; and a certificate template is linked
                 </p>
               </div>
             </div>

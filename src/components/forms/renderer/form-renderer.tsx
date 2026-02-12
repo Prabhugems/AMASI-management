@@ -1327,7 +1327,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
               <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-emerald-800">Email Verified: {verifiedEmail}</p>
-                <p className="text-xs text-emerald-600">Your interest has been recorded. We'll notify you about membership updates.</p>
+                <p className="text-xs text-emerald-600">Your interest has been recorded. We&apos;ll notify you about membership updates.</p>
               </div>
             </div>
           )}

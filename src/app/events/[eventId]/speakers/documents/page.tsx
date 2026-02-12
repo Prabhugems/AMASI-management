@@ -293,6 +293,7 @@ export default function SpeakerDocumentsPage() {
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-purple-500">
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <Image className="h-4 w-4" />
             <span className="text-sm">Photos</span>
           </div>
@@ -471,6 +472,7 @@ export default function SpeakerDocumentsPage() {
                     onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, photo_submitted: !!checked }))}
                   />
                   <Label htmlFor="photo" className="flex items-center gap-2">
+                    {/* eslint-disable-next-line jsx-a11y/alt-text */}
                     <Image className="h-4 w-4 text-purple-500" />
                     Photo Received
                   </Label>

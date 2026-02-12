@@ -8,7 +8,7 @@ type SupabaseClient = any
 // GET /api/forms - List all forms
 export async function GET(request: NextRequest) {
   try {
-    const { user: authUser, error: authError } = await getApiUser()
+    const { user: _authUser, error: authError } = await getApiUser()
     if (authError) return authError
 
     const supabase: SupabaseClient = await createServerSupabaseClient()

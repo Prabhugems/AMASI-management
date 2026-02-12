@@ -607,7 +607,7 @@ export default function SettingsPage() {
                       while keeping the event page visible.
                     </p>
                     <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-                      <strong>OFF:</strong> Shows "Registration Closed" message. Existing registrations are not affected.
+                      <strong>OFF:</strong> Shows &quot;Registration Closed&quot; message. Existing registrations are not affected.
                     </div>
                   </div>
                   <Switch
@@ -711,6 +711,7 @@ export default function SettingsPage() {
                 <div className="bg-card border border-border rounded-xl p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                      {/* eslint-disable-next-line jsx-a11y/alt-text */}
                       <Image className="h-4 w-4 text-violet-500" />
                     </div>
                     <div>
@@ -731,6 +732,7 @@ export default function SettingsPage() {
                 <div className="bg-card border border-border rounded-xl p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                      {/* eslint-disable-next-line jsx-a11y/alt-text */}
                       <Image className="h-4 w-4 text-cyan-500" />
                     </div>
                     <div>
@@ -1066,7 +1068,7 @@ function AutomationSection({ eventId }: { eventId: string }) {
               Creates a personalized badge PDF using your default badge template when registration is confirmed.
             </p>
             <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-              <strong>Setup required:</strong> Go to Badges → Templates → Create a template and mark it as "Default".
+              <strong>Setup required:</strong> Go to Badges → Templates → Create a template and mark it as &quot;Default&quot;.
               {!hasDefaultBadgeTemplate && <span className="text-warning ml-1">No default template found!</span>}
             </div>
           </div>

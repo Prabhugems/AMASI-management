@@ -179,11 +179,11 @@ export function AccessibleSortableList<T extends SortableItem>({
   items: initialItems,
   onReorder,
   renderItem,
-  onRemove,
+  onRemove: _onRemove,
   className,
   label = "Reorderable list",
 }: SortableListProps<T> & { label?: string }) {
-  const { items, getItemProps, focusedIndex, moveItem, setItems } =
+  const { items, getItemProps, focusedIndex, moveItem: _moveItem, setItems } =
     useSortableList<T>(initialItems, { onReorder })
 
   React.useEffect(() => {

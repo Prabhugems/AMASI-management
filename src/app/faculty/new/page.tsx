@@ -135,7 +135,7 @@ export default function NewFacultyPage() {
 
       setMemberFound(data)
       toast.success(`Found: ${data.name} (AMASI #${data.amasi_number})`)
-    } catch (err) {
+    } catch (_err) {
       toast.error("Search failed")
     } finally {
       setIsSearching(false)

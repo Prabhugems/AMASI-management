@@ -115,7 +115,7 @@ function EmailCheckWidget({ eventId }: { eventId: string }) {
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                 <div className="text-sm">
-                  <p className="font-medium text-amber-800">You're already registered!</p>
+                  <p className="font-medium text-amber-800">You&apos;re already registered!</p>
                   <p className="text-amber-700 mt-1">
                     Registration: {result.registrations?.[0]?.registration_number}
                   </p>
@@ -401,7 +401,7 @@ export default function EventDetailsPage() {
             Event Not Found
           </h2>
           <p className="mb-6 text-gray-600">
-            The event you're looking for doesn't exist or registration is not open.
+            The event you&apos;re looking for doesn&apos;t exist or registration is not open.
           </p>
           <Link
             href="/register"

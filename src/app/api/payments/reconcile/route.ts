@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         emailAmountMap.get(key)!.push(payment)
       }
 
-      for (const [key, payments] of emailAmountMap) {
+      for (const [_key, payments] of emailAmountMap) {
         if (payments.length > 1) {
           // Check if they're within 5 minutes of each other
           for (let i = 1; i < payments.length; i++) {

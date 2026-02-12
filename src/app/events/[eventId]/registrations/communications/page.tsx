@@ -213,7 +213,7 @@ export default function CommunicationsPage() {
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Use {"{{name}}"} to personalize with recipient's name
+                Use {"{{name}}"} to personalize with recipient&apos;s name
               </p>
             </div>
           </div>

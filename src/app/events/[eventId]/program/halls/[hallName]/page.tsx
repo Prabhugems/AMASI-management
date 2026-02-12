@@ -182,7 +182,7 @@ export default function HallDetailPage() {
 
               {/* Sessions Timeline */}
               <div className="space-y-3 pl-4 border-l-2 border-muted ml-4">
-                {day.sessions.map((session, index) => (
+                {day.sessions.map((session, _index) => (
                   <Card key={session.id} className="ml-4 relative">
                     {/* Timeline dot */}
                     <div className="absolute -left-[1.65rem] top-4 w-3 h-3 rounded-full bg-primary border-2 border-background" />

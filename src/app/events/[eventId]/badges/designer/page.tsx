@@ -973,7 +973,7 @@ export default function BadgeDesignerPage() {
   const [previewSearch, setPreviewSearch] = useState("")
   const [snapEnabled, setSnapEnabled] = useState(true)
   const [snapGuides, setSnapGuides] = useState<{ horizontal: number[]; vertical: number[] }>({ horizontal: [], vertical: [] })
-  const [showRulers, setShowRulers] = useState(true)
+  const [showRulers, _setShowRulers] = useState(true)
   const [isPreBuiltDialogOpen, setIsPreBuiltDialogOpen] = useState(false)
   const [exportFormat, setExportFormat] = useState<"pdf" | "png" | "jpg">("pdf")
   const [badgesPerPage, setBadgesPerPage] = useState(1)
@@ -3207,7 +3207,7 @@ function QRCodePreview({ value, size }: { value: string; size: number }) {
   return <img src={qrUrl} alt="QR" className="w-full h-full object-contain" />
 }
 
-function BarcodePreview({ value, format, width, height }: { value: string; format: string; width: number; height: number }) {
+function BarcodePreview({ value, format, width: _width, height }: { value: string; format: string; width: number; height: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     if (canvasRef.current && value) {
@@ -3220,7 +3220,7 @@ function BarcodePreview({ value, format, width, height }: { value: string; forma
           fontSize: 12,
           margin: 5,
         })
-      } catch (e) {
+      } catch (_e) {
         // Invalid barcode value
       }
     }

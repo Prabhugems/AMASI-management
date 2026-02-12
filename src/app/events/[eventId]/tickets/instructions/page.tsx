@@ -51,7 +51,7 @@ export default function TicketInstructionsPage() {
                 <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">1</div>
                 <div>
                   <p className="font-medium">Create a Ticket Type</p>
-                  <p className="text-sm text-muted-foreground">Click "New Ticket" to create your first ticket type (e.g., Early Bird, Regular, VIP)</p>
+                  <p className="text-sm text-muted-foreground">Click &quot;New Ticket&quot; to create your first ticket type (e.g., Early Bird, Regular, VIP)</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -65,7 +65,7 @@ export default function TicketInstructionsPage() {
                 <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">3</div>
                 <div>
                   <p className="font-medium">Activate the Ticket</p>
-                  <p className="text-sm text-muted-foreground">Toggle the ticket status to "Active" to start selling</p>
+                  <p className="text-sm text-muted-foreground">Toggle the ticket status to &quot;Active&quot; to start selling</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -225,7 +225,7 @@ export default function TicketInstructionsPage() {
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5" />
-                <span className="text-sm">Use <strong>descriptive names</strong> that clearly indicate what's included (e.g., "Full Conference + Workshop" vs just "VIP")</span>
+                <span className="text-sm">Use <strong>descriptive names</strong> that clearly indicate what&apos;s included (e.g., &quot;Full Conference + Workshop&quot; vs just &quot;VIP&quot;)</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5" />
@@ -256,7 +256,7 @@ export default function TicketInstructionsPage() {
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="font-medium text-sm text-amber-800">Ticket not showing on registration page?</p>
                 <p className="text-xs text-amber-700 mt-1">
-                  Check: 1) Status is "Active", 2) Not marked as "Hidden", 3) Current date is within sale period
+                  Check: 1) Status is &quot;Active&quot;, 2) Not marked as &quot;Hidden&quot;, 3) Current date is within sale period
                 </p>
               </div>
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -268,7 +268,7 @@ export default function TicketInstructionsPage() {
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="font-medium text-sm text-amber-800">Oversold tickets?</p>
                 <p className="text-xs text-amber-700 mt-1">
-                  This can happen with manual registrations. Monitor the "Available" count and adjust quantity if needed.
+                  This can happen with manual registrations. Monitor the &quot;Available&quot; count and adjust quantity if needed.
                 </p>
               </div>
             </div>
