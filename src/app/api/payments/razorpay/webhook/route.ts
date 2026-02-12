@@ -787,7 +787,7 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
             const badgeEmailResult = await fetch(`${baseUrl}/api/badges/email`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ registration_id: registrationId }),
+              body: JSON.stringify({ registration_id: registrationId, event_id: eventId }),
             })
             if (!badgeEmailResult.ok) {
               console.error(`[AUTO] Failed to email badge for registration ${registrationId}: ${badgeEmailResult.status}`)
