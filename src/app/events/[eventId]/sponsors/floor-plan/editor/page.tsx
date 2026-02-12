@@ -273,7 +273,7 @@ export default function FloorPlanEditorPage() {
       })
       setPositions(initialPositions)
     }
-  }, [stalls])
+  }, [stalls, positions])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -885,6 +885,7 @@ export default function FloorPlanEditorPage() {
                   {stall.sponsors ? (
                     <>
                       {stall.sponsors.logo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={stall.sponsors.logo_url}
                           alt=""
@@ -950,6 +951,7 @@ export default function FloorPlanEditorPage() {
             {selectedStall.sponsors && (
               <div className="flex items-center gap-2 p-2 bg-sky-50 rounded-lg border border-sky-200">
                 {selectedStall.sponsors.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={selectedStall.sponsors.logo_url}
                     alt={`${selectedStall.sponsors.name || 'Sponsor'} logo`}

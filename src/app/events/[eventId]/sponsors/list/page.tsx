@@ -527,6 +527,7 @@ export default function SponsorsListPage() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         {sponsor.logo_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={sponsor.logo_url}
                             alt={sponsor.name}
@@ -818,6 +819,7 @@ export default function SponsorsListPage() {
               {/* Logo & Name */}
               <div className="flex items-center gap-4">
                 {viewSponsor.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={viewSponsor.logo_url}
                     alt={viewSponsor.name}

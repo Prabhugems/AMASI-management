@@ -505,6 +505,7 @@ export default function StallsPage() {
                       {stall.sponsors ? (
                         <div className="flex items-center gap-2">
                           {stall.sponsors.logo_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={stall.sponsors.logo_url}
                               alt=""

@@ -987,6 +987,7 @@ export default function PrintStationHubPage() {
             </div>
             <div className="p-8 flex flex-col items-center">
               <div className="bg-white p-4 rounded-2xl shadow-lg">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getPrintUrl(showQRModal))}`}
                   alt="QR Code"

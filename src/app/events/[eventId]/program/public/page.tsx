@@ -409,6 +409,7 @@ export default function PublicProgramPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-center gap-4">
               {event?.logo_url && (
+                /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={event.logo_url} alt="" className="h-16 w-16 rounded-lg bg-white p-1" />
               )}
               <div>

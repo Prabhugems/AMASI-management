@@ -76,6 +76,14 @@ export default function KioskPage() {
     },
   })
 
+  const resetKiosk = useCallback(() => {
+    setResult(null)
+    setRegistrationNumber("")
+    setCountdown(10)
+    setEmailSent(false)
+    setTimeout(() => inputRef.current?.focus(), 100)
+  }, [])
+
   // Auto-reset countdown
   useEffect(() => {
     if (result) {
@@ -90,7 +98,7 @@ export default function KioskPage() {
       }, 1000)
       return () => clearInterval(timer)
     }
-  }, [result])
+  }, [result, resetKiosk])
 
   // Focus input on mount and after reset
   useEffect(() => {
@@ -98,14 +106,6 @@ export default function KioskPage() {
       inputRef.current?.focus()
     }
   }, [result])
-
-  const resetKiosk = useCallback(() => {
-    setResult(null)
-    setRegistrationNumber("")
-    setCountdown(10)
-    setEmailSent(false)
-    setTimeout(() => inputRef.current?.focus(), 100)
-  }, [])
 
   const handleCheckin = async () => {
     if (!registrationNumber.trim()) {

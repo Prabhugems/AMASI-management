@@ -295,6 +295,7 @@ export function EventSidebar() {
         )}>
           {/* Logo or Initial */}
           {event?.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={event.logo_url}
               alt={event.name || "Event logo"}

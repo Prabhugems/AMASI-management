@@ -281,6 +281,7 @@ export default function RespondPage() {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
           <div className="bg-primary/10 p-6 text-center">
             {event?.logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={event.logo_url} alt="" className="h-16 mx-auto mb-4" />
             )}
             <h1 className="text-2xl font-bold text-gray-900">{event?.name || "Conference"}</h1>

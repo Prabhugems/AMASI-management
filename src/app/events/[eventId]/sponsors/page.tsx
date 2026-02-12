@@ -272,6 +272,7 @@ export default function SponsorsOverviewPage() {
                 >
                   <div className="flex items-center gap-3">
                     {sponsor.logo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={sponsor.logo_url}
                         alt={sponsor.name}

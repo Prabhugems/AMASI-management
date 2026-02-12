@@ -142,6 +142,7 @@ function FlightPreferenceUpload({
         <div className="space-y-2">
           {uploadedImages.map((url, index) => (
             <div key={index} className="relative group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={url}
                 alt={`Flight preference ${index + 1}`}

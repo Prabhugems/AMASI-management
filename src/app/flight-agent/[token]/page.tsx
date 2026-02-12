@@ -550,6 +550,7 @@ export default function FlightAgentPortal() {
                     <div className="p-4 bg-white rounded-xl border shadow-sm">
                       <div className="flex items-start gap-3">
                         {photoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img src={photoUrl} alt="" className="w-14 h-14 rounded-lg object-cover border" />
                         ) : (
                           <div className="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center border">
@@ -595,6 +596,7 @@ export default function FlightAgentPortal() {
                         <div className="grid gap-2">
                           {editingSpeaker.custom_fields.flight_preference_images.map((url, i) => (
                             <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img src={url} alt="" className="w-full rounded border hover:opacity-80" />
                             </a>
                           ))}

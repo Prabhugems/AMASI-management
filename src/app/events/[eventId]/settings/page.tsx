@@ -669,6 +669,7 @@ export default function SettingsPage() {
                   <div className="absolute bottom-0 left-0 right-0 p-6">
                     <div className="flex items-end gap-4">
                       {formData.logo_url ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={formData.logo_url}
                           alt="Event logo"

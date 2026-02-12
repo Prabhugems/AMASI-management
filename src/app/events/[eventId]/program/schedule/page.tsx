@@ -173,15 +173,6 @@ export default function ProgramPage() {
   const startX = useRef(0)
   const startWidth = useRef(0)
 
-  const handleMouseDown = useCallback((e: React.MouseEvent, column: string) => {
-    e.preventDefault()
-    resizingColumn.current = column
-    startX.current = e.clientX
-    startWidth.current = columnWidths[column as keyof typeof columnWidths]
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-  }, [columnWidths])
-
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!resizingColumn.current) return
     const diff = e.clientX - startX.current
@@ -197,6 +188,15 @@ export default function ProgramPage() {
     document.removeEventListener('mousemove', handleMouseMove)
     document.removeEventListener('mouseup', handleMouseUp)
   }, [handleMouseMove])
+
+  const handleMouseDown = useCallback((e: React.MouseEvent, column: string) => {
+    e.preventDefault()
+    resizingColumn.current = column
+    startX.current = e.clientX
+    startWidth.current = columnWidths[column as keyof typeof columnWidths]
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [columnWidths, handleMouseMove, handleMouseUp])
 
   // Form state
   const [formData, setFormData] = useState({

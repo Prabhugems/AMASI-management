@@ -333,6 +333,7 @@ export default function DriverAssignmentsPage() {
                   <div className="p-4 border-b">
                     <div className="flex items-start gap-3">
                       {assignment.guestPhoto ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={assignment.guestPhoto}
                           alt={assignment.guestName}

@@ -255,6 +255,7 @@ export function SignatureInput({
   if (value) {
     return (
       <div className={cn("relative", className)}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={value}
           alt="Signature"
@@ -334,6 +335,7 @@ export function SignatureDisplay({
         className
       )}
     >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} className="h-12" />
     </div>
   )

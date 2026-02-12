@@ -504,7 +504,7 @@ export default function SessionsPage() {
   }
 
   // Duplicate session function
-  const duplicateSession = async (session: Session) => {
+  const duplicateSession = useCallback(async (session: Session) => {
     const { error } = await (supabase as any)
       .from("sessions")
       .insert({
@@ -525,7 +525,7 @@ export default function SessionsPage() {
       queryClient.invalidateQueries({ queryKey: ["sessions-list", eventId] })
       toast.success("Session duplicated")
     }
-  }
+  }, [supabase, eventId, queryClient])
 
   // Fetch faculty assignments for confirmation status
   const { data: assignments } = useQuery({
@@ -740,10 +740,10 @@ export default function SessionsPage() {
   const selectedCount = selectedIds.length
 
   // Open edit panel
-  const openEditPanel = (session: Session) => {
+  const openEditPanel = useCallback((session: Session) => {
     setEditingSession(session)
     setEditFormData({ ...session })
-  }
+  }, [])
 
   // Column definitions
   const columns: ColumnDef<Session>[] = useMemo(() => [
@@ -952,7 +952,7 @@ export default function SessionsPage() {
         </DropdownMenu>
       ),
     },
-  ], [getSessionStatus])
+  ], [getSessionStatus, deleteMutation, duplicateSession, openEditPanel])
 
   // Initialize column order
   const defaultColumnOrder = columns.map(c => c.id as string)

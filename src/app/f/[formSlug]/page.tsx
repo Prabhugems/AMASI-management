@@ -252,6 +252,7 @@ export default function PublicFormPage() {
       >
         <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-10 mx-4 max-w-md text-center border border-amber-200">
           {form.logo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={form.logo_url} alt="Logo" className="max-h-16 mx-auto mb-6 object-contain" />
           )}
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
@@ -286,6 +287,7 @@ export default function PublicFormPage() {
           {/* Form Header */}
           <div className="text-center mb-8">
             {form.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={form.logo_url} alt="Logo" className="max-h-16 mx-auto mb-4 object-contain" />
             ) : (
               <div
@@ -389,6 +391,7 @@ export default function PublicFormPage() {
         <div className="w-full max-w-md space-y-4">
           <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-10 text-center border border-green-200">
             {form.logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={form.logo_url} alt="Logo" className="max-h-16 mx-auto mb-6 object-contain" />
             )}
             <div
@@ -455,6 +458,7 @@ export default function PublicFormPage() {
       {form.header_image_url && (
         <div className="max-w-3xl mx-auto px-4 mb-8">
           <div className="rounded-3xl overflow-hidden shadow-2xl border-4 border-white/50">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={form.header_image_url} alt="Form header" className="w-full h-56 object-cover" />
           </div>
         </div>
@@ -513,6 +517,7 @@ export default function PublicFormPage() {
           >
             {form.logo_url && (
               <div className="flex justify-center mb-6">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={form.logo_url} alt="Logo" className="max-h-16 object-contain" />
               </div>
             )}

@@ -434,6 +434,7 @@ export default function FloorPlanPage() {
                             {stall.sponsors ? (
                               <>
                                 {stall.sponsors.logo_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
                                   <img
                                     src={stall.sponsors.logo_url}
                                     alt={stall.sponsors.name}
@@ -548,6 +549,7 @@ export default function FloorPlanPage() {
                 {selectedStall.sponsors ? (
                   <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     {selectedStall.sponsors.logo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={selectedStall.sponsors.logo_url}
                         alt=""
@@ -609,6 +611,7 @@ export default function FloorPlanPage() {
                         <SelectItem key={sponsor.id} value={sponsor.id}>
                           <div className="flex items-center gap-2">
                             {sponsor.logo_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={sponsor.logo_url}
                                 alt={`${sponsor.name || 'Sponsor'} logo`}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useMutation } from "@tanstack/react-query"
@@ -274,11 +274,11 @@ export default function CheckinScanPage() {
     }
   })
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (lastCheckedInId) {
       undoMutation.mutate(lastCheckedInId)
     }
-  }
+  }, [lastCheckedInId, undoMutation])
 
   const addRecentScan = (name: string, registrationNumber: string, registrationId: string | undefined, status: "success" | "error" | "already") => {
     setRecentScans((prev) => [
@@ -367,7 +367,7 @@ export default function CheckinScanPage() {
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [lastCheckedInId])
+  }, [lastCheckedInId, handleUndo])
 
   // Toggle fullscreen
   const toggleFullscreen = () => {
@@ -571,6 +571,7 @@ export default function CheckinScanPage() {
               </button>
             </div>
             <div className="mt-4 flex justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getScanUrl())}&bgcolor=1f2937&color=ffffff`}
                 alt="QR Code"

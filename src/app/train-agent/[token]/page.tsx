@@ -379,6 +379,7 @@ export default function TrainAgentPortal() {
                   <div className="space-y-4">
                     <div className="p-4 bg-white rounded-xl border shadow-sm">
                       <div className="flex items-start gap-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         {photoUrl ? <img src={photoUrl} alt="" className="w-14 h-14 rounded-lg object-cover border" /> : <div className="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center border"><User className="h-6 w-6 text-slate-400" /></div>}
                         <div>
                           <p className="font-semibold">{editingSpeaker.attendee_name}</p>

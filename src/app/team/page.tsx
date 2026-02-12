@@ -629,6 +629,7 @@ export default function TeamPage() {
       const updated = teamMembers.find(m => m.id === selectedMember.id)
       if (updated) setSelectedMember(updated)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedMember is intentionally excluded; including it would cause an infinite loop since this effect sets selectedMember
   }, [teamMembers])
 
   return (

@@ -89,6 +89,7 @@ export function ImageUpload({
     <div className={cn("space-y-2", className)}>
       {value ? (
         <div className={cn("relative rounded-lg overflow-hidden border bg-gray-50", aspectClasses[aspectRatio])}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={value}
             alt="Uploaded"

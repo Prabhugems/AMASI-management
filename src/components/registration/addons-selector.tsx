@@ -126,6 +126,7 @@ export function AddonsSelector({
             <div className="flex items-start gap-4">
               {/* Addon Image or Icon */}
               {addon.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={addon.image_url}
                   alt={addon.name}

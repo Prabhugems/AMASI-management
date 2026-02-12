@@ -517,6 +517,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
                   <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
                     <div className="flex items-start gap-3">
                       {photoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={photoUrl} alt={editingGuest.attendee_name} className="w-20 h-20 rounded-lg object-cover border-2 border-white shadow-sm" />
                       ) : (
                         <div className="w-20 h-20 rounded-lg bg-white flex items-center justify-center border-2 border-slate-200">

@@ -199,6 +199,7 @@ export function ActivityTimeline({
           {/* Avatar */}
           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
             {item.user.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={item.user.image}
                 alt={item.user.name}

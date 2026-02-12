@@ -125,7 +125,7 @@ export default function StaffCheckinPage() {
     }
   }, [loading, error, lastResult, scanMode])
 
-  const playSound = (type: "success" | "error") => {
+  const playSound = useCallback((type: "success" | "error") => {
     if (!soundEnabled || !audioContextRef.current) return
     try {
       const ctx = audioContextRef.current
@@ -164,7 +164,7 @@ export default function StaffCheckinPage() {
     } catch (_e) {
       // Ignore sound errors
     }
-  }
+  }, [soundEnabled])
 
   const handleScan = useCallback(async (value: string) => {
     if (!value.trim() || processing || !checkinList) return
@@ -247,7 +247,7 @@ export default function StaffCheckinPage() {
       setProcessing(false)
       setInputValue("")
     }
-  }, [processing, checkinList, accessToken, soundEnabled])
+  }, [processing, checkinList, accessToken, playSound])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -255,7 +255,7 @@ export default function StaffCheckinPage() {
     }
   }
 
-  const resetResult = () => {
+  const resetResult = useCallback(() => {
     setLastResult(null)
     lastScannedRef.current = ""
     if (autoContinueTimerRef.current) {
@@ -265,7 +265,7 @@ export default function StaffCheckinPage() {
     if (scanMode === "manual" && inputRef.current) {
       inputRef.current.focus()
     }
-  }
+  }, [scanMode])
 
   // Auto-continue effect - always auto-continue after 5 seconds
   useEffect(() => {
@@ -279,7 +279,7 @@ export default function StaffCheckinPage() {
         clearTimeout(autoContinueTimerRef.current)
       }
     }
-  }, [lastResult])
+  }, [lastResult, resetResult])
 
   // Camera scanner setup
   const startScanner = useCallback(async () => {
@@ -353,6 +353,7 @@ export default function StaffCheckinPage() {
     if (scanMode === "camera" && scannerReady) {
       startScanner()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only restart scanner when facingMode changes; adding scanMode/scannerReady/startScanner would cause unnecessary restarts
   }, [facingMode])
 
   const switchCamera = async () => {

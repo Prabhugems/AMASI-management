@@ -176,6 +176,7 @@ export function Canvas({
       {/* Header Image */}
       {headerImageUrl && (
         <div className="h-48 overflow-hidden relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={headerImageUrl}
             alt="Form header"
@@ -195,6 +196,7 @@ export function Canvas({
           {/* Logo */}
           {logoUrl && (
             <div className="flex justify-center mb-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={logoUrl}
                 alt="Form logo"

@@ -236,6 +236,7 @@ export default function PrintStationKioskPage() {
     if (previewCode && station && !scannedRegistration) {
       printMutation.mutate(previewCode)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only trigger on previewCode/station changes; printMutation is unstable (new ref each render) and scannedRegistration is a guard condition, not a trigger
   }, [previewCode, station])
 
   // Handle keyboard shortcut for fullscreen
@@ -252,6 +253,7 @@ export default function PrintStationKioskPage() {
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- resetScan is stable (useCallback) but defined later in component
   }, [scannedRegistration])
 
   const playSuccessSound = () => {
@@ -326,6 +328,50 @@ export default function PrintStationKioskPage() {
     }
   }, [])
 
+  // Stop camera scanner
+  const stopScanner = useCallback(async () => {
+    if (scannerRef.current && cameraActive) {
+      try {
+        const scanner = scannerRef.current
+        // Check if scanner is actually running before stopping
+        if (scanner.isScanning) {
+          await scanner.stop()
+        }
+        scannerRef.current = null
+      } catch (e) {
+        // Ignore stop errors - scanner might already be stopped
+        console.log("Scanner stop error (safe to ignore):", e)
+      }
+    }
+    setCameraActive(false)
+  }, [cameraActive])
+
+  // Handle scanned QR code
+  const handleQrCodeScanned = useCallback((decodedText: string) => {
+    // Stop scanner after successful scan
+    stopScanner()
+
+    // Play success sound
+    if (soundEnabled) playSuccessSound()
+
+    // Process the scanned code (could be registration number or URL)
+    let registrationNumber = decodedText
+
+    // If it's a URL, try to extract registration number
+    if (decodedText.includes("/")) {
+      const parts = decodedText.split("/")
+      registrationNumber = parts[parts.length - 1]
+    }
+
+    // Clean up the registration number
+    registrationNumber = registrationNumber.trim()
+
+    // Trigger the print mutation with scanned code
+    setError(null)
+    setIsPrinting(true)
+    printMutation.mutate(registrationNumber)
+  }, [soundEnabled, stopScanner, printMutation])
+
   // Start camera scanner
   const startScanner = useCallback(async () => {
     if (!selectedCameraId) {
@@ -370,51 +416,7 @@ export default function PrintStationKioskPage() {
       setCameraError(err.message || "Failed to start camera")
       setCameraActive(false)
     }
-  }, [selectedCameraId, getCameras])
-
-  // Stop camera scanner
-  const stopScanner = useCallback(async () => {
-    if (scannerRef.current && cameraActive) {
-      try {
-        const scanner = scannerRef.current
-        // Check if scanner is actually running before stopping
-        if (scanner.isScanning) {
-          await scanner.stop()
-        }
-        scannerRef.current = null
-      } catch (e) {
-        // Ignore stop errors - scanner might already be stopped
-        console.log("Scanner stop error (safe to ignore):", e)
-      }
-    }
-    setCameraActive(false)
-  }, [cameraActive])
-
-  // Handle scanned QR code
-  const handleQrCodeScanned = useCallback((decodedText: string) => {
-    // Stop scanner after successful scan
-    stopScanner()
-
-    // Play success sound
-    if (soundEnabled) playSuccessSound()
-
-    // Process the scanned code (could be registration number or URL)
-    let registrationNumber = decodedText
-
-    // If it's a URL, try to extract registration number
-    if (decodedText.includes("/")) {
-      const parts = decodedText.split("/")
-      registrationNumber = parts[parts.length - 1]
-    }
-
-    // Clean up the registration number
-    registrationNumber = registrationNumber.trim()
-
-    // Trigger the print mutation with scanned code
-    setError(null)
-    setIsPrinting(true)
-    printMutation.mutate(registrationNumber)
-  }, [soundEnabled, stopScanner])
+  }, [selectedCameraId, getCameras, handleQrCodeScanned])
 
   // Switch camera (front/back)
   const switchCamera = useCallback(async () => {
@@ -828,7 +830,7 @@ export default function PrintStationKioskPage() {
     return html
   }
 
-  const resetScan = () => {
+  const resetScan = useCallback(() => {
     setScannedRegistration(null)
     setError(null)
     setPrintError(null)
@@ -846,7 +848,7 @@ export default function PrintStationKioskPage() {
     } else if (inputRef.current) {
       inputRef.current.focus()
     }
-  }
+  }, [scanMode, startScanner])
 
   const getPrintModeIcon = (mode: string) => {
     switch (mode) {

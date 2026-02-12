@@ -455,6 +455,7 @@ export default function EventDetailsPage() {
           {/* Hero Banner */}
           <div className="relative overflow-hidden rounded-2xl">
             {event.banner_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={event.banner_url}
                 alt={event.name}
@@ -493,6 +494,7 @@ export default function EventDetailsPage() {
             {/* Event Logo */}
             {event.logo_url && (
               <div className="absolute bottom-4 left-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={event.logo_url}
                   alt={event.name}

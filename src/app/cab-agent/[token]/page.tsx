@@ -349,6 +349,7 @@ export default function CabAgentPortal() {
                     <div className="p-4 bg-white rounded-xl border shadow-sm">
                       <div className="flex items-start gap-3">
                         {photoUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img src={photoUrl} alt="" className="w-16 h-16 rounded-lg object-cover border" />
                         ) : (
                           <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center border">

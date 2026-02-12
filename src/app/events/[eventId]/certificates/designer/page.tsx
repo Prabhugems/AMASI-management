@@ -810,24 +810,27 @@ export default function CertificateDesignerPage() {
     setSelectedElementIds([newElement.id])
   }
 
-  const deleteElement = (elementId: string) => {
+  const deleteElement = useCallback((elementId: string) => {
     setTemplate((prev) => ({ ...prev, elements: prev.elements.filter((e) => e.id !== elementId) }))
     setSelectedElementIds((prev) => prev.filter((id) => id !== elementId))
-  }
+  }, [])
 
-  const duplicateElement = (elementId: string) => {
-    const element = template.elements.find((e) => e.id === elementId)
-    if (!element) return
-    const newElement: CertificateElement = {
-      ...element,
-      id: Date.now().toString(),
-      x: element.x + 20,
-      y: element.y + 20,
-      zIndex: Math.max(...template.elements.map((e) => e.zIndex), 0) + 1,
-    }
-    setTemplate((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
-    setSelectedElementIds([newElement.id])
-  }
+  const duplicateElement = useCallback((elementId: string) => {
+    const newId = Date.now().toString()
+    setTemplate((prev) => {
+      const element = prev.elements.find((e) => e.id === elementId)
+      if (!element) return prev
+      const newElement: CertificateElement = {
+        ...element,
+        id: newId,
+        x: element.x + 20,
+        y: element.y + 20,
+        zIndex: Math.max(...prev.elements.map((e) => e.zIndex), 0) + 1,
+      }
+      return { ...prev, elements: [...prev.elements, newElement] }
+    })
+    setSelectedElementIds([newId])
+  }, [])
 
   // Keyboard shortcuts - must be after all function definitions it references
   useEffect(() => {
@@ -1059,6 +1062,7 @@ export default function CertificateDesignerPage() {
       }
       if (element.type === "photo") {
         return element.imageUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img src={element.imageUrl} alt="" className="w-full h-full object-cover" style={{ borderRadius: element.borderRadius || 0, borderWidth: element.borderWidth || 0, borderColor: element.borderColor || "transparent", borderStyle: "solid" }} />
         ) : (
           <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300" style={{ borderRadius: element.borderRadius || 0 }}>
@@ -1101,6 +1105,7 @@ export default function CertificateDesignerPage() {
       }
       if (element.type === "image") {
         return element.imageUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img src={element.imageUrl} alt="" className="w-full h-full object-contain" />
         ) : (
           <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300 rounded">
@@ -1408,6 +1413,7 @@ export default function CertificateDesignerPage() {
                   </div>
                   {template.backgroundImageUrl && (
                     <div className="relative group rounded-lg overflow-hidden border">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={template.backgroundImageUrl} alt="" className="w-full h-24 object-cover" />
                       <button
                         onClick={() => setTemplate((p) => ({ ...p, backgroundImageUrl: null }))}
@@ -1592,6 +1598,7 @@ export default function CertificateDesignerPage() {
               }}
             >
               {template.backgroundImageUrl && (
+                /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={template.backgroundImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none" style={{ zIndex: 0 }} />
               )}
               {showGrid && !previewMode && (
@@ -2247,6 +2254,7 @@ function QRCodePreview({ value, size }: { value: string; size: number }) {
     QRCode.toDataURL(value || "PREVIEW", { width: size * 2, margin: 1, errorCorrectionLevel: "M" }).then(setQrUrl).catch(() => {})
   }, [value, size])
   if (!qrUrl) return <div className="w-full h-full bg-muted flex items-center justify-center rounded"><QrCode className="h-6 w-6 text-muted-foreground" /></div>
+  // eslint-disable-next-line @next/next/no-img-element
   return <img src={qrUrl} alt="QR" className="w-full h-full object-contain" />
 }
 

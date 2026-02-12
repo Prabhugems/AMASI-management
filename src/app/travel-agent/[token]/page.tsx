@@ -1265,6 +1265,7 @@ export default function TravelAgentPortal() {
                   <div className="grid grid-cols-2 gap-2">
                     {editingSpeaker.custom_fields.flight_preference_images.map((url: string, index: number) => (
                       <a key={index} href={url} target="_blank" rel="noopener noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={url} alt={`Flight preference ${index + 1}`} className="w-full rounded border hover:opacity-80" />
                       </a>
                     ))}

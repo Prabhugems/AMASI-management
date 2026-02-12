@@ -116,6 +116,7 @@ function EventCard({ event, isDark: _isDark, index }: { event: PublicEvent; isDa
         {/* Banner Image */}
         <div className="relative h-48 overflow-hidden">
           {event.banner_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={event.banner_url}
               alt={event.name}
@@ -178,6 +179,7 @@ function EventCard({ event, isDark: _isDark, index }: { event: PublicEvent; isDa
           {/* Event Logo */}
           {event.logo_url && (
             <div className="absolute bottom-3 left-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={event.logo_url}
                 alt={event.name}

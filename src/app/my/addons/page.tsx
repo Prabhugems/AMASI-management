@@ -398,6 +398,7 @@ function PurchaseAddonsContent() {
                   <div key={addon.id} className="p-4">
                     <div className="flex items-start gap-4">
                       {addon.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={addon.image_url}
                           alt={addon.name}

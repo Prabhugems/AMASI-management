@@ -130,6 +130,7 @@ function SuccessContent() {
             {qrCodeUrl && (
               <div className="flex flex-col items-center">
                 <div className="p-3 bg-white border-2 border-gray-100 rounded-xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={qrCodeUrl}
                     alt="Registration QR Code"

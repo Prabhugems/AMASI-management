@@ -594,6 +594,7 @@ export default function AddonsPage() {
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                   {/* Image or placeholder */}
                   {addon.image_url ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={addon.image_url}
                       alt={addon.name}
@@ -785,6 +786,7 @@ export default function AddonsPage() {
                   <div className="flex items-start gap-4">
                     {formData.image_url ? (
                       <div className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={formData.image_url}
                           alt="Addon"

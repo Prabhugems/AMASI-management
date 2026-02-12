@@ -175,6 +175,7 @@ export function FormDesign({ form, onUpdate }: FormDesignProps) {
               </div>
               {form.logo_url && (
                 <div className="mt-2 p-2 bg-secondary rounded-lg inline-block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={form.logo_url}
                     alt="Logo preview"
@@ -209,6 +210,7 @@ export function FormDesign({ form, onUpdate }: FormDesignProps) {
               </div>
               {form.header_image_url && (
                 <div className="mt-2 rounded-lg overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={form.header_image_url}
                     alt="Header preview"
@@ -240,6 +242,7 @@ export function FormDesign({ form, onUpdate }: FormDesignProps) {
           {/* Header Image */}
           {form.header_image_url && (
             <div className="h-32 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={form.header_image_url}
                 alt="Header"
@@ -256,6 +259,7 @@ export function FormDesign({ form, onUpdate }: FormDesignProps) {
             {/* Logo */}
             {form.logo_url && (
               <div className="flex justify-center mb-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={form.logo_url}
                   alt="Logo"

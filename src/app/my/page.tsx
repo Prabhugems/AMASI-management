@@ -668,6 +668,7 @@ export default function DelegatePortalPage() {
               >
                 <div className="flex items-center gap-4">
                   {reg.event?.logo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={reg.event.logo_url}
                       alt={reg.event.name}
@@ -777,6 +778,7 @@ export default function DelegatePortalPage() {
             <div className="px-5 py-4">
               <div className="flex items-center gap-4 -mt-12">
                 {event.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={event.logo_url}
                     alt={event.name}
