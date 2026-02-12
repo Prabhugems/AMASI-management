@@ -150,18 +150,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 })
     }
 
-    // Verify webhook signature
+    // Verify webhook signature (no fallback - use the resolved secret only)
     const isValid = verifyWebhookSignature(rawBody, signature, webhookSecret)
     if (!isValid) {
-      // Try with default secret as fallback
-      const defaultValid = process.env.RAZORPAY_WEBHOOK_SECRET?.trim()
-        ? verifyWebhookSignature(rawBody, signature, process.env.RAZORPAY_WEBHOOK_SECRET?.trim())
-        : false
-
-      if (!defaultValid) {
-        console.error("[WEBHOOK] Invalid signature")
-        return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
-      }
+      console.error("[WEBHOOK] Invalid signature for webhook request")
+      return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 
     switch (event) {

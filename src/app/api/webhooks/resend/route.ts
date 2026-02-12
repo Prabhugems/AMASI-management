@@ -34,30 +34,40 @@ interface ResendWebhookPayload {
   }
 }
 
-// Verify webhook signature (optional but recommended)
+// Verify webhook signature
 function verifyWebhookSignature(payload: string, signature: string | null, secret: string): boolean {
-  if (!signature || !secret) return true // Skip verification if no secret configured
+  if (!secret) {
+    console.error("[RESEND WEBHOOK] No webhook secret configured - rejecting request")
+    return false
+  }
+  if (!signature) {
+    console.error("[RESEND WEBHOOK] No signature provided in request")
+    return false
+  }
 
   const expectedSignature = crypto
     .createHmac("sha256", secret)
     .update(payload)
     .digest("hex")
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  )
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    )
+  } catch {
+    return false // Length mismatch
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.text()
     const signature = request.headers.get("svix-signature")
-    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET
+    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET || ""
 
-    // Verify signature if secret is configured
-    if (webhookSecret && !verifyWebhookSignature(rawBody, signature, webhookSecret)) {
-      console.error("Invalid webhook signature")
+    // Always verify webhook signature
+    if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
     }
 

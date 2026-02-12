@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 // PATCH /api/events/[eventId]/settings - Update event settings
 export async function PATCH(
@@ -8,10 +9,14 @@ export async function PATCH(
 ) {
   try {
     const { eventId } = await params
-    const body = await request.json()
 
-    console.log("Saving event settings for:", eventId)
-    console.log("Data:", JSON.stringify(body, null, 2))
+    // Authentication & authorization check
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) {
+      return NextResponse.json({ error: authError }, { status: 403 })
+    }
+
+    const body = await request.json()
 
     const supabase = await createAdminClient()
 
@@ -34,8 +39,6 @@ export async function PATCH(
         updateData[field] = body[field]
       }
     }
-
-    console.log("Update data:", updateData)
 
     const { data, error } = await (supabase as any)
       .from("events")

@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/server"
+import { createAdminClient, createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 
 const BUCKET_NAME = "uploads"
@@ -24,6 +24,16 @@ async function ensureBucketExists(adminClient: any) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Authentication check - only authenticated users can upload files
+    const supabaseAuth = await createServerSupabaseClient()
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized - please login to upload files" },
+        { status: 401 }
+      )
+    }
+
     const formData = await request.formData()
     const file = formData.get("file") as File
     const eventId = formData.get("event_id") as string

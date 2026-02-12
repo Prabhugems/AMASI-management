@@ -161,6 +161,19 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
+
+      // Verify amount matches our records (Razorpay amounts are in paise)
+      if (razorpayPayment && paymentData.amount) {
+        const razorpayAmount = razorpayPayment.amount / 100
+        const expectedAmount = parseFloat(paymentData.amount)
+        if (Math.abs(razorpayAmount - expectedAmount) > 1) {
+          console.error(`[VERIFY] Amount mismatch! Razorpay: ₹${razorpayAmount}, Expected: ₹${expectedAmount}`)
+          return NextResponse.json(
+            { error: "Payment amount mismatch" },
+            { status: 400 }
+          )
+        }
+      }
     } catch (rpError) {
       console.error(`[VERIFY] Failed to fetch from Razorpay:`, rpError)
       // Continue anyway - signature is valid, so payment is legitimate
