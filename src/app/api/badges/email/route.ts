@@ -48,9 +48,10 @@ export async function POST(request: NextRequest) {
       : ""
     const venue = event?.venue_name ? `${event.venue_name}${event.city ? `, ${event.city}` : ""}` : ""
 
-    // Generate badge download URL using registration number (properly encoded)
+    // Generate URLs
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
     const badgeUrl = `${baseUrl}/api/badge/${encodeURIComponent(registration.registration_number)}/download`
+    const portalUrl = `${baseUrl}/my`
 
     // Try to fetch badge PDF from Supabase storage to attach to email
     let badgeAttachment: { filename: string; content: Buffer } | null = null
@@ -133,7 +134,11 @@ export async function POST(request: NextRequest) {
               </a>
             </div>
 
-            <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">
+            <p style="color: #666; font-size: 13px; text-align: center; margin-top: 20px; line-height: 1.6;">
+              You can also visit your <a href="${portalUrl}" style="color: #1e3a5f; font-weight: bold;">Delegate Portal</a> anytime to download your badge, certificate, receipt, and more.
+            </p>
+
+            <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">
               Print this badge and bring it to the event for faster check-in.
             </p>
           </div>
