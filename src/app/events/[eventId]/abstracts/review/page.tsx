@@ -126,7 +126,7 @@ export default function ReviewPage() {
       <div className="p-6">
         <div className="text-center py-16 bg-muted/30 rounded-xl border border-dashed">
           <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-4" />
-          <h2 className="text-2xl font-bold mb-2">All Caught Up!</h2>
+          <h2 className="text-xl sm:text-2xl font-bold mb-2">All Caught Up!</h2>
           <p className="text-muted-foreground mb-4">
             No abstracts pending review or decision.
           </p>
@@ -141,11 +141,11 @@ export default function ReviewPage() {
   const avgScore = getAverageScore(currentAbstract?.reviews)
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header with Progress */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Review Queue</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Review Queue</h1>
           <p className="text-muted-foreground mt-1">
             {abstracts.length} abstract{abstracts.length !== 1 ? "s" : ""} awaiting decision
           </p>
@@ -197,7 +197,7 @@ export default function ReviewPage() {
                   <div className="flex items-center gap-2">
                     <Star className="h-5 w-5 text-yellow-500" />
                     <span className={cn(
-                      "text-2xl font-bold",
+                      "text-xl sm:text-2xl font-bold",
                       parseFloat(avgScore) >= 7 ? "text-green-600" :
                       parseFloat(avgScore) >= 5 ? "text-yellow-600" :
                       "text-red-600"

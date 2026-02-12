@@ -139,10 +139,10 @@ export default function CommunicationsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Communications</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Communications</h1>
         <p className="text-muted-foreground">Send emails to registrants</p>
       </div>
 
@@ -159,7 +159,7 @@ export default function CommunicationsPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">All</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div
           className={cn(
@@ -172,7 +172,7 @@ export default function CommunicationsPage() {
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Confirmed</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.confirmed}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.confirmed}</p>
         </div>
         <div
           className={cn(
@@ -185,7 +185,7 @@ export default function CommunicationsPage() {
             <Clock className="h-4 w-4" />
             <span className="text-sm">Pending</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pending}</p>
         </div>
       </div>
 

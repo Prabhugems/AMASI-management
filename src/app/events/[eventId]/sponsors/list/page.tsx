@@ -428,11 +428,11 @@ export default function SponsorsListPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Sponsors</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Sponsors</h1>
           <p className="text-muted-foreground">Manage event sponsors</p>
         </div>
         <div className="flex gap-2">
@@ -630,7 +630,7 @@ export default function SponsorsListPage() {
 
       {/* Add/Edit Sponsor Dialog */}
       <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) setEditingSponsor(null) }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingSponsor ? "Edit Sponsor" : "Add Sponsor"}</DialogTitle>
           </DialogHeader>

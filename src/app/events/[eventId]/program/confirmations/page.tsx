@@ -383,11 +383,11 @@ export default function ConfirmationsPage() {
   const basePath = `/events/${eventId}/program`
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Confirmations</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Confirmations</h1>
           <p className="text-muted-foreground">Track and manage all faculty confirmations</p>
         </div>
         <div className="flex gap-2">

@@ -171,7 +171,7 @@ export default function SettingsPage() {
       {/* Tito-style Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Event Settings</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Event Settings</h1>
           <p className="text-muted-foreground mt-1">
             Configure your event details and preferences
           </p>

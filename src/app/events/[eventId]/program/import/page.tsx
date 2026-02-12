@@ -463,7 +463,7 @@ export default function ProgramImportPage() {
     <div className="p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Import Program</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Import Program</h1>
         <p className="text-muted-foreground">Upload a CSV file to import sessions</p>
       </div>
 
@@ -841,32 +841,32 @@ export default function ProgramImportPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Card>
               <CardContent className="pt-4">
-                <p className="text-3xl font-bold">{stats.sessions}</p>
+                <p className="text-2xl sm:text-3xl font-bold">{stats.sessions}</p>
                 <p className="text-sm text-muted-foreground">Sessions</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-3xl font-bold">{stats.days}</p>
+                <p className="text-2xl sm:text-3xl font-bold">{stats.days}</p>
                 <p className="text-sm text-muted-foreground">Days</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-3xl font-bold">{stats.halls}</p>
+                <p className="text-2xl sm:text-3xl font-bold">{stats.halls}</p>
                 <p className="text-sm text-muted-foreground">Halls</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-3xl font-bold">{stats.speakers}</p>
+                <p className="text-2xl sm:text-3xl font-bold">{stats.speakers}</p>
                 <p className="text-sm text-muted-foreground">Speakers</p>
               </CardContent>
             </Card>
             {stats.hasContactInfo && (
               <Card className="border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
                 <CardContent className="pt-4">
-                  <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.facultyWithContact}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.facultyWithContact}</p>
                   <p className="text-sm text-purple-600/70 dark:text-purple-400/70 flex items-center gap-1">
                     <Phone className="h-3 w-3" /> With Contact
                   </p>
@@ -1018,7 +1018,7 @@ export default function ProgramImportPage() {
                   <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-green-900 dark:text-green-200">Import Complete!</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold text-green-900 dark:text-green-200">Import Complete!</h2>
                   <p className="text-green-700 dark:text-green-300">{importResult.message}</p>
                 </div>
               </div>
@@ -1029,25 +1029,25 @@ export default function ProgramImportPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-4">
-                <p className="text-3xl font-bold">{importResult.imported?.sessions || 0}</p>
+                <p className="text-2xl sm:text-3xl font-bold">{importResult.imported?.sessions || 0}</p>
                 <p className="text-sm text-muted-foreground">Sessions Imported</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-3xl font-bold">{importResult.imported?.halls || 0}</p>
+                <p className="text-2xl sm:text-3xl font-bold">{importResult.imported?.halls || 0}</p>
                 <p className="text-sm text-muted-foreground">Halls Detected</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-3xl font-bold">{importResult.imported?.faculty?.created || 0}</p>
+                <p className="text-2xl sm:text-3xl font-bold">{importResult.imported?.faculty?.created || 0}</p>
                 <p className="text-sm text-muted-foreground">Faculty Created</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-3xl font-bold">{importResult.imported?.coordinators || 0}</p>
+                <p className="text-2xl sm:text-3xl font-bold">{importResult.imported?.coordinators || 0}</p>
                 <p className="text-sm text-muted-foreground">Coordinators Added</p>
               </CardContent>
             </Card>
@@ -1065,19 +1065,19 @@ export default function ProgramImportPage() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <p className="text-2xl font-bold">{importResult.analysis.scheduleSummary.totalDays}</p>
+                    <p className="text-xl sm:text-2xl font-bold">{importResult.analysis.scheduleSummary.totalDays}</p>
                     <p className="text-xs text-muted-foreground">Days</p>
                   </div>
                   <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <p className="text-2xl font-bold">{importResult.analysis.scheduleSummary.totalSessions}</p>
+                    <p className="text-xl sm:text-2xl font-bold">{importResult.analysis.scheduleSummary.totalSessions}</p>
                     <p className="text-xs text-muted-foreground">Total Sessions</p>
                   </div>
                   <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <p className="text-2xl font-bold">{importResult.analysis.scheduleSummary.totalHalls}</p>
+                    <p className="text-xl sm:text-2xl font-bold">{importResult.analysis.scheduleSummary.totalHalls}</p>
                     <p className="text-xs text-muted-foreground">Halls</p>
                   </div>
                   <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <p className="text-2xl font-bold">{importResult.analysis.scheduleSummary.totalFaculty}</p>
+                    <p className="text-xl sm:text-2xl font-bold">{importResult.analysis.scheduleSummary.totalFaculty}</p>
                     <p className="text-xs text-muted-foreground">Faculty Members</p>
                   </div>
                 </div>

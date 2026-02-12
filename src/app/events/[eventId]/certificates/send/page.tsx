@@ -202,10 +202,10 @@ export default function SendCertificatesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Send Certificates</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Send Certificates</h1>
         <p className="text-muted-foreground">Email certificates to attendees</p>
       </div>
 
@@ -222,7 +222,7 @@ export default function SendCertificatesPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">With Certificates</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div
           className={cn(
@@ -235,7 +235,7 @@ export default function SendCertificatesPage() {
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Sent</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.sent}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.sent}</p>
         </div>
         <div
           className={cn(
@@ -248,7 +248,7 @@ export default function SendCertificatesPage() {
             <Mail className="h-4 w-4" />
             <span className="text-sm">Ready to Send</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.ready}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.ready}</p>
         </div>
       </div>
 

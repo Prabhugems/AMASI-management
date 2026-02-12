@@ -208,10 +208,10 @@ export default function GenerateCertificatesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Generate Certificates</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Generate Certificates</h1>
         <p className="text-muted-foreground">Bulk generate certificates for attendees</p>
       </div>
 
@@ -228,7 +228,7 @@ export default function GenerateCertificatesPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Total Attendees</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div
           className={cn(
@@ -241,7 +241,7 @@ export default function GenerateCertificatesPage() {
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Generated</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.generated}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.generated}</p>
         </div>
         <div
           className={cn(
@@ -254,7 +254,7 @@ export default function GenerateCertificatesPage() {
             <Clock className="h-4 w-4" />
             <span className="text-sm">Pending</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pending}</p>
         </div>
       </div>
 

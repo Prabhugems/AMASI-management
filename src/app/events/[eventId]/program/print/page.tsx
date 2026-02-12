@@ -229,7 +229,7 @@ export default function PrintProgramPage() {
           <div className="bg-white text-black print:bg-white program-document">
             {/* Header */}
             <div className="text-center mb-6 pb-4 border-b-4 border-blue-800">
-              <h1 className="text-2xl font-bold uppercase tracking-wide text-blue-900 mb-1">
+              <h1 className="text-xl sm:text-2xl font-bold uppercase tracking-wide text-blue-900 mb-1">
                 {event?.name || "Event Program"}
               </h1>
               {event?.venue_name && (

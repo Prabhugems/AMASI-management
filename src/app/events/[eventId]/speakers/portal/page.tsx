@@ -125,10 +125,10 @@ export default function SpeakerPortalPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Speaker Portal Links</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Speaker Portal Links</h1>
         <p className="text-muted-foreground">Generate and manage portal access for speakers</p>
       </div>
 

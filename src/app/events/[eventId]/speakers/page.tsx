@@ -73,15 +73,15 @@ export default function SpeakersOverviewPage() {
   const basePath = `/events/${eventId}/speakers`
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Speakers Overview</h1>
-          <p className="text-muted-foreground">Manage faculty, speakers, and chairpersons</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Speakers Overview</h1>
+          <p className="text-sm text-muted-foreground">Manage faculty, speakers, and chairpersons</p>
         </div>
         <Link href={`${basePath}/list`}>
-          <Button>
+          <Button size="sm">
             <UserPlus className="h-4 w-4 mr-2" />
             Add Speaker
           </Button>
@@ -95,7 +95,7 @@ export default function SpeakersOverviewPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Total Speakers</span>
           </div>
-          <p className="text-3xl font-bold mt-2">{stats?.total || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.total || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -103,7 +103,7 @@ export default function SpeakersOverviewPage() {
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Confirmed</span>
           </div>
-          <p className="text-3xl font-bold mt-2 text-green-600">{stats?.confirmed || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-green-600">{stats?.confirmed || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -111,7 +111,7 @@ export default function SpeakersOverviewPage() {
             <Plane className="h-4 w-4" />
             <span className="text-sm">Travel Booked</span>
           </div>
-          <p className="text-3xl font-bold mt-2 text-blue-500">{stats?.travelBooked || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-blue-500">{stats?.travelBooked || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -119,7 +119,7 @@ export default function SpeakersOverviewPage() {
             <Hotel className="h-4 w-4" />
             <span className="text-sm">Hotel Booked</span>
           </div>
-          <p className="text-3xl font-bold mt-2 text-purple-600">{stats?.hotelBooked || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-purple-600">{stats?.hotelBooked || 0}</p>
         </div>
       </div>
 

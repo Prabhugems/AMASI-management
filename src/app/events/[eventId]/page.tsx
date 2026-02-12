@@ -286,10 +286,10 @@ export default function EventDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Event Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-bold text-foreground">{event.name}</h1>
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">{event.name}</h1>
             <Badge
               variant="outline"
               className={cn(
@@ -306,7 +306,7 @@ export default function EventDashboardPage() {
               {event.status}
             </Badge>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {event.city && `${event.city}, `}
             {event.start_date &&
               new Date(event.start_date).toLocaleDateString("en-IN", {
@@ -323,15 +323,15 @@ export default function EventDashboardPage() {
               })}`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           {event.slug && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => window.open(`/register/${event.slug}`, '_blank')}
             >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              View Page
+              <ExternalLink className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">View Page</span>
             </Button>
           )}
           <Button
@@ -339,56 +339,56 @@ export default function EventDashboardPage() {
               size="sm"
               onClick={() => window.open(`/api/events/${eventId}/invitation-pdf`, '_blank')}
             >
-              <Download className="h-4 w-4 mr-2" />
-              Invitation
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Invitation</span>
             </Button>
           <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Export</span>
           </Button>
           <Button variant="outline" size="sm">
-            <Mail className="h-4 w-4 mr-2" />
-            Send Updates
+            <Mail className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Send Updates</span>
           </Button>
         </div>
       </div>
 
       {/* Event Setup Progress */}
       {setupProgress < 100 && (
-        <div className="bg-card rounded-xl border border-border p-6">
+        <div className="bg-card rounded-xl border border-border p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-foreground">Event Setup Progress</h3>
             <span className="text-sm text-muted-foreground">{completedSteps}/{setupSteps.length} completed</span>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between overflow-x-auto pb-2">
             {setupSteps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
+              <div key={step.id} className="flex items-center flex-shrink-0">
                 <button
                   onClick={() => router.push(step.link)}
                   className="flex flex-col items-center group"
                 >
                   <div
                     className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
+                      "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all",
                       step.completed
                         ? "bg-emerald-500 text-white"
                         : "bg-red-100 text-red-600 group-hover:bg-red-200"
                     )}
                   >
                     {step.completed ? (
-                      <Check className="w-5 h-5" />
+                      <Check className="w-4 h-4 sm:w-5 sm:h-5" />
                     ) : (
                       step.id
                     )}
                   </div>
                   <span className={cn(
-                    "text-xs mt-2 font-medium",
+                    "text-[10px] sm:text-xs mt-1.5 font-medium whitespace-nowrap",
                     step.completed ? "text-emerald-600" : "text-muted-foreground"
                   )}>
                     {step.label}
                   </span>
                   <span className={cn(
-                    "text-[10px]",
+                    "text-[10px] hidden sm:block",
                     step.completed ? "text-emerald-500" : "text-red-500"
                   )}>
                     {step.completed ? "Completed" : "Pending"}
@@ -396,7 +396,7 @@ export default function EventDashboardPage() {
                 </button>
                 {index < setupSteps.length - 1 && (
                   <div className={cn(
-                    "w-16 h-0.5 mx-2",
+                    "w-6 sm:w-16 h-0.5 mx-1 sm:mx-2 flex-shrink-0",
                     step.completed ? "bg-emerald-500" : "bg-gray-200"
                   )} />
                 )}

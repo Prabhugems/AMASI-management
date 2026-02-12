@@ -111,9 +111,9 @@ export default function CertificateReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Certificate Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Certificate Reports</h1>
           <p className="text-muted-foreground">Certificate issuance status overview</p>
         </div>
         <Button onClick={exportCSV} variant="outline">
@@ -129,7 +129,7 @@ export default function CertificateReportsPage() {
             <Award className="h-4 w-4" />
             <span className="text-sm">Total Confirmed</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.total || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.total || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -137,7 +137,7 @@ export default function CertificateReportsPage() {
             <CheckCircle className="h-4 w-4 text-blue-500" />
             <span className="text-sm">Checked In</span>
           </div>
-          <p className="text-2xl font-bold text-blue-600">{stats?.checkedIn || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold text-blue-600">{stats?.checkedIn || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -145,7 +145,7 @@ export default function CertificateReportsPage() {
             <Award className="h-4 w-4 text-green-500" />
             <span className="text-sm">Certificates Issued</span>
           </div>
-          <p className="text-2xl font-bold text-green-600">{stats?.generated || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600">{stats?.generated || 0}</p>
           <p className="text-xs text-muted-foreground">{stats?.percentGenerated}% of checked-in</p>
         </div>
 
@@ -154,7 +154,7 @@ export default function CertificateReportsPage() {
             <Clock className="h-4 w-4 text-yellow-500" />
             <span className="text-sm">Pending</span>
           </div>
-          <p className="text-2xl font-bold text-yellow-600">{stats?.pending || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats?.pending || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -162,7 +162,7 @@ export default function CertificateReportsPage() {
             <XCircle className="h-4 w-4 text-gray-400" />
             <span className="text-sm">Not Checked In</span>
           </div>
-          <p className="text-2xl font-bold text-gray-500">{stats?.notCheckedIn || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-500">{stats?.notCheckedIn || 0}</p>
         </div>
       </div>
 

@@ -226,9 +226,9 @@ export default function OrderReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Order Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Order Reports</h1>
           <p className="text-muted-foreground">Payment and revenue analytics</p>
         </div>
         <Button onClick={exportCSV} variant="outline">
@@ -244,7 +244,7 @@ export default function OrderReportsPage() {
             <Receipt className="h-4 w-4" />
             <span className="text-sm">Total Orders</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.total || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.total || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -252,7 +252,7 @@ export default function OrderReportsPage() {
             <CheckCircle className="h-4 w-4 text-green-500" />
             <span className="text-sm">Completed</span>
           </div>
-          <p className="text-2xl font-bold text-green-600">{stats?.completed || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600">{stats?.completed || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -260,7 +260,7 @@ export default function OrderReportsPage() {
             <Clock className="h-4 w-4 text-yellow-500" />
             <span className="text-sm">Pending</span>
           </div>
-          <p className="text-2xl font-bold text-yellow-600">{stats?.pending || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats?.pending || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -268,7 +268,7 @@ export default function OrderReportsPage() {
             <IndianRupee className="h-4 w-4 text-blue-500" />
             <span className="text-sm">Total Revenue</span>
           </div>
-          <p className="text-2xl font-bold text-blue-600">{(stats?.totalRevenue || 0).toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold text-blue-600">{(stats?.totalRevenue || 0).toLocaleString()}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -276,7 +276,7 @@ export default function OrderReportsPage() {
             <TrendingUp className="h-4 w-4 text-purple-500" />
             <span className="text-sm">Avg Order Value</span>
           </div>
-          <p className="text-2xl font-bold text-purple-600">{Math.round(stats?.avgOrderValue || 0).toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold text-purple-600">{Math.round(stats?.avgOrderValue || 0).toLocaleString()}</p>
         </div>
       </div>
 

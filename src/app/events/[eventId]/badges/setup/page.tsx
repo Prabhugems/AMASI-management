@@ -209,11 +209,11 @@ export default function BadgeSetupPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Badge Setup Guide</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Badge Setup Guide</h1>
           <p className="text-muted-foreground mt-1">
             Complete these steps before generating badges
           </p>

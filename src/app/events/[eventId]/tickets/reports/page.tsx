@@ -96,9 +96,9 @@ export default function TicketReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Ticket Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Ticket Reports</h1>
           <p className="text-muted-foreground">Sales and capacity overview</p>
         </div>
         <Button onClick={exportCSV} variant="outline">
@@ -114,7 +114,7 @@ export default function TicketReportsPage() {
             <Ticket className="h-4 w-4" />
             <span className="text-sm">Ticket Types</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.totalTickets || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.totalTickets || 0}</p>
           <p className="text-xs text-muted-foreground">{stats?.activeTickets || 0} active</p>
         </div>
 
@@ -123,7 +123,7 @@ export default function TicketReportsPage() {
             <Package className="h-4 w-4" />
             <span className="text-sm">Total Capacity</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.totalCapacity || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.totalCapacity || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -131,7 +131,7 @@ export default function TicketReportsPage() {
             <TrendingUp className="h-4 w-4" />
             <span className="text-sm">Total Sold</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.totalSold || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.totalSold || 0}</p>
           <p className="text-xs text-muted-foreground">{stats?.occupancyRate}% capacity</p>
         </div>
 
@@ -140,7 +140,7 @@ export default function TicketReportsPage() {
             <IndianRupee className="h-4 w-4" />
             <span className="text-sm">Total Revenue</span>
           </div>
-          <p className="text-2xl font-bold">₹{(stats?.totalRevenue || 0).toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold">₹{(stats?.totalRevenue || 0).toLocaleString()}</p>
         </div>
       </div>
 

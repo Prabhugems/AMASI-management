@@ -186,11 +186,11 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Message History</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Message History</h1>
           <p className="text-muted-foreground">Track all sent messages and their delivery status</p>
         </div>
         <div className="flex items-center gap-2">
@@ -246,29 +246,29 @@ export default function HistoryPage() {
       {/* Stats Summary */}
       <div className="grid grid-cols-5 gap-4">
         <div className="bg-card rounded-lg border p-3 text-center">
-          <p className="text-2xl font-bold">{logs?.length || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{logs?.length || 0}</p>
           <p className="text-xs text-muted-foreground">Total</p>
         </div>
         <div className="bg-card rounded-lg border p-3 text-center">
-          <p className="text-2xl font-bold text-green-500">
+          <p className="text-xl sm:text-2xl font-bold text-green-500">
             {logs?.filter((l) => l.status === "delivered" || l.status === "read").length || 0}
           </p>
           <p className="text-xs text-muted-foreground">Delivered</p>
         </div>
         <div className="bg-card rounded-lg border p-3 text-center">
-          <p className="text-2xl font-bold text-sky-500">
+          <p className="text-xl sm:text-2xl font-bold text-sky-500">
             {logs?.filter((l) => l.status === "sent").length || 0}
           </p>
           <p className="text-xs text-muted-foreground">Sent</p>
         </div>
         <div className="bg-card rounded-lg border p-3 text-center">
-          <p className="text-2xl font-bold text-amber-500">
+          <p className="text-xl sm:text-2xl font-bold text-amber-500">
             {logs?.filter((l) => l.status === "pending" || l.status === "queued").length || 0}
           </p>
           <p className="text-xs text-muted-foreground">Pending</p>
         </div>
         <div className="bg-card rounded-lg border p-3 text-center">
-          <p className="text-2xl font-bold text-red-500">
+          <p className="text-xl sm:text-2xl font-bold text-red-500">
             {logs?.filter((l) => l.status === "failed" || l.status === "bounced").length || 0}
           </p>
           <p className="text-xs text-muted-foreground">Failed</p>

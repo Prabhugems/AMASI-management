@@ -132,7 +132,7 @@ export default function HallDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href={`/events/${eventId}/program/halls`}>
@@ -146,7 +146,7 @@ export default function HallDetailPage() {
               <Building2 className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{hallName}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold">{hallName}</h1>
               <p className="text-muted-foreground">
                 {sessions?.length || 0} sessions across {dayGroups.length} day{dayGroups.length !== 1 ? "s" : ""}
               </p>

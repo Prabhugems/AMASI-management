@@ -262,9 +262,9 @@ export default function RoomingListPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Rooming List</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Rooming List</h1>
           <p className="text-muted-foreground">Room-wise guest assignments</p>
         </div>
         <Button variant="outline" onClick={exportRoomingList} disabled={!guests?.length}>
@@ -280,21 +280,21 @@ export default function RoomingListPage() {
             <User className="h-4 w-4" />
             <span className="text-sm">Total Guests</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-green-600">
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Room Assigned</span>
           </div>
-          <p className="text-2xl font-bold mt-1 text-green-600">{stats.assigned}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1 text-green-600">{stats.assigned}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-amber-500">
             <Clock className="h-4 w-4" />
             <span className="text-sm">Pending Room</span>
           </div>
-          <p className="text-2xl font-bold mt-1 text-amber-500">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1 text-amber-500">{stats.pending}</p>
         </div>
       </div>
 

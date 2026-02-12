@@ -575,7 +575,7 @@ export default function ProgramPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Program Schedule</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Program Schedule</h1>
           <p className="text-muted-foreground">
             {sessions?.length || 0} sessions scheduled
             {uniqueTracks.length > 0 && ` in ${uniqueTracks.length} tracks`}
@@ -701,7 +701,7 @@ export default function ProgramPage() {
             <CalendarDays className="h-4 w-4 text-primary" />
             <span className="text-xs text-muted-foreground">Total</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </button>
 
         {SESSION_TYPES.slice(0, 5).map((type) => {
@@ -722,7 +722,7 @@ export default function ProgramPage() {
                 <TypeIcon className={cn("h-4 w-4", type.color.replace("bg-", "text-"))} />
                 <span className="text-xs text-muted-foreground">{type.label}</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{count}</p>
+              <p className="text-xl sm:text-2xl font-bold mt-1">{count}</p>
             </button>
           )
         })}
@@ -1339,7 +1339,7 @@ export default function ProgramPage() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingSession ? "Edit Session" : "Add New Session"}

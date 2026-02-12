@@ -139,11 +139,11 @@ export default function RegistrationReportsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Registration Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Registration Reports</h1>
           <p className="text-muted-foreground">Analytics and insights</p>
         </div>
         <Button variant="outline" onClick={exportCSV}>
@@ -159,14 +159,14 @@ export default function RegistrationReportsPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Total</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-green-600">
             <TrendingUp className="h-4 w-4" />
             <span className="text-sm">Confirmed</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.confirmed}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.confirmed}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-purple-600">

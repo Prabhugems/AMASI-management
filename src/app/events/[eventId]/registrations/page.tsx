@@ -80,15 +80,15 @@ export default function RegistrationsOverviewPage() {
   const basePath = `/events/${eventId}/registrations`
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Registrations Overview</h1>
-          <p className="text-muted-foreground">Manage event registrations and attendees</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Registrations Overview</h1>
+          <p className="text-sm text-muted-foreground">Manage event registrations and attendees</p>
         </div>
         <Link href={`${basePath}/list`}>
-          <Button>
+          <Button size="sm">
             <UserPlus className="h-4 w-4 mr-2" />
             Add Registration
           </Button>
@@ -102,7 +102,7 @@ export default function RegistrationsOverviewPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Total</span>
           </div>
-          <p className="text-3xl font-bold mt-2">{stats?.total || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.total || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -110,7 +110,7 @@ export default function RegistrationsOverviewPage() {
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Confirmed</span>
           </div>
-          <p className="text-3xl font-bold mt-2 text-green-600">{stats?.confirmed || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-green-600">{stats?.confirmed || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -118,7 +118,7 @@ export default function RegistrationsOverviewPage() {
             <Clock className="h-4 w-4" />
             <span className="text-sm">Pending</span>
           </div>
-          <p className="text-3xl font-bold mt-2 text-amber-500">{stats?.pending || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-amber-500">{stats?.pending || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -126,7 +126,7 @@ export default function RegistrationsOverviewPage() {
             <XCircle className="h-4 w-4" />
             <span className="text-sm">Cancelled</span>
           </div>
-          <p className="text-3xl font-bold mt-2 text-red-500">{stats?.cancelled || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-red-500">{stats?.cancelled || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -134,7 +134,7 @@ export default function RegistrationsOverviewPage() {
             <IndianRupee className="h-4 w-4" />
             <span className="text-sm">Revenue</span>
           </div>
-          <p className="text-2xl font-bold mt-2 text-purple-600">
+          <p className="text-xl sm:text-2xl font-bold mt-2 text-purple-600">
             ₹{(stats?.revenue || 0).toLocaleString()}
           </p>
         </div>

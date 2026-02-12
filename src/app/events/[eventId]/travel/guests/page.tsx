@@ -375,9 +375,9 @@ export default function TravelGuestsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Travel Guests</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Travel Guests</h1>
           <p className="text-muted-foreground">Manage travel requirements for {speakers?.length || 0} guests</p>
         </div>
         <Button variant="outline" onClick={exportToCSV}>
@@ -410,7 +410,7 @@ export default function TravelGuestsPage() {
             <User className="h-4 w-4" />
             <span className="text-xs">Total</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </button>
         <button
           onClick={() => setStatusFilter("pending")}
@@ -420,7 +420,7 @@ export default function TravelGuestsPage() {
             <Clock className="h-4 w-4" />
             <span className="text-xs">Pending</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pending}</p>
         </button>
         <button
           onClick={() => setStatusFilter("booked")}
@@ -430,7 +430,7 @@ export default function TravelGuestsPage() {
             <CheckCircle className="h-4 w-4" />
             <span className="text-xs">Booked</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.booked}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.booked}</p>
         </button>
         <button
           onClick={() => setStatusFilter("confirmed")}
@@ -440,7 +440,7 @@ export default function TravelGuestsPage() {
             <Check className="h-4 w-4" />
             <span className="text-xs">Confirmed</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.confirmed}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.confirmed}</p>
         </button>
         <button
           onClick={() => setIdFilter(idFilter === "submitted" ? "all" : "submitted")}
@@ -450,7 +450,7 @@ export default function TravelGuestsPage() {
             <FileCheck className="h-4 w-4" />
             <span className="text-xs">ID Submitted</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.idSubmitted}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.idSubmitted}</p>
         </button>
         <button
           onClick={() => setIdFilter(idFilter === "missing" ? "all" : "missing")}
@@ -460,7 +460,7 @@ export default function TravelGuestsPage() {
             <X className="h-4 w-4" />
             <span className="text-xs">ID Missing</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.idMissing}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.idMissing}</p>
         </button>
       </div>
 

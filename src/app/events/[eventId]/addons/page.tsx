@@ -502,7 +502,7 @@ export default function AddonsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Addons</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Addons</h1>
           <p className="text-muted-foreground mt-1">
             Additional items attendees can purchase with their tickets
           </p>
@@ -514,14 +514,14 @@ export default function AddonsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <div className="bg-card rounded-xl p-4 border border-border">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Package className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
               <p className="text-xs text-muted-foreground">Total Addons</p>
             </div>
           </div>
@@ -532,7 +532,7 @@ export default function AddonsPage() {
               <Package className="h-5 w-5 text-emerald-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.active}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.active}</p>
               <p className="text-xs text-muted-foreground">Active</p>
             </div>
           </div>
@@ -543,7 +543,7 @@ export default function AddonsPage() {
               <Users className="h-5 w-5 text-blue-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.totalSold}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.totalSold}</p>
               <p className="text-xs text-muted-foreground">Total Sold</p>
             </div>
           </div>
@@ -554,7 +554,7 @@ export default function AddonsPage() {
               <IndianRupee className="h-5 w-5 text-amber-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</p>
+              <p className="text-xl sm:text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">Revenue</p>
             </div>
           </div>
@@ -729,7 +729,7 @@ export default function AddonsPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>{editingAddon ? "Edit Addon" : "Create Addon"}</DialogTitle>
             <DialogDescription>
@@ -738,7 +738,7 @@ export default function AddonsPage() {
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
               <TabsTrigger value="basic">Basic</TabsTrigger>
               <TabsTrigger value="variants" disabled={!formData.has_variants}>Variants</TabsTrigger>
               <TabsTrigger value="course" disabled={!formData.is_course}>Course</TabsTrigger>

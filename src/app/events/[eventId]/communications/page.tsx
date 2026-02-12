@@ -174,11 +174,11 @@ export default function CommunicationsOverviewPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Communications Hub</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Communications Hub</h1>
           <p className="text-muted-foreground">Send and track messages across all channels</p>
         </div>
         <Button onClick={() => router.push(`/events/${eventId}/communications/compose`)}>
@@ -194,7 +194,7 @@ export default function CommunicationsOverviewPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Recipients</span>
           </div>
-          <p className="text-2xl font-bold">{registrationsCount}</p>
+          <p className="text-xl sm:text-2xl font-bold">{registrationsCount}</p>
           <p className="text-xs text-muted-foreground">Total registrations</p>
         </div>
 
@@ -211,7 +211,7 @@ export default function CommunicationsOverviewPage() {
                   {channel.enabled ? "ON" : "OFF"}
                 </Badge>
               </div>
-              <p className="text-2xl font-bold">{channel.count}</p>
+              <p className="text-xl sm:text-2xl font-bold">{channel.count}</p>
               <p className="text-xs text-muted-foreground">Messages sent</p>
             </div>
           )
@@ -286,21 +286,21 @@ export default function CommunicationsOverviewPage() {
           {/* Delivery Stats */}
           <div className="bg-card rounded-lg border p-5">
             <h3 className="font-semibold mb-4">Delivery Summary</h3>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <div className="text-center p-3 rounded-lg bg-secondary/30">
-                <p className="text-2xl font-bold text-green-500">{stats?.byStatus?.delivered || 0}</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-500">{stats?.byStatus?.delivered || 0}</p>
                 <p className="text-xs text-muted-foreground">Delivered</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-secondary/30">
-                <p className="text-2xl font-bold text-blue-500">{stats?.byStatus?.sent || 0}</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-500">{stats?.byStatus?.sent || 0}</p>
                 <p className="text-xs text-muted-foreground">Sent</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-secondary/30">
-                <p className="text-2xl font-bold text-amber-500">{stats?.byStatus?.pending || 0}</p>
+                <p className="text-xl sm:text-2xl font-bold text-amber-500">{stats?.byStatus?.pending || 0}</p>
                 <p className="text-xs text-muted-foreground">Pending</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-secondary/30">
-                <p className="text-2xl font-bold text-red-500">{stats?.byStatus?.failed || 0}</p>
+                <p className="text-xl sm:text-2xl font-bold text-red-500">{stats?.byStatus?.failed || 0}</p>
                 <p className="text-xs text-muted-foreground">Failed</p>
               </div>
             </div>

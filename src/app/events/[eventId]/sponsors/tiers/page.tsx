@@ -261,11 +261,11 @@ export default function TiersPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Sponsor Tiers</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Sponsor Tiers</h1>
           <p className="text-muted-foreground">Define sponsorship levels and benefits</p>
         </div>
         <div className="flex gap-2">
@@ -386,7 +386,7 @@ export default function TiersPage() {
                   style={{ backgroundColor: tier.color }}
                 />
                 <p className="font-bold" style={{ color: tier.color }}>{tier.name}</p>
-                <p className="text-2xl font-bold mt-2">₹{(tier.price / 1000)}K</p>
+                <p className="text-xl sm:text-2xl font-bold mt-2">₹{(tier.price / 1000)}K</p>
                 <p className="text-xs text-muted-foreground">{tier.complimentary_passes} passes</p>
               </div>
             ))}

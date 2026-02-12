@@ -2072,7 +2072,7 @@ export default function CertificateDesignerPage() {
 
       {/* Templates Dialog */}
       <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Certificate Templates</DialogTitle>
           </DialogHeader>
@@ -2178,7 +2178,7 @@ export default function CertificateDesignerPage() {
 
       {/* Pre-built Templates Dialog */}
       <Dialog open={isPreBuiltDialogOpen} onOpenChange={setIsPreBuiltDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wand2 className="h-5 w-5" />

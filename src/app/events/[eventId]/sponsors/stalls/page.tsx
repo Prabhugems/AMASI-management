@@ -374,11 +374,11 @@ export default function StallsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Stalls</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Stalls</h1>
           <p className="text-muted-foreground">Manage exhibition booths and assignments</p>
         </div>
         <div className="flex gap-2">
@@ -394,22 +394,22 @@ export default function StallsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-card rounded-lg border p-4">
           <p className="text-sm text-muted-foreground">Total Stalls</p>
-          <p className="text-3xl font-bold mt-1">{stats.total}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-1">{stats.total}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <p className="text-sm text-green-600">Available</p>
-          <p className="text-3xl font-bold mt-1 text-green-600">{stats.available}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-1 text-green-600">{stats.available}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <p className="text-sm text-blue-600">Assigned</p>
-          <p className="text-3xl font-bold mt-1 text-blue-600">{stats.assigned}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-1 text-blue-600">{stats.assigned}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <p className="text-sm text-muted-foreground">Stall Revenue</p>
-          <p className="text-2xl font-bold mt-1">₹{stats.revenue.toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">₹{stats.revenue.toLocaleString()}</p>
         </div>
       </div>
 

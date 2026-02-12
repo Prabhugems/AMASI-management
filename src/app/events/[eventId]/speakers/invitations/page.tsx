@@ -199,15 +199,15 @@ export default function SpeakerInvitationsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Speaker Invitations</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Speaker Invitations</h1>
         <p className="text-muted-foreground">Send and track speaker invitations</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div
           className={cn(
             "bg-card rounded-lg border p-4 cursor-pointer transition-colors",
@@ -219,7 +219,7 @@ export default function SpeakerInvitationsPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Total</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div
           className={cn(
@@ -232,7 +232,7 @@ export default function SpeakerInvitationsPage() {
             <Clock className="h-4 w-4" />
             <span className="text-sm">Pending</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pending}</p>
         </div>
         <div
           className={cn(
@@ -245,7 +245,7 @@ export default function SpeakerInvitationsPage() {
             <Mail className="h-4 w-4" />
             <span className="text-sm">Sent</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.sent}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.sent}</p>
         </div>
         <div
           className={cn(
@@ -258,7 +258,7 @@ export default function SpeakerInvitationsPage() {
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Confirmed</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.confirmed}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.confirmed}</p>
         </div>
       </div>
 

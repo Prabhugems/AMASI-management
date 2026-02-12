@@ -124,9 +124,9 @@ export default function ProgramReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Program Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Program Reports</h1>
           <p className="text-muted-foreground">Sessions and schedule overview</p>
         </div>
         <Button onClick={exportCSV} variant="outline">
@@ -142,7 +142,7 @@ export default function ProgramReportsPage() {
             <Presentation className="h-4 w-4" />
             <span className="text-sm">Total Sessions</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.totalSessions || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.totalSessions || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -150,7 +150,7 @@ export default function ProgramReportsPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Total Speakers</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.totalSpeakers || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.totalSpeakers || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -158,7 +158,7 @@ export default function ProgramReportsPage() {
             <Calendar className="h-4 w-4" />
             <span className="text-sm">Event Days</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.uniqueDays || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.uniqueDays || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -166,7 +166,7 @@ export default function ProgramReportsPage() {
             <Clock className="h-4 w-4" />
             <span className="text-sm">Halls/Rooms</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.uniqueHalls || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.uniqueHalls || 0}</p>
         </div>
       </div>
 

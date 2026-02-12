@@ -205,7 +205,7 @@ export default function CourseParticipantsPage() {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-6 w-6 text-blue-500" />
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">
               {addon?.name || "Course"} - Participants
             </h1>
           </div>
@@ -239,7 +239,7 @@ export default function CourseParticipantsPage() {
               <Users className="h-5 w-5 text-blue-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
               <p className="text-xs text-muted-foreground">Total Participants</p>
             </div>
           </div>
@@ -250,7 +250,7 @@ export default function CourseParticipantsPage() {
               <Award className="h-5 w-5 text-emerald-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.certificatesIssued}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.certificatesIssued}</p>
               <p className="text-xs text-muted-foreground">Certificates Issued</p>
             </div>
           </div>
@@ -261,7 +261,7 @@ export default function CourseParticipantsPage() {
               <IndianRupee className="h-5 w-5 text-amber-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</p>
+              <p className="text-xl sm:text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">Total Revenue</p>
             </div>
           </div>

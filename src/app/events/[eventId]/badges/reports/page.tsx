@@ -107,9 +107,9 @@ export default function BadgeReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Badge Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Badge Reports</h1>
           <p className="text-muted-foreground">Badge generation status overview</p>
         </div>
         <Button onClick={exportCSV} variant="outline">
@@ -125,7 +125,7 @@ export default function BadgeReportsPage() {
             <BadgeCheck className="h-4 w-4" />
             <span className="text-sm">Total Confirmed</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.total || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.total || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -133,7 +133,7 @@ export default function BadgeReportsPage() {
             <CheckCircle className="h-4 w-4 text-green-500" />
             <span className="text-sm">Badges Generated</span>
           </div>
-          <p className="text-2xl font-bold text-green-600">{stats?.generated || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600">{stats?.generated || 0}</p>
           <p className="text-xs text-muted-foreground">{stats?.percentGenerated}%</p>
         </div>
 
@@ -142,7 +142,7 @@ export default function BadgeReportsPage() {
             <Clock className="h-4 w-4 text-yellow-500" />
             <span className="text-sm">Pending</span>
           </div>
-          <p className="text-2xl font-bold text-yellow-600">{stats?.pending || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats?.pending || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">

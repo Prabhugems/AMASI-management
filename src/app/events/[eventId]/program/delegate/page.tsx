@@ -482,7 +482,7 @@ export default function DelegateViewPage() {
         <div className={cn("rounded-xl p-6 mb-6 border-l-4", hallColors.light, hallColors.accent)}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className={cn("text-2xl font-bold", hallColors.text)}>
+              <h2 className={cn("text-xl sm:text-2xl font-bold", hallColors.text)}>
                 {selectedHall}
               </h2>
               <p className="text-gray-600 mt-1">
@@ -497,11 +497,11 @@ export default function DelegateViewPage() {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-center">
-                <p className={cn("text-3xl font-bold", hallColors.text)}>{stats.totalSessions}</p>
+                <p className={cn("text-2xl sm:text-3xl font-bold", hallColors.text)}>{stats.totalSessions}</p>
                 <p className="text-sm text-gray-500">Sessions</p>
               </div>
               <div className="text-center">
-                <p className={cn("text-3xl font-bold", hallColors.text)}>{stats.totalTracks}</p>
+                <p className={cn("text-2xl sm:text-3xl font-bold", hallColors.text)}>{stats.totalTracks}</p>
                 <p className="text-sm text-gray-500">Tracks</p>
               </div>
             </div>

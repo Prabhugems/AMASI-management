@@ -266,9 +266,9 @@ export default function TravelOverviewPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Travel Overview</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Travel Overview</h1>
           <p className="text-muted-foreground">Quick summary of travel management</p>
         </div>
         <DropdownMenu>
@@ -401,7 +401,7 @@ export default function TravelOverviewPage() {
             <CreditCard className="h-4 w-4" />
             <span className="text-sm">Total Cost</span>
           </div>
-          <p className="text-2xl font-bold">₹{(stats?.totalCost || 0).toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold">₹{(stats?.totalCost || 0).toLocaleString()}</p>
           <p className="text-xs text-muted-foreground">~₹{(stats?.avgCostPerPerson || 0).toLocaleString()}/person</p>
         </div>
       </div>
@@ -410,34 +410,34 @@ export default function TravelOverviewPage() {
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <Link href={`${basePath}/guests`} className="bg-card rounded-lg border p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-2 text-muted-foreground"><Users className="h-4 w-4" /><span className="text-sm">Travelers</span></div>
-          <p className="text-3xl font-bold mt-2">{stats?.total || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.total || 0}</p>
         </Link>
 
         <Link href={`${basePath}/flights`} className="bg-card rounded-lg border p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-2 text-blue-500"><Plane className="h-4 w-4" /><span className="text-sm">By Flight</span></div>
-          <p className="text-3xl font-bold mt-2">{stats?.byMode.flight || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.byMode.flight || 0}</p>
         </Link>
 
         <Link href={`${basePath}/trains`} className="bg-card rounded-lg border p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-2 text-orange-500"><Train className="h-4 w-4" /><span className="text-sm">By Train</span></div>
-          <p className="text-3xl font-bold mt-2">{stats?.byMode.train || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.byMode.train || 0}</p>
         </Link>
 
         <Link href={`${basePath}/transfers`} className="bg-card rounded-lg border p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-2 text-green-500"><Car className="h-4 w-4" /><span className="text-sm">Pickups</span></div>
-          <p className="text-3xl font-bold mt-2">{stats?.pickupRequired || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.pickupRequired || 0}</p>
           <p className="text-xs text-muted-foreground">{stats?.pickupArranged || 0} arranged</p>
         </Link>
 
         <Link href={`${basePath}/transfers`} className="bg-card rounded-lg border p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-2 text-red-500"><Car className="h-4 w-4" /><span className="text-sm">Drops</span></div>
-          <p className="text-3xl font-bold mt-2">{stats?.dropRequired || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.dropRequired || 0}</p>
           <p className="text-xs text-muted-foreground">{stats?.dropArranged || 0} arranged</p>
         </Link>
 
         <Link href={`/events/${eventId}/accommodation`} className="bg-card rounded-lg border p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-2 text-purple-500"><Hotel className="h-4 w-4" /><span className="text-sm">Hotel</span></div>
-          <p className="text-3xl font-bold mt-2">{stats?.hotelRequired || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.hotelRequired || 0}</p>
           <p className="text-xs text-muted-foreground">{stats?.hotelBooked || 0} booked</p>
         </Link>
       </div>

@@ -464,11 +464,11 @@ export default function CheckinReportsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Check-in Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Check-in Reports</h1>
           <p className="text-muted-foreground">Analytics, statistics and exports</p>
         </div>
         <div className="flex items-center gap-2">
@@ -486,28 +486,28 @@ export default function CheckinReportsPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Total Attendees</span>
           </div>
-          <p className="text-3xl font-bold mt-1">{stats.total}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-1">{stats.total}</p>
         </div>
         <div className="bg-emerald-50 rounded-lg border border-emerald-200 p-4">
           <div className="flex items-center gap-2 text-emerald-600">
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Checked In</span>
           </div>
-          <p className="text-3xl font-bold mt-1 text-emerald-700">{stats.checkedIn}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-1 text-emerald-700">{stats.checkedIn}</p>
         </div>
         <div className="bg-amber-50 rounded-lg border border-amber-200 p-4">
           <div className="flex items-center gap-2 text-amber-600">
             <Clock className="h-4 w-4" />
             <span className="text-sm">Remaining</span>
           </div>
-          <p className="text-3xl font-bold mt-1 text-amber-700">{stats.remaining}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-1 text-amber-700">{stats.remaining}</p>
         </div>
         <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
           <div className="flex items-center gap-2 text-blue-600">
             <TrendingUp className="h-4 w-4" />
             <span className="text-sm">Completion</span>
           </div>
-          <p className="text-3xl font-bold mt-1 text-blue-700">{stats.percentage}%</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-1 text-blue-700">{stats.percentage}%</p>
         </div>
       </div>
 

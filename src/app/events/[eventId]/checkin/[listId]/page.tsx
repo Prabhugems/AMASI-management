@@ -299,7 +299,7 @@ export default function CheckinListAttendeesPage() {
                 <Users className="w-6 h-6 text-white" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900">{stats?.total || 0}</div>
+                <div className="text-xl sm:text-2xl font-bold text-gray-900">{stats?.total || 0}</div>
                 <div className="text-sm text-gray-500">Total</div>
               </div>
             </div>
@@ -317,7 +317,7 @@ export default function CheckinListAttendeesPage() {
                 <UserCheck className="w-6 h-6 text-white" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-emerald-600">{stats?.checkedIn || 0}</div>
+                <div className="text-xl sm:text-2xl font-bold text-emerald-600">{stats?.checkedIn || 0}</div>
                 <div className="text-sm text-gray-500">Checked In</div>
               </div>
             </div>
@@ -335,7 +335,7 @@ export default function CheckinListAttendeesPage() {
                 <UserX className="w-6 h-6 text-white" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-amber-600">{stats?.notCheckedIn || 0}</div>
+                <div className="text-xl sm:text-2xl font-bold text-amber-600">{stats?.notCheckedIn || 0}</div>
                 <div className="text-sm text-gray-500">Remaining</div>
               </div>
             </div>
@@ -668,7 +668,7 @@ export default function CheckinListAttendeesPage() {
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            <div className="p-6 space-y-6">
+            <div className="space-y-6">
               <div className="flex items-center justify-center">
                 <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
                   <Smartphone className="w-10 h-10 text-blue-600" />

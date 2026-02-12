@@ -409,9 +409,9 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Pickup & Drop</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Pickup & Drop</h1>
           <p className="text-muted-foreground">Manage ground transportation</p>
         </div>
         <Button variant="outline" onClick={exportTransfers}><Download className="h-4 w-4 mr-2" />Export</Button>
@@ -421,21 +421,21 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-green-600"><PlaneLanding className="h-4 w-4" /><span className="text-sm">Pickups</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.pickup.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pickup.total}</p>
           <p className="text-xs text-muted-foreground">{stats.pickup.arranged} arranged</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-amber-500"><Clock className="h-4 w-4" /><span className="text-sm">Pickup Pending</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.pickup.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pickup.pending}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-red-500"><PlaneTakeoff className="h-4 w-4" /><span className="text-sm">Drops</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.drop.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.drop.total}</p>
           <p className="text-xs text-muted-foreground">{stats.drop.arranged} arranged</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-amber-500"><Clock className="h-4 w-4" /><span className="text-sm">Drop Pending</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.drop.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.drop.pending}</p>
         </div>
       </div>
 
@@ -503,7 +503,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
             </SheetHeader>
           </div>
 
-          <div className="p-6 space-y-5">
+          <div className="space-y-5">
             {/* Guest Photo & Contact Card - Important for driver */}
             {editingGuest && (() => {
               const photoUrl = editingGuest.custom_fields?.photo_url

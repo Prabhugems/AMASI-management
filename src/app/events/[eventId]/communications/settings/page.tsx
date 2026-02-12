@@ -202,11 +202,11 @@ export default function CommunicationsSettingsPage() {
   ]
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Communication Settings</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Communication Settings</h1>
           <p className="text-muted-foreground">Configure email, WhatsApp, SMS and webhook integrations</p>
         </div>
         <div className="flex items-center gap-3">
@@ -222,7 +222,7 @@ export default function CommunicationsSettingsPage() {
       </div>
 
       {/* Channel Toggles */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isEnabled = settings.channels_enabled[tab.id]

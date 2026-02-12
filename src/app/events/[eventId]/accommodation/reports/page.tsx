@@ -267,9 +267,9 @@ export default function AccommodationReportsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Accommodation Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Accommodation Reports</h1>
           <p className="text-muted-foreground">Analytics and summaries</p>
         </div>
         <Button variant="outline" onClick={exportCSV}>
@@ -285,7 +285,7 @@ export default function AccommodationReportsPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Total Guests</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{summary.totalGuests}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{summary.totalGuests}</p>
           <p className="text-xs text-muted-foreground">
             {summary.assignedGuests} assigned, {summary.pendingGuests} pending
           </p>
@@ -296,7 +296,7 @@ export default function AccommodationReportsPage() {
             <BedDouble className="h-4 w-4" />
             <span className="text-sm">Room Nights</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{summary.totalNights}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{summary.totalNights}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -304,7 +304,7 @@ export default function AccommodationReportsPage() {
             <CreditCard className="h-4 w-4" />
             <span className="text-sm">Total Cost</span>
           </div>
-          <p className="text-2xl font-bold mt-1">₹{summary.totalCost.toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">₹{summary.totalCost.toLocaleString()}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -312,7 +312,7 @@ export default function AccommodationReportsPage() {
             <TrendingUp className="h-4 w-4" />
             <span className="text-sm">Occupancy Rate</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{summary.occupancyRate}%</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{summary.occupancyRate}%</p>
           <p className="text-xs text-muted-foreground">
             {summary.assignedRooms}/{summary.totalRooms} rooms
           </p>

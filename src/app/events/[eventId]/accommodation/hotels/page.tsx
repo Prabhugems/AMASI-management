@@ -193,9 +193,9 @@ export default function HotelsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Hotels</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Hotels</h1>
           <p className="text-muted-foreground">Manage hotel inventory for this event</p>
         </div>
         <Button onClick={() => setShowAddHotel(true)}>
@@ -205,34 +205,34 @@ export default function HotelsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Building2 className="h-4 w-4" />
             <span className="text-sm">Hotels</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{hotels?.length || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{hotels?.length || 0}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-muted-foreground">
             <BedDouble className="h-4 w-4" />
             <span className="text-sm">Total Rooms</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{totalRooms}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{totalRooms}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-green-600">
             <BedDouble className="h-4 w-4" />
             <span className="text-sm">Available</span>
           </div>
-          <p className="text-2xl font-bold mt-1 text-green-600">{availableRooms}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1 text-green-600">{availableRooms}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-blue-600">
             <Users className="h-4 w-4" />
             <span className="text-sm">Assigned</span>
           </div>
-          <p className="text-2xl font-bold mt-1 text-blue-600">{assignedRooms}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1 text-blue-600">{assignedRooms}</p>
         </div>
       </div>
 
@@ -355,7 +355,7 @@ export default function HotelsPage() {
       <Dialog open={showAddHotel || !!editingHotel} onOpenChange={(open) => {
         if (!open) { setShowAddHotel(false); setEditingHotel(null); setHotelForm(initialForm) }
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingHotel ? "Edit Hotel" : "Add New Hotel"}</DialogTitle>
           </DialogHeader>
@@ -409,7 +409,7 @@ export default function HotelsPage() {
             {/* Room Inventory */}
             <div className="border-t pt-4 mt-2">
               <h4 className="font-medium mb-3">Room Inventory</h4>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 <div>
                   <Label>Total Rooms</Label>
                   <Input

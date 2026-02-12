@@ -926,9 +926,9 @@ export default function SpeakersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Speakers & Faculty</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Speakers & Faculty</h1>
           <p className="text-sm text-muted-foreground">
             Manage speakers and their session assignments
           </p>
@@ -1043,7 +1043,7 @@ export default function SpeakersPage() {
             <Users className="h-4 w-4 text-primary" />
             <span className="text-xs text-muted-foreground">Total</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </button>
 
         <button
@@ -1057,7 +1057,7 @@ export default function SpeakersPage() {
             <Clock className="h-4 w-4 text-amber-500" />
             <span className="text-xs text-muted-foreground">Pending</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pending}</p>
         </button>
 
         <button
@@ -1071,7 +1071,7 @@ export default function SpeakersPage() {
             <CheckCircle className="h-4 w-4 text-green-500" />
             <span className="text-xs text-muted-foreground">Confirmed</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.confirmed}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.confirmed}</p>
         </button>
 
         <button
@@ -1085,7 +1085,7 @@ export default function SpeakersPage() {
             <XCircle className="h-4 w-4 text-red-500" />
             <span className="text-xs text-muted-foreground">Declined</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.declined}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.declined}</p>
         </button>
 
         <button
@@ -1099,7 +1099,7 @@ export default function SpeakersPage() {
             <Plane className="h-4 w-4 text-blue-500" />
             <span className="text-xs text-muted-foreground">Need Travel</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.needsTravel}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.needsTravel}</p>
         </button>
 
         <div className="bg-card rounded-lg border p-3">
@@ -1107,7 +1107,7 @@ export default function SpeakersPage() {
             <CreditCard className="h-4 w-4 text-purple-500" />
             <span className="text-xs text-muted-foreground">ID Submitted</span>
           </div>
-          <p className="text-2xl font-bold mt-1">
+          <p className="text-xl sm:text-2xl font-bold mt-1">
             {stats.travelComplete}<span className="text-sm font-normal text-muted-foreground">/{stats.needsTravel}</span>
           </p>
         </div>

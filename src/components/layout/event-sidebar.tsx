@@ -95,7 +95,7 @@ const navItems: NavItem[] = [
   { label: "Settings", href: "/settings", icon: Settings },
 ]
 
-export function EventSidebar() {
+export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname()
   const params = useParams()
   const eventId = params.eventId as string
@@ -371,6 +371,7 @@ export function EventSidebar() {
             <Link
               key={item.href || "dashboard"}
               href={href}
+              onClick={onNavigate}
               title={!isExpanded ? (needsAttention ? `${item.label} - Needs setup` : item.label) : undefined}
               className={cn(
                 "flex items-center rounded-lg transition-all duration-200 group relative",

@@ -536,33 +536,33 @@ export default function TicketsPage() {
         selectedTicket ? "mr-0" : ""
       )}>
         {/* Header */}
-        <div className="p-6 border-b border-border">
-          <div className="flex items-center justify-between mb-6">
+        <div className="p-4 sm:p-6 border-b border-border">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Tickets</h1>
-              <p className="text-muted-foreground mt-1">Manage ticket types for your event</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">Tickets</h1>
+              <p className="text-sm text-muted-foreground mt-1">Manage ticket types for your event</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <Button variant="outline" size="sm" onClick={openPreview} disabled={!event?.slug}>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Preview
+                <ExternalLink className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Preview</span>
               </Button>
-              <Button onClick={openCreateDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Ticket
+              <Button size="sm" onClick={openCreateDialog}>
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">New Ticket</span>
               </Button>
             </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-secondary/30 rounded-xl p-4 border border-border">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Ticket className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.totalTickets}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.totalTickets}</p>
                   <p className="text-xs text-muted-foreground">Ticket Types</p>
                 </div>
               </div>
@@ -573,7 +573,7 @@ export default function TicketsPage() {
                   <Zap className="h-5 w-5 text-emerald-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.activeTickets}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.activeTickets}</p>
                   <p className="text-xs text-muted-foreground">On Sale</p>
                 </div>
               </div>
@@ -584,7 +584,7 @@ export default function TicketsPage() {
                   <Users className="h-5 w-5 text-blue-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.totalSold}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.totalSold}</p>
                   <p className="text-xs text-muted-foreground">Sold</p>
                 </div>
               </div>
@@ -595,7 +595,7 @@ export default function TicketsPage() {
                   <TrendingUp className="h-5 w-5 text-amber-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</p>
+                  <p className="text-xl sm:text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">Revenue</p>
                 </div>
               </div>
@@ -648,7 +648,7 @@ export default function TicketsPage() {
         </div>
 
         {/* Status Filter Tabs */}
-        <div className="px-6 border-b border-border">
+        <div className="px-4 sm:px-6 border-b border-border">
           <div className="flex items-center gap-1 overflow-x-auto pb-px">
             {[
               { id: "all", label: "All", count: statusCounts.all },
@@ -686,7 +686,7 @@ export default function TicketsPage() {
         </div>
 
         {/* Ticket List */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -848,11 +848,11 @@ export default function TicketsPage() {
                 <SlideOverSection>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="bg-secondary/50 rounded-lg p-4 text-center">
-                      <p className="text-2xl font-bold text-foreground">{selectedTicket.quantity_sold}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-foreground">{selectedTicket.quantity_sold}</p>
                       <p className="text-xs text-muted-foreground">Sold</p>
                     </div>
                     <div className="bg-secondary/50 rounded-lg p-4 text-center">
-                      <p className="text-2xl font-bold text-foreground">
+                      <p className="text-xl sm:text-2xl font-bold text-foreground">
                         {selectedTicket.quantity_total
                           ? Math.max(0, selectedTicket.quantity_total - selectedTicket.quantity_sold)
                           : "∞"}
@@ -864,7 +864,7 @@ export default function TicketsPage() {
                       </p>
                     </div>
                     <div className="bg-secondary/50 rounded-lg p-4 text-center">
-                      <p className="text-2xl font-bold text-foreground">
+                      <p className="text-xl sm:text-2xl font-bold text-foreground">
                         ₹{((selectedTicket as any).actual_revenue || 0).toLocaleString()}
                       </p>
                       <p className="text-xs text-muted-foreground">Revenue</p>
@@ -1051,7 +1051,7 @@ export default function TicketsPage() {
 
       {/* Create/Edit Dialog with Tabs */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <div className="flex items-center justify-between">
               <DialogTitle>{editingTicket ? "Edit Ticket" : "Create Ticket"}</DialogTitle>
@@ -1066,7 +1066,7 @@ export default function TicketsPage() {
 
           {/* Tabs Navigation */}
           <Tabs value={dialogTab} onValueChange={setDialogTab} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 flex-shrink-0">
               <TabsTrigger value="basic" className="text-xs gap-1.5">
                 <Info className="h-3.5 w-3.5" />
                 Basic

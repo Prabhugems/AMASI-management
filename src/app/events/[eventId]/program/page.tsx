@@ -281,11 +281,11 @@ export default function ProgramDashboardPage() {
   const basePath = `/events/${eventId}/program`
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Program Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Program Dashboard</h1>
           <p className="text-muted-foreground">Track confirmations and manage your program</p>
         </div>
         <div className="flex gap-2">
@@ -310,7 +310,7 @@ export default function ProgramDashboardPage() {
             <span className="text-sm">Total Faculty</span>
             <HelpTooltip content="All speakers, chairpersons, moderators and panelists assigned to sessions. Synced from your program schedule." />
           </div>
-          <p className="text-3xl font-bold mt-2">{stats?.total || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.total || 0}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {stats?.speakers || 0} speakers, {stats?.chairpersons || 0} chairs
           </p>
@@ -322,7 +322,7 @@ export default function ProgramDashboardPage() {
             <span className="text-sm">Confirmed</span>
             <HelpTooltip content="Faculty who have accepted their invitation. They will receive reminder emails before the event." />
           </div>
-          <p className="text-3xl font-bold mt-2 text-green-600">{stats?.confirmed || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-green-600">{stats?.confirmed || 0}</p>
           <Progress value={stats?.confirmationRate || 0} className="h-1 mt-2" />
         </div>
 
@@ -332,7 +332,7 @@ export default function ProgramDashboardPage() {
             <span className="text-sm">Invited</span>
             <HelpTooltip content="Faculty who have received invitations but haven't responded yet. Send reminder emails to follow up." />
           </div>
-          <p className="text-3xl font-bold mt-2 text-blue-600">{stats?.invited || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-blue-600">{stats?.invited || 0}</p>
           <p className="text-xs text-muted-foreground mt-1">Awaiting response</p>
         </div>
 
@@ -342,7 +342,7 @@ export default function ProgramDashboardPage() {
             <span className="text-sm">Not Invited</span>
             <HelpTooltip content="Faculty who haven't been sent invitations yet. Go to 'Send Invitations' to invite them." />
           </div>
-          <p className="text-3xl font-bold mt-2 text-gray-500">{stats?.pending || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-gray-500">{stats?.pending || 0}</p>
           <p className="text-xs text-muted-foreground mt-1">Need invitation</p>
         </div>
 
@@ -352,7 +352,7 @@ export default function ProgramDashboardPage() {
             <span className="text-sm">Needs Attention</span>
             <HelpTooltip content="Faculty who declined or requested changes to their session. Review and reassign if needed." />
           </div>
-          <p className="text-3xl font-bold mt-2 text-amber-600">
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-amber-600">
             {(stats?.declined || 0) + (stats?.changeRequested || 0)}
           </p>
           <p className="text-xs text-muted-foreground mt-1">

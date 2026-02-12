@@ -3029,7 +3029,7 @@ export default function BadgeDesignerPage() {
 
       {/* Templates Dialog */}
       <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Badge Templates</DialogTitle>
           </DialogHeader>
@@ -3135,7 +3135,7 @@ export default function BadgeDesignerPage() {
 
       {/* Pre-built Templates Dialog */}
       <Dialog open={isPreBuiltDialogOpen} onOpenChange={setIsPreBuiltDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wand2 className="h-5 w-5" />

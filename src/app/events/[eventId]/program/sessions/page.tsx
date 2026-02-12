@@ -1059,9 +1059,9 @@ export default function SessionsPage() {
       {/* Main table area */}
       <div className={cn("flex-1 p-6 space-y-4 overflow-auto", editingSession && "pr-0")}>
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold">Sessions</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">Sessions</h1>
             <p className="text-muted-foreground">Manage program sessions - drag columns to reorder</p>
           </div>
           <Button onClick={() => {
@@ -1079,34 +1079,34 @@ export default function SessionsPage() {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-card rounded-lg border p-4">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Presentation className="h-4 w-4" />
                 <span className="text-sm">Total</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{stats.total}</p>
+              <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
             </div>
             <div className="bg-card rounded-lg border p-4">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Users className="h-4 w-4" />
                 <span className="text-sm">With Speakers</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{stats.withSpeakers}</p>
+              <p className="text-xl sm:text-2xl font-bold mt-1">{stats.withSpeakers}</p>
             </div>
             <div className="bg-card rounded-lg border p-4">
               <div className="flex items-center gap-2 text-green-600">
                 <CheckCircle2 className="h-4 w-4" />
                 <span className="text-sm">Confirmed</span>
               </div>
-              <p className="text-2xl font-bold mt-1 text-green-600">{stats.confirmed}</p>
+              <p className="text-xl sm:text-2xl font-bold mt-1 text-green-600">{stats.confirmed}</p>
             </div>
             <div className="bg-card rounded-lg border p-4">
               <div className="flex items-center gap-2 text-amber-600">
                 <AlertCircle className="h-4 w-4" />
                 <span className="text-sm">Pending</span>
               </div>
-              <p className="text-2xl font-bold mt-1 text-amber-600">{stats.pending}</p>
+              <p className="text-xl sm:text-2xl font-bold mt-1 text-amber-600">{stats.pending}</p>
             </div>
           </div>
         )}

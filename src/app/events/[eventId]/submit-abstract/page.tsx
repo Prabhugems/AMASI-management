@@ -390,7 +390,7 @@ export default function SubmitAbstractPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-lg text-center">
           <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-6" />
-          <h2 className="text-2xl font-bold mb-2">Abstract Submitted!</h2>
+          <h2 className="text-xl sm:text-2xl font-bold mb-2">Abstract Submitted!</h2>
           <p className="text-muted-foreground mb-6">
             Your abstract has been received and is pending review.
           </p>
@@ -448,7 +448,7 @@ export default function SubmitAbstractPage() {
             <div className="w-20 h-20 bg-white/10 backdrop-blur rounded-2xl flex items-center justify-center mx-auto mb-4">
               <BookOpen className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Submit Abstract</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Submit Abstract</h1>
             <p className="text-white/70">{event?.name || "Conference"}</p>
           </div>
 
@@ -512,7 +512,7 @@ export default function SubmitAbstractPage() {
       <div className="max-w-3xl mx-auto px-4">
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white mb-6">
-          <h1 className="text-2xl font-bold mb-1">Submit Abstract</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-1">Submit Abstract</h1>
           <p className="text-white/80">{event?.name}</p>
           <div className="flex items-center gap-4 mt-4 text-sm">
             <div className="flex items-center gap-2">

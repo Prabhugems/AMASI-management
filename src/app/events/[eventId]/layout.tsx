@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { usePathname, useParams, useRouter } from "next/navigation"
 import { EventSidebar } from "@/components/layout/event-sidebar"
 import { Header } from "@/components/layout/header"
@@ -17,6 +18,7 @@ export default function EventLayout({
   const router = useRouter()
   const eventId = params?.eventId as string
   const { isEventScoped, hasEventAccess, isLoading: permissionsLoading } = usePermissions()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Hide sidebar for public pages
   const isPublicPage = pathname?.includes("/program/public")
@@ -64,10 +66,19 @@ export default function EventLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <EventSidebar />
-      <div className="pl-16 transition-all duration-300 print:pl-0">
-        <Header sidebarCollapsed={false} />
-        <main className="p-6 pt-20 print:p-0 print:pt-0">{children}</main>
+      {/* Mobile sidebar overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      <div className={`lg:block ${mobileMenuOpen ? 'block' : 'hidden'}`}>
+        <EventSidebar onNavigate={() => setMobileMenuOpen(false)} />
+      </div>
+      <div className="lg:pl-16 transition-all duration-300 print:pl-0">
+        <Header sidebarCollapsed={false} onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
+        <main className="p-4 sm:p-6 pt-20 print:p-0 print:pt-0">{children}</main>
       </div>
     </div>
   )

@@ -331,9 +331,9 @@ export default function CheckinHubPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
       <div className="border-b border-border bg-card/50 px-6 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold">Check-in Overview</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">Check-in Overview</h1>
             <p className="text-muted-foreground text-sm">{event?.name || "Loading..."}</p>
           </div>
           <div className="flex items-center gap-3">
@@ -518,15 +518,15 @@ export default function CheckinHubPage() {
                       {/* Stats Row */}
                       <div className="mt-4 grid grid-cols-3 gap-4">
                         <div className="bg-muted/50 rounded-xl px-4 py-3 border border-border">
-                          <div className="text-2xl font-bold text-emerald-600">{list.stats?.checkedIn || 0}</div>
+                          <div className="text-xl sm:text-2xl font-bold text-emerald-600">{list.stats?.checkedIn || 0}</div>
                           <div className="text-xs text-muted-foreground font-medium">Checked In</div>
                         </div>
                         <div className="bg-muted/50 rounded-xl px-4 py-3 border border-border">
-                          <div className="text-2xl font-bold">{list.stats?.total || 0}</div>
+                          <div className="text-xl sm:text-2xl font-bold">{list.stats?.total || 0}</div>
                           <div className="text-xs text-muted-foreground font-medium">Total</div>
                         </div>
                         <div className="bg-muted/50 rounded-xl px-4 py-3 border border-border">
-                          <div className="text-2xl font-bold text-amber-600">{list.stats?.remaining || 0}</div>
+                          <div className="text-xl sm:text-2xl font-bold text-amber-600">{list.stats?.remaining || 0}</div>
                           <div className="text-xs text-muted-foreground font-medium">Remaining</div>
                         </div>
                       </div>
@@ -924,7 +924,7 @@ export default function CheckinHubPage() {
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Name *</label>
                 <input

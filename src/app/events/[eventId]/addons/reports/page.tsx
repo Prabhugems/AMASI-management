@@ -134,9 +134,9 @@ export default function AddonReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Addon Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Addon Reports</h1>
           <p className="text-muted-foreground">Addon and course sales overview</p>
         </div>
         <Button onClick={exportCSV} variant="outline">
@@ -152,7 +152,7 @@ export default function AddonReportsPage() {
             <Package className="h-4 w-4" />
             <span className="text-sm">Total Addons</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.totalAddons || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.totalAddons || 0}</p>
           <p className="text-xs text-muted-foreground">{stats?.courses || 0} courses</p>
         </div>
 
@@ -161,7 +161,7 @@ export default function AddonReportsPage() {
             <ShoppingCart className="h-4 w-4" />
             <span className="text-sm">Total Sold</span>
           </div>
-          <p className="text-2xl font-bold">{stats?.totalSold || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.totalSold || 0}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -169,7 +169,7 @@ export default function AddonReportsPage() {
             <IndianRupee className="h-4 w-4" />
             <span className="text-sm">Total Revenue</span>
           </div>
-          <p className="text-2xl font-bold">₹{(stats?.totalRevenue || 0).toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold">₹{(stats?.totalRevenue || 0).toLocaleString()}</p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -177,7 +177,7 @@ export default function AddonReportsPage() {
             <TrendingUp className="h-4 w-4" />
             <span className="text-sm">Avg per Addon</span>
           </div>
-          <p className="text-2xl font-bold">
+          <p className="text-xl sm:text-2xl font-bold">
             {stats?.totalAddons ? Math.round((stats?.totalSold || 0) / stats.totalAddons) : 0}
           </p>
         </div>

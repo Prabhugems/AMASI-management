@@ -271,7 +271,7 @@ export default function SendInvitationsPage() {
     : filteredAssignments[0]
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href={`/events/${eventId}/program/confirmations`}>
@@ -281,7 +281,7 @@ export default function SendInvitationsPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Send Invitations</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Send Invitations</h1>
           <p className="text-muted-foreground">Select faculty and send invitation emails</p>
         </div>
       </div>

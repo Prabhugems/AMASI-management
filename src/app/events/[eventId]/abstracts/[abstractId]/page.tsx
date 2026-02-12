@@ -216,7 +216,7 @@ export default function AbstractDetailPage() {
   const avgScore = getAverageScore()
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
@@ -243,7 +243,7 @@ export default function AbstractDetailPage() {
                 </span>
               )}
             </div>
-            <h1 className="text-2xl font-bold">{abstract.title}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">{abstract.title}</h1>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -619,7 +619,7 @@ export default function AbstractDetailPage() {
 
       {/* Review Scoring Dialog */}
       <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Star className="h-5 w-5 text-yellow-500" />
@@ -680,7 +680,7 @@ export default function AbstractDetailPage() {
               {/* Overall Score Display */}
               <div className="p-4 bg-primary/5 rounded-lg flex items-center justify-between">
                 <span className="font-medium">Overall Score (auto-calculated)</span>
-                <span className="text-2xl font-bold text-primary">
+                <span className="text-xl sm:text-2xl font-bold text-primary">
                   {(
                     (reviewScores.score_originality +
                       reviewScores.score_methodology +

@@ -594,19 +594,19 @@ export default function PrintStationHubPage() {
                 <div className="px-5 py-4 bg-muted/30 border-b border-border">
                   <div className="grid grid-cols-4 gap-4">
                     <div>
-                      <div className="text-2xl font-bold">0</div>
+                      <div className="text-xl sm:text-2xl font-bold">0</div>
                       <div className="text-xs text-muted-foreground">Active Devices</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold">{station.stats?.totalPrints || 0}</div>
+                      <div className="text-xl sm:text-2xl font-bold">{station.stats?.totalPrints || 0}</div>
                       <div className="text-xs text-muted-foreground">Total Prints</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-emerald-600">{station.stats?.uniquePrints || 0}</div>
+                      <div className="text-xl sm:text-2xl font-bold text-emerald-600">{station.stats?.uniquePrints || 0}</div>
                       <div className="text-xs text-muted-foreground">Participants</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-purple-600">{station.stats?.progress || 0}%</div>
+                      <div className="text-xl sm:text-2xl font-bold text-purple-600">{station.stats?.progress || 0}%</div>
                       <div className="text-xs text-muted-foreground">Progress</div>
                     </div>
                   </div>
@@ -1037,7 +1037,7 @@ export default function PrintStationHubPage() {
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
-            <div className="p-6 space-y-5">
+            <div className="space-y-5">
               {/* Download Section */}
               <div>
                 <h3 className="font-semibold text-sm mb-3">Download Printo App</h3>

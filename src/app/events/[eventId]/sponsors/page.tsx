@@ -148,11 +148,11 @@ export default function SponsorsOverviewPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Sponsors Overview</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Sponsors Overview</h1>
           <p className="text-muted-foreground">Manage sponsors, tiers, and exhibition stalls</p>
         </div>
         <Link href={`${basePath}/list`}>
@@ -170,7 +170,7 @@ export default function SponsorsOverviewPage() {
             <Building2 className="h-4 w-4" />
             <span className="text-sm">Total Sponsors</span>
           </div>
-          <p className="text-3xl font-bold mt-2">{stats.totalSponsors}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats.totalSponsors}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -178,7 +178,7 @@ export default function SponsorsOverviewPage() {
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Confirmed</span>
           </div>
-          <p className="text-3xl font-bold mt-2 text-green-600">{stats.confirmed}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-green-600">{stats.confirmed}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -186,7 +186,7 @@ export default function SponsorsOverviewPage() {
             <Grid3X3 className="h-4 w-4" />
             <span className="text-sm">Stalls Assigned</span>
           </div>
-          <p className="text-3xl font-bold mt-2">{stats.assignedStalls}/{stats.totalStalls}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats.assignedStalls}/{stats.totalStalls}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -194,7 +194,7 @@ export default function SponsorsOverviewPage() {
             <TrendingUp className="h-4 w-4" />
             <span className="text-sm">Revenue Collected</span>
           </div>
-          <p className="text-2xl font-bold mt-2 flex items-center">
+          <p className="text-xl sm:text-2xl font-bold mt-2 flex items-center">
             <IndianRupee className="h-5 w-5" />
             {stats.totalPaid.toLocaleString()}
           </p>
@@ -237,7 +237,7 @@ export default function SponsorsOverviewPage() {
                     />
                     <span className="font-medium">{tier.name}</span>
                   </div>
-                  <span className="text-2xl font-bold">{tier.count}</span>
+                  <span className="text-xl sm:text-2xl font-bold">{tier.count}</span>
                 </div>
               ))}
             </div>
@@ -326,15 +326,15 @@ export default function SponsorsOverviewPage() {
 
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center p-4 rounded-lg bg-muted/50">
-            <p className="text-3xl font-bold">{stats.totalStalls}</p>
+            <p className="text-2xl sm:text-3xl font-bold">{stats.totalStalls}</p>
             <p className="text-sm text-muted-foreground">Total Stalls</p>
           </div>
           <div className="text-center p-4 rounded-lg bg-green-50">
-            <p className="text-3xl font-bold text-green-600">{stats.assignedStalls}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-green-600">{stats.assignedStalls}</p>
             <p className="text-sm text-green-600">Assigned</p>
           </div>
           <div className="text-center p-4 rounded-lg bg-blue-50">
-            <p className="text-3xl font-bold text-blue-600">{stats.availableStalls}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-blue-600">{stats.availableStalls}</p>
             <p className="text-sm text-blue-600">Available</p>
           </div>
         </div>

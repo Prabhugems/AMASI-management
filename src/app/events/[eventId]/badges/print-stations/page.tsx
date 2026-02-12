@@ -129,17 +129,17 @@ export default function PrintStationsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Print Stations</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Print Stations</h1>
           <p className="text-muted-foreground">On-site badge printing for attendees</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div
           className={cn(
             "bg-card rounded-lg border p-4 cursor-pointer transition-colors",
@@ -151,7 +151,7 @@ export default function PrintStationsPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Total</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div
           className={cn(
@@ -164,7 +164,7 @@ export default function PrintStationsPage() {
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Printed</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.printed}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.printed}</p>
         </div>
         <div
           className={cn(
@@ -177,14 +177,14 @@ export default function PrintStationsPage() {
             <Clock className="h-4 w-4" />
             <span className="text-sm">Pending</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pending}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-blue-500">
             <Zap className="h-4 w-4" />
             <span className="text-sm">Checked In</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.checkedIn}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.checkedIn}</p>
         </div>
       </div>
 

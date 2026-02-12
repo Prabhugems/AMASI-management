@@ -161,11 +161,11 @@ export default function ActivityLogPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
             <Activity className="h-6 w-6" />
             Activity Log
           </h1>
@@ -186,14 +186,14 @@ export default function ActivityLogPage() {
             <Activity className="h-4 w-4" />
             <span className="text-sm">Total Activities</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{total}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-green-600">
             <Plus className="h-4 w-4" />
             <span className="text-sm">Creates</span>
           </div>
-          <p className="text-2xl font-bold mt-1">
+          <p className="text-xl sm:text-2xl font-bold mt-1">
             {logs.filter((l) => l.action === "create").length}
           </p>
         </div>
@@ -202,7 +202,7 @@ export default function ActivityLogPage() {
             <Pencil className="h-4 w-4" />
             <span className="text-sm">Updates</span>
           </div>
-          <p className="text-2xl font-bold mt-1">
+          <p className="text-xl sm:text-2xl font-bold mt-1">
             {logs.filter((l) => l.action === "update").length}
           </p>
         </div>
@@ -211,7 +211,7 @@ export default function ActivityLogPage() {
             <Mail className="h-4 w-4" />
             <span className="text-sm">Emails Sent</span>
           </div>
-          <p className="text-2xl font-bold mt-1">
+          <p className="text-xl sm:text-2xl font-bold mt-1">
             {logs.filter((l) => l.action.includes("email")).length}
           </p>
         </div>

@@ -233,7 +233,7 @@ export default function EventFormsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Event Forms</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Event Forms</h1>
           <p className="text-muted-foreground text-sm">
             Create and manage forms for {event?.short_name || event?.name || "this event"}
           </p>
@@ -375,7 +375,7 @@ export default function EventFormsPage() {
 
       {/* Create Form Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={(open) => { if (!open) closeCreateDialog() }}>
-        <DialogContent className={cn(createStep === "template" ? "max-w-2xl" : "")}>
+        <DialogContent className={cn(createStep === "template" ? "sm:max-w-2xl" : "")}>
           <DialogDescription className="sr-only">Create a new form for this event</DialogDescription>
           {createStep === "template" ? (
             <>

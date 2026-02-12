@@ -244,9 +244,9 @@ export default function TrainsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Trains</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Trains</h1>
           <p className="text-muted-foreground">Manage train bookings</p>
         </div>
         <div className="flex gap-2">
@@ -261,19 +261,19 @@ export default function TrainsPage() {
       <div className="grid grid-cols-5 gap-4">
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-muted-foreground"><Train className="h-4 w-4" /><span className="text-sm">Total</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-amber-500"><Clock className="h-4 w-4" /><span className="text-sm">Pending</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pending}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-green-600"><Check className="h-4 w-4" /><span className="text-sm">Confirmed</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.confirmed}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.confirmed}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-orange-500"><Clock className="h-4 w-4" /><span className="text-sm">Waitlisted</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.waitlisted}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.waitlisted}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-muted-foreground"><span className="text-sm">Total Cost</span></div>
@@ -356,7 +356,7 @@ export default function TrainsPage() {
             </SheetHeader>
           </div>
 
-          <div className="p-6 space-y-5">
+          <div className="space-y-5">
             {!editingBooking && (
               <div>
                 <Label className="text-xs text-muted-foreground">Guest</Label>

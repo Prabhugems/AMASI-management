@@ -214,9 +214,9 @@ export default function TravelReportsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Travel Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Travel Reports</h1>
           <p className="text-muted-foreground">Analytics and cost summaries</p>
         </div>
         <Button variant="outline" onClick={exportCSV}><Download className="h-4 w-4 mr-2" />Export CSV</Button>
@@ -226,19 +226,19 @@ export default function TravelReportsPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-muted-foreground"><Users className="h-4 w-4" /><span className="text-sm">Travelers</span></div>
-          <p className="text-2xl font-bold mt-1">{report.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{report.total}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-blue-500"><Plane className="h-4 w-4" /><span className="text-sm">By Flight</span></div>
-          <p className="text-2xl font-bold mt-1">{report.byMode.flight}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{report.byMode.flight}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-orange-500"><Train className="h-4 w-4" /><span className="text-sm">By Train</span></div>
-          <p className="text-2xl font-bold mt-1">{report.byMode.train}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{report.byMode.train}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-green-500"><Car className="h-4 w-4" /><span className="text-sm">Self Arranged</span></div>
-          <p className="text-2xl font-bold mt-1">{report.byMode.self}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{report.byMode.self}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-purple-500"><CreditCard className="h-4 w-4" /><span className="text-sm">Total Cost</span></div>

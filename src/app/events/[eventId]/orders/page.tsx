@@ -381,40 +381,40 @@ export default function OrdersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Orders</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Orders</h1>
+          <p className="text-sm text-muted-foreground">
             View and manage ticket purchases and payments
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/events/${eventId}/orders/instructions`}>
             <Button variant="ghost" size="sm">
-              <HelpCircle className="w-4 h-4 mr-2" />
-              Guide
+              <HelpCircle className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Guide</span>
             </Button>
           </Link>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
+            <RefreshCw className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
           <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export
+            <Download className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Export</span>
           </Button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="paper-card p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
               <Receipt className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
               <p className="text-xs text-muted-foreground">Total Orders</p>
             </div>
           </div>
@@ -425,7 +425,7 @@ export default function OrdersPage() {
               <CheckCircle2 className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.completed}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.completed}</p>
               <p className="text-xs text-muted-foreground">Paid Orders</p>
             </div>
           </div>
@@ -436,7 +436,7 @@ export default function OrdersPage() {
               <Clock className="w-5 h-5 text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.pending}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.pending}</p>
               <p className="text-xs text-muted-foreground">Pending</p>
             </div>
           </div>
@@ -447,7 +447,7 @@ export default function OrdersPage() {
               <IndianRupee className="w-5 h-5 text-info" />
             </div>
             <div>
-              <p className="text-2xl font-bold">₹{stats.revenue.toLocaleString()}</p>
+              <p className="text-xl sm:text-2xl font-bold">₹{stats.revenue.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">Revenue</p>
             </div>
           </div>
@@ -455,8 +455,8 @@ export default function OrdersPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+        <div className="relative flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search by name, email, or order #..."
@@ -466,7 +466,7 @@ export default function OrdersPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full sm:w-40">
             <Filter className="w-4 h-4 mr-2" />
             <SelectValue placeholder="Filter" />
           </SelectTrigger>
@@ -481,7 +481,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Orders Table */}
-      <div className="paper-card overflow-hidden">
+      <div className="paper-card overflow-x-auto">
         {isLoading ? (
           <div className="p-8 text-center">
             <RefreshCw className="w-8 h-8 mx-auto animate-spin text-muted-foreground" />

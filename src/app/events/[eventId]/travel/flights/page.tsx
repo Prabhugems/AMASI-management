@@ -482,9 +482,9 @@ export default function FlightsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Flights</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Flights</h1>
           <p className="text-muted-foreground">Manage flight bookings</p>
         </div>
         <Button variant="outline" onClick={exportFlights}>
@@ -499,21 +499,21 @@ export default function FlightsPage() {
             <Plane className="h-4 w-4" />
             <span className="text-sm">Total Flights</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{guests?.length || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{guests?.length || 0}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-amber-500">
             <Clock className="h-4 w-4" />
             <span className="text-sm">Pending</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.onward.pending + stats.return.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.onward.pending + stats.return.pending}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-green-600">
             <Check className="h-4 w-4" />
             <span className="text-sm">Booked</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.onward.booked + stats.onward.confirmed + stats.return.booked + stats.return.confirmed}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.onward.booked + stats.onward.confirmed + stats.return.booked + stats.return.confirmed}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-muted-foreground">

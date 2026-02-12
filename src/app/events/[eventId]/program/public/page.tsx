@@ -456,19 +456,19 @@ export default function PublicProgramPage() {
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
-              <p className="text-3xl font-bold">{stats.totalDays}</p>
+              <p className="text-2xl sm:text-3xl font-bold">{stats.totalDays}</p>
               <p className={cn("text-sm", themeConfig.headerText)}>Days</p>
             </div>
             <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
-              <p className="text-3xl font-bold">{stats.totalSessions}</p>
+              <p className="text-2xl sm:text-3xl font-bold">{stats.totalSessions}</p>
               <p className={cn("text-sm", themeConfig.headerText)}>Sessions</p>
             </div>
             <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
-              <p className="text-3xl font-bold">{stats.totalSpeakers}</p>
+              <p className="text-2xl sm:text-3xl font-bold">{stats.totalSpeakers}</p>
               <p className={cn("text-sm", themeConfig.headerText)}>Speakers</p>
             </div>
             <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
-              <p className="text-3xl font-bold">{stats.totalHalls}</p>
+              <p className="text-2xl sm:text-3xl font-bold">{stats.totalHalls}</p>
               <p className={cn("text-sm", themeConfig.headerText)}>Halls</p>
             </div>
           </div>
@@ -885,7 +885,7 @@ export default function PublicProgramPage() {
 
       {/* Session Detail Dialog */}
       <Dialog open={!!selectedSession} onOpenChange={() => setSelectedSession(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
           {selectedSession && (
             <>
               <DialogHeader>

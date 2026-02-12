@@ -19,7 +19,7 @@ export default function OrdersInstructionsPage() {
   return (
     <div className="space-y-8 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold">Orders & Payments Guide</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Orders & Payments Guide</h1>
         <p className="text-muted-foreground mt-1">
           Understanding how orders and payments work in the system
         </p>

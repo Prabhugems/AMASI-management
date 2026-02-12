@@ -246,11 +246,11 @@ export default function AbstractsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Abstract Submissions</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Abstract Submissions</h1>
           <p className="text-muted-foreground mt-1">
             Manage and review abstract submissions
           </p>
@@ -274,53 +274,53 @@ export default function AbstractsPage() {
             <p className="text-sm text-muted-foreground">Total</p>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </div>
-          <p className="text-2xl font-bold">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-blue-600">New</p>
             <Clock className="h-4 w-4 text-blue-500" />
           </div>
-          <p className="text-2xl font-bold text-blue-600">{stats.submitted}</p>
+          <p className="text-xl sm:text-2xl font-bold text-blue-600">{stats.submitted}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-yellow-600">In Review</p>
             <Users className="h-4 w-4 text-yellow-500" />
           </div>
-          <p className="text-2xl font-bold text-yellow-600">{stats.underReview}</p>
+          <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.underReview}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-orange-600">Revision</p>
             <AlertCircle className="h-4 w-4 text-orange-500" />
           </div>
-          <p className="text-2xl font-bold text-orange-600">{stats.revisionRequested}</p>
+          <p className="text-xl sm:text-2xl font-bold text-orange-600">{stats.revisionRequested}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-green-600">Accepted</p>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </div>
-          <p className="text-2xl font-bold text-green-600">{stats.accepted}</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.accepted}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-red-600">Rejected</p>
             <XCircle className="h-4 w-4 text-red-500" />
           </div>
-          <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+          <p className="text-xl sm:text-2xl font-bold text-red-600">{stats.rejected}</p>
         </div>
       </div>
 
       {/* Stats Cards - Row 2: Review Progress */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-white/80">Pending Decision</p>
             <Clock className="h-5 w-5 text-white/60" />
           </div>
-          <p className="text-3xl font-bold">{stats.pendingDecision}</p>
+          <p className="text-2xl sm:text-3xl font-bold">{stats.pendingDecision}</p>
           <p className="text-xs text-white/60 mt-1">abstracts awaiting decision</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
@@ -328,7 +328,7 @@ export default function AbstractsPage() {
             <p className="text-sm text-muted-foreground">Review Progress</p>
             <BarChart3 className="h-5 w-5 text-primary" />
           </div>
-          <p className="text-3xl font-bold">{stats.withReviews}<span className="text-lg text-muted-foreground">/{stats.total}</span></p>
+          <p className="text-2xl sm:text-3xl font-bold">{stats.withReviews}<span className="text-lg text-muted-foreground">/{stats.total}</span></p>
           <div className="w-full bg-muted rounded-full h-2 mt-2">
             <div
               className="bg-primary h-2 rounded-full transition-all"
@@ -341,7 +341,7 @@ export default function AbstractsPage() {
             <p className="text-sm text-muted-foreground">Average Score</p>
             <Star className="h-5 w-5 text-yellow-500" />
           </div>
-          <p className="text-3xl font-bold">{stats.avgScore}<span className="text-lg text-muted-foreground">/10</span></p>
+          <p className="text-2xl sm:text-3xl font-bold">{stats.avgScore}<span className="text-lg text-muted-foreground">/10</span></p>
           <p className="text-xs text-muted-foreground mt-1">across {stats.withReviews} reviewed</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
@@ -349,7 +349,7 @@ export default function AbstractsPage() {
             <p className="text-sm text-muted-foreground">Acceptance Rate</p>
             <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
-          <p className="text-3xl font-bold">
+          <p className="text-2xl sm:text-3xl font-bold">
             {stats.total > 0 ? Math.round((stats.accepted / stats.total) * 100) : 0}%
           </p>
           <p className="text-xs text-muted-foreground mt-1">{stats.accepted} of {stats.total} accepted</p>

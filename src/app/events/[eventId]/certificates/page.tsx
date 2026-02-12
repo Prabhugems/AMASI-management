@@ -87,10 +87,10 @@ export default function CertificatesOverviewPage() {
   const basePath = `/events/${eventId}/certificates`
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Certificates Overview</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Certificates Overview</h1>
         <p className="text-muted-foreground">Design, generate, and send event certificates</p>
       </div>
 
@@ -102,7 +102,7 @@ export default function CertificatesOverviewPage() {
             <span className="text-sm">Total Attendees</span>
             <HelpTooltip content="All registered attendees who can receive certificates. Certificates are usually issued only to checked-in or confirmed attendees." />
           </div>
-          <p className="text-3xl font-bold mt-2">{stats?.total || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.total || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -111,7 +111,7 @@ export default function CertificatesOverviewPage() {
             <span className="text-sm">Generated</span>
             <HelpTooltip content="Certificates that have been created and are ready to send. Generate certificates from the 'Generate' tab." />
           </div>
-          <p className="text-3xl font-bold mt-2 text-green-600">{stats?.generated || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-green-600">{stats?.generated || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -120,7 +120,7 @@ export default function CertificatesOverviewPage() {
             <span className="text-sm">Sent</span>
             <HelpTooltip content="Certificates emailed to attendees. They receive a link to download their certificate." />
           </div>
-          <p className="text-3xl font-bold mt-2 text-blue-500">{stats?.sent || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-blue-500">{stats?.sent || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -129,7 +129,7 @@ export default function CertificatesOverviewPage() {
             <span className="text-sm">Templates</span>
             <HelpTooltip content="Certificate design templates. Create different templates for delegates, speakers, or award winners." />
           </div>
-          <p className="text-3xl font-bold mt-2">{stats?.templates || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.templates || 0}</p>
         </div>
       </div>
 

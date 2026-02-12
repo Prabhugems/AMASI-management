@@ -132,7 +132,7 @@ export default function EventLeadsPage({
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Leads</h1>
             <p className="text-gray-500">{event?.name || "Event"}</p>
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function EventLeadsPage({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {[
           { label: "Total Leads", count: leadsData?.count || 0, color: "bg-blue-500" },
           { label: "New", count: leads.filter((l) => l.status === "new").length, color: "bg-blue-500" },
@@ -192,7 +192,7 @@ export default function EventLeadsPage({
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-xl border p-4">
             <p className="text-sm text-gray-500">{stat.label}</p>
-            <p className="text-2xl font-bold text-gray-900">{stat.count}</p>
+            <p className="text-xl sm:text-2xl font-bold text-gray-900">{stat.count}</p>
           </div>
         ))}
       </div>

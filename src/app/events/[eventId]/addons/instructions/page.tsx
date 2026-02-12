@@ -28,7 +28,7 @@ export default function AddonInstructionsPage() {
     <div className="p-6 max-w-4xl">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
           <BookOpen className="h-6 w-6" />
           Add-on Instructions
         </h1>

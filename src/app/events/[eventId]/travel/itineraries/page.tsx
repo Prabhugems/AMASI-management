@@ -326,31 +326,31 @@ export default function ItinerariesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Itineraries</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Itineraries</h1>
           <p className="text-muted-foreground">Send travel itineraries with calendar invites</p>
         </div>
         <Button variant="outline" onClick={exportItineraries}><Download className="h-4 w-4 mr-2" />Export</Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-muted-foreground"><Route className="h-4 w-4" /><span className="text-sm">Total</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-green-600"><CheckCircle className="h-4 w-4" /><span className="text-sm">Sent</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.sent}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.sent}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-amber-500"><Clock className="h-4 w-4" /><span className="text-sm">Pending</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pending}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-blue-500"><FileText className="h-4 w-4" /><span className="text-sm">Ready to Send</span></div>
-          <p className="text-2xl font-bold mt-1">{stats.ready}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.ready}</p>
         </div>
       </div>
 

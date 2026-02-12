@@ -149,7 +149,7 @@ export default function TicketSettingsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
             <Settings className="h-6 w-6" />
             Ticket Settings
           </h1>

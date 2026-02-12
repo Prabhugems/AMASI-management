@@ -16,10 +16,10 @@ export default function InstructionsPage() {
   const eventId = params.eventId as string
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Abstract Management Guide</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Abstract Management Guide</h1>
         <p className="text-muted-foreground mt-1">
           Learn how to set up and manage abstract submissions for your event
         </p>

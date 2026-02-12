@@ -100,7 +100,7 @@ export default function EventAnalyticsPage({
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Analytics</h1>
             <p className="text-gray-500">{event?.name || "Event"}</p>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function EventAnalyticsPage({
                 </div>
                 <span className="text-sm text-gray-500">Page Views</span>
               </div>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                 {analytics.summary.totalPageViews.toLocaleString()}
               </p>
             </div>
@@ -157,7 +157,7 @@ export default function EventAnalyticsPage({
                 </div>
                 <span className="text-sm text-gray-500">Unique Visitors</span>
               </div>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                 {analytics.summary.uniqueVisitors.toLocaleString()}
               </p>
             </div>
@@ -169,7 +169,7 @@ export default function EventAnalyticsPage({
                 </div>
                 <span className="text-sm text-gray-500">Registrations</span>
               </div>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                 {analytics.summary.registrations.toLocaleString()}
               </p>
             </div>
@@ -181,7 +181,7 @@ export default function EventAnalyticsPage({
                 </div>
                 <span className="text-sm text-gray-500">Conversion Rate</span>
               </div>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                 {analytics.summary.conversionRate}%
               </p>
             </div>

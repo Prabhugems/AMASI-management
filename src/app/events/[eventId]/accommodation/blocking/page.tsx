@@ -245,9 +245,9 @@ export default function RoomBlockingPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Room Blocking</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Room Blocking</h1>
           <p className="text-muted-foreground">Block rooms with hotels for your event dates</p>
         </div>
         <Button onClick={() => setShowAddBlock(true)} disabled={!hotels?.length}>
@@ -257,13 +257,13 @@ export default function RoomBlockingPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-muted-foreground">
             <CalendarRange className="h-4 w-4" />
             <span className="text-sm">Total Blocks</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
           <p className="text-xs text-muted-foreground">{stats.totalRooms} rooms</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
@@ -271,7 +271,7 @@ export default function RoomBlockingPage() {
             <BedDouble className="h-4 w-4" />
             <span className="text-sm">Confirmed</span>
           </div>
-          <p className="text-2xl font-bold mt-1 text-green-600">{stats.confirmed}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1 text-green-600">{stats.confirmed}</p>
           <p className="text-xs text-muted-foreground">{stats.confirmedRooms} rooms</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
@@ -279,7 +279,7 @@ export default function RoomBlockingPage() {
             <BedDouble className="h-4 w-4" />
             <span className="text-sm">Tentative</span>
           </div>
-          <p className="text-2xl font-bold mt-1 text-amber-500">{stats.tentative}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1 text-amber-500">{stats.tentative}</p>
           <p className="text-xs text-muted-foreground">{stats.tentativeRooms} rooms</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
@@ -287,7 +287,7 @@ export default function RoomBlockingPage() {
             <Building2 className="h-4 w-4" />
             <span className="text-sm">Hotels</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{hotels?.length || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{hotels?.length || 0}</p>
         </div>
       </div>
 

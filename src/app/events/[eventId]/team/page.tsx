@@ -332,9 +332,9 @@ export default function EventTeamPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Event Team</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Event Team</h1>
           <p className="text-muted-foreground">
             Manage team members for {event?.short_name || event?.name || "this event"}
           </p>
@@ -354,7 +354,7 @@ export default function EventTeamPage() {
                 <Users className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{eventTeam?.length || 0}</p>
+                <p className="text-xl sm:text-2xl font-bold">{eventTeam?.length || 0}</p>
                 <p className="text-sm text-muted-foreground">Team Members</p>
               </div>
             </div>
@@ -367,7 +367,7 @@ export default function EventTeamPage() {
                 <Shield className="h-6 w-6 text-rose-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-xl sm:text-2xl font-bold">
                   {eventTeam?.filter(m => m.role === "admin").length || 0}
                 </p>
                 <p className="text-sm text-muted-foreground">Event Admins</p>
@@ -382,7 +382,7 @@ export default function EventTeamPage() {
                 <UserCog className="h-6 w-6 text-emerald-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-xl sm:text-2xl font-bold">
                   {eventTeam?.filter(m => m.role !== "admin").length || 0}
                 </p>
                 <p className="text-sm text-muted-foreground">Coordinators</p>
@@ -549,7 +549,7 @@ export default function EventTeamPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingMember ? "Edit Team Member" : "Add Team Member"}

@@ -437,9 +437,9 @@ export default function AccommodationGuestsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Guest Assignments</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Guest Assignments</h1>
           <p className="text-muted-foreground">
             Manage hotel assignments for {speakers?.length || 0} guests
           </p>
@@ -471,7 +471,7 @@ export default function AccommodationGuestsPage() {
       )}
 
       {/* Status Filter Cards */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { key: "all", label: "All Guests", count: stats.total, icon: User, color: "primary" },
           { key: "pending", label: "Pending", count: stats.pending, icon: Clock, color: "amber-500" },
@@ -492,7 +492,7 @@ export default function AccommodationGuestsPage() {
                 <Icon className={cn("h-4 w-4", `text-${item.color}`)} />
                 <span className="text-xs text-muted-foreground">{item.label}</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{item.count}</p>
+              <p className="text-xl sm:text-2xl font-bold mt-1">{item.count}</p>
             </button>
           )
         })}

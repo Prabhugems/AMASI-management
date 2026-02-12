@@ -182,7 +182,7 @@ export default function AccommodationOverviewPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Accommodation Overview</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Accommodation Overview</h1>
         <p className="text-muted-foreground">
           Quick summary of accommodation management
         </p>
@@ -198,7 +198,7 @@ export default function AccommodationOverviewPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Guests</span>
           </div>
-          <p className="text-3xl font-bold mt-2">{stats?.totalGuests || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.totalGuests || 0}</p>
           <p className="text-xs text-muted-foreground mt-1">Requiring accommodation</p>
         </Link>
 
@@ -210,7 +210,7 @@ export default function AccommodationOverviewPage() {
             <Building2 className="h-4 w-4" />
             <span className="text-sm">Hotels</span>
           </div>
-          <p className="text-3xl font-bold mt-2">{stats?.totalHotels || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.totalHotels || 0}</p>
           <p className="text-xs text-muted-foreground mt-1">{stats?.totalRooms || 0} total rooms</p>
         </Link>
 
@@ -219,7 +219,7 @@ export default function AccommodationOverviewPage() {
             <BedDouble className="h-4 w-4" />
             <span className="text-sm">Room Nights</span>
           </div>
-          <p className="text-3xl font-bold mt-2">{stats?.totalNights || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.totalNights || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">
@@ -227,7 +227,7 @@ export default function AccommodationOverviewPage() {
             <CreditCard className="h-4 w-4" />
             <span className="text-sm">Total Cost</span>
           </div>
-          <p className="text-2xl font-bold mt-2">₹{(stats?.totalCost || 0).toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-2">₹{(stats?.totalCost || 0).toLocaleString()}</p>
         </div>
       </div>
 
@@ -246,7 +246,7 @@ export default function AccommodationOverviewPage() {
                 <span className="font-medium">Pending</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-amber-600">{stats?.pending || 0}</span>
+                <span className="text-xl sm:text-2xl font-bold text-amber-600">{stats?.pending || 0}</span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>
             </Link>
@@ -260,7 +260,7 @@ export default function AccommodationOverviewPage() {
                 <span className="font-medium">Booked</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-blue-600">{stats?.booked || 0}</span>
+                <span className="text-xl sm:text-2xl font-bold text-blue-600">{stats?.booked || 0}</span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>
             </Link>
@@ -274,7 +274,7 @@ export default function AccommodationOverviewPage() {
                 <span className="font-medium">Confirmed</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-green-600">{stats?.confirmed || 0}</span>
+                <span className="text-xl sm:text-2xl font-bold text-green-600">{stats?.confirmed || 0}</span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>
             </Link>
@@ -305,11 +305,11 @@ export default function AccommodationOverviewPage() {
 
             <div className="grid grid-cols-2 gap-4 pt-2">
               <div className="bg-green-50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-green-600">{stats?.availableRooms || 0}</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600">{stats?.availableRooms || 0}</p>
                 <p className="text-xs text-muted-foreground">Available</p>
               </div>
               <div className="bg-blue-50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-blue-600">{stats?.assignedRooms || 0}</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600">{stats?.assignedRooms || 0}</p>
                 <p className="text-xs text-muted-foreground">Assigned</p>
               </div>
             </div>

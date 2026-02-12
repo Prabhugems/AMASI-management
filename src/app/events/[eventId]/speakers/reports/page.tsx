@@ -129,11 +129,11 @@ export default function SpeakerReportsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Speaker Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Speaker Reports</h1>
           <p className="text-muted-foreground">Analytics and statistics</p>
         </div>
         <Button variant="outline" onClick={exportCSV}>
@@ -149,42 +149,42 @@ export default function SpeakerReportsPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Total</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-green-600">
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Confirmed</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.confirmed}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.confirmed}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-amber-500">
             <Clock className="h-4 w-4" />
             <span className="text-sm">Pending</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pending}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-blue-500">
             <Plane className="h-4 w-4" />
             <span className="text-sm">Travel Booked</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.travelBooked}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.travelBooked}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-purple-500">
             <Hotel className="h-4 w-4" />
             <span className="text-sm">Hotel Booked</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.hotelBooked}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.hotelBooked}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-orange-500">
             <FileText className="h-4 w-4" />
             <span className="text-sm">Docs Complete</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.docsComplete}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.docsComplete}</p>
         </div>
       </div>
 

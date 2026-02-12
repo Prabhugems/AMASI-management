@@ -1230,9 +1230,9 @@ export default function RegistrationsPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Attendees</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Attendees</h1>
           <p className="text-muted-foreground">
             Manage event registrations and attendees
           </p>
@@ -1271,35 +1271,35 @@ export default function RegistrationsPage() {
             <p className="text-sm text-muted-foreground">Total</p>
             <HelpTooltip content="Total number of registrations including all statuses (confirmed, pending, cancelled, refunded)" />
           </div>
-          <p className="text-2xl font-bold">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
         </div>
         <div className="paper-card p-4">
           <div className="flex items-center gap-1">
             <p className="text-sm text-muted-foreground">Confirmed</p>
             <HelpTooltip content="Registrations with completed payment. These attendees are ready to attend the event." />
           </div>
-          <p className="text-2xl font-bold text-success">{stats.confirmed}</p>
+          <p className="text-xl sm:text-2xl font-bold text-success">{stats.confirmed}</p>
         </div>
         <div className="paper-card p-4">
           <div className="flex items-center gap-1">
             <p className="text-sm text-muted-foreground">Pending</p>
             <HelpTooltip content="Registrations awaiting payment. Send reminder emails or mark as confirmed for free tickets." />
           </div>
-          <p className="text-2xl font-bold text-warning">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold text-warning">{stats.pending}</p>
         </div>
         <div className="paper-card p-4">
           <div className="flex items-center gap-1">
             <p className="text-sm text-muted-foreground">Checked In</p>
             <HelpTooltip content="Attendees who have checked in at the event venue. Use the Check-in tab to manage." />
           </div>
-          <p className="text-2xl font-bold text-info">{stats.checkedIn}</p>
+          <p className="text-xl sm:text-2xl font-bold text-info">{stats.checkedIn}</p>
         </div>
         <div className="paper-card p-4">
           <div className="flex items-center gap-1">
             <p className="text-sm text-muted-foreground">Revenue</p>
             <HelpTooltip content="Total amount collected from all confirmed registrations (after discounts and taxes)" />
           </div>
-          <p className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</p>
         </div>
       </div>
 
@@ -2599,19 +2599,19 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
                 </p>
                 <div className="grid grid-cols-4 gap-4 text-sm">
                   <div>
-                    <p className="text-2xl font-bold text-success">{importResult.summary.created}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-success">{importResult.summary.created}</p>
                     <p className="text-muted-foreground text-xs">Created</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-warning">{importResult.summary.skipped}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-warning">{importResult.summary.skipped}</p>
                     <p className="text-muted-foreground text-xs">Skipped</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-destructive">{importResult.summary.failed}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-destructive">{importResult.summary.failed}</p>
                     <p className="text-muted-foreground text-xs">Failed</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-info">{importResult.summary.notifications_queued || 0}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-info">{importResult.summary.notifications_queued || 0}</p>
                     <p className="text-muted-foreground text-xs">Emails</p>
                   </div>
                 </div>

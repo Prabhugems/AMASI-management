@@ -208,11 +208,11 @@ export default function AllAttendeesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">All Attendees</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">All Attendees</h1>
           <p className="text-muted-foreground">Search attendees and send/view their e-badge</p>
         </div>
         <Button variant="outline" onClick={exportList}>
@@ -318,7 +318,7 @@ export default function AllAttendeesPage() {
 
       {/* Badge Modal */}
       <Dialog open={showBadgeModal} onOpenChange={handleCloseModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh]">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>
               E-Badge - {selectedAttendee?.attendee_name}

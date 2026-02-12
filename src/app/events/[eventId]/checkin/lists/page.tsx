@@ -289,9 +289,9 @@ export default function CheckinListsPage() {
     <div className="h-[calc(100vh-120px)] flex flex-col">
       {/* Header */}
       <div className="px-6 py-4 border-b bg-card/50">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold">Check-in Lists</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">Check-in Lists</h1>
             <p className="text-muted-foreground text-sm">Manage lists for different sessions or areas</p>
           </div>
         </div>

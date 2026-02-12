@@ -269,10 +269,10 @@ export default function ConflictsPage() {
   const totalIssues = analysis.facultyConflicts.length + analysis.hallOverlaps.length
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
           <AlertTriangle className="h-6 w-6 text-amber-500" />
           Schedule Conflicts
         </h1>
@@ -293,7 +293,7 @@ export default function ConflictsPage() {
               <AlertCircle className="h-4 w-4" />
               <span className="text-sm">Total Issues</span>
             </div>
-            <p className="text-3xl font-bold">{totalIssues}</p>
+            <p className="text-2xl sm:text-3xl font-bold">{totalIssues}</p>
           </CardContent>
         </Card>
 
@@ -309,7 +309,7 @@ export default function ConflictsPage() {
               <Users className="h-4 w-4" />
               <span className="text-sm">Faculty Conflicts</span>
             </div>
-            <p className="text-3xl font-bold text-red-600">{analysis.facultyConflicts.length}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-red-600">{analysis.facultyConflicts.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Same person in 2 halls</p>
           </CardContent>
         </Card>
@@ -326,7 +326,7 @@ export default function ConflictsPage() {
               <Clock className="h-4 w-4" />
               <span className="text-sm">Hall Overlaps</span>
             </div>
-            <p className="text-3xl font-bold text-amber-600">{analysis.hallOverlaps.length}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-amber-600">{analysis.hallOverlaps.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Sessions overlap in same hall</p>
           </CardContent>
         </Card>

@@ -230,11 +230,11 @@ export default function SpeakerDocumentsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Speaker Documents</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Speaker Documents</h1>
           <p className="text-muted-foreground">Track bio, photo, and presentation submissions</p>
         </div>
         <Button variant="outline">
@@ -256,7 +256,7 @@ export default function SpeakerDocumentsPage() {
             <Users className="h-4 w-4" />
             <span className="text-sm">Total</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
         </div>
         <div
           className={cn(
@@ -269,7 +269,7 @@ export default function SpeakerDocumentsPage() {
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Complete</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.complete}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.complete}</p>
         </div>
         <div
           className={cn(
@@ -282,28 +282,28 @@ export default function SpeakerDocumentsPage() {
             <Clock className="h-4 w-4" />
             <span className="text-sm">Pending</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.pending}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-blue-500">
             <FileText className="h-4 w-4" />
             <span className="text-sm">Bios</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.bioCount}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.bioCount}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-purple-500">
             <Image className="h-4 w-4" />
             <span className="text-sm">Photos</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.photoCount}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.photoCount}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-orange-500">
             <Presentation className="h-4 w-4" />
             <span className="text-sm">Presentations</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.presentationCount}</p>
+          <p className="text-xl sm:text-2xl font-bold mt-1">{stats.presentationCount}</p>
         </div>
       </div>
 
