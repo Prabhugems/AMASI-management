@@ -1927,8 +1927,7 @@ export default function BadgeDesignerPage() {
           event_id: eventId,
           template_id: savedTemplateId,
           registration_ids: filteredRegs.map((r: any) => r.id),
-          export_format: exportFormat,
-          badges_per_page: exportFormat === "pdf" ? badgesPerPage : 1,
+          badges_per_page: badgesPerPage,
         }),
       })
       if (!res.ok) throw new Error("Failed to generate")

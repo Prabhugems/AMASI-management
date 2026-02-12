@@ -308,7 +308,7 @@ export async function POST(request: NextRequest) {
 
           // Auto-email certificate if enabled
           if (form.auto_email_certificate && registration.id) {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
             fetch(`${baseUrl}/api/certificates/email`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },

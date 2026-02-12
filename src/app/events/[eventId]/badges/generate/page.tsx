@@ -231,8 +231,7 @@ export default function GenerateBadgesPage() {
           event_id: eventId,
           template_id: selectedTemplate,
           registration_ids: selectedRegistrations,
-          export_format: exportFormat,
-          badges_per_page: exportFormat === "pdf" ? badgesPerPage : 1,
+          badges_per_page: badgesPerPage,
         }),
       })
 
@@ -340,7 +339,6 @@ export default function GenerateBadgesPage() {
           event_id: eventId,
           template_id: selectedTemplate,
           single_registration_id: reg.id,
-          export_format: "pdf",
         }),
       })
 

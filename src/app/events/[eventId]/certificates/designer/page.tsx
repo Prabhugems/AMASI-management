@@ -1001,8 +1001,7 @@ export default function CertificateDesignerPage() {
           event_id: eventId,
           template_id: savedTemplateId,
           registration_ids: filteredRegs.map((r: any) => r.id),
-          export_format: exportFormat,
-          certificates_per_page: exportFormat === "pdf" ? certificatesPerPage : 1,
+          certificates_per_page: certificatesPerPage,
         }),
       })
       if (!res.ok) throw new Error("Failed to generate")
