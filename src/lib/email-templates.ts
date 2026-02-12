@@ -47,6 +47,27 @@ export interface TemplateVariables {
 }
 
 /**
+ * Escape HTML special characters to prevent XSS in email templates
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+// Keys that contain URLs and should NOT be HTML-escaped
+const URL_KEYS = new Set([
+  "badge_url",
+  "certificate_url",
+  "response_url",
+  "checkin_url",
+  "verify_url",
+])
+
+/**
  * Replace template variables with actual data
  */
 export function renderTemplate(
@@ -63,7 +84,10 @@ export function renderTemplate(
   // Replace all {{variable}} patterns with actual values
   for (const [key, value] of Object.entries(variables)) {
     if (value !== undefined) {
-      result = result.replace(new RegExp(`{{${key}}}`, "g"), value)
+      // HTML-escape user-supplied values to prevent injection
+      // Skip escaping for URL keys (they need to remain valid URLs)
+      const safeValue = URL_KEYS.has(key) ? value : escapeHtml(value)
+      result = result.replace(new RegExp(`{{${key}}}`, "g"), safeValue)
     }
   }
 

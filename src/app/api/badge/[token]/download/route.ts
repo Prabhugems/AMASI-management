@@ -40,6 +40,37 @@ function getBaseUrl(): string {
     : "http://localhost:3000"
 }
 
+/**
+ * Validate that a URL is safe to fetch server-side (prevent SSRF).
+ * Only allows HTTPS URLs to trusted domains (Supabase storage, known CDNs).
+ * Blocks internal/private IPs and non-HTTPS protocols.
+ */
+function isSafeImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    // Only allow https
+    if (parsed.protocol !== "https:") return false
+    // Block localhost and private IPs
+    const hostname = parsed.hostname.toLowerCase()
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("172.") ||
+      hostname === "[::1]" ||
+      hostname.endsWith(".internal") ||
+      hostname.endsWith(".local")
+    ) {
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
 function replacePlaceholders(text: string, registration: any, event: any): string {
   if (!text) return ""
 
@@ -124,9 +155,17 @@ export async function GET(
     return NextResponse.json({ error: `Registration is ${registration.status}` }, { status: 400 })
   }
 
-  // If badge already stored, redirect to it
+  // If badge already stored, redirect to it (only if it's a safe Supabase storage URL)
   if (registration.badge_url) {
-    return NextResponse.redirect(registration.badge_url)
+    try {
+      const badgeUrl = new URL(registration.badge_url)
+      const supabaseUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!)
+      if (badgeUrl.hostname === supabaseUrl.hostname || badgeUrl.hostname.endsWith(".supabase.co")) {
+        return NextResponse.redirect(registration.badge_url)
+      }
+    } catch {
+      // Invalid URL - fall through to generate badge
+    }
   }
 
   // Get event
@@ -204,7 +243,7 @@ export async function GET(
 
   // Fetch background image if exists
   let backgroundImage: any = null
-  if (template.template_image_url) {
+  if (template.template_image_url && isSafeImageUrl(template.template_image_url)) {
     try {
       const imageResponse = await fetch(template.template_image_url)
       const imageBytes = await imageResponse.arrayBuffer()
@@ -302,7 +341,7 @@ export async function GET(
       }
     }
 
-    if (element.type === "image" && element.imageUrl) {
+    if (element.type === "image" && element.imageUrl && isSafeImageUrl(element.imageUrl)) {
       try {
         const imageResponse = await fetch(element.imageUrl)
         const imageBytes = await imageResponse.arrayBuffer()

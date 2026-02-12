@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
         console.error('Failed to update login activity:', e)
       }
 
-      // If there's an explicit next URL, use it
-      if (next) {
+      // If there's an explicit next URL, validate it's a safe relative path
+      if (next && next.startsWith('/') && !next.startsWith('//') && !next.includes('://')) {
         return NextResponse.redirect(new URL(next, requestUrl.origin))
       }
 

@@ -140,10 +140,16 @@ function parseMarkdown(text: string): string {
   // Inline code
   html = html.replace(/`(.*?)`/gim, "<code>$1</code>")
 
-  // Links
+  // Links - sanitize href to block javascript:/data: URLs
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/gim,
-    '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+    (_match: string, text: string, url: string) => {
+      const trimmedUrl = url.trim().toLowerCase()
+      if (trimmedUrl.startsWith("javascript:") || trimmedUrl.startsWith("data:") || trimmedUrl.startsWith("vbscript:")) {
+        return text // Strip dangerous links, keep text only
+      }
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`
+    }
   )
 
   // Unordered lists

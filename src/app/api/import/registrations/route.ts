@@ -13,6 +13,21 @@ interface ImportRow {
   [key: string]: any
 }
 
+/**
+ * Sanitize a string value to prevent CSV formula injection.
+ * When imported data is later exported to CSV/Excel, values starting with
+ * =, +, -, @, \t, or \r can be interpreted as formulas.
+ */
+function sanitizeCsvValue(value: string): string {
+  if (!value) return value
+  const trimmed = value.trim()
+  if (/^[=+\-@\t\r]/.test(trimmed)) {
+    // Prefix with a single quote to neutralize formula interpretation
+    return "'" + trimmed
+  }
+  return trimmed
+}
+
 // POST /api/import/registrations - Import registrations for an event
 export async function POST(request: NextRequest) {
   // Rate limit: bulk tier for import operations
@@ -279,8 +294,8 @@ export async function POST(request: NextRequest) {
         const registrationData: any = {
           event_id,
           ticket_type_id: ticketId,
-          attendee_name: row.name,
-          attendee_email: row.email.toLowerCase(),
+          attendee_name: sanitizeCsvValue(row.name),
+          attendee_email: row.email.toLowerCase().trim(),
           attendee_phone: phoneNumber,
           status: row.status?.toLowerCase() || "confirmed",
           registration_number: regNumber,
