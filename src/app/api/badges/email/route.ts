@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
         attendee_email,
         attendee_designation,
         attendee_institution,
+        badge_url,
         ticket_type:ticket_types(name)
       `)
       .eq("id", registration_id)
@@ -47,9 +48,30 @@ export async function POST(request: NextRequest) {
       : ""
     const venue = event?.venue_name ? `${event.venue_name}${event.city ? `, ${event.city}` : ""}` : ""
 
-    // Generate badge download URL using registration number
+    // Generate badge download URL using registration number (properly encoded)
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    const badgeUrl = `${baseUrl}/api/badge/${registration.registration_number}/download`
+    const badgeUrl = `${baseUrl}/api/badge/${encodeURIComponent(registration.registration_number)}/download`
+
+    // Try to fetch badge PDF from Supabase storage to attach to email
+    let badgeAttachment: { filename: string; content: Buffer } | null = null
+    try {
+      const storagePath = `badges/${event_id}/${registration_id}.pdf`
+      const { data: fileData, error: downloadError } = await (supabase as any)
+        .storage
+        .from("badges")
+        .download(storagePath)
+
+      if (!downloadError && fileData) {
+        const arrayBuffer = await fileData.arrayBuffer()
+        badgeAttachment = {
+          filename: `badge-${registration.registration_number}.pdf`,
+          content: Buffer.from(arrayBuffer),
+        }
+      }
+    } catch (storageError) {
+      console.error("Failed to fetch badge from storage:", storageError)
+      // Continue without attachment - email will still have the download link
+    }
 
     // Send email with badge
     const emailResult = await sendEmail({
@@ -65,7 +87,7 @@ export async function POST(request: NextRequest) {
           <div style="background: #f8f9fa; padding: 30px; border: 1px solid #e9ecef;">
             <h2 style="color: #333; margin: 0 0 20px 0;">Hello ${escapeHtml(registration.attendee_name || "")}!</h2>
             <p style="color: #666; line-height: 1.6;">
-              Your event badge is ready! You can download and print it before arriving at the event.
+              Your event badge is ready! ${badgeAttachment ? "The badge PDF is attached to this email." : "You can download and print it before arriving at the event."}
             </p>
 
             <div style="background: white; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -123,6 +145,7 @@ export async function POST(request: NextRequest) {
           </div>
         </div>
       `,
+      ...(badgeAttachment ? { attachments: [badgeAttachment] } : {}),
     })
 
     if (!emailResult.success) {
@@ -131,7 +154,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Badge sent to email",
+      message: badgeAttachment ? "Badge sent to email with PDF attached" : "Badge sent to email with download link",
       email: registration.attendee_email
     })
   } catch (error: any) {

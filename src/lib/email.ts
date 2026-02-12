@@ -3,12 +3,18 @@
  * Supports multiple providers: Resend, Blastable
  */
 
+type EmailAttachment = {
+  filename: string
+  content: Buffer | string
+}
+
 type EmailOptions = {
   to: string | string[]
   subject: string
   html: string
   text?: string
   from?: string
+  attachments?: EmailAttachment[]
 }
 
 type SendResult = {
@@ -82,13 +88,22 @@ async function sendViaResend(options: EmailOptions): Promise<SendResult> {
     const { Resend } = await import("resend")
     const resend = new Resend(apiKey)
 
-    const result = await resend.emails.send({
+    const emailPayload: any = {
       from: fromEmail,
       to: Array.isArray(options.to) ? options.to : [options.to],
       subject: options.subject,
       html: options.html,
       text: options.text,
-    })
+    }
+
+    if (options.attachments && options.attachments.length > 0) {
+      emailPayload.attachments = options.attachments.map((att) => ({
+        filename: att.filename,
+        content: att.content instanceof Buffer ? att.content : Buffer.from(att.content, "base64"),
+      }))
+    }
+
+    const result = await resend.emails.send(emailPayload)
 
     if (result.error) {
       console.error("[Resend] API error:", result.error)
