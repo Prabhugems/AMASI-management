@@ -64,15 +64,33 @@ function TeamLoginForm() {
         return
       }
 
-      // Send magic link
-      const { error: signInError } = await supabase.auth.signInWithOtp({
-        email: email.toLowerCase(),
-        options: {
-          emailRedirectTo: `${window.location.origin}/team-portal`,
-        },
-      })
+      // Try custom API route first (sends designed email via Resend/Blastable)
+      let sent = false
+      try {
+        const res = await fetch('/api/auth/magic-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email.toLowerCase(),
+            redirectTo: '/team-portal',
+          }),
+        })
+        if (res.ok) sent = true
+      } catch {
+        // Custom route failed, will fallback below
+      }
 
-      if (signInError) throw signInError
+      // Fallback: use Supabase built-in magic link
+      if (!sent) {
+        const { error: signInError } = await supabase.auth.signInWithOtp({
+          email: email.toLowerCase(),
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/team-portal')}`,
+          },
+        })
+        if (signInError) throw signInError
+      }
+
       setSent(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send magic link")

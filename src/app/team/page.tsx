@@ -568,9 +568,24 @@ export default function TeamPage() {
 
   const sendMagicLink = useMutation({
     mutationFn: async (email: string) => {
+      // Try custom API route first (designed email)
+      try {
+        const res = await fetch('/api/auth/magic-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email.toLowerCase(),
+            redirectTo: '/team-portal',
+          }),
+        })
+        if (res.ok) return
+      } catch {
+        // Fallback below
+      }
+      // Fallback: Supabase built-in
       const { error } = await supabase.auth.signInWithOtp({
         email: email.toLowerCase(),
-        options: { emailRedirectTo: `${window.location.origin}/team-portal` },
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/team-portal')}` },
       })
       if (error) throw error
     },

@@ -58,6 +58,7 @@ export async function middleware(request: NextRequest) {
     '/finance',
     '/settings',
     '/profile',
+    '/audit',
   ]
 
   const isProtectedRoute = protectedRoutes.some(
