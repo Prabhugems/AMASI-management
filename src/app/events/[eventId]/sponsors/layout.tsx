@@ -30,7 +30,7 @@ export default function SponsorsLayout({
   const basePath = `/events/${eventId}/sponsors`
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-[calc(100vh-6rem)] -mx-4 sm:-mx-6 -mb-4 sm:-mb-6">
       {/* Sidebar */}
       <div className="w-52 border-r bg-muted/30 p-4">
         <div className="mb-4">

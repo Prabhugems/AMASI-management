@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,7 @@ import {
   Bell,
   Eye,
   Link2,
+  ChevronLeft,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -53,6 +54,7 @@ const presentationTypeOptions = [
 
 export default function AbstractSettingsPage() {
   const params = useParams()
+  const router = useRouter()
   const eventId = params.eventId as string
   const queryClient = useQueryClient()
 
@@ -133,6 +135,11 @@ export default function AbstractSettingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <ChevronLeft className="h-4 w-4" />
+        Back
+      </button>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

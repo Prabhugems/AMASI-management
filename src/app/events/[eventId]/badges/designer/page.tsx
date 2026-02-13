@@ -2128,7 +2128,7 @@ export default function BadgeDesignerPage() {
 
   if (!mounted) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center bg-muted/30">
+      <div className="flex h-full items-center justify-center bg-muted/30">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Loading Badge Designer...</p>
@@ -2138,7 +2138,7 @@ export default function BadgeDesignerPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-muted/30">
+    <div className="flex h-full bg-muted/30">
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleBackgroundUpload} />
       <input ref={elementImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleElementImageUpload} />
 

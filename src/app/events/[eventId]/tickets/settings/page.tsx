@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -26,6 +26,7 @@ import {
   Globe,
   Clock,
   Shield,
+  ChevronLeft,
 } from "lucide-react"
 
 interface TicketSettings {
@@ -52,6 +53,7 @@ const defaultSettings: TicketSettings = {
 
 export default function TicketSettingsPage() {
   const params = useParams()
+  const router = useRouter()
   const eventId = params.eventId as string
   const supabase = createClient()
   const queryClient = useQueryClient()
@@ -146,6 +148,12 @@ export default function TicketSettingsPage() {
 
   return (
     <div className="p-6 max-w-4xl">
+      {/* Back Button */}
+      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <ChevronLeft className="h-4 w-4" />
+        Back
+      </button>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

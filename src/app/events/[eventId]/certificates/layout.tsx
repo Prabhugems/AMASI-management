@@ -162,7 +162,7 @@ export default function CertificatesLayout({ children }: { children: React.React
 
   if (!permissionsLoading && !userPermissions?.hasAccess) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+      <div className="flex h-[calc(100vh-6rem)] items-center justify-center">
         <div className="text-center">
           <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
@@ -225,7 +225,7 @@ export default function CertificatesLayout({ children }: { children: React.React
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
+    <div className="flex h-[calc(100vh-6rem)] -mx-4 sm:-mx-6 -mb-4 sm:-mb-6">
       <div className="w-56 border-r bg-muted/30 flex flex-col">
         <Link href={`/events/${eventId}`} className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground border-b">
           <ChevronLeft className="h-4 w-4" />Back to Event
