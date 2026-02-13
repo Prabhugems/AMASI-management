@@ -71,7 +71,7 @@ export function usePermissions(): UserPermissions {
           .maybeSingle(),
       ])
 
-      const userProfile = profileResult.data as UserProfileType
+      const userProfile = (profileResult.data ?? null) as UserProfileType | null
       const teamMember = teamMemberResult.data as TeamMemberType | null
 
       // Super admins always get full access regardless of team_members

@@ -90,7 +90,7 @@ export default function EditMemberPage() {
         .maybeSingle()
 
       if (error) throw error
-      return data as Member
+      return (data ?? null) as Member | null
     },
     enabled: !!memberId,
   })

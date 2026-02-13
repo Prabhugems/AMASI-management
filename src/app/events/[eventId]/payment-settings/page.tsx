@@ -102,7 +102,7 @@ export default function PaymentSettingsPage() {
         setPaymentSettingsLoaded(true)
       }
 
-      return data as EventData
+      return (data ?? null) as EventData | null
     },
     enabled: !!eventId,
   })

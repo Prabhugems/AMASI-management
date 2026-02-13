@@ -194,7 +194,7 @@ export default function HallControlDashboard() {
         .eq("portal_token", token)
         .maybeSingle()
       if (error) throw error
-      return data as CoordinatorInfo
+      return (data ?? null) as CoordinatorInfo | null
     },
   })
 
