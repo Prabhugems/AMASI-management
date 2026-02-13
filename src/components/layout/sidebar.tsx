@@ -16,6 +16,7 @@ import {
   Plane,
   Users,
   HelpCircle,
+  Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -88,6 +89,7 @@ const mainNavItems = [
     icon: Users,
     children: [
       { name: "All Members", href: "/team" },
+      { name: "Audit Log", href: "/audit" },
     ],
   },
 ]
