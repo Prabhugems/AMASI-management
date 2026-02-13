@@ -124,6 +124,35 @@ export default function DelegatePortalPage() {
   const [downloadingInvitation, setDownloadingInvitation] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
   const [certGatedByFeedback, setCertGatedByFeedback] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  // Refresh registration data (re-fetch without clearing UI)
+  const refreshRegistration = useCallback(async () => {
+    if (!searchQuery.trim()) return
+    setRefreshing(true)
+    try {
+      const res = await fetch(`/api/my?q=${encodeURIComponent(searchQuery.trim())}`)
+      const data = await res.json()
+      if (res.ok && data.registrations) {
+        setRegistrations(data.registrations)
+        setPendingPayments(data.pending_payments || [])
+        // Update selected registration if still selected
+        if (selectedRegistration) {
+          const updated = data.registrations.find(
+            (r: Registration) => r.id === selectedRegistration.id
+          )
+          if (updated) setSelectedRegistration(updated)
+        } else if (data.registrations.length === 1) {
+          setSelectedRegistration(data.registrations[0])
+        }
+        toast.success("Data refreshed")
+      }
+    } catch {
+      // Silent fail on refresh
+    } finally {
+      setRefreshing(false)
+    }
+  }, [searchQuery, selectedRegistration])
 
   // Payment verification
   const [showVerifyForm, setShowVerifyForm] = useState(false)
@@ -743,7 +772,8 @@ export default function DelegatePortalPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4 py-8">
       <div className="max-w-lg mx-auto space-y-4">
-        {/* Back Button */}
+        {/* Back + Refresh Buttons */}
+        <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => {
             if (registrations.length > 1) {
@@ -754,11 +784,20 @@ export default function DelegatePortalPage() {
               setSearchQuery("")
             }
           }}
-          className="text-white/70 hover:text-white flex items-center gap-2 text-sm mb-4"
+          className="text-white/70 hover:text-white flex items-center gap-2 text-sm"
         >
           <ArrowRight className="w-4 h-4 rotate-180" />
           {registrations.length > 1 ? "Back to my events" : "Search another registration"}
         </button>
+        <button
+          onClick={refreshRegistration}
+          disabled={refreshing}
+          className="text-white/70 hover:text-white flex items-center gap-2 text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+          {refreshing ? "Refreshing..." : "Refresh"}
+        </button>
+        </div>
 
         {/* Event Banner */}
         {event && (
