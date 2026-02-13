@@ -23,12 +23,27 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adminClient = adminClientRaw as any
 
+    // DEBUG: track what each query returns
+    const _debug: Record<string, any> = { auth_user: user.email }
+
     // 1. PRIMARY DATA SOURCE: auth.admin.listUsers() - always works
     let authUsers: any[] = []
     try {
-      const { data: authData } = await adminClient.auth.admin.listUsers()
-      authUsers = authData?.users || []
-    } catch (e) {
+      const result = await adminClient.auth.admin.listUsers()
+      _debug.listUsers_raw_keys = result?.data ? Object.keys(result.data) : "no data"
+      _debug.listUsers_error = result?.error?.message || null
+      // Handle both formats: { data: { users: [...] } } and { data: [...] }
+      if (Array.isArray(result?.data)) {
+        authUsers = result.data
+      } else if (result?.data?.users) {
+        authUsers = result.data.users
+      }
+      _debug.auth_users_count = authUsers.length
+      if (authUsers.length > 0) {
+        _debug.first_auth_user = { id: authUsers[0].id, email: authUsers[0].email }
+      }
+    } catch (e: any) {
+      _debug.listUsers_exception = e?.message || String(e)
       console.error("[Audit] Failed to list auth users:", e)
     }
 
@@ -46,6 +61,8 @@ export async function GET(request: NextRequest) {
         .from("users")
         .select("id, email, name, platform_role, is_active, last_login_at, last_active_at, logged_out_at, login_count, created_at")
 
+      _debug.db_users_count = dbUsers?.length ?? "null"
+      _debug.db_users_error = usersError?.message || null
       if (!usersError && dbUsers) {
         for (const u of dbUsers) {
           usersMap.set(u.id, u)
@@ -233,6 +250,7 @@ export async function GET(request: NextRequest) {
         never_logged_in: neverLoggedIn,
         avg_session_duration_ms: Math.round(avgSessionMs),
       },
+      _debug,
     })
   } catch (error: any) {
     console.error("[Audit] Error:", error?.message || error)

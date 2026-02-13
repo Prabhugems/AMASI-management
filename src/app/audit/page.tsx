@@ -346,6 +346,7 @@ export default function AuditDashboardPage() {
         stats: AuditStats
         logins_per_day: LoginPerDay[]
         top_users: TopUser[]
+        _debug?: Record<string, any>
       }>
     },
     retry: 1,
@@ -429,6 +430,13 @@ export default function AuditDashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* DEBUG: API response diagnostics - REMOVE after fixing */}
+      {data?._debug && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs font-mono">
+          <strong>DEBUG (will remove):</strong> {JSON.stringify(data._debug, null, 2)}
+        </div>
+      )}
 
       {/* Date Range Filter */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
