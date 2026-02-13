@@ -69,7 +69,7 @@ export function usePermissions(): UserPermissions {
           .from("users")
           .select("name")
           .eq("id", session.user.id)
-          .maybeSingle()
+          .maybeSingle() as { data: { name: string | null } | null }
 
         return {
           permissions: [] as Permission[],
