@@ -228,7 +228,7 @@ export default function EventDetailsPage() {
         throw error
       }
 
-      const eventData = data as EventDetails
+      const eventData = (data ?? null) as EventDetails | null
 
       // If we have a direct ticket ID, make sure to include it even if hidden
       // Filter out hidden tickets EXCEPT the one accessed via direct link

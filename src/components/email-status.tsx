@@ -109,7 +109,7 @@ export function EmailStatus({
 
       const { data, error } = await query.limit(5)
       if (error) throw error
-      return data as EmailLog[]
+      return (data ?? null) as EmailLog | null[]
     },
     enabled: !!(registrationId || resendEmailId),
     staleTime: 30000, // Refresh every 30 seconds
@@ -250,7 +250,7 @@ export function EmailStatusBadge({
         .maybeSingle()
 
       if (error) return null
-      return data as EmailLog
+      return (data ?? null) as EmailLog | null
     },
     enabled: !!registrationId,
     staleTime: 30000,
