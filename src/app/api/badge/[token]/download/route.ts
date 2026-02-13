@@ -275,14 +275,25 @@ export async function GET(
     if (element.type === "text" && element.content) {
       const rawText = replacePlaceholders(element.content, registration, event)
       const text = applyTextCase(rawText, element.textCase)
+      if (!text) continue
       const color = hexToRgb(element.color || "#000000")
-      const fontSize = (element.fontSize || 14) * scaleFactor
+      let fontSize = (element.fontSize || 14) * scaleFactor
       const font = element.fontWeight === "bold" ? helveticaBold : helveticaFont
 
-      const textWidth = font.widthOfTextAtSize(text, fontSize)
+      // Auto-shrink font size if text is wider than the container
+      const minFontSize = 4 * scaleFactor
+      let textWidth = font.widthOfTextAtSize(text, fontSize)
+      while (textWidth > width && fontSize > minFontSize) {
+        fontSize -= 0.5
+        textWidth = font.widthOfTextAtSize(text, fontSize)
+      }
+
       let textX = x
       if (element.align === "center") textX = x + (width - textWidth) / 2
       else if (element.align === "right") textX = x + width - textWidth
+
+      // Clamp textX so text doesn't render outside badge boundary
+      if (textX < 0) textX = 0
 
       const textY = y + (height - fontSize) / 2
       page.drawText(text, { x: textX, y: textY, size: fontSize, font, color: rgb(color.r, color.g, color.b) })
