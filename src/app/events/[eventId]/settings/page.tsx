@@ -92,7 +92,7 @@ export default function SettingsPage() {
         .maybeSingle()
 
       if (error) throw error
-      return data as EventSettings
+      return (data ?? null) as EventSettings | null
     },
     enabled: !!eventId,
     staleTime: 0,

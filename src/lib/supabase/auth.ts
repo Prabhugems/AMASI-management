@@ -86,7 +86,7 @@ export async function updateUserProfile(userId: string, updates: UserProfileUpda
     .maybeSingle()
 
   if (error) throw error
-  return data as UserProfile
+  return (data ?? null) as UserProfile | null
 }
 
 // Check if user is admin
