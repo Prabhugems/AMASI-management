@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
         ticket_type:ticket_types(name)
       `)
       .eq("id", registration_id)
-      .single()
+      .maybeSingle()
 
     if (regError || !registration) {
       return NextResponse.json({ error: "Registration not found" }, { status: 404 })
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       .from("events")
       .select("name, short_name, start_date, end_date, venue_name, city")
       .eq("id", event_id)
-      .single()
+      .maybeSingle()
 
     const eventName = event?.short_name || event?.name || "Event"
     const eventDate = event?.start_date

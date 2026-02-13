@@ -36,7 +36,7 @@ export default function TicketsLayout({ children }: { children: React.ReactNode 
         .from("events")
         .select("id, name, short_name, start_date, city")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
       return data as EventType | null
     },
   })

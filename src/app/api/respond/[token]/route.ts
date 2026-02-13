@@ -16,7 +16,7 @@ export async function GET(
       .from("faculty_assignments")
       .select("*")
       .eq("invitation_token", token)
-      .single()
+      .maybeSingle()
 
     if (assignmentError || !assignment) {
       return NextResponse.json(
@@ -53,7 +53,7 @@ export async function GET(
       .from("events")
       .select("id, name, short_name, logo_url, start_date, end_date, venue_name")
       .eq("id", assignment.event_id)
-      .single()
+      .maybeSingle()
 
     return NextResponse.json({
       faculty: {
@@ -91,7 +91,7 @@ export async function POST(
       .from("faculty_assignments")
       .select("*")
       .eq("invitation_token", token)
-      .single()
+      .maybeSingle()
 
     if (assignmentError || !assignment) {
       return NextResponse.json(

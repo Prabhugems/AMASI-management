@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       .from("checkin_lists")
       .select("*")
       .eq("id", checkinListId)
-      .single()
+      .maybeSingle()
 
     if (listError || !checkinList) {
       return NextResponse.json({ error: "Check-in list not found" }, { status: 404 })

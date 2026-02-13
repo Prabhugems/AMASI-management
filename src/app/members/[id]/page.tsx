@@ -41,7 +41,7 @@ export default function MemberDetailPage() {
         .from("members")
         .select("*")
         .eq("id", memberId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
       return data

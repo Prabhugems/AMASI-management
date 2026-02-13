@@ -44,7 +44,7 @@ export default function FacultyDetailPage() {
         .from("faculty")
         .select("*")
         .eq("id", facultyId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
       return data

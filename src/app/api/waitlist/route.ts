@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       .eq("event_id", event_id)
       .eq("email", email.toLowerCase())
       .eq("ticket_type_id", ticket_type_id || null)
-      .single()
+      .maybeSingle()
 
     if (existing) {
       return NextResponse.json(
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       .eq("event_id", event_id)
       .eq("attendee_email", email.toLowerCase())
       .not("status", "in", '("cancelled","refunded")')
-      .single()
+      .maybeSingle()
 
     if (existingReg) {
       return NextResponse.json(

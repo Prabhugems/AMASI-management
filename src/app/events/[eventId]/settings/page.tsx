@@ -89,7 +89,7 @@ export default function SettingsPage() {
         .from("events")
         .select("*")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
       return data as EventSettings

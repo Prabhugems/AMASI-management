@@ -102,7 +102,7 @@ export default function EventFormsPage() {
         .from("events")
         .select("id, name, short_name")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
       return data as { id: string; name: string; short_name: string | null } | null
     },
   })

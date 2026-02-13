@@ -65,7 +65,7 @@ export default function EventDashboardPage() {
         .from("events")
         .select("id, name, short_name, slug, status, event_type, city, state, start_date, end_date, venue_name, edition, scientific_chairman, organizing_chairman, registration_open, razorpay_key_id, bank_account_number, payment_methods_enabled")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
 
       return data as Event | null
     },

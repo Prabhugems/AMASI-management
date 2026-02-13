@@ -32,7 +32,7 @@ function TeamLoginForm() {
           .select("*")
           .eq("email", session.user.email.toLowerCase())
           .eq("is_active", true)
-          .single()
+          .maybeSingle()
 
         if (teamMember) {
           router.push("/team-portal")
@@ -56,7 +56,7 @@ function TeamLoginForm() {
         .select("*")
         .eq("email", email.toLowerCase())
         .eq("is_active", true)
-        .single()
+        .maybeSingle()
 
       if (teamError || !teamMember) {
         setError("This email is not authorized. Please contact admin.")

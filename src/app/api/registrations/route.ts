@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         .from("events")
         .select("id, created_by")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
 
       if (!event) {
         return NextResponse.json({ error: "Event not found" }, { status: 404 })
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
           .select("id, event_ids, permissions")
           .eq("email", user.email?.toLowerCase())
           .eq("is_active", true)
-          .single()
+          .maybeSingle()
 
         const hasEventAccess = teamMember && (
           !teamMember.event_ids || // No event restriction = all events
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
       .from("events")
       .select("registration_open")
       .eq("id", event_id)
-      .single()
+      .maybeSingle()
 
     if (eventData?.registration_open === false) {
       return NextResponse.json(
@@ -229,7 +229,7 @@ export async function POST(request: NextRequest) {
       .from("ticket_types")
       .select("*")
       .eq("id", ticket_type_id)
-      .single()
+      .maybeSingle()
 
     if (ticketError || !ticket) {
       return NextResponse.json(

@@ -18,7 +18,7 @@ export async function GET(
       .select("*")
       .eq("slug", slug)
       .eq("status", "published")
-      .single()
+      .maybeSingle()
 
     if (formError || !form) {
       return NextResponse.json(

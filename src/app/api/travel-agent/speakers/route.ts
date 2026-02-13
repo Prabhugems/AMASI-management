@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       .from("events")
       .select("id, name, short_name, start_date, end_date, venue_name, city")
       .eq("id", eventId)
-      .single()
+      .maybeSingle()
 
     if (eventError || !event) {
       return NextResponse.json(

@@ -50,7 +50,7 @@ export default function RegistrationSettingsPage() {
         .from("events")
         .select("registration_settings")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
 
       if (data?.registration_settings) {
         setSettings({ ...settings, ...data.registration_settings })

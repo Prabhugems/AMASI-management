@@ -31,7 +31,7 @@ export async function GET(
       .from("events")
       .select("id, name, short_name, logo_url, start_date, end_date, venue_name")
       .eq("id", registration.event_id)
-      .single()
+      .maybeSingle()
 
     return NextResponse.json({
       speaker: {

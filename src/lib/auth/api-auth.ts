@@ -86,7 +86,7 @@ export async function getApiUser(): Promise<AuthResult> {
         updated_at: new Date().toISOString(),
       })
       .select('id, email, name, platform_role, is_super_admin')
-      .single()
+      .maybeSingle()
 
     if (createError || !newProfile) {
       console.error('Failed to create user profile:', createError)

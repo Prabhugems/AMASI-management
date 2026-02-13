@@ -55,7 +55,7 @@ export default function TravelDashboardPage() {
         .select("role, permissions")
         .eq("email", session.user.email.toLowerCase())
         .eq("is_active", true)
-        .single()
+        .maybeSingle()
       const teamMember = teamMemberData as TeamMemberType | null
 
       if (teamMember) {

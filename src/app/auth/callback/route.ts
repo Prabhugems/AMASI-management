@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
           .select('event_id')
           .eq('faculty_id', user.id)
           .limit(1)
-          .single()
+          .maybeSingle()
 
         if (eventAccess?.event_id) {
           redirectTo = `/events/${eventAccess.event_id}`
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
           .from('faculty')
           .select('id')
           .eq('user_id', user.id)
-          .single()
+          .maybeSingle()
 
         if (facultyRecord) {
           const { data: eventAssignment } = await supabase
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
             .eq('faculty_id', facultyRecord.id)
             .order('created_at', { ascending: false })
             .limit(1)
-            .single()
+            .maybeSingle()
 
           if (eventAssignment?.event_id) {
             redirectTo = `/events/${eventAssignment.event_id}`
