@@ -238,9 +238,9 @@ export async function requireEventAccess(eventId: string): Promise<AuthResult> {
   const { data: teamMember } = await (adminClient as any)
     .from('team_members')
     .select('id')
-    .eq('event_id', eventId)
+    .contains('event_ids', [eventId])
     .eq('user_id', result.user.id)
-    .eq('status', 'active')
+    .eq('is_active', true)
     .maybeSingle()
 
   if (teamMember) {
