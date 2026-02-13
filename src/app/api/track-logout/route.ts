@@ -18,11 +18,11 @@ export async function POST() {
 
     const now = new Date().toISOString()
 
+    // Update last_active_at to mark the logout time
     await adminClient
       .from('users')
       .update({
-        logged_out_at: now,
-        last_active_at: null,
+        last_active_at: now,
       })
       .eq('id', user.id)
 

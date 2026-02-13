@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,6 +31,7 @@ import {
   Timer,
   AlertCircle,
   ArrowUpDown,
+  ArrowLeft,
   Download,
   TrendingUp,
   Trophy,
@@ -315,6 +317,7 @@ function UserHistoryRow({ user }: { user: AuditUser }) {
 }
 
 export default function AuditDashboardPage() {
+  const router = useRouter()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [tab, setTab] = useState<"users" | "timeline" | "analytics">("users")
@@ -346,7 +349,6 @@ export default function AuditDashboardPage() {
         stats: AuditStats
         logins_per_day: LoginPerDay[]
         top_users: TopUser[]
-        _debug?: Record<string, any>
       }>
     },
     retry: 1,
@@ -410,14 +412,19 @@ export default function AuditDashboardPage() {
     <div className="space-y-6 p-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-            <Shield className="h-6 w-6" />
-            Audit Dashboard
-          </h1>
-          <p className="text-muted-foreground">
-            Login/logout activity, session durations, and team member activity logs
-          </p>
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" className="mt-1" onClick={() => router.push("/dashboard")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+              <Shield className="h-6 w-6" />
+              Audit Dashboard
+            </h1>
+            <p className="text-muted-foreground">
+              Login/logout activity, session durations, and team member activity logs
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!sortedUsers.length}>
@@ -430,13 +437,6 @@ export default function AuditDashboardPage() {
           </Button>
         </div>
       </div>
-
-      {/* DEBUG: API response diagnostics - REMOVE after fixing */}
-      {data?._debug && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs font-mono">
-          <strong>DEBUG (will remove):</strong> {JSON.stringify(data._debug, null, 2)}
-        </div>
-      )}
 
       {/* Date Range Filter */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">

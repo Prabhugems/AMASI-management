@@ -23,27 +23,17 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adminClient = adminClientRaw as any
 
-    // DEBUG: track what each query returns
-    const _debug: Record<string, any> = { auth_user: user.email }
-
     // 1. PRIMARY DATA SOURCE: auth.admin.listUsers() - always works
     let authUsers: any[] = []
     try {
       const result = await adminClient.auth.admin.listUsers()
-      _debug.listUsers_raw_keys = result?.data ? Object.keys(result.data) : "no data"
-      _debug.listUsers_error = result?.error?.message || null
       // Handle both formats: { data: { users: [...] } } and { data: [...] }
       if (Array.isArray(result?.data)) {
         authUsers = result.data
       } else if (result?.data?.users) {
         authUsers = result.data.users
       }
-      _debug.auth_users_count = authUsers.length
-      if (authUsers.length > 0) {
-        _debug.first_auth_user = { id: authUsers[0].id, email: authUsers[0].email }
-      }
     } catch (e: any) {
-      _debug.listUsers_exception = e?.message || String(e)
       console.error("[Audit] Failed to list auth users:", e)
     }
 
@@ -57,18 +47,17 @@ export async function GET(request: NextRequest) {
     // 2. Try to fetch from users table (may have extra columns like login_count, etc.)
     const usersMap = new Map<string, any>()
     try {
+      // Use basic columns that are guaranteed to exist
       const { data: dbUsers, error: usersError } = await adminClient
         .from("users")
-        .select("id, email, name, platform_role, is_active, last_login_at, last_active_at, logged_out_at, login_count, created_at")
+        .select("id, email, name, platform_role, is_active, last_login_at, last_active_at, login_count, created_at")
 
-      _debug.db_users_count = dbUsers?.length ?? "null"
-      _debug.db_users_error = usersError?.message || null
       if (!usersError && dbUsers) {
         for (const u of dbUsers) {
           usersMap.set(u.id, u)
         }
       } else if (usersError) {
-        console.warn("[Audit] users table query failed (some columns may not exist):", usersError.message)
+        console.warn("[Audit] users table query failed:", usersError.message)
         // Fallback: try with just basic columns
         const { data: basicUsers } = await adminClient
           .from("users")
@@ -118,7 +107,24 @@ export async function GET(request: NextRequest) {
       console.warn("[Audit] Could not query activity_logs:", e)
     }
 
-    // 5. Build enriched user data from AUTH users + DB users + team data
+    // 5. Build a map of last logout time per user from activity_logs
+    const lastLogoutMap = new Map<string, string>()
+    try {
+      const { data: logoutLogs } = await adminClient
+        .from("activity_logs")
+        .select("user_id, created_at")
+        .eq("action", "logout")
+        .order("created_at", { ascending: false })
+      for (const log of logoutLogs || []) {
+        if (log.user_id && !lastLogoutMap.has(log.user_id)) {
+          lastLogoutMap.set(log.user_id, log.created_at)
+        }
+      }
+    } catch (e) {
+      console.warn("[Audit] Could not fetch logout logs:", e)
+    }
+
+    // 6. Build enriched user data from AUTH users + DB users + team data
     const enrichedUsers = authUsers.map((authUser: any) => {
       const dbUser = usersMap.get(authUser.id)
       const email = (authUser.email || "").toLowerCase()
@@ -126,7 +132,7 @@ export async function GET(request: NextRequest) {
 
       const lastLoginAt = dbUser?.last_login_at || authUser.last_sign_in_at || null
       const lastActiveAt = dbUser?.last_active_at || null
-      const loggedOutAt = dbUser?.logged_out_at || null
+      const loggedOutAt = lastLogoutMap.get(authUser.id) || null
       const loginCount = dbUser?.login_count || 0
 
       // Calculate session duration
@@ -154,7 +160,7 @@ export async function GET(request: NextRequest) {
         const diff = Date.now() - new Date(lastActiveAt).getTime()
         if (diff < 15 * 60 * 1000) status = "online"
         else if (diff < 60 * 60 * 1000) status = "away"
-        else if (loggedOutAt) status = "logged_out"
+        else if (loggedOutAt && new Date(loggedOutAt).getTime() > new Date(lastActiveAt).getTime()) status = "logged_out"
         else status = "offline"
       } else if (loggedOutAt) {
         status = "logged_out"
@@ -250,7 +256,6 @@ export async function GET(request: NextRequest) {
         never_logged_in: neverLoggedIn,
         avg_session_duration_ms: Math.round(avgSessionMs),
       },
-      _debug,
     })
   } catch (error: any) {
     console.error("[Audit] Error:", error?.message || error)
