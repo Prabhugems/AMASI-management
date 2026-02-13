@@ -167,7 +167,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* Tito-style Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -194,6 +194,42 @@ export default function SettingsPage() {
           )}
         </Button>
       </div>
+
+      {/* Sticky Save Bar - always visible at bottom when there are changes */}
+      {hasChanges && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-6 py-3">
+          <div className="flex items-center justify-between max-w-screen-xl mx-auto">
+            <p className="text-sm text-muted-foreground">You have unsaved changes</p>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { if (event) setFormData(event) }}
+              >
+                Discard
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => saveSettings.mutate(formData)}
+                disabled={saveSettings.isPending}
+                className="gap-2"
+              >
+                {saveSettings.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Success/Error Messages */}
       {saveSettings.isSuccess && (
