@@ -48,7 +48,7 @@ function SuccessContent() {
         .from("registrations")
         .select("id, events(name, short_name, start_date, city)")
         .eq("registration_number", registrationNumber)
-        .single() as { data: { id: string; events: { name: string; short_name: string | null; start_date: string; city: string | null } | null } | null }
+        .maybeSingle() as { data: { id: string; events: { name: string; short_name: string | null; start_date: string; city: string | null } | null } | null }
       return data
     },
     enabled: !!registrationNumber,

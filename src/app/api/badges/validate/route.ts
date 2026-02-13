@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
         .from("badge_templates")
         .select("*")
         .eq("id", template_id)
-        .single()
+        .maybeSingle()
 
       if (templateError || !templateData) {
         errors.push({

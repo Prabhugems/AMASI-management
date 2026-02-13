@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       .select("id, custom_fields, event_id")
       .eq("id", registration_id)
       .eq("event_id", event_id)
-      .single()
+      .maybeSingle()
 
     if (fetchError || !registration) {
       return NextResponse.json(

@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       .from("email_logs")
       .select("id, open_count, click_count, clicked_links, first_opened_at, first_clicked_at")
       .eq("resend_email_id", data.email_id)
-      .single()
+      .maybeSingle()
 
     if (findError || !emailLog) {
       console.log(`Email log not found for resend_email_id: ${data.email_id}`)

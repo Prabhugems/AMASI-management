@@ -192,7 +192,7 @@ export default function HallControlDashboard() {
         .from("hall_coordinators")
         .select(`*, event:events(*)`)
         .eq("portal_token", token)
-        .single()
+        .maybeSingle()
       if (error) throw error
       return data as CoordinatorInfo
     },

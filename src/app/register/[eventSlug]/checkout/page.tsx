@@ -153,7 +153,7 @@ export default function CheckoutPage() {
         query = query.eq("slug", eventSlug)
       }
 
-      const { data, error } = await query.single()
+      const { data, error } = await query.maybeSingle()
       if (error) throw error
 
       return data as any
@@ -226,7 +226,7 @@ export default function CheckoutPage() {
         .select("*")
         .eq("id", primaryTicketFormId)
         .eq("status", "published")
-        .single()
+        .maybeSingle()
 
       if (formError || !form) return null
 

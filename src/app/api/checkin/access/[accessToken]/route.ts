@@ -44,7 +44,7 @@ export async function GET(
       )
     `)
     .eq("access_token", accessToken)
-    .single()
+    .maybeSingle()
 
   if (error || !checkinList) {
     return NextResponse.json(

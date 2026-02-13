@@ -67,7 +67,7 @@ export default function AllAttendeesPage() {
         .select("id, name")
         .eq("event_id", eventId)
         .eq("is_default", true)
-        .single()
+        .maybeSingle()
       return data
     },
   })

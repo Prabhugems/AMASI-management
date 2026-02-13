@@ -743,7 +743,7 @@ export function RecentFacultyTable() {
           status: "active",
         } as any)
         .select()
-        .single()
+        .maybeSingle()
 
       if (error) throw error
       return data

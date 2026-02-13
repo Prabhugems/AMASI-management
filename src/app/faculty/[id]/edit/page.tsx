@@ -87,7 +87,7 @@ export default function EditFacultyPage() {
         .from("faculty")
         .select("*")
         .eq("id", facultyId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
       return data

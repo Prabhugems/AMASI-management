@@ -87,7 +87,7 @@ export default function EditMemberPage() {
         .from("members")
         .select("*")
         .eq("id", memberId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
       return data as Member

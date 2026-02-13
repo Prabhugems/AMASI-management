@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         .from("checkin_lists")
         .select("ticket_type_ids, addon_ids")
         .eq("id", checkinListId)
-        .single()
+        .maybeSingle()
 
       if (listData?.ticket_type_ids?.length > 0) {
         allowedTicketTypes = listData.ticket_type_ids
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
       query = query.eq("registration_number", registration_number)
     }
 
-    const { data: registration, error: findError } = await query.single()
+    const { data: registration, error: findError } = await query.maybeSingle()
 
     if (findError || !registration) {
       return NextResponse.json({ error: "Check-in failed: attendee not found" }, { status: 404 })
@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
       .select("*")
       .eq("id", checkin_list_id)
       .eq("event_id", event_id)
-      .single()
+      .maybeSingle()
 
     if (listError || !checkinList) {
       return NextResponse.json({ error: "Check-in list not found" }, { status: 404 })
@@ -347,7 +347,7 @@ export async function POST(request: NextRequest) {
           })
           .eq("id", previousRecord.id)
           .select()
-          .single()
+          .maybeSingle()
 
         if (updateErr) {
           return NextResponse.json({ error: "Failed to check in attendee" }, { status: 500 })
@@ -364,7 +364,7 @@ export async function POST(request: NextRequest) {
             checked_in_by: user_id || null
           })
           .select()
-          .single()
+          .maybeSingle()
 
         if (insertError) {
           return NextResponse.json({ error: "Failed to check in attendee" }, { status: 500 })

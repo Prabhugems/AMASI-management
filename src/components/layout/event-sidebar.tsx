@@ -129,7 +129,7 @@ export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
         .from("events")
         .select("id, name, short_name, status, city, event_type, start_date, end_date, logo_url")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
       return data as EventData | null
     },
     enabled: !!eventId,

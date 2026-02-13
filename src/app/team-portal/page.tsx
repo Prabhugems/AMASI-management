@@ -90,7 +90,7 @@ export default function TeamPortalPage() {
         .select("*")
         .eq("email", session.user.email.toLowerCase())
         .eq("is_active", true)
-        .single()
+        .maybeSingle()
 
       if (!member) {
         router.push("/team-login")

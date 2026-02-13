@@ -131,7 +131,7 @@ export default function GroupRegistrationPage() {
         query = query.eq("slug", eventSlug)
       }
 
-      const { data, error } = await query.single()
+      const { data, error } = await query.maybeSingle()
       if (error) throw error
 
       return data as any

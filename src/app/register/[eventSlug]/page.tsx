@@ -221,7 +221,7 @@ export default function EventDetailsPage() {
         query = query.eq("slug", eventSlug)
       }
 
-      const { data, error } = await query.single()
+      const { data, error } = await query.maybeSingle()
 
       if (error) {
         console.error("Failed to fetch event:", error)

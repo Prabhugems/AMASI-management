@@ -33,7 +33,7 @@ export async function GET(
         ticket_type:ticket_types(name)
       `)
       .filter("custom_fields->>portal_token", "eq", token)
-      .single()
+      .maybeSingle()
 
     if (error || !registration) {
       console.error("Portal token lookup error:", error)
@@ -92,7 +92,7 @@ export async function PUT(
       .from("registrations")
       .select("id, custom_fields")
       .filter("custom_fields->>portal_token", "eq", token)
-      .single()
+      .maybeSingle()
 
     if (findError || !registration) {
       return NextResponse.json({ error: "Invalid token" }, { status: 404 })

@@ -77,7 +77,7 @@ export default function AccommodationLayout({
         .from("events")
         .select("id, name, short_name, start_date, city")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
       return data as EventType | null
     },
   })
@@ -95,7 +95,7 @@ export default function AccommodationLayout({
         .select("permissions, role, name, event_ids")
         .eq("email", session.user.email.toLowerCase())
         .eq("is_active", true)
-        .single()
+        .maybeSingle()
       const teamMember = teamMemberData as TeamMemberType | null
 
       // If user is not in team_members, they're a main app admin with full access

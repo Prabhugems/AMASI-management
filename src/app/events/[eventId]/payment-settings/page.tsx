@@ -78,7 +78,7 @@ export default function PaymentSettingsPage() {
         .from("events")
         .select("id, name, short_name, razorpay_key_id, razorpay_key_secret, razorpay_webhook_secret, payment_methods_enabled, bank_account_name, bank_account_number, bank_ifsc_code, bank_name, bank_branch, bank_upi_id")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
 

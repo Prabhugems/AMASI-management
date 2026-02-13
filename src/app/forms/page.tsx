@@ -19,6 +19,7 @@ import {
   RefreshCw,
   ExternalLink,
   ClipboardCheck,
+  ClipboardList,
   UserPlus,
   MessageSquare,
   Mic,
@@ -72,6 +73,7 @@ const statusColors: Record<string, string> = {
 
 const templateIcons: Record<string, React.ElementType> = {
   ClipboardCheck,
+  ClipboardList,
   UserPlus,
   MessageSquare,
   Mic,
@@ -417,7 +419,7 @@ export default function FormsPage() {
               <DialogHeader>
                 <DialogTitle>Choose a Template</DialogTitle>
               </DialogHeader>
-              <div className="py-4">
+              <div className="py-4 max-h-[60vh] overflow-y-auto">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Blank Form */}
                   <button

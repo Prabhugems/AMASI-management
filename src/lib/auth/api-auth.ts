@@ -86,7 +86,7 @@ export async function getApiUser(): Promise<AuthResult> {
         updated_at: new Date().toISOString(),
       })
       .select('id, email, name, platform_role, is_super_admin')
-      .single()
+      .maybeSingle()
 
     if (createError || !newProfile) {
       console.error('Failed to create user profile:', createError)
@@ -238,9 +238,9 @@ export async function requireEventAccess(eventId: string): Promise<AuthResult> {
   const { data: teamMember } = await (adminClient as any)
     .from('team_members')
     .select('id')
-    .eq('event_id', eventId)
+    .contains('event_ids', [eventId])
     .eq('user_id', result.user.id)
-    .eq('status', 'active')
+    .eq('is_active', true)
     .maybeSingle()
 
   if (teamMember) {
