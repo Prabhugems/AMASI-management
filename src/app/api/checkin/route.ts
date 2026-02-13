@@ -302,8 +302,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if already checked in to this list
-    const { data: existingRecord } = await (supabase as any)
+    // Check if there's an active (not checked-out) record for this list
+    const { data: activeRecord } = await (supabase as any)
       .from("checkin_records")
       .select("*")
       .eq("checkin_list_id", checkin_list_id)
@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
       .is("checked_out_at", null)
       .maybeSingle()
 
-    const isCheckedIn = !!existingRecord
+    const isCheckedIn = !!activeRecord
     const shouldCheckIn = action === "check_in" || (action === "toggle" && !isCheckedIn)
 
     if (shouldCheckIn) {
@@ -321,25 +321,55 @@ export async function POST(request: NextRequest) {
           success: true,
           action: "already_checked_in",
           message: `${registration.attendee_name} is already checked in to ${checkinList.name}`,
-          registration: { ...registration, checked_in: true, checked_in_at: existingRecord.checked_in_at }
+          registration: { ...registration, checked_in: true, checked_in_at: activeRecord.checked_in_at }
         })
       }
 
-      // Create check-in record
       const checkedInAt = new Date().toISOString()
-      const { data: newRecord, error: insertError } = await (supabase as any)
-        .from("checkin_records")
-        .insert({
-          checkin_list_id: checkin_list_id,
-          registration_id: registration.id,
-          checked_in_at: checkedInAt,
-          checked_in_by: user_id || null
-        })
-        .select()
-        .single()
 
-      if (insertError) {
-        return NextResponse.json({ error: "Failed to check in attendee" }, { status: 500 })
+      // Check if there's a previous checked-out record (unique constraint: checkin_list_id + registration_id)
+      const { data: previousRecord } = await (supabase as any)
+        .from("checkin_records")
+        .select("id")
+        .eq("checkin_list_id", checkin_list_id)
+        .eq("registration_id", registration.id)
+        .maybeSingle()
+
+      let newRecord: any
+      if (previousRecord) {
+        // Re-activate the existing record (update instead of insert to avoid unique constraint violation)
+        const { data: updated, error: updateErr } = await (supabase as any)
+          .from("checkin_records")
+          .update({
+            checked_in_at: checkedInAt,
+            checked_out_at: null,
+            checked_in_by: user_id || null
+          })
+          .eq("id", previousRecord.id)
+          .select()
+          .single()
+
+        if (updateErr) {
+          return NextResponse.json({ error: "Failed to check in attendee" }, { status: 500 })
+        }
+        newRecord = updated
+      } else {
+        // First time check-in — insert new record
+        const { data: inserted, error: insertError } = await (supabase as any)
+          .from("checkin_records")
+          .insert({
+            checkin_list_id: checkin_list_id,
+            registration_id: registration.id,
+            checked_in_at: checkedInAt,
+            checked_in_by: user_id || null
+          })
+          .select()
+          .single()
+
+        if (insertError) {
+          return NextResponse.json({ error: "Failed to check in attendee" }, { status: 500 })
+        }
+        newRecord = inserted
       }
 
       // Sync registrations.checked_in so delegate portal (/my) reflects check-in status
@@ -373,7 +403,7 @@ export async function POST(request: NextRequest) {
       const { error: updateError } = await (supabase as any)
         .from("checkin_records")
         .update({ checked_out_at: new Date().toISOString() })
-        .eq("id", existingRecord.id)
+        .eq("id", activeRecord.id)
 
       if (updateError) {
         return NextResponse.json({ error: "Failed to check out attendee" }, { status: 500 })
@@ -438,19 +468,47 @@ export async function PATCH(request: NextRequest) {
 
       if (toCheckIn.length > 0) {
         const bulkCheckedInAt = new Date().toISOString()
-        const records = toCheckIn.map((id: string) => ({
-          checkin_list_id,
-          registration_id: id,
-          checked_in_at: bulkCheckedInAt,
-          checked_in_by: user_id || null
-        }))
 
-        const { error } = await (supabase as any)
+        // Check which registrations have previous (checked-out) records to avoid unique constraint violation
+        const { data: previousRecords } = await (supabase as any)
           .from("checkin_records")
-          .insert(records)
+          .select("id, registration_id")
+          .eq("checkin_list_id", checkin_list_id)
+          .in("registration_id", toCheckIn)
 
-        if (error) {
-          return NextResponse.json({ error: "Failed to bulk check in" }, { status: 500 })
+        const previousMap = new Set((previousRecords || []).map((r: any) => r.registration_id))
+        const toInsert = toCheckIn.filter((id: string) => !previousMap.has(id))
+        const toReactivate = toCheckIn.filter((id: string) => previousMap.has(id))
+
+        // Insert new records for first-time check-ins
+        if (toInsert.length > 0) {
+          const records = toInsert.map((id: string) => ({
+            checkin_list_id,
+            registration_id: id,
+            checked_in_at: bulkCheckedInAt,
+            checked_in_by: user_id || null
+          }))
+
+          const { error } = await (supabase as any)
+            .from("checkin_records")
+            .insert(records)
+
+          if (error) {
+            return NextResponse.json({ error: "Failed to bulk check in" }, { status: 500 })
+          }
+        }
+
+        // Re-activate previously checked-out records
+        if (toReactivate.length > 0) {
+          await (supabase as any)
+            .from("checkin_records")
+            .update({
+              checked_in_at: bulkCheckedInAt,
+              checked_out_at: null,
+              checked_in_by: user_id || null
+            })
+            .eq("checkin_list_id", checkin_list_id)
+            .in("registration_id", toReactivate)
         }
 
         // Sync registrations.checked_in for all newly checked-in registrations
