@@ -38,20 +38,52 @@ export async function GET(request: NextRequest) {
           (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
         )
         const now = new Date().toISOString()
-        // Get current login count first
+        // Get current user profile
         const { data: currentUser } = await adminClient
           .from('users')
-          .select('login_count')
+          .select('login_count, platform_role')
           .eq('id', user.id)
-          .single()
-        await adminClient
-          .from('users')
-          .update({
-            last_login_at: now,
-            last_active_at: now,
-            login_count: (currentUser?.login_count || 0) + 1,
-          })
-          .eq('id', user.id)
+          .maybeSingle()
+
+        if (currentUser) {
+          // Existing user - update login activity
+          await adminClient
+            .from('users')
+            .update({
+              last_login_at: now,
+              last_active_at: now,
+              login_count: (currentUser.login_count || 0) + 1,
+            })
+            .eq('id', user.id)
+        } else {
+          // New user - auto-create profile so dashboard works immediately
+          await adminClient
+            .from('users')
+            .insert({
+              id: user.id,
+              email: user.email || '',
+              name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+              platform_role: 'event_admin',
+              is_super_admin: false,
+              is_active: true,
+              is_verified: true,
+              login_count: 1,
+              last_login_at: now,
+              last_active_at: now,
+              created_at: now,
+              updated_at: now,
+            })
+        }
+
+        // Auto-link unlinked team_members records by matching email
+        if (user.email) {
+          await adminClient
+            .from('team_members')
+            .update({ user_id: user.id })
+            .eq('email', user.email.toLowerCase())
+            .is('user_id', null)
+        }
+
         // Log login event to activity_logs for audit trail
         await adminClient
           .from('activity_logs')
@@ -79,12 +111,16 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL(next, requestUrl.origin))
       }
 
-      // Get user profile to determine role-based redirect
-      const { data: profile } = await supabase
+      // Get user profile to determine role-based redirect (use admin client to bypass RLS)
+      const adminClientForProfile = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
+      )
+      const { data: profile } = await adminClientForProfile
         .from('users')
         .select('platform_role')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
       // Determine redirect based on role
       let redirectTo = '/'
