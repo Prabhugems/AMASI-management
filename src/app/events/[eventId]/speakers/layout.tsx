@@ -186,7 +186,7 @@ export default function SpeakersLayout({
   // If user doesn't have speakers permission, show access denied
   if (!permissionsLoading && !userPermissions?.hasAccess) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+      <div className="flex h-[calc(100vh-6rem)] items-center justify-center">
         <div className="text-center">
           <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
@@ -322,7 +322,7 @@ export default function SpeakersLayout({
 
   // Regular layout for admin users (within event layout)
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
+    <div className="flex h-[calc(100vh-6rem)] -mx-4 sm:-mx-6 -mb-4 sm:-mb-6">
       {/* Sidebar */}
       <div className="w-56 border-r bg-muted/30 flex flex-col">
         {/* Back link */}

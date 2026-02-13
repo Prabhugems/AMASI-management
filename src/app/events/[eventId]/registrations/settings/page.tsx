@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -18,11 +18,13 @@ import {
   Users,
   AlertTriangle,
   Link as LinkIcon,
+  ChevronLeft,
 } from "lucide-react"
 import { toast } from "sonner"
 
 export default function RegistrationSettingsPage() {
   const params = useParams()
+  const router = useRouter()
   const eventId = params.eventId as string
   const supabase = createClient()
   const queryClient = useQueryClient()
@@ -86,6 +88,12 @@ export default function RegistrationSettingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <ChevronLeft className="h-4 w-4" />
+        Back
+      </button>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

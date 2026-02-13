@@ -348,7 +348,7 @@ export default function TravelLayout({
 
   // Regular layout for admin users (within event layout)
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
+    <div className="flex h-[calc(100vh-6rem)] -mx-4 sm:-mx-6 -mb-4 sm:-mb-6">
       {/* Sidebar */}
       <div className="w-56 border-r bg-muted/30 flex flex-col">
         {/* Back link */}
