@@ -124,6 +124,35 @@ export default function DelegatePortalPage() {
   const [downloadingInvitation, setDownloadingInvitation] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
   const [certGatedByFeedback, setCertGatedByFeedback] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  // Refresh registration data (re-fetch without clearing UI)
+  const refreshRegistration = useCallback(async () => {
+    if (!searchQuery.trim()) return
+    setRefreshing(true)
+    try {
+      const res = await fetch(`/api/my?q=${encodeURIComponent(searchQuery.trim())}`)
+      const data = await res.json()
+      if (res.ok && data.registrations) {
+        setRegistrations(data.registrations)
+        setPendingPayments(data.pending_payments || [])
+        // Update selected registration if still selected
+        if (selectedRegistration) {
+          const updated = data.registrations.find(
+            (r: Registration) => r.id === selectedRegistration.id
+          )
+          if (updated) setSelectedRegistration(updated)
+        } else if (data.registrations.length === 1) {
+          setSelectedRegistration(data.registrations[0])
+        }
+        toast.success("Data refreshed")
+      }
+    } catch {
+      // Silent fail on refresh
+    } finally {
+      setRefreshing(false)
+    }
+  }, [searchQuery, selectedRegistration])
 
   // Payment verification
   const [showVerifyForm, setShowVerifyForm] = useState(false)
@@ -743,7 +772,8 @@ export default function DelegatePortalPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4 py-8">
       <div className="max-w-lg mx-auto space-y-4">
-        {/* Back Button */}
+        {/* Back + Refresh Buttons */}
+        <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => {
             if (registrations.length > 1) {
@@ -754,11 +784,20 @@ export default function DelegatePortalPage() {
               setSearchQuery("")
             }
           }}
-          className="text-white/70 hover:text-white flex items-center gap-2 text-sm mb-4"
+          className="text-white/70 hover:text-white flex items-center gap-2 text-sm"
         >
           <ArrowRight className="w-4 h-4 rotate-180" />
           {registrations.length > 1 ? "Back to my events" : "Search another registration"}
         </button>
+        <button
+          onClick={refreshRegistration}
+          disabled={refreshing}
+          className="text-white/70 hover:text-white flex items-center gap-2 text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+          {refreshing ? "Refreshing..." : "Refresh"}
+        </button>
+        </div>
 
         {/* Event Banner */}
         {event && (
@@ -921,11 +960,15 @@ export default function DelegatePortalPage() {
                 Check-in
               </span>
               {registration.checked_in ? (
-                <span className="text-green-600 font-medium text-sm">
-                  {registration.checked_in_at ? formatDateTime(registration.checked_in_at) : "Yes"}
+                <span className="inline-flex items-center gap-1.5 font-medium text-sm px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  {registration.checked_in_at ? formatDateTime(registration.checked_in_at) : "Checked In"}
                 </span>
               ) : (
-                <span className="text-gray-500 text-sm">Not yet</span>
+                <span className="inline-flex items-center gap-1.5 font-medium text-sm px-2.5 py-1 rounded-full bg-red-100 text-red-600">
+                  <XCircle className="w-3.5 h-3.5" />
+                  Not Checked In
+                </span>
               )}
             </div>
 
@@ -1024,6 +1067,7 @@ export default function DelegatePortalPage() {
           eventId={event?.id}
           email={registration.attendee_email}
           attendeeName={registration.attendee_name}
+          checkedIn={registration.checked_in}
           onCertGateChange={setCertGatedByFeedback}
         />
 
@@ -1070,10 +1114,10 @@ export default function DelegatePortalPage() {
           {/* Certificate Download */}
           <button
             onClick={handleDownloadCertificate}
-            disabled={downloadingCert || !registration.certificate_generated_at || certGatedByFeedback}
+            disabled={downloadingCert || !registration.certificate_generated_at || certGatedByFeedback || !registration.checked_in}
             className="bg-white rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group relative"
           >
-            {certGatedByFeedback && (
+            {(!registration.checked_in || certGatedByFeedback) && (
               <div className="absolute top-2 right-2">
                 <Lock className="w-3.5 h-3.5 text-amber-500" />
               </div>
@@ -1086,7 +1130,9 @@ export default function DelegatePortalPage() {
               )}
             </div>
             <h3 className="font-semibold text-gray-900 text-sm mb-1">Certificate</h3>
-            {certGatedByFeedback ? (
+            {!registration.checked_in ? (
+              <p className="text-xs text-amber-600">Check in first</p>
+            ) : certGatedByFeedback ? (
               <p className="text-xs text-amber-600">Submit feedback first</p>
             ) : registration.certificate_generated_at ? (
               <p className="text-xs text-green-600">Ready</p>
@@ -1472,11 +1518,13 @@ function EventFeedbackForms({
   eventId,
   email,
   attendeeName,
+  checkedIn,
   onCertGateChange,
 }: {
   eventId?: string
   email: string
   attendeeName: string
+  checkedIn: boolean
   onCertGateChange: (gated: boolean) => void
 }) {
   const [forms, setForms] = useState<any[]>([])
@@ -1597,17 +1645,21 @@ function EventFeedbackForms({
           <div key={form.id} className="border border-gray-100 rounded-xl overflow-hidden">
             {/* Form header row */}
             <button
-              onClick={() => !form.submitted && handleExpandForm(form.slug)}
-              disabled={form.submitted}
+              onClick={() => !form.submitted && !(form.require_check_in_for_submission && !checkedIn) && handleExpandForm(form.slug)}
+              disabled={form.submitted || (form.require_check_in_for_submission && !checkedIn)}
               className={`w-full flex items-center justify-between p-4 text-left transition-colors ${
                 form.submitted
                   ? "bg-green-50 cursor-default"
+                  : (form.require_check_in_for_submission && !checkedIn)
+                  ? "bg-gray-50 cursor-not-allowed"
                   : "hover:bg-gray-50 cursor-pointer"
               }`}
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 {form.submitted ? (
                   <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                ) : (form.require_check_in_for_submission && !checkedIn) ? (
+                  <Lock className="w-5 h-5 text-red-400 flex-shrink-0" />
                 ) : form.release_certificate_on_submission ? (
                   <Lock className="w-5 h-5 text-amber-500 flex-shrink-0" />
                 ) : (
@@ -1624,6 +1676,10 @@ function EventFeedbackForms({
                 {form.submitted ? (
                   <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">
                     Submitted
+                  </span>
+                ) : (form.require_check_in_for_submission && !checkedIn) ? (
+                  <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                    Check in required
                   </span>
                 ) : (
                   <>

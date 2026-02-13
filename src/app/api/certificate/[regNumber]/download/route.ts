@@ -95,7 +95,7 @@ export async function GET(
       .select(`
         id, registration_number, attendee_name, attendee_email, attendee_phone,
         attendee_institution, attendee_designation, ticket_type_id, event_id,
-        checkin_token, certificate_generated_at,
+        checkin_token, certificate_generated_at, checked_in,
         ticket_types (name)
       `)
       .ilike("registration_number", regNumber)
@@ -103,6 +103,11 @@ export async function GET(
 
     if (!registration) {
       return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+
+    // Check if delegate has checked in
+    if (!registration.checked_in) {
+      return NextResponse.json({ error: "You must check in at the event before downloading your certificate" }, { status: 403 })
     }
 
     // Check if certificate has been generated

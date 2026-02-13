@@ -99,8 +99,26 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Fetch addons for all registrations
+    // Fetch active check-in records to get real check-in status
+    // (registrations.checked_in may be stale for records checked in before sync was added)
     const registrationIds = registrations.map((r: any) => r.id)
+    const { data: activeCheckins } = await (supabase as any)
+      .from("checkin_records")
+      .select("registration_id, checked_in_at")
+      .in("registration_id", registrationIds)
+      .is("checked_out_at", null)
+
+    const checkinMap: Record<string, string> = {}
+    if (activeCheckins) {
+      for (const rec of activeCheckins) {
+        // Keep the earliest check-in time if multiple lists
+        if (!checkinMap[rec.registration_id] || rec.checked_in_at < checkinMap[rec.registration_id]) {
+          checkinMap[rec.registration_id] = rec.checked_in_at
+        }
+      }
+    }
+
+    // Fetch addons for all registrations
     const { data: allAddons } = await (supabase as any)
       .from("registration_addons")
       .select(`
@@ -142,8 +160,8 @@ export async function GET(request: NextRequest) {
       status: registration.status,
       payment_status: registration.payment_status,
       total_amount: registration.total_amount,
-      checked_in: registration.checked_in,
-      checked_in_at: registration.checked_in_at,
+      checked_in: !!checkinMap[registration.id] || registration.checked_in,
+      checked_in_at: checkinMap[registration.id] || registration.checked_in_at,
       badge_generated_at: registration.badge_generated_at,
       badge_url: registration.badge_url,
       certificate_generated_at: registration.certificate_generated_at,

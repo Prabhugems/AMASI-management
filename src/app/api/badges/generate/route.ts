@@ -361,14 +361,47 @@ export async function POST(request: NextRequest) {
         if (element.type === "text" && element.content) {
           const rawText = replacePlaceholders(element.content, registration, event)
           const text = applyTextCase(rawText, element.textCase)
+          if (!text) continue
+
+          // Draw text background color if set
+          if (element.backgroundColor && element.backgroundColor !== "transparent") {
+            const bgColorRgb = hexToRgb(element.backgroundColor)
+            page.drawRectangle({
+              x, y, width, height,
+              color: rgb(bgColorRgb.r, bgColorRgb.g, bgColorRgb.b),
+              opacity: (element.opacity ?? 100) / 100,
+            })
+          }
+
+          // Draw text border if set
+          if (element.borderWidth && element.borderWidth > 0) {
+            const borderColorRgb = hexToRgb(element.borderColor || "#000000")
+            page.drawRectangle({
+              x, y, width, height,
+              borderColor: rgb(borderColorRgb.r, borderColorRgb.g, borderColorRgb.b),
+              borderWidth: element.borderWidth * scaleFactor * scale,
+              opacity: (element.opacity ?? 100) / 100,
+            })
+          }
+
           const color = hexToRgb(element.color || "#000000")
-          const fontSize = (element.fontSize || 14) * scaleFactor * scale
+          let fontSize = (element.fontSize || 14) * scaleFactor * scale
           const font = element.fontWeight === "bold" ? helveticaBold : helveticaFont
 
-          const textWidth = font.widthOfTextAtSize(text, fontSize)
+          // Auto-shrink font size to fit container (ratio-based for precision)
+          let textWidth = font.widthOfTextAtSize(text, fontSize)
+          if (textWidth > width && width > 0) {
+            const shrinkRatio = width / textWidth
+            fontSize = Math.max(fontSize * shrinkRatio * 0.98, 3)
+            textWidth = font.widthOfTextAtSize(text, fontSize)
+          }
+
           let textX = x
           if (element.align === "center") textX = x + (width - textWidth) / 2
           else if (element.align === "right") textX = x + width - textWidth
+
+          // Clamp textX so text doesn't render outside badge left edge
+          if (textX < offsetX) textX = offsetX
 
           const textY = y + (height - fontSize) / 2
           page.drawText(text, { x: textX, y: textY, size: fontSize, font, color: rgb(color.r, color.g, color.b) })
