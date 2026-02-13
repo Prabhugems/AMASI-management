@@ -158,10 +158,42 @@ export async function GET(request: NextRequest) {
       ? sessionsWithDuration.reduce((sum: number, u: any) => sum + u.session_duration_ms, 0) / sessionsWithDuration.length
       : 0
 
+    // 7. Fetch logins per day for the last 30 days (for chart)
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const { data: recentLogins } = await adminClient
+      .from("activity_logs")
+      .select("created_at")
+      .eq("action", "login")
+      .gte("created_at", thirtyDaysAgo.toISOString())
+      .order("created_at", { ascending: true })
+
+    // Aggregate logins per day
+    const loginsByDay: Record<string, number> = {}
+    for (let d = 0; d < 30; d++) {
+      const day = new Date()
+      day.setDate(day.getDate() - (29 - d))
+      loginsByDay[day.toISOString().split("T")[0]] = 0
+    }
+    for (const log of recentLogins || []) {
+      const day = new Date(log.created_at).toISOString().split("T")[0]
+      if (loginsByDay[day] !== undefined) loginsByDay[day]++
+    }
+    const loginsPerDay = Object.entries(loginsByDay).map(([date, count]) => ({ date, count }))
+
+    // 8. Top users by login count
+    const topUsers = [...enrichedUsers]
+      .sort((a: any, b: any) => b.login_count - a.login_count)
+      .slice(0, 10)
+      .map((u: any) => ({ name: u.name, email: u.email, login_count: u.login_count, status: u.status }))
+
     return NextResponse.json({
       users: enrichedUsers,
       activity_logs: activityLogs || [],
       activity_logs_total: logsCount || 0,
+      logins_per_day: loginsPerDay,
+      top_users: topUsers,
       stats: {
         total_users: totalUsers,
         online_now: onlineNow,

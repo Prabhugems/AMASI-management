@@ -53,6 +53,23 @@ export async function GET(request: NextRequest) {
             login_count: (currentUser?.login_count || 0) + 1,
           })
           .eq('id', user.id)
+        // Log login event to activity_logs for audit trail
+        await adminClient
+          .from('activity_logs')
+          .insert({
+            user_id: user.id,
+            user_email: user.email || '',
+            user_name: user.user_metadata?.name || user.email?.split('@')[0] || '',
+            action: 'login',
+            entity_type: 'user',
+            entity_id: user.id,
+            entity_name: user.email || '',
+            description: `User logged in via magic link`,
+            metadata: {
+              login_count: (currentUser?.login_count || 0) + 1,
+              method: 'magic_link',
+            },
+          })
       } catch (e) {
         // Don't block login if tracking fails
         console.error('Failed to update login activity:', e)
