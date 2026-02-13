@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Mail, Loader2, CheckCircle2, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
+import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
 // Check if Supabase is properly configured
@@ -26,6 +27,30 @@ function LoginForm() {
   const [loading, setLoading] = React.useState(false)
   const [sent, setSent] = React.useState(false)
   const [error, setError] = React.useState("")
+
+  // Handle hash fragment from magic link (implicit flow: #access_token=...&type=magiclink)
+  React.useEffect(() => {
+    const hash = window.location.hash
+    if (hash && hash.includes("access_token")) {
+      const params = new URLSearchParams(hash.substring(1))
+      const accessToken = params.get("access_token")
+      const refreshToken = params.get("refresh_token")
+
+      if (accessToken && refreshToken) {
+        const supabase = createClient()
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        }).then(({ error }) => {
+          if (!error) {
+            // Clear hash and redirect
+            window.location.hash = ""
+            router.replace(redirectTo)
+          }
+        })
+      }
+    }
+  }, [router, redirectTo])
 
   // If login page receives a code param, redirect to auth callback
   React.useEffect(() => {
