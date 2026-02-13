@@ -24,7 +24,7 @@ export interface Database {
           member_id: string | null
           last_login_at: string | null
           last_active_at: string | null
-          logged_out_at: string | null
+
           login_count: number
           timezone: string | null
           preferences: Json | null
@@ -46,7 +46,7 @@ export interface Database {
           member_id?: string | null
           last_login_at?: string | null
           last_active_at?: string | null
-          logged_out_at?: string | null
+
           login_count?: number
           timezone?: string | null
           preferences?: Json | null
@@ -68,7 +68,7 @@ export interface Database {
           member_id?: string | null
           last_login_at?: string | null
           last_active_at?: string | null
-          logged_out_at?: string | null
+
           login_count?: number
           timezone?: string | null
           preferences?: Json | null

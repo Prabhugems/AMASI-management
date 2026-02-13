@@ -460,7 +460,7 @@ export default function TeamPage() {
       if (emails.length > 0) {
         const { data: users } = await (supabase as any)
           .from("users")
-          .select("email, last_login_at, last_active_at, logged_out_at, login_count")
+          .select("email, last_login_at, last_active_at, login_count")
           .in("email", emails)
         if (users) {
           const userMap = new Map<string, any>(users.map((u: any) => [u.email?.toLowerCase(), u]))
@@ -469,7 +469,6 @@ export default function TeamPage() {
             if (user) {
               member.last_login_at = user.last_login_at
               member.last_active_at = user.last_active_at
-              member.logged_out_at = user.logged_out_at
               member.login_count = user.login_count ?? 0
             }
           }
