@@ -781,7 +781,7 @@ export default function AuditDashboardPage() {
                         />
                         <Tooltip
                           labelFormatter={(v) => format(new Date(v + "T00:00:00"), "EEEE, MMM d, yyyy")}
-                          formatter={(value: number) => [value, "Logins"]}
+                          formatter={(value) => [value ?? 0, "Logins"]}
                           contentStyle={{
                             borderRadius: "8px",
                             border: "1px solid hsl(var(--border))",
