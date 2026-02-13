@@ -64,6 +64,13 @@ export function usePermissions(): UserPermissions {
 
       // If user is NOT in team_members table, they're a main app admin with full access
       if (!teamMember) {
+        // Fetch name from users table for admins
+        const { data: userProfile } = await supabase
+          .from("users")
+          .select("name")
+          .eq("id", session.user.id)
+          .maybeSingle() as { data: { name: string | null } | null }
+
         return {
           permissions: [] as Permission[],
           role: "admin" as Role,
@@ -72,7 +79,7 @@ export function usePermissions(): UserPermissions {
           hasFullAccess: true,
           isEventScoped: false,
           eventIds: [] as string[],
-          userName: session.user.email.split("@")[0],
+          userName: userProfile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0],
           userEmail: session.user.email,
         }
       }
