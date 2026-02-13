@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { SkeletonTable, SkeletonCard } from "@/components/ui/skeleton"
@@ -419,6 +420,7 @@ const ROLES = ROLE_DETAILS.map(r => ({
 }))
 
 export default function TeamPage() {
+  const router = useRouter()
   const supabase = createClient()
   const queryClient = useQueryClient()
 
@@ -652,6 +654,11 @@ export default function TeamPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4 sm:gap-5">
+              <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors">
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </button>
+              <div className="h-6 w-px bg-slate-600" />
               <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
                 <Users className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
               </div>

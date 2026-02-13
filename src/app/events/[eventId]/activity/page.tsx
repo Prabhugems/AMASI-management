@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -99,6 +99,7 @@ const ENTITY_LABELS: Record<string, string> = {
 
 export default function ActivityLogPage() {
   const params = useParams()
+  const router = useRouter()
   const eventId = params.eventId as string
 
   const [search, setSearch] = useState("")
@@ -162,6 +163,12 @@ export default function ActivityLogPage() {
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <ChevronLeft className="h-4 w-4" />
+        Back
+      </button>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
