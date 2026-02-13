@@ -48,29 +48,54 @@ export function usePermissions(): UserPermissions {
         }
       }
 
+      // Fetch user profile and team_members in parallel
+      type UserProfileType = { name: string | null; is_super_admin: boolean | null; platform_role: string | null } | null
       type TeamMemberType = {
         permissions: string[] | null
         role: string | null
         name: string
         event_ids: string[] | null
       }
-      const { data: teamMemberData } = await supabase
-        .from("team_members")
-        .select("permissions, role, name, event_ids")
-        .eq("email", session.user.email.toLowerCase())
-        .eq("is_active", true)
-        .maybeSingle()
-      const teamMember = teamMemberData as TeamMemberType | null
 
-      // If user is NOT in team_members table, they're a main app admin with full access
-      if (!teamMember) {
-        // Fetch name from users table for admins
-        const { data: userProfile } = await supabase
+      const [profileResult, teamMemberResult] = await Promise.all([
+        supabase
           .from("users")
-          .select("name")
+          .select("name, is_super_admin, platform_role")
           .eq("id", session.user.id)
-          .maybeSingle() as { data: { name: string | null } | null }
+          .maybeSingle(),
+        supabase
+          .from("team_members")
+          .select("permissions, role, name, event_ids")
+          .eq("email", session.user.email.toLowerCase())
+          .eq("is_active", true)
+          .maybeSingle(),
+      ])
 
+      const userProfile = profileResult.data as UserProfileType
+      const teamMember = teamMemberResult.data as TeamMemberType | null
+
+      // Super admins always get full access regardless of team_members
+      const isSuperAdmin = userProfile?.is_super_admin === true ||
+        userProfile?.platform_role === 'super_admin' ||
+        userProfile?.platform_role === 'admin'
+
+      if (isSuperAdmin) {
+        const displayName = teamMember?.name || userProfile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0]
+        return {
+          permissions: [] as Permission[],
+          role: "admin" as Role,
+          isAdmin: true,
+          isTeamUser: false,
+          hasFullAccess: true,
+          isEventScoped: false,
+          eventIds: [] as string[],
+          userName: displayName,
+          userEmail: session.user.email,
+        }
+      }
+
+      // If user is NOT in team_members table, they're a main app user
+      if (!teamMember) {
         return {
           permissions: [] as Permission[],
           role: "admin" as Role,

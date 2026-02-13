@@ -38,22 +38,39 @@ export async function GET(request: NextRequest) {
           (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
         )
         const now = new Date().toISOString()
-        // Get current user profile
-        const { data: currentUser } = await adminClient
-          .from('users')
-          .select('login_count, platform_role')
-          .eq('id', user.id)
-          .maybeSingle()
+        // Get current user profile and team_members name in parallel
+        const [userResult, teamResult] = await Promise.all([
+          adminClient
+            .from('users')
+            .select('login_count, platform_role, name')
+            .eq('id', user.id)
+            .maybeSingle(),
+          user.email
+            ? adminClient
+                .from('team_members')
+                .select('name')
+                .eq('email', user.email.toLowerCase())
+                .eq('is_active', true)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+        ])
+        const currentUser = userResult.data
+        const teamMemberName = teamResult.data?.name
 
         if (currentUser) {
-          // Existing user - update login activity
+          // Existing user - update login activity and sync name from team_members
+          const updateData: Record<string, unknown> = {
+            last_login_at: now,
+            last_active_at: now,
+            login_count: (currentUser.login_count || 0) + 1,
+          }
+          // Sync name from team_members if users.name is missing or default
+          if (teamMemberName && (!currentUser.name || currentUser.name === 'User' || currentUser.name === user.email?.split('@')[0])) {
+            updateData.name = teamMemberName
+          }
           await adminClient
             .from('users')
-            .update({
-              last_login_at: now,
-              last_active_at: now,
-              login_count: (currentUser.login_count || 0) + 1,
-            })
+            .update(updateData)
             .eq('id', user.id)
         } else {
           // New user - auto-create profile so dashboard works immediately
@@ -62,7 +79,7 @@ export async function GET(request: NextRequest) {
             .insert({
               id: user.id,
               email: user.email || '',
-              name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+              name: teamMemberName || user.user_metadata?.name || user.email?.split('@')[0] || 'User',
               platform_role: 'event_admin',
               is_super_admin: false,
               is_active: true,
