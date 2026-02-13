@@ -88,16 +88,20 @@ export function useAuth() {
     if (!isSupabaseConfigured()) {
       throw new Error('Supabase is not configured. Please add your Supabase credentials to .env.local')
     }
-    const callbackUrl = redirectTo
-      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
-      : `${window.location.origin}/auth/callback`
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: callbackUrl,
-      },
+
+    // Use custom API route to send designed magic link email
+    const res = await fetch('/api/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, redirectTo }),
     })
-    if (error) throw error
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to send magic link')
+    }
+
     return { success: true }
   }
 

@@ -568,11 +568,16 @@ export default function TeamPage() {
 
   const sendMagicLink = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.toLowerCase(),
-        options: { emailRedirectTo: `${window.location.origin}/team-portal` },
+      const res = await fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.toLowerCase(),
+          redirectTo: '/team-portal',
+        }),
       })
-      if (error) throw error
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send magic link')
     },
     onSuccess: () => toast.success("Login link sent!"),
     onError: (error: any) => toast.error(error.message || "Failed to send"),

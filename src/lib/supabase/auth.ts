@@ -4,18 +4,16 @@ import type { Tables, UpdateTables } from './database.types'
 export type UserProfile = Tables<'users'>
 export type UserProfileUpdate = UpdateTables<'users'>
 
-// Sign in with magic link
+// Sign in with magic link (sends custom designed email via API)
 export async function signInWithMagicLink(email: string, redirectTo?: string) {
-  const supabase = createClient()
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: redirectTo || `${window.location.origin}/auth/callback`,
-    },
+  const res = await fetch('/api/auth/magic-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, redirectTo }),
   })
 
-  if (error) throw error
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to send magic link')
   return { success: true }
 }
 
