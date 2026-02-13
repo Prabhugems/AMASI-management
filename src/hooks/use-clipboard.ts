@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 
 interface UseClipboardOptions {
   timeout?: number
@@ -31,6 +31,14 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
   const { timeout = 2000, onSuccess, onError } = options
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup timeout on unmount to prevent setState after unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [])
 
   const copy = useCallback(
     async (text: string): Promise<boolean> => {
@@ -53,7 +61,8 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
         setError(null)
         onSuccess?.(text)
 
-        setTimeout(() => setCopied(false), timeout)
+        if (timeoutRef.current) clearTimeout(timeoutRef.current)
+        timeoutRef.current = setTimeout(() => setCopied(false), timeout)
         return true
       } catch (err) {
         const error = err instanceof Error ? err : new Error("Failed to copy")

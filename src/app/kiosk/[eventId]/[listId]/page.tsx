@@ -59,7 +59,7 @@ export default function KioskPage() {
         .from("events")
         .select("id, name, short_name, start_date, venue_name, city")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
       return data
     },
   })
@@ -71,7 +71,7 @@ export default function KioskPage() {
         .from("checkin_lists")
         .select("id, name, description, allow_multiple_checkins")
         .eq("id", listId)
-        .single()
+        .maybeSingle()
       return data
     },
   })
@@ -133,7 +133,7 @@ export default function KioskPage() {
         .eq("event_id", eventId)
         .or(`registration_number.ilike.%${searchTerm}%,attendee_email.ilike.%${searchTerm}%,attendee_name.ilike.%${searchTerm}%,attendee_phone.ilike.%${searchTerm}%`)
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (regError || !registration) {
         setResult({
@@ -151,7 +151,7 @@ export default function KioskPage() {
           .eq("registration_id", registration.id)
           .eq("checkin_list_id", listId)
           .limit(1)
-          .single()
+          .maybeSingle()
 
         if (existingCheckin) {
           setResult({

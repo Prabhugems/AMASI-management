@@ -144,7 +144,7 @@ export default function EventTeamPage() {
         .from("events")
         .select("id, name, short_name")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
       return data as EventType | null
     },
   })

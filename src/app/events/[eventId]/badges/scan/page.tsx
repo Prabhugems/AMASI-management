@@ -52,7 +52,7 @@ export default function ScanBadgePage() {
         .from("events")
         .select("id, title")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
 
       return data
     },
@@ -82,7 +82,7 @@ export default function ScanBadgePage() {
         .select("id, registration_number, attendee_name, attendee_email, attendee_designation, attendee_institution, badge_generated_at, checked_in, checked_in_at, status, ticket_types(name)")
         .eq("event_id", eventId)
         .or(`registration_number.ilike.${searchValue},checkin_token.eq.${searchValue},id.eq.${searchValue}`)
-        .single()
+        .maybeSingle()
 
       if (error || !data) {
         setResult({

@@ -247,7 +247,7 @@ export function EmailStatusBadge({
         .eq("email_type", emailType)
         .order("sent_at", { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (error) return null
       return data as EmailLog
