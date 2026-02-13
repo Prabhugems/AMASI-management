@@ -250,7 +250,7 @@ export function EmailStatusBadge({
         .maybeSingle()
 
       if (error) return null
-      return data as EmailLog
+      return (data ?? null) as EmailLog | null
     },
     enabled: !!registrationId,
     staleTime: 30000,
