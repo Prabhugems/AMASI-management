@@ -326,12 +326,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Create check-in record
+      const checkedInAt = new Date().toISOString()
       const { data: newRecord, error: insertError } = await (supabase as any)
         .from("checkin_records")
         .insert({
           checkin_list_id: checkin_list_id,
           registration_id: registration.id,
-          checked_in_at: new Date().toISOString(),
+          checked_in_at: checkedInAt,
           checked_in_by: user_id || null
         })
         .select()
@@ -340,6 +341,12 @@ export async function POST(request: NextRequest) {
       if (insertError) {
         return NextResponse.json({ error: "Failed to check in attendee" }, { status: 500 })
       }
+
+      // Sync registrations.checked_in so delegate portal (/my) reflects check-in status
+      await (supabase as any)
+        .from("registrations")
+        .update({ checked_in: true, checked_in_at: checkedInAt })
+        .eq("id", registration.id)
 
       return NextResponse.json({
         success: true,
@@ -370,6 +377,22 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         return NextResponse.json({ error: "Failed to check out attendee" }, { status: 500 })
+      }
+
+      // Check if any other active check-in records remain across all lists
+      const { data: remainingRecords } = await (supabase as any)
+        .from("checkin_records")
+        .select("id")
+        .eq("registration_id", registration.id)
+        .is("checked_out_at", null)
+        .limit(1)
+
+      if (!remainingRecords || remainingRecords.length === 0) {
+        // No active check-ins remain — mark registration as not checked in
+        await (supabase as any)
+          .from("registrations")
+          .update({ checked_in: false, checked_in_at: null })
+          .eq("id", registration.id)
       }
 
       return NextResponse.json({
@@ -414,10 +437,11 @@ export async function PATCH(request: NextRequest) {
       const toCheckIn = registration_ids.filter((id: string) => !alreadyCheckedIn.has(id))
 
       if (toCheckIn.length > 0) {
+        const bulkCheckedInAt = new Date().toISOString()
         const records = toCheckIn.map((id: string) => ({
           checkin_list_id,
           registration_id: id,
-          checked_in_at: new Date().toISOString(),
+          checked_in_at: bulkCheckedInAt,
           checked_in_by: user_id || null
         }))
 
@@ -428,6 +452,12 @@ export async function PATCH(request: NextRequest) {
         if (error) {
           return NextResponse.json({ error: "Failed to bulk check in" }, { status: 500 })
         }
+
+        // Sync registrations.checked_in for all newly checked-in registrations
+        await (supabase as any)
+          .from("registrations")
+          .update({ checked_in: true, checked_in_at: bulkCheckedInAt })
+          .in("id", toCheckIn)
       }
 
       return NextResponse.json({
@@ -448,6 +478,24 @@ export async function PATCH(request: NextRequest) {
 
       if (error) {
         return NextResponse.json({ error: "Failed to bulk check out" }, { status: 500 })
+      }
+
+      // For each checked-out registration, check if any other active records remain
+      // and sync registrations.checked_in accordingly
+      for (const regId of registration_ids) {
+        const { data: remaining } = await (supabase as any)
+          .from("checkin_records")
+          .select("id")
+          .eq("registration_id", regId)
+          .is("checked_out_at", null)
+          .limit(1)
+
+        if (!remaining || remaining.length === 0) {
+          await (supabase as any)
+            .from("registrations")
+            .update({ checked_in: false, checked_in_at: null })
+            .eq("id", regId)
+        }
       }
 
       return NextResponse.json({
