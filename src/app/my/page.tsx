@@ -921,11 +921,15 @@ export default function DelegatePortalPage() {
                 Check-in
               </span>
               {registration.checked_in ? (
-                <span className="text-green-600 font-medium text-sm">
-                  {registration.checked_in_at ? formatDateTime(registration.checked_in_at) : "Yes"}
+                <span className="inline-flex items-center gap-1.5 font-medium text-sm px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  {registration.checked_in_at ? formatDateTime(registration.checked_in_at) : "Checked In"}
                 </span>
               ) : (
-                <span className="text-gray-500 text-sm">Not yet</span>
+                <span className="inline-flex items-center gap-1.5 font-medium text-sm px-2.5 py-1 rounded-full bg-red-100 text-red-600">
+                  <XCircle className="w-3.5 h-3.5" />
+                  Not Checked In
+                </span>
               )}
             </div>
 
