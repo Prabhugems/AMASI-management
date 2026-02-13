@@ -324,7 +324,7 @@ export default function AuditDashboardPage() {
   const timelineLimit = 30
 
   // Fetch audit data
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["audit-sessions", timelinePage, dateRange?.from?.toISOString(), dateRange?.to?.toISOString()],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -335,7 +335,10 @@ export default function AuditDashboardPage() {
       if (dateRange?.to) params.set("end_date", dateRange.to.toISOString())
 
       const res = await fetch(`/api/audit/sessions?${params}`)
-      if (!res.ok) throw new Error("Failed to fetch audit data")
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || `Failed to fetch audit data (${res.status})`)
+      }
       return res.json() as Promise<{
         users: AuditUser[]
         activity_logs: ActivityLog[]
@@ -345,6 +348,7 @@ export default function AuditDashboardPage() {
         top_users: TopUser[]
       }>
     },
+    retry: 1,
   })
 
   const users = data?.users || []
@@ -495,6 +499,21 @@ export default function AuditDashboardPage() {
           <p className="text-2xl font-bold mt-1">{stats.never_logged_in}</p>
         </div>
       </div>
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-red-800">Failed to load audit data</h3>
+            <p className="text-sm text-red-600 mt-1">{error.message}</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => refetch()}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              Try Again
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-1 bg-muted p-1 rounded-lg w-fit">

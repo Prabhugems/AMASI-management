@@ -1,28 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // GET /api/audit/sessions - Fetch login/logout session history for all users
 export async function GET(request: NextRequest) {
   try {
-    const supabaseServerClient = await createServerSupabaseClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = supabaseServerClient as any
-
-    // Verify auth
-    const { data: { user } } = await supabase.auth.getUser()
+    // Verify auth + admin role (super_admin, admin, event_admin, or is_super_admin)
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Check if user is admin
-    const { data: profile } = await supabase
-      .from("users")
-      .select("platform_role, is_super_admin")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile || !["super_admin", "admin"].includes(profile.platform_role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
