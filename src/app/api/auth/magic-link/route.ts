@@ -189,26 +189,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Build the final login URL from the token_hash
-    // The generated link uses the Supabase URL, but we need to route through our app callback
-    const hashed_token = linkData.properties?.hashed_token
-    if (!hashed_token) {
-      console.error("[Magic Link] No hashed_token in response")
+    // Use the action_link returned by Supabase (contains the full verification URL)
+    const loginUrl = linkData.properties?.action_link
+    if (!loginUrl) {
+      console.error("[Magic Link] No action_link in response")
       return NextResponse.json(
         { error: "Failed to generate login link" },
         { status: 500 }
       )
     }
 
-    // Construct the verification URL that goes through our auth callback
-    const verifyUrl = `${supabaseUrl}/auth/v1/verify?token=${hashed_token}&type=magiclink&redirect_to=${encodeURIComponent(callbackUrl)}`
-
     // Send custom designed email
     const emailResult = await sendEmail({
       to: normalizedEmail,
       subject: "Sign in to AMASI",
-      html: getMagicLinkEmailHtml(verifyUrl),
-      text: `Sign in to AMASI\n\nClick the link below to sign in to your account:\n${verifyUrl}\n\nThis link expires in 24 hours and can only be used once.\n\nIf you didn't request this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} AMASI - Association of Minimal Access Surgeons of India`,
+      html: getMagicLinkEmailHtml(loginUrl),
+      text: `Sign in to AMASI\n\nClick the link below to sign in to your account:\n${loginUrl}\n\nThis link expires in 24 hours and can only be used once.\n\nIf you didn't request this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} AMASI - Association of Minimal Access Surgeons of India`,
     })
 
     if (!emailResult.success) {
