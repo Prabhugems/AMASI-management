@@ -236,13 +236,21 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
 
       console.log(`Speaker invitation sent to ${speaker_email} - ID: ${result.id}`)
 
-      // Update registration to mark invitation as sent
+      // Update registration to mark invitation as sent (preserve existing fields!)
       if (registration_id) {
         const supabase = await createAdminClient()
+        // Fetch fresh custom_fields to avoid overwriting portal_token and other data
+        const { data: freshReg } = await (supabase as any)
+          .from("registrations")
+          .select("custom_fields")
+          .eq("id", registration_id)
+          .single()
+
         await (supabase as any)
           .from("registrations")
           .update({
             custom_fields: {
+              ...(freshReg?.custom_fields || {}),
               invitation_sent: new Date().toISOString(),
               invitation_email_id: result.id,
             }
