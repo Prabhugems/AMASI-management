@@ -230,41 +230,62 @@ export function CSVImportWizard({
             case "topic":
               transformed.session_name = value || `Session ${index + 1}`
               break
-            case "start_time":
-              // Parse date+time from start_time like "30/1/2026 09:00"
-              const startMatch = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*(\d{1,2}):(\d{2})/)
-              if (startMatch) {
-                const [, day, month, year, hours, minutes] = startMatch
-                transformed.session_date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-                transformed.start_time = `${hours.padStart(2, "0")}:${minutes}:00`
+            case "start_time": {
+              // Try ISO format first: YYYY-MM-DDTHH:MM or YYYY-MM-DD HH:MM (common from Airtable/databases)
+              const startISOMatch = value.match(/(\d{4})-(\d{1,2})-(\d{1,2})[T\s](\d{1,2}):(\d{2})/)
+              if (startISOMatch) {
+                const [, isoYear, isoMonth, isoDay, isoHours, isoMinutes] = startISOMatch
+                if (!transformed.session_date) {
+                  transformed.session_date = `${isoYear}-${isoMonth.padStart(2, "0")}-${isoDay.padStart(2, "0")}`
+                }
+                transformed.start_time = `${isoHours.padStart(2, "0")}:${isoMinutes}:00`
               } else {
-                // Time range format like "10:00-12:30" or "10:00 - 12:30"
-                const timeRangeMatch = value.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/)
-                if (timeRangeMatch) {
-                  const [, startH, startM, endH, endM] = timeRangeMatch
-                  transformed.start_time = `${startH.padStart(2, "0")}:${startM}:00`
-                  transformed.end_time = `${endH.padStart(2, "0")}:${endM}:00`
+                // Try combined date+time: DD/MM/YYYY HH:MM, DD.MM.YYYY HH:MM, DD-MM-YYYY HH:MM
+                // Also handles 2-digit years: DD/MM/YY HH:MM, DD.MM.YY HH:MM, DD-MM-YY HH:MM
+                const startDateTimeMatch = value.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})\s+(\d{1,2}):(\d{2})/)
+                if (startDateTimeMatch) {
+                  const [, dtDay, dtMonth, dtYearRaw, dtHours, dtMinutes] = startDateTimeMatch
+                  const dtYear = dtYearRaw.length === 2
+                    ? (parseInt(dtYearRaw) > 50 ? `19${dtYearRaw}` : `20${dtYearRaw.padStart(2, "0")}`)
+                    : dtYearRaw
+                  if (!transformed.session_date) {
+                    transformed.session_date = `${dtYear}-${dtMonth.padStart(2, "0")}-${dtDay.padStart(2, "0")}`
+                  }
+                  transformed.start_time = `${dtHours.padStart(2, "0")}:${dtMinutes}:00`
                 } else {
-                  // Just time format
-                  const timeMatch = value.match(/(\d{1,2}):(\d{2})/)
-                  if (timeMatch) {
-                    transformed.start_time = `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`
+                  // Time range format like "10:00-12:30" or "10:00 - 12:30"
+                  const timeRangeMatch = value.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/)
+                  if (timeRangeMatch) {
+                    const [, startH, startM, endH, endM] = timeRangeMatch
+                    transformed.start_time = `${startH.padStart(2, "0")}:${startM}:00`
+                    transformed.end_time = `${endH.padStart(2, "0")}:${endM}:00`
+                  } else {
+                    // Just time format
+                    const timeMatch = value.match(/(\d{1,2}):(\d{2})/)
+                    if (timeMatch) {
+                      transformed.start_time = `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`
+                    }
                   }
                 }
               }
               break
-            case "end_time":
-              const endMatch = value.match(/(\d{1,2}):(\d{2})/)
+            }
+            case "end_time": {
+              // Try to extract time from any format (HH:MM works for plain time, date+time, ISO format)
+              const endTimeExtract = value.match(/[T\s](\d{1,2}):(\d{2})/)
+              const endSimpleTime = value.match(/^(\d{1,2}):(\d{2})/)
+              const endMatch = endSimpleTime || endTimeExtract
               if (endMatch) {
                 transformed.end_time = `${endMatch[1].padStart(2, "0")}:${endMatch[2]}:00`
               } else {
-                // Try date+time format
-                const fullMatch = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*(\d{1,2}):(\d{2})/)
-                if (fullMatch) {
-                  transformed.end_time = `${fullMatch[4].padStart(2, "0")}:${fullMatch[5]}:00`
+                // Fallback: try any HH:MM pattern in the value
+                const endFallback = value.match(/(\d{1,2}):(\d{2})/)
+                if (endFallback) {
+                  transformed.end_time = `${endFallback[1].padStart(2, "0")}:${endFallback[2]}:00`
                 }
               }
               break
+            }
             case "date":
               // Handle multiple date formats: DD/MM/YYYY, DD.MM.YYYY, DD-MM-YYYY, YYYY-MM-DD
               // Also handles 2-digit years: DD.MM.YY, DD/MM/YY, DD-MM-YY
