@@ -424,12 +424,23 @@ export async function POST(request: NextRequest) {
         // CSV import stores speaker contact info in speakers_text
         const people = parseFacultyText(session.speakers_text)
         for (const person of people) {
-          // Extract role from description if available (format: "Name (Role)")
+          // Extract per-person role from description (format: "Name (Role), Name2 (Role2)")
           let role = 'speaker'
           if (session.description) {
-            const descLower = session.description.toLowerCase()
-            if (descLower.includes('chairperson') || descLower.includes('chair')) role = 'chairperson'
-            else if (descLower.includes('moderator')) role = 'moderator'
+            // Split description entries and find this person's entry by name
+            const entries = session.description.split(',').map((s: string) => s.trim())
+            for (const entry of entries) {
+              if (entry.toLowerCase().includes(person.name.toLowerCase())) {
+                const roleMatch = entry.match(/\(([^)]+)\)/)
+                if (roleMatch) {
+                  const roleLower = roleMatch[1].toLowerCase()
+                  if (roleLower.includes('chair')) role = 'chairperson'
+                  else if (roleLower.includes('moderator')) role = 'moderator'
+                  else if (roleLower.includes('panel')) role = 'panelist'
+                }
+                break
+              }
+            }
           }
 
           const { error: assignError } = await db

@@ -309,24 +309,29 @@ export default function SpeakersPage() {
     return map
   }, [sessions, facultyAssignments])
 
-  // Helper to get sessions for a speaker (tries email first, then name-based fallback)
+  // Helper to get sessions for a speaker (combines email + name matches, deduped)
   const getSpeakerSessions = useCallback((speaker: { attendee_email?: string; attendee_name?: string }): Session[] => {
+    const matched = new Map<string, Session>()
+
+    // Match by email
     if (speaker.attendee_email) {
       const byEmail = speakerSessionsMap.get(speaker.attendee_email.toLowerCase()) || []
-      if (byEmail.length > 0) return byEmail
+      byEmail.forEach(s => matched.set(s.id, s))
     }
-    // Fallback: try name-based matching (title-stripped)
+
+    // Match by name (title-stripped)
     if (speaker.attendee_name) {
       const stripped = speaker.attendee_name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim().toLowerCase()
       if (stripped) {
         const byName = speakerSessionsMap.get(`name:${stripped}`) || []
-        if (byName.length > 0) return byName
+        byName.forEach(s => matched.set(s.id, s))
       }
       // Also try full name (lowercase)
       const byFullName = speakerSessionsMap.get(`name:${speaker.attendee_name.toLowerCase()}`) || []
-      if (byFullName.length > 0) return byFullName
+      byFullName.forEach(s => matched.set(s.id, s))
     }
-    return []
+
+    return Array.from(matched.values())
   }, [speakerSessionsMap])
 
   // Fetch speakers
