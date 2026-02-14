@@ -52,6 +52,7 @@ type CSVRow = Record<string, string>
 type ColumnMapping = {
   date: string
   time: string
+  endTime: string
   topic: string
   hall: string
   session: string
@@ -64,6 +65,7 @@ type ColumnMapping = {
 const DEFAULT_MAPPING: ColumnMapping = {
   date: "",
   time: "",
+  endTime: "",
   topic: "",
   hall: "",
   session: "",
@@ -167,8 +169,11 @@ export default function ProgramImportPage() {
       // Date column
       if (h.includes("date") && !autoMapping.date) autoMapping.date = header
 
-      // Time column
-      if ((h.includes("time") || h === "time") && !autoMapping.time) autoMapping.time = header
+      // Time column (start time) - skip if it's explicitly an "ending" or "end" time
+      if ((h.includes("time") || h === "time") && !autoMapping.time && !h.includes("ending") && !h.includes("end time")) autoMapping.time = header
+
+      // End Time column (separate from start time)
+      if (!autoMapping.endTime && (h.includes("ending") || (h.includes("end") && h.includes("time")))) autoMapping.endTime = header
 
       // Topic/Title column
       if ((h.includes("topic") || h.includes("title") || h.includes("session name")) && !autoMapping.topic) autoMapping.topic = header
@@ -266,6 +271,18 @@ export default function ProgramImportPage() {
           startTime = format.parseStart(match)
           endTime = format.parseEnd ? format.parseEnd(match) : startTime
           break
+        }
+      }
+
+      // Check for separate end time column
+      if (startTime && (endTime === startTime || !endTime) && isValidMapping(mapping.endTime)) {
+        const endTimeStr = row[mapping.endTime] || ""
+        for (const format of TIME_FORMATS) {
+          const match = endTimeStr.match(format.pattern)
+          if (match) {
+            endTime = format.parseStart(match)
+            break
+          }
         }
       }
 
@@ -617,6 +634,27 @@ export default function ProgramImportPage() {
                     <SelectValue placeholder="Select column..." />
                   </SelectTrigger>
                   <SelectContent>
+                    {columns.map(col => (
+                      <SelectItem key={col} value={col}>{col}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  End Time Column
+                </Label>
+                <p className="text-xs text-muted-foreground mb-1">
+                  If start &amp; end times are in separate columns
+                </p>
+                <Select value={mapping.endTime} onValueChange={(v) => setMapping({ ...mapping, endTime: v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select column..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__skip__">-- Skip (use time range) --</SelectItem>
                     {columns.map(col => (
                       <SelectItem key={col} value={col}>{col}</SelectItem>
                     ))}

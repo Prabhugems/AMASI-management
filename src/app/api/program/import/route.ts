@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     const createRegistrations = formData.get("create_registrations") !== "false" // default true
     const mappingStr = formData.get("mapping") as string | null
     const userMapping = mappingStr ? JSON.parse(mappingStr) as {
-      date?: string; time?: string; topic?: string; hall?: string;
+      date?: string; time?: string; endTime?: string; topic?: string; hall?: string;
       session?: string; speaker?: string; role?: string; email?: string; phone?: string;
     } : null
 
@@ -244,12 +244,29 @@ export async function POST(request: NextRequest) {
         startTime = `${startH.padStart(2, "0")}:${startM}:00`
         endTime = `${endH.padStart(2, "0")}:${endM}:00`
       } else {
-        // Single time format
+        // Single time format (also handles datetime like "6/3/2026 09:00")
         const singleTimeMatch = timeStr.match(/(\d{1,2}):(\d{2})/)
         if (singleTimeMatch) {
           const [_match, hours, minutes] = singleTimeMatch
           startTime = `${hours.padStart(2, "0")}:${minutes}:00`
           endTime = startTime
+        }
+      }
+
+      // Check for separate end time column (e.g., "Ending Time", "End Time")
+      if (startTime && (endTime === startTime || !endTime)) {
+        let endTimeStr = ""
+        if (userMapping && isValidMapping(userMapping.endTime)) {
+          endTimeStr = row[userMapping.endTime!] || ""
+        } else {
+          // Auto-detect from common column names
+          endTimeStr = row["Ending Time"] || row["End Time"] || row["end_time"] || row["EndTime"] || ""
+        }
+        if (endTimeStr) {
+          const endMatch = endTimeStr.match(/(\d{1,2}):(\d{2})/)
+          if (endMatch) {
+            endTime = `${endMatch[1].padStart(2, "0")}:${endMatch[2]}:00`
+          }
         }
       }
 
@@ -501,7 +518,7 @@ export async function POST(request: NextRequest) {
           if (!existing.attendee_phone && faculty.phone) {
             updates.attendee_phone = faculty.phone
           }
-          if (!existing.attendee_email && faculty.email) {
+          if (faculty.email && (!existing.attendee_email || existing.attendee_email.includes("@placeholder."))) {
             updates.attendee_email = faculty.email
           }
 
