@@ -79,7 +79,7 @@ export default function EventDashboardPage() {
       // Check faculty_assignments table
       const { data: assignments } = await supabase
         .from("faculty_assignments")
-        .select("faculty_email, status")
+        .select("faculty_name, faculty_email, status")
         .eq("event_id", eventId)
 
       // Also check registrations with speaker/faculty designations
@@ -92,9 +92,9 @@ export default function EventDashboardPage() {
       const assignmentsList = Array.isArray(assignments) ? assignments : []
       const speakersList = Array.isArray(speakerRegs) ? speakerRegs : []
 
-      // Count unique faculty (one person can have multiple session assignments)
-      const uniqueFaculty = new Set(assignmentsList.map((f: any) => f.faculty_email))
-      const uniqueConfirmed = new Set(assignmentsList.filter((f: any) => f.status === "confirmed").map((f: any) => f.faculty_email))
+      // Count unique faculty by name (email can be null/phone for some faculty)
+      const uniqueFaculty = new Set(assignmentsList.map((f: any) => f.faculty_name))
+      const uniqueConfirmed = new Set(assignmentsList.filter((f: any) => f.status === "confirmed").map((f: any) => f.faculty_name))
 
       const totalFromSpeakers = speakersList.length
       const confirmedFromSpeakers = speakersList.filter((r: any) => r.status === "confirmed").length
