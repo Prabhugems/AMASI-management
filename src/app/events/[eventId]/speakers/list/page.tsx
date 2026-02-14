@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -75,6 +75,7 @@ import {
   MessageSquare,
   Tag,
   TicketCheck,
+  RefreshCw,
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
@@ -202,6 +203,9 @@ export default function SpeakersPage() {
   const [inviteTopic, setInviteTopic] = useState("")
   const [portalLink, setPortalLink] = useState<string | null>(null)
 
+  // Sync assignments state
+  const [syncing, setSyncing] = useState(false)
+
   // Edit session time state
   const [editingSession, setEditingSession] = useState<Session | null>(null)
   const [editDate, setEditDate] = useState("")
@@ -218,7 +222,7 @@ export default function SpeakersPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("sessions")
-        .select("id, session_name, session_date, start_time, end_time, hall, description")
+        .select("id, session_name, session_date, start_time, end_time, hall, description, speakers_text, chairpersons_text, moderators_text, speakers, chairpersons, moderators")
         .eq("event_id", eventId)
         .order("session_date")
         .order("start_time")
@@ -226,22 +230,119 @@ export default function SpeakersPage() {
     },
   })
 
-  // Create a map of email to sessions
+  // Fetch faculty assignments for this event (via API route - client-side RLS blocks direct access)
+  const { data: facultyAssignments } = useQuery({
+    queryKey: ["speaker-faculty-assignments", eventId],
+    queryFn: async () => {
+      const res = await fetch(`/api/events/${eventId}/program/faculty`)
+      if (!res.ok) return []
+      const data = await res.json()
+      return (data || []) as Array<{ session_id: string; faculty_email: string | null; faculty_name: string; role: string }>
+    },
+  })
+
+  // Create a map of email to sessions using faculty_assignments + text field fallback
   const speakerSessionsMap = useMemo(() => {
     const map = new Map<string, Session[]>()
-    sessions?.forEach((session) => {
-      if (session.description) {
-        const parts = session.description.split(" | ")
-        const email = parts[1]?.trim()?.toLowerCase()
-        if (email) {
-          const existing = map.get(email) || []
-          existing.push(session)
-          map.set(email, existing)
-        }
+    if (!sessions) return map
+
+    // Build session lookup by ID
+    const sessionById = new Map<string, Session>()
+    sessions.forEach(s => sessionById.set(s.id, s))
+
+    const addToMap = (key: string, session: Session) => {
+      const existing = map.get(key) || []
+      if (!existing.some(s => s.id === session.id)) {
+        existing.push(session)
       }
+      map.set(key, existing)
+    }
+
+    // Strategy 1: Use faculty_assignments (most reliable)
+    if (facultyAssignments) {
+      facultyAssignments.forEach(assignment => {
+        const session = sessionById.get(assignment.session_id)
+        if (!session) return
+        if (assignment.faculty_email) {
+          addToMap(assignment.faculty_email.toLowerCase(), session)
+        }
+        // Also map by name so registrations with placeholder emails can match
+        if (assignment.faculty_name) {
+          const stripped = assignment.faculty_name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim().toLowerCase()
+          if (stripped) {
+            addToMap(`name:${stripped}`, session)
+          }
+        }
+      })
+    }
+
+    // Strategy 2: Parse speakers_text/chairpersons_text/moderators_text for email matches
+    const stripTitle = (name: string) =>
+      name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim()
+
+    sessions.forEach(session => {
+      const s = session as any
+      const textFields = [s.speakers_text, s.chairpersons_text, s.moderators_text]
+      textFields.forEach((text: string | null) => {
+        if (!text) return
+        // Extract emails from "Name (email, phone) | Name2 (email2, phone2)" format
+        const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+        const emails = text.match(emailPattern)
+        emails?.forEach(email => addToMap(email.toLowerCase(), session))
+      })
+
+      // Strategy 3: Check description for emails
+      if (s.description) {
+        const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+        const emails = s.description.match(emailPattern)
+        emails?.forEach((email: string) => addToMap(email.toLowerCase(), session))
+      }
+
+      // Strategy 4: Name-based matching from speakers/chairpersons/moderators columns
+      const nameFields = [s.speakers, s.chairpersons, s.moderators, s.description]
+      nameFields.forEach((field: string | null) => {
+        if (!field) return
+        // Split by comma and match names
+        const names = field.split(",").map((n: string) => n.trim()).filter(Boolean)
+        names.forEach((entry: string) => {
+          const nameWithoutRole = entry.replace(/\s*\([^)]*\)\s*$/, "").trim()
+          if (nameWithoutRole) {
+            const stripped = stripTitle(nameWithoutRole).toLowerCase()
+            if (stripped) {
+              addToMap(`name:${stripped}`, session)
+            }
+          }
+        })
+      })
     })
+
     return map
-  }, [sessions])
+  }, [sessions, facultyAssignments])
+
+  // Helper to get sessions for a speaker (combines email + name matches, deduped)
+  const getSpeakerSessions = useCallback((speaker: { attendee_email?: string; attendee_name?: string }): Session[] => {
+    const matched = new Map<string, Session>()
+
+    // Match by email
+    if (speaker.attendee_email) {
+      const byEmail = speakerSessionsMap.get(speaker.attendee_email.toLowerCase()) || []
+      byEmail.forEach(s => matched.set(s.id, s))
+    }
+
+    // Match by name (title-stripped)
+    if (speaker.attendee_name) {
+      const stripped = speaker.attendee_name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim().toLowerCase()
+      if (stripped) {
+        const byName = speakerSessionsMap.get(`name:${stripped}`) || []
+        byName.forEach(s => matched.set(s.id, s))
+      }
+      // Also try full name (lowercase)
+      const byFullName = speakerSessionsMap.get(`name:${speaker.attendee_name.toLowerCase()}`) || []
+      byFullName.forEach(s => matched.set(s.id, s))
+    }
+
+    return Array.from(matched.values())
+  }, [speakerSessionsMap])
 
   // Fetch speakers
   const { data: speakers, isLoading } = useQuery({
@@ -336,8 +437,8 @@ export default function SpeakersPage() {
                       (statusOrder[b.status as keyof typeof statusOrder] || 4)
           break
         case "session":
-          const aSessions = speakerSessionsMap.get(a.attendee_email.toLowerCase()) || []
-          const bSessions = speakerSessionsMap.get(b.attendee_email.toLowerCase()) || []
+          const aSessions = getSpeakerSessions(a)
+          const bSessions = getSpeakerSessions(b)
           const aDate = aSessions[0]?.session_date || "9999"
           const bDate = bSessions[0]?.session_date || "9999"
           comparison = aDate.localeCompare(bDate)
@@ -347,7 +448,7 @@ export default function SpeakersPage() {
     })
 
     return result
-  }, [speakers, search, statusFilter, roleFilter, travelFilter, sortBy, sortOrder, speakerSessionsMap])
+  }, [speakers, search, statusFilter, roleFilter, travelFilter, sortBy, sortOrder, getSpeakerSessions])
 
   // Bulk selection helpers
   const allSelected = filteredSpeakers.length > 0 && selectedIds.size === filteredSpeakers.length
@@ -380,7 +481,7 @@ export default function SpeakersPage() {
         : filteredSpeakers
 
       const rows = speakersToExport.map(s => {
-        const sessions = speakerSessionsMap.get(s.attendee_email.toLowerCase()) || []
+        const sessions = getSpeakerSessions(s)
         return {
           Name: s.attendee_name,
           Email: s.attendee_email,
@@ -510,6 +611,51 @@ export default function SpeakersPage() {
       toast.error(error.message)
     },
   })
+
+  // Sync faculty assignments from session data
+  const syncAssignments = async () => {
+    setSyncing(true)
+    try {
+      const response = await fetch(`/api/events/${eventId}/program/sync-assignments`, {
+        method: 'POST',
+      })
+      if (response.ok) {
+        const result = await response.json()
+        if (result.created > 0) {
+          toast.success(`Synced ${result.created} session assignments`)
+        } else {
+          toast.info("All assignments already synced")
+        }
+        queryClient.invalidateQueries({ queryKey: ["speaker-faculty-assignments", eventId] })
+        queryClient.invalidateQueries({ queryKey: ["event-speakers", eventId] })
+      } else {
+        toast.error("Failed to sync assignments")
+      }
+    } catch {
+      toast.error("Error syncing assignments")
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  // Auto-sync: if sessions have speakers but no faculty_assignments exist, trigger sync once
+  const autoSyncDone = useRef(false)
+  useEffect(() => {
+    if (autoSyncDone.current || syncing) return
+    if (!sessions || sessions.length === 0) return
+    if (!facultyAssignments) return // still loading
+
+    // Check if sessions have speaker data but no assignments exist
+    const hasSpeakerData = sessions.some((s: any) =>
+      s.speakers_text || s.speakers || s.chairpersons_text || s.chairpersons || s.moderators_text || s.moderators
+    )
+    const hasAssignments = facultyAssignments.length > 0
+
+    if (hasSpeakerData && !hasAssignments) {
+      autoSyncDone.current = true
+      syncAssignments()
+    }
+  }, [sessions, facultyAssignments, syncing])
 
   // Invite faculty mutation
   const selectedFaculty = facultyList?.find(f => f.id === selectedFacultyId)
@@ -719,7 +865,7 @@ export default function SpeakersPage() {
       if (!portalToken) throw new Error("No portal token for this speaker")
 
       // Get speaker's sessions
-      const speakerSessions = speakerSessionsMap.get(speaker.attendee_email.toLowerCase()) || []
+      const speakerSessions = getSpeakerSessions(speaker)
 
       const response = await fetch("/api/email/speaker-invitation", {
         method: "POST",
@@ -961,6 +1107,18 @@ export default function SpeakersPage() {
               Import from Program
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={syncAssignments}
+            disabled={syncing}
+          >
+            {syncing ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Sync Sessions
+          </Button>
           <Button onClick={() => setIsInviteModalOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
             Add Speaker
@@ -1308,7 +1466,7 @@ export default function SpeakersPage() {
             </TableHeader>
             <TableBody>
               {filteredSpeakers.map((speaker) => {
-                const speakerSessions = speakerSessionsMap.get(speaker.attendee_email.toLowerCase()) || []
+                const speakerSessions = getSpeakerSessions(speaker)
                 const isSelected = selectedIds.has(speaker.id)
                 return (
                   <TableRow
@@ -1489,7 +1647,7 @@ export default function SpeakersPage() {
         /* Grid View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredSpeakers.map((speaker) => {
-            const speakerSessions = speakerSessionsMap.get(speaker.attendee_email.toLowerCase()) || []
+            const speakerSessions = getSpeakerSessions(speaker)
             return (
               <div
                 key={speaker.id}
@@ -1930,10 +2088,10 @@ export default function SpeakersPage() {
                 {/* Sessions */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-medium text-muted-foreground">
-                    Assigned Sessions ({speakerSessionsMap.get(selectedSpeaker.attendee_email.toLowerCase())?.length || 0})
+                    Assigned Sessions ({getSpeakerSessions(selectedSpeaker).length})
                   </h3>
                   <div className="space-y-2">
-                    {(speakerSessionsMap.get(selectedSpeaker.attendee_email.toLowerCase()) || []).map((session) => (
+                    {getSpeakerSessions(selectedSpeaker).map((session) => (
                       <div
                         key={session.id}
                         className="p-3 bg-muted/50 rounded-lg border group"
@@ -1975,7 +2133,7 @@ export default function SpeakersPage() {
                         )}
                       </div>
                     ))}
-                    {(speakerSessionsMap.get(selectedSpeaker.attendee_email.toLowerCase()) || []).length === 0 && (
+                    {getSpeakerSessions(selectedSpeaker).length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-4">No sessions assigned</p>
                     )}
                   </div>

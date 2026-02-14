@@ -538,9 +538,19 @@ export default function SessionsPage() {
   })
 
   // Get confirmation status for a session
-  const getSessionStatus = useCallback((sessionId: string) => {
+  const getSessionStatus = useCallback((sessionId: string, session?: Session) => {
     const sessionAssignments = assignments?.filter(a => a.session_id === sessionId) || []
-    if (sessionAssignments.length === 0) return null
+
+    if (sessionAssignments.length === 0) {
+      // Fallback: check session data columns for speaker names
+      if (session) {
+        const hasSpeakers = session.speakers_text || session.speakers || session.chairpersons_text || session.chairpersons || session.moderators_text || session.moderators
+        if (hasSpeakers) {
+          return { status: 'not_synced', label: 'Not Synced', color: 'bg-orange-100 text-orange-700' }
+        }
+      }
+      return null
+    }
 
     const confirmed = sessionAssignments.filter(a => a.status === 'confirmed').length
     const total = sessionAssignments.length
@@ -903,7 +913,7 @@ export default function SessionsPage() {
       size: 130,
       minSize: 100,
       cell: ({ row }) => {
-        const status = getSessionStatus(row.original.id)
+        const status = getSessionStatus(row.original.id, row.original)
         return status ? (
           <Badge className={cn("text-xs", status.color)}>
             {status.status === 'confirmed' && <CheckCircle2 className="h-3 w-3 mr-1" />}
@@ -1034,13 +1044,18 @@ export default function SessionsPage() {
     const relevantAssignments = assignments.filter(a => sessionIds.has(a.session_id))
     const sessionsWithAssignments = new Set(relevantAssignments.map(a => a.session_id))
     const confirmedSessions = sessions.filter(s => {
-      const status = getSessionStatus(s.id)
+      const status = getSessionStatus(s.id, s)
       return status?.status === 'confirmed'
     }).length
 
+    // Count sessions that have speakers (from assignments OR from session data)
+    const sessionsWithSpeakers = sessions.filter(s =>
+      sessionsWithAssignments.has(s.id) || s.speakers_text || s.speakers || s.chairpersons_text || s.chairpersons || s.moderators_text || s.moderators
+    ).length
+
     return {
       total: sessions.length,
-      withSpeakers: sessionsWithAssignments.size,
+      withSpeakers: sessionsWithSpeakers,
       confirmed: confirmedSessions,
       pending: sessionsWithAssignments.size - confirmedSessions,
     }

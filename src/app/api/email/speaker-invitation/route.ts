@@ -312,10 +312,30 @@ export async function PUT(request: NextRequest) {
     // Get all sessions for this event to match with speakers
     const { data: sessions } = await (supabase as any)
       .from("sessions")
-      .select("*")
+      .select("id, session_name, session_date, start_time, end_time, hall, description, speakers_text, chairpersons_text, moderators_text, speakers, chairpersons, moderators")
       .eq("event_id", event_id)
       .order("session_date")
       .order("start_time")
+
+    // Get faculty assignments for reliable matching
+    const { data: allAssignments } = await (supabase as any)
+      .from("faculty_assignments")
+      .select("session_id, faculty_email, faculty_name")
+      .eq("event_id", event_id)
+
+    // Build assignment lookup by email
+    const assignmentsByEmail = new Map<string, Set<string>>()
+    ;(allAssignments || []).forEach((a: any) => {
+      if (a.faculty_email) {
+        const email = a.faculty_email.toLowerCase()
+        if (!assignmentsByEmail.has(email)) assignmentsByEmail.set(email, new Set())
+        assignmentsByEmail.get(email)!.add(a.session_id)
+      }
+    })
+
+    // Strip title for name matching
+    const stripTitle = (name: string) =>
+      name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim()
 
     const results = {
       sent: 0,
@@ -335,11 +355,41 @@ export async function PUT(request: NextRequest) {
         continue
       }
 
-      // Find sessions for this speaker (match by email in description)
-      const speakerSessions = sessions?.filter((s: any) => {
-        const desc = s.description?.toLowerCase() || ""
-        return desc.includes(reg.attendee_email.toLowerCase())
-      }) || []
+      const speakerEmail = reg.attendee_email?.toLowerCase()
+      const speakerName = reg.attendee_name?.trim()
+      const speakerNameStripped = speakerName ? stripTitle(speakerName).toLowerCase() : ""
+
+      // Get assigned session IDs from faculty_assignments
+      const assignedSessionIds = assignmentsByEmail.get(speakerEmail) || new Set()
+
+      // Find sessions for this speaker using multiple strategies
+      const speakerSessions = (sessions || []).filter((s: any) => {
+        // Strategy 1: faculty_assignments
+        if (assignedSessionIds.has(s.id)) return true
+
+        // Strategy 2: Email in speakers_text/chairpersons_text/moderators_text
+        const textFields = [s.speakers_text, s.chairpersons_text, s.moderators_text]
+        for (const text of textFields) {
+          if (text && speakerEmail && text.toLowerCase().includes(speakerEmail)) return true
+        }
+
+        // Strategy 3: Email in description
+        if (s.description && speakerEmail && s.description.toLowerCase().includes(speakerEmail)) return true
+
+        // Strategy 4: Name matching (title-stripped)
+        if (speakerNameStripped) {
+          const nameFields = [s.description, s.speakers, s.chairpersons, s.moderators]
+          for (const field of nameFields) {
+            if (field) {
+              const fieldLower = field.toLowerCase()
+              if (fieldLower.includes(speakerNameStripped)) return true
+              if (speakerName && fieldLower.includes(speakerName.toLowerCase())) return true
+            }
+          }
+        }
+
+        return false
+      })
 
       // Prepare invitation data
       const invitationData: SpeakerInvitationData = {

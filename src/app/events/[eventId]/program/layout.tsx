@@ -24,6 +24,7 @@ import {
   LogOut,
   MapPin,
   CalendarDays,
+  BookOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
@@ -50,6 +51,7 @@ const sidebarItems: SidebarItem[] = [
   { title: "Public View", href: "/public", icon: Globe },
   { title: "Delegate View", href: "/delegate", icon: Calendar },
   { title: "Settings", href: "/settings", icon: Settings },
+  { title: "Guide", href: "/guide", icon: BookOpen },
 ]
 
 export default function ProgramLayout({ children }: { children: React.ReactNode }) {

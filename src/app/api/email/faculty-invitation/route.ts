@@ -79,6 +79,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Reject placeholder emails
+    if (assignment.faculty_email.includes("@placeholder.")) {
+      return NextResponse.json(
+        { error: `Cannot send to placeholder email (${assignment.faculty_email}). Update with a real email first.` },
+        { status: 400 }
+      )
+    }
+
     // Generate token if not exists
     let invitationToken = assignment.invitation_token
     if (!invitationToken) {
@@ -248,36 +256,39 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", assignment_id)
 
-      // Log email for tracking
+      // Log email for tracking (non-blocking - don't let logging failures crash the response)
       if (result.id) {
-        await logEmail({
-          resendEmailId: result.id,
-          emailType: "speaker_invitation",
-          fromEmail,
-          toEmail: assignment.faculty_email,
-          subject: emailSubject,
-          eventId: event_id,
-          metadata: {
-            assignment_id,
-            faculty_name: assignment.faculty_name,
-            role: assignment.role,
-            session_name: assignment.session_name,
-          },
-        })
+        try {
+          await logEmail({
+            resendEmailId: result.id,
+            emailType: "speaker_invitation",
+            fromEmail,
+            toEmail: assignment.faculty_email,
+            subject: emailSubject,
+            eventId: event_id,
+            metadata: {
+              assignment_id,
+              faculty_name: assignment.faculty_name,
+              role: assignment.role,
+              session_name: assignment.session_name,
+            },
+          })
 
-        // Also log to assignment_emails table
-        await db.from("assignment_emails").insert({
-          assignment_id,
-          event_id,
-          email_type: "invitation",
-          recipient_email: assignment.faculty_email,
-          recipient_name: assignment.faculty_name,
-          subject: emailSubject,
-          body_preview: `Invitation as ${roleLabel} for ${assignment.session_name || event_name}`,
-          status: "sent",
-          sent_at: new Date().toISOString(),
-          external_id: result.id,
-        })
+          await db.from("assignment_emails").insert({
+            assignment_id,
+            event_id,
+            email_type: "invitation",
+            recipient_email: assignment.faculty_email,
+            recipient_name: assignment.faculty_name,
+            subject: emailSubject,
+            body_preview: `Invitation as ${roleLabel} for ${assignment.session_name || event_name}`,
+            status: "sent",
+            sent_at: new Date().toISOString(),
+            external_id: result.id,
+          })
+        } catch (logError) {
+          console.error("Email logging failed (email was still sent):", logError)
+        }
       }
 
       return NextResponse.json({

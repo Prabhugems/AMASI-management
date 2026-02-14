@@ -837,11 +837,74 @@ export async function POST(request: NextRequest) {
     }))
 
     let insertedSessions = 0
+    const insertedSessionData: any[] = []
     const batchSize = 100
     for (let i = 0; i < sessions.length; i += batchSize) {
       const batch = sessions.slice(i, i + batchSize)
       const { data, error } = await (supabase as any).from("sessions").insert(batch).select()
-      if (!error) insertedSessions += data?.length || 0
+      if (!error && data) {
+        insertedSessions += data.length
+        insertedSessionData.push(...data)
+      }
+    }
+
+    // Auto-create faculty_assignments from inserted sessions
+    let assignmentsCreated = 0
+
+    // Parse "Name (email, phone) | Name2 (email2, phone2)" format
+    const parseFacultyText = (text: string | null): Array<{name: string, email: string | null, phone: string | null}> => {
+      if (!text) return []
+      return text.split(' | ').map(part => {
+        const match = part.match(/^([^(]+)\s*(?:\(([^,]*),?\s*([^)]*)\))?$/)
+        if (match) {
+          return {
+            name: match[1].trim(),
+            email: match[2]?.trim() || null,
+            phone: match[3]?.trim() || null,
+          }
+        }
+        return { name: part.trim(), email: null, phone: null }
+      }).filter(f => f.name)
+    }
+
+    const generateAssignmentToken = (): string => {
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+      let result = ''
+      for (let i = 0; i < 32; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length))
+      }
+      return result
+    }
+
+    for (const session of insertedSessionData) {
+      const roles: Array<{ text: string | null; role: string }> = [
+        { text: session.speakers_text, role: 'speaker' },
+        { text: session.chairpersons_text, role: 'chairperson' },
+        { text: session.moderators_text, role: 'moderator' },
+      ]
+      for (const { text, role } of roles) {
+        const people = parseFacultyText(text)
+        for (const person of people) {
+          const { error } = await (supabase as any)
+            .from("faculty_assignments")
+            .insert({
+              event_id: eventId,
+              session_id: session.id,
+              faculty_name: person.name,
+              faculty_email: person.email,
+              faculty_phone: person.phone,
+              role,
+              session_date: session.session_date,
+              start_time: session.start_time,
+              end_time: session.end_time,
+              hall: session.hall,
+              session_name: session.session_name,
+              topic_title: session.session_name,
+              invitation_token: generateAssignmentToken(),
+            })
+          if (!error) assignmentsCreated++
+        }
+      }
     }
 
     // Create hall coordinators
@@ -1037,7 +1100,7 @@ export async function POST(request: NextRequest) {
         .eq("event_id", eventId)
         .or("name.ilike.%faculty%,name.ilike.%speaker%")
         .limit(1)
-        .single() as { data: { id: string } | null }
+        .maybeSingle() as { data: { id: string } | null }
 
       if (existingTicket) {
         ticketTypeId = existingTicket.id
@@ -1208,7 +1271,7 @@ export async function POST(request: NextRequest) {
 
         // Process based on match status
         if (existingMatch) {
-          // Update existing registration with any missing data
+          // Update existing registration with any missing or placeholder data
           const updates: any = {}
           let hasUpdates = false
 
@@ -1216,7 +1279,14 @@ export async function POST(request: NextRequest) {
             updates.attendee_phone = faculty.phone
             hasUpdates = true
           }
-          if (!existingMatch.attendee_email && faculty.email) {
+          // Update email if missing OR if it's a placeholder email and we have a real one
+          const isPlaceholderEmail = existingMatch.attendee_email && (
+            existingMatch.attendee_email.includes("@placeholder.") ||
+            existingMatch.attendee_email.includes("placeholder.com") ||
+            existingMatch.attendee_email.includes("placeholder.speaker") ||
+            existingMatch.attendee_email.includes("placeholder.faculty")
+          )
+          if (faculty.email && (!existingMatch.attendee_email || isPlaceholderEmail)) {
             updates.attendee_email = faculty.email
             hasUpdates = true
           }
@@ -1248,8 +1318,8 @@ export async function POST(request: NextRequest) {
               },
             })
           }
-        } else if ((faculty.email || faculty.phone) && ticketTypeId) {
-          // NEW FACULTY - not found in faculty table or registrations
+        } else if (ticketTypeId) {
+          // No existing registration found - create new faculty + registration
           // Step 1: Add to faculty table (master faculty database) if not already there
           if (!facultyTableMatch) {
             // Parse name into first/last
@@ -1293,27 +1363,35 @@ export async function POST(request: NextRequest) {
               newData: { email: faculty.email || undefined, phone: faculty.phone || undefined },
             })
           }
-        } else if (!facultyTableMatch && faculty.name) {
-          // Even without contact info, add to faculty table for tracking
-          const nameParts = faculty.name.trim().split(/\s+/)
-          const firstName = nameParts[0] || faculty.name
-          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : ""
+        } else if (faculty.name) {
+          // No ticket type available - add to faculty table for tracking
+          if (!facultyTableMatch) {
+            const nameParts = faculty.name.trim().split(/\s+/)
+            const firstName = nameParts[0] || faculty.name
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : ""
 
-          const { error: facultyError } = await (supabase as any).from("faculty").insert({
-            first_name: firstName,
-            last_name: lastName || firstName,
-            email: `${faculty.name.replace(/\s+/g, ".").toLowerCase()}.pending@placeholder.faculty`,
-            phone: null,
-            designation: faculty.role || "Speaker",
-          })
+            const { error: facultyError } = await (supabase as any).from("faculty").insert({
+              first_name: firstName,
+              last_name: lastName || firstName,
+              email: faculty.email || `${faculty.name.replace(/\s+/g, ".").toLowerCase()}.pending@placeholder.faculty`,
+              phone: faculty.phone || null,
+              designation: faculty.role || "Speaker",
+            })
 
-          facultyAnalysis.push({
-            name: faculty.name,
-            status: facultyError ? "skipped" : "new",
-            matchedBy: facultyError ? undefined : "new_faculty_no_contact",
-          })
+            facultyAnalysis.push({
+              name: faculty.name,
+              status: facultyError ? "skipped" : "new",
+              matchedBy: facultyError ? undefined : "new_faculty_no_contact",
+            })
 
-          if (!facultyError) facultyCreated++
+            if (!facultyError) facultyCreated++
+          } else {
+            facultyAnalysis.push({
+              name: faculty.name,
+              status: "skipped",
+              matchedBy: "faculty_table_only",
+            })
+          }
         } else {
           facultyAnalysis.push({
             name: faculty.name,
@@ -1335,6 +1413,7 @@ export async function POST(request: NextRequest) {
       },
       imported: {
         sessions: insertedSessions,
+        assignments: assignmentsCreated,
         halls: halls.size,
         coordinators: coordinatorsCreated,
         faculty: {
@@ -1364,7 +1443,7 @@ export async function POST(request: NextRequest) {
       halls: Array.from(halls),
       tracks: Array.from(tracks),
       tracksCreated,
-      message: `AI Import Complete: ${insertedSessions} sessions across ${halls.size} halls, ${tracks.size} tracks. Faculty: ${facultyCreated} new (added to Faculty DB), ${facultyUpdated} updated, ${facultyMatched} matched. Found ${timingIssues.length} timing issues.`,
+      message: `AI Import Complete: ${insertedSessions} sessions across ${halls.size} halls, ${tracks.size} tracks. ${assignmentsCreated} speaker assignments created. Faculty: ${facultyCreated} new (added to Faculty DB), ${facultyUpdated} updated, ${facultyMatched} matched. Found ${timingIssues.length} timing issues.`,
     })
   } catch (error: any) {
     console.error("AI Import error:", error)
