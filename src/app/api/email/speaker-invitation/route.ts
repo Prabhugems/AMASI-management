@@ -273,6 +273,14 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
 // POST /api/email/speaker-invitation - Send speaker invitation email
 export async function POST(request: NextRequest) {
   try {
+    // Pre-flight check: fail fast with clear message
+    if (!isEmailEnabled()) {
+      return NextResponse.json(
+        { error: "No email provider configured. Add BLASTABLE_API_KEY or RESEND_API_KEY in Vercel Environment Variables, then redeploy." },
+        { status: 503 }
+      )
+    }
+
     const body: SpeakerInvitationData = await request.json()
     const result = await sendSpeakerInvitation(body)
 
@@ -280,10 +288,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(result, { status: 500 })
     }
     return NextResponse.json(result)
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in POST /api/email/speaker-invitation:", error)
     return NextResponse.json(
-      { error: "Failed to send invitation email" },
+      { error: error?.message || "Failed to send invitation email" },
       { status: 500 }
     )
   }
@@ -298,6 +306,23 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: "registration_ids array is required" },
         { status: 400 }
+      )
+    }
+
+    // Pre-flight check: fail fast if email isn't configured
+    if (!isEmailEnabled()) {
+      return NextResponse.json(
+        { error: "No email provider configured. Add BLASTABLE_API_KEY or RESEND_API_KEY in your Vercel Environment Variables, then redeploy." },
+        { status: 503 }
+      )
+    }
+
+    // Pre-flight check: fail fast if app URL isn't configured
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    if (baseUrl === "http://localhost:3000" || baseUrl.includes("your-") || baseUrl.includes("example")) {
+      return NextResponse.json(
+        { error: "NEXT_PUBLIC_APP_URL is not set. Add it in Vercel Environment Variables (e.g. https://collegeofmas.org.in) and redeploy." },
+        { status: 503 }
       )
     }
 
