@@ -392,9 +392,72 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Auto-create faculty_assignments from inserted sessions
+    let assignmentsCreated = 0
+    if (data && data.length > 0) {
+      const generateAssignmentToken = (): string => {
+        const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+        let result = ''
+        for (let i = 0; i < 32; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        return result
+      }
+
+      // Parse "Name (email, phone) | Name2 (email2, phone2)" format
+      const parseFacultyText = (text: string | null): Array<{name: string, email: string | null, phone: string | null}> => {
+        if (!text) return []
+        return text.split(' | ').map(part => {
+          const match = part.match(/^([^(]+)\s*(?:\(([^,]*),?\s*([^)]*)\))?$/)
+          if (match) {
+            return {
+              name: match[1].trim(),
+              email: match[2]?.trim() || null,
+              phone: match[3]?.trim() || null,
+            }
+          }
+          return { name: part.trim(), email: null, phone: null }
+        }).filter(f => f.name)
+      }
+
+      for (const session of data) {
+        // CSV import stores speaker contact info in speakers_text
+        const people = parseFacultyText(session.speakers_text)
+        for (const person of people) {
+          // Extract role from description if available (format: "Name (Role)")
+          let role = 'speaker'
+          if (session.description) {
+            const descLower = session.description.toLowerCase()
+            if (descLower.includes('chairperson') || descLower.includes('chair')) role = 'chairperson'
+            else if (descLower.includes('moderator')) role = 'moderator'
+          }
+
+          const { error: assignError } = await db
+            .from("faculty_assignments")
+            .insert({
+              event_id: event_id,
+              session_id: session.id,
+              faculty_name: person.name,
+              faculty_email: person.email,
+              faculty_phone: person.phone,
+              role,
+              session_date: session.session_date,
+              start_time: session.start_time,
+              end_time: session.end_time,
+              hall: session.hall,
+              session_name: session.session_name,
+              topic_title: session.session_name,
+              invitation_token: generateAssignmentToken(),
+            })
+          if (!assignError) assignmentsCreated++
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       imported: data?.length || 0,
+      assignments: assignmentsCreated,
       skippedDuplicates,
       faculty: {
         created: facultyCreated,

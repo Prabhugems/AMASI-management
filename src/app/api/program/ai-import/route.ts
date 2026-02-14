@@ -837,11 +837,74 @@ export async function POST(request: NextRequest) {
     }))
 
     let insertedSessions = 0
+    const insertedSessionData: any[] = []
     const batchSize = 100
     for (let i = 0; i < sessions.length; i += batchSize) {
       const batch = sessions.slice(i, i + batchSize)
       const { data, error } = await (supabase as any).from("sessions").insert(batch).select()
-      if (!error) insertedSessions += data?.length || 0
+      if (!error && data) {
+        insertedSessions += data.length
+        insertedSessionData.push(...data)
+      }
+    }
+
+    // Auto-create faculty_assignments from inserted sessions
+    let assignmentsCreated = 0
+
+    // Parse "Name (email, phone) | Name2 (email2, phone2)" format
+    const parseFacultyText = (text: string | null): Array<{name: string, email: string | null, phone: string | null}> => {
+      if (!text) return []
+      return text.split(' | ').map(part => {
+        const match = part.match(/^([^(]+)\s*(?:\(([^,]*),?\s*([^)]*)\))?$/)
+        if (match) {
+          return {
+            name: match[1].trim(),
+            email: match[2]?.trim() || null,
+            phone: match[3]?.trim() || null,
+          }
+        }
+        return { name: part.trim(), email: null, phone: null }
+      }).filter(f => f.name)
+    }
+
+    const generateAssignmentToken = (): string => {
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+      let result = ''
+      for (let i = 0; i < 32; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length))
+      }
+      return result
+    }
+
+    for (const session of insertedSessionData) {
+      const roles: Array<{ text: string | null; role: string }> = [
+        { text: session.speakers_text, role: 'speaker' },
+        { text: session.chairpersons_text, role: 'chairperson' },
+        { text: session.moderators_text, role: 'moderator' },
+      ]
+      for (const { text, role } of roles) {
+        const people = parseFacultyText(text)
+        for (const person of people) {
+          const { error } = await (supabase as any)
+            .from("faculty_assignments")
+            .insert({
+              event_id: eventId,
+              session_id: session.id,
+              faculty_name: person.name,
+              faculty_email: person.email,
+              faculty_phone: person.phone,
+              role,
+              session_date: session.session_date,
+              start_time: session.start_time,
+              end_time: session.end_time,
+              hall: session.hall,
+              session_name: session.session_name,
+              topic_title: session.session_name,
+              invitation_token: generateAssignmentToken(),
+            })
+          if (!error) assignmentsCreated++
+        }
+      }
     }
 
     // Create hall coordinators
@@ -1335,6 +1398,7 @@ export async function POST(request: NextRequest) {
       },
       imported: {
         sessions: insertedSessions,
+        assignments: assignmentsCreated,
         halls: halls.size,
         coordinators: coordinatorsCreated,
         faculty: {
@@ -1364,7 +1428,7 @@ export async function POST(request: NextRequest) {
       halls: Array.from(halls),
       tracks: Array.from(tracks),
       tracksCreated,
-      message: `AI Import Complete: ${insertedSessions} sessions across ${halls.size} halls, ${tracks.size} tracks. Faculty: ${facultyCreated} new (added to Faculty DB), ${facultyUpdated} updated, ${facultyMatched} matched. Found ${timingIssues.length} timing issues.`,
+      message: `AI Import Complete: ${insertedSessions} sessions across ${halls.size} halls, ${tracks.size} tracks. ${assignmentsCreated} speaker assignments created. Faculty: ${facultyCreated} new (added to Faculty DB), ${facultyUpdated} updated, ${facultyMatched} matched. Found ${timingIssues.length} timing issues.`,
     })
   } catch (error: any) {
     console.error("AI Import error:", error)
