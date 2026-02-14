@@ -936,14 +936,15 @@ export default function SpeakersPage() {
     },
     onSuccess: (results) => {
       const msg = `Sent: ${results.sent}, Failed: ${results.failed}, Skipped: ${results.skipped}`
+      const providerInfo = results.provider ? ` (via ${results.provider})` : ""
       if (results.failed > 0 && results.errors?.length > 0) {
         // Show the first error reason so the user knows WHY it failed
         const firstError = results.errors[0]
-        toast.error(`Invitations: ${msg}\n\nReason: ${firstError}`, { duration: 10000 })
+        toast.error(`Invitations${providerInfo}: ${msg}\n\nReason: ${firstError}`, { duration: 15000 })
       } else if (results.skipped > 0 && results.sent === 0) {
-        toast.warning(`Invitations: ${msg}`)
+        toast.warning(`Invitations${providerInfo}: ${msg}`)
       } else {
-        toast.success(`Invitations sent! ${msg}`)
+        toast.success(`Invitations sent${providerInfo}! ${msg}`)
       }
       setSelectedIds(new Set())
       queryClient.invalidateQueries({ queryKey: ["event-speakers", eventId] })

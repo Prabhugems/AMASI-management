@@ -479,17 +479,27 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Include diagnostic details in response so frontend can show exactly what's wrong
+    const provider = getEmailProvider() || "none"
+    let effectiveFrom = "unknown"
+    if (provider === "blastable") {
+      effectiveFrom = process.env.BLASTABLE_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || "NOT SET"
+    } else if (provider === "resend") {
+      effectiveFrom = process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
+    }
+
     return NextResponse.json({
       success: true,
       results: {
         ...results,
-        provider: getEmailProvider() || "none",
+        provider,
+        from_email: effectiveFrom,
       },
     })
   } catch (error: any) {
     console.error("Error in bulk speaker invitation:", error)
     return NextResponse.json(
-      { error: "Failed to send bulk invitations" },
+      { error: `Failed to send bulk invitations: ${error.message || "Unknown error"}` },
       { status: 500 }
     )
   }
