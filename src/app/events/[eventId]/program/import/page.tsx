@@ -44,6 +44,7 @@ import {
   Calendar,
   Eye,
   Phone,
+  Mail,
   Sparkles,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -58,6 +59,8 @@ type ColumnMapping = {
   session: string
   speaker: string
   role: string
+  email: string
+  phone: string
 }
 
 const DEFAULT_MAPPING: ColumnMapping = {
@@ -68,6 +71,8 @@ const DEFAULT_MAPPING: ColumnMapping = {
   session: "",
   speaker: "",
   role: "",
+  email: "",
+  phone: "",
 }
 
 // Helper to check if a mapping value is valid (not empty and not skipped)
@@ -193,6 +198,20 @@ export default function ProgramImportPage() {
           autoMapping.role = header
         }
       }
+
+      // Email column
+      if (!autoMapping.email) {
+        if (h.includes("email") || h.includes("e-mail") || h.includes("mail id")) {
+          autoMapping.email = header
+        }
+      }
+
+      // Phone/Mobile column
+      if (!autoMapping.phone) {
+        if (h.includes("phone") || h.includes("mobile") || h.includes("contact") || h.includes("cell") || h.includes("tel")) {
+          autoMapping.phone = header
+        }
+      }
     })
 
     setMapping(autoMapping)
@@ -260,6 +279,8 @@ export default function ProgramImportPage() {
       const sessionTrack = isValidMapping(mapping.session) ? row[mapping.session] || "" : ""
       const speaker = isValidMapping(mapping.speaker) ? row[mapping.speaker] || "" : ""
       const role = isValidMapping(mapping.role) ? row[mapping.role] || "Speaker" : "Speaker"
+      const email = isValidMapping(mapping.email) ? row[mapping.email] || "" : ""
+      const phone = isValidMapping(mapping.phone) ? row[mapping.phone] || "" : ""
 
       if (!topic || !parsedDate || !startTime) return
 
@@ -284,31 +305,34 @@ export default function ProgramImportPage() {
           session_name: topic,
           hall: hall || null,
           specialty_track: sessionTrack || null,
-          speakers: [],
-          chairpersons: [],
-          moderators: [],
+          speakers: [] as { name: string; email: string; phone: string }[],
+          chairpersons: [] as { name: string; email: string; phone: string }[],
+          moderators: [] as { name: string; email: string; phone: string }[],
         })
       }
 
-      // Add person
+      // Add person with contact info
       const session = sessionMap.get(sessionKey)
       if (speaker) {
+        const personExists = (arr: { name: string }[]) => arr.some(p => p.name === speaker)
+        const personDetail = { name: speaker, email, phone }
         const roleLower = role.toLowerCase()
         if (roleLower.includes("chair") || roleLower.includes("coordinator")) {
-          if (!session.chairpersons.includes(speaker)) session.chairpersons.push(speaker)
+          if (!personExists(session.chairpersons)) session.chairpersons.push(personDetail)
         } else if (roleLower.includes("moderator")) {
-          if (!session.moderators.includes(speaker)) session.moderators.push(speaker)
+          if (!personExists(session.moderators)) session.moderators.push(personDetail)
         } else {
-          if (!session.speakers.includes(speaker)) session.speakers.push(speaker)
+          if (!personExists(session.speakers)) session.speakers.push(personDetail)
         }
       }
     })
 
     return Array.from(sessionMap.values()).map(s => ({
       ...s,
-      speakers: s.speakers.join(", ") || null,
-      chairpersons: s.chairpersons.join(", ") || null,
-      moderators: s.moderators.join(", ") || null,
+      speakers: s.speakers.map((p: any) => p.name).join(", ") || null,
+      chairpersons: s.chairpersons.map((p: any) => p.name).join(", ") || null,
+      moderators: s.moderators.map((p: any) => p.name).join(", ") || null,
+      speakersWithContact: s.speakers.filter((p: any) => p.email).length,
     }))
   }, [csvData, mapping])
 
@@ -768,14 +792,14 @@ export default function ProgramImportPage() {
                 </Select>
               </div>
 
-              <div className="md:col-span-2">
+              <div>
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   Role Column
                   <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Recommended</Badge>
                 </Label>
                 <p className="text-xs text-muted-foreground mb-1">
-                  Used to identify Speaker, Chairperson, Moderator, Presenter, Panelist, etc.
+                  Used to identify Speaker, Chairperson, Moderator, etc.
                 </p>
                 <Select value={mapping.role} onValueChange={(v) => setMapping({ ...mapping, role: v })}>
                   <SelectTrigger className="mt-1">
@@ -783,6 +807,49 @@ export default function ProgramImportPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__skip__">-- Skip (treat all as Speakers) --</SelectItem>
+                    {columns.map(col => (
+                      <SelectItem key={col} value={col}>{col}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Email Column
+                  <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">For Invitations</Badge>
+                </Label>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Faculty email for sending invitations
+                </p>
+                <Select value={mapping.email} onValueChange={(v) => setMapping({ ...mapping, email: v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select column..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__skip__">-- Skip --</SelectItem>
+                    {columns.map(col => (
+                      <SelectItem key={col} value={col}>{col}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Phone/Mobile Column
+                </Label>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Faculty phone for WhatsApp/calling
+                </p>
+                <Select value={mapping.phone} onValueChange={(v) => setMapping({ ...mapping, phone: v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select column..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__skip__">-- Skip --</SelectItem>
                     {columns.map(col => (
                       <SelectItem key={col} value={col}>{col}</SelectItem>
                     ))}

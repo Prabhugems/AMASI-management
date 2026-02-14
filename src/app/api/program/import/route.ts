@@ -93,6 +93,19 @@ function normalizeName(name: string): string {
   return name.toLowerCase().trim().replace(/\s+/g, " ")
 }
 
+// Build "Name (email, phone) | Name2 (email2, phone2)" format for _text columns
+function buildFacultyText(names: string[], facultyMap: Map<string, FacultyInfo>): string | null {
+  if (names.length === 0) return null
+  return names.map(name => {
+    const faculty = facultyMap.get(normalizeName(name))
+    if (faculty && (faculty.email || faculty.phone)) {
+      const contacts = [faculty.email, faculty.phone].filter(Boolean)
+      return `${name} (${contacts.join(", ")})`
+    }
+    return name
+  }).join(" | ")
+}
+
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
   const rateLimit = checkRateLimit(ip, "bulk")
@@ -327,9 +340,14 @@ export async function POST(request: NextRequest) {
       duration_minutes: session.duration_minutes,
       hall: session.hall,
       specialty_track: session.specialty_track,
+      // Store names for display
       speakers: session.speakers.length > 0 ? session.speakers.join(", ") : null,
       chairpersons: session.chairpersons.length > 0 ? session.chairpersons.join(", ") : null,
       moderators: session.moderators.length > 0 ? session.moderators.join(", ") : null,
+      // Store full contact details in _text columns for sync-assignments to pick up
+      speakers_text: buildFacultyText(session.speakers, facultyMap),
+      chairpersons_text: buildFacultyText(session.chairpersons, facultyMap),
+      moderators_text: buildFacultyText(session.moderators, facultyMap),
       description: [
         ...session.panelists.map(p => `Panelist: ${p}`),
         ...session.presenters.map(p => `Presenter: ${p}`),
