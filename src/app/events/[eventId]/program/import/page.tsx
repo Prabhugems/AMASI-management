@@ -107,8 +107,8 @@ function detectDateOrder(dates: string[]): "mm_first" | "dd_first" {
   if (maxFirst > 12) return "dd_first"
   // If second number exceeds 12, first must be month (MM/DD)
   if (maxSecond > 12) return "mm_first"
-  // Ambiguous: default to MM/DD (common in Airtable, US format)
-  return "mm_first"
+  // Ambiguous: default to DD/MM (common in India, most of the world)
+  return "dd_first"
 }
 
 // Time format patterns
@@ -129,7 +129,7 @@ export default function ProgramImportPage() {
   const [columns, setColumns] = useState<string[]>([])
   const [mapping, setMapping] = useState<ColumnMapping>(DEFAULT_MAPPING)
   const [clearExisting, setClearExisting] = useState(false)
-  const [dateOrder, setDateOrder] = useState<"mm_first" | "dd_first">("mm_first")
+  const [dateOrder, setDateOrder] = useState<"mm_first" | "dd_first">("dd_first")
   const [detectedDateFormat, setDetectedDateFormat] = useState<string>("")
   const [detectedTimeFormat, setDetectedTimeFormat] = useState<string>("")
 
