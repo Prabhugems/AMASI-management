@@ -112,35 +112,8 @@ export default function SpeakerInvitationsPage() {
     setSending(true)
 
     try {
+      // Server generates portal tokens if missing, so just send the IDs
       const speakersToSend = Array.from(selectedSpeakers)
-
-      // Generate portal tokens server-side to avoid race conditions
-      // First, ensure all selected speakers have portal tokens
-      for (const id of speakersToSend) {
-        const speaker = speakers?.find(s => s.id === id)
-        if (speaker && !speaker.custom_fields?.portal_token) {
-          const token = crypto.randomUUID()
-          // Fetch fresh data from DB to avoid overwriting fields
-          const { data: freshReg } = await (supabase as any)
-            .from("registrations")
-            .select("custom_fields")
-            .eq("id", id)
-            .single()
-
-          await (supabase as any)
-            .from("registrations")
-            .update({
-              custom_fields: {
-                ...(freshReg?.custom_fields || {}),
-                portal_token: token,
-              },
-            })
-            .eq("id", id)
-        }
-      }
-
-      // Small delay to ensure DB writes are committed
-      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Call the bulk email API
       const response = await fetch("/api/email/speaker-invitation", {
@@ -155,31 +128,8 @@ export default function SpeakerInvitationsPage() {
       const result = await response.json()
 
       if (result.success) {
-        // Only mark speakers that were actually sent successfully
-        const sentIds = new Set(result.results?.sent_ids || [])
-
-        for (const id of speakersToSend) {
-          if (sentIds.has(id)) {
-            // Fetch fresh data to avoid overwriting portal_token or other fields
-            const { data: freshReg } = await (supabase as any)
-              .from("registrations")
-              .select("custom_fields")
-              .eq("id", id)
-              .single()
-
-            await (supabase as any)
-              .from("registrations")
-              .update({
-                custom_fields: {
-                  ...(freshReg?.custom_fields || {}),
-                  invitation_status: "sent",
-                  invitation_sent_at: new Date().toISOString(),
-                },
-              })
-              .eq("id", id)
-          }
-        }
-
+        // Server already updated custom_fields with invitation_status, invitation_sent, etc.
+        // Just refresh the data from the server
         queryClient.invalidateQueries({ queryKey: ["speaker-invitations", eventId] })
 
         if (result.results) {

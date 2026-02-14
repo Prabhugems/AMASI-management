@@ -4,6 +4,12 @@ import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { logEmail } from "@/lib/email-tracking"
 import { escapeHtml } from "@/lib/string-utils"
 
+const PRODUCTION_URL = "https://collegeofmas.org.in"
+
+function getBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : PRODUCTION_URL)
+}
+
 interface FacultyInvitationData {
   assignment_id: string
   event_id: string
@@ -85,12 +91,7 @@ async function sendFacultyInvitation(data: FacultyInvitationData): Promise<{ suc
     }
 
     // Generate portal URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-
-    // Reject if NEXT_PUBLIC_APP_URL is still set to placeholder/example text
-    if (baseUrl.includes("e.g.") || baseUrl.includes("your-") || baseUrl.includes("(your") || baseUrl.includes("example")) {
-      return { success: false, error: "NEXT_PUBLIC_APP_URL is not configured. Set it to your actual domain in Vercel Environment Variables, then redeploy." }
-    }
+    const baseUrl = getBaseUrl()
 
     const portalUrl = `${baseUrl}/respond/${invitationToken}`
 
