@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -630,6 +630,25 @@ export default function SpeakersPage() {
       setSyncing(false)
     }
   }
+
+  // Auto-sync: if sessions have speakers but no faculty_assignments exist, trigger sync once
+  const autoSyncDone = useRef(false)
+  useEffect(() => {
+    if (autoSyncDone.current || syncing) return
+    if (!sessions || sessions.length === 0) return
+    if (!facultyAssignments) return // still loading
+
+    // Check if sessions have speaker data but no assignments exist
+    const hasSpeakerData = sessions.some((s: any) =>
+      s.speakers_text || s.speakers || s.chairpersons_text || s.chairpersons || s.moderators_text || s.moderators
+    )
+    const hasAssignments = facultyAssignments.length > 0
+
+    if (hasSpeakerData && !hasAssignments) {
+      autoSyncDone.current = true
+      syncAssignments()
+    }
+  }, [sessions, facultyAssignments, syncing])
 
   // Invite faculty mutation
   const selectedFaculty = facultyList?.find(f => f.id === selectedFacultyId)

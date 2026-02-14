@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -236,6 +236,24 @@ export default function ProgramDashboardPage() {
       setSyncing(false)
     }
   }
+
+  // Auto-sync: if sessions have speakers but no faculty_assignments, trigger sync once
+  const autoSyncDone = useRef(false)
+  useEffect(() => {
+    if (autoSyncDone.current || syncing) return
+    if (!sessions || sessions.length === 0) return
+    if (assignmentsLoading) return
+
+    const hasSpeakerData = sessions.some((s: any) =>
+      s.speakers_text || s.speakers || s.chairpersons_text || s.chairpersons || s.moderators_text || s.moderators
+    )
+    const hasAssignments = (assignments || []).length > 0
+
+    if (hasSpeakerData && !hasAssignments) {
+      autoSyncDone.current = true
+      syncAssignments()
+    }
+  }, [sessions, assignments, assignmentsLoading, syncing])
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
