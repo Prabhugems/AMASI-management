@@ -125,9 +125,8 @@ export async function POST(
 
     for (const session of sessions) {
       // Parse speakers: prefer speakers_text (has email/phone), fallback to speakers column (names only)
-      const speakers = parseFacultyText(session.speakers_text).length > 0
-        ? parseFacultyText(session.speakers_text)
-        : parseNamesList(session.speakers)
+      const speakersFromText = parseFacultyText(session.speakers_text)
+      const speakers = speakersFromText.length > 0 ? speakersFromText : parseNamesList(session.speakers)
 
       for (const speaker of speakers) {
         const result = await insertAssignment(db, eventId, session, speaker, 'speaker')
@@ -141,9 +140,8 @@ export async function POST(
       }
 
       // Parse chairpersons: prefer chairpersons_text, fallback to chairpersons column
-      const chairpersons = parseFacultyText(session.chairpersons_text).length > 0
-        ? parseFacultyText(session.chairpersons_text)
-        : parseNamesList(session.chairpersons)
+      const chairsFromText = parseFacultyText(session.chairpersons_text)
+      const chairpersons = chairsFromText.length > 0 ? chairsFromText : parseNamesList(session.chairpersons)
 
       for (const chair of chairpersons) {
         const result = await insertAssignment(db, eventId, session, chair, 'chairperson')
@@ -157,9 +155,8 @@ export async function POST(
       }
 
       // Parse moderators: prefer moderators_text, fallback to moderators column
-      const moderators = parseFacultyText(session.moderators_text).length > 0
-        ? parseFacultyText(session.moderators_text)
-        : parseNamesList(session.moderators)
+      const modsFromText = parseFacultyText(session.moderators_text)
+      const moderators = modsFromText.length > 0 ? modsFromText : parseNamesList(session.moderators)
 
       for (const mod of moderators) {
         const result = await insertAssignment(db, eventId, session, mod, 'moderator')

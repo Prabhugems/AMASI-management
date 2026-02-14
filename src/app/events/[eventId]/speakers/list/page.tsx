@@ -230,14 +230,13 @@ export default function SpeakersPage() {
     },
   })
 
-  // Fetch faculty assignments for this event
+  // Fetch faculty assignments for this event (via API route - client-side RLS blocks direct access)
   const { data: facultyAssignments } = useQuery({
     queryKey: ["speaker-faculty-assignments", eventId],
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("faculty_assignments")
-        .select("session_id, faculty_email, faculty_name, role")
-        .eq("event_id", eventId)
+      const res = await fetch(`/api/events/${eventId}/program/faculty`)
+      if (!res.ok) return []
+      const data = await res.json()
       return (data || []) as Array<{ session_id: string; faculty_email: string | null; faculty_name: string; role: string }>
     },
   })
