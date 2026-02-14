@@ -4,7 +4,6 @@ import { useState, useMemo, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useQueryClient, useMutation } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
@@ -44,7 +43,7 @@ import {
   Calendar,
   Eye,
   Phone,
-  Sparkles,
+  Mail,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -58,6 +57,8 @@ type ColumnMapping = {
   session: string
   speaker: string
   role: string
+  email: string
+  phone: string
 }
 
 const DEFAULT_MAPPING: ColumnMapping = {
@@ -68,6 +69,8 @@ const DEFAULT_MAPPING: ColumnMapping = {
   session: "",
   speaker: "",
   role: "",
+  email: "",
+  phone: "",
 }
 
 // Helper to check if a mapping value is valid (not empty and not skipped)
@@ -99,10 +102,8 @@ export default function ProgramImportPage() {
   const [columns, setColumns] = useState<string[]>([])
   const [mapping, setMapping] = useState<ColumnMapping>(DEFAULT_MAPPING)
   const [clearExisting, setClearExisting] = useState(false)
-  const [useAIImport, setUseAIImport] = useState(true) // Default to AI import
   const [detectedDateFormat, setDetectedDateFormat] = useState<string>("")
   const [detectedTimeFormat, setDetectedTimeFormat] = useState<string>("")
-  const [useAdvancedMode, setUseAdvancedMode] = useState(false) // Show manual mapping steps
 
   // Parse CSV file
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,6 +194,20 @@ export default function ProgramImportPage() {
           autoMapping.role = header
         }
       }
+
+      // Email column
+      if (!autoMapping.email) {
+        if (h.includes("email") || h.includes("e-mail") || h.includes("mail id")) {
+          autoMapping.email = header
+        }
+      }
+
+      // Phone/Mobile column
+      if (!autoMapping.phone) {
+        if (h.includes("phone") || h.includes("mobile") || h.includes("contact") || h.includes("cell") || h.includes("tel")) {
+          autoMapping.phone = header
+        }
+      }
     })
 
     setMapping(autoMapping)
@@ -260,6 +275,8 @@ export default function ProgramImportPage() {
       const sessionTrack = isValidMapping(mapping.session) ? row[mapping.session] || "" : ""
       const speaker = isValidMapping(mapping.speaker) ? row[mapping.speaker] || "" : ""
       const role = isValidMapping(mapping.role) ? row[mapping.role] || "Speaker" : "Speaker"
+      const email = isValidMapping(mapping.email) ? row[mapping.email] || "" : ""
+      const phone = isValidMapping(mapping.phone) ? row[mapping.phone] || "" : ""
 
       if (!topic || !parsedDate || !startTime) return
 
@@ -284,31 +301,34 @@ export default function ProgramImportPage() {
           session_name: topic,
           hall: hall || null,
           specialty_track: sessionTrack || null,
-          speakers: [],
-          chairpersons: [],
-          moderators: [],
+          speakers: [] as { name: string; email: string; phone: string }[],
+          chairpersons: [] as { name: string; email: string; phone: string }[],
+          moderators: [] as { name: string; email: string; phone: string }[],
         })
       }
 
-      // Add person
+      // Add person with contact info
       const session = sessionMap.get(sessionKey)
       if (speaker) {
+        const personExists = (arr: { name: string }[]) => arr.some(p => p.name === speaker)
+        const personDetail = { name: speaker, email, phone }
         const roleLower = role.toLowerCase()
         if (roleLower.includes("chair") || roleLower.includes("coordinator")) {
-          if (!session.chairpersons.includes(speaker)) session.chairpersons.push(speaker)
+          if (!personExists(session.chairpersons)) session.chairpersons.push(personDetail)
         } else if (roleLower.includes("moderator")) {
-          if (!session.moderators.includes(speaker)) session.moderators.push(speaker)
+          if (!personExists(session.moderators)) session.moderators.push(personDetail)
         } else {
-          if (!session.speakers.includes(speaker)) session.speakers.push(speaker)
+          if (!personExists(session.speakers)) session.speakers.push(personDetail)
         }
       }
     })
 
     return Array.from(sessionMap.values()).map(s => ({
       ...s,
-      speakers: s.speakers.join(", ") || null,
-      chairpersons: s.chairpersons.join(", ") || null,
-      moderators: s.moderators.join(", ") || null,
+      speakers: s.speakers.map((p: any) => p.name).join(", ") || null,
+      chairpersons: s.chairpersons.map((p: any) => p.name).join(", ") || null,
+      moderators: s.moderators.map((p: any) => p.name).join(", ") || null,
+      speakersWithContact: s.speakers.filter((p: any) => p.email).length,
     }))
   }, [csvData, mapping])
 
@@ -353,57 +373,7 @@ export default function ProgramImportPage() {
   // Track import result for showing analysis
   const [importResult, setImportResult] = useState<any>(null)
 
-  // Quick AI Import - skip all manual steps
-  const quickAIImport = useMutation({
-    mutationFn: async (uploadedFile: File) => {
-      const formData = new FormData()
-      formData.append("file", uploadedFile)
-      formData.append("event_id", eventId)
-      if (clearExisting) formData.append("clear_existing", "true")
-
-      const response = await fetch("/api/program/ai-import", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "AI Import failed")
-      }
-
-      return response.json()
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["sessions"] })
-      queryClient.invalidateQueries({ queryKey: ["registrations"] })
-      queryClient.invalidateQueries({ queryKey: ["hall-coordinators"] })
-      queryClient.invalidateQueries({ queryKey: ["faculty"] })
-
-      setImportResult(data)
-      setStep("importing")
-
-      if (data.imported) {
-        const { sessions, halls, faculty } = data.imported
-        toast.success(
-          `AI Import Complete: ${sessions} sessions, ${halls} halls, ${faculty.created} new faculty`,
-          { duration: 6000 }
-        )
-      }
-    },
-    onError: (error: Error) => {
-      toast.error(error.message)
-    },
-  })
-
-  // Handle Quick AI Import file selection
-  const handleQuickAIImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFile = e.target.files?.[0]
-    if (!uploadedFile) return
-    setFile(uploadedFile)
-    quickAIImport.mutate(uploadedFile)
-  }
-
-  // Import mutation
+  // Import mutation - always uses regular import with email/phone support
   const importMutation = useMutation({
     mutationFn: async () => {
       const formData = new FormData()
@@ -411,10 +381,7 @@ export default function ProgramImportPage() {
       formData.append("event_id", eventId)
       if (clearExisting) formData.append("clear_existing", "true")
 
-      // Use AI import endpoint if enabled
-      const endpoint = useAIImport ? "/api/program/ai-import" : "/api/program/import"
-
-      const response = await fetch(endpoint, {
+      const response = await fetch("/api/program/import", {
         method: "POST",
         body: formData,
       })
@@ -430,29 +397,17 @@ export default function ProgramImportPage() {
       queryClient.invalidateQueries({ queryKey: ["sessions"] })
       queryClient.invalidateQueries({ queryKey: ["registrations"] })
       queryClient.invalidateQueries({ queryKey: ["hall-coordinators"] })
+      queryClient.invalidateQueries({ queryKey: ["faculty"] })
 
-      // Store result for display
       setImportResult(data)
-      setStep("importing") // Show results step
+      setStep("importing")
 
-      // Show detailed success message
-      if (useAIImport && data.imported) {
-        const { sessions, halls, coordinators: _coordinators, faculty } = data.imported
-        const analysisMsg = data.analysis?.issuesSummary?.total > 0
-          ? ` | ${data.analysis.issuesSummary.total} timing issues found`
-          : ""
-        toast.success(
-          `AI Import Complete: ${sessions} sessions, ${halls} halls, ${faculty.created} faculty${analysisMsg}`,
-          { duration: 6000 }
-        )
-      } else {
-        const facultyInfo = data.faculty
-          ? ` | Faculty: ${data.faculty.created} created, ${data.faculty.updated} updated`
-          : ""
-        toast.success(data.message || `Imported ${data.imported} sessions${facultyInfo}`, {
-          duration: 5000,
-        })
-      }
+      const facultyInfo = data.faculty
+        ? ` | ${data.faculty.created} faculty created, ${data.faculty.updated} updated`
+        : ""
+      toast.success(data.message || `Imported ${data.imported} sessions${facultyInfo}`, {
+        duration: 5000,
+      })
     },
     onError: (error: Error) => {
       toast.error(error.message)
@@ -467,25 +422,33 @@ export default function ProgramImportPage() {
         <p className="text-muted-foreground">Upload a CSV file to import sessions</p>
       </div>
 
-      {/* Steps indicator - only show in advanced mode or when on mapping/preview steps */}
-      {(useAdvancedMode || step === "mapping" || step === "preview") && (
+      {/* Steps indicator */}
+      {step !== "importing" && (
         <div className="flex items-center gap-4 mb-8">
-          {["upload", "mapping", "preview"].map((s, i) => (
-            <div key={s} className="flex items-center">
-              <div className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
-                step === s ? "bg-primary text-primary-foreground" :
-                ["mapping", "preview"].indexOf(step) > i ? "bg-green-500 text-white" :
-                "bg-muted text-muted-foreground"
-              )}>
-                {["mapping", "preview"].indexOf(step) > i ? <Check className="h-4 w-4" /> : i + 1}
+          {[
+            { key: "upload", label: "Upload" },
+            { key: "mapping", label: "Map Columns" },
+            { key: "preview", label: "Preview" },
+          ].map((s, i) => {
+            const stepOrder = ["upload", "mapping", "preview"]
+            const currentIdx = stepOrder.indexOf(step)
+            return (
+              <div key={s.key} className="flex items-center">
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                  step === s.key ? "bg-primary text-primary-foreground" :
+                  currentIdx > i ? "bg-green-500 text-white" :
+                  "bg-muted text-muted-foreground"
+                )}>
+                  {currentIdx > i ? <Check className="h-4 w-4" /> : i + 1}
+                </div>
+                <span className={cn("ml-2 text-sm", step === s.key && "font-medium")}>
+                  {s.label}
+                </span>
+                {i < 2 && <ArrowRight className="h-4 w-4 mx-4 text-muted-foreground" />}
               </div>
-              <span className={cn("ml-2 text-sm capitalize", step === s && "font-medium")}>
-                {s}
-              </span>
-              {i < 2 && <ArrowRight className="h-4 w-4 mx-4 text-muted-foreground" />}
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -494,11 +457,11 @@ export default function ProgramImportPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-              AI-Powered Program Import
+              <Upload className="h-5 w-5" />
+              Upload Program CSV
             </CardTitle>
             <CardDescription>
-              Upload your CSV file and let AI automatically detect columns, create sessions, and import faculty
+              Upload your CSV file with sessions, speakers, and contact details
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -508,7 +471,7 @@ export default function ProgramImportPage() {
                 <div>
                   <Label className="font-medium">Clear existing sessions before import</Label>
                   <p className="text-sm text-muted-foreground">
-                    Delete all existing sessions and coordinators for this event
+                    Delete all existing sessions for this event
                   </p>
                 </div>
                 <Switch checked={clearExisting} onCheckedChange={setClearExisting} />
@@ -516,73 +479,58 @@ export default function ProgramImportPage() {
               {clearExisting && (
                 <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm flex items-center gap-2">
                   <AlertCircle className="h-4 w-4" />
-                  All existing sessions and coordinators will be deleted
+                  All existing sessions will be deleted
                 </div>
               )}
             </div>
 
             {/* Upload area */}
-            <div className={cn(
-              "border-2 border-dashed rounded-lg p-12 text-center transition-colors",
-              quickAIImport.isPending ? "border-purple-300 bg-purple-50/50 dark:bg-purple-950/20" : "hover:border-purple-300"
-            )}>
-              {quickAIImport.isPending ? (
-                <>
-                  <Loader2 className="h-12 w-12 mx-auto text-purple-600 animate-spin mb-4" />
-                  <p className="text-purple-700 dark:text-purple-300 font-medium">
-                    AI is analyzing your CSV...
-                  </p>
-                  <p className="text-sm text-purple-600 dark:text-purple-400 mt-2">
-                    Detecting columns, creating halls & coordinators, importing faculty
-                  </p>
-                </>
-              ) : (
-                <label className="cursor-pointer block">
-                  <div className="p-4 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/50 dark:to-blue-900/50 rounded-full w-fit mx-auto mb-4">
-                    <Upload className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <p className="text-muted-foreground mb-2">
-                    Click anywhere here to select your CSV file
-                  </p>
-                  <p className="text-sm text-purple-600 dark:text-purple-400 mb-4">
-                    AI will automatically detect and import everything
-                  </p>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleQuickAIImport}
-                    className="hidden"
-                  />
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                    <Upload className="h-4 w-4" />
-                    Select CSV File
-                  </div>
-                </label>
-              )}
-            </div>
+            <label className="cursor-pointer block">
+              <div className="border-2 border-dashed rounded-lg p-12 text-center transition-colors hover:border-primary/50 hover:bg-muted/30">
+                <div className="p-4 bg-muted rounded-full w-fit mx-auto mb-4">
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground mb-2">
+                  Click to select your CSV file
+                </p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Columns will be auto-detected on the next step
+                </p>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                  <Upload className="h-4 w-4" />
+                  Select CSV File
+                </div>
+              </div>
+            </label>
 
             {/* Feature highlights */}
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-2 mb-1">
-                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <FileSpreadsheet className="h-4 w-4 text-blue-600" />
                   <span className="font-medium text-sm">Auto Column Detection</span>
                 </div>
-                <p className="text-xs text-muted-foreground">AI detects Date, Time, Topic, Hall, Speaker columns</p>
+                <p className="text-xs text-muted-foreground">Detects Date, Time, Topic, Hall, Speaker, Email, Phone columns</p>
               </div>
               <div className="p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-2 mb-1">
-                  <Users className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-sm">Faculty + Coordinators</span>
+                  <Mail className="h-4 w-4 text-purple-600" />
+                  <span className="font-medium text-sm">Email & Phone Import</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Creates faculty records and hall coordinators</p>
+                <p className="text-xs text-muted-foreground">Faculty emails imported for sending invitations directly</p>
               </div>
               <div className="p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-2 mb-1">
-                  <Clock className="h-4 w-4 text-amber-600" />
-                  <span className="font-medium text-sm">Conflict Detection</span>
+                  <Users className="h-4 w-4 text-green-600" />
+                  <span className="font-medium text-sm">Faculty Registration</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Identifies timing overlaps and faculty conflicts</p>
+                <p className="text-xs text-muted-foreground">Creates faculty records with contact info automatically</p>
               </div>
             </div>
 
@@ -592,32 +540,8 @@ export default function ProgramImportPage() {
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>Date formats: DD.MM.YYYY, DD/MM/YYYY, YYYY-MM-DD</li>
                 <li>Time formats: HH:MM - HH:MM (range) or HH:MM (single)</li>
-                <li>Columns: Date, Time, Topic, Hall, Session/Track, Speaker Name, Role, Email, Mobile</li>
+                <li>Columns: Date, Time, Topic, Hall, Session/Track, Speaker Name, Role, Email, Mobile Number</li>
               </ul>
-            </div>
-
-            {/* Advanced mode toggle */}
-            <div className="mt-4 pt-4 border-t">
-              <button
-                onClick={() => setUseAdvancedMode(!useAdvancedMode)}
-                className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-              >
-                {useAdvancedMode ? "Hide" : "Show"} advanced options (manual column mapping)
-              </button>
-
-              {useAdvancedMode && (
-                <div className="mt-4 p-4 border rounded-lg bg-muted/30">
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Use manual mapping if AI detection doesn't work correctly for your CSV format.
-                  </p>
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileUpload}
-                    className="max-w-xs"
-                  />
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -768,14 +692,14 @@ export default function ProgramImportPage() {
                 </Select>
               </div>
 
-              <div className="md:col-span-2">
+              <div>
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   Role Column
                   <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Recommended</Badge>
                 </Label>
                 <p className="text-xs text-muted-foreground mb-1">
-                  Used to identify Speaker, Chairperson, Moderator, Presenter, Panelist, etc.
+                  Used to identify Speaker, Chairperson, Moderator, etc.
                 </p>
                 <Select value={mapping.role} onValueChange={(v) => setMapping({ ...mapping, role: v })}>
                   <SelectTrigger className="mt-1">
@@ -783,6 +707,49 @@ export default function ProgramImportPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__skip__">-- Skip (treat all as Speakers) --</SelectItem>
+                    {columns.map(col => (
+                      <SelectItem key={col} value={col}>{col}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Email Column
+                  <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">For Invitations</Badge>
+                </Label>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Faculty email for sending invitations
+                </p>
+                <Select value={mapping.email} onValueChange={(v) => setMapping({ ...mapping, email: v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select column..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__skip__">-- Skip --</SelectItem>
+                    {columns.map(col => (
+                      <SelectItem key={col} value={col}>{col}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Phone/Mobile Column
+                </Label>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Faculty phone for WhatsApp/calling
+                </p>
+                <Select value={mapping.phone} onValueChange={(v) => setMapping({ ...mapping, phone: v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select column..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__skip__">-- Skip --</SelectItem>
                     {columns.map(col => (
                       <SelectItem key={col} value={col}>{col}</SelectItem>
                     ))}
@@ -877,19 +844,18 @@ export default function ProgramImportPage() {
 
           {/* Faculty contact info detected */}
           {stats.hasContactInfo && (
-            <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20">
+            <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-                    <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
+                    <Mail className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <p className="font-medium text-purple-900 dark:text-purple-200">
-                      Faculty Contact Info Detected
+                    <p className="font-medium text-green-900 dark:text-green-200">
+                      Email &amp; Phone Detected
                     </p>
-                    <p className="text-sm text-purple-700 dark:text-purple-300">
-                      {stats.facultyWithContact} faculty members will be created with their email/phone numbers.
-                      They'll appear in the Hall Coordinator portal with Call/WhatsApp buttons.
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      {stats.facultyWithContact} faculty members have email/phone. Invitations can be sent directly after import.
                     </p>
                   </div>
                 </div>
@@ -898,42 +864,12 @@ export default function ProgramImportPage() {
           )}
 
           {/* Options */}
-          <Card>
-            <CardContent className="pt-4 space-y-4">
-              {/* AI Import Toggle */}
-              <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-                    <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div>
-                    <Label className="font-medium text-purple-900 dark:text-purple-200">AI-Powered Import</Label>
-                    <p className="text-sm text-purple-700 dark:text-purple-300">
-                      Auto-detect columns, create halls & coordinators, import faculty contacts
-                    </p>
-                  </div>
-                </div>
-                <Switch checked={useAIImport} onCheckedChange={setUseAIImport} />
-              </div>
-
-              {/* Clear Existing */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="font-medium">Clear existing sessions</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Delete all existing sessions for this event before importing
-                  </p>
-                </div>
-                <Switch checked={clearExisting} onCheckedChange={setClearExisting} />
-              </div>
-              {clearExisting && (
-                <div className="p-2 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  All existing sessions {useAIImport ? "and coordinators " : ""}will be deleted
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {clearExisting && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              All existing sessions will be cleared before importing these {processedData.length} sessions
+            </div>
+          )}
 
           {/* Preview table */}
           <Card>
@@ -989,17 +925,16 @@ export default function ProgramImportPage() {
               onClick={() => importMutation.mutate()}
               disabled={importMutation.isPending || processedData.length === 0}
               size="lg"
-              className={useAIImport ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" : ""}
             >
               {importMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {useAIImport ? "AI Analyzing & Importing..." : "Importing..."}
+                  Importing...
                 </>
               ) : (
                 <>
-                  {useAIImport ? <Sparkles className="h-4 w-4 mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                  {useAIImport ? `AI Import ${processedData.length} Sessions` : `Import ${processedData.length} Sessions`}
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import {processedData.length} Sessions
                 </>
               )}
             </Button>
@@ -1029,165 +964,60 @@ export default function ProgramImportPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-4">
-                <p className="text-2xl sm:text-3xl font-bold">{importResult.imported?.sessions || 0}</p>
+                <p className="text-2xl sm:text-3xl font-bold">{importResult.imported || 0}</p>
                 <p className="text-sm text-muted-foreground">Sessions Imported</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-2xl sm:text-3xl font-bold">{importResult.imported?.halls || 0}</p>
-                <p className="text-sm text-muted-foreground">Halls Detected</p>
+                <p className="text-2xl sm:text-3xl font-bold">{importResult.uniqueSessions || 0}</p>
+                <p className="text-sm text-muted-foreground">Unique Sessions</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-2xl sm:text-3xl font-bold">{importResult.imported?.faculty?.created || 0}</p>
+                <p className="text-2xl sm:text-3xl font-bold">{importResult.faculty?.created || 0}</p>
                 <p className="text-sm text-muted-foreground">Faculty Created</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-2xl sm:text-3xl font-bold">{importResult.imported?.coordinators || 0}</p>
-                <p className="text-sm text-muted-foreground">Coordinators Added</p>
+                <p className="text-2xl sm:text-3xl font-bold">{importResult.faculty?.withContact || 0}</p>
+                <p className="text-sm text-muted-foreground">With Email/Phone</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Schedule Summary */}
-          {importResult.analysis?.scheduleSummary && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Schedule Summary
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <p className="text-xl sm:text-2xl font-bold">{importResult.analysis.scheduleSummary.totalDays}</p>
-                    <p className="text-xs text-muted-foreground">Days</p>
-                  </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <p className="text-xl sm:text-2xl font-bold">{importResult.analysis.scheduleSummary.totalSessions}</p>
-                    <p className="text-xs text-muted-foreground">Total Sessions</p>
-                  </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <p className="text-xl sm:text-2xl font-bold">{importResult.analysis.scheduleSummary.totalHalls}</p>
-                    <p className="text-xs text-muted-foreground">Halls</p>
-                  </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <p className="text-xl sm:text-2xl font-bold">{importResult.analysis.scheduleSummary.totalFaculty}</p>
-                    <p className="text-xs text-muted-foreground">Faculty Members</p>
-                  </div>
-                </div>
-
-                {/* Days Breakdown */}
-                {importResult.analysis.scheduleSummary.daysBreakdown?.length > 0 && (
-                  <div className="border rounded-lg overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Sessions</TableHead>
-                          <TableHead>Hours</TableHead>
-                          <TableHead>Halls Used</TableHead>
-                          <TableHead>Speakers</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {importResult.analysis.scheduleSummary.daysBreakdown.map((day: any) => (
-                          <TableRow key={day.date}>
-                            <TableCell className="font-medium">{day.date}</TableCell>
-                            <TableCell>{day.sessions}</TableCell>
-                            <TableCell>{day.totalHours} hrs</TableCell>
-                            <TableCell>{day.hallsUsed}</TableCell>
-                            <TableCell>{day.uniqueSpeakers}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          {/* Skipped duplicates info */}
+          {importResult.skippedDuplicates > 0 && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {importResult.skippedDuplicates} duplicate sessions were skipped (already exist)
+            </div>
           )}
 
-          {/* Timing Issues */}
-          {importResult.analysis?.timingIssues?.length > 0 && (
-            <Card className="border-amber-200 dark:border-amber-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                  <AlertCircle className="h-5 w-5" />
-                  Timing Issues Detected ({importResult.analysis.issuesSummary.total})
-                </CardTitle>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {importResult.analysis.issuesSummary.overlaps > 0 && (
-                    <Badge variant="destructive">{importResult.analysis.issuesSummary.overlaps} Overlaps</Badge>
-                  )}
-                  {importResult.analysis.issuesSummary.facultyConflicts > 0 && (
-                    <Badge variant="destructive">{importResult.analysis.issuesSummary.facultyConflicts} Faculty Conflicts</Badge>
-                  )}
-                  {importResult.analysis.issuesSummary.gaps > 0 && (
-                    <Badge variant="secondary">{importResult.analysis.issuesSummary.gaps} Gaps</Badge>
-                  )}
-                  {importResult.analysis.issuesSummary.longSessions > 0 && (
-                    <Badge variant="secondary">{importResult.analysis.issuesSummary.longSessions} Long Sessions</Badge>
-                  )}
+          {/* Next Steps */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Next Steps</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm">
+                <div className="flex gap-3 items-start">
+                  <Badge className="shrink-0 bg-blue-100 text-blue-700">1</Badge>
+                  <p>Go to <strong>Speakers page</strong> to sync faculty assignments (auto-runs on first visit)</p>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg overflow-x-auto max-h-60 overflow-y-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Hall</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Details</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {importResult.analysis.timingIssues.slice(0, 20).map((issue: any, i: number) => (
-                        <TableRow key={i} className={issue.type === "overlap" || issue.type === "faculty_conflict" ? "bg-red-50 dark:bg-red-950/20" : ""}>
-                          <TableCell>
-                            <Badge variant={issue.type === "overlap" || issue.type === "faculty_conflict" ? "destructive" : "secondary"}>
-                              {issue.type.replace("_", " ")}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{issue.hall}</TableCell>
-                          <TableCell>{issue.date}</TableCell>
-                          <TableCell className="text-sm">{issue.details}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <div className="flex gap-3 items-start">
+                  <Badge className="shrink-0 bg-blue-100 text-blue-700">2</Badge>
+                  <p>Go to <strong>Confirmations</strong> to send invitations to speakers with email addresses</p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* AI Detection Info */}
-          {importResult.ai_detection && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-purple-600" />
-                  AI Column Detection
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {importResult.ai_detection.columns.map((col: any) => (
-                    <Badge key={col.header} variant="outline" className="text-xs">
-                      {col.header} → <span className="font-bold ml-1">{col.detected_as}</span>
-                      <span className="ml-1 text-muted-foreground">({col.confidence}%)</span>
-                    </Badge>
-                  ))}
+                <div className="flex gap-3 items-start">
+                  <Badge className="shrink-0 bg-blue-100 text-blue-700">3</Badge>
+                  <p>Speakers without emails will be skipped during invitation sending</p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Actions */}
           <div className="flex justify-between">
@@ -1199,10 +1029,15 @@ export default function ProgramImportPage() {
             }}>
               Import Another File
             </Button>
-            <Button onClick={() => router.push(`/events/${eventId}/program/sessions`)}>
-              View Sessions
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => router.push(`/events/${eventId}/program/sessions`)}>
+                View Sessions
+              </Button>
+              <Button onClick={() => router.push(`/events/${eventId}/program/confirmations`)}>
+                Send Invitations
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
           </div>
         </div>
       )}
