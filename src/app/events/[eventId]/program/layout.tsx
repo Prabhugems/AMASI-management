@@ -142,8 +142,8 @@ export default function ProgramLayout({ children }: { children: React.ReactNode 
     return pathname.startsWith(fullPath)
   }
 
-  // Public view should render without the admin sidebar
-  const isPublicView = pathname.endsWith("/public") || pathname.includes("/program/public")
+  // Public view and print page should render without the admin sidebar
+  const isPublicView = pathname.endsWith("/public") || pathname.includes("/program/public") || pathname.includes("/program/print")
   if (isPublicView) {
     return <>{children}</>
   }

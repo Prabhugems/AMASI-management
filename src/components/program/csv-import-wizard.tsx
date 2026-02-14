@@ -55,23 +55,116 @@ const DB_FIELDS = [
 // Order matters: more specific patterns checked first to avoid mis-matches
 // [field, positivePatterns, negativePatterns]
 const COLUMN_PATTERNS: [string, string[], string[]][] = [
-  ["topic", ["topic", "session name", "title", "subject", "talk"], ["email", "track"]],
-  ["end_time", ["end time", "end_time", "endtime", "ending", "finish", "until"], []], // Before start_time
-  ["start_time", ["start time", "start_time", "starttime", "starting", "begin", "from"], ["end"]],
-  ["date", ["date", "day"], ["update", "create", "modified"]],
-  ["duration", ["duration", "minutes", "length"], []],
-  ["session_track", ["session", "track", "category", "stream"], ["name", "title", "type"]],
-  ["faculty_name", ["faculty", "speaker", "presenter", "full name"], ["email", "phone", "mobile", "role"]],
-  ["faculty_role", ["role", "designation", "position", "type of participation"], ["faculty", "email"]],
-  ["faculty_email", ["email", "e-mail", "mail", "email id"], []],
-  ["faculty_phone", ["phone", "mobile", "cell", "contact number", "mobile number"], ["email"]],
-  ["hall", ["hall", "room", "venue", "location", "place"], []],
-  ["session_type", ["format", "kind", "session type"], []],
-  ["needs_travel", ["travel", "needs travel", "flight"], []],
-  ["needs_accommodation", ["accommodation", "hotel", "stay", "lodging"], []],
+  ["topic", ["topic", "session name", "title", "subject", "talk", "agenda", "paper", "presentation title", "programme"], ["email", "track"]],
+  ["end_time", ["end time", "end_time", "endtime", "ending", "finish", "until", "to time", "end at"], []], // Before start_time
+  ["start_time", ["start time", "start_time", "starttime", "starting", "begin", "from", "from time", "start at", "timing"], ["end"]],
+  ["date", ["date", "day", "event date", "session date", "programme date"], ["update", "create", "modified"]],
+  ["duration", ["duration", "minutes", "length", "hrs", "hours"], []],
+  ["session_track", ["session", "track", "category", "stream", "group", "panel"], ["name", "title", "type"]],
+  ["faculty_name", ["faculty", "speaker", "presenter", "full name", "panelist", "panellist", "name of", "resource person", "guest", "instructor", "lecturer"], ["email", "phone", "mobile", "role"]],
+  ["faculty_role", ["role", "designation", "position", "type of participation", "participation"], ["faculty", "email"]],
+  ["faculty_email", ["email", "e-mail", "mail", "email id", "email address", "e mail"], []],
+  ["faculty_phone", ["phone", "mobile", "cell", "contact number", "mobile number", "whatsapp", "telephone", "contact no", "mobile no", "phone no"], ["email"]],
+  ["hall", ["hall", "room", "venue", "location", "place", "auditorium", "stage", "theater", "theatre"], []],
+  ["session_type", ["format", "kind", "session type", "type of session"], []],
+  ["needs_travel", ["travel", "needs travel", "flight", "air travel"], []],
+  ["needs_accommodation", ["accommodation", "hotel", "stay", "lodging", "hostel"], []],
 ]
 // Fallback: generic "time" matches start_time if nothing else matched
 const FALLBACK_TIME_PATTERN = "time"
+
+// ===== Mapping Template System =====
+// Saves admin's column mappings for reuse across uploads
+const TEMPLATE_STORAGE_KEY = "csv-mapping-templates"
+
+interface MappingTemplate {
+  name: string
+  headers: string[]
+  mapping: Record<string, string>
+  createdAt: string
+}
+
+function saveMappingTemplate(template: MappingTemplate) {
+  try {
+    const templates = loadMappingTemplates()
+    const filtered = templates.filter(t => t.name !== template.name)
+    filtered.push(template)
+    const trimmed = filtered.slice(-20) // Keep max 20 templates
+    localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(trimmed))
+  } catch { /* localStorage unavailable */ }
+}
+
+function loadMappingTemplates(): MappingTemplate[] {
+  try {
+    const stored = localStorage.getItem(TEMPLATE_STORAGE_KEY)
+    return stored ? JSON.parse(stored) : []
+  } catch {
+    return []
+  }
+}
+
+function findMatchingTemplate(headers: string[]): MappingTemplate | null {
+  const templates = loadMappingTemplates()
+  const headerSet = new Set(headers.map(h => h.toLowerCase().trim()))
+
+  let bestMatch: MappingTemplate | null = null
+  let bestScore = 0
+
+  for (const template of templates) {
+    const templateSet = new Set(template.headers.map(h => h.toLowerCase().trim()))
+    const matches = [...headerSet].filter(h => templateSet.has(h)).length
+    const score = matches / Math.max(headerSet.size, templateSet.size)
+
+    if (score > bestScore && score >= 0.7) { // At least 70% header overlap
+      bestScore = score
+      bestMatch = template
+    }
+  }
+
+  return bestMatch
+}
+
+function deleteMappingTemplate(name: string) {
+  try {
+    const templates = loadMappingTemplates().filter(t => t.name !== name)
+    localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templates))
+  } catch { /* localStorage unavailable */ }
+}
+
+/** Auto-detect CSV delimiter (comma, tab, semicolon, pipe) */
+function detectDelimiter(text: string): string {
+  const firstLines = text.split(/\r?\n/).slice(0, 5).filter(l => l.trim())
+  if (firstLines.length === 0) return ","
+
+  const delimiters = [",", "\t", ";", "|"]
+  const avgCounts: Record<string, number> = {}
+
+  for (const d of delimiters) {
+    let total = 0
+    for (const line of firstLines) {
+      let count = 0
+      let inQuotes = false
+      for (const char of line) {
+        if (char === '"') inQuotes = !inQuotes
+        if (!inQuotes && char === d) count++
+      }
+      total += count
+    }
+    avgCounts[d] = total / firstLines.length
+  }
+
+  // Choose delimiter with highest average count (minimum 1 occurrence)
+  let best = ","
+  let maxAvg = 0
+  for (const [d, avg] of Object.entries(avgCounts)) {
+    if (avg > maxAvg && avg >= 1) {
+      maxAvg = avg
+      best = d
+    }
+  }
+
+  return best
+}
 
 // ===== Universal Date/Time Parsers =====
 // These handle ANY format automatically - no code changes needed for new CSV formats
@@ -252,20 +345,27 @@ export function CSVImportWizard({
   const [showSkipped, setShowSkipped] = useState(false) // Toggle skipped rows view
   const [editingCell, setEditingCell] = useState<{ row: number; field: string } | null>(null)
 
-  // Parse CSV file
+  // Template state
+  const [savedTemplates, setSavedTemplates] = useState<MappingTemplate[]>([])
+  const [matchedTemplate, setMatchedTemplate] = useState<MappingTemplate | null>(null)
+  const [templateName, setTemplateName] = useState("")
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false)
+
+  // Parse CSV file (auto-detects delimiter: comma, tab, semicolon, pipe)
   const parseCSV = useCallback((text: string) => {
     // Remove BOM if present (Excel adds this)
     const cleanText = text.replace(/^\uFEFF/, "")
+    const delimiter = detectDelimiter(cleanText)
     const lines = cleanText.split(/\r?\n/).filter(line => line.trim())
     if (lines.length === 0) return { headers: [], data: [] }
 
     // Parse header row
-    const headers = parseCSVLine(lines[0])
+    const headers = parseCSVLine(lines[0], delimiter)
 
     // Parse data rows
     const data: CSVRow[] = []
     for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i])
+      const values = parseCSVLine(lines[i], delimiter)
       if (values.some(v => v.trim())) {
         const row: CSVRow = {}
         headers.forEach((header, idx) => {
@@ -278,8 +378,8 @@ export function CSVImportWizard({
     return { headers, data }
   }, [])
 
-  // Parse a single CSV line (handles quoted values)
-  const parseCSVLine = (line: string): string[] => {
+  // Parse a single CSV/TSV line (handles quoted values)
+  const parseCSVLine = (line: string, delimiter: string = ","): string[] => {
     const result: string[] = []
     let current = ""
     let inQuotes = false
@@ -293,7 +393,7 @@ export function CSVImportWizard({
         } else {
           inQuotes = !inQuotes
         }
-      } else if (char === "," && !inQuotes) {
+      } else if (char === delimiter && !inQuotes) {
         result.push(current.trim())
         current = ""
       } else {
@@ -363,7 +463,26 @@ export function CSVImportWizard({
 
       setCsvHeaders(headers)
       setCsvData(data)
-      setFieldMapping(autoDetectMapping(headers, data))
+
+      // Load saved templates and check for a match
+      const templates = loadMappingTemplates()
+      setSavedTemplates(templates)
+
+      const matched = findMatchingTemplate(headers)
+      if (matched) {
+        setMatchedTemplate(matched)
+        // Apply saved template, with auto-detect fallback for any new columns
+        const autoMapping = autoDetectMapping(headers, data)
+        const templateMapping: Record<string, string> = {}
+        headers.forEach(header => {
+          templateMapping[header] = matched.mapping[header] || autoMapping[header] || "ignore"
+        })
+        setFieldMapping(templateMapping)
+      } else {
+        setMatchedTemplate(null)
+        setFieldMapping(autoDetectMapping(headers, data))
+      }
+
       setStep("map")
     } catch (_err) {
       setError("Failed to parse CSV file")
@@ -635,6 +754,9 @@ export function CSVImportWizard({
     setExcludedRows(new Set())
     setShowSkipped(false)
     setEditingCell(null)
+    setMatchedTemplate(null)
+    setTemplateName("")
+    setShowSaveTemplate(false)
   }
 
   // Close handler
@@ -730,6 +852,57 @@ export function CSVImportWizard({
                   <strong>{file?.name}</strong>
                 </p>
               </div>
+
+              {/* Template applied notification */}
+              {matchedTemplate && (
+                <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded text-sm">
+                  <Check className="h-4 w-4 text-green-600 shrink-0" />
+                  <span className="text-green-800">
+                    Applied saved template: <strong>{matchedTemplate.name}</strong>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs ml-auto"
+                    onClick={() => {
+                      setMatchedTemplate(null)
+                      setFieldMapping(autoDetectMapping(csvHeaders, csvData))
+                    }}
+                  >
+                    Reset to auto-detect
+                  </Button>
+                </div>
+              )}
+
+              {/* Saved templates selector (when no auto-match) */}
+              {!matchedTemplate && savedTemplates.length > 0 && (
+                <div className="flex items-center gap-2 text-sm p-2 bg-muted/50 rounded">
+                  <span className="text-muted-foreground shrink-0">Apply saved template:</span>
+                  <Select onValueChange={(name) => {
+                    const template = savedTemplates.find(t => t.name === name)
+                    if (template) {
+                      const autoMapping = autoDetectMapping(csvHeaders, csvData)
+                      const templateMapping: Record<string, string> = {}
+                      csvHeaders.forEach(header => {
+                        templateMapping[header] = template.mapping[header] || autoMapping[header] || "ignore"
+                      })
+                      setFieldMapping(templateMapping)
+                      setMatchedTemplate(template)
+                    }
+                  }}>
+                    <SelectTrigger className="w-[200px] h-8">
+                      <SelectValue placeholder="Select template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {savedTemplates.map(t => (
+                        <SelectItem key={t.name} value={t.name}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="grid gap-3">
                 <div className="grid grid-cols-[1fr,auto,1fr] gap-2 text-sm font-medium text-muted-foreground pb-2 border-b">
@@ -1080,6 +1253,46 @@ export function CSVImportWizard({
                   Speaker registrations: {importResult.registrationsCreated} created
                 </p>
               ) : null}
+
+              {/* Save mapping as template for future use */}
+              {!showSaveTemplate ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setShowSaveTemplate(true)}
+                >
+                  Save column mapping for future use
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2 mt-4">
+                  <Input
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    placeholder="Template name (e.g., Airtable Export)"
+                    className="h-8 w-64 text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    className="h-8"
+                    disabled={!templateName.trim()}
+                    onClick={() => {
+                      saveMappingTemplate({
+                        name: templateName.trim(),
+                        headers: csvHeaders,
+                        mapping: fieldMapping,
+                        createdAt: new Date().toISOString(),
+                      })
+                      setSavedTemplates(loadMappingTemplates())
+                      setShowSaveTemplate(false)
+                      setTemplateName("")
+                    }}
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Save
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

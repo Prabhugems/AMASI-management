@@ -396,11 +396,16 @@ export default function ProgramPage() {
     },
   })
 
-  // Delete session mutation
+  // Delete session mutation (uses admin API to bypass RLS)
   const deleteSession = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("sessions").delete().eq("id", id)
-      if (error) throw error
+      const response = await fetch(`/api/program/clear?event_id=${eventId}&ids=${id}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to delete session")
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions", eventId] })
@@ -413,14 +418,16 @@ export default function ProgramPage() {
     },
   })
 
-  // Clear all sessions mutation
+  // Clear all sessions mutation (uses admin API to bypass RLS)
   const clearAllSessions = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("sessions")
-        .delete()
-        .eq("event_id", eventId)
-      if (error) throw error
+      const response = await fetch(`/api/program/clear?event_id=${eventId}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to clear sessions")
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions", eventId] })
@@ -432,15 +439,17 @@ export default function ProgramPage() {
     },
   })
 
-  // Bulk delete mutation
+  // Bulk delete mutation (uses admin API to bypass RLS)
   const bulkDeleteSessions = useMutation({
     mutationFn: async () => {
       const ids = Array.from(selectedIds)
-      const { error } = await supabase
-        .from("sessions")
-        .delete()
-        .in("id", ids)
-      if (error) throw error
+      const response = await fetch(`/api/program/clear?event_id=${eventId}&ids=${ids.join(",")}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to delete sessions")
+      }
       return ids.length
     },
     onSuccess: (count) => {

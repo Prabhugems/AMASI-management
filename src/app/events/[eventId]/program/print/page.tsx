@@ -19,6 +19,10 @@ type Session = {
   hall: string | null
   description: string | null
   specialty_track: string | null
+  speakers?: string | null
+  speakers_text?: string | null
+  chairpersons?: string | null
+  moderators?: string | null
 }
 
 type Event = {
@@ -153,6 +157,24 @@ export default function PrintProgramPage() {
   }
 
   const parseSpeakerInfo = (session: Session) => {
+    // Use dedicated speakers column first, fallback to description parsing
+    if (session.speakers) {
+      // speakers_text has format "Name (email, phone) | Name2 (email, phone)"
+      // speakers has just names "Name1, Name2"
+      const contactText = session.speakers_text || ""
+      const contacts = contactText.split(" | ").map(p => {
+        const name = p.split("(")[0].trim()
+        const details = p.match(/\(([^)]*)\)/)
+        const [email, phone] = details ? details[1].split(",").map(s => s.trim()) : ["", ""]
+        return { name, email, phone }
+      })
+      return {
+        name: session.speakers,
+        email: contacts[0]?.email || "",
+        phone: contacts[0]?.phone || "",
+      }
+    }
+    // Fallback: parse from description (legacy format "Name | Email | Phone")
     const desc = session.description || ""
     const parts = desc.split(" | ")
     return {
