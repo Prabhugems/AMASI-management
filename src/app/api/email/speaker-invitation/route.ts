@@ -70,6 +70,12 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
 
   // Generate portal URL and shorten it
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
+  // Reject if NEXT_PUBLIC_APP_URL is still set to placeholder/example text
+  if (baseUrl.includes("e.g.") || baseUrl.includes("your-") || baseUrl.includes("(your") || baseUrl.includes("example")) {
+    return { success: false, error: "NEXT_PUBLIC_APP_URL is not configured. Set it to your actual domain (e.g. https://collegeofmas.org.in) in Vercel Environment Variables, then redeploy." }
+  }
+
   const fullPortalUrl = `${baseUrl}/speaker/${portal_token}`
   const portalUrl = await shortenSpeakerPortalUrl(fullPortalUrl, speaker_name, event_name)
 
