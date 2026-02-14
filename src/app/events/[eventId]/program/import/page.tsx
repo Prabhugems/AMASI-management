@@ -52,6 +52,7 @@ type CSVRow = Record<string, string>
 type ColumnMapping = {
   date: string
   time: string
+  endTime: string
   topic: string
   hall: string
   session: string
@@ -64,6 +65,7 @@ type ColumnMapping = {
 const DEFAULT_MAPPING: ColumnMapping = {
   date: "",
   time: "",
+  endTime: "",
   topic: "",
   hall: "",
   session: "",
@@ -76,13 +78,38 @@ const DEFAULT_MAPPING: ColumnMapping = {
 // Helper to check if a mapping value is valid (not empty and not skipped)
 const isValidMapping = (value: string) => value && value !== "__skip__"
 
-// Date format patterns
-const DATE_FORMATS = [
+// Date format patterns - slash formats have both MM/DD and DD/MM variants
+const DATE_FORMATS_DD_FIRST = [
   { pattern: /(\d{1,2})\.(\d{1,2})\.(\d{4})/, name: "DD.MM.YYYY", parse: (m: RegExpMatchArray) => `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` },
   { pattern: /(\d{1,2})\/(\d{1,2})\/(\d{4})/, name: "DD/MM/YYYY", parse: (m: RegExpMatchArray) => `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` },
   { pattern: /(\d{4})-(\d{2})-(\d{2})/, name: "YYYY-MM-DD", parse: (m: RegExpMatchArray) => m[0] },
   { pattern: /(\d{1,2})-(\d{1,2})-(\d{4})/, name: "DD-MM-YYYY", parse: (m: RegExpMatchArray) => `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` },
 ]
+
+const DATE_FORMATS_MM_FIRST = [
+  { pattern: /(\d{1,2})\.(\d{1,2})\.(\d{4})/, name: "MM.DD.YYYY", parse: (m: RegExpMatchArray) => `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}` },
+  { pattern: /(\d{1,2})\/(\d{1,2})\/(\d{4})/, name: "MM/DD/YYYY", parse: (m: RegExpMatchArray) => `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}` },
+  { pattern: /(\d{4})-(\d{2})-(\d{2})/, name: "YYYY-MM-DD", parse: (m: RegExpMatchArray) => m[0] },
+  { pattern: /(\d{1,2})-(\d{1,2})-(\d{4})/, name: "MM-DD-YYYY", parse: (m: RegExpMatchArray) => `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}` },
+]
+
+// Auto-detect if dates are MM/DD or DD/MM by scanning all values
+function detectDateOrder(dates: string[]): "mm_first" | "dd_first" {
+  let maxFirst = 0, maxSecond = 0
+  for (const d of dates) {
+    const match = d.match(/(\d{1,2})[./-](\d{1,2})[./-]\d{4}/)
+    if (match) {
+      maxFirst = Math.max(maxFirst, parseInt(match[1]))
+      maxSecond = Math.max(maxSecond, parseInt(match[2]))
+    }
+  }
+  // If first number exceeds 12, it must be a day (DD/MM)
+  if (maxFirst > 12) return "dd_first"
+  // If second number exceeds 12, first must be month (MM/DD)
+  if (maxSecond > 12) return "mm_first"
+  // Ambiguous: default to MM/DD (common in Airtable, US format)
+  return "mm_first"
+}
 
 // Time format patterns
 const TIME_FORMATS = [
@@ -102,6 +129,7 @@ export default function ProgramImportPage() {
   const [columns, setColumns] = useState<string[]>([])
   const [mapping, setMapping] = useState<ColumnMapping>(DEFAULT_MAPPING)
   const [clearExisting, setClearExisting] = useState(false)
+  const [dateOrder, setDateOrder] = useState<"mm_first" | "dd_first">("mm_first")
   const [detectedDateFormat, setDetectedDateFormat] = useState<string>("")
   const [detectedTimeFormat, setDetectedTimeFormat] = useState<string>("")
 
@@ -167,8 +195,11 @@ export default function ProgramImportPage() {
       // Date column
       if (h.includes("date") && !autoMapping.date) autoMapping.date = header
 
-      // Time column
-      if ((h.includes("time") || h === "time") && !autoMapping.time) autoMapping.time = header
+      // Time column (start time) - skip if it's explicitly an "ending" or "end" time
+      if ((h.includes("time") || h === "time") && !autoMapping.time && !h.includes("ending") && !h.includes("end time")) autoMapping.time = header
+
+      // End Time column (separate from start time)
+      if (!autoMapping.endTime && (h.includes("ending") || (h.includes("end") && h.includes("time")))) autoMapping.endTime = header
 
       // Topic/Title column
       if ((h.includes("topic") || h.includes("title") || h.includes("session name")) && !autoMapping.topic) autoMapping.topic = header
@@ -212,10 +243,15 @@ export default function ProgramImportPage() {
 
     setMapping(autoMapping)
 
-    // Detect date format from first row
+    // Detect date format and order (MM/DD vs DD/MM)
     if (autoMapping.date && data[0]) {
+      const allDates = data.map(row => row[autoMapping.date] || "").filter(Boolean)
+      const order = detectDateOrder(allDates)
+      setDateOrder(order)
+
+      const formats = order === "mm_first" ? DATE_FORMATS_MM_FIRST : DATE_FORMATS_DD_FIRST
       const sampleDate = data[0][autoMapping.date]
-      for (const format of DATE_FORMATS) {
+      for (const format of formats) {
         if (format.pattern.test(sampleDate)) {
           setDetectedDateFormat(format.name)
           break
@@ -239,16 +275,19 @@ export default function ProgramImportPage() {
   }, [])
 
   // Process data for preview
+  const DATE_FORMATS = dateOrder === "mm_first" ? DATE_FORMATS_MM_FIRST : DATE_FORMATS_DD_FIRST
+
   const processedData = useMemo(() => {
     if (!isValidMapping(mapping.date) || !isValidMapping(mapping.time) || !isValidMapping(mapping.topic)) return []
 
+    const formats = dateOrder === "mm_first" ? DATE_FORMATS_MM_FIRST : DATE_FORMATS_DD_FIRST
     const sessionMap = new Map<string, any>()
 
     csvData.forEach(row => {
       // Parse date
       let parsedDate = ""
       const dateStr = row[mapping.date] || ""
-      for (const format of DATE_FORMATS) {
+      for (const format of formats) {
         const match = dateStr.match(format.pattern)
         if (match) {
           parsedDate = format.parse(match)
@@ -266,6 +305,18 @@ export default function ProgramImportPage() {
           startTime = format.parseStart(match)
           endTime = format.parseEnd ? format.parseEnd(match) : startTime
           break
+        }
+      }
+
+      // Check for separate end time column
+      if (startTime && (endTime === startTime || !endTime) && isValidMapping(mapping.endTime)) {
+        const endTimeStr = row[mapping.endTime] || ""
+        for (const format of TIME_FORMATS) {
+          const match = endTimeStr.match(format.pattern)
+          if (match) {
+            endTime = format.parseStart(match)
+            break
+          }
         }
       }
 
@@ -330,7 +381,7 @@ export default function ProgramImportPage() {
       moderators: s.moderators.map((p: any) => p.name).join(", ") || null,
       speakersWithContact: s.speakers.filter((p: any) => p.email).length,
     }))
-  }, [csvData, mapping])
+  }, [csvData, mapping, dateOrder])
 
   // Stats
   const stats = useMemo(() => {
@@ -380,6 +431,7 @@ export default function ProgramImportPage() {
       formData.append("file", file!)
       formData.append("event_id", eventId)
       formData.append("mapping", JSON.stringify(mapping))
+      formData.append("date_order", dateOrder)
       if (clearExisting) formData.append("clear_existing", "true")
 
       const response = await fetch("/api/program/import", {
@@ -572,7 +624,7 @@ export default function ProgramImportPage() {
 
             {/* Detected formats */}
             {(detectedDateFormat || detectedTimeFormat) && (
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-4 items-center">
                 {detectedDateFormat && (
                   <Badge variant="outline" className="text-green-600">
                     <Check className="h-3 w-3 mr-1" />
@@ -584,6 +636,31 @@ export default function ProgramImportPage() {
                     <Check className="h-3 w-3 mr-1" />
                     Time format: {detectedTimeFormat}
                   </Badge>
+                )}
+                {/* Date order toggle */}
+                {detectedDateFormat && !detectedDateFormat.startsWith("YYYY") && (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <span className="text-sm text-muted-foreground">Date order:</span>
+                    <Select value={dateOrder} onValueChange={(v: "mm_first" | "dd_first") => {
+                      setDateOrder(v)
+                      const formats = v === "mm_first" ? DATE_FORMATS_MM_FIRST : DATE_FORMATS_DD_FIRST
+                      const sampleDate = csvData[0]?.[mapping.date] || ""
+                      for (const format of formats) {
+                        if (format.pattern.test(sampleDate)) {
+                          setDetectedDateFormat(format.name)
+                          break
+                        }
+                      }
+                    }}>
+                      <SelectTrigger className="w-[180px] h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mm_first">MM/DD (Jun 3 = 6/3)</SelectItem>
+                        <SelectItem value="dd_first">DD/MM (Mar 6 = 6/3)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </div>
             )}
@@ -617,6 +694,27 @@ export default function ProgramImportPage() {
                     <SelectValue placeholder="Select column..." />
                   </SelectTrigger>
                   <SelectContent>
+                    {columns.map(col => (
+                      <SelectItem key={col} value={col}>{col}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  End Time Column
+                </Label>
+                <p className="text-xs text-muted-foreground mb-1">
+                  If start &amp; end times are in separate columns
+                </p>
+                <Select value={mapping.endTime} onValueChange={(v) => setMapping({ ...mapping, endTime: v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select column..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__skip__">-- Skip (use time range) --</SelectItem>
                     {columns.map(col => (
                       <SelectItem key={col} value={col}>{col}</SelectItem>
                     ))}

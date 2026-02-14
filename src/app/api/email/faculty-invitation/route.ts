@@ -86,6 +86,12 @@ async function sendFacultyInvitation(data: FacultyInvitationData): Promise<{ suc
 
     // Generate portal URL
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
+    // Reject if NEXT_PUBLIC_APP_URL is still set to placeholder/example text
+    if (baseUrl.includes("e.g.") || baseUrl.includes("your-") || baseUrl.includes("(your") || baseUrl.includes("example")) {
+      return { success: false, error: "NEXT_PUBLIC_APP_URL is not configured. Set it to your actual domain in Vercel Environment Variables, then redeploy." }
+    }
+
     const portalUrl = `${baseUrl}/respond/faculty/${invitationToken}`
 
     // Format event dates

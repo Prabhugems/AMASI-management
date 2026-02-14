@@ -63,8 +63,19 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
     return { success: false, error: "Missing required fields" }
   }
 
+  // Reject placeholder emails
+  if (speaker_email.includes("@placeholder.")) {
+    return { success: false, error: `Cannot send to placeholder email (${speaker_email}). Update with a real email first.` }
+  }
+
   // Generate portal URL and shorten it
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
+  // Reject if NEXT_PUBLIC_APP_URL is still set to placeholder/example text
+  if (baseUrl.includes("e.g.") || baseUrl.includes("your-") || baseUrl.includes("(your") || baseUrl.includes("example")) {
+    return { success: false, error: "NEXT_PUBLIC_APP_URL is not configured. Set it to your actual domain (e.g. https://collegeofmas.org.in) in Vercel Environment Variables, then redeploy." }
+  }
+
   const fullPortalUrl = `${baseUrl}/speaker/${portal_token}`
   const portalUrl = await shortenSpeakerPortalUrl(fullPortalUrl, speaker_name, event_name)
 
@@ -346,7 +357,21 @@ export async function PUT(request: NextRequest) {
 
       if (!portalToken) {
         results.skipped++
-        results.errors.push(`${reg.attendee_email}: No portal token`)
+        results.errors.push(`${reg.attendee_name || reg.id}: No portal token`)
+        continue
+      }
+
+      // Skip speakers without email
+      if (!reg.attendee_email) {
+        results.skipped++
+        results.errors.push(`${reg.attendee_name || reg.id}: No email address`)
+        continue
+      }
+
+      // Skip placeholder emails
+      if (reg.attendee_email.includes("@placeholder.")) {
+        results.skipped++
+        results.errors.push(`${reg.attendee_name}: Placeholder email (${reg.attendee_email}) - update with real email first`)
         continue
       }
 

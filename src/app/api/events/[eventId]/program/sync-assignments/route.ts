@@ -74,7 +74,30 @@ async function insertAssignment(
     .eq("role", role)
     .maybeSingle()
 
-  if (existing) return { created: false, error: null }
+  if (existing) {
+    // Update email/phone if missing or placeholder on existing assignment
+    if (person.email || person.phone) {
+      const { data: existingFull } = await db
+        .from("faculty_assignments")
+        .select("faculty_email, faculty_phone")
+        .eq("id", existing.id)
+        .single()
+
+      if (existingFull) {
+        const updates: any = {}
+        if (person.email && (!existingFull.faculty_email || existingFull.faculty_email.includes("@placeholder."))) {
+          updates.faculty_email = person.email
+        }
+        if (person.phone && !existingFull.faculty_phone) {
+          updates.faculty_phone = person.phone
+        }
+        if (Object.keys(updates).length > 0) {
+          await db.from("faculty_assignments").update(updates).eq("id", existing.id)
+        }
+      }
+    }
+    return { created: false, error: null }
+  }
 
   const { error } = await db
     .from("faculty_assignments")

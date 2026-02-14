@@ -119,9 +119,10 @@ export async function POST(request: NextRequest) {
     const eventId = formData.get("event_id") as string
     const clearExisting = formData.get("clear_existing") === "true"
     const createRegistrations = formData.get("create_registrations") !== "false" // default true
+    const dateOrder = (formData.get("date_order") as string) || "mm_first" // mm_first = M/D/YYYY, dd_first = D/M/YYYY
     const mappingStr = formData.get("mapping") as string | null
     const userMapping = mappingStr ? JSON.parse(mappingStr) as {
-      date?: string; time?: string; topic?: string; hall?: string;
+      date?: string; time?: string; endTime?: string; topic?: string; hall?: string;
       session?: string; speaker?: string; role?: string; email?: string; phone?: string;
     } : null
 
@@ -204,31 +205,52 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Parse date - handles multiple formats
+      // Parse date - handles multiple formats, respecting date order (MM/DD vs DD/MM)
       let parsedDate = ""
       const dateStr = getCol(row, "date", "Date", "date")
 
-      // Try DD.MM.YYYY format (AMASICON)
-      let dateMatch = dateStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/)
+      // Try YYYY-MM-DD format first (unambiguous)
+      let dateMatch = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/)
       if (dateMatch) {
-        const [_match, day, month, year] = dateMatch
-        parsedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+        parsedDate = dateStr.substring(0, 10)
       }
 
-      // Try DD/MM/YYYY format
+      // Try dot-separated format (DD.MM.YYYY or MM.DD.YYYY based on dateOrder)
       if (!parsedDate) {
-        dateMatch = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+        dateMatch = dateStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/)
         if (dateMatch) {
-          const [_match, day, month, year] = dateMatch
-          parsedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+          const [_match, first, second, year] = dateMatch
+          if (dateOrder === "mm_first") {
+            parsedDate = `${year}-${first.padStart(2, "0")}-${second.padStart(2, "0")}` // MM.DD.YYYY
+          } else {
+            parsedDate = `${year}-${second.padStart(2, "0")}-${first.padStart(2, "0")}` // DD.MM.YYYY
+          }
         }
       }
 
-      // Try YYYY-MM-DD format
+      // Try slash-separated format (M/D/YYYY or D/M/YYYY based on dateOrder)
       if (!parsedDate) {
-        dateMatch = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/)
+        dateMatch = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
         if (dateMatch) {
-          parsedDate = dateStr
+          const [_match, first, second, year] = dateMatch
+          if (dateOrder === "mm_first") {
+            parsedDate = `${year}-${first.padStart(2, "0")}-${second.padStart(2, "0")}` // MM/DD/YYYY
+          } else {
+            parsedDate = `${year}-${second.padStart(2, "0")}-${first.padStart(2, "0")}` // DD/MM/YYYY
+          }
+        }
+      }
+
+      // Try dash-separated format
+      if (!parsedDate) {
+        dateMatch = dateStr.match(/(\d{1,2})-(\d{1,2})-(\d{4})/)
+        if (dateMatch) {
+          const [_match, first, second, year] = dateMatch
+          if (dateOrder === "mm_first") {
+            parsedDate = `${year}-${first.padStart(2, "0")}-${second.padStart(2, "0")}`
+          } else {
+            parsedDate = `${year}-${second.padStart(2, "0")}-${first.padStart(2, "0")}`
+          }
         }
       }
 
@@ -244,12 +266,29 @@ export async function POST(request: NextRequest) {
         startTime = `${startH.padStart(2, "0")}:${startM}:00`
         endTime = `${endH.padStart(2, "0")}:${endM}:00`
       } else {
-        // Single time format
+        // Single time format (also handles datetime like "6/3/2026 09:00")
         const singleTimeMatch = timeStr.match(/(\d{1,2}):(\d{2})/)
         if (singleTimeMatch) {
           const [_match, hours, minutes] = singleTimeMatch
           startTime = `${hours.padStart(2, "0")}:${minutes}:00`
           endTime = startTime
+        }
+      }
+
+      // Check for separate end time column (e.g., "Ending Time", "End Time")
+      if (startTime && (endTime === startTime || !endTime)) {
+        let endTimeStr = ""
+        if (userMapping && isValidMapping(userMapping.endTime)) {
+          endTimeStr = row[userMapping.endTime!] || ""
+        } else {
+          // Auto-detect from common column names
+          endTimeStr = row["Ending Time"] || row["End Time"] || row["end_time"] || row["EndTime"] || ""
+        }
+        if (endTimeStr) {
+          const endMatch = endTimeStr.match(/(\d{1,2}):(\d{2})/)
+          if (endMatch) {
+            endTime = `${endMatch[1].padStart(2, "0")}:${endMatch[2]}:00`
+          }
         }
       }
 
@@ -501,7 +540,7 @@ export async function POST(request: NextRequest) {
           if (!existing.attendee_phone && faculty.phone) {
             updates.attendee_phone = faculty.phone
           }
-          if (!existing.attendee_email && faculty.email) {
+          if (faculty.email && (!existing.attendee_email || existing.attendee_email.includes("@placeholder."))) {
             updates.attendee_email = faculty.email
           }
 
