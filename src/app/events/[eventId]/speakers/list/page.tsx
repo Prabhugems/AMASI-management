@@ -75,6 +75,7 @@ import {
   MessageSquare,
   Tag,
   TicketCheck,
+  RefreshCw,
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
@@ -201,6 +202,9 @@ export default function SpeakersPage() {
   const [inviteRole, setInviteRole] = useState("Speaker")
   const [inviteTopic, setInviteTopic] = useState("")
   const [portalLink, setPortalLink] = useState<string | null>(null)
+
+  // Sync assignments state
+  const [syncing, setSyncing] = useState(false)
 
   // Edit session time state
   const [editingSession, setEditingSession] = useState<Session | null>(null)
@@ -601,6 +605,32 @@ export default function SpeakersPage() {
       toast.error(error.message)
     },
   })
+
+  // Sync faculty assignments from session data
+  const syncAssignments = async () => {
+    setSyncing(true)
+    try {
+      const response = await fetch(`/api/events/${eventId}/program/sync-assignments`, {
+        method: 'POST',
+      })
+      if (response.ok) {
+        const result = await response.json()
+        if (result.created > 0) {
+          toast.success(`Synced ${result.created} session assignments`)
+        } else {
+          toast.info("All assignments already synced")
+        }
+        queryClient.invalidateQueries({ queryKey: ["speaker-faculty-assignments", eventId] })
+        queryClient.invalidateQueries({ queryKey: ["event-speakers", eventId] })
+      } else {
+        toast.error("Failed to sync assignments")
+      }
+    } catch {
+      toast.error("Error syncing assignments")
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   // Invite faculty mutation
   const selectedFaculty = facultyList?.find(f => f.id === selectedFacultyId)
@@ -1052,6 +1082,18 @@ export default function SpeakersPage() {
               Import from Program
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={syncAssignments}
+            disabled={syncing}
+          >
+            {syncing ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Sync Sessions
+          </Button>
           <Button onClick={() => setIsInviteModalOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
             Add Speaker

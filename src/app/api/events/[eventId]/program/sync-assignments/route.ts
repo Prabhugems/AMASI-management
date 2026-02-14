@@ -13,6 +13,10 @@ type SessionRow = {
   speakers_text: string | null
   chairpersons_text: string | null
   moderators_text: string | null
+  speakers: string | null
+  chairpersons: string | null
+  moderators: string | null
+  description: string | null
 }
 
 // Generate a random token for invitation links
@@ -42,6 +46,57 @@ function parseFacultyText(text: string | null): Array<{name: string, email: stri
   }).filter(f => f.name)
 }
 
+// Parse comma-separated names (fallback for sessions without _text columns)
+// Format: "Dr Name1, Dr Name2" or "Name1 (Role), Name2 (Role)"
+function parseNamesList(text: string | null): Array<{name: string, email: string | null, phone: string | null}> {
+  if (!text) return []
+
+  return text.split(',').map(entry => {
+    // Remove role in parentheses like "(Chairperson)" but keep the name
+    const name = entry.replace(/\s*\([^)]*\)\s*$/, '').trim()
+    return { name, email: null, phone: null }
+  }).filter(f => f.name)
+}
+
+async function insertAssignment(
+  db: any,
+  eventId: string,
+  session: SessionRow,
+  person: { name: string; email: string | null; phone: string | null },
+  role: string,
+) {
+  // Check if already exists (by session_id + name + role)
+  const { data: existing } = await db
+    .from("faculty_assignments")
+    .select("id")
+    .eq("session_id", session.id)
+    .eq("faculty_name", person.name)
+    .eq("role", role)
+    .maybeSingle()
+
+  if (existing) return { created: false, error: null }
+
+  const { error } = await db
+    .from("faculty_assignments")
+    .insert({
+      event_id: eventId,
+      session_id: session.id,
+      faculty_name: person.name,
+      faculty_email: person.email,
+      faculty_phone: person.phone,
+      role,
+      session_date: session.session_date,
+      start_time: session.start_time,
+      end_time: session.end_time,
+      hall: session.hall,
+      session_name: session.session_name,
+      topic_title: session.session_name,
+      invitation_token: generateToken(),
+    })
+
+  return { created: !error, error: error?.message || null }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
@@ -52,10 +107,10 @@ export async function POST(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
-    // Fetch all sessions for this event
+    // Fetch all sessions for this event (include both _text and plain name columns)
     const { data: sessionsData, error: sessionsError } = await db
       .from("sessions")
-      .select("id, event_id, session_name, session_date, start_time, end_time, hall, specialty_track, speakers_text, chairpersons_text, moderators_text")
+      .select("id, event_id, session_name, session_date, start_time, end_time, hall, specialty_track, speakers_text, chairpersons_text, moderators_text, speakers, chairpersons, moderators, description")
       .eq("event_id", eventId)
 
     if (sessionsError) {
@@ -66,135 +121,69 @@ export async function POST(
 
     let created = 0
     let skipped = 0
-    let firstError: string | null = null
     const errors: string[] = []
 
     for (const session of sessions) {
-      // Parse speakers
-      const speakers = parseFacultyText(session.speakers_text)
+      // Parse speakers: prefer speakers_text (has email/phone), fallback to speakers column (names only)
+      const speakers = parseFacultyText(session.speakers_text).length > 0
+        ? parseFacultyText(session.speakers_text)
+        : parseNamesList(session.speakers)
+
       for (const speaker of speakers) {
-        // Check if already exists (by session_id + name + role)
-        const { data: existing } = await db
-          .from("faculty_assignments")
-          .select("id")
-          .eq("session_id", session.id)
-          .eq("faculty_name", speaker.name)
-          .eq("role", "speaker")
-          .maybeSingle()
-
-        if (existing) {
+        const result = await insertAssignment(db, eventId, session, speaker, 'speaker')
+        if (result.created) created++
+        else if (result.error) {
+          if (errors.length < 5) errors.push(`Speaker ${speaker.name}: ${result.error}`)
           skipped++
-          continue
-        }
-
-        const { error } = await db
-          .from("faculty_assignments")
-          .insert({
-            event_id: eventId,
-            session_id: session.id,
-            faculty_name: speaker.name,
-            faculty_email: speaker.email,
-            faculty_phone: speaker.phone,
-            role: 'speaker',
-            session_date: session.session_date,
-            start_time: session.start_time,
-            end_time: session.end_time,
-            hall: session.hall,
-            session_name: session.session_name,
-            topic_title: session.session_name,
-            invitation_token: generateToken(),
-          })
-
-        if (!error) {
-          created++
         } else {
-          if (!firstError) firstError = error.message
-          if (errors.length < 5) errors.push(`Speaker ${speaker.name}: ${error.message}`)
           skipped++
         }
       }
 
-      // Parse chairpersons
-      const chairpersons = parseFacultyText(session.chairpersons_text)
+      // Parse chairpersons: prefer chairpersons_text, fallback to chairpersons column
+      const chairpersons = parseFacultyText(session.chairpersons_text).length > 0
+        ? parseFacultyText(session.chairpersons_text)
+        : parseNamesList(session.chairpersons)
+
       for (const chair of chairpersons) {
-        const { data: existing } = await db
-          .from("faculty_assignments")
-          .select("id")
-          .eq("session_id", session.id)
-          .eq("faculty_name", chair.name)
-          .eq("role", "chairperson")
-          .maybeSingle()
-
-        if (existing) {
+        const result = await insertAssignment(db, eventId, session, chair, 'chairperson')
+        if (result.created) created++
+        else if (result.error) {
+          if (errors.length < 5) errors.push(`Chair ${chair.name}: ${result.error}`)
           skipped++
-          continue
-        }
-
-        const { error } = await db
-          .from("faculty_assignments")
-          .insert({
-            event_id: eventId,
-            session_id: session.id,
-            faculty_name: chair.name,
-            faculty_email: chair.email,
-            faculty_phone: chair.phone,
-            role: 'chairperson',
-            session_date: session.session_date,
-            start_time: session.start_time,
-            end_time: session.end_time,
-            hall: session.hall,
-            session_name: session.session_name,
-            invitation_token: generateToken(),
-          })
-
-        if (!error) {
-          created++
         } else {
-          if (!firstError) firstError = error.message
-          if (errors.length < 5) errors.push(`Chair ${chair.name}: ${error.message}`)
           skipped++
         }
       }
 
-      // Parse moderators
-      const moderators = parseFacultyText(session.moderators_text)
+      // Parse moderators: prefer moderators_text, fallback to moderators column
+      const moderators = parseFacultyText(session.moderators_text).length > 0
+        ? parseFacultyText(session.moderators_text)
+        : parseNamesList(session.moderators)
+
       for (const mod of moderators) {
-        const { data: existing } = await db
-          .from("faculty_assignments")
-          .select("id")
-          .eq("session_id", session.id)
-          .eq("faculty_name", mod.name)
-          .eq("role", "moderator")
-          .maybeSingle()
-
-        if (existing) {
+        const result = await insertAssignment(db, eventId, session, mod, 'moderator')
+        if (result.created) created++
+        else if (result.error) {
+          if (errors.length < 5) errors.push(`Moderator ${mod.name}: ${result.error}`)
           skipped++
-          continue
-        }
-
-        const { error } = await db
-          .from("faculty_assignments")
-          .insert({
-            event_id: eventId,
-            session_id: session.id,
-            faculty_name: mod.name,
-            faculty_email: mod.email,
-            faculty_phone: mod.phone,
-            role: 'moderator',
-            session_date: session.session_date,
-            start_time: session.start_time,
-            end_time: session.end_time,
-            hall: session.hall,
-            session_name: session.session_name,
-            invitation_token: generateToken(),
-          })
-
-        if (!error) {
-          created++
         } else {
-          if (!firstError) firstError = error.message
-          if (errors.length < 5) errors.push(`Moderator ${mod.name}: ${error.message}`)
           skipped++
+        }
+      }
+
+      // Also check description for roles like "Panelist: Name"
+      if (session.description) {
+        const panelistMatches = session.description.match(/Panelist:\s*([^;]+)/g)
+        if (panelistMatches) {
+          for (const match of panelistMatches) {
+            const name = match.replace(/^Panelist:\s*/, '').trim()
+            if (name) {
+              const result = await insertAssignment(db, eventId, session, { name, email: null, phone: null }, 'panelist')
+              if (result.created) created++
+              else skipped++
+            }
+          }
         }
       }
     }
@@ -204,8 +193,7 @@ export async function POST(
       created,
       skipped,
       total: created + skipped,
-      firstError,
-      sampleErrors: errors,
+      sampleErrors: errors.length > 0 ? errors : undefined,
     })
 
   } catch (error) {
