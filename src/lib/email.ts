@@ -33,10 +33,17 @@ async function sendViaBlastable(options: EmailOptions): Promise<SendResult> {
 
   const fromEmail = options.from || process.env.BLASTABLE_FROM_EMAIL || process.env.RESEND_FROM_EMAIL
   if (!fromEmail) {
-    return { success: false, error: "From email not configured" }
+    return { success: false, error: "Blastable: No from email configured. Set BLASTABLE_FROM_EMAIL or RESEND_FROM_EMAIL." }
   }
 
   try {
+    // Extract plain email from "Name <email>" format
+    const plainFrom = fromEmail.includes("<") ? fromEmail.match(/<(.+)>/)?.[1] || fromEmail : fromEmail
+    // Blastable expects `to` as a string (comma-separated for multiple)
+    const toStr = Array.isArray(options.to) ? options.to.join(",") : options.to
+
+    console.log(`[Blastable] Sending from "${plainFrom}" to "${toStr}" subject="${options.subject}"`)
+
     const response = await fetch("https://blastable.com/send-email/process", {
       method: "POST",
       headers: {
@@ -44,8 +51,8 @@ async function sendViaBlastable(options: EmailOptions): Promise<SendResult> {
         "X-API-KEY": apiKey,
       },
       body: JSON.stringify({
-        from_email: fromEmail.includes("<") ? fromEmail.match(/<(.+)>/)?.[1] || fromEmail : fromEmail,
-        to: Array.isArray(options.to) ? options.to : options.to,
+        from_email: plainFrom,
+        to: toStr,
         subject: options.subject,
         html_body: options.html,
         text_body: options.text || options.html.replace(/<[^>]*>/g, ""), // Strip HTML for text version
@@ -56,15 +63,16 @@ async function sendViaBlastable(options: EmailOptions): Promise<SendResult> {
 
     if (response.ok && result.status === "success") {
       const logKey = result.delivery_logs?.[0]?.log_key || `blastable-${Date.now()}`
-      console.log(`[Blastable] Email sent to ${options.to} - ID: ${logKey}`)
+      console.log(`[Blastable] Email sent to ${toStr} - ID: ${logKey}`)
       return { success: true, id: logKey }
     } else {
-      console.error("[Blastable] API error:", JSON.stringify(result))
-      return { success: false, error: `Blastable: ${result.error || result.message || "Failed to send email"}` }
+      const errorDetail = result.error || result.message || result.errors || JSON.stringify(result)
+      console.error(`[Blastable] API error (HTTP ${response.status}):`, JSON.stringify(result))
+      return { success: false, error: `Blastable (from: ${plainFrom}): ${typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail)}` }
     }
   } catch (error: any) {
     console.error("[Blastable] Request failed:", error)
-    return { success: false, error: error.message || "Request failed" }
+    return { success: false, error: `Blastable request failed: ${error.message || "Unknown error"}` }
   }
 }
 
@@ -78,7 +86,7 @@ async function sendViaResend(options: EmailOptions): Promise<SendResult> {
   const fromEmail = options.from || process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
 
   try {
-    console.log(`[Resend] Sending from "${fromEmail}" to "${options.to}"`)
+    console.log(`[Resend] Sending from "${fromEmail}" to "${options.to}" subject="${options.subject}"`)
 
     // Dynamic import to avoid loading Resend when not needed
     const { Resend } = await import("resend")
@@ -102,7 +110,7 @@ async function sendViaResend(options: EmailOptions): Promise<SendResult> {
       if (errorMsg.includes("can only send") || errorMsg.includes("testing")) {
         return { success: false, error: `Resend: ${errorMsg}. On Resend free plan you can only send to your own email. Add and verify your domain at resend.com/domains to send to anyone.` }
       }
-      return { success: false, error: `Resend: ${errorMsg}` }
+      return { success: false, error: `Resend (from: ${fromEmail}): ${errorMsg}` }
     }
 
     console.log(`[Resend] Email sent to ${options.to} - ID: ${result.data?.id}`)
@@ -116,6 +124,7 @@ async function sendViaResend(options: EmailOptions): Promise<SendResult> {
 /**
  * Send an email using the configured provider
  * Priority: Blastable > Resend
+ * If primary provider fails and secondary is available, falls back to secondary
  */
 export async function sendEmail(options: EmailOptions): Promise<SendResult> {
   const provider = getProvider()
@@ -132,7 +141,18 @@ export async function sendEmail(options: EmailOptions): Promise<SendResult> {
   console.log(`[Email] Sending via ${provider} to ${options.to}`)
 
   if (provider === "blastable") {
-    return sendViaBlastable(options)
+    const result = await sendViaBlastable(options)
+    // If Blastable fails and Resend is also configured, try Resend as fallback
+    if (!result.success && process.env.RESEND_API_KEY) {
+      console.log(`[Email] Blastable failed (${result.error}), falling back to Resend...`)
+      const resendResult = await sendViaResend(options)
+      if (resendResult.success) {
+        return resendResult
+      }
+      // Both failed - return both errors
+      return { success: false, error: `Primary: ${result.error} | Fallback: ${resendResult.error}` }
+    }
+    return result
   } else {
     return sendViaResend(options)
   }

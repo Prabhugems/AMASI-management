@@ -861,8 +861,22 @@ export default function SpeakersPage() {
   const sendInvitation = useMutation({
     mutationFn: async (speaker: Speaker) => {
       if (!eventDetails) throw new Error("Event details not loaded")
-      const portalToken = speaker.custom_fields?.portal_token
-      if (!portalToken) throw new Error("No portal token for this speaker")
+      let portalToken = speaker.custom_fields?.portal_token
+
+      // Auto-generate portal token if missing
+      if (!portalToken) {
+        portalToken = crypto.randomUUID()
+        const { error: tokenError } = await (supabase as any)
+          .from("registrations")
+          .update({
+            custom_fields: {
+              ...(speaker.custom_fields || {}),
+              portal_token: portalToken,
+            },
+          })
+          .eq("id", speaker.id)
+        if (tokenError) throw new Error("Failed to generate portal token")
+      }
 
       // Get speaker's sessions
       const speakerSessions = getSpeakerSessions(speaker)
@@ -890,7 +904,7 @@ export default function SpeakersPage() {
         }),
       })
       const result = await response.json()
-      if (!response.ok) throw new Error(result.error)
+      if (!response.ok) throw new Error(result.error || "Failed to send email")
       return result
     },
     onSuccess: () => {
@@ -922,16 +936,21 @@ export default function SpeakersPage() {
     },
     onSuccess: (results) => {
       const msg = `Sent: ${results.sent}, Failed: ${results.failed}, Skipped: ${results.skipped}`
-      if (results.failed > 0) {
-        toast.warning(`Invitations: ${msg}`)
+      const providerInfo = results.provider ? ` (via ${results.provider})` : ""
+      if (results.failed > 0 && results.errors?.length > 0) {
+        // Show the first error reason so the user knows WHY it failed
+        const firstError = results.errors[0]
+        toast.error(`Invitations${providerInfo}: ${msg}\n\nReason: ${firstError}`, { duration: 15000 })
+      } else if (results.skipped > 0 && results.sent === 0) {
+        toast.warning(`Invitations${providerInfo}: ${msg}`)
       } else {
-        toast.success(`Invitations sent! ${msg}`)
+        toast.success(`Invitations sent${providerInfo}! ${msg}`)
       }
       setSelectedIds(new Set())
       queryClient.invalidateQueries({ queryKey: ["event-speakers", eventId] })
     },
     onError: (error: Error) => {
-      toast.error(error.message)
+      toast.error(error.message, { duration: 10000 })
     },
   })
 

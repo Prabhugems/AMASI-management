@@ -147,9 +147,9 @@ export default function SpeakerInvitationsPage() {
       } else {
         toast.error(result.error || "Failed to send invitations")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending invitations:", error)
-      toast.error("Failed to send invitations")
+      toast.error(error?.message || "Failed to send invitations", { duration: 10000 })
     } finally {
       setSending(false)
     }
