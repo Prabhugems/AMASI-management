@@ -42,34 +42,143 @@ import {
 
 // Category templates for different event types
 const CATEGORY_TEMPLATES = {
-  amasi: {
-    name: "AMASI Medical Conference",
+  amasicon2026: {
+    name: "AMASICON 2026 Awards",
     categories: [
-      { name: "Free Paper", description: "Original research presentations (7 min + 3 min discussion)" },
-      { name: "Video", description: "Surgical/procedure videos (max 7 min)" },
-      { name: "ePoster", description: "Digital poster presentations" },
-      { name: "Young Scholar", description: "For students and residents under 35" },
-      { name: "Case Report", description: "Interesting clinical cases" },
+      {
+        name: "Best Paper Award",
+        description: "Best original research paper presentation. AMASI Medal for winner.",
+        submission_type: "paper",
+        allowed_file_types: ["pdf"],
+        required_file: true,
+        is_award_category: true,
+        award_name: "AMASI Medal",
+        eligibility_rules: {},
+        declarations: [
+          { text: "This paper has not won any award previously at any AMASI conference", required: true },
+          { text: "I am the primary author and will present this paper in person", required: true },
+          { text: "No proxy presentation will be done", required: true },
+          { text: "The abstract does not contain the name of my institution or co-authors", required: true },
+          { text: "I understand that the decision of the judges is final", required: true },
+        ],
+      },
+      {
+        name: "Best Institutional Video",
+        description: "Best institutional surgical/procedure video. AMASI Medal for winner.",
+        submission_type: "video",
+        allowed_file_types: ["mp4"],
+        required_file: true,
+        is_award_category: true,
+        award_name: "AMASI Medal",
+        eligibility_rules: {},
+        declarations: [
+          { text: "This video has not won any award previously at any AMASI conference", required: true },
+          { text: "I am the primary author and will present this video in person", required: true },
+          { text: "No proxy presentation will be done", required: true },
+          { text: "The video is original and produced by my institution", required: true },
+          { text: "I understand that the decision of the judges is final", required: true },
+        ],
+      },
+      {
+        name: "Best Faculty Video",
+        description: "Best faculty surgical/procedure video. Dr Palanivelu Medal for winner.",
+        submission_type: "video",
+        allowed_file_types: ["mp4"],
+        required_file: true,
+        is_award_category: true,
+        award_name: "Dr Palanivelu Medal",
+        eligibility_rules: {},
+        declarations: [
+          { text: "This video has not won any award previously at any AMASI conference", required: true },
+          { text: "I am the primary author and will present this video in person", required: true },
+          { text: "No proxy presentation will be done", required: true },
+          { text: "I understand that the decision of the judges is final", required: true },
+        ],
+      },
+      {
+        name: "Young Scholar Award",
+        description: "For PG residents, fellows, and senior residents under 40 years. AMASI Medal for winner.",
+        submission_type: "paper",
+        allowed_file_types: ["pdf"],
+        required_file: true,
+        is_award_category: true,
+        award_name: "AMASI Medal",
+        eligibility_rules: { max_age: 40, require_dob: true, allowed_positions: ["PG Resident", "Fellow", "Senior Resident"] },
+        declarations: [
+          { text: "I am under 40 years of age as of the date of the conference", required: true },
+          { text: "I am currently a PG Resident, Fellow, or Senior Resident", required: true },
+          { text: "This paper has not won any award previously at any AMASI conference", required: true },
+          { text: "I am the primary author and will present this paper in person", required: true },
+          { text: "No proxy presentation will be done", required: true },
+          { text: "The abstract does not contain the name of my institution or co-authors", required: true },
+          { text: "I understand that the decision of the judges is final", required: true },
+        ],
+      },
+      {
+        name: "Best Poster Award",
+        description: "Best poster/ePoster presentation. AMASI Medal for winner.",
+        submission_type: "poster",
+        allowed_file_types: ["pdf"],
+        required_file: true,
+        is_award_category: true,
+        award_name: "AMASI Medal",
+        eligibility_rules: {},
+        declarations: [
+          { text: "This poster has not won any award previously at any AMASI conference", required: true },
+          { text: "I am the primary author and will present this poster in person", required: true },
+          { text: "No proxy presentation will be done", required: true },
+          { text: "The abstract does not contain the name of my institution or co-authors", required: true },
+          { text: "I understand that the decision of the judges is final", required: true },
+        ],
+      },
+      {
+        name: "Free Paper / Video / Poster",
+        description: "Free paper, video, or poster session. Not an award category. File upload optional.",
+        submission_type: "paper",
+        allowed_file_types: ["pdf", "mp4"],
+        required_file: false,
+        is_award_category: false,
+        award_name: null,
+        eligibility_rules: {},
+        declarations: [
+          { text: "I am the primary author and will present in person or have arranged a co-author to present", required: true },
+        ],
+      },
+    ],
+  },
+  amasi: {
+    name: "AMASI Medical Conference (Basic)",
+    categories: [
+      { name: "Free Paper", description: "Original research presentations (7 min + 3 min discussion)", submission_type: "paper", allowed_file_types: ["pdf"], required_file: false, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
+      { name: "Video", description: "Surgical/procedure videos (max 7 min)", submission_type: "video", allowed_file_types: ["mp4"], required_file: true, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
+      { name: "ePoster", description: "Digital poster presentations", submission_type: "poster", allowed_file_types: ["pdf"], required_file: true, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
+      { name: "Young Scholar", description: "For students and residents under 35", submission_type: "paper", allowed_file_types: ["pdf"], required_file: true, is_award_category: true, award_name: "Young Scholar Award", eligibility_rules: { max_age: 35, require_dob: true }, declarations: [] },
+      { name: "Case Report", description: "Interesting clinical cases", submission_type: "paper", allowed_file_types: ["pdf"], required_file: false, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
     ],
   },
   academic: {
     name: "Academic Conference",
     categories: [
-      { name: "Oral Presentation", description: "Standard research presentations" },
-      { name: "Poster Presentation", description: "Poster session presentations" },
-      { name: "Workshop", description: "Interactive workshop proposals" },
-      { name: "Symposium", description: "Multi-speaker symposium proposals" },
+      { name: "Oral Presentation", description: "Standard research presentations", submission_type: "paper", allowed_file_types: ["pdf"], required_file: false, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
+      { name: "Poster Presentation", description: "Poster session presentations", submission_type: "poster", allowed_file_types: ["pdf"], required_file: false, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
+      { name: "Workshop", description: "Interactive workshop proposals", submission_type: "paper", allowed_file_types: ["pdf"], required_file: false, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
+      { name: "Symposium", description: "Multi-speaker symposium proposals", submission_type: "paper", allowed_file_types: ["pdf"], required_file: false, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
     ],
   },
   scientific: {
     name: "Scientific Meeting",
     categories: [
-      { name: "Original Research", description: "Novel research findings" },
-      { name: "Review", description: "Systematic or narrative reviews" },
-      { name: "Case Series", description: "Collection of related cases" },
-      { name: "Technical Innovation", description: "New techniques or methods" },
+      { name: "Original Research", description: "Novel research findings", submission_type: "paper", allowed_file_types: ["pdf"], required_file: false, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
+      { name: "Review", description: "Systematic or narrative reviews", submission_type: "paper", allowed_file_types: ["pdf"], required_file: false, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
+      { name: "Case Series", description: "Collection of related cases", submission_type: "paper", allowed_file_types: ["pdf"], required_file: false, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
+      { name: "Technical Innovation", description: "New techniques or methods", submission_type: "paper", allowed_file_types: ["pdf"], required_file: false, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
     ],
   },
+}
+
+interface Declaration {
+  text: string
+  required: boolean
 }
 
 interface Category {
@@ -81,6 +190,13 @@ interface Category {
   sort_order: number
   is_active: boolean
   created_at: string
+  submission_type: string
+  allowed_file_types: string[]
+  required_file: boolean
+  declarations: Declaration[]
+  eligibility_rules: Record<string, any>
+  award_name: string | null
+  is_award_category: boolean
 }
 
 export default function CategoriesPage() {
@@ -96,6 +212,11 @@ export default function CategoriesPage() {
     description: "",
     max_submissions: "",
     is_active: true,
+    submission_type: "paper",
+    allowed_file_types: "pdf",
+    required_file: false,
+    is_award_category: false,
+    award_name: "",
   })
   const [deleteConfirm, setDeleteConfirm] = useState<Category | null>(null)
   const [loadingTemplate, setLoadingTemplate] = useState(false)
@@ -120,6 +241,7 @@ export default function CategoriesPage() {
           ...data,
           event_id: eventId,
           max_submissions: data.max_submissions ? parseInt(data.max_submissions) : null,
+          allowed_file_types: data.allowed_file_types.split(",").map((s: string) => s.trim()).filter(Boolean),
         }),
       })
       if (!res.ok) {
@@ -162,6 +284,11 @@ export default function CategoriesPage() {
       description: "",
       max_submissions: "",
       is_active: true,
+      submission_type: "paper",
+      allowed_file_types: "pdf",
+      required_file: false,
+      is_award_category: false,
+      award_name: "",
     })
   }
 
@@ -172,6 +299,11 @@ export default function CategoriesPage() {
       description: category.description || "",
       max_submissions: category.max_submissions?.toString() || "",
       is_active: category.is_active,
+      submission_type: category.submission_type || "paper",
+      allowed_file_types: (category.allowed_file_types || ["pdf"]).join(", "),
+      required_file: category.required_file || false,
+      is_award_category: category.is_award_category || false,
+      award_name: category.award_name || "",
     })
     setShowDialog(true)
   }
@@ -192,9 +324,8 @@ export default function CategoriesPage() {
     setTemplateError("")
 
     try {
-      // Create all categories from the template in parallel
-      await Promise.all(
-        template.categories.map(async (cat) => {
+      // Create all categories from the template sequentially to maintain sort order
+      for (const cat of template.categories) {
           const res = await fetch("/api/abstract-categories", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -203,15 +334,20 @@ export default function CategoriesPage() {
               name: cat.name,
               description: cat.description,
               is_active: true,
+              submission_type: (cat as any).submission_type || "paper",
+              allowed_file_types: (cat as any).allowed_file_types || ["pdf"],
+              required_file: (cat as any).required_file ?? false,
+              declarations: (cat as any).declarations || [],
+              eligibility_rules: (cat as any).eligibility_rules || {},
+              award_name: (cat as any).award_name || null,
+              is_award_category: (cat as any).is_award_category ?? false,
             }),
           })
           if (!res.ok) {
             const err = await res.json()
             throw new Error(err.error || `Failed to create category: ${cat.name}`)
           }
-          return res.json()
-        })
-      )
+      }
 
       queryClient.invalidateQueries({ queryKey: ["abstract-categories", eventId] })
       queryClient.invalidateQueries({ queryKey: ["event-setup-status", eventId] })
@@ -299,7 +435,8 @@ export default function CategoriesPage() {
                 <TableHead className="w-10"></TableHead>
                 <TableHead>Category Name</TableHead>
                 <TableHead>Description</TableHead>
-                <TableHead className="text-center">Max Submissions</TableHead>
+                <TableHead className="text-center">Type</TableHead>
+                <TableHead className="text-center">Award</TableHead>
                 <TableHead className="text-center">Status</TableHead>
                 <TableHead className="w-16"></TableHead>
               </TableRow>
@@ -311,11 +448,25 @@ export default function CategoriesPage() {
                     <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
                   </TableCell>
                   <TableCell className="font-medium">{category.name}</TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-muted-foreground max-w-[200px] truncate">
                     {category.description || "—"}
                   </TableCell>
                   <TableCell className="text-center">
-                    {category.max_submissions || "Unlimited"}
+                    <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700 capitalize">
+                      {category.submission_type || "paper"}
+                    </span>
+                    {category.required_file && (
+                      <span className="ml-1 text-xs text-muted-foreground">(req)</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {category.is_award_category ? (
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">
+                        {category.award_name || "Award"}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-center">
                     <span
@@ -386,19 +537,82 @@ export default function CategoriesPage() {
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
-            <div>
-              <label className="text-sm font-medium">Max Submissions</label>
-              <Input
-                type="number"
-                value={formData.max_submissions}
-                onChange={(e) => setFormData({ ...formData, max_submissions: e.target.value })}
-                placeholder="Leave empty for unlimited"
-                className="mt-1"
-                min={1}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Submission Type</label>
+                <select
+                  value={formData.submission_type}
+                  onChange={(e) => {
+                    const type = e.target.value
+                    setFormData({
+                      ...formData,
+                      submission_type: type,
+                      allowed_file_types: type === "video" ? "mp4" : "pdf",
+                    })
+                  }}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="paper">Paper (PDF)</option>
+                  <option value="video">Video (MP4)</option>
+                  <option value="poster">Poster (PDF)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Allowed File Types</label>
+                <Input
+                  value={formData.allowed_file_types}
+                  onChange={(e) => setFormData({ ...formData, allowed_file_types: e.target.value })}
+                  placeholder="pdf, mp4"
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Comma-separated</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Max Submissions</label>
+                <Input
+                  type="number"
+                  value={formData.max_submissions}
+                  onChange={(e) => setFormData({ ...formData, max_submissions: e.target.value })}
+                  placeholder="Unlimited"
+                  className="mt-1"
+                  min={1}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Award Name</label>
+                <Input
+                  value={formData.award_name}
+                  onChange={(e) => setFormData({ ...formData, award_name: e.target.value })}
+                  placeholder="e.g. AMASI Medal"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="font-medium">File Upload Required</p>
+                <p className="text-sm text-muted-foreground">
+                  Submitters must upload a file
+                </p>
+              </div>
+              <Switch
+                checked={formData.required_file}
+                onCheckedChange={(checked) => setFormData({ ...formData, required_file: checked })}
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Maximum number of abstracts allowed in this category
-              </p>
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="font-medium">Award Category</p>
+                <p className="text-sm text-muted-foreground">
+                  This is a competitive award category
+                </p>
+              </div>
+              <Switch
+                checked={formData.is_award_category}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_award_category: checked })}
+              />
             </div>
             <div className="flex items-center justify-between py-2">
               <div>

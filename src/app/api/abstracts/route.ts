@@ -81,7 +81,17 @@ export async function GET(request: NextRequest) {
       query = query.eq("presenting_author_email", email.toLowerCase())
     }
     if (search) {
-      query = query.or(`title.ilike.%${search}%,abstract_number.ilike.%${search}%,presenting_author_name.ilike.%${search}%,presenting_author_email.ilike.%${search}%`)
+      // Sanitize search to prevent PostgREST filter injection
+      // Escape special characters: % _ \ and PostgREST operators (, . )
+      const sanitized = search
+        .replace(/\\/g, '\\\\')
+        .replace(/%/g, '\\%')
+        .replace(/_/g, '\\_')
+        .replace(/,/g, '')
+        .replace(/\./g, '')
+        .replace(/\(/g, '')
+        .replace(/\)/g, '')
+      query = query.or(`title.ilike.%${sanitized}%,abstract_number.ilike.%${sanitized}%,presenting_author_name.ilike.%${sanitized}%,presenting_author_email.ilike.%${sanitized}%`)
     }
 
     const { data, error } = await query
@@ -192,6 +202,74 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate category-specific eligibility rules
+    if (body.category_id) {
+      const { data: category } = await adminClient
+        .from("abstract_categories")
+        .select("*")
+        .eq("id", body.category_id)
+        .single()
+
+      if (category) {
+        // Validate required file
+        if (category.required_file && !body.file_url) {
+          return NextResponse.json(
+            { error: `File upload is required for the "${category.name}" category` },
+            { status: 400 }
+          )
+        }
+
+        // Validate required declarations
+        if (category.declarations && Array.isArray(category.declarations)) {
+          const requiredDeclarations = category.declarations.filter((d: any) => d.required)
+          const acceptedDeclarations = body.declarations_accepted || []
+          for (const decl of requiredDeclarations) {
+            if (!acceptedDeclarations.includes(decl.text)) {
+              return NextResponse.json(
+                { error: "All required declarations must be accepted" },
+                { status: 400 }
+              )
+            }
+          }
+        }
+
+        // Validate eligibility rules (e.g. Young Scholar age check)
+        const rules = category.eligibility_rules || {}
+        if (rules.require_dob) {
+          const metadata = body.submitter_metadata || {}
+          if (!metadata.date_of_birth) {
+            return NextResponse.json(
+              { error: "Date of birth is required for this category" },
+              { status: 400 }
+            )
+          }
+          if (rules.max_age) {
+            const dob = new Date(metadata.date_of_birth)
+            const today = new Date()
+            let age = today.getFullYear() - dob.getFullYear()
+            const m = today.getMonth() - dob.getMonth()
+            if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+              age--
+            }
+            if (age >= rules.max_age) {
+              return NextResponse.json(
+                { error: `You must be under ${rules.max_age} years of age for this category` },
+                { status: 400 }
+              )
+            }
+          }
+          if (rules.allowed_positions && rules.allowed_positions.length > 0) {
+            if (!metadata.current_position || !rules.allowed_positions.includes(metadata.current_position)) {
+              return NextResponse.json(
+                { error: `Your current position must be one of: ${rules.allowed_positions.join(", ")}` },
+                { status: 400 }
+              )
+            }
+          }
+        }
+      }
+    }
+
     // Check if registration is required
     if (settings?.require_registration) {
       const { data: registration } = await adminClient
@@ -251,6 +329,9 @@ export async function POST(request: NextRequest) {
           file_url: body.file_url || null,
           file_name: body.file_name || null,
           file_size: body.file_size || null,
+          amasi_membership_number: body.amasi_membership_number || null,
+          declarations_accepted: body.declarations_accepted || [],
+          submitter_metadata: body.submitter_metadata || {},
         })
         .select()
         .single()

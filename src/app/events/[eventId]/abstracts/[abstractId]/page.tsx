@@ -36,6 +36,9 @@ import {
   MessageSquare,
   Users,
   ExternalLink,
+  ArrowRightLeft,
+  Trophy,
+  Medal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -59,7 +62,14 @@ interface Abstract {
   file_url: string | null
   file_name: string | null
   submitted_at: string
-  category?: { id: string; name: string; description: string }
+  amasi_membership_number: string | null
+  declarations_accepted: string[] | null
+  submitter_metadata: { date_of_birth?: string; current_position?: string } | null
+  award_rank: number | null
+  award_type: string | null
+  is_podium_selected: boolean
+  redirected_from_category_id: string | null
+  category?: { id: string; name: string; description: string; is_award_category?: boolean; award_name?: string }
   authors?: { id: string; name: string; email: string; affiliation: string; author_order: number; is_presenting: boolean }[]
   reviews?: {
     id: string
@@ -272,6 +282,14 @@ export default function AbstractDetailPage() {
               >
                 <AlertCircle className="h-4 w-4" />
                 Request Revision
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => openDecisionDialog("redirected")}
+                className="gap-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+              >
+                <ArrowRightLeft className="h-4 w-4" />
+                Redirect to Free Session
               </Button>
             </>
           )}
@@ -506,6 +524,89 @@ export default function AbstractDetailPage() {
             )}
           </div>
 
+          {/* Award Status */}
+          {(abstract.award_rank || abstract.is_podium_selected || abstract.redirected_from_category_id) && (
+            <div className="bg-card border rounded-xl p-6">
+              <h2 className="font-semibold mb-4 flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-500" />
+                Award Status
+              </h2>
+              <div className="space-y-3 text-sm">
+                {abstract.redirected_from_category_id && (
+                  <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+                    <p className="text-xs text-indigo-600 font-medium">Redirected from Award Category</p>
+                    <p className="text-sm text-indigo-700">Moved to free session</p>
+                  </div>
+                )}
+                {abstract.award_rank && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Rank</span>
+                    <span className="font-bold text-lg">{abstract.award_rank}</span>
+                  </div>
+                )}
+                {abstract.award_type && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Award</span>
+                    <span className={cn(
+                      "px-2 py-1 text-xs font-medium rounded-full capitalize",
+                      abstract.award_type === "medal" ? "bg-yellow-100 text-yellow-800" :
+                      abstract.award_type === "certificate" ? "bg-blue-100 text-blue-700" :
+                      "bg-green-100 text-green-700"
+                    )}>
+                      {abstract.award_type}
+                    </span>
+                  </div>
+                )}
+                {abstract.is_podium_selected && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Podium</span>
+                    <span className="text-green-600 font-medium">Selected</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* AMASI Details */}
+          {(abstract.amasi_membership_number || abstract.submitter_metadata?.date_of_birth || (abstract.declarations_accepted && abstract.declarations_accepted.length > 0)) && (
+            <div className="bg-card border rounded-xl p-6">
+              <h2 className="font-semibold mb-4">AMASI Details</h2>
+              <div className="space-y-3 text-sm">
+                {abstract.amasi_membership_number && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Membership #</span>
+                    <span className="font-mono font-medium">{abstract.amasi_membership_number}</span>
+                  </div>
+                )}
+                {abstract.submitter_metadata?.date_of_birth && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Date of Birth</span>
+                    <span className="font-medium">{new Date(abstract.submitter_metadata.date_of_birth).toLocaleDateString("en-IN")}</span>
+                  </div>
+                )}
+                {abstract.submitter_metadata?.current_position && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Position</span>
+                    <span className="font-medium">{abstract.submitter_metadata.current_position}</span>
+                  </div>
+                )}
+                {abstract.declarations_accepted && abstract.declarations_accepted.length > 0 && (
+                  <div className="pt-3 border-t">
+                    <p className="text-xs text-muted-foreground mb-2">Declarations Accepted ({abstract.declarations_accepted.length})</p>
+                    <div className="space-y-1">
+                      {abstract.declarations_accepted.map((decl, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <CheckCircle className="h-3 w-3 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-xs">{decl}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Details */}
           <div className="bg-card border rounded-xl p-6">
             <h2 className="font-semibold mb-4">Details</h2>
@@ -562,6 +663,7 @@ export default function AbstractDetailPage() {
               {decisionType === "accepted" && "Accept Abstract"}
               {decisionType === "rejected" && "Reject Abstract"}
               {decisionType === "revision_requested" && "Request Revision"}
+              {decisionType === "redirected" && "Redirect to Free Session"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -605,13 +707,15 @@ export default function AbstractDetailPage() {
               className={cn(
                 decisionType === "accepted" && "bg-green-600 hover:bg-green-700",
                 decisionType === "rejected" && "bg-red-600 hover:bg-red-700",
-                decisionType === "revision_requested" && "bg-orange-600 hover:bg-orange-700"
+                decisionType === "revision_requested" && "bg-orange-600 hover:bg-orange-700",
+                decisionType === "redirected" && "bg-indigo-600 hover:bg-indigo-700"
               )}
             >
               {decisionMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {decisionType === "accepted" && "Accept"}
               {decisionType === "rejected" && "Reject"}
               {decisionType === "revision_requested" && "Request Revision"}
+              {decisionType === "redirected" && "Redirect to Free Session"}
             </Button>
           </DialogFooter>
         </DialogContent>

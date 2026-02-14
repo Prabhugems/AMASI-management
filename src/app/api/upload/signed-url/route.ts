@@ -4,41 +4,35 @@ import { NextRequest, NextResponse } from "next/server"
 const BUCKET_NAME = "uploads"
 
 async function ensureBucketExists(adminClient: any) {
-  // Check if bucket already exists
   const { data: buckets } = await adminClient.storage.listBuckets()
   const exists = buckets?.some((b: any) => b.name === BUCKET_NAME)
 
   if (!exists) {
-    console.log(`Bucket "${BUCKET_NAME}" not found, creating...`)
     const { error } = await adminClient.storage.createBucket(BUCKET_NAME, {
       public: true,
-      fileSizeLimit: 500 * 1024 * 1024, // 500MB (videos can be large)
+      fileSizeLimit: 500 * 1024 * 1024, // 500MB for videos
     })
     if (error && !error.message?.includes("already exists")) {
-      console.error("Bucket creation error:", error)
       throw new Error(`Failed to create storage bucket: ${error.message}`)
     }
-    console.log(`Bucket "${BUCKET_NAME}" created successfully`)
   }
 }
 
+// POST /api/upload/signed-url - Get a signed upload URL for direct client upload
+// This bypasses Vercel's 50MB API limit by having the client upload directly to Supabase Storage
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData()
-    const file = formData.get("file") as File
-    const eventId = formData.get("event_id") as string
-    const type = formData.get("type") as string || "general"
+    const body = await request.json()
+    const { event_id, file_name, content_type, type } = body
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 })
-    }
-
-    if (!eventId) {
+    if (!event_id) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
+    }
+    if (!file_name) {
+      return NextResponse.json({ error: "file_name is required" }, { status: 400 })
     }
 
     // Authentication: require either a logged-in user or a valid event_id
-    // Abstract submissions are public (no login), but we verify the event exists
     const supabase = await createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -47,83 +41,62 @@ export async function POST(request: NextRequest) {
       const { data: event } = await adminCheck
         .from("events")
         .select("id")
-        .eq("id", eventId)
+        .eq("id", event_id)
         .maybeSingle()
       if (!event) {
         return NextResponse.json({ error: "Invalid event" }, { status: 403 })
       }
     }
 
-    // Validate file size (max 50MB for Vercel serverless)
-    const maxSize = 50 * 1024 * 1024
-    if (file.size > maxSize) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size is 50MB" },
-        { status: 400 }
-      )
-    }
-
-    // Validate file type
+    // Validate content type
     const allowedTypes = [
       "application/pdf",
       "video/mp4",
       "video/quicktime",
       "image/jpeg",
-      "image/jpg",
       "image/png",
-      "image/gif",
-      "image/webp",
     ]
-    if (!allowedTypes.includes(file.type)) {
+    if (content_type && !allowedTypes.includes(content_type)) {
       return NextResponse.json(
-        { error: "Invalid file type. Allowed: PDF, MP4, MOV, JPEG, PNG, GIF, WebP" },
+        { error: "Invalid file type. Allowed: PDF, MP4, MOV, JPEG, PNG" },
         { status: 400 }
       )
     }
 
     const adminClient = await createAdminClient()
-
-    // Ensure storage bucket exists before uploading
     await ensureBucketExists(adminClient)
 
-    // Generate unique filename
+    // Generate unique file path
     const timestamp = Date.now()
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_")
-    const fileName = `${eventId}/${type}/${timestamp}_${sanitizedName}`
+    const sanitizedName = file_name.replace(/[^a-zA-Z0-9.-]/g, "_")
+    const filePath = `${event_id}/${type || "abstract"}/${timestamp}_${sanitizedName}`
 
-    // Convert file to buffer
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
-    // Upload to Supabase Storage
-    const { error } = await (adminClient as any).storage
+    // Create signed upload URL (valid for 10 minutes)
+    const { data, error } = await (adminClient as any).storage
       .from(BUCKET_NAME)
-      .upload(fileName, buffer, {
-        contentType: file.type,
-        upsert: false,
-      })
+      .createSignedUploadUrl(filePath)
 
     if (error) {
-      console.error("Upload error:", error)
+      console.error("Error creating signed URL:", error)
       return NextResponse.json(
-        { error: "Upload failed" },
+        { error: "Failed to create upload URL" },
         { status: 500 }
       )
     }
 
-    // Get public URL
+    // Also get the public URL for after upload completes
     const { data: urlData } = (adminClient as any).storage
       .from(BUCKET_NAME)
-      .getPublicUrl(fileName)
+      .getPublicUrl(filePath)
 
     return NextResponse.json({
-      url: urlData.publicUrl,
-      fileName: file.name,
-      fileSize: file.size,
-      filePath: fileName,
+      signedUrl: data.signedUrl,
+      token: data.token,
+      path: filePath,
+      publicUrl: urlData.publicUrl,
     })
   } catch (error: any) {
-    console.error("Error in POST /api/upload:", error)
+    console.error("Error in POST /api/upload/signed-url:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -118,6 +118,13 @@ export async function POST(request: NextRequest) {
         max_submissions: body.max_submissions || null,
         sort_order: nextSortOrder,
         is_active: body.is_active ?? true,
+        submission_type: body.submission_type || 'paper',
+        allowed_file_types: body.allowed_file_types || ['pdf'],
+        required_file: body.required_file ?? false,
+        declarations: body.declarations || [],
+        eligibility_rules: body.eligibility_rules || {},
+        award_name: body.award_name || null,
+        is_award_category: body.is_award_category ?? false,
       })
       .select()
       .single()
@@ -186,6 +193,13 @@ export async function PUT(request: NextRequest) {
     if (body.max_submissions !== undefined) updateData.max_submissions = body.max_submissions
     if (body.sort_order !== undefined) updateData.sort_order = body.sort_order
     if (body.is_active !== undefined) updateData.is_active = body.is_active
+    if (body.submission_type !== undefined) updateData.submission_type = body.submission_type
+    if (body.allowed_file_types !== undefined) updateData.allowed_file_types = body.allowed_file_types
+    if (body.required_file !== undefined) updateData.required_file = body.required_file
+    if (body.declarations !== undefined) updateData.declarations = body.declarations
+    if (body.eligibility_rules !== undefined) updateData.eligibility_rules = body.eligibility_rules
+    if (body.award_name !== undefined) updateData.award_name = body.award_name
+    if (body.is_award_category !== undefined) updateData.is_award_category = body.is_award_category
 
     const { data, error } = await adminClient
       .from("abstract_categories")

@@ -53,10 +53,10 @@ export async function GET(
       return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
     }
 
-    // If user is not an authenticated team member, strip comments_private from reviews
+    // If user is not an authenticated team member, strip private/identity fields from reviews (blind review)
     if (!isTeamMember && data.reviews && Array.isArray(data.reviews)) {
       data.reviews = data.reviews.map((review: any) => {
-        const { comments_private: _comments_private, ...rest } = review
+        const { comments_private: _cp, reviewer_name: _rn, reviewer_email: _re, reviewer_id: _ri, ...rest } = review
         return rest
       })
     }
@@ -121,7 +121,8 @@ export async function PUT(
     const authorAllowedFields = [
       "title", "abstract_text", "keywords", "presentation_type",
       "category_id", "presenting_author_affiliation",
-      "file_url", "file_name", "file_size"
+      "file_url", "file_name", "file_size",
+      "amasi_membership_number", "declarations_accepted", "submitter_metadata"
     ]
 
     // If user is the author (not a team member), check deadline and restrict fields
@@ -167,6 +168,9 @@ export async function PUT(
     if (body.file_url !== undefined) updateData.file_url = body.file_url
     if (body.file_name !== undefined) updateData.file_name = body.file_name
     if (body.file_size !== undefined) updateData.file_size = body.file_size
+    if (body.amasi_membership_number !== undefined) updateData.amasi_membership_number = body.amasi_membership_number
+    if (body.declarations_accepted !== undefined) updateData.declarations_accepted = body.declarations_accepted
+    if (body.submitter_metadata !== undefined) updateData.submitter_metadata = body.submitter_metadata
 
     // Status changes (team member only)
     if (body.status !== undefined) updateData.status = body.status
@@ -181,6 +185,12 @@ export async function PUT(
     if (body.session_date !== undefined) updateData.session_date = body.session_date
     if (body.session_time !== undefined) updateData.session_time = body.session_time
     if (body.session_location !== undefined) updateData.session_location = body.session_location
+
+    // Award fields (team member only)
+    if (body.award_rank !== undefined) updateData.award_rank = body.award_rank
+    if (body.award_type !== undefined) updateData.award_type = body.award_type
+    if (body.is_podium_selected !== undefined) updateData.is_podium_selected = body.is_podium_selected
+    if (body.redirected_from_category_id !== undefined) updateData.redirected_from_category_id = body.redirected_from_category_id
 
     const { data, error } = await adminClient
       .from("abstracts")
@@ -267,7 +277,7 @@ export async function DELETE(
       .select("id")
       .eq("email", user.email?.toLowerCase())
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
     const isTeamMember = !!teamMember
 
     if (withdraw) {
@@ -276,7 +286,7 @@ export async function DELETE(
         .from("abstracts")
         .select("presenting_author_email")
         .eq("id", id)
-        .single()
+        .maybeSingle()
 
       if (!abstract) {
         return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
