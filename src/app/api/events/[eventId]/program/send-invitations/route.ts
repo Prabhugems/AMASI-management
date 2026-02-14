@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { sendEmail, isEmailEnabled } from "@/lib/email"
 
 type FacultyAssignment = {
   id: string
@@ -59,6 +60,13 @@ export async function POST(
       return NextResponse.json({ error: "No assignments provided" }, { status: 400 })
     }
 
+    if (!isEmailEnabled()) {
+      return NextResponse.json(
+        { error: "No email provider configured. Add RESEND_API_KEY or BLASTABLE_API_KEY in Vercel Environment Variables and redeploy." },
+        { status: 500 }
+      )
+    }
+
     // Fetch event details
     const { data: eventData } = await db
       .from("events")
@@ -85,7 +93,7 @@ export async function POST(
 
     const assignments = assignmentsData as FacultyAssignment[]
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://your-domain.com"
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
     let sent = 0
     let failed = 0
@@ -120,19 +128,16 @@ export async function POST(
       })
 
       try {
-        // Send email using existing email service
-        const emailResponse = await fetch(`${baseUrl}/api/send-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: assignment.faculty_email,
-            subject,
-            text: emailBodyText,
-            html: emailBodyText.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'),
-          }),
+        const htmlBody = emailBodyText.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+
+        const result = await sendEmail({
+          to: assignment.faculty_email,
+          subject,
+          html: htmlBody,
+          text: emailBodyText,
         })
 
-        if (emailResponse.ok) {
+        if (result.success) {
           // Update assignment status
           await db
             .from("faculty_assignments")
@@ -159,33 +164,17 @@ export async function POST(
 
           sent++
         } else {
-          // Update for simulated sending (if email service not configured)
-          await db
-            .from("faculty_assignments")
-            .update({
-              status: 'invited',
-              invitation_sent_at: new Date().toISOString(),
-            })
-            .eq("id", assignment.id)
-
-          sent++
+          failed++
+          errors.push(`${assignment.faculty_email}: ${result.error}`)
         }
-      } catch (_emailError) {
-        // Even if email fails, mark as invited for demo purposes
-        await db
-          .from("faculty_assignments")
-          .update({
-            status: 'invited',
-            invitation_sent_at: new Date().toISOString(),
-          })
-          .eq("id", assignment.id)
-
-        sent++
+      } catch (emailError: any) {
+        failed++
+        errors.push(`${assignment.faculty_email}: ${emailError.message || "Send failed"}`)
       }
     }
 
     return NextResponse.json({
-      success: true,
+      success: sent > 0,
       sent,
       failed,
       errors: errors.length > 0 ? errors : undefined,

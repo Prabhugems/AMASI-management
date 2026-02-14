@@ -251,7 +251,8 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
           .update({
             custom_fields: {
               ...(freshReg?.custom_fields || {}),
-              invitation_sent: new Date().toISOString(),
+              invitation_status: "sent",
+              invitation_sent_at: new Date().toISOString(),
               invitation_email_id: result.id,
             }
           })
