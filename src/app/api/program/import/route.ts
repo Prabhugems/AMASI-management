@@ -65,27 +65,27 @@ function getEmail(row: CSVRow): string | null {
   return email?.trim() || null
 }
 
+// Clean a raw phone string
+function cleanPhone(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  let phone = raw.trim().replace(/[^0-9+]/g, "")
+  // Add +91 if it's a 10 digit Indian number
+  if (phone.length === 10 && !phone.startsWith("+")) {
+    phone = "+91" + phone
+  }
+  return phone || null
+}
+
 // Helper to extract phone from row (checks multiple column names)
 function getPhone(row: CSVRow): string | null {
-  let phone = row["Mobile Number (from Faculty Link) 4"] ||
+  const raw = row["Mobile Number (from Faculty Link) 4"] ||
     row["Mobile Number"] ||
     row["Phone"] ||
     row["phone"] ||
     row["Mobile"] ||
     Object.entries(row).find(([k, _v]) => k.toLowerCase().includes("mobile") || k.toLowerCase().includes("phone"))?.[1] ||
     null
-
-  if (!phone) return null
-
-  // Clean phone number - keep only digits
-  phone = phone.trim().replace(/[^0-9+]/g, "")
-
-  // Add +91 if it's a 10 digit Indian number
-  if (phone.length === 10 && !phone.startsWith("+")) {
-    phone = "+91" + phone
-  }
-
-  return phone || null
+  return cleanPhone(raw)
 }
 
 // Normalize name for consistent matching
@@ -119,6 +119,11 @@ export async function POST(request: NextRequest) {
     const eventId = formData.get("event_id") as string
     const clearExisting = formData.get("clear_existing") === "true"
     const createRegistrations = formData.get("create_registrations") !== "false" // default true
+    const mappingStr = formData.get("mapping") as string | null
+    const userMapping = mappingStr ? JSON.parse(mappingStr) as {
+      date?: string; time?: string; topic?: string; hall?: string;
+      session?: string; speaker?: string; role?: string; email?: string; phone?: string;
+    } : null
 
     if (!file || !eventId) {
       return NextResponse.json(
@@ -158,12 +163,26 @@ export async function POST(request: NextRequest) {
     // Collect faculty info for creating registrations
     const facultyMap = new Map<string, FacultyInfo>()
 
+    // Helper to get column value using user mapping first, then fallback to auto-detect
+    const isValidMapping = (v: string | undefined) => v && v !== "__skip__"
+    const getCol = (row: CSVRow, field: keyof NonNullable<typeof userMapping>, ...fallbacks: string[]) => {
+      // Use user's mapping if provided and valid
+      if (userMapping && isValidMapping(userMapping[field])) {
+        return row[userMapping[field]!] || ""
+      }
+      // Fallback to hardcoded column names
+      for (const fb of fallbacks) {
+        if (row[fb] !== undefined && row[fb] !== "") return row[fb]!
+      }
+      return ""
+    }
+
     records.forEach((row: CSVRow) => {
-      // Extract faculty contact info first
-      const personName = row["Name"] || row["name"] || row["Full Name"] || row["Speaker"] || ""
-      const email = getEmail(row)
-      const phone = getPhone(row)
-      const role = (row["Role"] || row["role"] || "Speaker").trim()
+      // Extract faculty contact info using user mapping
+      const personName = getCol(row, "speaker", "Name", "name", "Full Name", "Speaker")
+      const email = userMapping && isValidMapping(userMapping.email) ? (row[userMapping.email!]?.trim() || null) : getEmail(row)
+      const phone = userMapping && isValidMapping(userMapping.phone) ? cleanPhone(row[userMapping.phone!]) : getPhone(row)
+      const role = (getCol(row, "role", "Role", "role") || "Speaker").trim()
 
       // Add to faculty map if we have a name
       if (personName && personName.trim()) {
@@ -187,7 +206,7 @@ export async function POST(request: NextRequest) {
 
       // Parse date - handles multiple formats
       let parsedDate = ""
-      const dateStr = row["Date"] || row["date"] || ""
+      const dateStr = getCol(row, "date", "Date", "date")
 
       // Try DD.MM.YYYY format (AMASICON)
       let dateMatch = dateStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/)
@@ -216,7 +235,7 @@ export async function POST(request: NextRequest) {
       // Parse time - handles range format "10:30 - 10:45" or "10:30-10:45"
       let startTime = ""
       let endTime = ""
-      const timeStr = row["Time"] || row["time"] || row["Starting Time"] || ""
+      const timeStr = getCol(row, "time", "Time", "time", "Starting Time")
 
       // Time range format
       const timeRangeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/)
@@ -235,12 +254,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Get topic/session name
-      const topic = row["Topic"] || row["topic"] || row["Session Name"] || row["Name"] || ""
+      const topic = getCol(row, "topic", "Topic", "topic", "Session Name") || ""
       if (!topic || !parsedDate || !startTime) return
 
       // Get hall and session track
-      const hall = row["Hall"] || row["hall"] || row["Venue"] || null
-      const sessionTrack = row["Session"] || row["session"] || row["Track"] || null
+      const hall = getCol(row, "hall", "Hall", "hall", "Venue") || null
+      const sessionTrack = getCol(row, "session", "Session", "session", "Track") || null
 
       // Create unique session key
       const sessionKey = `${parsedDate}|${hall || ""}|${sessionTrack || ""}|${startTime}|${topic}`

@@ -379,6 +379,7 @@ export default function ProgramImportPage() {
       const formData = new FormData()
       formData.append("file", file!)
       formData.append("event_id", eventId)
+      formData.append("mapping", JSON.stringify(mapping))
       if (clearExisting) formData.append("clear_existing", "true")
 
       const response = await fetch("/api/program/import", {
