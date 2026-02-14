@@ -47,6 +47,11 @@ export async function GET(
     const speakerEmail = registration.attendee_email?.toLowerCase()
     const speakerName = registration.attendee_name?.trim()
 
+    // Strip common titles for fuzzy name matching (handles "Dr." vs "Dr" vs no title)
+    const stripTitle = (name: string) =>
+      name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim()
+    const speakerNameStripped = speakerName ? stripTitle(speakerName).toLowerCase() : ""
+
     const { data: assignments } = await (supabase as any)
       .from("faculty_assignments")
       .select("session_id")
@@ -60,7 +65,7 @@ export async function GET(
     // Get all sessions for this event
     const { data: sessions } = await (supabase as any)
       .from("sessions")
-      .select("id, session_name, session_date, start_time, end_time, hall, description, specialty_track, speakers_text, chairpersons_text, moderators_text")
+      .select("id, session_name, session_date, start_time, end_time, hall, description, specialty_track, speakers, chairpersons, moderators, speakers_text, chairpersons_text, moderators_text")
       .eq("event_id", registration.event_id)
       .order("session_date")
       .order("start_time")
@@ -70,7 +75,7 @@ export async function GET(
       // Match via faculty_assignments
       if (assignedSessionIds.has(session.id)) return true
 
-      // Match by email in speakers_text/chairpersons_text/moderators_text (AI import format)
+      // Match by email in speakers_text/chairpersons_text/moderators_text (AI import or CSV import)
       const textFields = [session.speakers_text, session.chairpersons_text, session.moderators_text]
       for (const text of textFields) {
         if (text && speakerEmail && text.toLowerCase().includes(speakerEmail)) return true
@@ -81,16 +86,24 @@ export async function GET(
         if (session.description.toLowerCase().includes(speakerEmail)) return true
       }
 
-      // Match by name in description (CSV import stores names in description)
-      if (session.description && speakerName) {
-        if (session.description.toLowerCase().includes(speakerName.toLowerCase())) return true
+      // Match by name in description, speakers, chairpersons, moderators columns
+      // Use title-stripped comparison to handle "Dr." vs "Dr" variations
+      if (speakerNameStripped) {
+        const nameFields = [session.description, session.speakers, session.chairpersons, session.moderators]
+        for (const field of nameFields) {
+          if (field) {
+            const fieldLower = field.toLowerCase()
+            if (fieldLower.includes(speakerNameStripped)) return true
+            if (speakerName && fieldLower.includes(speakerName.toLowerCase())) return true
+          }
+        }
       }
 
       return false
     })
 
     // Strip internal fields before returning
-    const cleanSessions = speakerSessions.map(({ speakers_text, chairpersons_text, moderators_text, ...rest }: any) => rest)
+    const cleanSessions = speakerSessions.map(({ speakers, chairpersons, moderators, speakers_text, chairpersons_text, moderators_text, ...rest }: any) => rest)
 
     return NextResponse.json({
       registration,

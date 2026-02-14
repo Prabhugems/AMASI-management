@@ -304,11 +304,21 @@ export async function POST(request: NextRequest) {
             : session.faculty_name
           existing.speakers = existing.speakers || []
           existing.speakers.push(facultyInfo)
+          // Store contact info for speaker portal matching
+          if (session.faculty_email) {
+            existing.speakersContacts = existing.speakersContacts || []
+            existing.speakersContacts.push(
+              `${session.faculty_name} (${session.faculty_email}${session.faculty_phone ? ", " + session.faculty_phone : ""})`
+            )
+          }
         }
       } else {
         // New session
         const speakers = session.faculty_name
           ? [session.faculty_role ? `${session.faculty_name} (${session.faculty_role})` : session.faculty_name]
+          : []
+        const speakersContacts = (session.faculty_name && session.faculty_email)
+          ? [`${session.faculty_name} (${session.faculty_email}${session.faculty_phone ? ", " + session.faculty_phone : ""})`]
           : []
 
         sessionMap.set(key, {
@@ -322,6 +332,7 @@ export async function POST(request: NextRequest) {
           hall: session.hall || null,
           specialty_track: session.specialty_track || null,
           speakers: speakers,
+          speakersContacts: speakersContacts,
         })
       }
     })
@@ -356,6 +367,7 @@ export async function POST(request: NextRequest) {
         hall: session.hall,
         specialty_track: session.specialty_track,
         description: session.speakers?.length > 0 ? session.speakers.join(', ') : null,
+        speakers_text: session.speakersContacts?.length > 0 ? session.speakersContacts.join(' | ') : null,
       }))
 
     const skippedDuplicates = sessionMap.size - sessionsToInsert.length
