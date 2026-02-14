@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
+import crypto from "crypto"
 
 // Initialize Resend (will be undefined if no API key)
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -7,9 +8,9 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 // In-memory OTP store (in production, use Redis or database)
 const otpStore = new Map<string, { otp: string; expires: number; attempts: number }>()
 
-// Generate 6-digit OTP
+// Generate 6-digit OTP using cryptographically secure random
 function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
+  return crypto.randomInt(100000, 999999).toString()
 }
 
 // Validate email format

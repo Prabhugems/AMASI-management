@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // Force dynamic - never cache this route
 export const dynamic = "force-dynamic"
@@ -7,6 +8,10 @@ export const dynamic = "force-dynamic"
 // GET /api/badge-templates - Get all templates for an event
 export async function GET(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 
@@ -39,6 +44,10 @@ export async function GET(request: NextRequest) {
 // POST /api/badge-templates - Create a new template
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body = await request.json()
     const { event_id, name, description, size, template_image_url, template_data, ticket_type_ids, is_default } = body
 
@@ -95,6 +104,10 @@ export async function POST(request: NextRequest) {
 // PUT /api/badge-templates - Update a template
 export async function PUT(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body = await request.json()
     const { id, name, description, size, template_image_url, template_data, ticket_type_ids, is_default, event_id, force_unlock } = body
 
@@ -179,6 +192,10 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/badge-templates - Delete a template
 export async function DELETE(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
     const force = searchParams.get("force") === "true"

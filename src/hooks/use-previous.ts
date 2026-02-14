@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useState, useCallback } from "react"
 
 /**
  * Hook to get previous value of a variable
@@ -147,6 +147,8 @@ export function useHistory<T>(
 } {
   const historyRef = useRef<T[]>([value])
   const indexRef = useRef(0)
+  // Use state to trigger re-renders when history navigation happens
+  const [, forceUpdate] = useState(0)
 
   useEffect(() => {
     const currentHistory = historyRef.current
@@ -166,29 +168,33 @@ export function useHistory<T>(
       }
 
       historyRef.current = newHistory
+      forceUpdate((n) => n + 1)
     }
   }, [value, maxHistory])
 
-  const back = () => {
+  const back = useCallback(() => {
     if (indexRef.current > 0) {
       indexRef.current--
+      forceUpdate((n) => n + 1)
       return historyRef.current[indexRef.current]
     }
     return undefined
-  }
+  }, [])
 
-  const forward = () => {
+  const forward = useCallback(() => {
     if (indexRef.current < historyRef.current.length - 1) {
       indexRef.current++
+      forceUpdate((n) => n + 1)
       return historyRef.current[indexRef.current]
     }
     return undefined
-  }
+  }, [])
 
-  const clear = () => {
+  const clear = useCallback(() => {
     historyRef.current = [value]
     indexRef.current = 0
-  }
+    forceUpdate((n) => n + 1)
+  }, [value])
 
   return {
     history: historyRef.current,

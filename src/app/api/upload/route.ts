@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 const BUCKET_NAME = "uploads"
 
@@ -24,6 +25,10 @@ async function ensureBucketExists(adminClient: any) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Require authentication
+    const { user, error: authError } = await getApiUser()
+    if (authError) return authError
+
     const formData = await request.formData()
     const file = formData.get("file") as File
     const eventId = formData.get("event_id") as string

@@ -2,7 +2,8 @@
 // Using AirLabs API (1000 free calls/month)
 // Get your free API key at: https://airlabs.co/
 
-const AIRLABS_API_KEY = process.env.NEXT_PUBLIC_AIRLABS_API_KEY || ""
+// Use server-only env var to avoid exposing API key in client bundle
+const AIRLABS_API_KEY = process.env.AIRLABS_API_KEY || process.env.NEXT_PUBLIC_AIRLABS_API_KEY || ""
 const AIRLABS_BASE_URL = "https://airlabs.co/api/v9"
 
 export type FlightStatus = {

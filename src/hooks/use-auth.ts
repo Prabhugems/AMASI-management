@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import type { Tables } from '@/lib/supabase/database.types'
@@ -19,7 +19,8 @@ export function useAuth() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const supabase = createClient()
+  // Memoize the Supabase client to avoid creating a new instance on every render
+  const supabase = useMemo(() => createClient(), [])
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
