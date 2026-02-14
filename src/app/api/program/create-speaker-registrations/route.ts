@@ -44,14 +44,15 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient()
 
     // Get sessions with faculty info for this event
+    // AI import stores faculty in speakers_text, chairpersons_text, moderators_text columns
+    // Legacy format stores in description as "Name | Email | Phone"
     const { data: sessions } = await (supabase as any)
       .from("sessions")
-      .select("description")
+      .select("description, speakers_text, chairpersons_text, moderators_text")
       .eq("event_id", event_id)
-      .not("description", "is", null)
 
     if (!sessions || sessions.length === 0) {
-      return NextResponse.json({ error: "No sessions with faculty found" }, { status: 400 })
+      return NextResponse.json({ error: "No sessions found" }, { status: 400 })
     }
 
     // Helper to strip title from name
@@ -59,24 +60,64 @@ export async function POST(request: NextRequest) {
       return name.replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Shri\.?)\s+/i, "").trim()
     }
 
-    // Extract unique faculty from sessions (format: "Name | Email | Phone")
+    // Parse contact text format: "Name (email, phone) | Name2 (email, phone)"
+    const parseContactText = (text: string): Array<{ name: string; email: string; phone: string }> => {
+      if (!text) return []
+      return text.split(" | ").map(part => {
+        const nameMatch = part.split("(")[0].trim()
+        const name = stripTitle(nameMatch)
+        const detailsMatch = part.match(/\(([^)]*)\)/)
+        if (detailsMatch) {
+          const details = detailsMatch[1].split(",").map(s => s.trim())
+          const email = details.find(d => d.includes("@"))?.toLowerCase() || ""
+          const phone = details.find(d => !d.includes("@") && /[\d+]/.test(d)) || ""
+          return { name, email, phone }
+        }
+        return { name, email: "", phone: "" }
+      }).filter(p => p.name)
+    }
+
+    // Extract unique faculty from sessions
     const facultyMap = new Map<string, { name: string; email: string; phone: string }>()
+
     sessions.forEach((session: any) => {
+      // Parse from *_text columns (AI import format: "Name (email, phone) | Name2 (email, phone)")
+      const textFields = [session.speakers_text, session.chairpersons_text, session.moderators_text]
+      textFields.forEach((text: string | null) => {
+        if (text) {
+          const people = parseContactText(text)
+          people.forEach(person => {
+            if (person.email && person.email.includes("@")) {
+              facultyMap.set(person.email, person)
+            } else if (person.name) {
+              // Use name as key if no email
+              const key = `name:${person.name.toLowerCase()}`
+              if (!facultyMap.has(key)) {
+                facultyMap.set(key, person)
+              }
+            }
+          })
+        }
+      })
+
+      // Legacy fallback: parse from description (format: "Name | Email | Phone")
       if (session.description) {
         const parts = session.description.split(" | ")
-        const rawName = parts[0]?.trim()
-        const name = stripTitle(rawName) // Remove Dr/Prof prefix
-        const email = parts[1]?.trim()?.toLowerCase()
-        const phone = parts[2]?.trim()
+        if (parts.length >= 2) {
+          const rawName = parts[0]?.trim()
+          const name = stripTitle(rawName)
+          const email = parts[1]?.trim()?.toLowerCase()
+          const phone = parts[2]?.trim() || ""
 
-        if (email && email.includes("@")) {
-          facultyMap.set(email, { name, email, phone })
+          if (email && email.includes("@") && !facultyMap.has(email)) {
+            facultyMap.set(email, { name, email, phone })
+          }
         }
       }
     })
 
     if (facultyMap.size === 0) {
-      return NextResponse.json({ error: "No faculty with email found in sessions" }, { status: 400 })
+      return NextResponse.json({ error: "No faculty found in sessions" }, { status: 400 })
     }
 
     // Find or create Speaker ticket
@@ -114,14 +155,28 @@ export async function POST(request: NextRequest) {
     let created = 0
     let skipped = 0
 
-    for (const [email, faculty] of facultyMap.entries()) {
-      // Check if already registered
-      const { data: existing } = await (supabase as any)
-        .from("registrations")
-        .select("id")
-        .eq("event_id", event_id)
-        .eq("attendee_email", email)
-        .maybeSingle()
+    for (const [key, faculty] of facultyMap.entries()) {
+      const email = key.startsWith("name:") ? null : key
+
+      // Check if already registered (by email or by name)
+      let existing = null
+      if (email) {
+        const { data } = await (supabase as any)
+          .from("registrations")
+          .select("id")
+          .eq("event_id", event_id)
+          .eq("attendee_email", email)
+          .maybeSingle()
+        existing = data
+      } else {
+        const { data } = await (supabase as any)
+          .from("registrations")
+          .select("id")
+          .eq("event_id", event_id)
+          .ilike("attendee_name", faculty.name)
+          .maybeSingle()
+        existing = data
+      }
 
       if (existing) {
         skipped++
@@ -133,6 +188,9 @@ export async function POST(request: NextRequest) {
       // Generate portal token for speaker to accept/decline
       const portalToken = crypto.randomUUID()
 
+      // Generate placeholder email if none available
+      const attendeeEmail = email || `${faculty.name.toLowerCase().replace(/\s+/g, ".")}@placeholder.speaker`
+
       const { error: regError } = await (supabase as any)
         .from("registrations")
         .insert({
@@ -140,7 +198,7 @@ export async function POST(request: NextRequest) {
           ticket_type_id: speakerTicket.id,
           registration_number: registrationNumber,
           attendee_name: faculty.name,
-          attendee_email: email,
+          attendee_email: attendeeEmail,
           attendee_phone: faculty.phone || null,
           attendee_designation: "Speaker",
           attendee_country: DEFAULTS.country,
