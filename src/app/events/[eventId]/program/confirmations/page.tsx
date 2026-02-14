@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useCallback } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -30,6 +30,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import {
   Search,
@@ -49,6 +55,10 @@ import {
   Phone,
   Calendar,
   Building2,
+  ExternalLink,
+  Copy,
+  X,
+  MousePointerClick,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -72,6 +82,7 @@ type FacultyAssignment = {
   change_request_details: string | null
   reminder_count: number
   last_reminder_at: string | null
+  invitation_token: string | null
 }
 
 const STATUS_CONFIG = {
@@ -104,6 +115,8 @@ export default function ConfirmationsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [sendingInvitations, setSendingInvitations] = useState(false)
   const [sendingReminders, setSendingReminders] = useState(false)
+  const [detailAssignment, setDetailAssignment] = useState<FacultyAssignment | null>(null)
+  const [resendingInvite, setResendingInvite] = useState(false)
 
   // Fetch event details
   const { data: event } = useQuery({
@@ -132,6 +145,73 @@ export default function ConfirmationsPage() {
       return (data || []) as FacultyAssignment[]
     },
   })
+
+  // Fetch email logs for the selected assignment
+  const { data: emailLogs } = useQuery({
+    queryKey: ["assignment-emails", detailAssignment?.id],
+    queryFn: async () => {
+      if (!detailAssignment) return []
+      const { data } = await (supabase as any)
+        .from("assignment_emails")
+        .select("*")
+        .eq("assignment_id", detailAssignment.id)
+        .order("sent_at", { ascending: false })
+      return (data || []) as Array<{
+        id: string
+        email_type: string
+        recipient_email: string
+        subject: string
+        status: string
+        sent_at: string
+        opened_at: string | null
+        clicked_at: string | null
+        external_id: string | null
+      }>
+    },
+    enabled: !!detailAssignment,
+  })
+
+  // Resend invitation for a single assignment
+  const resendInvitation = useCallback(async (assignment: FacultyAssignment) => {
+    if (!assignment.faculty_email || assignment.faculty_email.includes("@placeholder.")) {
+      toast.error("Cannot send to placeholder email. Update with a real email first.")
+      return
+    }
+
+    setResendingInvite(true)
+    try {
+      const eventName = event?.short_name || event?.name || "Event"
+      const eventVenue = event?.venue_name ? `${event.venue_name}${event.city ? `, ${event.city}` : ""}` : ""
+
+      const response = await fetch("/api/email/faculty-invitation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignment_id: assignment.id,
+          event_id: eventId,
+          event_name: eventName,
+          event_start_date: event?.start_date,
+          event_end_date: event?.end_date,
+          event_venue: eventVenue,
+        }),
+      })
+
+      if (response.ok) {
+        toast.success(`Invitation sent to ${assignment.faculty_name}`)
+        queryClient.invalidateQueries({ queryKey: ["confirmations", eventId] })
+        queryClient.invalidateQueries({ queryKey: ["assignment-emails", assignment.id] })
+        // Update the detail assignment with new status
+        setDetailAssignment(prev => prev ? { ...prev, status: "invited", invitation_sent_at: new Date().toISOString() } : null)
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Failed to send invitation")
+      }
+    } catch {
+      toast.error("Error sending invitation")
+    } finally {
+      setResendingInvite(false)
+    }
+  }, [event, eventId, queryClient])
 
   // Get unique values for filters
   const dates = useMemo(() => {
@@ -240,11 +320,22 @@ export default function ConfirmationsPage() {
   // Bulk actions
   const sendBulkInvitations = async () => {
     const pendingSelected = filteredAssignments
-      .filter(a => selectedIds.has(a.id) && a.status === 'pending' && a.faculty_email)
+      .filter(a => selectedIds.has(a.id) && a.status === 'pending' && a.faculty_email && !a.faculty_email.includes("@placeholder."))
+
+    const placeholderCount = filteredAssignments
+      .filter(a => selectedIds.has(a.id) && a.status === 'pending' && a.faculty_email?.includes("@placeholder.")).length
 
     if (pendingSelected.length === 0) {
-      toast.error("No pending assignments with email selected")
+      if (placeholderCount > 0) {
+        toast.error(`${placeholderCount} faculty have placeholder emails. Update with real emails before sending invitations.`)
+      } else {
+        toast.error("No pending assignments with email selected")
+      }
       return
+    }
+
+    if (placeholderCount > 0) {
+      toast.warning(`Skipping ${placeholderCount} faculty with placeholder emails. Sending to ${pendingSelected.length} with real emails.`)
     }
 
     setSendingInvitations(true)
@@ -550,8 +641,16 @@ export default function ConfirmationsPage() {
                 const roleColor = ROLE_COLORS[assignment.role as keyof typeof ROLE_COLORS]
 
                 return (
-                  <TableRow key={assignment.id} className={cn(selectedIds.has(assignment.id) && "bg-primary/5")}>
-                    <TableCell>
+                  <TableRow
+                    key={assignment.id}
+                    className={cn(
+                      "cursor-pointer",
+                      selectedIds.has(assignment.id) && "bg-primary/5",
+                      detailAssignment?.id === assignment.id && "bg-blue-50"
+                    )}
+                    onClick={() => setDetailAssignment(assignment)}
+                  >
+                    <TableCell onClick={e => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedIds.has(assignment.id)}
                         onCheckedChange={() => toggleSelection(assignment.id)}
@@ -561,7 +660,12 @@ export default function ConfirmationsPage() {
                       <div>
                         <div className="font-medium">{assignment.faculty_name}</div>
                         {assignment.faculty_email && (
-                          <div className="text-xs text-muted-foreground">{assignment.faculty_email}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {assignment.faculty_email}
+                            {assignment.faculty_email.includes("@placeholder.") && (
+                              <Badge variant="outline" className="ml-1 text-[10px] px-1 py-0 text-amber-600 border-amber-300">placeholder</Badge>
+                            )}
+                          </div>
                         )}
                         {assignment.faculty_phone && (
                           <div className="text-xs text-muted-foreground flex items-center gap-1">
@@ -633,7 +737,7 @@ export default function ConfirmationsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setDetailAssignment(assignment)}>
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
@@ -672,6 +776,244 @@ export default function ConfirmationsPage() {
       <div className="text-sm text-muted-foreground">
         Showing {filteredAssignments.length} of {assignments?.length || 0} faculty assignments
       </div>
+
+      {/* Detail Sidebar */}
+      <Sheet open={!!detailAssignment} onOpenChange={(open) => { if (!open) setDetailAssignment(null) }}>
+        <SheetContent className="w-[420px] sm:w-[480px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Faculty Details</SheetTitle>
+          </SheetHeader>
+          {detailAssignment && (() => {
+            const a = detailAssignment
+            const statusConfig = STATUS_CONFIG[a.status as keyof typeof STATUS_CONFIG]
+            const isPlaceholder = a.faculty_email?.includes("@placeholder.")
+
+            return (
+              <div className="space-y-6 mt-4">
+                {/* Faculty Info */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg">{a.faculty_name}</h3>
+                  <div className="space-y-2 text-sm">
+                    {a.faculty_email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span className={isPlaceholder ? "text-amber-600" : ""}>{a.faculty_email}</span>
+                        {isPlaceholder && <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-300">placeholder</Badge>}
+                      </div>
+                    )}
+                    {a.faculty_phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span>{a.faculty_phone}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Badge className={cn("capitalize text-xs", ROLE_COLORS[a.role as keyof typeof ROLE_COLORS])}>
+                        {a.role}
+                      </Badge>
+                      <Badge className={cn("text-xs", statusConfig?.color)}>
+                        {statusConfig?.label || a.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Session Info */}
+                <div className="border rounded-lg p-4 space-y-2 bg-muted/30">
+                  <h4 className="font-medium text-sm">Session</h4>
+                  <p className="font-medium">{a.session_name}</p>
+                  {a.topic_title && a.topic_title !== a.session_name && (
+                    <p className="text-sm text-muted-foreground">{a.topic_title}</p>
+                  )}
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(a.session_date)}</span>
+                    <span>{formatTime(a.start_time)} - {formatTime(a.end_time)}</span>
+                  </div>
+                  {a.hall && (
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />{a.hall}
+                    </div>
+                  )}
+                </div>
+
+                {/* Invitation Timeline */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm">Invitation Timeline</h4>
+                  <div className="border rounded-lg divide-y">
+                    {/* Status: Not Invited */}
+                    <div className="flex items-center gap-3 p-3">
+                      <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0", "bg-green-100")}>
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Assignment Created</p>
+                        <p className="text-xs text-muted-foreground">Faculty linked to session</p>
+                      </div>
+                    </div>
+
+                    {/* Invitation Sent */}
+                    <div className="flex items-center gap-3 p-3">
+                      <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0",
+                        a.invitation_sent_at ? "bg-blue-100" : "bg-gray-100"
+                      )}>
+                        <Mail className={cn("h-4 w-4", a.invitation_sent_at ? "text-blue-600" : "text-gray-400")} />
+                      </div>
+                      <div className="flex-1">
+                        <p className={cn("text-sm font-medium", !a.invitation_sent_at && "text-muted-foreground")}>
+                          Invitation {a.invitation_sent_at ? "Sent" : "Not Sent"}
+                        </p>
+                        {a.invitation_sent_at && (
+                          <p className="text-xs text-muted-foreground">{formatDateTime(a.invitation_sent_at)}</p>
+                        )}
+                        {isPlaceholder && !a.invitation_sent_at && (
+                          <p className="text-xs text-amber-600">Cannot send to placeholder email</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Email Delivery */}
+                    {emailLogs && emailLogs.length > 0 && (
+                      <div className="flex items-center gap-3 p-3">
+                        <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0",
+                          emailLogs[0].status === "delivered" ? "bg-green-100" :
+                          emailLogs[0].status === "bounced" ? "bg-red-100" : "bg-blue-100"
+                        )}>
+                          <Send className={cn("h-4 w-4",
+                            emailLogs[0].status === "delivered" ? "text-green-600" :
+                            emailLogs[0].status === "bounced" ? "text-red-600" : "text-blue-600"
+                          )} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium capitalize">
+                            Email {emailLogs[0].status}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{emailLogs[0].subject}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Link Clicked */}
+                    {emailLogs && emailLogs.some(l => l.clicked_at) && (
+                      <div className="flex items-center gap-3 p-3">
+                        <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 bg-purple-100">
+                          <MousePointerClick className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Link Clicked</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDateTime(emailLogs.find(l => l.clicked_at)?.clicked_at || null)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Response */}
+                    {(a.status === "confirmed" || a.status === "declined" || a.status === "change_requested") && (
+                      <div className="flex items-center gap-3 p-3">
+                        <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0",
+                          a.status === "confirmed" ? "bg-green-100" :
+                          a.status === "declined" ? "bg-red-100" : "bg-amber-100"
+                        )}>
+                          {a.status === "confirmed" ? <CheckCircle2 className="h-4 w-4 text-green-600" /> :
+                           a.status === "declined" ? <XCircle className="h-4 w-4 text-red-600" /> :
+                           <AlertTriangle className="h-4 w-4 text-amber-600" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">
+                            {a.status === "confirmed" ? "Confirmed" :
+                             a.status === "declined" ? "Declined" : "Change Requested"}
+                          </p>
+                          {a.responded_at && (
+                            <p className="text-xs text-muted-foreground">{formatDateTime(a.responded_at)}</p>
+                          )}
+                          {a.response_notes && (
+                            <p className="text-xs text-muted-foreground mt-1 italic">&quot;{a.response_notes}&quot;</p>
+                          )}
+                          {a.change_request_details && (
+                            <p className="text-xs text-amber-700 mt-1">{a.change_request_details}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reminders */}
+                    {a.reminder_count > 0 && (
+                      <div className="flex items-center gap-3 p-3">
+                        <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 bg-orange-100">
+                          <RefreshCw className="h-4 w-4 text-orange-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{a.reminder_count} Reminder{a.reminder_count > 1 ? "s" : ""} Sent</p>
+                          {a.last_reminder_at && (
+                            <p className="text-xs text-muted-foreground">Last: {formatDateTime(a.last_reminder_at)}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Email History */}
+                {emailLogs && emailLogs.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm">Email History</h4>
+                    <div className="space-y-2">
+                      {emailLogs.map((log) => (
+                        <div key={log.id} className="border rounded-lg p-3 text-sm space-y-1">
+                          <div className="flex items-center justify-between">
+                            <Badge variant="outline" className="capitalize text-xs">{log.email_type.replace("_", " ")}</Badge>
+                            <Badge className={cn("text-xs",
+                              log.status === "sent" ? "bg-blue-100 text-blue-700" :
+                              log.status === "delivered" ? "bg-green-100 text-green-700" :
+                              log.status === "bounced" ? "bg-red-100 text-red-700" :
+                              "bg-gray-100 text-gray-700"
+                            )}>{log.status}</Badge>
+                          </div>
+                          <p className="text-muted-foreground text-xs">{log.subject}</p>
+                          <p className="text-muted-foreground text-xs">{formatDateTime(log.sent_at)}</p>
+                          {log.opened_at && <p className="text-xs text-green-600">Opened: {formatDateTime(log.opened_at)}</p>}
+                          {log.clicked_at && <p className="text-xs text-purple-600">Clicked: {formatDateTime(log.clicked_at)}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="space-y-2 pt-2 border-t">
+                  {(a.status === "pending" || a.status === "invited") && (
+                    <Button
+                      className="w-full"
+                      onClick={() => resendInvitation(a)}
+                      disabled={resendingInvite || isPlaceholder}
+                    >
+                      {resendingInvite ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending...</>
+                      ) : (
+                        <><Send className="h-4 w-4 mr-2" />{a.status === "pending" ? "Send Invitation" : "Resend Invitation"}</>
+                      )}
+                    </Button>
+                  )}
+                  {a.invitation_token && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        const url = `${window.location.origin}/respond/faculty/${a.invitation_token}`
+                        navigator.clipboard.writeText(url)
+                        toast.success("Portal link copied to clipboard")
+                      }}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy Portal Link
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
