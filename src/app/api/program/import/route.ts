@@ -439,7 +439,7 @@ export async function POST(request: NextRequest) {
             price: 0,
             quantity_total: 9999,
             quantity_sold: 0,
-            is_active: true,
+            status: "active",
           } as any)
           .select("id")
           .single()

@@ -193,9 +193,9 @@ export async function POST(request: NextRequest) {
             name: "Speaker",
             description: "Complimentary ticket for speakers and faculty",
             price: 0,
-            quantity_available: 1000,
+            quantity_total: 1000,
             quantity_sold: 0,
-            is_active: true,
+            status: "active",
             sort_order: 0,
           })
           .select()
