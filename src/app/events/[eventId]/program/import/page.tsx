@@ -78,6 +78,22 @@ const DEFAULT_MAPPING: ColumnMapping = {
 // Helper to check if a mapping value is valid (not empty and not skipped)
 const isValidMapping = (value: string) => value && value !== "__skip__"
 
+// Simple email validation
+const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+
+// Sample value preview component
+function SampleValue({ column, data }: { column: string; data: CSVRow[] }) {
+  if (!column || column === "__skip__") return null
+  const sample = data.slice(0, 3).map(row => row[column]?.trim()).filter(Boolean)
+  if (sample.length === 0) return <p className="text-xs text-amber-600 mt-1">No values found in this column</p>
+  return (
+    <p className="text-xs text-muted-foreground mt-1 truncate">
+      e.g. <span className="font-mono bg-muted px-1 rounded">{sample[0]}</span>
+      {sample.length > 1 && <>, <span className="font-mono bg-muted px-1 rounded">{sample[1]}</span></>}
+    </p>
+  )
+}
+
 // Date format patterns - slash formats have both MM/DD and DD/MM variants
 const DATE_FORMATS_DD_FIRST = [
   { pattern: /(\d{1,2})\.(\d{1,2})\.(\d{4})/, name: "DD.MM.YYYY", parse: (m: RegExpMatchArray) => `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` },
@@ -374,13 +390,20 @@ export default function ProgramImportPage() {
       }
     })
 
-    return Array.from(sessionMap.values()).map(s => ({
-      ...s,
-      speakers: s.speakers.map((p: any) => p.name).join(", ") || null,
-      chairpersons: s.chairpersons.map((p: any) => p.name).join(", ") || null,
-      moderators: s.moderators.map((p: any) => p.name).join(", ") || null,
-      speakersWithContact: s.speakers.filter((p: any) => p.email).length,
-    }))
+    return Array.from(sessionMap.values()).map(s => {
+      const allPeople = [...s.speakers, ...s.chairpersons, ...s.moderators] as { name: string; email: string; phone: string }[]
+      return {
+        ...s,
+        speakers: s.speakers.map((p: any) => p.name).join(", ") || null,
+        chairpersons: s.chairpersons.map((p: any) => p.name).join(", ") || null,
+        moderators: s.moderators.map((p: any) => p.name).join(", ") || null,
+        speakersWithContact: s.speakers.filter((p: any) => p.email).length,
+        // For preview: show emails/phones of all people in this session
+        _emails: allPeople.map(p => p.email).filter(Boolean).join(", ") || null,
+        _phones: allPeople.map(p => p.phone).filter(Boolean).join(", ") || null,
+        _invalidEmails: allPeople.filter(p => p.email && !isValidEmail(p.email)).map(p => p.email),
+      }
+    })
   }, [csvData, mapping, dateOrder])
 
   // Stats
@@ -396,17 +419,27 @@ export default function ProgramImportPage() {
     const hasEmailColumn = columns.some(c => c.toLowerCase().includes("email"))
     const hasPhoneColumn = columns.some(c => c.toLowerCase().includes("mobile") || c.toLowerCase().includes("phone"))
 
-    // Count faculty with contact info
+    // Count faculty with contact info and validate emails
     let facultyWithContact = 0
+    let validEmails = 0
+    let invalidEmails = 0
+    let missingEmails = 0
     if (hasEmailColumn || hasPhoneColumn) {
       const seenFaculty = new Set<string>()
       csvData.forEach(row => {
         const name = row[mapping.speaker]?.trim()
         if (name && !seenFaculty.has(name.toLowerCase())) {
           seenFaculty.add(name.toLowerCase())
-          const hasEmail = Object.entries(row).some(([k, v]) => k.toLowerCase().includes("email") && v?.trim())
+          const emailVal = isValidMapping(mapping.email) ? row[mapping.email]?.trim() : ""
           const hasPhone = Object.entries(row).some(([k, v]) => (k.toLowerCase().includes("mobile") || k.toLowerCase().includes("phone")) && v?.trim())
-          if (hasEmail || hasPhone) facultyWithContact++
+          if (emailVal || hasPhone) facultyWithContact++
+          // Email validation
+          if (emailVal) {
+            if (isValidEmail(emailVal)) validEmails++
+            else invalidEmails++
+          } else {
+            missingEmails++
+          }
         }
       })
     }
@@ -418,6 +451,9 @@ export default function ProgramImportPage() {
       speakers: speakers.size,
       hasContactInfo: hasEmailColumn || hasPhoneColumn,
       facultyWithContact,
+      validEmails,
+      invalidEmails,
+      missingEmails,
     }
   }, [processedData, columns, csvData, mapping.speaker])
 
@@ -682,6 +718,7 @@ export default function ProgramImportPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <SampleValue column={mapping.date} data={csvData} />
               </div>
 
               <div>
@@ -699,6 +736,7 @@ export default function ProgramImportPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <SampleValue column={mapping.time} data={csvData} />
               </div>
 
               <div>
@@ -789,6 +827,7 @@ export default function ProgramImportPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <SampleValue column={mapping.speaker} data={csvData} />
               </div>
 
               <div>
@@ -811,6 +850,7 @@ export default function ProgramImportPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <SampleValue column={mapping.role} data={csvData} />
               </div>
 
               <div>
@@ -833,6 +873,21 @@ export default function ProgramImportPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <SampleValue column={mapping.email} data={csvData} />
+                {isValidMapping(mapping.email) && (() => {
+                  const emails = csvData.map(r => r[mapping.email]?.trim()).filter(Boolean)
+                  const valid = emails.filter(isValidEmail).length
+                  const invalid = emails.length - valid
+                  return invalid > 0 ? (
+                    <p className="text-xs text-destructive mt-1">
+                      {invalid} invalid email{invalid > 1 ? "s" : ""} found — check mapping is correct
+                    </p>
+                  ) : emails.length > 0 ? (
+                    <p className="text-xs text-green-600 mt-1">
+                      All {valid} emails are valid
+                    </p>
+                  ) : null
+                })()}
               </div>
 
               <div>
@@ -854,6 +909,7 @@ export default function ProgramImportPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <SampleValue column={mapping.phone} data={csvData} />
               </div>
             </div>
 
@@ -943,18 +999,21 @@ export default function ProgramImportPage() {
 
           {/* Faculty contact info detected */}
           {stats.hasContactInfo && (
-            <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+            <Card className={stats.invalidEmails > 0 ? "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20" : "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"}>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
-                    <Mail className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <div className={`p-2 rounded-lg ${stats.invalidEmails > 0 ? "bg-amber-100 dark:bg-amber-900/50" : "bg-green-100 dark:bg-green-900/50"}`}>
+                    <Mail className={`h-5 w-5 ${stats.invalidEmails > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`} />
                   </div>
                   <div>
-                    <p className="font-medium text-green-900 dark:text-green-200">
+                    <p className={`font-medium ${stats.invalidEmails > 0 ? "text-amber-900 dark:text-amber-200" : "text-green-900 dark:text-green-200"}`}>
                       Email &amp; Phone Detected
                     </p>
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      {stats.facultyWithContact} faculty members have email/phone. Invitations can be sent directly after import.
+                    <p className="text-sm text-muted-foreground">
+                      {stats.facultyWithContact} faculty have contact info.
+                      {stats.validEmails > 0 && <span className="text-green-600"> {stats.validEmails} valid emails.</span>}
+                      {stats.invalidEmails > 0 && <span className="text-destructive font-medium"> {stats.invalidEmails} invalid emails — check your Email column mapping!</span>}
+                      {stats.missingEmails > 0 && <span className="text-amber-600"> {stats.missingEmails} without email.</span>}
                     </p>
                   </div>
                 </div>
@@ -989,6 +1048,8 @@ export default function ProgramImportPage() {
                       <TableHead>Hall</TableHead>
                       <TableHead>Duration</TableHead>
                       <TableHead>Speakers</TableHead>
+                      {isValidMapping(mapping.email) && <TableHead>Email</TableHead>}
+                      {isValidMapping(mapping.phone) && <TableHead>Phone</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1002,6 +1063,22 @@ export default function ProgramImportPage() {
                         <TableCell>{session.hall || "-"}</TableCell>
                         <TableCell>{session.duration_minutes ? `${session.duration_minutes} min` : "-"}</TableCell>
                         <TableCell className="max-w-xs truncate">{session.speakers || "-"}</TableCell>
+                        {isValidMapping(mapping.email) && (
+                          <TableCell className="max-w-xs truncate">
+                            {session._emails ? (
+                              session._invalidEmails?.length > 0 ? (
+                                <span className="text-destructive">{session._emails}</span>
+                              ) : (
+                                <span className="text-green-600">{session._emails}</span>
+                              )
+                            ) : <span className="text-muted-foreground">-</span>}
+                          </TableCell>
+                        )}
+                        {isValidMapping(mapping.phone) && (
+                          <TableCell className="max-w-xs truncate">
+                            {session._phones || <span className="text-muted-foreground">-</span>}
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
