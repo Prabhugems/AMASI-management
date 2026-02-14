@@ -152,6 +152,7 @@ export async function PUT(
         confirmed_at: new Date().toISOString(),
         custom_fields: {
           ...registration.custom_fields,
+          invitation_status: "confirmed",
           response_date: new Date().toISOString(),
         },
       }
@@ -160,6 +161,7 @@ export async function PUT(
         status: "declined",
         custom_fields: {
           ...registration.custom_fields,
+          invitation_status: "declined",
           response_date: new Date().toISOString(),
           decline_reason: data?.reason || "",
         },
