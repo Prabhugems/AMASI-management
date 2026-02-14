@@ -16,11 +16,4 @@ TO authenticated
 USING (true)
 WITH CHECK (true);
 
--- Assignment emails: authenticated users can read
-DROP POLICY IF EXISTS "Authenticated users can read assignment_emails" ON assignment_emails;
-CREATE POLICY "Authenticated users can read assignment_emails"
-ON assignment_emails FOR SELECT
-TO authenticated
-USING (true);
-
 SELECT 'Faculty assignments RLS policies added for authenticated users' as status;
