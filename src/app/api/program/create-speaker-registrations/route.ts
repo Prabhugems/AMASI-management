@@ -100,21 +100,68 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      // Legacy fallback: parse from description (format: "Name | Email | Phone")
+      // Parse from description field
       if (session.description) {
-        const parts = session.description.split(" | ")
-        if (parts.length >= 2) {
-          const rawName = parts[0]?.trim()
+        // Legacy pipe-separated format: "Name | Email | Phone"
+        const pipeParts = session.description.split(" | ")
+        if (pipeParts.length >= 2 && pipeParts[1]?.includes("@")) {
+          const rawName = pipeParts[0]?.trim()
           const name = stripTitle(rawName)
-          const email = parts[1]?.trim()?.toLowerCase()
-          const phone = parts[2]?.trim() || ""
+          const email = pipeParts[1]?.trim()?.toLowerCase()
+          const phone = pipeParts[2]?.trim() || ""
 
-          if (email && email.includes("@") && !facultyMap.has(email)) {
+          if (email && !facultyMap.has(email)) {
             facultyMap.set(email, { name, email, phone })
           }
+        } else {
+          // CSV import format: comma-separated names like "Dr Chirag Parikh, Dr Shaishav Patel (Chairperson)"
+          const names = session.description.split(",").map((s: string) => s.trim()).filter(Boolean)
+          names.forEach((entry: string) => {
+            // Remove role in parentheses e.g. "Dr Name (Chairperson)" -> "Dr Name"
+            const nameWithoutRole = entry.replace(/\s*\([^)]*\)\s*$/, "").trim()
+            if (nameWithoutRole) {
+              const name = stripTitle(nameWithoutRole)
+              if (name) {
+                const key = `name:${name.toLowerCase()}`
+                if (!facultyMap.has(key)) {
+                  facultyMap.set(key, { name, email: "", phone: "" })
+                }
+              }
+            }
+          })
         }
       }
     })
+
+    // For name-only entries, try to look up email from the faculty table
+    const nameOnlyKeys = Array.from(facultyMap.keys()).filter(k => k.startsWith("name:"))
+    if (nameOnlyKeys.length > 0) {
+      const { data: knownFaculty } = await (supabase as any)
+        .from("faculty")
+        .select("name, email, phone")
+
+      if (knownFaculty && knownFaculty.length > 0) {
+        nameOnlyKeys.forEach(key => {
+          const entry = facultyMap.get(key)!
+          // Find matching faculty by name (case-insensitive)
+          const match = knownFaculty.find((f: any) =>
+            f.name?.toLowerCase() === entry.name.toLowerCase() ||
+            stripTitle(f.name || "").toLowerCase() === entry.name.toLowerCase()
+          )
+          if (match?.email) {
+            // Upgrade from name-based key to email-based key
+            facultyMap.delete(key)
+            if (!facultyMap.has(match.email)) {
+              facultyMap.set(match.email, {
+                name: entry.name,
+                email: match.email,
+                phone: match.phone || entry.phone,
+              })
+            }
+          }
+        })
+      }
+    }
 
     if (facultyMap.size === 0) {
       return NextResponse.json({ error: "No faculty found in sessions" }, { status: 400 })
