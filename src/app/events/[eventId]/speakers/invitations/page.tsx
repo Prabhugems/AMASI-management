@@ -55,7 +55,7 @@ export default function SpeakerInvitationsPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "sent" | "confirmed">("all")
   const [selectedSpeakers, setSelectedSpeakers] = useState<Set<string>>(new Set())
   const [sending, setSending] = useState(false)
-  const [lastSendResult, setLastSendResult] = useState<{ sent: number; failed: number; skipped: number; errors: string[] } | null>(null)
+  const [lastSendResult, setLastSendResult] = useState<{ sent: number; failed: number; skipped: number; errors: string[]; provider?: string } | null>(null)
 
   // Fetch speakers
   const { data: speakers, isLoading } = useQuery({
@@ -165,8 +165,8 @@ export default function SpeakerInvitationsPage() {
         queryClient.invalidateQueries({ queryKey: ["speaker-invitations", eventId] })
 
         if (result.results) {
-          const { sent, failed, skipped, errors } = result.results
-          setLastSendResult({ sent, failed, skipped, errors: errors || [] })
+          const { sent, failed, skipped, errors, provider } = result.results
+          setLastSendResult({ sent, failed, skipped, errors: errors || [], provider })
           if (failed > 0 || skipped > 0) {
             toast.warning(`Sent: ${sent}, Failed: ${failed}, Skipped: ${skipped} — see details below`)
           } else {
@@ -225,6 +225,7 @@ export default function SpeakerInvitationsPage() {
               <div>
                 <p className="font-medium">
                   Invitation Results: {lastSendResult.sent} sent, {lastSendResult.failed} failed, {lastSendResult.skipped} skipped
+                  {lastSendResult.provider && <span className="text-xs font-normal text-muted-foreground ml-2">(via {lastSendResult.provider})</span>}
                 </p>
                 {lastSendResult.errors.length > 0 && (
                   <div className="mt-2 space-y-1">

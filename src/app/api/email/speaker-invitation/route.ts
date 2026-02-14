@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { sendEmail, isEmailEnabled, getEmailProvider } from "@/lib/email"
 import { shortenSpeakerPortalUrl } from "@/lib/linkila"
 import { escapeHtml } from "@/lib/string-utils"
 
@@ -252,8 +252,8 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
 
       return { success: true, email_id: result.id }
     } else {
-      console.log(`[DEV] Would send speaker invitation to ${speaker_email}`)
-      return { success: true, dev_mode: true }
+      console.error(`[Email] No email provider configured - cannot send to ${speaker_email}`)
+      return { success: false, error: "No email provider configured. Add RESEND_API_KEY or BLASTABLE_API_KEY in Vercel Environment Variables and redeploy." }
     }
   } catch (error: any) {
     console.error("Error sending speaker invitation:", error)
@@ -442,7 +442,10 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      results,
+      results: {
+        ...results,
+        provider: getEmailProvider() || "none",
+      },
     })
   } catch (error: any) {
     console.error("Error in bulk speaker invitation:", error)
