@@ -1050,7 +1050,7 @@ export default function SessionsPage() {
 
     // Count sessions that have speakers (from assignments OR from session data)
     const sessionsWithSpeakers = sessions.filter(s =>
-      sessionsWithAssignments.has(s.id) || s.speakers_text || s.speakers || s.chairpersons_text || s.chairpersons
+      sessionsWithAssignments.has(s.id) || s.speakers_text || s.speakers || s.chairpersons_text || s.chairpersons || s.moderators_text || s.moderators
     ).length
 
     return {
