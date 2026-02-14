@@ -55,19 +55,19 @@ import { format } from "date-fns"
 interface Attendee {
   id: string
   event_id: string
-  name: string
-  email: string
-  phone: string | null
-  registration_id: string | null
-  category: string | null
+  attendee_name: string
+  attendee_email: string
+  attendee_phone: string | null
+  registration_number: string | null
   status: string | null
   checked_in: boolean
-  check_in_time: string | null
-  institution: string | null
-  designation: string | null
-  city: string | null
+  checked_in_at: string | null
+  attendee_institution: string | null
+  attendee_designation: string | null
+  attendee_city: string | null
   created_at: string
   event: { name: string; short_name: string | null } | null
+  ticket_type: { name: string } | null
 }
 
 export default function GlobalAttendeesPage() {
@@ -99,14 +99,14 @@ export default function GlobalAttendeesPage() {
     queryKey: ["global-attendees", search, eventFilter, statusFilter, checkinFilter],
     queryFn: async () => {
       let query = supabase
-        .from("participants")
-        .select(`*, event:events(name, short_name)`)
+        .from("registrations")
+        .select(`id, event_id, attendee_name, attendee_email, attendee_phone, registration_number, status, checked_in, checked_in_at, attendee_institution, attendee_designation, attendee_city, created_at, event:events(name, short_name), ticket_type:ticket_types(name)`)
         .order("created_at", { ascending: false })
         .limit(100)
 
       if (search) {
         query = query.or(
-          `name.ilike.%${search}%,email.ilike.%${search}%,registration_id.ilike.%${search}%`
+          `attendee_name.ilike.%${search}%,attendee_email.ilike.%${search}%,registration_number.ilike.%${search}%`
         )
       }
       if (eventFilter !== "all") {
@@ -130,14 +130,14 @@ export default function GlobalAttendeesPage() {
     queryKey: ["attendees-stats"],
     queryFn: async () => {
       const { count: total } = await supabase
-        .from("participants")
+        .from("registrations")
         .select("*", { count: "exact", head: true })
       const { count: paid } = await supabase
-        .from("participants")
+        .from("registrations")
         .select("*", { count: "exact", head: true })
         .eq("status", "confirmed")
       const { count: checkedIn } = await supabase
-        .from("participants")
+        .from("registrations")
         .select("*", { count: "exact", head: true })
         .eq("checked_in", true)
       return {
@@ -150,7 +150,7 @@ export default function GlobalAttendeesPage() {
 
   // Export to CSV
   const handleExport = async () => {
-    const { data } = await supabase.from("participants").select("*").csv()
+    const { data } = await supabase.from("registrations").select("*").csv()
     const blob = new Blob([data || ""], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -342,13 +342,13 @@ export default function GlobalAttendeesPage() {
                             ? "bg-emerald-500/10 text-emerald-600"
                             : "bg-amber-500/10 text-amber-600"
                         )}>
-                          {attendee.name.charAt(0).toUpperCase()}
+                          {attendee.attendee_name.charAt(0).toUpperCase()}
                         </div>
 
                         {/* Attendee info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-foreground truncate">{attendee.name}</h3>
+                            <h3 className="font-semibold text-foreground truncate">{attendee.attendee_name}</h3>
                             {attendee.checked_in && (
                               <Badge variant="outline" className="text-[10px] gap-1 flex-shrink-0 bg-emerald-500/10 text-emerald-600 border-0">
                                 <Check className="h-3 w-3" />
@@ -357,10 +357,10 @@ export default function GlobalAttendeesPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span>{attendee.email}</span>
+                            <span>{attendee.attendee_email}</span>
                             <span>•</span>
                             <span className="font-mono text-xs text-primary">
-                              {attendee.registration_id || "No Reg ID"}
+                              {attendee.registration_number || "No Reg ID"}
                             </span>
                           </div>
                         </div>
@@ -373,7 +373,7 @@ export default function GlobalAttendeesPage() {
                             {attendee.event?.short_name || attendee.event?.name || "—"}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {attendee.category || "Attendee"}
+                            {attendee.ticket_type?.name || "Attendee"}
                           </p>
                         </div>
                         <Badge
@@ -412,8 +412,8 @@ export default function GlobalAttendeesPage() {
         <SlideOver
           open={!!selectedAttendee}
           onClose={() => setSelectedAttendee(null)}
-          title={selectedAttendee?.name}
-          subtitle={selectedAttendee?.registration_id || "No Registration ID"}
+          title={selectedAttendee?.attendee_name}
+          subtitle={selectedAttendee?.registration_number || "No Registration ID"}
           width="lg"
           showOverlay={false}
         >
@@ -475,24 +475,24 @@ export default function GlobalAttendeesPage() {
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{selectedAttendee.email}</span>
+                        <span className="text-sm">{selectedAttendee.attendee_email}</span>
                       </div>
-                      {selectedAttendee.phone && (
+                      {selectedAttendee.attendee_phone && (
                         <div className="flex items-center gap-3">
                           <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{selectedAttendee.phone}</span>
+                          <span className="text-sm">{selectedAttendee.attendee_phone}</span>
                         </div>
                       )}
-                      {selectedAttendee.institution && (
+                      {selectedAttendee.attendee_institution && (
                         <div className="flex items-center gap-3">
                           <Building className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{selectedAttendee.institution}</span>
+                          <span className="text-sm">{selectedAttendee.attendee_institution}</span>
                         </div>
                       )}
-                      {selectedAttendee.city && (
+                      {selectedAttendee.attendee_city && (
                         <div className="flex items-center gap-3">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{selectedAttendee.city}</span>
+                          <span className="text-sm">{selectedAttendee.attendee_city}</span>
                         </div>
                       )}
                     </div>
@@ -512,7 +512,7 @@ export default function GlobalAttendeesPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Category</span>
-                        <span className="font-medium">{selectedAttendee.category || "Attendee"}</span>
+                        <span className="font-medium">{selectedAttendee.ticket_type?.name || "Attendee"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Registered</span>
@@ -520,11 +520,11 @@ export default function GlobalAttendeesPage() {
                           {selectedAttendee.created_at ? format(new Date(selectedAttendee.created_at), "d MMM yyyy") : "-"}
                         </span>
                       </div>
-                      {selectedAttendee.check_in_time && (
+                      {selectedAttendee.checked_in_at && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Checked In At</span>
                           <span className="font-medium">
-                            {format(new Date(selectedAttendee.check_in_time), "d MMM yyyy, h:mm a")}
+                            {format(new Date(selectedAttendee.checked_in_at), "d MMM yyyy, h:mm a")}
                           </span>
                         </div>
                       )}
@@ -541,15 +541,15 @@ export default function GlobalAttendeesPage() {
                         disabled={selectedAttendee.checked_in}
                         onClick={async () => {
                           const { error } = await (supabase as any)
-                            .from("participants")
-                            .update({ checked_in: true, check_in_time: new Date().toISOString() })
+                            .from("registrations")
+                            .update({ checked_in: true, checked_in_at: new Date().toISOString() })
                             .eq("id", selectedAttendee.id)
                           if (error) {
                             toast.error("Failed to check in")
                           } else {
-                            toast.success(`${selectedAttendee.name} checked in`)
-                            queryClient.invalidateQueries({ queryKey: ["delegates"] })
-                            setSelectedAttendee({ ...selectedAttendee, checked_in: true, check_in_time: new Date().toISOString() })
+                            toast.success(`${selectedAttendee.attendee_name} checked in`)
+                            queryClient.invalidateQueries({ queryKey: ["global-attendees"] })
+                            setSelectedAttendee({ ...selectedAttendee, checked_in: true, checked_in_at: new Date().toISOString() })
                           }
                         }}
                       >
@@ -590,7 +590,7 @@ export default function GlobalAttendeesPage() {
                         variant="outline"
                         size="sm"
                         className="justify-start"
-                        onClick={() => window.open(`mailto:${selectedAttendee.email}`)}
+                        onClick={() => window.open(`mailto:${selectedAttendee.attendee_email}`)}
                       >
                         <Send className="h-4 w-4 mr-2" />
                         Send Email

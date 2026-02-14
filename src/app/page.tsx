@@ -41,7 +41,7 @@ export default function Home() {
         supabase.from("members").select("*", { count: "exact", head: true }),
         supabase.from("faculty").select("*", { count: "exact", head: true }),
         supabase.from("events").select("*", { count: "exact", head: true }),
-        supabase.from("participants").select("*", { count: "exact", head: true }),
+        supabase.from("registrations").select("*", { count: "exact", head: true }),
       ])
 
       // Log any errors for debugging (only if error has message)
