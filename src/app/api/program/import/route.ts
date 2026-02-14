@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     const eventId = formData.get("event_id") as string
     const clearExisting = formData.get("clear_existing") === "true"
     const createRegistrations = formData.get("create_registrations") !== "false" // default true
-    const dateOrder = (formData.get("date_order") as string) || "mm_first" // mm_first = M/D/YYYY, dd_first = D/M/YYYY
+    const dateOrder = (formData.get("date_order") as string) || "dd_first" // dd_first = D/M/YYYY (Indian format), mm_first = M/D/YYYY
     const mappingStr = formData.get("mapping") as string | null
     const userMapping = mappingStr ? JSON.parse(mappingStr) as {
       date?: string; time?: string; endTime?: string; topic?: string; hall?: string;
