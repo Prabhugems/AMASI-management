@@ -26,10 +26,27 @@ export async function DELETE(request: NextRequest) {
 
     const supabase = await createAdminClient()
 
-    const { error } = await supabase
-      .from("sessions")
-      .delete()
-      .eq("event_id", eventId)
+    // Support deleting specific session IDs or all sessions for the event
+    const sessionIds = searchParams.get("ids")
+
+    let error
+    if (sessionIds) {
+      // Delete specific sessions by IDs (bulk or single delete)
+      const ids = sessionIds.split(",")
+      const result = await supabase
+        .from("sessions")
+        .delete()
+        .eq("event_id", eventId)
+        .in("id", ids)
+      error = result.error
+    } else {
+      // Clear all sessions for the event
+      const result = await supabase
+        .from("sessions")
+        .delete()
+        .eq("event_id", eventId)
+      error = result.error
+    }
 
     if (error) {
       return NextResponse.json(
