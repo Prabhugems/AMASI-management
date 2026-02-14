@@ -353,12 +353,17 @@ export async function PUT(request: NextRequest) {
     }
 
     for (const reg of registrations) {
-      const portalToken = reg.custom_fields?.portal_token
+      let portalToken = reg.custom_fields?.portal_token
 
+      // Auto-generate portal token if missing
       if (!portalToken) {
-        results.skipped++
-        results.errors.push(`${reg.attendee_name || reg.id}: No portal token`)
-        continue
+        portalToken = crypto.randomUUID()
+        const updatedFields = { ...(reg.custom_fields || {}), portal_token: portalToken }
+        await (supabase as any)
+          .from("registrations")
+          .update({ custom_fields: updatedFields })
+          .eq("id", reg.id)
+        reg.custom_fields = updatedFields
       }
 
       // Skip speakers without email

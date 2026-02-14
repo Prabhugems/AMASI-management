@@ -112,23 +112,35 @@ export default function SpeakerInvitationsPage() {
     setSending(true)
 
     try {
-      // First, generate portal tokens for speakers who don't have them
       const speakersToSend = Array.from(selectedSpeakers)
+
+      // Generate portal tokens server-side to avoid race conditions
+      // First, ensure all selected speakers have portal tokens
       for (const id of speakersToSend) {
         const speaker = speakers?.find(s => s.id === id)
         if (speaker && !speaker.custom_fields?.portal_token) {
           const token = crypto.randomUUID()
+          // Fetch fresh data from DB to avoid overwriting fields
+          const { data: freshReg } = await (supabase as any)
+            .from("registrations")
+            .select("custom_fields")
+            .eq("id", id)
+            .single()
+
           await (supabase as any)
             .from("registrations")
             .update({
               custom_fields: {
-                ...speaker.custom_fields,
+                ...(freshReg?.custom_fields || {}),
                 portal_token: token,
               },
             })
             .eq("id", id)
         }
       }
+
+      // Small delay to ensure DB writes are committed
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Call the bulk email API
       const response = await fetch("/api/email/speaker-invitation", {
@@ -147,13 +159,19 @@ export default function SpeakerInvitationsPage() {
         const sentIds = new Set(result.results?.sent_ids || [])
 
         for (const id of speakersToSend) {
-          const speaker = speakers?.find(s => s.id === id)
           if (sentIds.has(id)) {
+            // Fetch fresh data to avoid overwriting portal_token or other fields
+            const { data: freshReg } = await (supabase as any)
+              .from("registrations")
+              .select("custom_fields")
+              .eq("id", id)
+              .single()
+
             await (supabase as any)
               .from("registrations")
               .update({
                 custom_fields: {
-                  ...speaker?.custom_fields,
+                  ...(freshReg?.custom_fields || {}),
                   invitation_status: "sent",
                   invitation_sent_at: new Date().toISOString(),
                 },
@@ -314,7 +332,7 @@ export default function SpeakerInvitationsPage() {
             Clear
           </Button>
           <Button size="sm" onClick={sendInvitations} disabled={sending}>
-            <Send className="h-4 w-4 mr-2" />
+            {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
             {sending ? "Sending..." : "Send Invitations"}
           </Button>
         </div>
