@@ -44,35 +44,29 @@ function formatDate(dateStr: string) {
   })
 }
 
-// POST /api/email/speaker-invitation - Send speaker invitation email
-export async function POST(request: NextRequest) {
+// Core logic to send a single speaker invitation (used by both POST and PUT)
+async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ success: boolean; error?: string; email_id?: string; dev_mode?: boolean }> {
   try {
-    const body: SpeakerInvitationData = await request.json()
+  const {
+    registration_id,
+    speaker_name,
+    speaker_email,
+    event_name,
+    event_start_date,
+    event_end_date,
+    event_venue,
+    portal_token,
+    sessions = [],
+  } = data
 
-    const {
-      registration_id,
-      speaker_name,
-      speaker_email,
-      event_id: _event_id,
-      event_name,
-      event_start_date,
-      event_end_date,
-      event_venue,
-      portal_token,
-      sessions = [],
-    } = body
+  if (!speaker_email || !portal_token || !event_name) {
+    return { success: false, error: "Missing required fields" }
+  }
 
-    if (!speaker_email || !portal_token || !event_name) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      )
-    }
-
-    // Generate portal URL and shorten it
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    const fullPortalUrl = `${baseUrl}/speaker/${portal_token}`
-    const portalUrl = await shortenSpeakerPortalUrl(fullPortalUrl, speaker_name, event_name)
+  // Generate portal URL and shorten it
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  const fullPortalUrl = `${baseUrl}/speaker/${portal_token}`
+  const portalUrl = await shortenSpeakerPortalUrl(fullPortalUrl, speaker_name, event_name)
 
     // Format event dates
     const startDate = formatDate(event_start_date)
@@ -226,11 +220,7 @@ export async function POST(request: NextRequest) {
 
       if (!result.success) {
         console.error("Email send error:", result.error)
-        return NextResponse.json({
-          success: false,
-          error: "Failed to send email",
-          details: result.error
-        }, { status: 500 })
+        return { success: false, error: result.error || "Failed to send email" }
       }
 
       console.log(`Speaker invitation sent to ${speaker_email} - ID: ${result.id}`)
@@ -249,21 +239,27 @@ export async function POST(request: NextRequest) {
           .eq("id", registration_id)
       }
 
-      return NextResponse.json({
-        success: true,
-        message: "Invitation email sent",
-        email_id: result.id
-      })
+      return { success: true, email_id: result.id }
     } else {
       console.log(`[DEV] Would send speaker invitation to ${speaker_email}`)
-      console.log(`[DEV] Portal URL: ${portalUrl}`)
-      return NextResponse.json({
-        success: true,
-        message: "Email skipped (no API key configured)",
-        dev_mode: true,
-        portal_url: portalUrl
-      })
+      return { success: true, dev_mode: true }
     }
+  } catch (error: any) {
+    console.error("Error sending speaker invitation:", error)
+    return { success: false, error: error.message || "Failed to send invitation email" }
+  }
+}
+
+// POST /api/email/speaker-invitation - Send speaker invitation email
+export async function POST(request: NextRequest) {
+  try {
+    const body: SpeakerInvitationData = await request.json()
+    const result = await sendSpeakerInvitation(body)
+
+    if (!result.success) {
+      return NextResponse.json(result, { status: 500 })
+    }
+    return NextResponse.json(result)
   } catch (error) {
     console.error("Error in POST /api/email/speaker-invitation:", error)
     return NextResponse.json(
@@ -342,9 +338,8 @@ export async function PUT(request: NextRequest) {
       failed: 0,
       skipped: 0,
       errors: [] as string[],
+      sent_ids: [] as string[],
     }
-
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
     for (const reg of registrations) {
       const portalToken = reg.custom_fields?.portal_token
@@ -391,8 +386,8 @@ export async function PUT(request: NextRequest) {
         return false
       })
 
-      // Prepare invitation data
-      const invitationData: SpeakerInvitationData = {
+      // Send invitation directly (no self-fetch)
+      const result = await sendSpeakerInvitation({
         registration_id: reg.id,
         speaker_name: reg.attendee_name,
         speaker_email: reg.attendee_email,
@@ -409,27 +404,14 @@ export async function PUT(request: NextRequest) {
           end_time: s.end_time,
           hall: s.hall,
         })),
-      }
+      })
 
-      // Send invitation
-      try {
-        const response = await fetch(`${baseUrl}/api/email/speaker-invitation`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(invitationData),
-        })
-
-        const result = await response.json()
-
-        if (result.success) {
-          results.sent++
-        } else {
-          results.failed++
-          results.errors.push(`${reg.attendee_email}: ${result.error}`)
-        }
-      } catch (err: any) {
+      if (result.success) {
+        results.sent++
+        results.sent_ids.push(reg.id)
+      } else {
         results.failed++
-        results.errors.push(`${reg.attendee_email}: ${err.message}`)
+        results.errors.push(`${reg.attendee_email}: ${result.error}`)
       }
     }
 

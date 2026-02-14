@@ -34,57 +34,44 @@ function formatDate(dateStr: string) {
   })
 }
 
-// POST /api/email/faculty-invitation - Send single faculty invitation
-export async function POST(request: NextRequest) {
+// Core logic to send a single faculty invitation (used by both POST and PUT)
+async function sendFacultyInvitation(data: FacultyInvitationData): Promise<{ success: boolean; error?: string; email_id?: string; dev_mode?: boolean }> {
   try {
-    const body: FacultyInvitationData = await request.json()
-    const {
-      assignment_id,
-      event_id,
-      event_name,
-      event_start_date,
-      event_end_date,
-      event_venue,
-    } = body
+  const {
+    assignment_id,
+    event_id,
+    event_name,
+    event_start_date,
+    event_end_date,
+    event_venue,
+  } = data
 
-    if (!assignment_id || !event_id || !event_name) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      )
-    }
+  if (!assignment_id || !event_id || !event_name) {
+    return { success: false, error: "Missing required fields" }
+  }
 
-    const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = supabase as any
+  const supabase = await createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
 
-    // Get assignment details
-    const { data: assignment, error: assignmentError } = await db
-      .from("faculty_assignments")
-      .select("*")
-      .eq("id", assignment_id)
-      .single()
+  // Get assignment details
+  const { data: assignment, error: assignmentError } = await db
+    .from("faculty_assignments")
+    .select("*")
+    .eq("id", assignment_id)
+    .single()
 
-    if (assignmentError || !assignment) {
-      return NextResponse.json(
-        { error: "Assignment not found" },
-        { status: 404 }
-      )
-    }
+  if (assignmentError || !assignment) {
+    return { success: false, error: "Assignment not found" }
+  }
 
-    if (!assignment.faculty_email) {
-      return NextResponse.json(
-        { error: "Faculty email not available" },
-        { status: 400 }
-      )
-    }
+  if (!assignment.faculty_email) {
+    return { success: false, error: "Faculty email not available" }
+  }
 
-    // Reject placeholder emails
-    if (assignment.faculty_email.includes("@placeholder.")) {
-      return NextResponse.json(
-        { error: `Cannot send to placeholder email (${assignment.faculty_email}). Update with a real email first.` },
-        { status: 400 }
-      )
+  // Reject placeholder emails
+  if (assignment.faculty_email.includes("@placeholder.")) {
+    return { success: false, error: `Cannot send to placeholder email (${assignment.faculty_email}). Update with a real email first.` }
     }
 
     // Generate token if not exists
@@ -238,11 +225,7 @@ export async function POST(request: NextRequest) {
 
       if (!result.success) {
         console.error("Email send error:", result.error)
-        return NextResponse.json({
-          success: false,
-          error: "Failed to send email",
-          details: result.error
-        }, { status: 500 })
+        return { success: false, error: result.error || "Failed to send email" }
       }
 
       console.log(`Faculty invitation sent to ${assignment.faculty_email} - ID: ${result.id}`)
@@ -256,7 +239,7 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", assignment_id)
 
-      // Log email for tracking (non-blocking - don't let logging failures crash the response)
+      // Log email for tracking (non-blocking)
       if (result.id) {
         try {
           await logEmail({
@@ -291,11 +274,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      return NextResponse.json({
-        success: true,
-        message: "Faculty invitation sent",
-        email_id: result.id
-      })
+      return { success: true, email_id: result.id }
     } else {
       console.log(`[DEV] Would send faculty invitation to ${assignment.faculty_email}`)
 
@@ -308,12 +287,24 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", assignment_id)
 
-      return NextResponse.json({
-        success: true,
-        message: "Email skipped (no API key configured)",
-        dev_mode: true
-      })
+      return { success: true, dev_mode: true }
     }
+  } catch (error: any) {
+    console.error("Error sending faculty invitation:", error)
+    return { success: false, error: error.message || "Failed to send faculty invitation" }
+  }
+}
+
+// POST /api/email/faculty-invitation - Send single faculty invitation
+export async function POST(request: NextRequest) {
+  try {
+    const body: FacultyInvitationData = await request.json()
+    const result = await sendFacultyInvitation(body)
+
+    if (!result.success) {
+      return NextResponse.json(result, { status: 400 })
+    }
+    return NextResponse.json(result)
   } catch (error) {
     console.error("Error in POST /api/email/faculty-invitation:", error)
     return NextResponse.json(
@@ -341,30 +332,20 @@ export async function PUT(request: NextRequest) {
     const errors: string[] = []
 
     for (const assignment_id of assignment_ids) {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/email/faculty-invitation`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            assignment_id,
-            event_id,
-            event_name,
-            event_start_date,
-            event_end_date,
-            event_venue,
-          }),
-        })
+      const result = await sendFacultyInvitation({
+        assignment_id,
+        event_id,
+        event_name,
+        event_start_date,
+        event_end_date,
+        event_venue,
+      })
 
-        if (response.ok) {
-          successCount++
-        } else {
-          failCount++
-          const errorData = await response.json()
-          errors.push(`${assignment_id}: ${errorData.error || "Unknown error"}`)
-        }
-      } catch (error: any) {
+      if (result.success) {
+        successCount++
+      } else {
         failCount++
-        errors.push(`${assignment_id}: ${error.message}`)
+        errors.push(`${assignment_id}: ${result.error || "Unknown error"}`)
       }
     }
 
