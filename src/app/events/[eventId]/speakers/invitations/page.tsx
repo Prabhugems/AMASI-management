@@ -25,6 +25,10 @@ import {
   XCircle,
   Mail,
   Users,
+  AlertCircle,
+  X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -51,6 +55,7 @@ export default function SpeakerInvitationsPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "sent" | "confirmed">("all")
   const [selectedSpeakers, setSelectedSpeakers] = useState<Set<string>>(new Set())
   const [sending, setSending] = useState(false)
+  const [lastSendResult, setLastSendResult] = useState<{ sent: number; failed: number; skipped: number; errors: string[] } | null>(null)
 
   // Fetch speakers
   const { data: speakers, isLoading } = useQuery({
@@ -160,9 +165,10 @@ export default function SpeakerInvitationsPage() {
         queryClient.invalidateQueries({ queryKey: ["speaker-invitations", eventId] })
 
         if (result.results) {
-          const { sent, failed, skipped } = result.results
+          const { sent, failed, skipped, errors } = result.results
+          setLastSendResult({ sent, failed, skipped, errors: errors || [] })
           if (failed > 0 || skipped > 0) {
-            toast.warning(`Sent: ${sent}, Failed: ${failed}, Skipped: ${skipped}`)
+            toast.warning(`Sent: ${sent}, Failed: ${failed}, Skipped: ${skipped} — see details below`)
           } else {
             toast.success(`Successfully sent invitations to ${sent} speakers`)
           }
@@ -209,6 +215,37 @@ export default function SpeakerInvitationsPage() {
         <h1 className="text-xl sm:text-2xl font-bold">Speaker Invitations</h1>
         <p className="text-muted-foreground">Send and track speaker invitations</p>
       </div>
+
+      {/* Last send result details */}
+      {lastSendResult && (lastSendResult.failed > 0 || lastSendResult.skipped > 0) && (
+        <div className={`rounded-lg border p-4 ${lastSendResult.failed > 0 ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800" : "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800"}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <AlertCircle className={`h-5 w-5 mt-0.5 shrink-0 ${lastSendResult.failed > 0 ? "text-red-600" : "text-amber-600"}`} />
+              <div>
+                <p className="font-medium">
+                  Invitation Results: {lastSendResult.sent} sent, {lastSendResult.failed} failed, {lastSendResult.skipped} skipped
+                </p>
+                {lastSendResult.errors.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Reasons:</p>
+                    <ul className="text-sm space-y-1 max-h-40 overflow-auto">
+                      {lastSendResult.errors.map((err, i) => (
+                        <li key={i} className="text-muted-foreground flex items-start gap-1">
+                          <span className="text-destructive shrink-0">•</span> {err}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => setLastSendResult(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
