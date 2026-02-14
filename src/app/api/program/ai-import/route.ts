@@ -1100,7 +1100,7 @@ export async function POST(request: NextRequest) {
         .eq("event_id", eventId)
         .or("name.ilike.%faculty%,name.ilike.%speaker%")
         .limit(1)
-        .single() as { data: { id: string } | null }
+        .maybeSingle() as { data: { id: string } | null }
 
       if (existingTicket) {
         ticketTypeId = existingTicket.id
@@ -1271,7 +1271,7 @@ export async function POST(request: NextRequest) {
 
         // Process based on match status
         if (existingMatch) {
-          // Update existing registration with any missing data
+          // Update existing registration with any missing or placeholder data
           const updates: any = {}
           let hasUpdates = false
 
@@ -1279,7 +1279,14 @@ export async function POST(request: NextRequest) {
             updates.attendee_phone = faculty.phone
             hasUpdates = true
           }
-          if (!existingMatch.attendee_email && faculty.email) {
+          // Update email if missing OR if it's a placeholder email and we have a real one
+          const isPlaceholderEmail = existingMatch.attendee_email && (
+            existingMatch.attendee_email.includes("@placeholder.") ||
+            existingMatch.attendee_email.includes("placeholder.com") ||
+            existingMatch.attendee_email.includes("placeholder.speaker") ||
+            existingMatch.attendee_email.includes("placeholder.faculty")
+          )
+          if (faculty.email && (!existingMatch.attendee_email || isPlaceholderEmail)) {
             updates.attendee_email = faculty.email
             hasUpdates = true
           }
@@ -1311,8 +1318,8 @@ export async function POST(request: NextRequest) {
               },
             })
           }
-        } else if ((faculty.email || faculty.phone) && ticketTypeId) {
-          // NEW FACULTY - not found in faculty table or registrations
+        } else if (ticketTypeId) {
+          // No existing registration found - create new faculty + registration
           // Step 1: Add to faculty table (master faculty database) if not already there
           if (!facultyTableMatch) {
             // Parse name into first/last
@@ -1356,27 +1363,35 @@ export async function POST(request: NextRequest) {
               newData: { email: faculty.email || undefined, phone: faculty.phone || undefined },
             })
           }
-        } else if (!facultyTableMatch && faculty.name) {
-          // Even without contact info, add to faculty table for tracking
-          const nameParts = faculty.name.trim().split(/\s+/)
-          const firstName = nameParts[0] || faculty.name
-          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : ""
+        } else if (faculty.name) {
+          // No ticket type available - add to faculty table for tracking
+          if (!facultyTableMatch) {
+            const nameParts = faculty.name.trim().split(/\s+/)
+            const firstName = nameParts[0] || faculty.name
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : ""
 
-          const { error: facultyError } = await (supabase as any).from("faculty").insert({
-            first_name: firstName,
-            last_name: lastName || firstName,
-            email: `${faculty.name.replace(/\s+/g, ".").toLowerCase()}.pending@placeholder.faculty`,
-            phone: null,
-            designation: faculty.role || "Speaker",
-          })
+            const { error: facultyError } = await (supabase as any).from("faculty").insert({
+              first_name: firstName,
+              last_name: lastName || firstName,
+              email: faculty.email || `${faculty.name.replace(/\s+/g, ".").toLowerCase()}.pending@placeholder.faculty`,
+              phone: faculty.phone || null,
+              designation: faculty.role || "Speaker",
+            })
 
-          facultyAnalysis.push({
-            name: faculty.name,
-            status: facultyError ? "skipped" : "new",
-            matchedBy: facultyError ? undefined : "new_faculty_no_contact",
-          })
+            facultyAnalysis.push({
+              name: faculty.name,
+              status: facultyError ? "skipped" : "new",
+              matchedBy: facultyError ? undefined : "new_faculty_no_contact",
+            })
 
-          if (!facultyError) facultyCreated++
+            if (!facultyError) facultyCreated++
+          } else {
+            facultyAnalysis.push({
+              name: faculty.name,
+              status: "skipped",
+              matchedBy: "faculty_table_only",
+            })
+          }
         } else {
           facultyAnalysis.push({
             name: faculty.name,

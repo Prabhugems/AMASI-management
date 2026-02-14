@@ -266,6 +266,13 @@ export default function SpeakersPage() {
         if (assignment.faculty_email) {
           addToMap(assignment.faculty_email.toLowerCase(), session)
         }
+        // Also map by name so registrations with placeholder emails can match
+        if (assignment.faculty_name) {
+          const stripped = assignment.faculty_name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim().toLowerCase()
+          if (stripped) {
+            addToMap(`name:${stripped}`, session)
+          }
+        }
       })
     }
 
