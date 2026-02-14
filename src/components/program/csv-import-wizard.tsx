@@ -51,22 +51,172 @@ const DB_FIELDS = [
   { key: "ignore", label: "-- Ignore this column --", required: false },
 ]
 
-// Common CSV column patterns for auto-detection
-const COLUMN_PATTERNS: Record<string, string[]> = {
-  topic: ["topic", "session name", "title", "subject", "talk"],
-  start_time: ["start", "starting", "begin", "from", "time"],
-  end_time: ["end", "ending", "finish", "to", "until"],
-  date: ["date", "day"],
-  duration: ["duration", "minutes", "length", "min"],
-  session_track: ["session", "track", "category", "stream"],
-  faculty_name: ["faculty", "speaker", "presenter", "full name", "name"],
-  faculty_role: ["role", "designation", "position", "type of participation"],
-  faculty_email: ["email", "e-mail", "mail", "email id"],
-  faculty_phone: ["phone", "mobile", "cell", "contact", "mobile number"],
-  hall: ["hall", "room", "venue", "location", "place"],
-  session_type: ["format", "kind"],
-  needs_travel: ["travel", "needs travel", "flight"],
-  needs_accommodation: ["accommodation", "hotel", "stay", "lodging"],
+// Column patterns for header-based auto-detection
+// Order matters: more specific patterns checked first to avoid mis-matches
+// [field, positivePatterns, negativePatterns]
+const COLUMN_PATTERNS: [string, string[], string[]][] = [
+  ["topic", ["topic", "session name", "title", "subject", "talk"], ["email", "track"]],
+  ["end_time", ["end time", "end_time", "endtime", "ending", "finish", "until"], []], // Before start_time
+  ["start_time", ["start time", "start_time", "starttime", "starting", "begin", "from"], ["end"]],
+  ["date", ["date", "day"], ["update", "create", "modified"]],
+  ["duration", ["duration", "minutes", "length"], []],
+  ["session_track", ["session", "track", "category", "stream"], ["name", "title", "type"]],
+  ["faculty_name", ["faculty", "speaker", "presenter", "full name"], ["email", "phone", "mobile", "role"]],
+  ["faculty_role", ["role", "designation", "position", "type of participation"], ["faculty", "email"]],
+  ["faculty_email", ["email", "e-mail", "mail", "email id"], []],
+  ["faculty_phone", ["phone", "mobile", "cell", "contact number", "mobile number"], ["email"]],
+  ["hall", ["hall", "room", "venue", "location", "place"], []],
+  ["session_type", ["format", "kind", "session type"], []],
+  ["needs_travel", ["travel", "needs travel", "flight"], []],
+  ["needs_accommodation", ["accommodation", "hotel", "stay", "lodging"], []],
+]
+// Fallback: generic "time" matches start_time if nothing else matched
+const FALLBACK_TIME_PATTERN = "time"
+
+// ===== Universal Date/Time Parsers =====
+// These handle ANY format automatically - no code changes needed for new CSV formats
+
+const MONTH_NAMES: Record<string, string> = {
+  jan: "01", january: "01", feb: "02", february: "02", mar: "03", march: "03",
+  apr: "04", april: "04", may: "05", jun: "06", june: "06",
+  jul: "07", july: "07", aug: "08", august: "08", sep: "09", september: "09",
+  oct: "10", october: "10", nov: "11", november: "11", dec: "12", december: "12",
+}
+
+/** Parse any date string into YYYY-MM-DD. Handles: ISO, DD/MM/YYYY, DD.MM.YYYY, DD-MM-YYYY, 2-digit years, month names, etc. */
+function parseAnyDate(value: string): string | null {
+  if (!value?.trim()) return null
+  const v = value.trim()
+
+  // ISO: 2026-01-30 or 2026-01-30T09:00:00
+  const iso = v.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (iso) {
+    const [, y, m, d] = iso
+    if (parseInt(m) >= 1 && parseInt(m) <= 12 && parseInt(d) >= 1 && parseInt(d) <= 31)
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+  }
+
+  // DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY (4-digit year)
+  const dmy4 = v.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})/)
+  if (dmy4) {
+    const [, d, m, y] = dmy4
+    if (parseInt(m) >= 1 && parseInt(m) <= 12 && parseInt(d) >= 1 && parseInt(d) <= 31)
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+  }
+
+  // DD/MM/YY or DD.MM.YY or DD-MM-YY (2-digit year)
+  const dmy2 = v.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2})(?!\d)/)
+  if (dmy2) {
+    const [, d, m, yr] = dmy2
+    const y = parseInt(yr) > 50 ? `19${yr}` : `20${yr.padStart(2, "0")}`
+    if (parseInt(m) >= 1 && parseInt(m) <= 12 && parseInt(d) >= 1 && parseInt(d) <= 31)
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+  }
+
+  // "30 Jan 2026", "30-Jan-2026", "30 January 2026"
+  const dayMonth = v.match(/(\d{1,2})[\s\-]+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[,\s\-]+(\d{2,4})/i)
+  if (dayMonth) {
+    const m = MONTH_NAMES[dayMonth[2].toLowerCase().slice(0, 3)]
+    const y = dayMonth[3].length === 2 ? (parseInt(dayMonth[3]) > 50 ? `19${dayMonth[3]}` : `20${dayMonth[3]}`) : dayMonth[3]
+    if (m) return `${y}-${m}-${dayMonth[1].padStart(2, "0")}`
+  }
+
+  // "Jan 30, 2026", "January 30 2026"
+  const monthDay = v.match(/(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})[,\s]+(\d{2,4})/i)
+  if (monthDay) {
+    const m = MONTH_NAMES[monthDay[1].toLowerCase().slice(0, 3)]
+    const y = monthDay[3].length === 2 ? (parseInt(monthDay[3]) > 50 ? `19${monthDay[3]}` : `20${monthDay[3]}`) : monthDay[3]
+    if (m) return `${y}-${m}-${monthDay[2].padStart(2, "0")}`
+  }
+
+  return null
+}
+
+/** Parse any time string. Returns start time and optional end time in HH:MM:SS format.
+ *  Handles: 24h, 12h AM/PM, time ranges, ISO datetime, combined date+time, etc. */
+function parseAnyTime(value: string): { start: string; end?: string } | null {
+  if (!value?.trim()) return null
+  const v = value.trim()
+
+  const to24h = (h: number, period: string): number => {
+    if (period.toUpperCase() === "PM" && h < 12) return h + 12
+    if (period.toUpperCase() === "AM" && h === 12) return 0
+    return h
+  }
+
+  // Time range with AM/PM: "9:00 AM - 5:00 PM"
+  const rangeAmPm = v.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*[-–to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+  if (rangeAmPm) {
+    const sH = to24h(parseInt(rangeAmPm[1]), rangeAmPm[3])
+    const eH = to24h(parseInt(rangeAmPm[4]), rangeAmPm[6])
+    return {
+      start: `${sH.toString().padStart(2, "0")}:${rangeAmPm[2]}:00`,
+      end: `${eH.toString().padStart(2, "0")}:${rangeAmPm[5]}:00`,
+    }
+  }
+
+  // Time range 24h: "10:00-12:30", "10:00 - 12:30", "10:00 – 12:30"
+  const range24 = v.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/)
+  if (range24) {
+    return {
+      start: `${range24[1].padStart(2, "0")}:${range24[2]}:00`,
+      end: `${range24[3].padStart(2, "0")}:${range24[4]}:00`,
+    }
+  }
+
+  // Single time with AM/PM: "9:00 AM", "2:30PM"
+  const singleAmPm = v.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+  if (singleAmPm) {
+    const h = to24h(parseInt(singleAmPm[1]), singleAmPm[3])
+    return { start: `${h.toString().padStart(2, "0")}:${singleAmPm[2]}:00` }
+  }
+
+  // Time after date/T separator: "2026-01-30T09:00" or "30/1/2026 09:00"
+  const afterSep = v.match(/[T\s](\d{1,2}):(\d{2})/)
+  if (afterSep) {
+    return { start: `${afterSep[1].padStart(2, "0")}:${afterSep[2]}:00` }
+  }
+
+  // Simple time at start: "09:00", "9:30"
+  const simple = v.match(/^(\d{1,2}):(\d{2})/)
+  if (simple) {
+    return { start: `${simple[1].padStart(2, "0")}:${simple[2]}:00` }
+  }
+
+  // Fallback: any HH:MM in the string
+  const fallback = v.match(/(\d{1,2}):(\d{2})/)
+  if (fallback) {
+    return { start: `${fallback[1].padStart(2, "0")}:${fallback[2]}:00` }
+  }
+
+  return null
+}
+
+/** Auto-detect column content type by analyzing actual cell values */
+function detectColumnContentType(values: string[]): string | null {
+  const samples = values.filter(v => v?.trim()).slice(0, 10)
+  if (samples.length === 0) return null
+
+  let dates = 0, times = 0, dateAndTime = 0, emails = 0, phones = 0, booleans = 0
+
+  for (const v of samples) {
+    const hasDate = parseAnyDate(v) !== null
+    const hasTime = parseAnyTime(v) !== null
+    if (hasDate && hasTime) dateAndTime++
+    else if (hasDate) dates++
+    if (hasTime) times++
+    if (/@/.test(v) && /\.\w{2,}/.test(v)) emails++
+    if (/^\+?\d[\d\s\-()]{7,}$/.test(v.trim())) phones++
+    if (/^(yes|no|true|false|y|n|1|0)$/i.test(v.trim())) booleans++
+  }
+
+  const threshold = Math.max(1, samples.length * 0.4)
+  if (emails >= threshold) return "faculty_email"
+  if (phones >= threshold) return "faculty_phone"
+  if (dateAndTime >= threshold) return "start_time"
+  if (dates >= threshold) return "date"
+  if (times >= threshold) return "start_time"
+  return null
 }
 
 type CSVRow = Record<string, string>
@@ -154,20 +304,37 @@ export function CSVImportWizard({
     return result
   }
 
-  // Auto-detect field mappings
-  const autoDetectMapping = (headers: string[]): Record<string, string> => {
+  // Auto-detect field mappings using header patterns, negative patterns, content analysis
+  const autoDetectMapping = (headers: string[], data: CSVRow[]): Record<string, string> => {
     const mapping: Record<string, string> = {}
 
     headers.forEach(header => {
       const headerLower = header.toLowerCase()
 
-      for (const [field, patterns] of Object.entries(COLUMN_PATTERNS)) {
-        if (patterns.some(pattern => headerLower.includes(pattern))) {
-          // Don't override if already mapped
+      // 1. Header-based matching with positive/negative patterns
+      for (const [field, positivePatterns, negativePatterns] of COLUMN_PATTERNS) {
+        // Skip if any negative pattern matches (avoids "end time" matching "start_time")
+        if (negativePatterns.some(neg => headerLower.includes(neg))) continue
+
+        if (positivePatterns.some(pattern => headerLower.includes(pattern))) {
           if (!Object.values(mapping).includes(field)) {
             mapping[header] = field
             break
           }
+        }
+      }
+
+      // 2. Fallback: generic "time" → start_time (if not already mapped)
+      if (!mapping[header] && headerLower.includes(FALLBACK_TIME_PATTERN) && !Object.values(mapping).includes("start_time")) {
+        mapping[header] = "start_time"
+      }
+
+      // 3. Content-based detection as last resort (analyze actual cell values)
+      if (!mapping[header]) {
+        const values = data.map(row => row[header] || "")
+        const detectedType = detectColumnContentType(values)
+        if (detectedType && !Object.values(mapping).includes(detectedType)) {
+          mapping[header] = detectedType
         }
       }
 
@@ -196,7 +363,7 @@ export function CSVImportWizard({
 
       setCsvHeaders(headers)
       setCsvData(data)
-      setFieldMapping(autoDetectMapping(headers))
+      setFieldMapping(autoDetectMapping(headers, data))
       setStep("map")
     } catch (_err) {
       setError("Failed to parse CSV file")
@@ -231,106 +398,42 @@ export function CSVImportWizard({
               transformed.session_name = value || `Session ${index + 1}`
               break
             case "start_time": {
-              // Try ISO format first: YYYY-MM-DDTHH:MM or YYYY-MM-DD HH:MM (common from Airtable/databases)
-              const startISOMatch = value.match(/(\d{4})-(\d{1,2})-(\d{1,2})[T\s](\d{1,2}):(\d{2})/)
-              if (startISOMatch) {
-                const [, isoYear, isoMonth, isoDay, isoHours, isoMinutes] = startISOMatch
-                if (!transformed.session_date) {
-                  transformed.session_date = `${isoYear}-${isoMonth.padStart(2, "0")}-${isoDay.padStart(2, "0")}`
+              // Universal time parser handles ALL formats: ISO, AM/PM, 24h, ranges, combined date+time
+              const timeResult = parseAnyTime(value)
+              if (timeResult) {
+                transformed.start_time = timeResult.start
+                if (timeResult.end && !transformed.end_time) {
+                  transformed.end_time = timeResult.end
                 }
-                transformed.start_time = `${isoHours.padStart(2, "0")}:${isoMinutes}:00`
-              } else {
-                // Try combined date+time: DD/MM/YYYY HH:MM, DD.MM.YYYY HH:MM, DD-MM-YYYY HH:MM
-                // Also handles 2-digit years: DD/MM/YY HH:MM, DD.MM.YY HH:MM, DD-MM-YY HH:MM
-                const startDateTimeMatch = value.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})\s+(\d{1,2}):(\d{2})/)
-                if (startDateTimeMatch) {
-                  const [, dtDay, dtMonth, dtYearRaw, dtHours, dtMinutes] = startDateTimeMatch
-                  const dtYear = dtYearRaw.length === 2
-                    ? (parseInt(dtYearRaw) > 50 ? `19${dtYearRaw}` : `20${dtYearRaw.padStart(2, "0")}`)
-                    : dtYearRaw
-                  if (!transformed.session_date) {
-                    transformed.session_date = `${dtYear}-${dtMonth.padStart(2, "0")}-${dtDay.padStart(2, "0")}`
-                  }
-                  transformed.start_time = `${dtHours.padStart(2, "0")}:${dtMinutes}:00`
-                } else {
-                  // Time range format like "10:00-12:30" or "10:00 - 12:30"
-                  const timeRangeMatch = value.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/)
-                  if (timeRangeMatch) {
-                    const [, startH, startM, endH, endM] = timeRangeMatch
-                    transformed.start_time = `${startH.padStart(2, "0")}:${startM}:00`
-                    transformed.end_time = `${endH.padStart(2, "0")}:${endM}:00`
-                  } else {
-                    // Just time format
-                    const timeMatch = value.match(/(\d{1,2}):(\d{2})/)
-                    if (timeMatch) {
-                      transformed.start_time = `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`
-                    }
-                  }
-                }
+              }
+              // Also extract date from combined datetime values (ISO, DD/MM/YYYY HH:MM, etc.)
+              const dateFromTime = parseAnyDate(value)
+              if (dateFromTime && !transformed.session_date) {
+                transformed.session_date = dateFromTime
               }
               break
             }
             case "end_time": {
-              // Try to extract time from any format (HH:MM works for plain time, date+time, ISO format)
-              const endTimeExtract = value.match(/[T\s](\d{1,2}):(\d{2})/)
-              const endSimpleTime = value.match(/^(\d{1,2}):(\d{2})/)
-              const endMatch = endSimpleTime || endTimeExtract
-              if (endMatch) {
-                transformed.end_time = `${endMatch[1].padStart(2, "0")}:${endMatch[2]}:00`
-              } else {
-                // Fallback: try any HH:MM pattern in the value
-                const endFallback = value.match(/(\d{1,2}):(\d{2})/)
-                if (endFallback) {
-                  transformed.end_time = `${endFallback[1].padStart(2, "0")}:${endFallback[2]}:00`
-                }
+              // Universal time parser handles ALL formats
+              const endResult = parseAnyTime(value)
+              if (endResult) {
+                transformed.end_time = endResult.start
+              }
+              // Also extract date if embedded (ISO datetime)
+              const endDate = parseAnyDate(value)
+              if (endDate && !transformed.session_date) {
+                transformed.session_date = endDate
               }
               break
             }
-            case "date":
-              // Handle multiple date formats: DD/MM/YYYY, DD.MM.YYYY, DD-MM-YYYY, YYYY-MM-DD
-              // Also handles 2-digit years: DD.MM.YY, DD/MM/YY, DD-MM-YY
-              const dateSlashMatch4 = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
-              const dateDotMatch4 = value.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/)
-              const dateDashMatch4 = value.match(/(\d{1,2})-(\d{1,2})-(\d{4})/)
-              const dateISOMatch = value.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
-              // 2-digit year patterns
-              const dateSlashMatch2 = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{2})(?!\d)/)
-              const dateDotMatch2 = value.match(/(\d{1,2})\.(\d{1,2})\.(\d{2})(?!\d)/)
-              const dateDashMatch2 = value.match(/(\d{1,2})-(\d{1,2})-(\d{2})(?!\d)/)
-
-              // Helper to convert 2-digit year to 4-digit (assumes 2000s)
-              const expandYear = (y: string) => (parseInt(y) > 50 ? `19${y}` : `20${y.padStart(2, "0")}`)
-
-              if (dateISOMatch) {
-                // YYYY-MM-DD format
-                const [, year, month, day] = dateISOMatch
-                transformed.session_date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-              } else if (dateSlashMatch4) {
-                // DD/MM/YYYY format
-                const [, day, month, year] = dateSlashMatch4
-                transformed.session_date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-              } else if (dateDotMatch4) {
-                // DD.MM.YYYY format
-                const [, day, month, year] = dateDotMatch4
-                transformed.session_date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-              } else if (dateDashMatch4) {
-                // DD-MM-YYYY format
-                const [, day, month, year] = dateDashMatch4
-                transformed.session_date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-              } else if (dateSlashMatch2) {
-                // DD/MM/YY format (2-digit year)
-                const [, day, month, year] = dateSlashMatch2
-                transformed.session_date = `${expandYear(year)}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-              } else if (dateDotMatch2) {
-                // DD.MM.YY format (2-digit year) - used in some AMASICON rows
-                const [, day, month, year] = dateDotMatch2
-                transformed.session_date = `${expandYear(year)}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
-              } else if (dateDashMatch2) {
-                // DD-MM-YY format (2-digit year)
-                const [, day, month, year] = dateDashMatch2
-                transformed.session_date = `${expandYear(year)}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+            case "date": {
+              // Universal date parser handles ALL formats: ISO, DD/MM/YYYY, dots, dashes, month names, 2-digit years
+              const parsedDate = parseAnyDate(value)
+              if (parsedDate) {
+                transformed.session_date = parsedDate
               }
               break
+            }
             case "duration":
               transformed.duration_minutes = parseInt(value) || null
               break

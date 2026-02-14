@@ -12,7 +12,7 @@ import { parse } from "csv-parse/sync"
  * 4. Create sessions with proper relationships
  */
 
-type ColumnType = "date" | "time" | "topic" | "hall" | "session" | "name" | "email" | "phone" | "role" | "unknown"
+type ColumnType = "date" | "time" | "end_time" | "topic" | "hall" | "session" | "name" | "email" | "phone" | "role" | "unknown"
 
 type DetectedColumn = {
   header: string
@@ -24,83 +24,60 @@ type DetectedColumn = {
 type CSVRow = Record<string, string>
 
 // AI Column Detection - Pattern Recognition
+// IMPORTANT: Detection order matters! Time headers must be checked BEFORE date value patterns,
+// otherwise ISO datetimes (e.g. 2026-01-30T09:00:00) get misclassified as "date".
 function detectColumnType(header: string, values: string[]): DetectedColumn {
   const h = header.toLowerCase().trim()
   const sampleValues = values.slice(0, 10).filter(v => v?.trim())
 
-  // Date detection
-  if (h.includes("date") || h === "day" || h.includes("schedule")) {
-    return { header, type: "date", confidence: 95, sampleValues }
-  }
-  // Check values for date patterns
-  const datePattern = /\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{4}[./-]\d{1,2}[./-]\d{1,2}/
-  if (sampleValues.some(v => datePattern.test(v))) {
-    return { header, type: "date", confidence: 85, sampleValues }
+  // === HEADER-BASED DETECTION (highest confidence) ===
+
+  // End time detection (BEFORE start time - "ending time" contains "time" too)
+  if ((h.includes("end") || h.includes("finish") || h.includes("until")) && (h.includes("time") || h.includes("timing"))) {
+    return { header, type: "end_time", confidence: 95, sampleValues }
   }
 
-  // Time detection
+  // Start time / general time detection
   if (h.includes("time") || h === "slot" || h.includes("timing")) {
     return { header, type: "time", confidence: 95, sampleValues }
   }
-  // Check for time patterns
-  const timePattern = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}|\d{1,2}:\d{2}/
-  if (sampleValues.some(v => timePattern.test(v))) {
-    return { header, type: "time", confidence: 85, sampleValues }
+
+  // Date detection by header
+  if (h.includes("date") || h === "day" || h.includes("schedule")) {
+    return { header, type: "date", confidence: 95, sampleValues }
   }
 
   // Hall/Venue detection
   if (h.includes("hall") || h.includes("venue") || h.includes("room") || h.includes("auditorium") || h.includes("location")) {
     return { header, type: "hall", confidence: 95, sampleValues }
   }
-  // Check for hall-like values
-  const hallPattern = /hall|room|auditorium|theater|theatre|venue|ballroom|conference/i
-  if (sampleValues.some(v => hallPattern.test(v))) {
-    return { header, type: "hall", confidence: 75, sampleValues }
-  }
 
   // Email detection
   if (h.includes("email") || h.includes("e-mail") || h.includes("mail id")) {
     return { header, type: "email", confidence: 95, sampleValues }
-  }
-  // Check for email patterns
-  const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/
-  if (sampleValues.some(v => emailPattern.test(v))) {
-    return { header, type: "email", confidence: 90, sampleValues }
   }
 
   // Phone detection
   if (h.includes("phone") || h.includes("mobile") || h.includes("contact") || h.includes("cell") || h.includes("tel")) {
     return { header, type: "phone", confidence: 95, sampleValues }
   }
-  // Check for phone patterns (10+ digits)
-  const phonePattern = /[\d\s+()-]{10,}/
-  if (sampleValues.some(v => phonePattern.test(v) && /\d{10,}/.test(v.replace(/\D/g, "")))) {
-    return { header, type: "phone", confidence: 85, sampleValues }
-  }
 
   // Role detection
-  if (h.includes("role") || h.includes("designation") || h.includes("position") || h.includes("type") && h.includes("speaker")) {
+  if (h.includes("role") || h.includes("designation") || h.includes("position") || (h.includes("type") && h.includes("speaker"))) {
     return { header, type: "role", confidence: 95, sampleValues }
   }
-  // Check for role-like values
-  const rolePattern = /speaker|chairperson|moderator|panelist|faculty|presenter|coordinator|chair/i
-  if (sampleValues.some(v => rolePattern.test(v))) {
-    return { header, type: "role", confidence: 80, sampleValues }
-  }
 
-  // Topic/Title detection (usually longer text)
+  // Topic/Title detection
   if (h.includes("topic") || h.includes("title") || h.includes("subject") || h.includes("presentation")) {
     return { header, type: "topic", confidence: 95, sampleValues }
   }
 
   // Session/Track detection - BUT check if values are long text (then it's actually a topic)
   if ((h.includes("session") || h.includes("track") || h.includes("category")) && !h.includes("name")) {
-    // If values are long (>30 chars avg), it's a topic/title, not a track number
     const avgLength = sampleValues.reduce((acc, v) => acc + v.length, 0) / (sampleValues.length || 1)
     if (avgLength > 30) {
       return { header, type: "topic", confidence: 85, sampleValues }
     }
-    // Short values like "Session 1", "Track A" - treat as track
     return { header, type: "session", confidence: 90, sampleValues }
   }
 
@@ -108,6 +85,51 @@ function detectColumnType(header: string, values: string[]): DetectedColumn {
   if (h === "name" || h.includes("speaker") || h.includes("faculty") || h.includes("presenter") || h.includes("full name")) {
     return { header, type: "name", confidence: 90, sampleValues }
   }
+
+  // === VALUE-BASED DETECTION (fallback when header doesn't match) ===
+
+  // Check for email patterns in values
+  const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/
+  if (sampleValues.some(v => emailPattern.test(v))) {
+    return { header, type: "email", confidence: 90, sampleValues }
+  }
+
+  // Check for phone patterns (10+ digits)
+  const phonePattern = /[\d\s+()-]{10,}/
+  if (sampleValues.some(v => phonePattern.test(v) && /\d{10,}/.test(v.replace(/\D/g, "")))) {
+    return { header, type: "phone", confidence: 85, sampleValues }
+  }
+
+  // Check for role-like values
+  const rolePattern = /speaker|chairperson|moderator|panelist|faculty|presenter|coordinator|chair/i
+  if (sampleValues.some(v => rolePattern.test(v))) {
+    return { header, type: "role", confidence: 80, sampleValues }
+  }
+
+  // Check for hall-like values
+  const hallPattern = /hall|room|auditorium|theater|theatre|venue|ballroom|conference/i
+  if (sampleValues.some(v => hallPattern.test(v))) {
+    return { header, type: "hall", confidence: 75, sampleValues }
+  }
+
+  // Check for time patterns in values (BEFORE date to handle ISO datetimes correctly)
+  const timePattern = /\d{1,2}:\d{2}/
+  const datePattern = /\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{4}[./-]\d{1,2}[./-]\d{1,2}/
+  const hasTime = sampleValues.some(v => timePattern.test(v))
+  const hasDate = sampleValues.some(v => datePattern.test(v))
+
+  if (hasTime && hasDate) {
+    // Values contain BOTH date and time (ISO datetime like 2026-01-30T09:00:00)
+    // Classify as "time" - the date can be extracted from it later
+    return { header, type: "time", confidence: 80, sampleValues }
+  }
+  if (hasTime) {
+    return { header, type: "time", confidence: 85, sampleValues }
+  }
+  if (hasDate) {
+    return { header, type: "date", confidence: 85, sampleValues }
+  }
+
   // Check if values look like person names (2-3 words, capitalized)
   const namePattern = /^[A-Z][a-z]+(\s+[A-Z][a-z]+){0,3}$/
   if (sampleValues.filter(v => namePattern.test(v.trim())).length >= sampleValues.length * 0.5) {
@@ -138,34 +160,88 @@ function cleanPhone(phone: string | undefined): string | null {
   return cleaned.length >= 10 ? cleaned : null
 }
 
-// Parse date to YYYY-MM-DD
+// Parse date to YYYY-MM-DD - handles ISO datetime, all separator types, 2-digit years, month names
 function parseDate(dateStr: string): string | null {
   if (!dateStr) return null
 
-  // DD.MM.YYYY
-  let match = dateStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/)
-  if (match) return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`
+  // ISO / YYYY-MM-DD (check first - handles "2026-01-30T09:00:00.000Z" and "2026-01-30")
+  let match = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (match) {
+    const [, y, m, d] = match
+    if (parseInt(m) >= 1 && parseInt(m) <= 12 && parseInt(d) >= 1 && parseInt(d) <= 31)
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+  }
 
-  // DD/MM/YYYY
-  match = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
-  if (match) return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`
+  // DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY (4-digit year)
+  match = dateStr.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})/)
+  if (match) {
+    const [, d, m, y] = match
+    if (parseInt(m) >= 1 && parseInt(m) <= 12 && parseInt(d) >= 1 && parseInt(d) <= 31)
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+  }
 
-  // DD-MM-YYYY
-  match = dateStr.match(/(\d{1,2})-(\d{1,2})-(\d{4})/)
-  if (match) return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`
+  // DD/MM/YY or DD.MM.YY or DD-MM-YY (2-digit year)
+  match = dateStr.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2})(?!\d)/)
+  if (match) {
+    const [, d, m, yr] = match
+    const y = parseInt(yr) > 50 ? `19${yr}` : `20${yr.padStart(2, "0")}`
+    if (parseInt(m) >= 1 && parseInt(m) <= 12 && parseInt(d) >= 1 && parseInt(d) <= 31)
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+  }
 
-  // YYYY-MM-DD (already correct)
-  match = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/)
-  if (match) return match[0]
+  // "30 Jan 2026", "Jan 30, 2026", etc. with month names
+  const monthNames: Record<string, string> = {
+    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+    jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+  }
+  const dayMonth = dateStr.match(/(\d{1,2})[\s\-]+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[,\s\-]+(\d{2,4})/i)
+  if (dayMonth) {
+    const m = monthNames[dayMonth[2].toLowerCase().slice(0, 3)]
+    const y = dayMonth[3].length === 2 ? (parseInt(dayMonth[3]) > 50 ? `19${dayMonth[3]}` : `20${dayMonth[3]}`) : dayMonth[3]
+    if (m) return `${y}-${m}-${dayMonth[1].padStart(2, "0")}`
+  }
+  const monthDay = dateStr.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})[,\s]+(\d{2,4})/i)
+  if (monthDay) {
+    const m = monthNames[monthDay[1].toLowerCase().slice(0, 3)]
+    const y = monthDay[3].length === 2 ? (parseInt(monthDay[3]) > 50 ? `19${monthDay[3]}` : `20${monthDay[3]}`) : monthDay[3]
+    if (m) return `${y}-${m}-${monthDay[2].padStart(2, "0")}`
+  }
 
   return null
 }
 
-// Parse time range and calculate duration
-function parseTime(timeStr: string): { start: string | null; end: string | null; duration: number | null } {
-  if (!timeStr) return { start: null, end: null, duration: null }
+// Parse time range and calculate duration. Also extracts date from ISO datetime.
+// Handles: HH:MM - HH:MM, HH:MM AM/PM, ISO datetime (2026-01-30T09:00:00), plain HH:MM
+function parseTime(timeStr: string): { start: string | null; end: string | null; duration: number | null; date: string | null } {
+  if (!timeStr) return { start: null, end: null, duration: null, date: null }
 
-  // Range format: HH:MM - HH:MM
+  // Extract date from ISO datetime if present
+  const isoDateMatch = timeStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+  const extractedDate = isoDateMatch
+    ? `${isoDateMatch[1]}-${isoDateMatch[2].padStart(2, "0")}-${isoDateMatch[3].padStart(2, "0")}`
+    : null
+
+  const to24h = (h: number, period: string): number => {
+    if (period.toUpperCase() === "PM" && h < 12) return h + 12
+    if (period.toUpperCase() === "AM" && h === 12) return 0
+    return h
+  }
+
+  // Time range with AM/PM: "9:00 AM - 5:00 PM"
+  const rangeAmPm = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*[-–to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+  if (rangeAmPm) {
+    const sH = to24h(parseInt(rangeAmPm[1]), rangeAmPm[3])
+    const eH = to24h(parseInt(rangeAmPm[4]), rangeAmPm[6])
+    const duration = (eH * 60 + parseInt(rangeAmPm[5])) - (sH * 60 + parseInt(rangeAmPm[2]))
+    return {
+      start: `${sH.toString().padStart(2, "0")}:${rangeAmPm[2]}:00`,
+      end: `${eH.toString().padStart(2, "0")}:${rangeAmPm[5]}:00`,
+      duration: duration > 0 ? duration : null,
+      date: extractedDate,
+    }
+  }
+
+  // Range format 24h: HH:MM - HH:MM
   const rangeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/)
   if (rangeMatch) {
     const startH = parseInt(rangeMatch[1])
@@ -177,17 +253,33 @@ function parseTime(timeStr: string): { start: string | null; end: string | null;
       start: `${rangeMatch[1].padStart(2, "0")}:${rangeMatch[2]}:00`,
       end: `${rangeMatch[3].padStart(2, "0")}:${rangeMatch[4]}:00`,
       duration: duration > 0 ? duration : null,
+      date: extractedDate,
     }
+  }
+
+  // Single time with AM/PM: "9:00 AM"
+  const singleAmPm = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+  if (singleAmPm) {
+    const h = to24h(parseInt(singleAmPm[1]), singleAmPm[3])
+    const time = `${h.toString().padStart(2, "0")}:${singleAmPm[2]}:00`
+    return { start: time, end: time, duration: null, date: extractedDate }
+  }
+
+  // Time after T separator (ISO): "2026-01-30T09:00:00"
+  const afterT = timeStr.match(/T(\d{1,2}):(\d{2})/)
+  if (afterT) {
+    const time = `${afterT[1].padStart(2, "0")}:${afterT[2]}:00`
+    return { start: time, end: time, duration: null, date: extractedDate }
   }
 
   // Single time: HH:MM
   const singleMatch = timeStr.match(/(\d{1,2}):(\d{2})/)
   if (singleMatch) {
     const time = `${singleMatch[1].padStart(2, "0")}:${singleMatch[2]}:00`
-    return { start: time, end: time, duration: null }
+    return { start: time, end: time, duration: null, date: extractedDate }
   }
 
-  return { start: null, end: null, duration: null }
+  return { start: null, end: null, duration: null, date: extractedDate }
 }
 
 // Convert time string to minutes
@@ -261,6 +353,7 @@ export async function POST(request: NextRequest) {
     const columnMap = {
       date: findBestColumn("date"),
       time: findBestColumn("time"),
+      end_time: findBestColumn("end_time"),
       topic: findBestColumn("topic"),
       hall: findBestColumn("hall"),
       session: findBestColumn("session"),
@@ -386,8 +479,11 @@ export async function POST(request: NextRequest) {
 
     records.forEach(row => {
       // Extract data using detected columns
-      const date = columnMap.date ? parseDate(row[columnMap.date]) : null
-      const time = columnMap.time ? parseTime(row[columnMap.time]) : { start: null, end: null, duration: null }
+      const time = columnMap.time ? parseTime(row[columnMap.time]) : { start: null, end: null, duration: null, date: null }
+      // Use explicit date column first, fall back to date extracted from time column (ISO datetime)
+      const date = (columnMap.date ? parseDate(row[columnMap.date]) : null) || time.date || null
+      // Use explicit end_time column if available, otherwise use end from time range
+      const endTimeCol = columnMap.end_time ? parseTime(row[columnMap.end_time]) : null
       const topic = columnMap.topic ? row[columnMap.topic]?.trim() : null
       const hall = columnMap.hall ? row[columnMap.hall]?.trim() : null
       const session = columnMap.session ? row[columnMap.session]?.trim() : null
@@ -419,7 +515,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Track faculty schedule for conflict detection (skip track metadata rows)
-        if (date && time.start && time.end && !isTrackMetadataRow) {
+        // Use separate end_time column if available, otherwise fall back to time range end
+        const effectiveEnd = endTimeCol?.start || time.end
+        if (date && time.start && effectiveEnd && !isTrackMetadataRow) {
           const facultyKey = normalizeName(name)
           if (!facultySchedules.has(facultyKey)) {
             facultySchedules.set(facultyKey, [])
@@ -427,7 +525,7 @@ export async function POST(request: NextRequest) {
           facultySchedules.get(facultyKey)!.push({
             date,
             start: timeToMinutes(time.start),
-            end: timeToMinutes(time.end),
+            end: timeToMinutes(effectiveEnd),
             session: topic || "Unknown",
             hall: hall || "Unknown",
           })
@@ -455,15 +553,24 @@ export async function POST(request: NextRequest) {
           else if (topicLower.includes("inaug")) sessionType = "ceremony"
           else if (topicLower.includes("break") || topicLower.includes("lunch")) sessionType = "break"
 
+          // Use separate end_time column if available, otherwise fall back to time range end
+          const sessionEnd = endTimeCol?.start || time.end
+          // Calculate duration from start/end times
+          let sessionDuration = time.duration
+          if (!sessionDuration && time.start && sessionEnd && sessionEnd !== time.start) {
+            const durCalc = timeToMinutes(sessionEnd) - timeToMinutes(time.start)
+            sessionDuration = durCalc > 0 ? durCalc : null
+          }
+
           // Flag unusually long sessions (> 180 min / 3 hours)
           // Medical conferences typically have 30-90 min sessions, so 3+ hours is unusual
-          if (time.duration && time.duration > 180 && sessionType === "lecture") {
+          if (sessionDuration && sessionDuration > 180 && sessionType === "lecture") {
             timingIssues.push({
               type: "long_session",
               hall: hall || "Unknown",
               date,
               session1: topic,
-              details: `Session is ${time.duration} minutes long (${Math.round(time.duration/60)} hours) - unusually long`,
+              details: `Session is ${sessionDuration} minutes long (${Math.round(sessionDuration/60)} hours) - unusually long`,
             })
           }
 
@@ -473,8 +580,8 @@ export async function POST(request: NextRequest) {
             session_type: sessionType,
             session_date: date,
             start_time: time.start,
-            end_time: time.end,
-            duration_minutes: time.duration,
+            end_time: sessionEnd,
+            duration_minutes: sessionDuration,
             hall,
             specialty_track: session,
             speakers: [],
