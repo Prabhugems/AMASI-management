@@ -138,19 +138,23 @@ export default function SpeakerInvitationsPage() {
       const result = await response.json()
 
       if (result.success) {
-        // Update invitation status for successfully sent emails
+        // Only mark speakers that were actually sent successfully
+        const sentIds = new Set(result.results?.sent_ids || [])
+
         for (const id of speakersToSend) {
           const speaker = speakers?.find(s => s.id === id)
-          await (supabase as any)
-            .from("registrations")
-            .update({
-              custom_fields: {
-                ...speaker?.custom_fields,
-                invitation_status: "sent",
-                invitation_sent_at: new Date().toISOString(),
-              },
-            })
-            .eq("id", id)
+          if (sentIds.has(id)) {
+            await (supabase as any)
+              .from("registrations")
+              .update({
+                custom_fields: {
+                  ...speaker?.custom_fields,
+                  invitation_status: "sent",
+                  invitation_sent_at: new Date().toISOString(),
+                },
+              })
+              .eq("id", id)
+          }
         }
 
         queryClient.invalidateQueries({ queryKey: ["speaker-invitations", eventId] })
