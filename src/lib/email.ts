@@ -59,8 +59,8 @@ async function sendViaBlastable(options: EmailOptions): Promise<SendResult> {
       console.log(`[Blastable] Email sent to ${options.to} - ID: ${logKey}`)
       return { success: true, id: logKey }
     } else {
-      console.error("[Blastable] API error:", result)
-      return { success: false, error: result.error || "Failed to send email" }
+      console.error("[Blastable] API error:", JSON.stringify(result))
+      return { success: false, error: `Blastable: ${result.error || result.message || "Failed to send email"}` }
     }
   } catch (error: any) {
     console.error("[Blastable] Request failed:", error)
@@ -78,6 +78,8 @@ async function sendViaResend(options: EmailOptions): Promise<SendResult> {
   const fromEmail = options.from || process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
 
   try {
+    console.log(`[Resend] Sending from "${fromEmail}" to "${options.to}"`)
+
     // Dynamic import to avoid loading Resend when not needed
     const { Resend } = await import("resend")
     const resend = new Resend(apiKey)
@@ -91,15 +93,23 @@ async function sendViaResend(options: EmailOptions): Promise<SendResult> {
     })
 
     if (result.error) {
-      console.error("[Resend] API error:", result.error)
-      return { success: false, error: result.error.message }
+      console.error("[Resend] API error:", JSON.stringify(result.error))
+      const errorMsg = result.error.message || JSON.stringify(result.error)
+      // Add helpful hints for common Resend errors
+      if (errorMsg.includes("not verified") || errorMsg.includes("not a verified")) {
+        return { success: false, error: `Resend: ${errorMsg}. Go to resend.com/domains and verify your sending domain.` }
+      }
+      if (errorMsg.includes("can only send") || errorMsg.includes("testing")) {
+        return { success: false, error: `Resend: ${errorMsg}. On Resend free plan you can only send to your own email. Add and verify your domain at resend.com/domains to send to anyone.` }
+      }
+      return { success: false, error: `Resend: ${errorMsg}` }
     }
 
     console.log(`[Resend] Email sent to ${options.to} - ID: ${result.data?.id}`)
     return { success: true, id: result.data?.id }
   } catch (error: any) {
     console.error("[Resend] Request failed:", error)
-    return { success: false, error: error.message || "Request failed" }
+    return { success: false, error: `Resend error: ${error.message || "Request failed"}` }
   }
 }
 
@@ -111,12 +121,11 @@ export async function sendEmail(options: EmailOptions): Promise<SendResult> {
   const provider = getProvider()
 
   if (!provider) {
-    console.log(`[Email] No provider configured - would send to ${options.to}`)
-    console.log(`[Email] Subject: ${options.subject}`)
+    console.error(`[Email] FAILED: No email provider configured. Set RESEND_API_KEY or BLASTABLE_API_KEY in environment variables.`)
+    console.error(`[Email] Would have sent to: ${options.to}, Subject: ${options.subject}`)
     return {
-      success: true,
-      id: `dev-${Date.now()}`,
-      error: "No email provider configured (dev mode)",
+      success: false,
+      error: "No email provider configured. Add RESEND_API_KEY or BLASTABLE_API_KEY to your Vercel Environment Variables and redeploy.",
     }
   }
 

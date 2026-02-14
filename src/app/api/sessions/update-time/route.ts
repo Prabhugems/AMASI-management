@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { Resend } from "resend"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
@@ -17,6 +18,9 @@ interface UpdateTimeRequest {
 
 export async function PUT(request: NextRequest) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body: UpdateTimeRequest = await request.json()
     const {
       session_id,

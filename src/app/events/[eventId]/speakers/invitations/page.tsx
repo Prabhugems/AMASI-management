@@ -55,7 +55,7 @@ export default function SpeakerInvitationsPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "sent" | "confirmed">("all")
   const [selectedSpeakers, setSelectedSpeakers] = useState<Set<string>>(new Set())
   const [sending, setSending] = useState(false)
-  const [lastSendResult, setLastSendResult] = useState<{ sent: number; failed: number; skipped: number; errors: string[] } | null>(null)
+  const [lastSendResult, setLastSendResult] = useState<{ sent: number; failed: number; skipped: number; errors: string[]; provider?: string } | null>(null)
 
   // Fetch speakers
   const { data: speakers, isLoading } = useQuery({
@@ -112,23 +112,35 @@ export default function SpeakerInvitationsPage() {
     setSending(true)
 
     try {
-      // First, generate portal tokens for speakers who don't have them
       const speakersToSend = Array.from(selectedSpeakers)
+
+      // Generate portal tokens server-side to avoid race conditions
+      // First, ensure all selected speakers have portal tokens
       for (const id of speakersToSend) {
         const speaker = speakers?.find(s => s.id === id)
         if (speaker && !speaker.custom_fields?.portal_token) {
           const token = crypto.randomUUID()
+          // Fetch fresh data from DB to avoid overwriting fields
+          const { data: freshReg } = await (supabase as any)
+            .from("registrations")
+            .select("custom_fields")
+            .eq("id", id)
+            .single()
+
           await (supabase as any)
             .from("registrations")
             .update({
               custom_fields: {
-                ...speaker.custom_fields,
+                ...(freshReg?.custom_fields || {}),
                 portal_token: token,
               },
             })
             .eq("id", id)
         }
       }
+
+      // Small delay to ensure DB writes are committed
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Call the bulk email API
       const response = await fetch("/api/email/speaker-invitation", {
@@ -147,13 +159,19 @@ export default function SpeakerInvitationsPage() {
         const sentIds = new Set(result.results?.sent_ids || [])
 
         for (const id of speakersToSend) {
-          const speaker = speakers?.find(s => s.id === id)
           if (sentIds.has(id)) {
+            // Fetch fresh data to avoid overwriting portal_token or other fields
+            const { data: freshReg } = await (supabase as any)
+              .from("registrations")
+              .select("custom_fields")
+              .eq("id", id)
+              .single()
+
             await (supabase as any)
               .from("registrations")
               .update({
                 custom_fields: {
-                  ...speaker?.custom_fields,
+                  ...(freshReg?.custom_fields || {}),
                   invitation_status: "sent",
                   invitation_sent_at: new Date().toISOString(),
                 },
@@ -165,8 +183,8 @@ export default function SpeakerInvitationsPage() {
         queryClient.invalidateQueries({ queryKey: ["speaker-invitations", eventId] })
 
         if (result.results) {
-          const { sent, failed, skipped, errors } = result.results
-          setLastSendResult({ sent, failed, skipped, errors: errors || [] })
+          const { sent, failed, skipped, errors, provider } = result.results
+          setLastSendResult({ sent, failed, skipped, errors: errors || [], provider })
           if (failed > 0 || skipped > 0) {
             toast.warning(`Sent: ${sent}, Failed: ${failed}, Skipped: ${skipped} — see details below`)
           } else {
@@ -225,6 +243,7 @@ export default function SpeakerInvitationsPage() {
               <div>
                 <p className="font-medium">
                   Invitation Results: {lastSendResult.sent} sent, {lastSendResult.failed} failed, {lastSendResult.skipped} skipped
+                  {lastSendResult.provider && <span className="text-xs font-normal text-muted-foreground ml-2">(via {lastSendResult.provider})</span>}
                 </p>
                 {lastSendResult.errors.length > 0 && (
                   <div className="mt-2 space-y-1">
@@ -313,7 +332,7 @@ export default function SpeakerInvitationsPage() {
             Clear
           </Button>
           <Button size="sm" onClick={sendInvitations} disabled={sending}>
-            <Send className="h-4 w-4 mr-2" />
+            {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
             {sending ? "Sending..." : "Send Invitations"}
           </Button>
         </div>

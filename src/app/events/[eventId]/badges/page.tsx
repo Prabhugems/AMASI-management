@@ -40,12 +40,12 @@ export default function BadgesOverviewPage() {
     },
   })
 
-  // Fetch faculty/speakers count
+  // Fetch faculty/speakers count from faculty_assignments
   const { data: faculty } = useQuery({
     queryKey: ["badge-faculty", eventId],
     queryFn: async () => {
       const { data } = await (supabase as any)
-        .from("faculty")
+        .from("faculty_assignments")
         .select("id")
         .eq("event_id", eventId)
 

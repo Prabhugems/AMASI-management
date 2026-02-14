@@ -999,7 +999,7 @@ export default function ConfirmationsPage() {
                       variant="outline"
                       className="w-full"
                       onClick={() => {
-                        const url = `${window.location.origin}/respond/faculty/${a.invitation_token}`
+                        const url = `${window.location.origin}/respond/${a.invitation_token}`
                         navigator.clipboard.writeText(url)
                         toast.success("Portal link copied to clipboard")
                       }}

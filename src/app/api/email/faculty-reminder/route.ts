@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     // Generate portal URL
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    const portalUrl = `${baseUrl}/respond/faculty/${invitationToken}`
+    const portalUrl = `${baseUrl}/respond/${invitationToken}`
 
     // Format event dates
     const startDate = formatDate(event_start_date)

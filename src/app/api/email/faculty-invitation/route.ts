@@ -92,7 +92,7 @@ async function sendFacultyInvitation(data: FacultyInvitationData): Promise<{ suc
       return { success: false, error: "NEXT_PUBLIC_APP_URL is not configured. Set it to your actual domain in Vercel Environment Variables, then redeploy." }
     }
 
-    const portalUrl = `${baseUrl}/respond/faculty/${invitationToken}`
+    const portalUrl = `${baseUrl}/respond/${invitationToken}`
 
     // Format event dates
     const startDate = formatDate(event_start_date)

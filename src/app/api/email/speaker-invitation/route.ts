@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { sendEmail, isEmailEnabled, getEmailProvider } from "@/lib/email"
 import { shortenSpeakerPortalUrl } from "@/lib/linkila"
 import { escapeHtml } from "@/lib/string-utils"
 
@@ -236,14 +236,23 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
 
       console.log(`Speaker invitation sent to ${speaker_email} - ID: ${result.id}`)
 
-      // Update registration to mark invitation as sent
+      // Update registration to mark invitation as sent (preserve existing fields!)
       if (registration_id) {
         const supabase = await createAdminClient()
+        // Fetch fresh custom_fields to avoid overwriting portal_token and other data
+        const { data: freshReg } = await (supabase as any)
+          .from("registrations")
+          .select("custom_fields")
+          .eq("id", registration_id)
+          .single()
+
         await (supabase as any)
           .from("registrations")
           .update({
             custom_fields: {
-              invitation_sent: new Date().toISOString(),
+              ...(freshReg?.custom_fields || {}),
+              invitation_status: "sent",
+              invitation_sent_at: new Date().toISOString(),
               invitation_email_id: result.id,
             }
           })
@@ -252,8 +261,8 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
 
       return { success: true, email_id: result.id }
     } else {
-      console.log(`[DEV] Would send speaker invitation to ${speaker_email}`)
-      return { success: true, dev_mode: true }
+      console.error(`[Email] No email provider configured - cannot send to ${speaker_email}`)
+      return { success: false, error: "No email provider configured. Add RESEND_API_KEY or BLASTABLE_API_KEY in Vercel Environment Variables and redeploy." }
     }
   } catch (error: any) {
     console.error("Error sending speaker invitation:", error)
@@ -353,12 +362,17 @@ export async function PUT(request: NextRequest) {
     }
 
     for (const reg of registrations) {
-      const portalToken = reg.custom_fields?.portal_token
+      let portalToken = reg.custom_fields?.portal_token
 
+      // Auto-generate portal token if missing
       if (!portalToken) {
-        results.skipped++
-        results.errors.push(`${reg.attendee_name || reg.id}: No portal token`)
-        continue
+        portalToken = crypto.randomUUID()
+        const updatedFields = { ...(reg.custom_fields || {}), portal_token: portalToken }
+        await (supabase as any)
+          .from("registrations")
+          .update({ custom_fields: updatedFields })
+          .eq("id", reg.id)
+        reg.custom_fields = updatedFields
       }
 
       // Skip speakers without email
@@ -442,7 +456,10 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      results,
+      results: {
+        ...results,
+        provider: getEmailProvider() || "none",
+      },
     })
   } catch (error: any) {
     console.error("Error in bulk speaker invitation:", error)
