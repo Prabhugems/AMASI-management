@@ -123,9 +123,14 @@ export async function GET(request: NextRequest) {
         console.error('Failed to update login activity:', e)
       }
 
-      // If there's an explicit next URL, use it
+      // If there's an explicit next URL, validate it to prevent open redirects
       if (next) {
-        return NextResponse.redirect(new URL(next, requestUrl.origin))
+        // Only allow relative paths (same-origin redirects)
+        if (next.startsWith('/') && !next.startsWith('//') && !next.includes('://')) {
+          return NextResponse.redirect(new URL(next, requestUrl.origin))
+        }
+        // Invalid redirect target, fall through to role-based redirect
+        console.warn('Blocked potentially unsafe redirect target:', next)
       }
 
       // Get user profile to determine role-based redirect (use admin client to bypass RLS)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 import crypto from "crypto"
 
 // GET /api/print-stations - List print stations for an event
@@ -39,6 +40,10 @@ export async function GET(request: NextRequest) {
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
+
+    // Require admin auth for listing all stations (non-token access)
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
 
     // Get all print stations for event with stats
     const { data: stations, error } = await (supabase as any)
@@ -84,6 +89,10 @@ export async function GET(request: NextRequest) {
 // POST /api/print-stations - Create a new print station
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body = await request.json()
     const {
       event_id,
@@ -153,6 +162,10 @@ export async function POST(request: NextRequest) {
 // PUT /api/print-stations - Update a print station
 export async function PUT(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body = await request.json()
     const { id, ...updates } = body
 
@@ -196,6 +209,10 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/print-stations - Delete a print station
 export async function DELETE(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
 
@@ -224,6 +241,10 @@ export async function DELETE(request: NextRequest) {
 // PATCH /api/print-stations - Regenerate token
 export async function PATCH(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body = await request.json()
     const { id, action } = body
 

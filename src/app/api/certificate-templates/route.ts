@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // Force dynamic - never cache this route
 export const dynamic = "force-dynamic"
@@ -7,6 +8,10 @@ export const dynamic = "force-dynamic"
 // GET /api/certificate-templates - Get all templates for an event
 export async function GET(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 
@@ -39,6 +44,10 @@ export async function GET(request: NextRequest) {
 // POST /api/certificate-templates - Create a new template
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body = await request.json()
     const { event_id, name, description, size, template_image_url, template_data, ticket_type_ids, is_default } = body
 
@@ -98,6 +107,10 @@ export async function POST(request: NextRequest) {
 // PUT /api/certificate-templates - Update a template
 export async function PUT(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body = await request.json()
     const { id, name, description, size, template_image_url, template_data, ticket_type_ids, is_default, is_active, event_id } = body
 
@@ -160,6 +173,10 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/certificate-templates - Delete a template
 export async function DELETE(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
 

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
+import crypto from "crypto"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let supabase: any
-
-// Generate registration number
+// Generate registration number using cryptographically secure random
 function generateRegistrationNumber(): string {
   const date = new Date()
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "")
-  const random = Math.random().toString(36).substring(2, 6).toUpperCase()
+  const random = crypto.randomBytes(3).toString("hex").toUpperCase()
   return `REG-${dateStr}-${random}`
 }
 
@@ -27,7 +26,11 @@ interface ReconciliationResult {
  */
 export async function POST(request: NextRequest) {
   try {
-    supabase = await createAdminClient() as any
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
+    const supabase = await createAdminClient() as any
     const body = await request.json().catch(() => ({}))
     const {
       fix = false, // If true, auto-fix issues. If false, just report
@@ -77,7 +80,7 @@ export async function POST(request: NextRequest) {
 
           // Auto-fix if requested
           if (fix) {
-            const registration = await createAutoRegistration(payment)
+            const registration = await createAutoRegistration(supabase, payment)
             if (registration) {
               result.auto_registrations_created++
             }
@@ -178,7 +181,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Auto-create registration for orphan payment
-async function createAutoRegistration(payment: any) {
+async function createAutoRegistration(supabase: any, payment: any) {
   const registrationNumber = generateRegistrationNumber()
   const metadata = payment.metadata || {}
   const ticketDetails = metadata.validated_tickets?.[0]
@@ -235,6 +238,10 @@ async function createAutoRegistration(payment: any) {
  * Get reconciliation status/help
  */
 export async function GET() {
+  // Require admin authentication
+  const { user, error: authError } = await requireAdmin()
+  if (authError) return authError
+
   return NextResponse.json({
     endpoint: "/api/payments/reconcile",
     method: "POST",
