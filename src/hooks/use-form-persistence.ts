@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback, useRef } from "react"
+import { useEffect, useCallback, useRef, useState } from "react"
 import { useLocalStorage } from "./use-local-storage"
 
 /**
@@ -140,6 +140,7 @@ export function usePersistedInput<T = string>(
  */
 export function useUnsavedChanges(options: { message?: string } = {}) {
   const { message = "You have unsaved changes. Are you sure you want to leave?" } = options
+  const [isDirty, setIsDirtyState] = useState(false)
   const isDirtyRef = useRef(false)
 
   // Handle browser/tab close
@@ -158,6 +159,7 @@ export function useUnsavedChanges(options: { message?: string } = {}) {
 
   const setIsDirty = useCallback((dirty: boolean) => {
     isDirtyRef.current = dirty
+    setIsDirtyState(dirty)
   }, [])
 
   const confirmLeave = useCallback((): boolean => {
@@ -166,7 +168,7 @@ export function useUnsavedChanges(options: { message?: string } = {}) {
   }, [message])
 
   return {
-    isDirty: isDirtyRef.current,
+    isDirty,
     setIsDirty,
     confirmLeave,
   }

@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireSuperAdmin } from "@/lib/auth/api-auth"
 
 // One-time migration endpoint - DELETE AFTER USE
 export async function POST() {
   try {
+    // Require super admin authentication
+    const { user, error: authError } = await requireSuperAdmin()
+    if (authError) return authError
+
     const supabase = await createAdminClient()
 
     // Test if columns already exist

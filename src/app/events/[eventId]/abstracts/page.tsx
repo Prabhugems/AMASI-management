@@ -45,6 +45,8 @@ import {
   Users,
   BarChart3,
   TrendingUp,
+  ArrowRightLeft,
+  Trophy,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -64,6 +66,11 @@ interface Abstract {
   accepted_as: string | null
   category_id: string | null
   submitted_at: string
+  amasi_membership_number: string | null
+  award_rank: number | null
+  award_type: string | null
+  is_podium_selected: boolean
+  redirected_from_category_id: string | null
   category?: { id: string; name: string }
   authors?: { id: string; name: string; email: string; affiliation: string; author_order: number; is_presenting: boolean }[]
   reviews?: { id: string; overall_score: number; recommendation: string; reviewer_name: string; reviewed_at: string }[]
@@ -207,31 +214,52 @@ export default function AbstractsPage() {
     }, {} as Record<string, number>),
   }
 
+  // Sanitize a value for CSV to prevent formula injection
+  const csvSafe = (val: string | number | null | undefined): string => {
+    if (val === null || val === undefined) return ""
+    const str = String(val)
+    // Prefix with single quote if cell starts with formula-triggering characters
+    if (/^[=+\-@\t\r]/.test(str)) {
+      return `"'${str.replace(/"/g, '""')}"`
+    }
+    // Always quote strings containing commas, quotes, or newlines
+    if (/[",\n\r]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`
+    }
+    return str
+  }
+
   // Export to CSV
   const exportToCSV = () => {
     const headers = [
       "Abstract #", "Title", "Author Name", "Author Email", "Affiliation",
       "Category", "Presentation Type", "Status", "Avg Score", "Reviews Count",
-      "Submitted Date", "Decision Date", "Accepted As", "Keywords"
+      "Submitted Date", "Decision Date", "Accepted As", "Keywords",
+      "AMASI Membership #", "Award Rank", "Award Type", "Podium Selected", "Redirected"
     ]
 
     const rows = abstracts.map(a => {
       const avgScore = getAverageScore(a.reviews) || ""
       return [
-        a.abstract_number,
-        `"${a.title.replace(/"/g, '""')}"`,
-        a.presenting_author_name,
-        a.presenting_author_email,
-        a.presenting_author_affiliation || "",
-        a.category?.name || "",
-        a.presentation_type,
-        a.status,
-        avgScore,
+        csvSafe(a.abstract_number),
+        csvSafe(a.title),
+        csvSafe(a.presenting_author_name),
+        csvSafe(a.presenting_author_email),
+        csvSafe(a.presenting_author_affiliation),
+        csvSafe(a.category?.name),
+        csvSafe(a.presentation_type),
+        csvSafe(a.status),
+        csvSafe(avgScore),
         a.reviews?.length || 0,
-        formatDate(a.submitted_at),
-        a.decision_date ? formatDate(a.decision_date) : "",
-        a.accepted_as || "",
-        (a.keywords || []).join("; ")
+        csvSafe(formatDate(a.submitted_at)),
+        a.decision_date ? csvSafe(formatDate(a.decision_date)) : "",
+        csvSafe(a.accepted_as),
+        csvSafe((a.keywords || []).join("; ")),
+        csvSafe(a.amasi_membership_number),
+        a.award_rank || "",
+        csvSafe(a.award_type),
+        a.is_podium_selected ? "Yes" : "",
+        a.redirected_from_category_id ? "Yes" : ""
       ].join(",")
     })
 
@@ -256,6 +284,14 @@ export default function AbstractsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => router.push(`/events/${eventId}/abstracts/awards`)}
+          >
+            <Trophy className="h-4 w-4 text-yellow-500" />
+            Awards
+          </Button>
           <Button variant="outline" onClick={() => refetch()} className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Refresh
@@ -268,7 +304,7 @@ export default function AbstractsPage() {
       </div>
 
       {/* Stats Cards - Row 1: Status Overview */}
-      <div className="grid grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         <div className="bg-card border rounded-xl p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">Total</p>
@@ -446,6 +482,15 @@ export default function AbstractsPage() {
           </Button>
           <Button
             size="sm"
+            variant="outline"
+            onClick={() => bulkDecisionMutation.mutate({ decision: "redirected" })}
+            className="gap-2"
+          >
+            <ArrowRightLeft className="h-4 w-4 text-indigo-600" />
+            Redirect to Free
+          </Button>
+          <Button
+            size="sm"
             variant="ghost"
             onClick={() => setSelectedIds([])}
           >
@@ -486,6 +531,7 @@ export default function AbstractsPage() {
                 <TableHead>Category</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead className="text-center">Score</TableHead>
+                <TableHead className="text-center">Award</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead className="w-12"></TableHead>
@@ -547,6 +593,25 @@ export default function AbstractsPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
+                    <TableCell className="text-center">
+                      {abstract.award_rank ? (
+                        <span className={cn(
+                          "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full",
+                          abstract.award_type === "medal" ? "bg-yellow-100 text-yellow-800" :
+                          abstract.award_type === "certificate" ? "bg-blue-100 text-blue-700" :
+                          abstract.award_type === "bursary" ? "bg-green-100 text-green-700" :
+                          "bg-gray-100 text-gray-600"
+                        )}>
+                          #{abstract.award_rank}
+                        </span>
+                      ) : abstract.redirected_from_category_id ? (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700">
+                          Redirected
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <span className={cn(
                         "inline-flex px-2 py-1 text-xs font-medium rounded-full",
@@ -591,6 +656,13 @@ export default function AbstractsPage() {
                           >
                             <AlertCircle className="h-4 w-4 mr-2" />
                             Request Revision
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-indigo-600"
+                            onClick={() => singleDecisionMutation.mutate({ abstractId: abstract.id, decision: "redirected" })}
+                          >
+                            <ArrowRightLeft className="h-4 w-4 mr-2" />
+                            Redirect to Free Session
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

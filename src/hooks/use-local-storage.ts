@@ -35,20 +35,22 @@ export function useLocalStorage<T>(
   const setValue = useCallback(
     (value: T | ((prev: T) => T)) => {
       try {
-        // Allow value to be a function so we have the same API as useState
-        const valueToStore =
-          value instanceof Function ? value(storedValue) : value
+        // Use functional setState to avoid stale closure over storedValue
+        setStoredValue((prev) => {
+          const valueToStore =
+            value instanceof Function ? value(prev) : value
 
-        setStoredValue(valueToStore)
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(key, JSON.stringify(valueToStore))
+          }
 
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(key, JSON.stringify(valueToStore))
-        }
+          return valueToStore
+        })
       } catch (error) {
         console.warn(`Error setting localStorage key "${key}":`, error)
       }
     },
-    [key, storedValue]
+    [key]
   )
 
   // Remove the value from localStorage
@@ -106,19 +108,22 @@ export function useSessionStorage<T>(
   const setValue = useCallback(
     (value: T | ((prev: T) => T)) => {
       try {
-        const valueToStore =
-          value instanceof Function ? value(storedValue) : value
+        // Use functional setState to avoid stale closure over storedValue
+        setStoredValue((prev) => {
+          const valueToStore =
+            value instanceof Function ? value(prev) : value
 
-        setStoredValue(valueToStore)
+          if (typeof window !== "undefined") {
+            window.sessionStorage.setItem(key, JSON.stringify(valueToStore))
+          }
 
-        if (typeof window !== "undefined") {
-          window.sessionStorage.setItem(key, JSON.stringify(valueToStore))
-        }
+          return valueToStore
+        })
       } catch (error) {
         console.warn(`Error setting sessionStorage key "${key}":`, error)
       }
     },
-    [key, storedValue]
+    [key]
   )
 
   return [storedValue, setValue]

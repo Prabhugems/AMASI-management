@@ -30,11 +30,29 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+interface Declaration {
+  text: string
+  required: boolean
+}
+
+interface EligibilityRules {
+  max_age?: number
+  require_dob?: boolean
+  allowed_positions?: string[]
+}
+
 interface Category {
   id: string
   name: string
   description: string | null
   max_submissions: number | null
+  submission_type: string
+  allowed_file_types: string[]
+  required_file: boolean
+  declarations: Declaration[]
+  eligibility_rules: EligibilityRules
+  award_name: string | null
+  is_award_category: boolean
 }
 
 interface AbstractSettings {
@@ -83,6 +101,12 @@ export default function SubmitAbstractPage() {
   const [fileUploading, setFileUploading] = useState(false)
   const [fileUrl, setFileUrl] = useState("")
   const [fileError, setFileError] = useState("")
+
+  // AMASI-specific fields
+  const [amasiMembershipNumber, setAmasiMembershipNumber] = useState("")
+  const [declarationsAccepted, setDeclarationsAccepted] = useState<string[]>([])
+  const [dateOfBirth, setDateOfBirth] = useState("")
+  const [currentPosition, setCurrentPosition] = useState("")
 
   // Fetch event details
   const { data: event } = useQuery({
@@ -190,6 +214,41 @@ export default function SubmitAbstractPage() {
     if (!abstractText.trim()) return "Abstract text is required"
     if (wordCount > (settings?.word_limit || 300)) return "Abstract exceeds word limit"
     if (categories.length > 0 && !categoryId) return "Please select a category"
+
+    // Category-specific validations
+    if (selectedCategory) {
+      // File required check
+      if (selectedCategory.required_file && !fileUrl) {
+        return `File upload is required for the "${selectedCategory.name}" category`
+      }
+
+      // Required declarations check
+      const requiredDecls = categoryDeclarations.filter(d => d.required)
+      for (const decl of requiredDecls) {
+        if (!declarationsAccepted.includes(decl.text)) {
+          return "All required declarations must be accepted"
+        }
+      }
+
+      // Eligibility rules (Young Scholar)
+      if (requiresDob) {
+        if (!dateOfBirth) return "Date of birth is required for this category"
+        if (eligibilityRules.max_age) {
+          const dob = new Date(dateOfBirth)
+          const today = new Date()
+          let age = today.getFullYear() - dob.getFullYear()
+          const m = today.getMonth() - dob.getMonth()
+          if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--
+          if (age >= eligibilityRules.max_age) {
+            return `You must be under ${eligibilityRules.max_age} years of age for this category`
+          }
+        }
+        if (eligibilityRules.allowed_positions?.length && !currentPosition) {
+          return "Please select your current position"
+        }
+      }
+    }
+
     // Validate co-authors have required name field
     for (let i = 0; i < coAuthors.length; i++) {
       if (!coAuthors[i].name.trim()) {
@@ -227,6 +286,12 @@ export default function SubmitAbstractPage() {
           file_url: fileUrl || null,
           file_name: file?.name || null,
           file_size: file?.size || null,
+          amasi_membership_number: amasiMembershipNumber || null,
+          declarations_accepted: declarationsAccepted,
+          submitter_metadata: requiresDob ? {
+            date_of_birth: dateOfBirth || null,
+            current_position: currentPosition || null,
+          } : {},
         }),
       })
 
@@ -269,22 +334,27 @@ export default function SubmitAbstractPage() {
 
   const wordCount = abstractText.trim().split(/\s+/).filter(Boolean).length
 
-  // Check if selected category requires video
+  // Get selected category config
   const selectedCategory = categories.find(c => c.id === categoryId)
-  const isVideoCategory = selectedCategory?.name?.toLowerCase().includes('video')
+  const isVideoCategory = selectedCategory?.submission_type === 'video'
+  const isFileRequired = selectedCategory?.required_file ?? false
+  const categoryDeclarations = selectedCategory?.declarations || []
+  const eligibilityRules = selectedCategory?.eligibility_rules || {}
+  const requiresDob = eligibilityRules.require_dob === true
+  const categoryAllowedFileTypes = selectedCategory?.allowed_file_types || (settings?.allowed_file_types || ['pdf', 'mp4'])
 
-  // Handle file upload
+  // Handle file upload - uses signed URL for large files (>4MB), direct upload for small ones
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
 
     setFileError("")
 
-    // Validate file type
-    const allowedTypes = settings?.allowed_file_types || ['pdf', 'mp4', 'mov', 'jpg', 'jpeg']
+    // Validate file type against category-specific allowed types
+    const allowedTypes = categoryAllowedFileTypes
     const fileExt = selectedFile.name.split('.').pop()?.toLowerCase()
     if (!fileExt || !allowedTypes.includes(fileExt)) {
-      setFileError(`Invalid file type. Allowed: ${allowedTypes.join(', ').toUpperCase()}`)
+      setFileError(`Invalid file type. Allowed for this category: ${allowedTypes.join(', ').toUpperCase()}`)
       return
     }
 
@@ -299,24 +369,63 @@ export default function SubmitAbstractPage() {
     setFileUploading(true)
 
     try {
-      // Upload to Supabase storage
-      const formData = new FormData()
-      formData.append('file', selectedFile)
-      formData.append('event_id', eventId)
-      formData.append('type', 'abstract')
+      // For large files (>4MB), use signed URL for direct upload to Supabase Storage
+      // This bypasses Vercel's serverless function body size limit
+      if (selectedFile.size > 4 * 1024 * 1024) {
+        // Step 1: Get signed upload URL
+        const signedRes = await fetch('/api/upload/signed-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_id: eventId,
+            file_name: selectedFile.name,
+            content_type: selectedFile.type,
+            type: 'abstract',
+          }),
+        })
 
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
+        if (!signedRes.ok) {
+          const err = await signedRes.json()
+          throw new Error(err.error || 'Failed to get upload URL')
+        }
 
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Upload failed')
+        const { signedUrl, token, publicUrl } = await signedRes.json()
+
+        // Step 2: Upload directly to Supabase Storage using signed URL
+        const uploadRes = await fetch(signedUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': selectedFile.type,
+            ...(token ? { 'x-upsert': 'false' } : {}),
+          },
+          body: selectedFile,
+        })
+
+        if (!uploadRes.ok) {
+          throw new Error('Direct upload failed')
+        }
+
+        setFileUrl(publicUrl)
+      } else {
+        // Small files: use standard upload route
+        const formData = new FormData()
+        formData.append('file', selectedFile)
+        formData.append('event_id', eventId)
+        formData.append('type', 'abstract')
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!res.ok) {
+          const error = await res.json()
+          throw new Error(error.error || 'Upload failed')
+        }
+
+        const data = await res.json()
+        setFileUrl(data.url)
       }
-
-      const data = await res.json()
-      setFileUrl(data.url)
     } catch (err: any) {
       setFileError(err.message || 'Failed to upload file')
       setFile(null)
@@ -425,6 +534,13 @@ export default function SubmitAbstractPage() {
                 setCategoryId("")
                 setKeywords([])
                 setCoAuthors([])
+                setAmasiMembershipNumber("")
+                setDeclarationsAccepted([])
+                setDateOfBirth("")
+                setCurrentPosition("")
+                setFile(null)
+                setFileUrl("")
+                setFileError("")
               }}
             >
               Submit Another
@@ -558,17 +674,32 @@ export default function SubmitAbstractPage() {
           {/* Category & Type */}
           <div className="bg-white rounded-xl border p-6 grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Category</label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
+              <label className="block text-sm font-medium mb-2">Category *</label>
+              <Select value={categoryId} onValueChange={(val) => {
+                setCategoryId(val)
+                // Reset category-specific fields on change
+                setDeclarationsAccepted([])
+                setDateOfBirth("")
+                setCurrentPosition("")
+                setFile(null)
+                setFileUrl("")
+                setFileError("")
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                      {cat.is_award_category && cat.award_name ? ` (${cat.award_name})` : ""}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {selectedCategory?.description && (
+                <p className="text-xs text-muted-foreground mt-2">{selectedCategory.description}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Presentation Preference</label>
@@ -618,18 +749,154 @@ export default function SubmitAbstractPage() {
             )}
           </div>
 
-          {/* File Upload - for videos and supplementary material */}
+          {/* AMASI Membership Number */}
+          {selectedCategory && (
+            <div className="bg-white rounded-xl border p-6">
+              <label className="block text-sm font-medium mb-2">AMASI Membership Number</label>
+              <Input
+                value={amasiMembershipNumber}
+                onChange={(e) => setAmasiMembershipNumber(e.target.value)}
+                placeholder="e.g. AMASI/2024/1234"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Optional at the time of submission. Required before podium presentation.
+              </p>
+            </div>
+          )}
+
+          {/* Eligibility Info (e.g. Young Scholar) */}
+          {requiresDob && (
+            <div className="bg-white rounded-xl border p-6">
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Eligibility Information
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Date of Birth *</label>
+                  <Input
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                  {dateOfBirth && eligibilityRules.max_age && (() => {
+                    const dob = new Date(dateOfBirth)
+                    const today = new Date()
+                    let age = today.getFullYear() - dob.getFullYear()
+                    const m = today.getMonth() - dob.getMonth()
+                    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--
+                    const isEligible = age < eligibilityRules.max_age!
+                    return (
+                      <p className={cn("text-xs mt-1", isEligible ? "text-green-600" : "text-red-600")}>
+                        Age: {age} years {isEligible ? "(eligible)" : `(must be under ${eligibilityRules.max_age})`}
+                      </p>
+                    )
+                  })()}
+                </div>
+                {eligibilityRules.allowed_positions && eligibilityRules.allowed_positions.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Current Position *</label>
+                    <Select value={currentPosition} onValueChange={setCurrentPosition}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select position" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {eligibilityRules.allowed_positions.map((pos) => (
+                          <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Blinding Warning */}
+          {selectedCategory?.is_award_category && abstractText.trim() && (() => {
+            const text = abstractText.toLowerCase()
+            const authorName = (registrationInfo?.attendee_name || "").toLowerCase()
+            const institutionName = (affiliation || "").toLowerCase()
+            const coAuthorNames = coAuthors.map(a => a.name.toLowerCase()).filter(Boolean)
+            const warnings: string[] = []
+            if (institutionName && institutionName.length > 3 && text.includes(institutionName)) {
+              warnings.push("institution name")
+            }
+            if (authorName && authorName.length > 3 && text.includes(authorName)) {
+              warnings.push("your name")
+            }
+            for (const name of coAuthorNames) {
+              if (name.length > 3 && text.includes(name)) {
+                warnings.push(`co-author name "${name}"`)
+              }
+            }
+            if (warnings.length === 0) return null
+            return (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-amber-800">Blinding Warning</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Your abstract text appears to contain: {warnings.join(", ")}.
+                      For blinded review in award categories, please remove identifying information from the abstract text.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Declaration Checkboxes */}
+          {categoryDeclarations.length > 0 && (
+            <div className="bg-white rounded-xl border p-6">
+              <h3 className="font-semibold mb-4">Declarations</h3>
+              <div className="space-y-3">
+                {categoryDeclarations.map((decl, i) => (
+                  <label key={i} className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={declarationsAccepted.includes(decl.text)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setDeclarationsAccepted([...declarationsAccepted, decl.text])
+                        } else {
+                          setDeclarationsAccepted(declarationsAccepted.filter(d => d !== decl.text))
+                        }
+                      }}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 accent-primary"
+                    />
+                    <span className="text-sm">
+                      {decl.text}
+                      {decl.required && <span className="text-red-500 ml-1">*</span>}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* File Upload - driven by category configuration */}
           <div className="bg-white rounded-xl border p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Video className="h-5 w-5 text-primary" />
+              {isVideoCategory ? <Video className="h-5 w-5 text-primary" /> : <FileText className="h-5 w-5 text-primary" />}
               <h3 className="font-semibold">
-                {isVideoCategory ? "Video Upload *" : "File Attachment (Optional)"}
+                {isVideoCategory ? "Video Upload" : isFileRequired ? "File Upload" : "File Attachment"}
+                {isFileRequired ? " *" : " (Optional)"}
               </h3>
             </div>
 
             {isVideoCategory && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800">
-                <strong>Video Category Selected:</strong> Please upload your video file (MP4 format, max {settings?.max_file_size_mb || 300} MB)
+                <strong>Video Category:</strong> Please upload your video file ({categoryAllowedFileTypes.join(', ').toUpperCase()} format, max {settings?.max_file_size_mb || 300} MB).
+                Videos are uploaded directly and may take a moment depending on file size.
+              </div>
+            )}
+            {!isVideoCategory && isFileRequired && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-800">
+                File upload is required for this category ({categoryAllowedFileTypes.join(', ').toUpperCase()} format)
               </div>
             )}
 
@@ -676,14 +943,14 @@ export default function SubmitAbstractPage() {
                     Drag & drop or click to browse
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Supported: {(settings?.allowed_file_types || ['pdf', 'mp4', 'jpg']).join(', ').toUpperCase()}
+                    Supported: {categoryAllowedFileTypes.join(', ').toUpperCase()}
                     (Max {settings?.max_file_size_mb || 300} MB)
                   </p>
                 </div>
                 <input
                   type="file"
                   className="hidden"
-                  accept={(settings?.allowed_file_types || ['pdf', 'mp4', 'mov', 'jpg', 'jpeg']).map(t => `.${t}`).join(',')}
+                  accept={categoryAllowedFileTypes.map(t => `.${t}`).join(',')}
                   onChange={handleFileChange}
                 />
               </label>
@@ -844,7 +1111,7 @@ export default function SubmitAbstractPage() {
 
             <Button
               type="submit"
-              disabled={submitMutation.isPending || !title || !abstractText || wordCount > (settings?.word_limit || 300) || (categories.length > 0 && !categoryId)}
+              disabled={submitMutation.isPending || !title || !abstractText || wordCount > (settings?.word_limit || 300) || (categories.length > 0 && !categoryId) || (isFileRequired && !fileUrl) || fileUploading}
               className="w-full py-6 text-lg"
             >
               {submitMutation.isPending ? (
@@ -861,8 +1128,8 @@ export default function SubmitAbstractPage() {
             </Button>
 
             <p className="text-xs text-center text-muted-foreground mt-4">
-              By submitting, you confirm that this abstract has not been published elsewhere
-              and all authors have approved the submission.
+              By submitting, you confirm that this work is original, has not been published elsewhere,
+              and all authors have approved the submission. Accepted declarations are binding.
             </p>
           </div>
         </form>

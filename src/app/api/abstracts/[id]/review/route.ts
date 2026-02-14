@@ -31,7 +31,7 @@ export async function GET(
       .select("id")
       .eq("email", user.email?.toLowerCase())
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
 
     const isTeamMember = !!teamMember
 
@@ -49,10 +49,10 @@ export async function GET(
     // Calculate average scores
     let reviews = data || []
 
-    // If not a team member, strip private comments from each review
+    // If not a team member, strip private/identity fields from each review (blind review)
     if (!isTeamMember) {
       reviews = reviews.map((r: any) => {
-        const { comments_private: _comments_private, ...rest } = r
+        const { comments_private: _cp, reviewer_name: _rn, reviewer_email: _re, reviewer_id: _ri, ...rest } = r
         return rest
       })
     }
@@ -139,7 +139,7 @@ export async function POST(
       .select("id, name, email")
       .eq("email", user.email?.toLowerCase())
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
 
     if (!teamMember) {
       return NextResponse.json({ error: "Only active team members can add reviews" }, { status: 403 })
@@ -212,6 +212,31 @@ export async function PUT(
       return NextResponse.json({ error: "review_id is required" }, { status: 400 })
     }
 
+    // Validate scores (1-10) if provided
+    const scoreFields = ["score_originality", "score_methodology", "score_relevance", "score_clarity"]
+    for (const field of scoreFields) {
+      if (body[field] !== undefined) {
+        const score = parseInt(body[field])
+        if (isNaN(score) || score < 1 || score > 10) {
+          return NextResponse.json(
+            { error: `${field} must be between 1 and 10` },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
+    // Validate recommendation if provided
+    if (body.recommendation !== undefined && body.recommendation !== null) {
+      const validRecommendations = ["accept", "reject", "revise", "undecided"]
+      if (!validRecommendations.includes(body.recommendation)) {
+        return NextResponse.json(
+          { error: `recommendation must be one of: ${validRecommendations.join(", ")}` },
+          { status: 400 }
+        )
+      }
+    }
+
     const adminClient: SupabaseClient = await createAdminClient()
 
     // Verify user is the original reviewer or an active team member
@@ -219,7 +244,7 @@ export async function PUT(
       .from("abstract_reviews")
       .select("reviewer_email")
       .eq("id", body.review_id)
-      .single()
+      .maybeSingle()
 
     if (!existingReview) {
       return NextResponse.json({ error: "Review not found" }, { status: 404 })
@@ -232,7 +257,7 @@ export async function PUT(
       .select("id")
       .eq("email", user.email?.toLowerCase())
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
 
     if (!isOriginalReviewer && !teamMember) {
       return NextResponse.json({ error: "Only the original reviewer or team members can update reviews" }, { status: 403 })

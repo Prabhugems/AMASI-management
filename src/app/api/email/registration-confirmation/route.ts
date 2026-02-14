@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
 import { renderEmailTemplate } from "@/lib/email-templates"
 import { escapeHtml } from "@/lib/string-utils"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 // Initialize Resend
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -25,6 +26,10 @@ interface RegistrationEmailData {
 // POST /api/email/registration-confirmation - Send registration confirmation email
 export async function POST(request: NextRequest) {
   try {
+    // Require authentication to prevent abuse
+    const { user, error: authError } = await getApiUser()
+    if (authError) return authError
+
     const body: RegistrationEmailData = await request.json()
 
     const {

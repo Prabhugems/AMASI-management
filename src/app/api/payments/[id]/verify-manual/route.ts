@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { fetchPayment, getRazorpayForEvent, RazorpayCredentials } from "@/lib/services/razorpay"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // POST /api/payments/[id]/verify-manual - Manually verify a payment with Razorpay
 export async function POST(
@@ -8,6 +9,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { id } = await params
     const body = await request.json()
     const { razorpay_payment_id } = body // Optional: admin can provide Razorpay Payment ID

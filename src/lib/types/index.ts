@@ -790,6 +790,25 @@ export interface FieldPaletteItem {
 export type AbstractStatus = 'submitted' | 'under_review' | 'revision_requested' | 'accepted' | 'rejected' | 'withdrawn'
 export type PresentationType = 'oral' | 'poster' | 'video' | 'either'
 export type ReviewRecommendation = 'accept' | 'reject' | 'revise' | 'undecided'
+export type SubmissionType = 'paper' | 'video' | 'poster'
+export type AwardType = 'medal' | 'certificate' | 'bursary'
+
+export interface Declaration {
+  text: string
+  required: boolean
+}
+
+export interface EligibilityRules {
+  max_age?: number
+  require_dob?: boolean
+  allowed_positions?: string[]
+}
+
+export interface SubmitterMetadata {
+  date_of_birth?: string
+  current_position?: string
+  qualification?: string
+}
 
 export interface Abstract {
   id: string
@@ -819,10 +838,19 @@ export interface Abstract {
   submitted_at: string
   updated_at: string
   created_at: string
+  // AMASI Award fields
+  amasi_membership_number: string | null
+  declarations_accepted: string[] | null
+  submitter_metadata: SubmitterMetadata | null
+  award_rank: number | null
+  award_type: AwardType | null
+  redirected_from_category_id: string | null
+  is_podium_selected: boolean
   // Relations
   category?: AbstractCategory
   authors?: AbstractAuthor[]
   reviews?: AbstractReview[]
+  redirected_from_category?: AbstractCategory
 }
 
 export interface AbstractAuthor {
@@ -888,6 +916,14 @@ export interface AbstractCategory {
   is_active: boolean
   created_at: string
   updated_at: string
+  // AMASI Award fields
+  submission_type: SubmissionType
+  allowed_file_types: string[]
+  required_file: boolean
+  declarations: Declaration[]
+  eligibility_rules: EligibilityRules
+  award_name: string | null
+  is_award_category: boolean
 }
 
 export interface AbstractFilters {

@@ -26,7 +26,7 @@ export async function PUT(
       .select("id")
       .eq("email", user.email?.toLowerCase())
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
 
     if (!teamMember) {
       return NextResponse.json({ error: "Only team members can make decisions" }, { status: 403 })
@@ -45,7 +45,7 @@ export async function PUT(
       )
     }
 
-    const validDecisions = ["accepted", "rejected", "revision_requested", "under_review"]
+    const validDecisions = ["accepted", "rejected", "revision_requested", "under_review", "redirected"]
     if (!validDecisions.includes(body.decision)) {
       return NextResponse.json(
         { error: `Invalid decision. Must be one of: ${validDecisions.join(", ")}` },
@@ -62,6 +62,48 @@ export async function PUT(
 
     if (fetchError || !abstract) {
       return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
+    }
+
+    // Handle "Redirect to Free Session" decision
+    if (body.decision === "redirected") {
+      // Find the Free Paper/Video/Poster category for this event
+      const { data: freeCategory } = await adminClient
+        .from("abstract_categories")
+        .select("id")
+        .eq("event_id", abstract.event_id)
+        .eq("is_award_category", false)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (!freeCategory) {
+        return NextResponse.json(
+          { error: "No free session category found. Please create a non-award category first." },
+          { status: 400 }
+        )
+      }
+
+      const { data: redirectedData, error: redirectError } = await adminClient
+        .from("abstracts")
+        .update({
+          status: "accepted",
+          decision_date: new Date().toISOString(),
+          decision_notes: body.decision_notes || "Redirected to free session",
+          redirected_from_category_id: abstract.category_id,
+          category_id: freeCategory.id,
+          accepted_as: body.accepted_as || abstract.presentation_type || "oral",
+        })
+        .eq("id", id)
+        .select()
+        .single()
+
+      if (redirectError) {
+        console.error("Error redirecting abstract:", redirectError)
+        return NextResponse.json({ error: "Failed to redirect abstract" }, { status: 500 })
+      }
+
+      return NextResponse.json(redirectedData)
     }
 
     // Build update payload
@@ -126,7 +168,7 @@ export async function POST(
       .select("id")
       .eq("email", user.email?.toLowerCase())
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
 
     if (!teamMember) {
       return NextResponse.json({ error: "Only team members can make decisions" }, { status: 403 })
@@ -142,7 +184,7 @@ export async function POST(
       return NextResponse.json({ error: "decision is required" }, { status: 400 })
     }
 
-    const validDecisions = ["accepted", "rejected", "revision_requested", "under_review"]
+    const validDecisions = ["accepted", "rejected", "revision_requested", "under_review", "redirected"]
     if (!validDecisions.includes(body.decision)) {
       return NextResponse.json(
         { error: `Invalid decision. Must be one of: ${validDecisions.join(", ")}` },
@@ -164,7 +206,7 @@ export async function POST(
     // Verify all abstract_ids belong to the same event
     const { data: abstracts, error: fetchError } = await adminClient
       .from("abstracts")
-      .select("id, event_id")
+      .select("id, event_id, category_id, presentation_type")
       .in("id", body.abstract_ids)
 
     if (fetchError || !abstracts || abstracts.length === 0) {
@@ -181,6 +223,57 @@ export async function POST(
         { error: "All abstracts must belong to the same event for bulk decisions" },
         { status: 400 }
       )
+    }
+
+    // Handle bulk redirect to free session
+    if (body.decision === "redirected") {
+      const eventId = abstracts[0].event_id
+      const { data: freeCategory } = await adminClient
+        .from("abstract_categories")
+        .select("id")
+        .eq("event_id", eventId)
+        .eq("is_award_category", false)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (!freeCategory) {
+        return NextResponse.json(
+          { error: "No free session category found. Please create a non-award category first." },
+          { status: 400 }
+        )
+      }
+
+      // Update each abstract individually to preserve its original category_id
+      const results = []
+      for (const abstract of abstracts) {
+        const { data: updated, error: updateErr } = await adminClient
+          .from("abstracts")
+          .update({
+            status: "accepted",
+            decision_date: new Date().toISOString(),
+            decision_notes: body.decision_notes || "Redirected to free session",
+            redirected_from_category_id: abstract.category_id,
+            category_id: freeCategory.id,
+            accepted_as: body.accepted_as || abstract.presentation_type || "oral",
+          })
+          .eq("id", abstract.id)
+          .select()
+          .single()
+
+        if (updateErr) {
+          console.error(`Error redirecting abstract ${abstract.id}:`, updateErr)
+        } else {
+          results.push(updated)
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        updated: results.length,
+        abstracts: results,
+      })
     }
 
     const updateData: Record<string, any> = {

@@ -34,14 +34,22 @@ interface ResendWebhookPayload {
   }
 }
 
-// Verify webhook signature (optional but recommended)
+// Verify webhook signature
 function verifyWebhookSignature(payload: string, signature: string | null, secret: string): boolean {
-  if (!signature || !secret) return true // Skip verification if no secret configured
+  if (!secret) {
+    console.warn("RESEND_WEBHOOK_SECRET not configured - webhook signature verification disabled")
+    return true
+  }
+
+  if (!signature) return false // Reject if no signature provided but secret is configured
 
   const expectedSignature = crypto
     .createHmac("sha256", secret)
     .update(payload)
     .digest("hex")
+
+  // Ensure same length before timing-safe comparison
+  if (signature.length !== expectedSignature.length) return false
 
   return crypto.timingSafeEqual(
     Buffer.from(signature),
