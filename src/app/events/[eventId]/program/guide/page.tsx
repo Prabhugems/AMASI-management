@@ -12,7 +12,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import {
   Upload,
-  Sparkles,
   RefreshCw,
   Users,
   Mail,
@@ -70,16 +69,28 @@ export default function ProgramGuidePage() {
               <div className="flex items-center gap-2"><Badge variant="outline">Role</Badge> Speaker/Chairperson/Moderator</div>
             </div>
           </div>
+          <div>
+            <h4 className="font-medium mb-2">Contact Columns (Important for Invitations)</h4>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="flex items-center gap-2"><Badge className="bg-purple-100 text-purple-700">Email</Badge> Faculty email address</div>
+              <div className="flex items-center gap-2"><Badge className="bg-purple-100 text-purple-700">Mobile Number</Badge> Phone for WhatsApp/calling</div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              If your CSV has email and phone columns, they will be imported with the speaker data.
+              This means you can send invitations directly without manually entering emails.
+            </p>
+          </div>
           <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm">
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium text-amber-800">Tips for best results</p>
                 <ul className="mt-1 text-amber-700 space-y-1 list-disc list-inside">
-                  <li>Include email and phone in the CSV if available &mdash; this enables direct speaker matching</li>
+                  <li><strong>Include email and phone</strong> in the CSV &mdash; this enables sending invitations directly after import</li>
                   <li>Use consistent name spelling across rows (e.g. always &quot;Dr Aditi Nadkarni&quot;, not sometimes &quot;Aditi&quot;)</li>
                   <li>Each row = one speaker in one session. A session with 3 speakers = 3 rows</li>
                   <li>Dates must be DD/MM/YYYY (Indian format). US format MM/DD/YYYY will be misparsed</li>
+                  <li>Speakers without email will appear in the system but invitations won&apos;t be sent to them</li>
                 </ul>
               </div>
             </div>
@@ -97,44 +108,36 @@ export default function ProgramGuidePage() {
                 <Upload className="h-5 w-5" />
                 Import Program
               </CardTitle>
-              <CardDescription>Upload your CSV to create sessions</CardDescription>
+              <CardDescription>Upload your CSV to create sessions and faculty</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="border rounded-lg p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-purple-600" />
-                <h4 className="font-medium">AI Import (Recommended)</h4>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                AI reads your CSV and intelligently maps columns, extracts speaker contact info,
-                and creates sessions + faculty assignments in one step.
-              </p>
-              <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
-                <li>Handles messy/non-standard CSVs</li>
-                <li>Extracts emails & phones from any column</li>
-                <li>Creates faculty assignments automatically</li>
-                <li>Creates speaker registrations automatically</li>
-              </ul>
+          <div className="space-y-3 text-sm">
+            <div className="flex gap-3 items-start">
+              <Badge className="bg-blue-100 text-blue-700 shrink-0">Step 1</Badge>
+              <p>Upload your CSV file</p>
             </div>
-            <div className="border rounded-lg p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <Upload className="h-4 w-4 text-blue-600" />
-                <h4 className="font-medium">Manual Import</h4>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                You manually map CSV columns to fields. Gives you full control over the mapping.
-                Speaker names go into the sessions but no contact details are extracted.
-              </p>
-              <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
-                <li>Map each column yourself</li>
-                <li>Names stored in sessions only</li>
-                <li>Faculty assignments created on first visit to Speakers page</li>
-                <li>No emails extracted &mdash; placeholder emails used later</li>
-              </ul>
+            <div className="flex gap-3 items-start">
+              <Badge className="bg-blue-100 text-blue-700 shrink-0">Step 2</Badge>
+              <p>Verify column mapping &mdash; Date, Time, Topic, Hall, Speaker, Email, Phone are auto-detected. You can change them if needed.</p>
             </div>
+            <div className="flex gap-3 items-start">
+              <Badge className="bg-blue-100 text-blue-700 shrink-0">Step 3</Badge>
+              <p>Preview sessions, check the data looks correct</p>
+            </div>
+            <div className="flex gap-3 items-start">
+              <Badge className="bg-blue-100 text-blue-700 shrink-0">Step 4</Badge>
+              <p>Click Import &mdash; sessions are created with speaker names + emails + phones stored together</p>
+            </div>
+          </div>
+          <div className="mt-2 space-y-2">
+            <h4 className="font-medium">What gets created:</h4>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>Sessions with speaker names, emails, and phone numbers</li>
+              <li>Faculty registrations for speakers who have email or phone</li>
+              <li>Faculty assignments are created when you visit the Speakers page (auto-sync)</li>
+            </ul>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <ArrowRight className="h-4 w-4" />
@@ -168,15 +171,15 @@ export default function ProgramGuidePage() {
           <div className="space-y-3 text-sm">
             <div className="flex gap-3 items-start">
               <Badge className="shrink-0 mt-0.5" variant="outline">Sessions</Badge>
-              <p>Each unique Date + Time + Hall + Topic combination creates one session. Speaker names are stored in the session&apos;s <code className="bg-muted px-1 rounded">speakers</code> column.</p>
+              <p>Each unique Date + Time + Hall + Topic combination creates one session. Speaker names + emails + phones are stored together in the session.</p>
             </div>
             <div className="flex gap-3 items-start">
               <Badge className="shrink-0 mt-0.5" variant="outline">Faculty Assignments</Badge>
-              <p>A linking table that connects each speaker to each session with a role (Speaker, Chairperson, Moderator, Panelist). Created by AI Import automatically, or by auto-sync when you visit the Speakers page.</p>
+              <p>A linking table that connects each speaker to each session with a role and their email/phone. Created by auto-sync when you visit the Speakers page.</p>
             </div>
             <div className="flex gap-3 items-start">
               <Badge className="shrink-0 mt-0.5" variant="outline">Registrations</Badge>
-              <p>Speaker registrations in the main registration system. Created via &quot;Import from Program&quot; button on the Speakers page, or automatically by AI Import.</p>
+              <p>Speaker registrations in the main registration system. Created during import for speakers who have email or phone.</p>
             </div>
 
             <div className="mt-4 rounded-md bg-muted/50 p-4 font-mono text-xs space-y-2">
@@ -184,17 +187,17 @@ export default function ProgramGuidePage() {
                 <span className="text-blue-600">CSV File</span>
                 <ArrowRight className="h-3 w-3" />
                 <span className="text-green-600">Sessions Table</span>
-                <span className="text-muted-foreground">(speakers column = names)</span>
+                <span className="text-muted-foreground">(speakers + emails + phones)</span>
               </div>
               <div className="flex items-center gap-2 pl-6">
                 <ArrowRight className="h-3 w-3" />
                 <span className="text-purple-600">Faculty Assignments</span>
-                <span className="text-muted-foreground">(session_id + name + email + role)</span>
+                <span className="text-muted-foreground">(session_id + name + email + phone + role)</span>
               </div>
               <div className="flex items-center gap-2 pl-6">
                 <ArrowRight className="h-3 w-3" />
-                <span className="text-orange-600">Registrations</span>
-                <span className="text-muted-foreground">(attendee_name + email + ticket_type)</span>
+                <span className="text-orange-600">Confirmations</span>
+                <span className="text-muted-foreground">(send invitations to speakers with emails)</span>
               </div>
             </div>
           </div>
@@ -423,9 +426,17 @@ export default function ProgramGuidePage() {
             <div>
               <p className="font-medium">Placeholder emails like name@placeholder.speaker</p>
               <p className="text-muted-foreground mt-1">
-                These are auto-generated when the CSV didn&apos;t have email addresses for speakers.
-                They don&apos;t break anything &mdash; session linking uses name matching as fallback.
-                Replace them with real emails before sending invitations.
+                These appear when the CSV didn&apos;t have an email for a speaker. Speakers with placeholder emails
+                cannot receive invitations. To fix: re-import with a CSV that includes the Email column, or
+                manually update their email in the speaker/registration page.
+              </p>
+            </div>
+
+            <div>
+              <p className="font-medium">Invitations show &quot;Failed&quot; but dashboard says &quot;Sent&quot;</p>
+              <p className="text-muted-foreground mt-1">
+                This happens when sending to placeholder emails. The system now blocks sending to placeholder emails
+                and shows a clear error. Re-import your CSV with real email addresses included.
               </p>
             </div>
 
@@ -448,8 +459,8 @@ export default function ProgramGuidePage() {
             <div>
               <p className="font-medium">Want to start fresh?</p>
               <p className="text-muted-foreground mt-1">
-                Re-import with &quot;Clear existing&quot; checked using AI Import. This deletes all sessions and recreates everything cleanly,
-                including faculty assignments and speaker registrations.
+                Re-import with &quot;Clear existing&quot; checked. This deletes all sessions and recreates everything cleanly.
+                Then visit the Speakers page to trigger auto-sync of faculty assignments.
               </p>
             </div>
           </div>
