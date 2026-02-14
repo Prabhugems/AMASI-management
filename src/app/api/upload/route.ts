@@ -1,4 +1,4 @@
-import { createAdminClient, createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { getApiUser } from "@/lib/auth/api-auth"
 
@@ -40,23 +40,6 @@ export async function POST(request: NextRequest) {
 
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
-    }
-
-    // Authentication: require either a logged-in user or a valid event_id
-    // Abstract submissions are public (no login), but we verify the event exists
-    const supabase = await createServerSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      // For unauthenticated uploads (abstract submissions), verify the event exists
-      const adminCheck = await createAdminClient()
-      const { data: event } = await adminCheck
-        .from("events")
-        .select("id")
-        .eq("id", eventId)
-        .maybeSingle()
-      if (!event) {
-        return NextResponse.json({ error: "Invalid event" }, { status: 403 })
-      }
     }
 
     // Validate file size (max 50MB for Vercel serverless)
