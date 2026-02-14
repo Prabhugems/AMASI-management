@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(formatZodError(result.error), { status: 400 })
     }
 
-    const { name, short_name, description, start_date, end_date, venue, city, country, timezone } = result.data
+    const { name, short_name, description, start_date, end_date, venue, city, state, country, timezone } = result.data
 
     // Generate slug from short_name
     const baseSlug = short_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
         end_date,
         venue_name: venue || null,
         city: city || null,
+        state: state || null,
         country: country || "India",
         timezone: timezone || "Asia/Kolkata",
         created_by: user.id,

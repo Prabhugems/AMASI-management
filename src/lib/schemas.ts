@@ -157,6 +157,7 @@ export const eventCreateSchema = z.object({
   end_date: dateSchema,
   venue: z.string().max(500).optional(),
   city: z.string().max(100).optional(),
+  state: z.string().max(100).optional(),
   country: z.string().max(100).optional(),
   timezone: z.string().max(50).default("Asia/Kolkata"),
   registration_open: z.boolean().default(true),

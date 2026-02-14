@@ -35,6 +35,7 @@ export default function CreateEventPage() {
     end_date: "",
     venue: "",
     city: "",
+    state: "",
     country: "India",
     timezone: "Asia/Kolkata",
   })
@@ -273,13 +274,22 @@ export default function CreateEventPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="text-sm font-medium text-foreground">City</label>
               <Input
                 value={formData.city}
                 onChange={(e) => updateField("city", e.target.value)}
                 placeholder="e.g., Chennai"
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">State</label>
+              <Input
+                value={formData.state}
+                onChange={(e) => updateField("state", e.target.value)}
+                placeholder="e.g., Tamil Nadu"
                 className="mt-1.5"
               />
             </div>
