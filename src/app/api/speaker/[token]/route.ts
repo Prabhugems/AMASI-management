@@ -43,28 +43,58 @@ export async function GET(
       )
     }
 
-    // Get sessions for this speaker from the event
+    // Strategy 1: Find sessions via faculty_assignments table (most reliable)
+    const speakerEmail = registration.attendee_email?.toLowerCase()
+    const speakerName = registration.attendee_name?.trim()
+
+    const { data: assignments } = await (supabase as any)
+      .from("faculty_assignments")
+      .select("session_id")
+      .eq("event_id", registration.event_id)
+      .ilike("faculty_email", speakerEmail || "")
+
+    const assignedSessionIds = new Set(
+      (assignments || []).map((a: any) => a.session_id).filter(Boolean)
+    )
+
+    // Get all sessions for this event
     const { data: sessions } = await (supabase as any)
       .from("sessions")
-      .select("id, session_name, session_date, start_time, end_time, hall, description, specialty_track")
+      .select("id, session_name, session_date, start_time, end_time, hall, description, specialty_track, speakers_text, chairpersons_text, moderators_text")
       .eq("event_id", registration.event_id)
       .order("session_date")
       .order("start_time")
 
-    // Filter sessions that belong to this speaker (by email in description)
-    const speakerEmail = registration.attendee_email?.toLowerCase()
+    // Filter sessions that belong to this speaker
     const speakerSessions = (sessions || []).filter((session: any) => {
-      if (session.description) {
-        const parts = session.description.split(" | ")
-        const email = parts[1]?.trim()?.toLowerCase()
-        return email === speakerEmail
+      // Match via faculty_assignments
+      if (assignedSessionIds.has(session.id)) return true
+
+      // Match by email in speakers_text/chairpersons_text/moderators_text (AI import format)
+      const textFields = [session.speakers_text, session.chairpersons_text, session.moderators_text]
+      for (const text of textFields) {
+        if (text && speakerEmail && text.toLowerCase().includes(speakerEmail)) return true
       }
+
+      // Match by email in description (legacy format: "Name | email")
+      if (session.description && speakerEmail) {
+        if (session.description.toLowerCase().includes(speakerEmail)) return true
+      }
+
+      // Match by name in description (CSV import stores names in description)
+      if (session.description && speakerName) {
+        if (session.description.toLowerCase().includes(speakerName.toLowerCase())) return true
+      }
+
       return false
     })
 
+    // Strip internal fields before returning
+    const cleanSessions = speakerSessions.map(({ speakers_text, chairpersons_text, moderators_text, ...rest }: any) => rest)
+
     return NextResponse.json({
       registration,
-      sessions: speakerSessions,
+      sessions: cleanSessions,
     })
   } catch (error: any) {
     console.error("Speaker portal API error:", error)
