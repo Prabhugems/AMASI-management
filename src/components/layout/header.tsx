@@ -25,6 +25,7 @@ import {
   Clock,
   Menu,
 } from "lucide-react"
+import { AppCommandPalette } from "@/components/ui/command-palette"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { toast } from "sonner"
@@ -111,6 +112,8 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
     }
   }
 
+  const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false)
+
   const notifications = [
     { id: 1, type: "info", title: "New faculty registered", message: "Dr. Sharma joined AMASICON 2026", time: "2 min ago", unread: true },
     { id: 2, type: "warning", title: "Pending approvals", message: "5 travel requests awaiting approval", time: "1 hour ago", unread: true },
@@ -136,17 +139,17 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="relative flex-1">
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="relative flex-1 flex items-center w-full h-10 pl-10 pr-4 rounded-xl bg-secondary/50 border border-transparent text-sm text-muted-foreground hover:bg-secondary transition-colors cursor-pointer text-left"
+          >
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search events, faculty, attendees..."
-              className="w-full h-10 pl-10 pr-4 rounded-xl bg-secondary/50 border border-transparent text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:bg-secondary transition-colors"
-            />
+            <span>Search events, faculty, members...</span>
             <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
               <span className="text-xs">⌘</span>K
             </kbd>
-          </div>
+          </button>
+          <AppCommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
         </div>
 
         {/* Actions */}

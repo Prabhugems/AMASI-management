@@ -8,20 +8,24 @@ import {
   DialogContent,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { createClient } from "@/lib/supabase/client"
 import {
   Calendar,
   Users,
+  GraduationCap,
   Search,
   Plus,
   FileText,
   Home,
   HelpCircle,
+  Loader2,
   LucideIcon,
 } from "lucide-react"
 
 interface CommandItem {
   id: string
   label: string
+  description?: string
   icon?: LucideIcon
   shortcut?: string
   onSelect: () => void
@@ -36,21 +40,116 @@ interface CommandPaletteProps {
   placeholder?: string
 }
 
-/**
- * Command Palette Component
- *
- * Quick actions search (Cmd+K)
- *
- * Usage:
- * ```
- * <CommandPalette
- *   items={[
- *     { id: "home", label: "Go Home", icon: Home, onSelect: () => router.push("/") },
- *     { id: "new-event", label: "Create Event", icon: Plus, onSelect: () => ... },
- *   ]}
- * />
- * ```
- */
+function useGlobalSearch(query: string) {
+  const [results, setResults] = React.useState<CommandItem[]>([])
+  const [isLoading, setIsLoading] = React.useState(false)
+  const router = useRouter()
+  const abortRef = React.useRef<AbortController | null>(null)
+
+  React.useEffect(() => {
+    const trimmed = query.trim()
+    if (!trimmed || trimmed.length < 2) {
+      setResults([])
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+
+    const timer = setTimeout(async () => {
+      // Cancel previous in-flight request
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+
+      try {
+        const supabase = createClient()
+        const pattern = `%${trimmed}%`
+
+        type EventRow = { id: string; name: string | null; short_name: string | null; city: string | null; status: string | null }
+        type FacultyRow = { id: string; name: string | null; email: string | null; designation: string | null; institution: string | null }
+        type MemberRow = { id: string; name: string | null; email: string | null; membership_type: string | null; status: string | null }
+
+        const [eventsRes, facultyRes, membersRes] = await Promise.all([
+          supabase
+            .from("events")
+            .select("id, name, short_name, city, status")
+            .or(`name.ilike.${pattern},short_name.ilike.${pattern},city.ilike.${pattern}`)
+            .limit(5) as unknown as { data: EventRow[] | null },
+          supabase
+            .from("faculty")
+            .select("id, name, email, designation, institution")
+            .or(`name.ilike.${pattern},email.ilike.${pattern}`)
+            .limit(5) as unknown as { data: FacultyRow[] | null },
+          supabase
+            .from("members")
+            .select("id, name, email, membership_type, status")
+            .or(`name.ilike.${pattern},email.ilike.${pattern}`)
+            .limit(5) as unknown as { data: MemberRow[] | null },
+        ])
+
+        if (controller.signal.aborted) return
+
+        const items: CommandItem[] = []
+
+        if (eventsRes.data) {
+          for (const e of eventsRes.data) {
+            items.push({
+              id: `event-${e.id}`,
+              label: e.name || e.short_name || "Untitled Event",
+              description: [e.city, e.status].filter(Boolean).join(" \u00b7 "),
+              icon: Calendar,
+              onSelect: () => router.push(`/events/${e.id}`),
+              group: "Events",
+            })
+          }
+        }
+
+        if (facultyRes.data) {
+          for (const f of facultyRes.data) {
+            items.push({
+              id: `faculty-${f.id}`,
+              label: f.name || "Unknown Faculty",
+              description: [f.designation, f.institution].filter(Boolean).join(", ") || f.email || "",
+              icon: GraduationCap,
+              onSelect: () => router.push(`/faculty?search=${encodeURIComponent(f.name || "")}`),
+              group: "Faculty",
+            })
+          }
+        }
+
+        if (membersRes.data) {
+          for (const m of membersRes.data) {
+            items.push({
+              id: `member-${m.id}`,
+              label: m.name || "Unknown Member",
+              description: [m.email, m.membership_type].filter(Boolean).join(" \u00b7 "),
+              icon: Users,
+              onSelect: () => router.push(`/members?search=${encodeURIComponent(m.name || "")}`),
+              group: "Members",
+            })
+          }
+        }
+
+        setResults(items)
+      } catch {
+        // Silently handle errors (e.g. abort)
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false)
+        }
+      }
+    }, 300)
+
+    return () => {
+      clearTimeout(timer)
+      setIsLoading(false)
+    }
+  }, [query, router])
+
+  return { results, isLoading }
+}
+
 export function CommandPalette({
   items = [],
   open,
@@ -59,10 +158,11 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
-  const _router = useRouter()
 
   const actualOpen = open ?? isOpen
   const setActualOpen = onOpenChange ?? setIsOpen
+
+  const { results: dbResults, isLoading } = useGlobalSearch(search)
 
   // Keyboard shortcut to open
   React.useEffect(() => {
@@ -89,8 +189,8 @@ export function CommandPalette({
     item.onSelect()
   }
 
-  // Filter items by search
-  const filteredItems = React.useMemo(() => {
+  // Filter static items by search
+  const filteredStaticItems = React.useMemo(() => {
     if (!search.trim()) return items
 
     const searchLower = search.toLowerCase()
@@ -101,16 +201,21 @@ export function CommandPalette({
     })
   }, [items, search])
 
+  // Combine: when no search, show static commands; when searching, show DB results + matching static commands
+  const displayItems = search.trim().length >= 2
+    ? [...dbResults, ...filteredStaticItems]
+    : items
+
   // Group items
   const groupedItems = React.useMemo(() => {
     const groups: Record<string, CommandItem[]> = {}
-    for (const item of filteredItems) {
+    for (const item of displayItems) {
       const group = item.group || "Actions"
       if (!groups[group]) groups[group] = []
       groups[group].push(item)
     }
     return groups
-  }, [filteredItems])
+  }, [displayItems])
 
   return (
     <Dialog open={actualOpen} onOpenChange={setActualOpen}>
@@ -123,12 +228,19 @@ export function CommandPalette({
             placeholder={placeholder}
             className="border-0 focus-visible:ring-0 h-12"
           />
+          {isLoading && (
+            <Loader2 className="h-4 w-4 text-muted-foreground animate-spin ml-2" />
+          )}
         </div>
 
         <div className="max-h-[300px] overflow-y-auto p-2">
-          {filteredItems.length === 0 ? (
+          {displayItems.length === 0 && !isLoading ? (
             <p className="text-center text-sm text-muted-foreground py-6">
               No results found.
+            </p>
+          ) : displayItems.length === 0 && isLoading ? (
+            <p className="text-center text-sm text-muted-foreground py-6">
+              Searching...
             </p>
           ) : (
             Object.entries(groupedItems).map(([group, groupItems]) => (
@@ -145,10 +257,17 @@ export function CommandPalette({
                       "hover:bg-accent transition-colors text-left"
                     )}
                   >
-                    {item.icon && <item.icon className="h-4 w-4 text-muted-foreground" />}
-                    <span className="flex-1">{item.label}</span>
+                    {item.icon && <item.icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <span className="block truncate">{item.label}</span>
+                      {item.description && (
+                        <span className="block text-xs text-muted-foreground truncate">
+                          {item.description}
+                        </span>
+                      )}
+                    </div>
                     {item.shortcut && (
-                      <kbd className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      <kbd className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex-shrink-0">
                         {item.shortcut}
                       </kbd>
                     )}
@@ -207,15 +326,6 @@ export function useDefaultCommands(): CommandItem[] {
         keywords: ["create", "new", "event"],
         group: "Actions",
       },
-      {
-        id: "search",
-        label: "Search Everything",
-        icon: Search,
-        shortcut: "⌘F",
-        onSelect: () => router.push("/search"),
-        keywords: ["search", "find"],
-        group: "Actions",
-      },
 
       // Help
       {
@@ -240,51 +350,19 @@ export function useDefaultCommands(): CommandItem[] {
 }
 
 /**
- * Command palette with default commands
+ * Command palette with default commands and live search
  */
 export function AppCommandPalette({
   additionalItems = [],
+  open,
+  onOpenChange,
 }: {
   additionalItems?: CommandItem[]
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const defaultCommands = useDefaultCommands()
   const allItems = [...defaultCommands, ...additionalItems]
 
-  return <CommandPalette items={allItems} />
-}
-
-/**
- * Command palette trigger button
- */
-export function CommandPaletteTrigger({
-  className,
-}: {
-  className?: string
-}) {
-  const [open, setOpen] = React.useState(false)
-  const defaultCommands = useDefaultCommands()
-
-  return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className={cn(
-          "flex items-center gap-2 px-3 py-2 text-sm rounded-md border",
-          "hover:bg-accent transition-colors",
-          className
-        )}
-      >
-        <Search className="h-4 w-4" />
-        <span className="text-muted-foreground">Search...</span>
-        <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-          <span className="text-xs">⌘</span>K
-        </kbd>
-      </button>
-      <CommandPalette
-        items={defaultCommands}
-        open={open}
-        onOpenChange={setOpen}
-      />
-    </>
-  )
+  return <CommandPalette items={allItems} open={open} onOpenChange={onOpenChange} />
 }
