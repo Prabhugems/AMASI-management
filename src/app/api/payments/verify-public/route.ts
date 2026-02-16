@@ -6,9 +6,9 @@ import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/ra
 // POST /api/payments/verify-public - Public payment verification for delegates
 // Security: requires matching email + payment belongs to that email
 export async function POST(request: NextRequest) {
-  // Rate limit: strict for public endpoint
+  // Rate limit: strict for payment verification (5 per minute)
   const ip = getClientIp(request)
-  const rateLimit = checkRateLimit(ip, "public")
+  const rateLimit = checkRateLimit(ip, "strict")
   if (!rateLimit.success) {
     return rateLimitExceededResponse(rateLimit)
   }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         .select("*")
         .eq("id", payment_id)
         .eq("payer_email", email.toLowerCase().trim())
-        .single()
+        .maybeSingle()
       payment = data
     }
 
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         .select("*")
         .eq("razorpay_payment_id", razorpay_payment_id.trim())
         .eq("payer_email", email.toLowerCase().trim())
-        .single()
+        .maybeSingle()
       payment = data
     }
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         .from("events")
         .select("razorpay_key_id, razorpay_key_secret, name")
         .eq("id", payment.event_id)
-        .single()
+        .maybeSingle()
 
       if (eventData?.razorpay_key_id && eventData?.razorpay_key_secret) {
         credentials = {

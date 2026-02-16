@@ -141,6 +141,42 @@ export const badgeGenerateSchema = z.object({
   store_badges: z.boolean().default(false),
 })
 
+// ==================== Membership Application Schema ====================
+
+export const membershipApplicationSchema = z.object({
+  name: z.string().min(1, "Name is required").max(200).trim(),
+  father_name: z.string().max(200).optional(),
+  date_of_birth: z.string().optional(),
+  nationality: z.string().max(100).optional(),
+  gender: z.enum(["Male", "Female", "Other"]).optional(),
+  membership_type: z.string().max(100).optional(),
+  email: emailSchema,
+  phone: z.string().max(30).optional(),
+  mobile_code: z.string().max(10).optional(),
+  landline: z.string().max(30).optional(),
+  std_code: z.string().max(10).optional(),
+  street_address_1: z.string().max(500).optional(),
+  street_address_2: z.string().max(500).optional(),
+  city: z.string().max(100).optional(),
+  state: z.string().max(100).optional(),
+  country: z.string().max(100).optional(),
+  postal_code: z.string().max(20).optional(),
+  ug_college: z.string().max(300).optional(),
+  ug_university: z.string().max(300).optional(),
+  ug_year: z.string().max(10).optional(),
+  pg_degree: z.string().max(200).optional(),
+  pg_college: z.string().max(300).optional(),
+  pg_university: z.string().max(300).optional(),
+  pg_year: z.string().max(10).optional(),
+  mci_council_number: z.string().max(100).optional(),
+  mci_council_state: z.string().max(100).optional(),
+  imr_registration_no: z.string().max(100).optional(),
+  asi_membership_no: z.string().max(100).optional(),
+  asi_state: z.string().max(100).optional(),
+  other_intl_org: z.string().max(200).optional(),
+  other_intl_org_value: z.string().max(200).optional(),
+})
+
 // ==================== Member Lookup Schema ====================
 
 export const memberLookupSchema = z.object({

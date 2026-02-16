@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       .select("id")
       .eq("event_id", event_id)
       .eq("attendee_email", email.toLowerCase())
-      .not("status", "in", '("cancelled","refunded")')
+      .not("status", "in", "(cancelled,refunded)")
       .maybeSingle()
 
     if (existingReg) {
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
         query = query.eq("ticket_type_id", ticket_type_id)
       }
 
-      const { data, error } = await query.single()
+      const { data, error } = await query.maybeSingle()
 
       if (error || !data) {
         return NextResponse.json({ onWaitlist: false })

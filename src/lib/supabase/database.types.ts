@@ -406,6 +406,35 @@ export interface Database {
           membership_type: string | null
           status: string | null
           voting_eligible: boolean | null
+          father_name: string | null
+          date_of_birth: string | null
+          nationality: string | null
+          gender: string | null
+          application_no: string | null
+          application_date: string | null
+          mobile_code: string | null
+          landline: string | null
+          std_code: string | null
+          street_address_1: string | null
+          street_address_2: string | null
+          city: string | null
+          state: string | null
+          country: string | null
+          postal_code: string | null
+          ug_college: string | null
+          ug_university: string | null
+          ug_year: string | null
+          pg_degree: string | null
+          pg_college: string | null
+          pg_university: string | null
+          pg_year: string | null
+          mci_council_number: string | null
+          mci_council_state: string | null
+          imr_registration_no: string | null
+          asi_membership_no: string | null
+          asi_state: string | null
+          other_intl_org: string | null
+          other_intl_org_value: string | null
           created_at: string
           updated_at: string
         }
@@ -418,6 +447,35 @@ export interface Database {
           membership_type?: string | null
           status?: string | null
           voting_eligible?: boolean | null
+          father_name?: string | null
+          date_of_birth?: string | null
+          nationality?: string | null
+          gender?: string | null
+          application_no?: string | null
+          application_date?: string | null
+          mobile_code?: string | null
+          landline?: string | null
+          std_code?: string | null
+          street_address_1?: string | null
+          street_address_2?: string | null
+          city?: string | null
+          state?: string | null
+          country?: string | null
+          postal_code?: string | null
+          ug_college?: string | null
+          ug_university?: string | null
+          ug_year?: string | null
+          pg_degree?: string | null
+          pg_college?: string | null
+          pg_university?: string | null
+          pg_year?: string | null
+          mci_council_number?: string | null
+          mci_council_state?: string | null
+          imr_registration_no?: string | null
+          asi_membership_no?: string | null
+          asi_state?: string | null
+          other_intl_org?: string | null
+          other_intl_org_value?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -430,6 +488,166 @@ export interface Database {
           membership_type?: string | null
           status?: string | null
           voting_eligible?: boolean | null
+          father_name?: string | null
+          date_of_birth?: string | null
+          nationality?: string | null
+          gender?: string | null
+          application_no?: string | null
+          application_date?: string | null
+          mobile_code?: string | null
+          landline?: string | null
+          std_code?: string | null
+          street_address_1?: string | null
+          street_address_2?: string | null
+          city?: string | null
+          state?: string | null
+          country?: string | null
+          postal_code?: string | null
+          ug_college?: string | null
+          ug_university?: string | null
+          ug_year?: string | null
+          pg_degree?: string | null
+          pg_college?: string | null
+          pg_university?: string | null
+          pg_year?: string | null
+          mci_council_number?: string | null
+          mci_council_state?: string | null
+          imr_registration_no?: string | null
+          asi_membership_no?: string | null
+          asi_state?: string | null
+          other_intl_org?: string | null
+          other_intl_org_value?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      membership_applications: {
+        Row: {
+          id: string
+          name: string
+          father_name: string | null
+          date_of_birth: string | null
+          nationality: string | null
+          gender: string | null
+          membership_type: string | null
+          email: string
+          phone: string | null
+          mobile_code: string | null
+          landline: string | null
+          std_code: string | null
+          street_address_1: string | null
+          street_address_2: string | null
+          city: string | null
+          state: string | null
+          country: string | null
+          postal_code: string | null
+          ug_college: string | null
+          ug_university: string | null
+          ug_year: string | null
+          pg_degree: string | null
+          pg_college: string | null
+          pg_university: string | null
+          pg_year: string | null
+          mci_council_number: string | null
+          mci_council_state: string | null
+          imr_registration_no: string | null
+          asi_membership_no: string | null
+          asi_state: string | null
+          other_intl_org: string | null
+          other_intl_org_value: string | null
+          status: string
+          application_number: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          review_notes: string | null
+          assigned_amasi_number: number | null
+          member_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          father_name?: string | null
+          date_of_birth?: string | null
+          nationality?: string | null
+          gender?: string | null
+          membership_type?: string | null
+          email: string
+          phone?: string | null
+          mobile_code?: string | null
+          landline?: string | null
+          std_code?: string | null
+          street_address_1?: string | null
+          street_address_2?: string | null
+          city?: string | null
+          state?: string | null
+          country?: string | null
+          postal_code?: string | null
+          ug_college?: string | null
+          ug_university?: string | null
+          ug_year?: string | null
+          pg_degree?: string | null
+          pg_college?: string | null
+          pg_university?: string | null
+          pg_year?: string | null
+          mci_council_number?: string | null
+          mci_council_state?: string | null
+          imr_registration_no?: string | null
+          asi_membership_no?: string | null
+          asi_state?: string | null
+          other_intl_org?: string | null
+          other_intl_org_value?: string | null
+          status?: string
+          application_number?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          review_notes?: string | null
+          assigned_amasi_number?: number | null
+          member_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          father_name?: string | null
+          date_of_birth?: string | null
+          nationality?: string | null
+          gender?: string | null
+          membership_type?: string | null
+          email?: string
+          phone?: string | null
+          mobile_code?: string | null
+          landline?: string | null
+          std_code?: string | null
+          street_address_1?: string | null
+          street_address_2?: string | null
+          city?: string | null
+          state?: string | null
+          country?: string | null
+          postal_code?: string | null
+          ug_college?: string | null
+          ug_university?: string | null
+          ug_year?: string | null
+          pg_degree?: string | null
+          pg_college?: string | null
+          pg_university?: string | null
+          pg_year?: string | null
+          mci_council_number?: string | null
+          mci_council_state?: string | null
+          imr_registration_no?: string | null
+          asi_membership_no?: string | null
+          asi_state?: string | null
+          other_intl_org?: string | null
+          other_intl_org_value?: string | null
+          status?: string
+          application_number?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          review_notes?: string | null
+          assigned_amasi_number?: number | null
+          member_id?: string | null
           created_at?: string
           updated_at?: string
         }

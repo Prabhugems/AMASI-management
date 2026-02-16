@@ -97,6 +97,8 @@ export async function middleware(request: NextRequest) {
     '/api/travel-agent',   // Travel agent APIs (used by agent portals)
     '/abstract-reviewer',  // Abstract reviewer portal (token-based)
     '/api/abstract-reviewer', // Abstract reviewer APIs
+    '/membership',          // Public membership application form
+    '/api/membership/apply', // Public membership application API
   ]
   const _isPublicRoute = publicRoutes.some(
     (route) =>

@@ -183,6 +183,10 @@ async function sendFacultyInvitation(data: FacultyInvitationData): Promise<{ suc
                       Please confirm your participation by clicking the button below. You can also request changes to the schedule if needed.
                     </p>
 
+                    <p style="color: #4b5563; font-size: 14px; margin: 0 0 25px 0; line-height: 1.6; background: #f0fdf4; padding: 12px 16px; border-radius: 8px; border-left: 4px solid #22c55e;">
+                      <strong>Travel Arrangements:</strong> After confirming, you can submit your travel requirements (flights, hotel, airport transfers) through the same link. Our team will handle the bookings for you.
+                    </p>
+
                     <!-- CTA Button -->
                     <table role="presentation" style="width: 100%; margin: 30px 0;">
                       <tr>

@@ -76,7 +76,7 @@ export async function getApiUser(): Promise<AuthResult> {
         id: authUser.id,
         email: authUser.email || '',
         name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
-        platform_role: 'event_admin', // Default to event_admin for new users
+        platform_role: 'member', // Default to member - admins must promote manually
         is_super_admin: false,
         is_active: true,
         is_verified: true,

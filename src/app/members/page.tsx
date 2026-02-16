@@ -84,6 +84,14 @@ type Member = {
   joined_date: string | null
   expiry_date: string | null
   created_at: string | null
+  father_name: string | null
+  date_of_birth: string | null
+  gender: string | null
+  pg_degree: string | null
+  pg_college: string | null
+  ug_college: string | null
+  mci_council_state: string | null
+  asi_membership_no: string | null
 }
 
 export default function MembersPage() {

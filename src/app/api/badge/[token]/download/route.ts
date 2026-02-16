@@ -114,7 +114,7 @@ export async function GET(
     query = query.ilike("registration_number", token)
   }
 
-  const { data: registration, error: regError } = await query.single()
+  const { data: registration, error: regError } = await query.maybeSingle()
 
   if (regError || !registration) {
     return NextResponse.json({ error: "Registration not found" }, { status: 404 })

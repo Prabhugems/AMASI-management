@@ -569,7 +569,7 @@ export async function POST(request: NextRequest) {
         attendee_phone,
         attendee_name,
         "delegate_login",
-        { Delegate_Name: attendee_name, Event_Name: event?.name || "Event", Portal_URL: portalUrl }
+        { "1": attendee_name, "2": event?.name || "Event", "3": portalUrl }
       ).then(waResult => {
         if (waResult.success) {
           console.log(`[WhatsApp] delegate_login sent to ${attendee_phone} - ID: ${waResult.messageId}`)

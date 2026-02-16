@@ -321,7 +321,7 @@ export async function POST(request: NextRequest) {
           finalRegistration.attendee_phone,
           finalRegistration.attendee_name || "Delegate",
           "delegate_login",
-          { Delegate_Name: finalRegistration.attendee_name || "Delegate", Event_Name: existingMetadata.event_name || "Event", Portal_URL: portalUrl }
+          { "1": finalRegistration.attendee_name || "Delegate", "2": existingMetadata.event_name || "Event", "3": portalUrl }
         ).then(waResult => {
           if (waResult.success) {
             console.log(`[WhatsApp] delegate_login sent to ${finalRegistration.attendee_phone} - ID: ${waResult.messageId}`)

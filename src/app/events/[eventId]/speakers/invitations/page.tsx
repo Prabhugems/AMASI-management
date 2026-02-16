@@ -330,7 +330,7 @@ export default function SpeakerInvitationsPage() {
               template_name: "speaker_invitation",
               body_values: {
                 Speaker_Name: speaker.attendee_name,
-                Event_Name: eventData?.name || "Event",
+                "2": eventData?.name || "Event",
                 Portal_URL: portalUrl,
               },
               event_id: eventId,

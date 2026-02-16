@@ -138,9 +138,11 @@ export async function GET(request: NextRequest) {
       dbQuery = dbQuery.in("id", checkedInRegIds)
     } else if (checkedIn === "false" && checkedInRegIds !== null) {
       if (checkedInRegIds.length > 0) {
-        // Exclude checked-in registrations
-        // Use NOT IN by filtering out the IDs
-        dbQuery = dbQuery.not("id", "in", `(${checkedInRegIds.join(",")})`)
+        // Exclude checked-in registrations - IDs are from DB query so already valid UUIDs
+        const validIds = checkedInRegIds.filter((id: string) => isValidUUID(id))
+        if (validIds.length > 0) {
+          dbQuery = dbQuery.not("id", "in", `(${validIds.join(",")})`)
+        }
       }
     }
 

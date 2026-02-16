@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "print_station_id or token is required" }, { status: 400 })
     }
 
-    const { data: station, error: stationError } = await stationQuery.single()
+    const { data: station, error: stationError } = await stationQuery.maybeSingle()
 
     if (stationError || !station) {
       return NextResponse.json({ error: "Print station not found" }, { status: 404 })

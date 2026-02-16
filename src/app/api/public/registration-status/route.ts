@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+
+const REG_FIELDS = "id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_designation, attendee_institution, status, total_amount, checked_in, badge_url, certificate_url, ticket_type_id, event_id, payment_id"
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req)
+  const rateLimit = checkRateLimit(ip, "public")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const supabaseClient = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,7 +31,7 @@ export async function GET(req: NextRequest) {
       // Search by email
       const { data, error } = await supabase
         .from("registrations")
-        .select("*")
+        .select(REG_FIELDS)
         .ilike("attendee_email", query)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -34,7 +43,7 @@ export async function GET(req: NextRequest) {
       // Search by registration number - try exact match first
       const { data, error } = await supabase
         .from("registrations")
-        .select("*")
+        .select(REG_FIELDS)
         .eq("registration_number", query)
         .limit(1)
 
@@ -44,7 +53,7 @@ export async function GET(req: NextRequest) {
         // Try partial match
         const { data: partialData } = await supabase
           .from("registrations")
-          .select("*")
+          .select(REG_FIELDS)
           .ilike("registration_number", `%${query}%`)
           .limit(1)
 
