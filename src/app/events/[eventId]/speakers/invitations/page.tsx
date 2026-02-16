@@ -124,9 +124,24 @@ export default function SpeakerInvitationsPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "sent" | "viewed" | "confirmed" | "declined">("all")
   const [selectedSpeakers, setSelectedSpeakers] = useState<Set<string>>(new Set())
   const [sending, setSending] = useState(false)
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false)
   const [lastSendResult, setLastSendResult] = useState<{ sent: number; failed: number; skipped: number; errors: string[]; provider?: string } | null>(null)
   const [selectedSpeaker, setSelectedSpeaker] = useState<Speaker | null>(null)
   const [resending, setResending] = useState(false)
+  const [resendingWhatsApp, setResendingWhatsApp] = useState(false)
+
+  // Fetch event details
+  const { data: eventData } = useQuery({
+    queryKey: ["event-detail", eventId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("events")
+        .select("id, name")
+        .eq("id", eventId)
+        .single()
+      return data as { id: string; name: string } | null
+    },
+  })
 
   // Fetch speakers
   const { data: speakers, isLoading } = useQuery({
@@ -276,6 +291,123 @@ export default function SpeakerInvitationsPage() {
       toast.error("Failed to resend invitation")
     } finally {
       setResending(false)
+    }
+  }
+
+  const sendWhatsAppInvitations = async () => {
+    if (selectedSpeakers.size === 0) return
+    setSendingWhatsApp(true)
+
+    const results = { sent: 0, failed: 0, skipped: 0, errors: [] as string[] }
+
+    try {
+      const speakersToSend = (speakers || []).filter(s => selectedSpeakers.has(s.id))
+
+      for (const speaker of speakersToSend) {
+        if (!speaker.attendee_phone) {
+          results.skipped++
+          results.errors.push(`${speaker.attendee_name}: No phone number`)
+          continue
+        }
+
+        const portalToken = speaker.custom_fields?.portal_token
+        if (!portalToken) {
+          results.skipped++
+          results.errors.push(`${speaker.attendee_name}: No portal token (send email invitation first)`)
+          continue
+        }
+
+        const portalUrl = `https://collegeofmas.org.in/speaker/${portalToken}`
+
+        try {
+          const response = await fetch("/api/whatsapp/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phone: speaker.attendee_phone,
+              recipient_name: speaker.attendee_name,
+              type: "template",
+              template_name: "speaker_invitation",
+              body_values: {
+                Speaker_Name: speaker.attendee_name,
+                Event_Name: eventData?.name || "Event",
+                Portal_URL: portalUrl,
+              },
+              event_id: eventId,
+              registration_id: speaker.id,
+            }),
+          })
+
+          const result = await response.json()
+          if (result.success) {
+            results.sent++
+          } else {
+            results.failed++
+            results.errors.push(`${speaker.attendee_name}: ${result.error}`)
+          }
+        } catch (err: any) {
+          results.failed++
+          results.errors.push(`${speaker.attendee_name}: ${err.message}`)
+        }
+      }
+
+      setLastSendResult({ ...results, provider: "gallabox" })
+      if (results.sent > 0) {
+        toast.success(`WhatsApp sent to ${results.sent} speakers`)
+      }
+      if (results.failed > 0 || results.skipped > 0) {
+        toast.warning(`WhatsApp: Sent ${results.sent}, Failed ${results.failed}, Skipped ${results.skipped}`)
+      }
+      setSelectedSpeakers(new Set())
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to send WhatsApp invitations")
+    } finally {
+      setSendingWhatsApp(false)
+    }
+  }
+
+  const resendWhatsApp = async (speaker: Speaker) => {
+    if (!speaker.attendee_phone) {
+      toast.error("No phone number — cannot send WhatsApp")
+      return
+    }
+    const portalToken = speaker.custom_fields?.portal_token
+    if (!portalToken) {
+      toast.error("No portal token — send email invitation first")
+      return
+    }
+
+    setResendingWhatsApp(true)
+    try {
+      const portalUrl = `https://collegeofmas.org.in/speaker/${portalToken}`
+      const response = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: speaker.attendee_phone,
+          recipient_name: speaker.attendee_name,
+          type: "template",
+          template_name: "speaker_invitation",
+          body_values: {
+            Speaker_Name: speaker.attendee_name,
+            Event_Name: "122 FMAS Skill Course and FMAS Exam",
+            Portal_URL: portalUrl,
+          },
+          event_id: eventId,
+          registration_id: speaker.id,
+        }),
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        toast.success(`WhatsApp sent to ${speaker.attendee_name}`)
+      } else {
+        toast.error(result.error || "Failed to send WhatsApp")
+      }
+    } catch {
+      toast.error("Failed to send WhatsApp")
+    } finally {
+      setResendingWhatsApp(false)
     }
   }
 
@@ -452,9 +584,13 @@ export default function SpeakerInvitationsPage() {
           <Button size="sm" variant="outline" onClick={() => setSelectedSpeakers(new Set())}>
             Clear
           </Button>
-          <Button size="sm" onClick={sendInvitations} disabled={sending}>
-            {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-            {sending ? "Sending..." : "Send Invitations"}
+          <Button size="sm" onClick={sendInvitations} disabled={sending || sendingWhatsApp}>
+            {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+            {sending ? "Sending..." : "Send Email"}
+          </Button>
+          <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/20" onClick={sendWhatsAppInvitations} disabled={sending || sendingWhatsApp}>
+            {sendingWhatsApp ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MessageCircle className="h-4 w-4 mr-2" />}
+            {sendingWhatsApp ? "Sending..." : "Send WhatsApp"}
           </Button>
         </div>
       )}
@@ -734,10 +870,25 @@ export default function SpeakerInvitationsPage() {
                     {resending ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
-                      <RefreshCw className="h-4 w-4 mr-2" />
+                      <Mail className="h-4 w-4 mr-2" />
                     )}
-                    {selectedSpeaker.custom_fields?.invitation_status === "sent" || selectedSpeaker.custom_fields?.invitation_status === "confirmed" ? "Resend Invitation" : "Send Invitation"}
+                    {selectedSpeaker.custom_fields?.invitation_status === "sent" || selectedSpeaker.custom_fields?.invitation_status === "confirmed" ? "Resend Email" : "Send Email"}
                   </Button>
+                  {selectedSpeaker.attendee_phone && (
+                    <Button
+                      variant="outline"
+                      className="w-full border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/20"
+                      onClick={() => resendWhatsApp(selectedSpeaker)}
+                      disabled={resendingWhatsApp || !selectedSpeaker.custom_fields?.portal_token}
+                    >
+                      {resendingWhatsApp ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                      )}
+                      Send WhatsApp
+                    </Button>
+                  )}
                   {selectedSpeaker.custom_fields?.portal_token && (
                     <Button
                       variant="outline"
