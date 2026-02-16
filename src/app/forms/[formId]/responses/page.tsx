@@ -136,10 +136,11 @@ export default function FormResponsesPage() {
       if (!response.ok) throw new Error("Failed to delete")
       return response.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["form-submissions", formId] })
-      toast.success("Submission deleted")
+    onSuccess: async () => {
       setSelectedSubmission(null)
+      toast.success("Submission deleted")
+      await queryClient.invalidateQueries({ queryKey: ["form-submissions", formId] })
+      refetch()
     },
     onError: () => {
       toast.error("Failed to delete submission")
