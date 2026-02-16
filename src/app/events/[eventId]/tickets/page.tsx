@@ -87,6 +87,7 @@ interface FormType {
   name: string
   slug: string
   status: string
+  event_id: string | null
 }
 
 interface AddonType {
@@ -154,11 +155,20 @@ export default function TicketsPage() {
         .from("forms")
         .select("id, name, slug, status, event_id")
         .or(`event_id.eq.${eventId},event_id.is.null`)
-        .eq("status", "published")
+        .in("status", ["published", "draft"])
         .order("name")
 
       if (error) throw error
-      return data as FormType[]
+      // Deduplicate: prefer event-scoped forms over global ones with the same name
+      const forms = data as FormType[]
+      const seen = new Map<string, FormType>()
+      for (const form of forms) {
+        const existing = seen.get(form.name)
+        if (!existing || (form.event_id && !existing.event_id)) {
+          seen.set(form.name, form)
+        }
+      }
+      return Array.from(seen.values())
     },
     enabled: !!eventId,
   })
@@ -1281,7 +1291,7 @@ export default function TicketsPage() {
                       <SelectItem value="none">No additional form</SelectItem>
                       {availableForms?.map((form) => (
                         <SelectItem key={form.id} value={form.id}>
-                          {form.name}
+                          {form.name}{!form.event_id && " (Global)"}{form.status === "draft" && " (Draft)"}
                         </SelectItem>
                       ))}
                     </SelectContent>

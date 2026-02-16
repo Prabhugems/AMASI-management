@@ -25,6 +25,12 @@ import {
   MessageSquare,
   Mic,
   ArrowLeft,
+  BarChart3,
+  GraduationCap,
+  Building2,
+  FileSearch,
+  HeartHandshake,
+  Mail,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -62,6 +68,7 @@ const formTypeLabels: Record<string, string> = {
   feedback: "Feedback",
   survey: "Survey",
   application: "Application",
+  contact: "Contact",
 }
 
 const statusColors: Record<string, string> = {
@@ -76,6 +83,12 @@ const templateIcons: Record<string, React.ElementType> = {
   UserPlus,
   MessageSquare,
   Mic,
+  BarChart3,
+  GraduationCap,
+  Building2,
+  FileSearch,
+  HeartHandshake,
+  Mail,
 }
 
 export default function EventFormsPage() {
