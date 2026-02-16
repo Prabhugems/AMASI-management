@@ -44,6 +44,7 @@ import {
   Eye,
   Phone,
   MessageCircle,
+  Download,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -417,6 +418,43 @@ export default function SpeakerInvitationsPage() {
     toast.success("Portal link copied to clipboard")
   }
 
+  const downloadBroadcastTemplate = () => {
+    const speakersToExport = selectedSpeakers.size > 0
+      ? (speakers || []).filter(s => selectedSpeakers.has(s.id))
+      : filteredSpeakers
+
+    const withPortal = speakersToExport.filter(s => s.attendee_phone && s.custom_fields?.portal_token)
+
+    if (withPortal.length === 0) {
+      toast.error("No speakers with phone number and portal token found. Send email invitations first.")
+      return
+    }
+
+    const eventName = eventData?.name || "Event"
+    const headers = ["Name", "Phone", "Speaker_Name", "Event_Name", "Portal_URL"]
+    const rows = withPortal.map(s => [
+      s.attendee_name,
+      s.attendee_phone!,
+      s.attendee_name,
+      eventName,
+      `https://collegeofmas.org.in/speaker/${s.custom_fields!.portal_token}`,
+    ])
+
+    const csv = [headers, ...rows]
+      .map(row => row.map(cell => `"${(cell || "").replace(/"/g, '""')}"`).join(","))
+      .join("\n")
+
+    const bom = "\uFEFF"
+    const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `whatsapp-broadcast-${eventName.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Broadcast template downloaded for ${withPortal.length} speakers`)
+  }
+
   const getStatusBadge = (status: string | undefined) => {
     switch (status) {
       case "confirmed":
@@ -595,15 +633,21 @@ export default function SpeakerInvitationsPage() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search speakers..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+      {/* Search + Download */}
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search speakers..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Button variant="outline" size="sm" onClick={downloadBroadcastTemplate}>
+          <Download className="h-4 w-4 mr-2" />
+          WhatsApp Broadcast CSV
+        </Button>
       </div>
 
       {/* Table */}
