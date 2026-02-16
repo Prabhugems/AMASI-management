@@ -95,7 +95,7 @@ export async function GET(
       .select(`
         id, registration_number, attendee_name, attendee_email, attendee_phone,
         attendee_institution, attendee_designation, ticket_type_id, event_id,
-        checkin_token, certificate_generated_at, checked_in,
+        checkin_token, certificate_generated_at, certificate_downloaded_at, checked_in,
         ticket_types (name)
       `)
       .ilike("registration_number", regNumber)
@@ -248,6 +248,14 @@ export async function GET(
     }
 
     const pdfBytes = await pdfDoc.save()
+
+    // Track certificate download (set timestamp on first download)
+    if (!registration.certificate_downloaded_at) {
+      await (supabase as any)
+        .from("registrations")
+        .update({ certificate_downloaded_at: new Date().toISOString() })
+        .eq("id", registration.id)
+    }
 
     return new NextResponse(Buffer.from(pdfBytes), {
       headers: {

@@ -20,6 +20,7 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  FileDown,
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -35,7 +36,7 @@ export default function CertificateReportsPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, registration_number, attendee_name, attendee_email, status, certificate_generated_at, certificate_url, checked_in, ticket_type:ticket_types(name)")
+        .select("id, registration_number, attendee_name, attendee_email, status, certificate_generated_at, certificate_downloaded_at, certificate_url, checked_in, ticket_type:ticket_types(name)")
         .eq("event_id", eventId)
         .eq("status", "confirmed")
         .order("attendee_name")
@@ -51,25 +52,28 @@ export default function CertificateReportsPage() {
     const total = registrations.length
     const checkedIn = registrations.filter((r: any) => r.checked_in).length
     const generated = registrations.filter((r: any) => r.certificate_generated_at).length
+    const downloaded = registrations.filter((r: any) => r.certificate_downloaded_at).length
     const pending = checkedIn - generated
     const notCheckedIn = total - checkedIn
 
     // By ticket type
-    const byTicket: Record<string, { total: number; checkedIn: number; generated: number }> = {}
+    const byTicket: Record<string, { total: number; checkedIn: number; generated: number; downloaded: number }> = {}
     registrations.forEach((r: any) => {
       const ticketName = r.ticket_type?.name || "Unknown"
       if (!byTicket[ticketName]) {
-        byTicket[ticketName] = { total: 0, checkedIn: 0, generated: 0 }
+        byTicket[ticketName] = { total: 0, checkedIn: 0, generated: 0, downloaded: 0 }
       }
       byTicket[ticketName].total++
       if (r.checked_in) byTicket[ticketName].checkedIn++
       if (r.certificate_generated_at) byTicket[ticketName].generated++
+      if (r.certificate_downloaded_at) byTicket[ticketName].downloaded++
     })
 
     return {
       total,
       checkedIn,
       generated,
+      downloaded,
       pending: pending > 0 ? pending : 0,
       notCheckedIn,
       percentGenerated: checkedIn > 0 ? ((generated / checkedIn) * 100).toFixed(1) : 0,
@@ -80,7 +84,7 @@ export default function CertificateReportsPage() {
   const exportCSV = () => {
     if (!registrations) return
 
-    const headers = ["Reg Number", "Name", "Email", "Ticket Type", "Checked In", "Certificate Status", "Generated At"]
+    const headers = ["Reg Number", "Name", "Email", "Ticket Type", "Checked In", "Certificate Status", "Generated At", "Downloaded", "Downloaded At"]
     const rows = registrations.map((r: any) => [
       r.registration_number,
       `"${r.attendee_name || ''}"`,
@@ -89,6 +93,8 @@ export default function CertificateReportsPage() {
       r.checked_in ? "Yes" : "No",
       r.certificate_generated_at ? "Issued" : (r.checked_in ? "Pending" : "Not Eligible"),
       r.certificate_generated_at ? format(new Date(r.certificate_generated_at), "dd MMM yyyy HH:mm") : "",
+      r.certificate_downloaded_at ? "Yes" : "No",
+      r.certificate_downloaded_at ? format(new Date(r.certificate_downloaded_at), "dd MMM yyyy HH:mm") : "",
     ])
 
     const csv = [headers, ...rows].map(row => row.join(",")).join("\n")
@@ -123,7 +129,7 @@ export default function CertificateReportsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <div className="bg-card border rounded-lg p-4">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <Award className="h-4 w-4" />
@@ -147,6 +153,17 @@ export default function CertificateReportsPage() {
           </div>
           <p className="text-xl sm:text-2xl font-bold text-green-600">{stats?.generated || 0}</p>
           <p className="text-xs text-muted-foreground">{stats?.percentGenerated}% of checked-in</p>
+        </div>
+
+        <div className="bg-card border rounded-lg p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            <FileDown className="h-4 w-4 text-purple-500" />
+            <span className="text-sm">Downloaded</span>
+          </div>
+          <p className="text-xl sm:text-2xl font-bold text-purple-600">{stats?.downloaded || 0}</p>
+          <p className="text-xs text-muted-foreground">
+            {stats?.generated ? ((stats.downloaded / stats.generated) * 100).toFixed(1) : 0}% of issued
+          </p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -202,6 +219,7 @@ export default function CertificateReportsPage() {
               <TableHead>Checked In</TableHead>
               <TableHead>Certificate</TableHead>
               <TableHead>Issued At</TableHead>
+              <TableHead>Downloaded</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -237,11 +255,23 @@ export default function CertificateReportsPage() {
                     ? format(new Date(reg.certificate_generated_at), "dd MMM yyyy HH:mm")
                     : "-"}
                 </TableCell>
+                <TableCell>
+                  {reg.certificate_downloaded_at ? (
+                    <span className="flex items-center gap-1 text-purple-600">
+                      <FileDown className="h-4 w-4" />
+                      {format(new Date(reg.certificate_downloaded_at), "dd MMM, h:mm a")}
+                    </span>
+                  ) : reg.certificate_generated_at ? (
+                    <span className="text-gray-400">Not yet</span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
             {(!registrations || registrations.length === 0) && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   No confirmed registrations found
                 </TableCell>
               </TableRow>

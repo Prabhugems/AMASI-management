@@ -108,6 +108,7 @@ interface Registration {
   badge_generated_at: string | null
   certificate_url: string | null
   certificate_generated_at: string | null
+  certificate_downloaded_at: string | null
   ticket_type?: {
     name: string
     price: number
@@ -1909,6 +1910,13 @@ export default function RegistrationsPage() {
                       ) : (
                         <p className="text-xs text-muted-foreground">Not generated</p>
                       )}
+                      {selectedRegistration.certificate_downloaded_at ? (
+                        <p className="text-xs text-green-600">
+                          Downloaded {format(new Date(selectedRegistration.certificate_downloaded_at), "dd MMM, h:mm a")}
+                        </p>
+                      ) : selectedRegistration.certificate_generated_at ? (
+                        <p className="text-xs text-amber-600">Not downloaded yet</p>
+                      ) : null}
                     </div>
                   </div>
                   {selectedRegistration.certificate_url && (

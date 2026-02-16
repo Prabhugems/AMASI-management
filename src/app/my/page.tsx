@@ -366,8 +366,14 @@ export default function DelegatePortalPage() {
     try {
       if (selectedRegistration.certificate_url) {
         window.open(selectedRegistration.certificate_url, "_blank")
+        // Track the download (fire and forget)
+        fetch("/api/certificate/track-download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ registration_id: selectedRegistration.id }),
+        }).catch(() => {})
       } else {
-        // Generate certificate on the fly
+        // Generate certificate on the fly (download is tracked server-side)
         const res = await fetch(`/api/certificate/${selectedRegistration.registration_number}/download`)
 
         if (!res.ok) {

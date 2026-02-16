@@ -89,6 +89,13 @@ export default function VerifyPage() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+
+      // Track the download (fire and forget)
+      fetch("/api/certificate/track-download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registration_id: result.registration.id }),
+      }).catch(() => {})
     } catch (err: any) {
       alert(err.message || "Failed to download certificate. Please try again.")
     } finally {
