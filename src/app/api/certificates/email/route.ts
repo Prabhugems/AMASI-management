@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
         attendee_designation,
         attendee_institution,
         event_id,
+        certificate_generated_at,
         certificate_url,
         custom_fields
       `)
@@ -42,9 +43,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Attendee email not available" }, { status: 400 })
     }
 
-    // Check if certificate exists
-    const certificateUrl = registration.certificate_url || registration.custom_fields?.certificate_url
-    if (!certificateUrl) {
+    // Check if certificate has been generated (either stored URL or generated_at timestamp)
+    if (!registration.certificate_generated_at && !registration.certificate_url && !registration.custom_fields?.certificate_url) {
       return NextResponse.json({ error: "Certificate not generated yet" }, { status: 400 })
     }
 
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
           metadata: {
             type: "certificate",
             attendee_name: registration.attendee_name,
-            certificate_url: certificateUrl,
+            delegate_portal_url: delegatePortalUrl,
           },
         })
       }
