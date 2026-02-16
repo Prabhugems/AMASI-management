@@ -344,7 +344,9 @@ async function sendViaGallabox(
         type: "template",
         template: {
           templateName: message.templateName,
-          bodyValues: message.templateParams || [],
+          bodyValues: message.templateParams
+            ? Object.fromEntries(message.templateParams.map((p, i) => [`${i + 1}`, p]))
+            : {},
         },
       },
     }

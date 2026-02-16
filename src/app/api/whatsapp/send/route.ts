@@ -13,7 +13,7 @@ interface SendRequest {
   recipient_name: string
   type: "template" | "text"
   template_name?: string
-  body_values?: string[]
+  body_values?: Record<string, string>
   text?: string
   event_id?: string
   registration_id?: string
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       if (!template_name) {
         return NextResponse.json({ error: "template_name is required for template messages" }, { status: 400 })
       }
-      result = await sendGallaboxTemplate(phone, recipient_name, template_name, body_values || [])
+      result = await sendGallaboxTemplate(phone, recipient_name, template_name, body_values || {})
     } else {
       if (!text) {
         return NextResponse.json({ error: "text is required for text messages" }, { status: 400 })

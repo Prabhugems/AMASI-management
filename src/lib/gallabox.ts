@@ -47,12 +47,14 @@ interface GallaboxResult {
 
 /**
  * Send a template message via Gallabox
+ * bodyValues must be a key-value map matching template variable names
+ * e.g. { "Speaker_Name": "Dr. Prabhu", "Event_Name": "FMAS", "Portal_URL": "https://..." }
  */
 export async function sendGallaboxTemplate(
   phone: string,
   recipientName: string,
   templateName: string,
-  bodyValues: string[]
+  bodyValues: Record<string, string>
 ): Promise<GallaboxResult> {
   if (!isGallaboxEnabled()) {
     return { success: false, error: "Gallabox not configured" }
