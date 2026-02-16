@@ -27,10 +27,7 @@ export async function POST(request: NextRequest) {
         attendee_email,
         attendee_designation,
         attendee_institution,
-        event_id,
-        certificate_generated_at,
-        certificate_url,
-        custom_fields
+        event_id
       `)
       .eq("id", registration_id)
       .single()
@@ -43,10 +40,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Attendee email not available" }, { status: 400 })
     }
 
-    // Check if certificate has been generated (either stored URL or generated_at timestamp)
-    if (!registration.certificate_generated_at && !registration.certificate_url && !registration.custom_fields?.certificate_url) {
-      return NextResponse.json({ error: "Certificate not generated yet" }, { status: 400 })
-    }
+    // Note: No certificate_url check needed - email links to /my delegate portal
+    // where the certificate is generated on-demand when the delegate downloads it
 
     const eventIdToUse = event_id || registration.event_id
 
