@@ -69,6 +69,45 @@ export async function POST(
   }
 }
 
+// PATCH — backfill: sync all existing registrations → faculty_assignments for this event
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ eventId: string }> }
+) {
+  try {
+    const { user: _user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
+    const { eventId } = await params
+
+    const supabase = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabase as any
+
+    // Get all registrations for this event that have a syncable status
+    const { data: registrations } = await db
+      .from("registrations")
+      .select("id, attendee_email, status, custom_fields")
+      .eq("event_id", eventId)
+      .in("status", ["confirmed", "declined", "cancelled"])
+
+    let synced = 0
+    for (const reg of registrations || []) {
+      if (!reg.attendee_email) continue
+      await syncSpeakerStatus(db, eventId, reg.attendee_email, reg.status)
+      synced++
+    }
+
+    return NextResponse.json({ success: true, synced })
+  } catch (error: any) {
+    console.error("Backfill sync error:", error)
+    return NextResponse.json(
+      { error: "Failed to backfill sync" },
+      { status: 500 }
+    )
+  }
+}
+
 // PUT — bulk sync
 export async function PUT(
   request: NextRequest,
