@@ -139,17 +139,6 @@ export default function SendCertificatesPage() {
           })
 
           if (response.ok) {
-            // Update registration record to mark certificate as sent
-            await (supabase as any)
-              .from("registrations")
-              .update({
-                custom_fields: {
-                  ...attendee?.custom_fields,
-                  certificate_sent: true,
-                  certificate_sent_at: new Date().toISOString(),
-                },
-              })
-              .eq("id", id)
             successCount++
           } else {
             failCount++

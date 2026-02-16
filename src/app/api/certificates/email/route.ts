@@ -27,7 +27,8 @@ export async function POST(request: NextRequest) {
         attendee_email,
         attendee_designation,
         attendee_institution,
-        event_id
+        event_id,
+        custom_fields
       `)
       .eq("id", registration_id)
       .single()
@@ -200,6 +201,18 @@ export async function POST(request: NextRequest) {
           },
         })
       }
+
+      // Mark certificate as sent in custom_fields (server-side to bypass RLS)
+      await db
+        .from("registrations")
+        .update({
+          custom_fields: {
+            ...(registration.custom_fields || {}),
+            certificate_sent: true,
+            certificate_sent_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", registration_id)
 
       return NextResponse.json({
         success: true,
