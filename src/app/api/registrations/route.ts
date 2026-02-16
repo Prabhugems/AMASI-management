@@ -4,6 +4,7 @@ import { onRegistration } from "@/lib/services/auto-send"
 import { validatePagination, sanitizeSearchInput, isValidUUID } from "@/lib/validation"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { DEFAULTS } from "@/lib/config"
+import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 
 type EventSettings = {
   customize_registration_id: boolean
@@ -560,6 +561,25 @@ export async function POST(request: NextRequest) {
     }).catch(err => {
       console.error("Auto-send failed:", err)
     })
+
+    // Send delegate_login WhatsApp via Gallabox (non-blocking, only for confirmed registrations)
+    if (isGallaboxEnabled() && attendee_phone && initialStatus === "confirmed") {
+      const portalUrl = `${baseUrl}/my`
+      sendGallaboxTemplate(
+        attendee_phone,
+        attendee_name,
+        "delegate_login",
+        [attendee_name, event?.name || "Event", portalUrl]
+      ).then(waResult => {
+        if (waResult.success) {
+          console.log(`[WhatsApp] delegate_login sent to ${attendee_phone} - ID: ${waResult.messageId}`)
+        } else {
+          console.warn(`[WhatsApp] delegate_login failed for ${attendee_phone}: ${waResult.error}`)
+        }
+      }).catch(err => {
+        console.warn("[WhatsApp] delegate_login error:", err.message)
+      })
+    }
 
     return NextResponse.json({
       success: true,

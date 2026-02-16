@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyPaymentSignature, fetchPayment, RazorpayCredentials } from "@/lib/services/razorpay"
 import { createAdminClient } from "@/lib/supabase/server"
+import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let supabase: any
@@ -310,6 +311,26 @@ export async function POST(request: NextRequest) {
       // Trigger auto actions (receipt, badge, certificate)
       if (paymentData.event_id) {
         triggerAutoActions(finalRegistration.id, paymentData.event_id).catch(console.error)
+      }
+
+      // Send delegate_login WhatsApp via Gallabox (non-blocking)
+      if (isGallaboxEnabled() && finalRegistration.attendee_phone) {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://collegeofmas.org.in"
+        const portalUrl = `${baseUrl}/my`
+        sendGallaboxTemplate(
+          finalRegistration.attendee_phone,
+          finalRegistration.attendee_name || "Delegate",
+          "delegate_login",
+          [finalRegistration.attendee_name || "Delegate", existingMetadata.event_name || "Event", portalUrl]
+        ).then(waResult => {
+          if (waResult.success) {
+            console.log(`[WhatsApp] delegate_login sent to ${finalRegistration.attendee_phone} - ID: ${waResult.messageId}`)
+          } else {
+            console.warn(`[WhatsApp] delegate_login failed for ${finalRegistration.attendee_phone}: ${waResult.error}`)
+          }
+        }).catch(err => {
+          console.warn("[WhatsApp] delegate_login error:", err.message)
+        })
       }
     }
 
