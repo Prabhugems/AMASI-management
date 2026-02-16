@@ -3,7 +3,7 @@
  * Supports multiple providers: Meta Business API, Twilio, Interakt, Wati
  */
 
-export type WhatsAppProvider = "meta" | "twilio" | "interakt" | "wati"
+export type WhatsAppProvider = "meta" | "twilio" | "interakt" | "wati" | "gallabox"
 
 export interface WhatsAppConfig {
   provider: WhatsAppProvider
@@ -17,6 +17,9 @@ export interface WhatsAppConfig {
   phoneNumber?: string
   // Interakt / Wati
   apiKey?: string
+  // Gallabox
+  apiSecret?: string
+  channelId?: string
 }
 
 export interface SendResult {
@@ -49,6 +52,8 @@ export async function sendWhatsAppMessage(
       return sendViaInterakt(config, message)
     case "wati":
       return sendViaWati(config, message)
+    case "gallabox":
+      return sendViaGallabox(config, message)
     default:
       return { success: false, error: "Unknown provider" }
   }
@@ -307,6 +312,86 @@ async function sendViaWati(
 }
 
 /**
+ * Send via Gallabox API
+ */
+async function sendViaGallabox(
+  config: WhatsAppConfig,
+  message: WhatsAppMessage
+): Promise<SendResult> {
+  if (!config.apiKey || !config.apiSecret || !config.channelId) {
+    return { success: false, error: "Missing Gallabox credentials (apiKey, apiSecret, or channelId)" }
+  }
+
+  const url = "https://server.gallabox.com/devapi/messages/whatsapp"
+
+  // Format phone (strip non-digits, prepend 91 for 10-digit Indian numbers)
+  let formattedPhone = message.to.replace(/[^0-9]/g, "")
+  if (formattedPhone.length === 10) {
+    formattedPhone = "91" + formattedPhone
+  }
+
+  let body: any
+
+  if (message.templateName) {
+    body = {
+      channelId: config.channelId,
+      channelType: "whatsapp",
+      recipient: {
+        name: formattedPhone,
+        phone: formattedPhone,
+      },
+      whatsapp: {
+        type: "template",
+        template: {
+          templateName: message.templateName,
+          bodyValues: message.templateParams || [],
+        },
+      },
+    }
+  } else {
+    body = {
+      channelId: config.channelId,
+      channelType: "whatsapp",
+      recipient: {
+        name: formattedPhone,
+        phone: formattedPhone,
+      },
+      whatsapp: {
+        type: "text",
+        text: {
+          body: message.message,
+        },
+      },
+    }
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apiKey: config.apiKey,
+        apiSecret: config.apiSecret,
+      },
+      body: JSON.stringify(body),
+    })
+
+    const result = await response.json()
+
+    if (response.ok && result.id) {
+      return { success: true, messageId: result.id }
+    } else {
+      return {
+        success: false,
+        error: result.message || result.error || "Failed to send message via Gallabox",
+      }
+    }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+/**
  * Check if WhatsApp is configured
  */
 export function isWhatsAppConfigured(config: WhatsAppConfig): boolean {
@@ -318,6 +403,8 @@ export function isWhatsAppConfigured(config: WhatsAppConfig): boolean {
     case "interakt":
     case "wati":
       return !!config.apiKey
+    case "gallabox":
+      return !!(config.apiKey && config.apiSecret && config.channelId)
     default:
       return false
   }

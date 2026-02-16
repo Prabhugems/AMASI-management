@@ -41,6 +41,11 @@ const envVars: EnvVar[] = [
   { name: 'RESEND_API_KEY', required: false, description: 'Resend API key for sending emails' },
   { name: 'RESEND_FROM_EMAIL', required: false, description: 'From email address for Resend' },
 
+  // Gallabox (WhatsApp)
+  { name: 'GALLABOX_API_KEY', required: false, description: 'Gallabox API key for WhatsApp messaging' },
+  { name: 'GALLABOX_API_SECRET', required: false, description: 'Gallabox API secret for WhatsApp messaging' },
+  { name: 'GALLABOX_CHANNEL_ID', required: false, description: 'Gallabox WhatsApp channel ID' },
+
   // Security
   { name: 'NEXTAUTH_SECRET', required: false, description: 'Secret for hashing/encryption' },
 ]
@@ -92,7 +97,7 @@ export function getOptionalEnv(name: string, defaultValue: string = ''): string 
 /**
  * Check if a feature is enabled based on its required env vars being set
  */
-export function isFeatureEnabled(feature: 'razorpay' | 'email'): boolean {
+export function isFeatureEnabled(feature: 'razorpay' | 'email' | 'gallabox'): boolean {
   switch (feature) {
     case 'razorpay':
       return !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)
@@ -101,6 +106,12 @@ export function isFeatureEnabled(feature: 'razorpay' | 'email'): boolean {
       return !!(
         (process.env.BLASTABLE_API_KEY && process.env.BLASTABLE_FROM_EMAIL) ||
         (process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL)
+      )
+    case 'gallabox':
+      return !!(
+        process.env.GALLABOX_API_KEY?.trim() &&
+        process.env.GALLABOX_API_SECRET?.trim() &&
+        process.env.GALLABOX_CHANNEL_ID?.trim()
       )
     default:
       return false

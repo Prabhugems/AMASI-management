@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled, getEmailProvider } from "@/lib/email"
 import { shortenSpeakerPortalUrl } from "@/lib/linkila"
 import { escapeHtml } from "@/lib/string-utils"
+import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 
 const PRODUCTION_URL = "https://collegeofmas.org.in"
 
@@ -262,6 +263,37 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
             }
           })
           .eq("id", registration_id)
+      }
+
+      // Send WhatsApp notification via Gallabox (non-blocking)
+      if (isGallaboxEnabled() && registration_id) {
+        try {
+          const supabase2 = await createAdminClient()
+          const { data: reg } = await (supabase2 as any)
+            .from("registrations")
+            .select("attendee_phone")
+            .eq("id", registration_id)
+            .single()
+
+          if (reg?.attendee_phone) {
+            const templateName = (process.env.GALLABOX_TEMPLATE_SPEAKER_INVITATION || "speaker_invitation").trim()
+            const portalUrlForWa = fullPortalUrl // use the full URL, not shortened (templates have char limits)
+            const waResult = await sendGallaboxTemplate(
+              reg.attendee_phone,
+              speaker_name || "Speaker",
+              templateName,
+              [speaker_name || "Speaker", event_name, portalUrlForWa]
+            )
+
+            if (waResult.success) {
+              console.log(`[WhatsApp] Speaker invitation sent to ${reg.attendee_phone} - ID: ${waResult.messageId}`)
+            } else {
+              console.warn(`[WhatsApp] Failed to send speaker invitation to ${reg.attendee_phone}: ${waResult.error}`)
+            }
+          }
+        } catch (waError: any) {
+          console.warn("[WhatsApp] Non-blocking error sending speaker invitation:", waError.message)
+        }
       }
 
       return { success: true, email_id: result.id }

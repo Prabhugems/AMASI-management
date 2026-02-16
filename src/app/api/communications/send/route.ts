@@ -138,6 +138,11 @@ export async function POST(request: NextRequest) {
                 results.errors.push(`${reg.attendee_name}: WhatsApp Twilio provider not configured`)
                 continue
               }
+              if (provider === "gallabox" && (!settings.whatsapp_api_key || !settings.whatsapp_access_token || !settings.whatsapp_phone_number_id)) {
+                results.failed++
+                results.errors.push(`${reg.attendee_name}: WhatsApp Gallabox provider not configured (missing api_key, access_token/apiSecret, or phone_number_id/channelId)`)
+                continue
+              }
 
               const whatsappConfig: WhatsAppConfig = {
                 provider: settings.whatsapp_provider,
@@ -148,6 +153,9 @@ export async function POST(request: NextRequest) {
                 authToken: settings.twilio_auth_token,
                 phoneNumber: settings.twilio_phone_number,
                 apiKey: settings.whatsapp_api_key,
+                // Gallabox: apiSecret maps to whatsapp_access_token, channelId maps to whatsapp_phone_number_id
+                apiSecret: settings.whatsapp_provider === "gallabox" ? settings.whatsapp_access_token : undefined,
+                channelId: settings.whatsapp_provider === "gallabox" ? settings.whatsapp_phone_number_id : undefined,
               }
 
               sendResult = await sendWhatsAppMessage(whatsappConfig, {

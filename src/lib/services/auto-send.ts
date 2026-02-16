@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { sendEmail } from "@/lib/email"
+import { isGallaboxEnabled, sendGallaboxText } from "@/lib/gallabox"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim()
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
@@ -172,20 +173,49 @@ export async function triggerAutoSend(
         }
       }
 
-      // WhatsApp and SMS would be handled here when those services are configured
-      // For now, just log them as pending
       if (channel === "whatsapp" && context.recipient_phone && template.message_body) {
-        await logMessage(
-          context.event_id,
-          context.registration_id,
-          template.id,
-          "whatsapp",
-          context.recipient_phone,
-          context.recipient_name,
-          null,
-          replaceVariables(template.message_body, context),
-          "pending" // Will be sent when WhatsApp is configured
-        )
+        const waMessage = replaceVariables(template.message_body, context)
+
+        if (isGallaboxEnabled()) {
+          const waResult = await sendGallaboxText(
+            context.recipient_phone,
+            context.recipient_name,
+            waMessage
+          )
+
+          await logMessage(
+            context.event_id,
+            context.registration_id,
+            template.id,
+            "whatsapp",
+            context.recipient_phone,
+            context.recipient_name,
+            null,
+            waMessage,
+            waResult.success ? "sent" : "failed",
+            waResult.messageId,
+            waResult.error
+          )
+
+          if (waResult.success) {
+            sent++
+          } else {
+            failed++
+          }
+        } else {
+          // Gallabox not configured — log as pending
+          await logMessage(
+            context.event_id,
+            context.registration_id,
+            template.id,
+            "whatsapp",
+            context.recipient_phone,
+            context.recipient_name,
+            null,
+            waMessage,
+            "pending"
+          )
+        }
       }
 
       if (channel === "sms" && context.recipient_phone && template.message_body) {
