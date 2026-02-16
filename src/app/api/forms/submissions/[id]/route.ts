@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66,7 +66,10 @@ export async function PATCH(
       updateData.reviewed_by = user.id
     }
 
-    const { data: submission, error } = await supabase
+    // Use admin client to bypass RLS for update operations
+    const adminClient: SupabaseClient = await createAdminClient()
+
+    const { data: submission, error } = await adminClient
       .from("form_submissions")
       .update(updateData)
       .eq("id", id)
@@ -99,7 +102,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { error } = await supabase
+    // Use admin client to bypass RLS for delete operations
+    const adminClient: SupabaseClient = await createAdminClient()
+
+    const { error } = await adminClient
       .from("form_submissions")
       .delete()
       .eq("id", id)
