@@ -27,9 +27,7 @@ export async function POST(request: NextRequest) {
         attendee_email,
         attendee_designation,
         attendee_institution,
-        event_id,
-        certificate_url,
-        custom_fields
+        event_id
       `)
       .eq("id", registration_id)
       .single()
@@ -42,11 +40,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Attendee email not available" }, { status: 400 })
     }
 
-    // Check if certificate exists
-    const certificateUrl = registration.certificate_url || registration.custom_fields?.certificate_url
-    if (!certificateUrl) {
-      return NextResponse.json({ error: "Certificate not generated yet" }, { status: 400 })
-    }
+    // Note: No certificate_url check needed - email links to /my delegate portal
+    // where the certificate is generated on-demand when the delegate downloads it
 
     const eventIdToUse = event_id || registration.event_id
 
@@ -62,6 +57,9 @@ export async function POST(request: NextRequest) {
       ? new Date(event.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
       : ""
     const venue = event?.venue_name ? `${event.venue_name}${event.city ? `, ${event.city}` : ""}` : ""
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+    const delegatePortalUrl = `${baseUrl}/my`
 
     const emailSubject = `Your Certificate of Participation - ${eventName}`
     const fromEmail = process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
@@ -98,7 +96,7 @@ export async function POST(request: NextRequest) {
 
                     <p style="color: #4b5563; font-size: 15px; margin: 0 0 20px 0; line-height: 1.6;">
                       Thank you for attending <strong>${escapeHtml(eventName || "")}</strong>${eventDate ? ` on ${eventDate}` : ""}${venue ? ` at ${escapeHtml(venue || "")}` : ""}.
-                      We are pleased to share your certificate of participation.
+                      Your certificate of participation is ready for download.
                     </p>
 
                     <!-- Details Box -->
@@ -131,16 +129,16 @@ export async function POST(request: NextRequest) {
                     <table role="presentation" style="width: 100%; margin: 30px 0;">
                       <tr>
                         <td align="center">
-                          <a href="${certificateUrl}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                          <a href="${delegatePortalUrl}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
                             Download Certificate
                           </a>
                         </td>
                       </tr>
                     </table>
 
-                    <p style="color: #6b7280; font-size: 13px; margin: 20px 0 0 0; text-align: center;">
-                      If the button doesn't work, copy and paste this link:<br>
-                      <a href="${certificateUrl}" style="color: #059669; word-break: break-all;">${certificateUrl}</a>
+                    <p style="color: #6b7280; font-size: 13px; margin: 20px 0 0 0; text-align: center; line-height: 1.6;">
+                      Click the button above to visit the Delegate Portal.<br>
+                      Enter your registered email <strong>${escapeHtml(registration.attendee_email || "")}</strong> to access your certificate.
                     </p>
 
                   </td>
@@ -198,7 +196,7 @@ export async function POST(request: NextRequest) {
           metadata: {
             type: "certificate",
             attendee_name: registration.attendee_name,
-            certificate_url: certificateUrl,
+            delegate_portal_url: delegatePortalUrl,
           },
         })
       }

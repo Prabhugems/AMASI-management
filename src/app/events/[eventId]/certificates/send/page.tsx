@@ -24,6 +24,7 @@ import {
   Users,
   Mail,
   Award,
+  FileDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -32,6 +33,11 @@ type Attendee = {
   id: string
   attendee_name: string
   attendee_email: string
+  certificate_generated_at: string | null
+  certificate_url: string | null
+  certificate_downloaded_at: string | null
+  checked_in: boolean
+  ticket_type?: { name: string }
   custom_fields: {
     certificate_generated?: boolean
     certificate_sent?: boolean
@@ -56,14 +62,13 @@ export default function SendCertificatesPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, attendee_name, attendee_email, custom_fields")
+        .select("id, attendee_name, attendee_email, certificate_generated_at, certificate_url, certificate_downloaded_at, checked_in, custom_fields, ticket_type:ticket_types(name)")
         .eq("event_id", eventId)
+        .eq("status", "confirmed")
+        .not("certificate_generated_at", "is", null)
         .order("attendee_name")
 
-      // Only return those with certificates generated
-      return ((data || []) as Attendee[]).filter(a =>
-        a.custom_fields?.certificate_generated
-      )
+      return (data || []) as Attendee[]
     },
   })
 
@@ -303,7 +308,9 @@ export default function SendCertificatesPage() {
               </TableHead>
               <TableHead>Attendee</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Ticket</TableHead>
+              <TableHead>Email Status</TableHead>
+              <TableHead>Downloaded</TableHead>
               <TableHead>Sent At</TableHead>
             </TableRow>
           </TableHeader>
@@ -321,6 +328,7 @@ export default function SendCertificatesPage() {
                   </TableCell>
                   <TableCell className="font-medium">{attendee.attendee_name}</TableCell>
                   <TableCell className="text-muted-foreground">{attendee.attendee_email}</TableCell>
+                  <TableCell className="text-muted-foreground">{attendee.ticket_type?.name || "-"}</TableCell>
                   <TableCell>
                     {sent ? (
                       <Badge className="bg-green-500 text-white">
@@ -332,6 +340,16 @@ export default function SendCertificatesPage() {
                         <Mail className="h-3 w-3 mr-1" />
                         Ready
                       </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {attendee.certificate_downloaded_at ? (
+                      <span className="flex items-center gap-1 text-purple-600 text-sm">
+                        <FileDown className="h-3.5 w-3.5" />
+                        {formatDate(attendee.certificate_downloaded_at)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
