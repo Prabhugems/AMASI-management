@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
+import { syncSpeakerStatus } from "@/lib/services/sync-speaker-status"
 
 export async function PATCH(
   request: NextRequest,
@@ -72,6 +73,16 @@ export async function PATCH(
         { error: "Assignment not found" },
         { status: 404 }
       )
+    }
+
+    // Sync status to registrations when assignment status is confirmed/declined/cancelled
+    const syncableStatuses = ["confirmed", "declined", "cancelled"]
+    if (syncableStatuses.includes(status) && data.faculty_email) {
+      try {
+        await syncSpeakerStatus(db, eventId, data.faculty_email, status)
+      } catch (syncError) {
+        console.error("Sync speaker status error:", syncError)
+      }
     }
 
     return NextResponse.json({

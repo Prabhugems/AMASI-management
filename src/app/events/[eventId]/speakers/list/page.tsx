@@ -749,18 +749,18 @@ export default function SpeakersPage() {
     },
   })
 
-  // Update status mutation
+  // Update status mutation (syncs across registrations + faculty_assignments)
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const updateData: any = { status }
-      if (status === "confirmed") {
-        updateData.confirmed_at = new Date().toISOString()
+    mutationFn: async ({ id: _id, email, status }: { id: string; email: string; status: string }) => {
+      const res = await fetch(`/api/events/${eventId}/speakers/sync-status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, status }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Failed to update status")
       }
-      const { error } = await (supabase as any)
-        .from("registrations")
-        .update(updateData)
-        .eq("id", id)
-      if (error) throw error
     },
     onSuccess: () => {
       toast.success("Status updated")
@@ -832,20 +832,23 @@ export default function SpeakersPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
-  // Bulk update status
+  // Bulk update status (syncs across registrations + faculty_assignments)
   const bulkUpdateStatus = useMutation({
     mutationFn: async (status: string) => {
       const ids = Array.from(selectedIds)
-      const updateData: any = { status }
-      if (status === "confirmed") {
-        updateData.confirmed_at = new Date().toISOString()
+      const speakers = filteredSpeakers
+        .filter(s => ids.includes(s.id))
+        .map(s => ({ id: s.id, email: s.attendee_email }))
+      const res = await fetch(`/api/events/${eventId}/speakers/sync-status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ speakers, status }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Failed to bulk update status")
       }
-      const { error } = await (supabase as any)
-        .from("registrations")
-        .update(updateData)
-        .in("id", ids)
-      if (error) throw error
-      return ids.length
+      return speakers.length
     },
     onSuccess: (count) => {
       toast.success(`Updated ${count} speakers`)
@@ -1583,15 +1586,15 @@ export default function SpeakersPage() {
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
-                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, status: "pending" })}>
+                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, email: speaker.attendee_email, status: "pending" })}>
                               <Clock className="h-4 w-4 mr-2 text-amber-500" />
                               Pending
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, status: "confirmed" })}>
+                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, email: speaker.attendee_email, status: "confirmed" })}>
                               <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
                               Confirmed
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, status: "declined" })}>
+                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, email: speaker.attendee_email, status: "declined" })}>
                               <XCircle className="h-4 w-4 mr-2 text-red-500" />
                               Declined
                             </DropdownMenuItem>
@@ -1737,7 +1740,7 @@ export default function SpeakersPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, status: "confirmed" })}>
+                      <DropdownMenuItem onClick={() => updateStatus.mutate({ id: speaker.id, email: speaker.attendee_email, status: "confirmed" })}>
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Mark Confirmed
                       </DropdownMenuItem>
@@ -2054,7 +2057,7 @@ export default function SpeakersPage() {
                       size="sm"
                       variant={selectedSpeaker.status === "confirmed" ? "default" : "outline"}
                       onClick={() => {
-                        updateStatus.mutate({ id: selectedSpeaker.id, status: "confirmed" })
+                        updateStatus.mutate({ id: selectedSpeaker.id, email: selectedSpeaker.attendee_email, status: "confirmed" })
                         setSelectedSpeaker({ ...selectedSpeaker, status: "confirmed" })
                       }}
                       className="flex-1"
@@ -2066,7 +2069,7 @@ export default function SpeakersPage() {
                       size="sm"
                       variant={selectedSpeaker.status === "pending" ? "default" : "outline"}
                       onClick={() => {
-                        updateStatus.mutate({ id: selectedSpeaker.id, status: "pending" })
+                        updateStatus.mutate({ id: selectedSpeaker.id, email: selectedSpeaker.attendee_email, status: "pending" })
                         setSelectedSpeaker({ ...selectedSpeaker, status: "pending" })
                       }}
                       className="flex-1"

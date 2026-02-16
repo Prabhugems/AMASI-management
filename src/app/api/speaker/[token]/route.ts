@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { webhookSpeakerResponded, webhookTravelSubmitted } from "@/lib/webhooks"
+import { syncSpeakerStatus } from "@/lib/services/sync-speaker-status"
 
 export async function GET(
   request: NextRequest,
@@ -149,7 +150,7 @@ export async function PUT(
     // First verify the token
     const { data: registration, error: findError } = await (supabase as any)
       .from("registrations")
-      .select("id, custom_fields")
+      .select("id, custom_fields, event_id, attendee_email")
       .filter("custom_fields->>portal_token", "eq", token)
       .maybeSingle()
 
@@ -200,6 +201,16 @@ export async function PUT(
 
     if (updateError) {
       throw updateError
+    }
+
+    // Sync status to faculty_assignments when speaker accepts/declines
+    if ((action === "accept" || action === "decline") && registration.attendee_email) {
+      try {
+        const syncStatus = action === "accept" ? "confirmed" : "declined"
+        await syncSpeakerStatus(supabase as any, registration.event_id, registration.attendee_email, syncStatus)
+      } catch (syncError) {
+        console.error("Sync speaker status error:", syncError)
+      }
     }
 
     // Trigger webhooks for external integrations (Boost.space, etc.)
