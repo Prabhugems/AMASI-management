@@ -247,14 +247,18 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
           .eq("id", registration_id)
           .single()
 
+        const existingFields = freshReg?.custom_fields || {}
+        const currentSendCount = typeof existingFields.invitation_send_count === "number" ? existingFields.invitation_send_count : 0
+
         await (supabase as any)
           .from("registrations")
           .update({
             custom_fields: {
-              ...(freshReg?.custom_fields || {}),
+              ...existingFields,
               invitation_status: "sent",
               invitation_sent_at: new Date().toISOString(),
               invitation_email_id: result.id,
+              invitation_send_count: currentSendCount + 1,
             }
           })
           .eq("id", registration_id)
@@ -450,6 +454,11 @@ export async function PUT(request: NextRequest) {
 
         return false
       })
+
+      // Rate limit delay (Resend allows 2 req/sec)
+      if (results.sent > 0 || results.failed > 0) {
+        await new Promise(resolve => setTimeout(resolve, 600))
+      }
 
       // Send invitation directly (no self-fetch)
       const result = await sendSpeakerInvitation({

@@ -43,6 +43,22 @@ export async function GET(
       )
     }
 
+    // Fire-and-forget: track portal view count and last accessed timestamp
+    const existingFields = registration.custom_fields || {}
+    const currentViewCount = typeof existingFields.portal_view_count === "number" ? existingFields.portal_view_count : 0
+    ;(supabase as any)
+      .from("registrations")
+      .update({
+        custom_fields: {
+          ...existingFields,
+          portal_last_accessed: new Date().toISOString(),
+          portal_view_count: currentViewCount + 1,
+        },
+      })
+      .eq("id", registration.id)
+      .then(() => {})
+      .catch((err: any) => console.error("Failed to update portal view tracking:", err))
+
     // Strategy 1: Find sessions via faculty_assignments table (most reliable)
     const speakerEmail = registration.attendee_email?.toLowerCase()
     const speakerName = registration.attendee_name?.trim()
