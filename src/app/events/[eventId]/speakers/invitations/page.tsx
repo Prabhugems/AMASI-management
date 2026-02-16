@@ -418,7 +418,7 @@ export default function SpeakerInvitationsPage() {
     toast.success("Portal link copied to clipboard")
   }
 
-  const downloadBroadcastTemplate = () => {
+  const downloadBroadcastTemplate = async () => {
     const speakersToExport = selectedSpeakers.size > 0
       ? (speakers || []).filter(s => selectedSpeakers.has(s.id))
       : filteredSpeakers
@@ -430,28 +430,22 @@ export default function SpeakerInvitationsPage() {
       return
     }
 
+    const XLSX = (await import("xlsx")).default
     const eventName = eventData?.name || "Event"
-    const headers = ["Name", "Phone", "Speaker_Name", "Event_Name", "Portal_URL"]
-    const rows = withPortal.map(s => [
-      s.attendee_name,
-      s.attendee_phone!,
-      s.attendee_name,
-      eventName,
-      `https://collegeofmas.org.in/speaker/${s.custom_fields!.portal_token}`,
-    ])
 
-    const csv = [headers, ...rows]
-      .map(row => row.map(cell => `"${(cell || "").replace(/"/g, '""')}"`).join(","))
-      .join("\n")
+    const data = withPortal.map(s => ({
+      Name: s.attendee_name,
+      Phone: s.attendee_phone!,
+      Speaker_Name: s.attendee_name,
+      Event_Name: eventName,
+      Portal_URL: `https://collegeofmas.org.in/speaker/${s.custom_fields!.portal_token}`,
+    }))
 
-    const bom = "\uFEFF"
-    const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `whatsapp-broadcast-${eventName.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Broadcast")
+    const fileName = `whatsapp-broadcast-${eventName.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}.xlsx`
+    XLSX.writeFile(wb, fileName)
     toast.success(`Broadcast template downloaded for ${withPortal.length} speakers`)
   }
 
@@ -646,7 +640,7 @@ export default function SpeakerInvitationsPage() {
         </div>
         <Button variant="outline" size="sm" onClick={downloadBroadcastTemplate}>
           <Download className="h-4 w-4 mr-2" />
-          WhatsApp Broadcast CSV
+          Broadcast Template
         </Button>
       </div>
 
