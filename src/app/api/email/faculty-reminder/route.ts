@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     // Generate portal URL
     const baseUrl = getBaseUrl()
-    const portalUrl = `${baseUrl}/respond/${invitationToken}`
+    const portalUrl = `${baseUrl}/speaker/${invitationToken}`
 
     // Format event dates
     const startDate = formatDate(event_start_date)

@@ -61,6 +61,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
     eventIds,
     hasFullAccess,
     permissions,
+    isLoading,
   } = usePermissions()
 
   // Get session info for login time
@@ -306,12 +307,21 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground text-sm font-medium">
-                  {getInitials(userName || userEmail || "U")}
+                  {isLoading ? "..." : getInitials(userName || userEmail || "U")}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden sm:block text-left">
-                <p className="text-sm font-medium text-foreground leading-tight">{userName || userEmail?.split("@")[0] || "User"}</p>
-                <p className={cn("text-[10px]", roleDisplay.color)}>{roleDisplay.label}</p>
+                {isLoading ? (
+                  <div className="space-y-1">
+                    <div className="h-3.5 w-20 bg-muted rounded animate-pulse" />
+                    <div className="h-2.5 w-14 bg-muted rounded animate-pulse" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-foreground leading-tight">{userName || userEmail?.split("@")[0] || "User"}</p>
+                    <p className={cn("text-[10px]", roleDisplay.color)}>{roleDisplay.label}</p>
+                  </>
+                )}
               </div>
               <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:block" />
             </button>

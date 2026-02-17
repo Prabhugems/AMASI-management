@@ -246,20 +246,13 @@ export function TravelForm({
     }
   }, [customFields])
 
-  // Determine if the API uses the speaker-style action format or the respond-style direct format
-  const isRespondApi = apiEndpoint.includes("/respond/")
-
   // Auto-save needs_travel toggle
   const saveNeedsTravelToggle = useMutation({
     mutationFn: async (checked: boolean) => {
-      const body = isRespondApi
-        ? { needs_travel: checked }
-        : { action: "update", data: { needs_travel: checked } }
-
       const response = await fetch(`${apiEndpoint}/${token}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ action: "update", data: { needs_travel: checked } }),
       })
 
       if (!response.ok) {
@@ -330,14 +323,10 @@ export function TravelForm({
         } : undefined,
       }
 
-      const body = isRespondApi
-        ? saveData
-        : { action: "update", data: saveData }
-
       const response = await fetch(`${apiEndpoint}/${token}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ action: "update", data: saveData }),
       })
 
       const result = await response.json()

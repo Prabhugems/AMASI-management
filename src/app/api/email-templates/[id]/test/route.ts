@@ -24,7 +24,7 @@ const SAMPLE_DATA = {
   session_date: "March 15, 2025",
   session_time: "10:00 AM - 11:00 AM",
   hall_name: "Main Auditorium",
-  response_url: "https://example.com/respond/abc123",
+  response_url: "https://example.com/speaker/abc123",
 
   // URLs
   badge_url: "https://example.com/badge/abc123.pdf",

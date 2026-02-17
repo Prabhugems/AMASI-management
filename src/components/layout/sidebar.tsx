@@ -106,7 +106,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const [userMenuOpen, setUserMenuOpen] = React.useState(false)
 
   // Get user permissions and info
-  const { userName, userEmail, role, isAdmin, isEventScoped, hasFullAccess } = usePermissions()
+  const { userName, userEmail, role, isAdmin, isEventScoped, hasFullAccess, isLoading } = usePermissions()
 
   // Get initials from name
   const getInitials = (name: string) => {
@@ -176,23 +176,32 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
         >
           <Avatar className="h-11 w-11 border-2 border-white/20">
             <AvatarFallback className="bg-sidebar-primary text-white text-sm">
-              {getInitials(userName || userEmail || "U")}
+              {isLoading ? "..." : getInitials(userName || userEmail || "U")}
             </AvatarFallback>
           </Avatar>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-sidebar-foreground truncate">
-                  {userName || userEmail?.split("@")[0] || "User"}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 text-sidebar-muted transition-transform flex-shrink-0",
-                    userMenuOpen && "rotate-180"
-                  )}
-                />
-              </div>
-              <span className="text-xs text-sidebar-muted truncate block">{getRoleLabel()}</span>
+              {isLoading ? (
+                <div className="space-y-1.5">
+                  <div className="h-4 w-24 bg-white/10 rounded animate-pulse" />
+                  <div className="h-3 w-16 bg-white/10 rounded animate-pulse" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-sidebar-foreground truncate">
+                      {userName || userEmail?.split("@")[0] || "User"}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 text-sidebar-muted transition-transform flex-shrink-0",
+                        userMenuOpen && "rotate-180"
+                      )}
+                    />
+                  </div>
+                  <span className="text-xs text-sidebar-muted truncate block">{getRoleLabel()}</span>
+                </>
+              )}
             </div>
           )}
         </div>

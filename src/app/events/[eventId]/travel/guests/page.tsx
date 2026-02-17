@@ -289,8 +289,8 @@ export default function TravelGuestsPage() {
       try {
         const portalToken = guest.custom_fields?.portal_token
         const portalUrl = portalToken
-          ? `${baseUrl}/respond/${portalToken}`
-          : `${baseUrl}/respond?email=${encodeURIComponent(guest.attendee_email)}`
+          ? `${baseUrl}/speaker/${portalToken}`
+          : `${baseUrl}/speaker?email=${encodeURIComponent(guest.attendee_email)}`
 
         const response = await fetch("/api/email/request-travel-details", {
           method: "POST",

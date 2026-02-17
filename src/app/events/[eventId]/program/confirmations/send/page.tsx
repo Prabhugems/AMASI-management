@@ -178,7 +178,7 @@ export default function SendInvitationsPage() {
       "{{start_time}}": formatTime(assignment.start_time),
       "{{end_time}}": formatTime(assignment.end_time),
       "{{hall}}": assignment.hall || "",
-      "{{confirmation_link}}": `${window.location.origin}/respond/${assignment.invitation_token}`,
+      "{{confirmation_link}}": `${window.location.origin}/speaker/${assignment.invitation_token}`,
     }
 
     let subject = emailSubject
