@@ -28,7 +28,8 @@ export async function exportToExcel(options: {
   }>
 }): Promise<void> {
   // Dynamically import xlsx to reduce bundle size
-  const XLSX = await import("xlsx")
+  const xlsxModule = await import("xlsx")
+  const XLSX = xlsxModule.default || xlsxModule
 
   const workbook = XLSX.utils.book_new()
 
@@ -60,8 +61,17 @@ export async function exportToExcel(options: {
   const date = new Date().toISOString().split("T")[0]
   const filename = `${options.filename}-${date}.xlsx`
 
-  // Download
-  XLSX.writeFile(workbook, filename)
+  // Download using Blob for better browser compatibility
+  const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
+  const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 /**

@@ -419,34 +419,62 @@ export default function SpeakerInvitationsPage() {
   }
 
   const downloadBroadcastTemplate = async () => {
-    const speakersToExport = selectedSpeakers.size > 0
-      ? (speakers || []).filter(s => selectedSpeakers.has(s.id))
-      : filteredSpeakers
+    try {
+      const speakersToExport = selectedSpeakers.size > 0
+        ? (speakers || []).filter(s => selectedSpeakers.has(s.id))
+        : filteredSpeakers
 
-    const withPortal = speakersToExport.filter(s => s.attendee_phone && s.custom_fields?.portal_token)
+      if (speakersToExport.length === 0) {
+        toast.error("No speakers to export. Select speakers or adjust filters.")
+        return
+      }
 
-    if (withPortal.length === 0) {
-      toast.error("No speakers with phone number and portal token found. Send email invitations first.")
-      return
+      const withPortal = speakersToExport.filter(s => s.custom_fields?.portal_token)
+
+      if (withPortal.length === 0) {
+        toast.error("No speakers with portal token found. Send email invitations first.")
+        return
+      }
+
+      const withPhone = withPortal.filter(s => s.attendee_phone)
+      if (withPhone.length === 0) {
+        toast.error(`${withPortal.length} speakers have portal tokens but none have phone numbers. Add phone numbers first.`)
+        return
+      }
+
+      const xlsxModule = await import("xlsx")
+      const XLSX = xlsxModule.default || xlsxModule
+      const eventName = eventData?.name || "Event"
+
+      const data = withPhone.map(s => ({
+        Name: s.attendee_name,
+        Phone: s.attendee_phone!,
+        Speaker_Name: s.attendee_name,
+        Event_Name: eventName,
+        Portal_URL: `https://collegeofmas.org.in/speaker/${s.custom_fields!.portal_token}`,
+      }))
+
+      const ws = XLSX.utils.json_to_sheet(data)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Broadcast")
+      const fileName = `whatsapp-broadcast-${eventName.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}.xlsx`
+
+      // Use Blob-based download for better browser compatibility
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
+      const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success(`Broadcast template downloaded for ${withPhone.length} speakers`)
+    } catch (error) {
+      console.error("Broadcast template download error:", error)
+      toast.error("Failed to generate broadcast template. Check console for details.")
     }
-
-    const XLSX = (await import("xlsx")).default
-    const eventName = eventData?.name || "Event"
-
-    const data = withPortal.map(s => ({
-      Name: s.attendee_name,
-      Phone: s.attendee_phone!,
-      Speaker_Name: s.attendee_name,
-      Event_Name: eventName,
-      Portal_URL: `https://collegeofmas.org.in/speaker/${s.custom_fields!.portal_token}`,
-    }))
-
-    const ws = XLSX.utils.json_to_sheet(data)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "Broadcast")
-    const fileName = `whatsapp-broadcast-${eventName.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}.xlsx`
-    XLSX.writeFile(wb, fileName)
-    toast.success(`Broadcast template downloaded for ${withPortal.length} speakers`)
   }
 
   const getStatusBadge = (status: string | undefined) => {
