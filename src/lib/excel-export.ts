@@ -28,8 +28,9 @@ export async function exportToExcel(options: {
   }>
 }): Promise<void> {
   // Dynamically import xlsx to reduce bundle size
-  const xlsxModule = await import("xlsx")
-  const XLSX = xlsxModule.default || xlsxModule
+  const xlsxModule = await import("xlsx") as any
+  // Handle webpack's CJS/ESM interop - check where utils actually lives
+  const XLSX = xlsxModule.utils ? xlsxModule : xlsxModule.default
 
   const workbook = XLSX.utils.book_new()
 

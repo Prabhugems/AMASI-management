@@ -442,8 +442,14 @@ export default function SpeakerInvitationsPage() {
         return
       }
 
-      const xlsxModule = await import("xlsx")
-      const XLSX = xlsxModule.default || xlsxModule
+      const xlsxModule = await import("xlsx") as any
+      // Handle webpack's CJS/ESM interop - check where utils actually lives
+      const XLSX = xlsxModule.utils ? xlsxModule : xlsxModule.default
+      if (!XLSX?.utils) {
+        toast.error("Failed to load Excel library. Please try again.")
+        console.error("xlsx module structure:", Object.keys(xlsxModule), "default keys:", xlsxModule.default ? Object.keys(xlsxModule.default) : "no default")
+        return
+      }
       const eventName = eventData?.name || "Event"
 
       const data = withPhone.map(s => ({
