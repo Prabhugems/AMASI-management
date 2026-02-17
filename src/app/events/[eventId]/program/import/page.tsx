@@ -35,6 +35,7 @@ import {
   FileSpreadsheet,
   Check,
   AlertCircle,
+  AlertTriangle,
   ArrowRight,
   MapPin,
   Clock,
@@ -44,6 +45,9 @@ import {
   Eye,
   Phone,
   Mail,
+  Sparkles,
+  CheckCircle2,
+  Info,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -127,8 +131,21 @@ function detectDateOrder(dates: string[]): "mm_first" | "dd_first" {
   return "dd_first"
 }
 
-// Time format patterns
+// Convert 12-hour to 24-hour
+const to24h = (h: number, period: string): number => {
+  if (period.toUpperCase() === "PM" && h < 12) return h + 12
+  if (period.toUpperCase() === "AM" && h === 12) return 0
+  return h
+}
+
+// Time format patterns — AM/PM patterns first, then 24h fallbacks
 const TIME_FORMATS = [
+  { pattern: /(\d{1,2}):(\d{2})\s*(AM|PM)\s*[-–to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i, name: "HH:MM AM/PM - HH:MM AM/PM (range)",
+    parseStart: (m: RegExpMatchArray) => `${to24h(parseInt(m[1]), m[3]).toString().padStart(2, "0")}:${m[2]}:00`,
+    parseEnd: (m: RegExpMatchArray) => `${to24h(parseInt(m[4]), m[6]).toString().padStart(2, "0")}:${m[5]}:00` },
+  { pattern: /(\d{1,2}):(\d{2})\s*(AM|PM)/i, name: "HH:MM AM/PM (single)",
+    parseStart: (m: RegExpMatchArray) => `${to24h(parseInt(m[1]), m[3]).toString().padStart(2, "0")}:${m[2]}:00`,
+    parseEnd: null },
   { pattern: /(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/, name: "HH:MM - HH:MM (range)", parseStart: (m: RegExpMatchArray) => `${m[1].padStart(2, "0")}:${m[2]}:00`, parseEnd: (m: RegExpMatchArray) => `${m[3].padStart(2, "0")}:${m[4]}:00` },
   { pattern: /(\d{1,2}):(\d{2})/, name: "HH:MM (single)", parseStart: (m: RegExpMatchArray) => `${m[1].padStart(2, "0")}:${m[2]}:00`, parseEnd: null },
 ]
@@ -148,6 +165,20 @@ export default function ProgramImportPage() {
   const [dateOrder, setDateOrder] = useState<"mm_first" | "dd_first">("dd_first")
   const [detectedDateFormat, setDetectedDateFormat] = useState<string>("")
   const [detectedTimeFormat, setDetectedTimeFormat] = useState<string>("")
+
+  // AI validation state
+  type ValidationIssue = {
+    severity: "error" | "warning" | "info"
+    session_name: string
+    current_time: string
+    suggested_time: string
+    reason: string
+  }
+  const [aiIssues, setAiIssues] = useState<ValidationIssue[]>([])
+  const [aiSummary, setAiSummary] = useState<string>("")
+  const [aiValidating, setAiValidating] = useState(false)
+  const [aiError, setAiError] = useState<string>("")
+  const [timeOverrides, setTimeOverrides] = useState<Map<string, { start_time: string; end_time: string }>>(new Map())
 
   // Parse CSV file
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -392,8 +423,26 @@ export default function ProgramImportPage() {
 
     return Array.from(sessionMap.values()).map(s => {
       const allPeople = [...s.speakers, ...s.chairpersons, ...s.moderators] as { name: string; email: string; phone: string }[]
+
+      // Apply AI time overrides if present
+      const override = timeOverrides.get(s.session_name)
+      const startTime = override?.start_time || s.start_time
+      const endTime = override?.end_time || s.end_time
+
+      // Recalculate duration if overridden
+      let duration = s.duration_minutes
+      if (override && startTime && endTime) {
+        const [sh, sm] = startTime.split(":").map(Number)
+        const [eh, em] = endTime.split(":").map(Number)
+        duration = (eh * 60 + em) - (sh * 60 + sm)
+        if (duration < 0) duration = null
+      }
+
       return {
         ...s,
+        start_time: startTime,
+        end_time: endTime,
+        duration_minutes: duration,
         speakers: s.speakers.map((p: any) => p.name).join(", ") || null,
         chairpersons: s.chairpersons.map((p: any) => p.name).join(", ") || null,
         moderators: s.moderators.map((p: any) => p.name).join(", ") || null,
@@ -404,7 +453,7 @@ export default function ProgramImportPage() {
         _invalidEmails: allPeople.filter(p => p.email && !isValidEmail(p.email)).map(p => p.email),
       }
     })
-  }, [csvData, mapping, dateOrder])
+  }, [csvData, mapping, dateOrder, timeOverrides])
 
   // Stats
   const stats = useMemo(() => {
@@ -628,7 +677,7 @@ export default function ProgramImportPage() {
               <h4 className="font-medium mb-2">Supported CSV formats:</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>Date formats: DD.MM.YYYY, DD/MM/YYYY, YYYY-MM-DD</li>
-                <li>Time formats: HH:MM - HH:MM (range) or HH:MM (single)</li>
+                <li>Time formats: HH:MM AM/PM, HH:MM - HH:MM (range), HH:MM (single)</li>
                 <li>Columns: Date, Time, Topic, Hall, Session/Track, Speaker Name, Role, Email, Mobile Number</li>
               </ul>
             </div>
@@ -1088,6 +1137,170 @@ export default function ProgramImportPage() {
                 <p className="text-sm text-muted-foreground mt-2 text-center">
                   Showing first 50 of {processedData.length} sessions
                 </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* AI Validation */}
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-5 w-5 text-purple-500" />
+                  <div>
+                    <p className="font-medium">AI Schedule Validator</p>
+                    <p className="text-sm text-muted-foreground">
+                      Detect AM/PM confusion, unreasonable times, and scheduling errors
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    setAiValidating(true)
+                    setAiError("")
+                    setAiIssues([])
+                    setAiSummary("")
+                    try {
+                      const res = await fetch("/api/program/ai-validate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          sessions: processedData.map(s => ({
+                            session_name: s.session_name,
+                            session_date: s.session_date,
+                            start_time: s.start_time,
+                            end_time: s.end_time,
+                            hall: s.hall,
+                          })),
+                        }),
+                      })
+                      if (!res.ok) {
+                        const err = await res.json()
+                        setAiError(err.error || "Validation failed")
+                        return
+                      }
+                      const result = await res.json()
+                      setAiIssues(result.issues || [])
+                      setAiSummary(result.summary || "")
+                      if (result.issues?.length === 0) {
+                        toast.success("No issues found!")
+                      } else {
+                        toast.info(`Found ${result.issues.length} issue(s)`)
+                      }
+                    } catch {
+                      setAiError("Could not reach AI validation service")
+                    } finally {
+                      setAiValidating(false)
+                    }
+                  }}
+                  disabled={aiValidating || processedData.length === 0}
+                >
+                  {aiValidating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Validating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Validate with AI
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* AI Error */}
+              {aiError && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {aiError}
+                </div>
+              )}
+
+              {/* AI Summary */}
+              {aiSummary && !aiError && (
+                <div className={cn(
+                  "mt-3 p-3 rounded-lg text-sm flex items-center gap-2",
+                  aiIssues.length === 0
+                    ? "bg-green-50 border border-green-200 text-green-800"
+                    : "bg-amber-50 border border-amber-200 text-amber-800"
+                )}>
+                  {aiIssues.length === 0 ? (
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                  )}
+                  {aiSummary}
+                </div>
+              )}
+
+              {/* AI Issues */}
+              {aiIssues.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {aiIssues.map((issue, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "p-3 rounded-lg border flex items-start justify-between gap-3",
+                        issue.severity === "error" && "bg-red-50 border-red-200",
+                        issue.severity === "warning" && "bg-amber-50 border-amber-200",
+                        issue.severity === "info" && "bg-blue-50 border-blue-200",
+                      )}
+                    >
+                      <div className="flex items-start gap-2 min-w-0">
+                        {issue.severity === "error" && <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />}
+                        {issue.severity === "warning" && <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />}
+                        {issue.severity === "info" && <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{issue.session_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {issue.current_time} → {issue.suggested_time} — {issue.reason}
+                          </p>
+                        </div>
+                      </div>
+                      {issue.suggested_time && issue.suggested_time !== issue.current_time && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0 text-xs"
+                          disabled={timeOverrides.has(issue.session_name)}
+                          onClick={() => {
+                            const newMap = new Map(timeOverrides)
+                            // Convert suggested HH:MM to HH:MM:00, keep original end_time offset
+                            const suggested = issue.suggested_time.length === 5 ? `${issue.suggested_time}:00` : issue.suggested_time
+                            const current = issue.current_time.length === 5 ? `${issue.current_time}:00` : issue.current_time
+                            // Find the session to get its end time and calculate offset
+                            const session = processedData.find(s => s.session_name === issue.session_name)
+                            let newEnd = suggested
+                            if (session) {
+                              const [ch, cm] = current.split(":").map(Number)
+                              const [eh, em] = session.end_time.split(":").map(Number)
+                              const offset = (eh * 60 + em) - (ch * 60 + cm)
+                              const [sh, sm] = suggested.split(":").map(Number)
+                              const newEndMinutes = sh * 60 + sm + offset
+                              const nh = Math.floor(newEndMinutes / 60)
+                              const nm = newEndMinutes % 60
+                              newEnd = `${nh.toString().padStart(2, "0")}:${nm.toString().padStart(2, "0")}:00`
+                            }
+                            newMap.set(issue.session_name, { start_time: suggested, end_time: newEnd })
+                            setTimeOverrides(newMap)
+                            toast.success(`Fixed: ${issue.session_name}`)
+                          }}
+                        >
+                          {timeOverrides.has(issue.session_name) ? (
+                            <>
+                              <Check className="h-3 w-3 mr-1" />
+                              Applied
+                            </>
+                          ) : (
+                            "Apply Fix"
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>

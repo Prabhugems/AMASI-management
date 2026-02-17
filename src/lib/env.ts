@@ -46,6 +46,9 @@ const envVars: EnvVar[] = [
   { name: 'GALLABOX_API_SECRET', required: false, description: 'Gallabox API secret for WhatsApp messaging' },
   { name: 'GALLABOX_CHANNEL_ID', required: false, description: 'Gallabox WhatsApp channel ID' },
 
+  // AI
+  { name: 'ANTHROPIC_API_KEY', required: false, description: 'Anthropic API key for AI features (program validation)' },
+
   // Security
   { name: 'NEXTAUTH_SECRET', required: false, description: 'Secret for hashing/encryption' },
 ]
@@ -97,7 +100,7 @@ export function getOptionalEnv(name: string, defaultValue: string = ''): string 
 /**
  * Check if a feature is enabled based on its required env vars being set
  */
-export function isFeatureEnabled(feature: 'razorpay' | 'email' | 'gallabox'): boolean {
+export function isFeatureEnabled(feature: 'razorpay' | 'email' | 'gallabox' | 'ai'): boolean {
   switch (feature) {
     case 'razorpay':
       return !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)
@@ -113,6 +116,8 @@ export function isFeatureEnabled(feature: 'razorpay' | 'email' | 'gallabox'): bo
         process.env.GALLABOX_API_SECRET?.trim() &&
         process.env.GALLABOX_CHANNEL_ID?.trim()
       )
+    case 'ai':
+      return !!process.env.ANTHROPIC_API_KEY?.trim()
     default:
       return false
   }

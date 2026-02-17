@@ -4,6 +4,13 @@ import { parse } from "csv-parse/sync"
 import { requireEventAccess } from "@/lib/auth/api-auth"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
+// Convert 12-hour to 24-hour
+function to24h(h: number, period: string): number {
+  if (period.toUpperCase() === "PM" && h < 12) return h + 12
+  if (period.toUpperCase() === "AM" && h === 12) return 0
+  return h
+}
+
 type CSVRow = {
   Date?: string
   Hall?: string
@@ -259,14 +266,34 @@ export async function POST(request: NextRequest) {
       let endTime = ""
       const timeStr = getCol(row, "time", "Time", "time", "Starting Time")
 
-      // Time range format
-      const timeRangeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/)
-      if (timeRangeMatch) {
-        const [_match, startH, startM, endH, endM] = timeRangeMatch
-        startTime = `${startH.padStart(2, "0")}:${startM}:00`
-        endTime = `${endH.padStart(2, "0")}:${endM}:00`
-      } else {
-        // Single time format (also handles datetime like "6/3/2026 09:00")
+      // AM/PM range: "9:00 AM - 5:00 PM"
+      const ampmRangeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*[-–to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+      if (ampmRangeMatch) {
+        const sH = to24h(parseInt(ampmRangeMatch[1]), ampmRangeMatch[3])
+        const eH = to24h(parseInt(ampmRangeMatch[4]), ampmRangeMatch[6])
+        startTime = `${sH.toString().padStart(2, "0")}:${ampmRangeMatch[2]}:00`
+        endTime = `${eH.toString().padStart(2, "0")}:${ampmRangeMatch[5]}:00`
+      }
+      // 24h range: "10:30 - 10:45"
+      if (!startTime) {
+        const timeRangeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/)
+        if (timeRangeMatch) {
+          const [_match, startH, startM, endH, endM] = timeRangeMatch
+          startTime = `${startH.padStart(2, "0")}:${startM}:00`
+          endTime = `${endH.padStart(2, "0")}:${endM}:00`
+        }
+      }
+      // Single AM/PM: "07:00 PM"
+      if (!startTime) {
+        const singleAmPm = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+        if (singleAmPm) {
+          const h = to24h(parseInt(singleAmPm[1]), singleAmPm[3])
+          startTime = `${h.toString().padStart(2, "0")}:${singleAmPm[2]}:00`
+          endTime = startTime
+        }
+      }
+      // Plain HH:MM (also handles datetime like "6/3/2026 09:00")
+      if (!startTime) {
         const singleTimeMatch = timeStr.match(/(\d{1,2}):(\d{2})/)
         if (singleTimeMatch) {
           const [_match, hours, minutes] = singleTimeMatch
@@ -285,9 +312,16 @@ export async function POST(request: NextRequest) {
           endTimeStr = row["Ending Time"] || row["End Time"] || row["end_time"] || row["EndTime"] || ""
         }
         if (endTimeStr) {
-          const endMatch = endTimeStr.match(/(\d{1,2}):(\d{2})/)
-          if (endMatch) {
-            endTime = `${endMatch[1].padStart(2, "0")}:${endMatch[2]}:00`
+          // Check AM/PM first
+          const endAmPm = endTimeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+          if (endAmPm) {
+            const h = to24h(parseInt(endAmPm[1]), endAmPm[3])
+            endTime = `${h.toString().padStart(2, "0")}:${endAmPm[2]}:00`
+          } else {
+            const endMatch = endTimeStr.match(/(\d{1,2}):(\d{2})/)
+            if (endMatch) {
+              endTime = `${endMatch[1].padStart(2, "0")}:${endMatch[2]}:00`
+            }
           }
         }
       }
