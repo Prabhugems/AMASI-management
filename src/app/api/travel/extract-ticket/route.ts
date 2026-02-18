@@ -68,14 +68,38 @@ type ExtractedTrainDetails = {
   booking_status: string | null
 }
 
-// Indian airport codes mapping
+// Indian airport codes mapping - comprehensive list matching city-selector options
 const AIRPORT_CODES: Record<string, string> = {
+  // Metro cities
   DEL: "Delhi", BOM: "Mumbai", BLR: "Bangalore", MAA: "Chennai",
-  CCU: "Kolkata", HYD: "Hyderabad", PAT: "Patna", AMD: "Ahmedabad",
-  COK: "Kochi", GOI: "Goa", PNQ: "Pune", JAI: "Jaipur", LKO: "Lucknow",
-  GAU: "Guwahati", IXB: "Bagdogra", SXR: "Srinagar", TRV: "Trivandrum",
-  VNS: "Varanasi", IXC: "Chandigarh", NAG: "Nagpur", BBI: "Bhubaneswar",
-  IXR: "Ranchi", RPR: "Raipur", IDR: "Indore", UDR: "Udaipur",
+  CCU: "Kolkata", HYD: "Hyderabad",
+  // South India
+  CJB: "Coimbatore", TRZ: "Tiruchirappalli", IXM: "Madurai",
+  COK: "Kochi", TRV: "Trivandrum", CCJ: "Kozhikode",
+  IXE: "Mangalore", MYQ: "Mysore", HBX: "Hubli",
+  VTZ: "Visakhapatnam", VGA: "Vijayawada", TIR: "Tirupati", RJA: "Rajahmundry",
+  // West India
+  PNQ: "Pune", NAG: "Nagpur", AMD: "Ahmedabad", STV: "Surat",
+  BDQ: "Vadodara", RAJ: "Rajkot", JGA: "Jamnagar", BHJ: "Bhuj",
+  GOI: "Goa", GOX: "Mopa",
+  KLH: "Kolhapur", NDC: "Nanded",
+  // North India
+  JAI: "Jaipur", UDR: "Udaipur", JDH: "Jodhpur", BKB: "Bikaner", KTU: "Kota",
+  LKO: "Lucknow", VNS: "Varanasi", AGR: "Agra", KNU: "Kanpur", GOP: "Gorakhpur", AYJ: "Ayodhya",
+  IDR: "Indore", BHO: "Bhopal", JLR: "Jabalpur", GWL: "Gwalior",
+  PAT: "Patna", GAY: "Gaya", DBR: "Darbhanga",
+  IXR: "Ranchi", IXW: "Jamshedpur", DEO: "Deoghar",
+  BBI: "Bhubaneswar", JRG: "Jharsuguda",
+  RPR: "Raipur",
+  IXB: "Bagdogra",
+  ATQ: "Amritsar", LUH: "Ludhiana", IXC: "Chandigarh",
+  SXR: "Srinagar", IXJ: "Jammu", IXL: "Leh",
+  DED: "Dehradun",
+  // North East
+  GAU: "Guwahati", DIB: "Dibrugarh", JRH: "Jorhat", IXS: "Silchar",
+  IMF: "Imphal", DMU: "Dimapur", AJL: "Aizawl", IXA: "Agartala",
+  // Islands
+  IXZ: "Port Blair",
 }
 
 // Airline patterns
@@ -174,7 +198,9 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
   console.log("Seats found:", filteredSeats)
 
   // Find all airport codes with times: "CCU 10:50 hrs" or "PAT\n12:00 hrs"
-  const airportTimePattern = /\b(DEL|BOM|BLR|MAA|CCU|HYD|PAT|AMD|COK|GOI|PNQ|JAI|LKO|GAU|IXB|VNS|BBI|IXR|RPR|IDR)\s*\n?\s*(\d{1,2}):(\d{2})\s*(hrs|am|pm)?/gi
+  // Dynamically build pattern from all known airport codes
+  const allCodes = Object.keys(AIRPORT_CODES).join("|")
+  const airportTimePattern = new RegExp(`\\b(${allCodes})\\s*\\n?\\s*(\\d{1,2}):(\\d{2})\\s*(hrs|am|pm)?`, "gi")
   const airportTimes: Array<{ airport: string; time: string; index: number }> = []
   let match
   while ((match = airportTimePattern.exec(normalized)) !== null) {
@@ -191,13 +217,14 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
   }
 
   // Find all route patterns like "City1 - City2" with dates
-  const routeRegex = /([A-Za-z]+)\s*[-–]\s*([A-Za-z]+)\s*\n?\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s*(\d{1,2})\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(\d{4})?/gi
+  // Supports multi-word cities (e.g. "New Delhi") and optional day names
+  const routeRegex = /([A-Za-z][A-Za-z ]*?)\s*[-–]\s*([A-Za-z][A-Za-z ]*?)\s*\n?\s*(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*[,\s]*)?(\d{1,2})\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(\d{4})?/gi
   const routes: Array<{ index: number; city1: string; city2: string; date: string; depAirport: string; arrAirport: string }> = []
 
   while ((match = routeRegex.exec(normalized)) !== null) {
     const day = match[3]
     const month = match[4]
-    const year = match[5] || "2026"
+    const year = match[5] || new Date().getFullYear().toString()
     const monthNum = { jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06", jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12" }[month.toLowerCase().substring(0, 3)] || "01"
 
     let depAirport = ""
@@ -899,43 +926,54 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Second pass: if no exact matches, find best match (fewest discrepancies)
-      if (!onwardMatch.matched && !returnMatch.matched && allJourneys.length > 0) {
-        let bestOnward: { journey: Journey; discrepancies: any[]; score: number } | null = null
-        let bestReturn: { journey: Journey; discrepancies: any[]; score: number } | null = null
+      // Second pass: for any unmatched journey, find best match (fewest discrepancies)
+      // Run independently for onward and return so one matching doesn't block the other
+      if (allJourneys.length > 0) {
+        // Collect journeys already claimed by exact match
+        const claimedJourneys = new Set<Journey>()
+        if (onwardMatch.matched && onwardMatch.journey) claimedJourneys.add(onwardMatch.journey)
+        if (returnMatch.matched && returnMatch.journey) claimedJourneys.add(returnMatch.journey)
 
-        for (const journey of allJourneys) {
-          if (onwardRequest) {
+        // Best-match for onward if not yet matched
+        if (!onwardMatch.matched && onwardRequest) {
+          let bestOnward: { journey: Journey; discrepancies: any[]; score: number } | null = null
+          for (const journey of allJourneys) {
+            if (claimedJourneys.has(journey)) continue
             const check = matchJourneyWithRequest(journey, onwardRequest)
             const score = check.discrepancies.length
             if (!bestOnward || score < bestOnward.score) {
               bestOnward = { journey, discrepancies: check.discrepancies, score }
             }
           }
-          if (returnRequest) {
+          if (bestOnward) {
+            const citiesOk = bestOnward.discrepancies.every(d => d.field === "Date")
+            onwardMatch = {
+              journey: bestOnward.journey,
+              matched: citiesOk && bestOnward.score <= 1,
+              discrepancies: citiesOk && bestOnward.score <= 1 ? [] : bestOnward.discrepancies,
+            }
+            if (onwardMatch.matched) claimedJourneys.add(bestOnward.journey)
+          }
+        }
+
+        // Best-match for return if not yet matched
+        if (!returnMatch.matched && returnRequest) {
+          let bestReturn: { journey: Journey; discrepancies: any[]; score: number } | null = null
+          for (const journey of allJourneys) {
+            if (claimedJourneys.has(journey)) continue
             const check = matchJourneyWithRequest(journey, returnRequest)
             const score = check.discrepancies.length
             if (!bestReturn || score < bestReturn.score) {
               bestReturn = { journey, discrepancies: check.discrepancies, score }
             }
           }
-        }
-
-        // Use best matches - if cities match but only date differs, consider it matched
-        if (bestOnward) {
-          const citiesOk = bestOnward.discrepancies.every(d => d.field === "Date")
-          onwardMatch = {
-            journey: bestOnward.journey,
-            matched: citiesOk && bestOnward.score <= 1,
-            discrepancies: citiesOk && bestOnward.score <= 1 ? [] : bestOnward.discrepancies,
-          }
-        }
-        if (bestReturn && (!bestOnward || bestReturn.journey !== bestOnward?.journey || allJourneys.length > 1)) {
-          const citiesOk = bestReturn.discrepancies.every(d => d.field === "Date")
-          returnMatch = {
-            journey: bestReturn.journey,
-            matched: citiesOk && bestReturn.score <= 1,
-            discrepancies: citiesOk && bestReturn.score <= 1 ? [] : bestReturn.discrepancies,
+          if (bestReturn) {
+            const citiesOk = bestReturn.discrepancies.every(d => d.field === "Date")
+            returnMatch = {
+              journey: bestReturn.journey,
+              matched: citiesOk && bestReturn.score <= 1,
+              discrepancies: citiesOk && bestReturn.score <= 1 ? [] : bestReturn.discrepancies,
+            }
           }
         }
       }
@@ -1112,32 +1150,41 @@ function citiesMatch(requested: string, extracted: string, extractedAirport?: st
   }
 
   // Check airport code to city mapping (includes common spelling variants)
-  const airportToCityMap: Record<string, string[]> = {
-    "del": ["delhi", "new delhi"],
-    "bom": ["mumbai", "bombay"],
-    "blr": ["bangalore", "bengaluru", "bangaluru"],
-    "maa": ["chennai", "madras"],
-    "ccu": ["kolkata", "calcutta"],
-    "hyd": ["hyderabad"],
-    "pat": ["patna"],
-    "amd": ["ahmedabad", "ahemdabad"],
-    "cok": ["kochi", "cochin"],
-    "goi": ["goa"],
-    "pnq": ["pune", "poona"],
-    "jai": ["jaipur"],
-    "lko": ["lucknow"],
-    "gau": ["guwahati", "gauhati"],
-    "ixb": ["bagdogra"],
-    "sxr": ["srinagar"],
-    "trv": ["trivandrum", "thiruvananthapuram"],
-    "vns": ["varanasi", "banaras", "benares"],
-    "ixc": ["chandigarh"],
-    "nag": ["nagpur"],
-    "bbi": ["bhubaneswar", "bhubaneshwar", "bhubanesar"],
-    "ixr": ["ranchi"],
-    "rpr": ["raipur"],
-    "idr": ["indore"],
-    "udr": ["udaipur"],
+  // Build from AIRPORT_CODES + add known spelling variants
+  const airportToCityMap: Record<string, string[]> = {}
+  for (const [code, city] of Object.entries(AIRPORT_CODES)) {
+    airportToCityMap[code.toLowerCase()] = [city.toLowerCase()]
+  }
+  // Add spelling variants for commonly misspelled cities
+  const variants: Record<string, string[]> = {
+    "del": ["new delhi"],
+    "bom": ["bombay"],
+    "blr": ["bengaluru", "bangaluru"],
+    "maa": ["madras"],
+    "ccu": ["calcutta"],
+    "amd": ["ahemdabad"],
+    "cok": ["cochin"],
+    "pnq": ["poona"],
+    "gau": ["gauhati"],
+    "trv": ["thiruvananthapuram"],
+    "vns": ["banaras", "benares"],
+    "bbi": ["bhubaneshwar", "bhubanesar"],
+    "vtz": ["vizag"],
+    "ixe": ["mangaluru"],
+    "myq": ["mysuru"],
+    "trz": ["trichy"],
+    "ccj": ["calicut"],
+    "bdq": ["baroda"],
+    "ded": ["dehra dun"],
+    "goi": ["panaji"],
+    "atq": ["amritsar"],
+    "pgh": ["allahabad", "prayagraj"],
+    "hbx": ["hubballi"],
+  }
+  for (const [code, alts] of Object.entries(variants)) {
+    if (airportToCityMap[code]) {
+      airportToCityMap[code].push(...alts)
+    }
   }
 
   // Collect all codes to check: extracted airport, extracted city-as-code, request's embedded code
