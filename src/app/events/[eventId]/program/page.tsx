@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useEffect, useRef } from "react"
+import { useMemo, useState, useEffect, useRef, useCallback } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -119,6 +119,21 @@ export default function ProgramDashboardPage() {
     },
   })
 
+  // Fetch registration statuses (to cross-reference with faculty_assignments)
+  // This fixes the count discrepancy: speakers confirm via portal → registrations.status = 'confirmed'
+  // but faculty_assignments.status may stay 'pending' if faculty_email is NULL
+  const { data: respondedRegistrations } = useQuery({
+    queryKey: ["dashboard-registrations", eventId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("registrations")
+        .select("id, attendee_email, attendee_name, status")
+        .eq("event_id", eventId)
+        .in("status", ["confirmed", "declined", "cancelled"])
+      return (data || []) as Array<{ id: string; attendee_email: string; attendee_name: string; status: string }>
+    },
+  })
+
   // Fetch tracks
   const { data: _tracks } = useQuery({
     queryKey: ["dashboard-tracks", eventId],
@@ -131,6 +146,44 @@ export default function ProgramDashboardPage() {
     },
   })
 
+  // Build lookup maps from registration statuses (by email and name)
+  const registrationStatusMap = useMemo(() => {
+    const emailMap = new Map<string, string>()
+    const nameMap = new Map<string, string>()
+    for (const reg of respondedRegistrations || []) {
+      if (reg.attendee_email) {
+        emailMap.set(reg.attendee_email.toLowerCase(), reg.status)
+      }
+      if (reg.attendee_name) {
+        const stripped = reg.attendee_name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim().toLowerCase()
+        if (stripped) nameMap.set(stripped, reg.status)
+      }
+    }
+    return { emailMap, nameMap }
+  }, [respondedRegistrations])
+
+  // Get effective status: use assignment status if it has a response,
+  // otherwise check if matching registration has responded
+  const getEffectiveStatus = useCallback((assignment: FacultyAssignment) => {
+    if (['confirmed', 'declined', 'cancelled', 'change_requested'].includes(assignment.status)) {
+      return assignment.status
+    }
+    // Try email match
+    if (assignment.faculty_email) {
+      const regStatus = registrationStatusMap.emailMap.get(assignment.faculty_email.toLowerCase())
+      if (regStatus) return regStatus
+    }
+    // Try name match
+    if (assignment.faculty_name) {
+      const stripped = assignment.faculty_name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim().toLowerCase()
+      if (stripped) {
+        const regStatus = registrationStatusMap.nameMap.get(stripped)
+        if (regStatus) return regStatus
+      }
+    }
+    return assignment.status
+  }, [registrationStatusMap])
+
   // Get unique dates and halls
   const dates = useMemo(() => {
     if (!sessions) return []
@@ -142,16 +195,16 @@ export default function ProgramDashboardPage() {
     return [...new Set(sessions.map(s => s.hall).filter(Boolean))] as string[]
   }, [sessions])
 
-  // Calculate stats
+  // Calculate stats using effective status (cross-references registration data)
   const stats = useMemo(() => {
     if (!assignments) return null
 
     const total = assignments.length
-    const confirmed = assignments.filter(a => a.status === 'confirmed').length
-    const invited = assignments.filter(a => a.status === 'invited').length
-    const pending = assignments.filter(a => a.status === 'pending').length
-    const declined = assignments.filter(a => a.status === 'declined').length
-    const changeRequested = assignments.filter(a => a.status === 'change_requested').length
+    const confirmed = assignments.filter(a => getEffectiveStatus(a) === 'confirmed').length
+    const invited = assignments.filter(a => getEffectiveStatus(a) === 'invited').length
+    const pending = assignments.filter(a => getEffectiveStatus(a) === 'pending').length
+    const declined = assignments.filter(a => getEffectiveStatus(a) === 'declined').length
+    const changeRequested = assignments.filter(a => getEffectiveStatus(a) === 'change_requested').length
 
     const speakers = assignments.filter(a => a.role === 'speaker').length
     const chairpersons = assignments.filter(a => a.role === 'chairperson').length
@@ -173,9 +226,9 @@ export default function ProgramDashboardPage() {
       confirmationRate,
       responseRate,
     }
-  }, [assignments])
+  }, [assignments, getEffectiveStatus])
 
-  // Group assignments by session
+  // Group assignments by session (using effective status for accurate counts)
   const sessionGroups = useMemo(() => {
     if (!sessions || !assignments) return []
 
@@ -188,18 +241,19 @@ export default function ProgramDashboardPage() {
       .map(session => {
         const sessionAssignments = assignments.filter(a => a.session_id === session.id)
 
-        // Filter by status if needed
+        // Filter by effective status if needed
         const filteredAssignments = selectedStatus === "all"
           ? sessionAssignments
-          : sessionAssignments.filter(a => a.status === selectedStatus)
+          : sessionAssignments.filter(a => getEffectiveStatus(a) === selectedStatus)
 
-        const confirmedCount = sessionAssignments.filter(a => a.status === 'confirmed').length
+        const confirmedCount = sessionAssignments.filter(a => getEffectiveStatus(a) === 'confirmed').length
         const totalCount = sessionAssignments.length
-        const needsAttention = sessionAssignments.some(a =>
-          a.status === 'declined' || a.status === 'change_requested'
-        )
+        const needsAttention = sessionAssignments.some(a => {
+          const s = getEffectiveStatus(a)
+          return s === 'declined' || s === 'change_requested'
+        })
         const allConfirmed = totalCount > 0 && confirmedCount === totalCount
-        const notStarted = totalCount > 0 && sessionAssignments.every(a => a.status === 'pending')
+        const notStarted = totalCount > 0 && sessionAssignments.every(a => getEffectiveStatus(a) === 'pending')
 
         return {
           session,
@@ -213,7 +267,7 @@ export default function ProgramDashboardPage() {
         }
       })
       .filter(group => selectedStatus === "all" || group.assignments.length > 0)
-  }, [sessions, assignments, selectedDay, selectedHall, selectedStatus])
+  }, [sessions, assignments, selectedDay, selectedHall, selectedStatus, getEffectiveStatus])
 
   // Sync faculty assignments from session data
   const syncAssignments = async () => {
@@ -565,14 +619,14 @@ export default function ProgramDashboardPage() {
 
                     {/* Quick Status Badges */}
                     <div className="w-24 flex-shrink-0 flex justify-end gap-1">
-                      {allAssignments.filter(a => a.status === 'pending').length > 0 && (
+                      {allAssignments.filter(a => getEffectiveStatus(a) === 'pending').length > 0 && (
                         <Badge variant="outline" className="text-xs">
-                          {allAssignments.filter(a => a.status === 'pending').length} pending
+                          {allAssignments.filter(a => getEffectiveStatus(a) === 'pending').length} pending
                         </Badge>
                       )}
-                      {allAssignments.filter(a => a.status === 'declined').length > 0 && (
+                      {allAssignments.filter(a => getEffectiveStatus(a) === 'declined').length > 0 && (
                         <Badge variant="destructive" className="text-xs">
-                          {allAssignments.filter(a => a.status === 'declined').length} declined
+                          {allAssignments.filter(a => getEffectiveStatus(a) === 'declined').length} declined
                         </Badge>
                       )}
                     </div>
@@ -602,7 +656,8 @@ export default function ProgramDashboardPage() {
                           </div>
 
                           {filteredAssignments.map(assignment => {
-                            const statusConfig = STATUS_CONFIG[assignment.status as keyof typeof STATUS_CONFIG]
+                            const effectiveStatus = getEffectiveStatus(assignment)
+                            const statusConfig = STATUS_CONFIG[effectiveStatus as keyof typeof STATUS_CONFIG]
                             const StatusIcon = statusConfig?.icon || Clock3
 
                             return (
@@ -610,11 +665,11 @@ export default function ProgramDashboardPage() {
                                 <div className="col-span-1">
                                   <StatusIcon className={cn(
                                     "h-4 w-4",
-                                    assignment.status === 'confirmed' && "text-green-600",
-                                    assignment.status === 'invited' && "text-blue-600",
-                                    assignment.status === 'declined' && "text-red-600",
-                                    assignment.status === 'change_requested' && "text-amber-600",
-                                    assignment.status === 'pending' && "text-gray-400"
+                                    effectiveStatus === 'confirmed' && "text-green-600",
+                                    effectiveStatus === 'invited' && "text-blue-600",
+                                    effectiveStatus === 'declined' && "text-red-600",
+                                    effectiveStatus === 'change_requested' && "text-amber-600",
+                                    effectiveStatus === 'pending' && "text-gray-400"
                                   )} />
                                 </div>
                                 <div className="col-span-3 font-medium">{assignment.faculty_name}</div>
@@ -628,17 +683,17 @@ export default function ProgramDashboardPage() {
                                 </div>
                                 <div className="col-span-2">
                                   <Badge className={cn("text-xs", statusConfig?.color)}>
-                                    {statusConfig?.label || assignment.status}
+                                    {statusConfig?.label || effectiveStatus}
                                   </Badge>
                                 </div>
                                 <div className="col-span-2 flex gap-1">
-                                  {assignment.status === 'pending' && (
+                                  {effectiveStatus === 'pending' && (
                                     <Button variant="outline" size="sm" className="h-7 text-xs">
                                       <Mail className="h-3 w-3 mr-1" />
                                       Invite
                                     </Button>
                                   )}
-                                  {assignment.status === 'invited' && (
+                                  {effectiveStatus === 'invited' && (
                                     <Button variant="outline" size="sm" className="h-7 text-xs">
                                       <RefreshCw className="h-3 w-3 mr-1" />
                                       Remind

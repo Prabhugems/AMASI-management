@@ -146,6 +146,54 @@ export default function ConfirmationsPage() {
     },
   })
 
+  // Fetch registration statuses (cross-reference for accurate confirmed counts)
+  const { data: respondedRegistrations } = useQuery({
+    queryKey: ["confirmations-registrations", eventId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("registrations")
+        .select("id, attendee_email, attendee_name, status")
+        .eq("event_id", eventId)
+        .in("status", ["confirmed", "declined", "cancelled"])
+      return (data || []) as Array<{ id: string; attendee_email: string; attendee_name: string; status: string }>
+    },
+  })
+
+  // Build lookup maps from registration statuses
+  const registrationStatusMap = useMemo(() => {
+    const emailMap = new Map<string, string>()
+    const nameMap = new Map<string, string>()
+    for (const reg of respondedRegistrations || []) {
+      if (reg.attendee_email) {
+        emailMap.set(reg.attendee_email.toLowerCase(), reg.status)
+      }
+      if (reg.attendee_name) {
+        const stripped = reg.attendee_name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim().toLowerCase()
+        if (stripped) nameMap.set(stripped, reg.status)
+      }
+    }
+    return { emailMap, nameMap }
+  }, [respondedRegistrations])
+
+  // Get effective status by cross-referencing registration data
+  const getEffectiveStatus = useCallback((assignment: FacultyAssignment) => {
+    if (['confirmed', 'declined', 'cancelled', 'change_requested'].includes(assignment.status)) {
+      return assignment.status
+    }
+    if (assignment.faculty_email) {
+      const regStatus = registrationStatusMap.emailMap.get(assignment.faculty_email.toLowerCase())
+      if (regStatus) return regStatus
+    }
+    if (assignment.faculty_name) {
+      const stripped = assignment.faculty_name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim().toLowerCase()
+      if (stripped) {
+        const regStatus = registrationStatusMap.nameMap.get(stripped)
+        if (regStatus) return regStatus
+      }
+    }
+    return assignment.status
+  }, [registrationStatusMap])
+
   // Fetch email logs for the selected assignment
   const { data: emailLogs } = useQuery({
     queryKey: ["assignment-emails", detailAssignment?.id],
@@ -224,7 +272,7 @@ export default function ConfirmationsPage() {
     return [...new Set(assignments.map(a => a.hall))].filter(Boolean) as string[]
   }, [assignments])
 
-  // Filter assignments
+  // Filter assignments (using effective status for status filter)
   const filteredAssignments = useMemo(() => {
     if (!assignments) return []
 
@@ -241,8 +289,8 @@ export default function ConfirmationsPage() {
         }
       }
 
-      // Status filter
-      if (statusFilter !== "all" && a.status !== statusFilter) return false
+      // Status filter (use effective status)
+      if (statusFilter !== "all" && getEffectiveStatus(a) !== statusFilter) return false
 
       // Role filter
       if (roleFilter !== "all" && a.role !== roleFilter) return false
@@ -255,21 +303,21 @@ export default function ConfirmationsPage() {
 
       return true
     })
-  }, [assignments, search, statusFilter, roleFilter, dayFilter, hallFilter])
+  }, [assignments, search, statusFilter, roleFilter, dayFilter, hallFilter, getEffectiveStatus])
 
-  // Stats
+  // Stats (using effective status for accurate counts)
   const stats = useMemo(() => {
     if (!filteredAssignments) return null
 
     return {
       total: filteredAssignments.length,
-      confirmed: filteredAssignments.filter(a => a.status === 'confirmed').length,
-      invited: filteredAssignments.filter(a => a.status === 'invited').length,
-      pending: filteredAssignments.filter(a => a.status === 'pending').length,
-      declined: filteredAssignments.filter(a => a.status === 'declined').length,
-      changeRequested: filteredAssignments.filter(a => a.status === 'change_requested').length,
+      confirmed: filteredAssignments.filter(a => getEffectiveStatus(a) === 'confirmed').length,
+      invited: filteredAssignments.filter(a => getEffectiveStatus(a) === 'invited').length,
+      pending: filteredAssignments.filter(a => getEffectiveStatus(a) === 'pending').length,
+      declined: filteredAssignments.filter(a => getEffectiveStatus(a) === 'declined').length,
+      changeRequested: filteredAssignments.filter(a => getEffectiveStatus(a) === 'change_requested').length,
     }
-  }, [filteredAssignments])
+  }, [filteredAssignments, getEffectiveStatus])
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -637,7 +685,8 @@ export default function ConfirmationsPage() {
               </TableRow>
             ) : (
               filteredAssignments.map(assignment => {
-                const statusConfig = STATUS_CONFIG[assignment.status as keyof typeof STATUS_CONFIG]
+                const effectiveStatus = getEffectiveStatus(assignment)
+                const statusConfig = STATUS_CONFIG[effectiveStatus as keyof typeof STATUS_CONFIG]
                 const roleColor = ROLE_COLORS[assignment.role as keyof typeof ROLE_COLORS]
 
                 return (
@@ -707,7 +756,7 @@ export default function ConfirmationsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge className={cn("text-xs", statusConfig?.color)}>
-                        {statusConfig?.label || assignment.status}
+                        {statusConfig?.label || effectiveStatus}
                       </Badge>
                       {assignment.reminder_count > 0 && (
                         <div className="text-xs text-muted-foreground mt-1">
@@ -741,13 +790,13 @@ export default function ConfirmationsPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
-                          {assignment.status === 'pending' && (
+                          {effectiveStatus === 'pending' && (
                             <DropdownMenuItem>
                               <Mail className="h-4 w-4 mr-2" />
                               Send Invitation
                             </DropdownMenuItem>
                           )}
-                          {assignment.status === 'invited' && (
+                          {effectiveStatus === 'invited' && (
                             <DropdownMenuItem>
                               <RefreshCw className="h-4 w-4 mr-2" />
                               Send Reminder
@@ -785,7 +834,8 @@ export default function ConfirmationsPage() {
           </SheetHeader>
           {detailAssignment && (() => {
             const a = detailAssignment
-            const statusConfig = STATUS_CONFIG[a.status as keyof typeof STATUS_CONFIG]
+            const detailEffectiveStatus = getEffectiveStatus(a)
+            const statusConfig = STATUS_CONFIG[detailEffectiveStatus as keyof typeof STATUS_CONFIG]
             const isPlaceholder = a.faculty_email?.includes("@placeholder.")
 
             return (
@@ -812,7 +862,7 @@ export default function ConfirmationsPage() {
                         {a.role}
                       </Badge>
                       <Badge className={cn("text-xs", statusConfig?.color)}>
-                        {statusConfig?.label || a.status}
+                        {statusConfig?.label || detailEffectiveStatus}
                       </Badge>
                     </div>
                   </div>
@@ -908,20 +958,20 @@ export default function ConfirmationsPage() {
                     )}
 
                     {/* Response */}
-                    {(a.status === "confirmed" || a.status === "declined" || a.status === "change_requested") && (
+                    {(detailEffectiveStatus === "confirmed" || detailEffectiveStatus === "declined" || detailEffectiveStatus === "change_requested") && (
                       <div className="flex items-center gap-3 p-3">
                         <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-                          a.status === "confirmed" ? "bg-green-100" :
-                          a.status === "declined" ? "bg-red-100" : "bg-amber-100"
+                          detailEffectiveStatus === "confirmed" ? "bg-green-100" :
+                          detailEffectiveStatus === "declined" ? "bg-red-100" : "bg-amber-100"
                         )}>
-                          {a.status === "confirmed" ? <CheckCircle2 className="h-4 w-4 text-green-600" /> :
-                           a.status === "declined" ? <XCircle className="h-4 w-4 text-red-600" /> :
+                          {detailEffectiveStatus === "confirmed" ? <CheckCircle2 className="h-4 w-4 text-green-600" /> :
+                           detailEffectiveStatus === "declined" ? <XCircle className="h-4 w-4 text-red-600" /> :
                            <AlertTriangle className="h-4 w-4 text-amber-600" />}
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-medium">
-                            {a.status === "confirmed" ? "Confirmed" :
-                             a.status === "declined" ? "Declined" : "Change Requested"}
+                            {detailEffectiveStatus === "confirmed" ? "Confirmed" :
+                             detailEffectiveStatus === "declined" ? "Declined" : "Change Requested"}
                           </p>
                           {a.responded_at && (
                             <p className="text-xs text-muted-foreground">{formatDateTime(a.responded_at)}</p>
@@ -981,7 +1031,7 @@ export default function ConfirmationsPage() {
 
                 {/* Actions */}
                 <div className="space-y-2 pt-2 border-t">
-                  {(a.status === "pending" || a.status === "invited") && (
+                  {(detailEffectiveStatus === "pending" || detailEffectiveStatus === "invited") && (
                     <Button
                       className="w-full"
                       onClick={() => resendInvitation(a)}
