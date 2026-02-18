@@ -793,6 +793,8 @@ export async function POST(request: NextRequest) {
 
     // Clear existing data if requested
     if (clearExisting) {
+      // Delete faculty_assignments first (some may have session_id=NULL and won't cascade)
+      await (supabase as any).from("faculty_assignments").delete().eq("event_id", eventId)
       await (supabase as any).from("sessions").delete().eq("event_id", eventId)
       if (createCoordinators) {
         await (supabase as any).from("hall_coordinators").delete().eq("event_id", eventId)

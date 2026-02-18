@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
@@ -26,6 +27,7 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
+  Download,
 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -35,6 +37,10 @@ export default function FacultyDetailPage() {
   const facultyId = params.id as string
 
   const supabase = createClient()
+
+  const [downloadingEventId, setDownloadingEventId] = useState<string | null>(
+    null
+  )
 
   // Fetch faculty data
   const { data: faculty, isLoading } = useQuery({
@@ -51,6 +57,97 @@ export default function FacultyDetailPage() {
     },
     enabled: !!facultyId,
   })
+
+  // Fetch faculty assignments
+  const { data: assignments } = useQuery({
+    queryKey: ["faculty-assignments", facultyId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("faculty_assignments")
+        .select(
+          "id, event_id, role, session_name, topic_title, session_date, start_time, hall, status"
+        )
+        .eq("faculty_id", facultyId)
+        .order("session_date", { ascending: true })
+
+      if (error) throw error
+      return data as {
+        id: string
+        event_id: string
+        role: string
+        session_name: string | null
+        topic_title: string | null
+        session_date: string | null
+        start_time: string | null
+        hall: string | null
+        status: string
+      }[]
+    },
+    enabled: !!facultyId,
+  })
+
+  // Get unique event IDs from assignments
+  const eventIds = assignments
+    ? [...new Set(assignments.map((a) => a.event_id))]
+    : []
+
+  // Fetch event details for those IDs
+  const { data: assignmentEvents } = useQuery({
+    queryKey: ["assignment-events", eventIds],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("events")
+        .select("id, name, start_date, end_date")
+        .in("id", eventIds)
+
+      if (error) throw error
+      return data as {
+        id: string
+        name: string
+        start_date: string | null
+        end_date: string | null
+      }[]
+    },
+    enabled: eventIds.length > 0,
+  })
+
+  // Group assignments by event
+  const assignmentsByEvent = assignments
+    ? assignments.reduce(
+        (acc, a) => {
+          if (!acc[a.event_id]) acc[a.event_id] = []
+          acc[a.event_id].push(a)
+          return acc
+        },
+        {} as Record<string, typeof assignments>
+      )
+    : {}
+
+  const handleDownloadInvitation = async (eventId: string) => {
+    setDownloadingEventId(eventId)
+    try {
+      const res = await fetch(
+        `/api/faculty/${facultyId}/invitation-pdf?event_id=${eventId}`
+      )
+      if (!res.ok) throw new Error("Download failed")
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download =
+        res.headers
+          .get("Content-Disposition")
+          ?.match(/filename="(.+)"/)?.[1] || "invitation.pdf"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Failed to download invitation PDF:", err)
+    } finally {
+      setDownloadingEventId(null)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -242,6 +339,89 @@ export default function FacultyDetailPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Event Assignments */}
+        {assignments && assignments.length > 0 && assignmentEvents && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Calendar className="h-5 w-5" />
+                Event Assignments
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {Object.entries(assignmentsByEvent).map(
+                ([eventId, eventAssignments]) => {
+                  const evt = assignmentEvents.find(
+                    (e) => e.id === eventId
+                  )
+                  if (!evt) return null
+                  return (
+                    <div key={eventId} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {evt.name}
+                          </p>
+                          {evt.start_date && (
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(
+                                evt.start_date
+                              ).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                              {evt.end_date &&
+                                evt.end_date !== evt.start_date &&
+                                ` - ${new Date(
+                                  evt.end_date
+                                ).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}`}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            handleDownloadInvitation(eventId)
+                          }
+                          disabled={downloadingEventId === eventId}
+                        >
+                          {downloadingEventId === eventId ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Download className="h-4 w-4 mr-2" />
+                          )}
+                          Download Invitation
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {eventAssignments.map((a) => (
+                          <Badge
+                            key={a.id}
+                            variant="secondary"
+                            className="text-xs"
+                          >
+                            {a.role.charAt(0).toUpperCase() +
+                              a.role.slice(1)}
+                            {a.session_name
+                              ? ` — ${a.session_name}`
+                              : ""}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                }
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Bio */}
         {faculty.bio && (

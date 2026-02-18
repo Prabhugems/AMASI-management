@@ -19,7 +19,7 @@ import {
 import Link from "next/link"
 import { useTheme } from "next-themes"
 import { useQuery } from "@tanstack/react-query"
-import { createClient } from "@/lib/supabase/client"
+
 
 // Animated Progress Bar
 function AnimatedProgress({
@@ -249,7 +249,8 @@ function EventRow({
     const date = new Date(dateStr)
     const today = new Date()
     const diff = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    if (diff < 0) return "Completed"
+    if (diff < -1) return `Day ${Math.abs(diff) + 1}`
+    if (diff === -1) return "Day 2"
     if (diff === 0) return "Today"
     if (diff === 1) return "Tomorrow"
     return `${diff} days away`
@@ -431,7 +432,6 @@ function EventRow({
 export function EventsTable() {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const supabase = createClient()
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -444,68 +444,14 @@ export function EventsTable() {
   const { data: events, isLoading } = useQuery({
     queryKey: ["dashboard-events"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("id, name, short_name, event_type, city, state, start_date, status, confirmed_faculty, pending_faculty, declined_faculty, total_delegates, progress")
-        .in("status", ["active", "planning", "registration_open", "ongoing", "setup", "draft"])
-        .order("start_date", { ascending: true })
-        .limit(5)
-
-      if (error) throw error
-      return data || []
+      const res = await fetch("/api/dashboard/active-events")
+      if (!res.ok) throw new Error("Failed to fetch active events")
+      return await res.json()
     },
   })
 
-  // Fallback data if no events
-  const fallbackEvents = [
-    {
-      id: "amasicon-2026",
-      name: "AMASICON 2026",
-      short_name: "AMASICON 2026",
-      event_type: "Conference",
-      city: "Jaipur",
-      state: "Rajasthan",
-      start_date: "2026-08-28",
-      status: "active",
-      confirmed_faculty: 68,
-      pending_faculty: 14,
-      declined_faculty: 2,
-      total_delegates: 892,
-      progress: 78,
-    },
-    {
-      id: "120-fmas",
-      name: "120 FMAS Skill Course",
-      short_name: "120 FMAS",
-      event_type: "Course",
-      city: "Mumbai",
-      state: "Maharashtra",
-      start_date: "2026-02-15",
-      status: "planning",
-      confirmed_faculty: 8,
-      pending_faculty: 4,
-      declined_faculty: 0,
-      total_delegates: 24,
-      progress: 35,
-    },
-    {
-      id: "mmas-hernia",
-      name: "MMAS Hernia Workshop",
-      short_name: null,
-      event_type: "Workshop",
-      city: "Delhi",
-      state: null,
-      start_date: "2026-03-05",
-      status: "setup",
-      confirmed_faculty: 4,
-      pending_faculty: 2,
-      declined_faculty: 1,
-      total_delegates: 30,
-      progress: 15,
-    },
-  ]
-
-  const displayEvents = events && events.length > 0 ? events : fallbackEvents
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const displayEvents: any[] = events || []
 
   return (
     <div
@@ -566,6 +512,14 @@ export function EventsTable() {
               <tr>
                 <td colSpan={7} className={`py-12 text-center ${isDark ? "text-slate-400" : "text-gray-500"}`}>
                   Loading events...
+                </td>
+              </tr>
+            ) : displayEvents.length === 0 ? (
+              <tr>
+                <td colSpan={7} className={`py-12 text-center ${isDark ? "text-slate-400" : "text-gray-500"}`}>
+                  <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="font-medium">No active events</p>
+                  <p className="text-sm mt-1">Create a new event to get started</p>
                 </td>
               </tr>
             ) : (
