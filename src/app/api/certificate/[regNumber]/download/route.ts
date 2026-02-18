@@ -42,7 +42,7 @@ function getBaseUrl(): string {
   return "http://localhost:3000"
 }
 
-function replacePlaceholders(text: string, registration: any, event: any): string {
+function replacePlaceholders(text: string, registration: any, event: any, checkinTokenOverride?: string | null): string {
   if (!text) return ""
   let result = text
   result = result.replace(/\{\{name\}\}/g, registration.attendee_name || "")
@@ -66,7 +66,7 @@ function replacePlaceholders(text: string, registration: any, event: any): strin
   result = result.replace(/\{\{issue_date\}\}/g, today)
   result = result.replace(/\{\{today\}\}/g, today)
 
-  const checkinToken = registration.checkin_token || registration.registration_number
+  const checkinToken = checkinTokenOverride || registration.checkin_token || registration.registration_number
   const baseUrl = getBaseUrl()
   const verifyUrl = `${baseUrl}/v/${checkinToken}`
   result = result.replace(/\{\{verification_url\}\}/g, verifyUrl)
@@ -89,20 +89,43 @@ export async function GET(
 
     const supabase = await createAdminClient()
 
-    // Look up registration
-    const { data: registration } = await (supabase as any)
+    // Look up registration - use core columns first, then try extended columns separately
+    const { data: registration, error: regError } = await (supabase as any)
       .from("registrations")
       .select(`
         id, registration_number, attendee_name, attendee_email, attendee_phone,
         attendee_institution, attendee_designation, ticket_type_id, event_id,
-        checkin_token, certificate_generated_at, certificate_downloaded_at, checked_in,
+        certificate_generated_at, checked_in,
         ticket_types (name)
       `)
       .ilike("registration_number", regNumber)
       .maybeSingle()
 
+    if (regError) {
+      console.error("Certificate lookup error:", regError)
+      return NextResponse.json({ error: "Failed to look up registration" }, { status: 500 })
+    }
+
     if (!registration) {
       return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+
+    // Try to fetch optional columns (checkin_token, certificate_downloaded_at) separately
+    // These columns may not exist if migrations haven't been applied yet
+    let checkinToken: string | null = null
+    let certificateDownloadedAt: string | null = null
+    try {
+      const { data: extData } = await (supabase as any)
+        .from("registrations")
+        .select("checkin_token, certificate_downloaded_at")
+        .eq("id", registration.id)
+        .maybeSingle()
+      if (extData) {
+        checkinToken = extData.checkin_token || null
+        certificateDownloadedAt = extData.certificate_downloaded_at || null
+      }
+    } catch {
+      // Optional columns may not exist - that's fine
     }
 
     // Check if delegate has checked in
@@ -197,7 +220,7 @@ export async function GET(
       }
 
       if (element.type === "text" && element.content) {
-        const rawText = replacePlaceholders(element.content, registration, event)
+        const rawText = replacePlaceholders(element.content, registration, event, checkinToken)
         const text = applyTextCase(rawText, element.textCase)
         const color = hexToRgb(element.color || "#000000")
         const fontSize = (element.fontSize || 14) * scaleFactor
@@ -211,7 +234,7 @@ export async function GET(
       }
 
       if (element.type === "qr_code") {
-        const qrContent = replacePlaceholders(element.content || "{{verification_url}}", registration, event)
+        const qrContent = replacePlaceholders(element.content || "{{verification_url}}", registration, event, checkinToken)
         try {
           const qrDataUrl = await QRCode.toDataURL(qrContent, { width: Math.round(width * 2), margin: 1, errorCorrectionLevel: "M" })
           const qrBase64 = qrDataUrl.split(",")[1]
@@ -250,11 +273,15 @@ export async function GET(
     const pdfBytes = await pdfDoc.save()
 
     // Track certificate download (set timestamp on first download)
-    if (!registration.certificate_downloaded_at) {
-      await (supabase as any)
-        .from("registrations")
-        .update({ certificate_downloaded_at: new Date().toISOString() })
-        .eq("id", registration.id)
+    if (!certificateDownloadedAt) {
+      try {
+        await (supabase as any)
+          .from("registrations")
+          .update({ certificate_downloaded_at: new Date().toISOString() })
+          .eq("id", registration.id)
+      } catch {
+        // Column may not exist yet - non-critical
+      }
     }
 
     return new NextResponse(Buffer.from(pdfBytes), {
