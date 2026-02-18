@@ -92,7 +92,12 @@ const AIRLINES: Record<string, RegExp> = {
 // Extract ALL journeys from ticket text
 async function extractAllJourneys(text: string): Promise<Journey[]> {
   const journeys: Journey[] = []
-  const normalized = text.replace(/\r\n/g, "\n")
+  // Normalize text: fix line endings, unicode spaces, and common PDF artifacts
+  const normalized = text
+    .replace(/\r\n/g, "\n")
+    .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, " ") // non-breaking & unicode spaces
+    .replace(/[–—]/g, "-") // normalize dashes
+    .replace(/\s+/g, (m) => m.includes("\n") ? "\n" : " ") // collapse multiple spaces but keep newlines
   const upper = normalized.toUpperCase()
 
   // Find ALL PNRs with their positions - round-trip tickets have separate PNRs per segment
@@ -874,8 +879,8 @@ export async function POST(request: NextRequest) {
       }
     } else if (ticketCategory === "roundtrip" || ticketCategory === "multicity") {
       // Multiple journeys - match each with onward/return requests
+      // First pass: try exact matches
       for (const journey of allJourneys) {
-        // Try to match with onward request
         if (onwardRequest && !onwardMatch.matched) {
           const check = matchJourneyWithRequest(journey, onwardRequest)
           if (check.matched) {
@@ -883,7 +888,6 @@ export async function POST(request: NextRequest) {
             continue
           }
         }
-        // Try to match with return request
         if (returnRequest && !returnMatch.matched) {
           const check = matchJourneyWithRequest(journey, returnRequest)
           if (check.matched) {
@@ -893,11 +897,44 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // If no matches found, show discrepancies for first journey
+      // Second pass: if no exact matches, find best match (fewest discrepancies)
       if (!onwardMatch.matched && !returnMatch.matched && allJourneys.length > 0) {
-        if (onwardRequest) {
-          const check = matchJourneyWithRequest(allJourneys[0], onwardRequest)
-          onwardMatch = { journey: allJourneys[0], matched: false, discrepancies: check.discrepancies }
+        let bestOnward: { journey: Journey; discrepancies: any[]; score: number } | null = null
+        let bestReturn: { journey: Journey; discrepancies: any[]; score: number } | null = null
+
+        for (const journey of allJourneys) {
+          if (onwardRequest) {
+            const check = matchJourneyWithRequest(journey, onwardRequest)
+            const score = check.discrepancies.length
+            if (!bestOnward || score < bestOnward.score) {
+              bestOnward = { journey, discrepancies: check.discrepancies, score }
+            }
+          }
+          if (returnRequest) {
+            const check = matchJourneyWithRequest(journey, returnRequest)
+            const score = check.discrepancies.length
+            if (!bestReturn || score < bestReturn.score) {
+              bestReturn = { journey, discrepancies: check.discrepancies, score }
+            }
+          }
+        }
+
+        // Use best matches - if cities match but only date differs, consider it matched
+        if (bestOnward) {
+          const citiesOk = bestOnward.discrepancies.every(d => d.field === "Date")
+          onwardMatch = {
+            journey: bestOnward.journey,
+            matched: citiesOk && bestOnward.score <= 1,
+            discrepancies: citiesOk && bestOnward.score <= 1 ? [] : bestOnward.discrepancies,
+          }
+        }
+        if (bestReturn && (!bestOnward || bestReturn.journey !== bestOnward?.journey || allJourneys.length > 1)) {
+          const citiesOk = bestReturn.discrepancies.every(d => d.field === "Date")
+          returnMatch = {
+            journey: bestReturn.journey,
+            matched: citiesOk && bestReturn.score <= 1,
+            discrepancies: citiesOk && bestReturn.score <= 1 ? [] : bestReturn.discrepancies,
+          }
         }
       }
     }
@@ -1011,19 +1048,42 @@ function calculateConfidence(
   return Math.min(95, Math.round((score / total) * 100))
 }
 
+// Normalize city string: strip airport codes in parens, normalize whitespace/unicode
+function normalizeCity(city: string): { name: string; code: string } {
+  // Extract airport code from "City (CODE)" format
+  const codeMatch = city.match(/\(([A-Za-z]{3})\)/)
+  const code = codeMatch ? codeMatch[1].toLowerCase() : ""
+  // Strip parenthetical airport code and normalize whitespace (including non-breaking spaces)
+  const name = city
+    .replace(/\s*\([A-Za-z]{3}\)\s*/g, "")
+    .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, " ") // normalize unicode spaces
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .trim()
+  return { name, code }
+}
+
 // Helper to check if city/airport matches
 function citiesMatch(requested: string, extracted: string, extractedAirport?: string | null): boolean {
   if (!requested || !extracted) return true // Skip if either is missing
 
-  const reqLower = requested.toLowerCase().trim()
-  const extLower = extracted.toLowerCase().trim()
+  const req = normalizeCity(requested)
+  const ext = normalizeCity(extracted)
   const extAirportLower = (extractedAirport || "").toLowerCase().trim()
 
-  // Direct match
-  if (reqLower === extLower || reqLower === extAirportLower) return true
+  // Direct city name match
+  if (req.name === ext.name) return true
 
-  // Partial match (one contains the other)
-  if (extLower.includes(reqLower) || reqLower.includes(extLower)) return true
+  // Airport code matches (from request "City (CODE)" vs extracted airport)
+  if (req.code && extAirportLower && req.code === extAirportLower) return true
+  if (req.code && ext.name === req.code) return true
+  if (req.name === extAirportLower) return true
+
+  // Partial match on normalized city names (one contains the other)
+  if (ext.name.includes(req.name) || req.name.includes(ext.name)) return true
+
+  // If extracted is just an airport code, compare with request's embedded code
+  if (req.code && ext.code && req.code === ext.code) return true
 
   // Check airport code to city mapping
   const airportToCityMap: Record<string, string[]> = {
@@ -1054,16 +1114,20 @@ function citiesMatch(requested: string, extracted: string, extractedAirport?: st
     "udr": ["udaipur"],
   }
 
-  // Check if extracted airport code matches requested city
+  // Collect all codes to check: extracted airport, extracted city-as-code, request's embedded code
+  const extractedCodes = [extAirportLower, ext.name, ext.code].filter(Boolean)
+  const requestedCodes = [req.code, req.name].filter(Boolean)
+
   for (const [code, cities] of Object.entries(airportToCityMap)) {
-    if (extAirportLower === code || extLower === code) {
-      if (cities.some(city => reqLower.includes(city) || city.includes(reqLower))) {
+    // Check if any extracted value matches this airport code
+    if (extractedCodes.includes(code)) {
+      if (cities.some(city => requestedCodes.some(rc => rc.includes(city) || city.includes(rc)))) {
         return true
       }
     }
-    // Check if requested is an airport code
-    if (reqLower === code) {
-      if (cities.some(city => extLower.includes(city) || city.includes(extLower))) {
+    // Check if any requested value matches this airport code
+    if (requestedCodes.includes(code)) {
+      if (cities.some(city => extractedCodes.some(ec => ec.includes(city) || city.includes(ec)))) {
         return true
       }
     }

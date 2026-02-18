@@ -451,23 +451,38 @@ export default function TravelAgentPortal() {
     else setUploadingReturn(true)
 
     try {
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("bucket", "event-assets")
-      formData.append("folder", `tickets/${event?.id}`)
+      const eventId = event?.id || token
 
-      const response = await fetch("/api/upload", {
+      // Step 1: Get signed upload URL (works without auth for travel agent portal)
+      const signedUrlResponse = await fetch("/api/upload/signed-url", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          file_name: file.name,
+          content_type: file.type,
+          type: "tickets",
+        }),
       })
 
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error)
+      const signedUrlResult = await signedUrlResponse.json()
+      if (!signedUrlResponse.ok) throw new Error(signedUrlResult.error)
+
+      // Step 2: Upload directly to Supabase Storage using the signed URL
+      const uploadResponse = await fetch(signedUrlResult.signedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      })
+
+      if (!uploadResponse.ok) throw new Error("Upload to storage failed")
+
+      const publicUrl = signedUrlResult.publicUrl
 
       if (type === "onward") {
-        setBookingForm(prev => ({ ...prev, onward_eticket: result.url }))
+        setBookingForm(prev => ({ ...prev, onward_eticket: publicUrl }))
       } else {
-        setBookingForm(prev => ({ ...prev, return_eticket: result.url }))
+        setBookingForm(prev => ({ ...prev, return_eticket: publicUrl }))
       }
       toast.success("Ticket uploaded!")
     } catch (error: any) {
@@ -486,7 +501,7 @@ export default function TravelAgentPortal() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           registration_id: id,
-          event_id: event?.id,
+          event_id: event?.id || token,
           booking,
         }),
       })
@@ -1004,7 +1019,7 @@ export default function TravelAgentPortal() {
                 <input
                   ref={ticketFileRef}
                   type="file"
-                  accept=".pdf"
+                  accept=".pdf,.jpg,.jpeg,.png"
                   className="hidden"
                   onChange={handleFileSelect}
                 />
