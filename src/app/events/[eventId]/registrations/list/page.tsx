@@ -1258,9 +1258,11 @@ export default function RegistrationsPage() {
               Import
             </Link>
           </Button>
-          <Button>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add Attendee
+          <Button asChild>
+            <Link href={`/delegates/new?event_id=${eventId}`}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add Attendee
+            </Link>
           </Button>
         </div>
       </div>

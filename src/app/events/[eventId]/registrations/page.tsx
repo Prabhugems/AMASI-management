@@ -87,7 +87,7 @@ export default function RegistrationsOverviewPage() {
           <h1 className="text-xl sm:text-2xl font-bold">Registrations Overview</h1>
           <p className="text-sm text-muted-foreground">Manage event registrations and attendees</p>
         </div>
-        <Link href={`${basePath}/list`}>
+        <Link href={`/delegates/new?event_id=${eventId}`}>
           <Button size="sm">
             <UserPlus className="h-4 w-4 mr-2" />
             Add Registration
