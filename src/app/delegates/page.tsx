@@ -190,11 +190,15 @@ export default function GlobalAttendeesPage() {
                     Import
                   </Link>
                 </Button>
-                <Button asChild>
-                  <Link href="/delegates/new">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Attendee
-                  </Link>
+                <Button onClick={() => {
+                  if (eventFilter && eventFilter !== "all") {
+                    window.open(`/register/${eventFilter}`, '_blank')
+                  } else {
+                    toast.error("Please select an event first to add an attendee")
+                  }
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Attendee
                 </Button>
               </div>
             </div>
@@ -313,11 +317,15 @@ export default function GlobalAttendeesPage() {
                 </div>
                 <h3 className="text-lg font-semibold mb-2">No attendees found</h3>
                 <p className="text-muted-foreground mb-6">Try adjusting your filters or add new attendees.</p>
-                <Button asChild>
-                  <Link href="/delegates/new">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Attendee
-                  </Link>
+                <Button onClick={() => {
+                  if (eventFilter && eventFilter !== "all") {
+                    window.open(`/register/${eventFilter}`, '_blank')
+                  } else {
+                    toast.error("Please select an event first to add an attendee")
+                  }
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Attendee
                 </Button>
               </div>
             ) : (

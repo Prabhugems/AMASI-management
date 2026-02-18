@@ -27,6 +27,21 @@ export default function RegistrationsOverviewPage() {
   const eventId = params.eventId as string
   const supabase = createClient()
 
+  // Fetch event slug for registration form link
+  const { data: event } = useQuery({
+    queryKey: ["event-slug", eventId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("events")
+        .select("slug")
+        .eq("id", eventId)
+        .single()
+      if (error) throw error
+      return data as { slug: string | null }
+    },
+    enabled: !!eventId,
+  })
+
   // Fetch registrations
   const { data: registrations, isLoading } = useQuery({
     queryKey: ["registrations-overview", eventId],
@@ -87,12 +102,10 @@ export default function RegistrationsOverviewPage() {
           <h1 className="text-xl sm:text-2xl font-bold">Registrations Overview</h1>
           <p className="text-sm text-muted-foreground">Manage event registrations and attendees</p>
         </div>
-        <Link href={`/delegates/new?event_id=${eventId}`}>
-          <Button size="sm">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add Registration
-          </Button>
-        </Link>
+        <Button size="sm" onClick={() => window.open(`/register/${event?.slug || eventId}`, '_blank')}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Add Registration
+        </Button>
       </div>
 
       {/* Main Stats */}
