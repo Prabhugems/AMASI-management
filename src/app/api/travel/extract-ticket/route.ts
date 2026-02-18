@@ -102,15 +102,54 @@ const AIRPORT_CODES: Record<string, string> = {
   IXZ: "Port Blair",
 }
 
+// Airport code → city name variants (built from AIRPORT_CODES + spelling variants)
+const AIRPORT_CITY_MAP: Record<string, string[]> = {}
+for (const [code, city] of Object.entries(AIRPORT_CODES)) {
+  AIRPORT_CITY_MAP[code.toLowerCase()] = [city.toLowerCase()]
+}
+// Add common spelling variants
+const CITY_VARIANTS: Record<string, string[]> = {
+  "del": ["new delhi"],
+  "bom": ["bombay"],
+  "blr": ["bengaluru", "bangaluru"],
+  "maa": ["madras"],
+  "ccu": ["calcutta"],
+  "amd": ["ahemdabad"],
+  "cok": ["cochin"],
+  "pnq": ["poona"],
+  "gau": ["gauhati"],
+  "trv": ["thiruvananthapuram"],
+  "vns": ["banaras", "benares"],
+  "bbi": ["bhubaneshwar", "bhubanesar"],
+  "vtz": ["vizag"],
+  "ixe": ["mangaluru"],
+  "myq": ["mysuru"],
+  "trz": ["trichy"],
+  "ccj": ["calicut"],
+  "bdq": ["baroda"],
+  "ded": ["dehra dun"],
+  "goi": ["panaji"],
+  "atq": ["amritsar"],
+  "hbx": ["hubballi"],
+}
+for (const [code, alts] of Object.entries(CITY_VARIANTS)) {
+  if (AIRPORT_CITY_MAP[code]) {
+    AIRPORT_CITY_MAP[code].push(...alts)
+  }
+}
+
 // Airline patterns
 const AIRLINES: Record<string, RegExp> = {
   "IndiGo": /indigo|6e[-\s]?\d{3,4}/i,
-  "Air India": /air\s*india|ai[-\s]?\d{3,4}/i,
+  "Air India": /air\s*india(?!\s*express)|ai[-\s]?\d{3,4}/i,
+  "Air India Express": /air\s*india\s*express|ix[-\s]?\d{3,4}/i,
   "SpiceJet": /spicejet|sg[-\s]?\d{3,4}/i,
   "Vistara": /vistara|uk[-\s]?\d{3,4}/i,
   "Go First": /go\s*first|g8[-\s]?\d{3,4}/i,
   "AirAsia": /airasia|i5[-\s]?\d{3,4}/i,
   "Akasa Air": /akasa|qp[-\s]?\d{3,4}/i,
+  "Alliance Air": /alliance\s*air|9i[-\s]?\d{3,4}/i,
+  "Star Air": /star\s*air|s5[-\s]?\d{3,4}/i,
 }
 
 // Extract ALL journeys from ticket text
@@ -229,8 +268,14 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
 
     let depAirport = ""
     let arrAirport = ""
-    const city1Lower = match[1].toLowerCase()
-    const city2Lower = match[2].toLowerCase()
+    // Trim city names (lazy quantifier may include trailing spaces)
+    const city1Trimmed = match[1].trim()
+    const city2Trimmed = match[2].trim()
+    const city1Lower = city1Trimmed.toLowerCase()
+    const city2Lower = city2Trimmed.toLowerCase()
+
+    // Skip very short city names (likely false positives like "in" from "Check-in")
+    if (city1Trimmed.length < 3 || city2Trimmed.length < 3) continue
 
     // Map city names to airport codes (with fuzzy matching for spelling variants)
     for (const [code, cityName] of Object.entries(AIRPORT_CODES)) {
@@ -239,10 +284,13 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
       if (cn === city2Lower || (city2Lower.length >= 5 && levenshtein(cn, city2Lower) <= 2)) arrAirport = code
     }
 
+    // Skip routes where neither city could be mapped to an airport (likely false positives)
+    if (!depAirport && !arrAirport) continue
+
     routes.push({
       index: match.index,
-      city1: match[1],
-      city2: match[2],
+      city1: city1Trimmed,
+      city2: city2Trimmed,
       date: `${year}-${monthNum}-${day.padStart(2, "0")}`,
       depAirport,
       arrAirport,
@@ -251,7 +299,7 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
 
   // Find all flight numbers
   // Handle case where flight number is concatenated with duration like "6E-3421h 10m"
-  const flightRegex = /\b(6E|AI|SG|UK|G8|I5|QP)[-\s]?(\d{2,4})(\d)?([hH]\s*\d+[mM])?/gi
+  const flightRegex = /\b(6E|AI|IX|SG|UK|G8|I5|QP|9I|S5)[-\s]?(\d{2,4})(\d)?([hH]\s*\d+[mM])?/gi
   const flights: Array<{ index: number; number: string }> = []
   while ((match = flightRegex.exec(upper)) !== null) {
     let flightNum = match[2]
@@ -401,8 +449,9 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
 // Get airline name from code
 function getAirlineFromCode(code: string): string {
   const codeToAirline: Record<string, string> = {
-    "6E": "IndiGo", "AI": "Air India", "SG": "SpiceJet",
+    "6E": "IndiGo", "AI": "Air India", "IX": "Air India Express", "SG": "SpiceJet",
     "UK": "Vistara", "G8": "Go First", "I5": "AirAsia", "QP": "Akasa Air",
+    "9I": "Alliance Air", "S5": "Star Air",
   }
   return codeToAirline[code.toUpperCase()] || code
 }
@@ -430,7 +479,7 @@ function _splitRoundTripText(text: string): { onward: string; return_journey: st
 
   // Split by multiple flight numbers - find positions of all flight codes
   const flightMatches: Array<{ index: number; match: string }> = []
-  const flightRegex = /\b(6E|AI|SG|UK|G8|I5|QP)[-\s]?\d{3,4}/gi
+  const flightRegex = /\b(6E|AI|IX|SG|UK|G8|I5|QP|9I|S5)[-\s]?\d{3,4}/gi
   let match
   while ((match = flightRegex.exec(normalized)) !== null) {
     flightMatches.push({ index: match.index, match: match[0] })
@@ -499,11 +548,11 @@ function extractFlightDetails(text: string): ExtractedFlightDetails {
   // Handle cases where flight number is concatenated with duration like "6E-63481h 10m"
   const flightPatterns = [
     // Standard format with separator: 6E-6348 or 6E 6348
-    /\b(6E|AI|SG|UK|G8|I5|QP)[-\s](\d{3,4})\b/,
+    /\b(6E|AI|IX|SG|UK|G8|I5|QP|9I|S5)[-\s](\d{3,4})\b/,
     // Concatenated with duration: 6E6348 followed by 1h or h
-    /\b(6E|AI|SG|UK|G8|I5|QP)[-\s]?(\d{3,4})\d*[hH]\s*\d+[mM]/,
+    /\b(6E|AI|IX|SG|UK|G8|I5|QP|9I|S5)[-\s]?(\d{3,4})\d*[hH]\s*\d+[mM]/,
     // Just airline code followed by digits
-    /\b(6E|AI|SG|UK|G8|I5|QP)[-\s]?(\d{3,4})/,
+    /\b(6E|AI|IX|SG|UK|G8|I5|QP|9I|S5)[-\s]?(\d{3,4})/,
   ]
 
   for (const pattern of flightPatterns) {
@@ -512,11 +561,7 @@ function extractFlightDetails(text: string): ExtractedFlightDetails {
       result.flight_number = `${match[1]}-${match[2]}`
       // Set airline from flight code if not found
       if (!result.airline) {
-        const codeToAirline: Record<string, string> = {
-          "6E": "IndiGo", "AI": "Air India", "SG": "SpiceJet",
-          "UK": "Vistara", "G8": "Go First", "I5": "AirAsia", "QP": "Akasa Air",
-        }
-        result.airline = codeToAirline[match[1]] || null
+        result.airline = getAirlineFromCode(match[1])
       }
       break
     }
@@ -1149,49 +1194,12 @@ function citiesMatch(requested: string, extracted: string, extractedAirport?: st
     if (dist <= 2) return true
   }
 
-  // Check airport code to city mapping (includes common spelling variants)
-  // Build from AIRPORT_CODES + add known spelling variants
-  const airportToCityMap: Record<string, string[]> = {}
-  for (const [code, city] of Object.entries(AIRPORT_CODES)) {
-    airportToCityMap[code.toLowerCase()] = [city.toLowerCase()]
-  }
-  // Add spelling variants for commonly misspelled cities
-  const variants: Record<string, string[]> = {
-    "del": ["new delhi"],
-    "bom": ["bombay"],
-    "blr": ["bengaluru", "bangaluru"],
-    "maa": ["madras"],
-    "ccu": ["calcutta"],
-    "amd": ["ahemdabad"],
-    "cok": ["cochin"],
-    "pnq": ["poona"],
-    "gau": ["gauhati"],
-    "trv": ["thiruvananthapuram"],
-    "vns": ["banaras", "benares"],
-    "bbi": ["bhubaneshwar", "bhubanesar"],
-    "vtz": ["vizag"],
-    "ixe": ["mangaluru"],
-    "myq": ["mysuru"],
-    "trz": ["trichy"],
-    "ccj": ["calicut"],
-    "bdq": ["baroda"],
-    "ded": ["dehra dun"],
-    "goi": ["panaji"],
-    "atq": ["amritsar"],
-    "pgh": ["allahabad", "prayagraj"],
-    "hbx": ["hubballi"],
-  }
-  for (const [code, alts] of Object.entries(variants)) {
-    if (airportToCityMap[code]) {
-      airportToCityMap[code].push(...alts)
-    }
-  }
-
+  // Check airport code to city mapping (uses pre-built module-level map)
   // Collect all codes to check: extracted airport, extracted city-as-code, request's embedded code
   const extractedCodes = [extAirportLower, ext.name, ext.code].filter(Boolean)
   const requestedCodes = [req.code, req.name].filter(Boolean)
 
-  for (const [code, cities] of Object.entries(airportToCityMap)) {
+  for (const [code, cities] of Object.entries(AIRPORT_CITY_MAP)) {
     // Check if any extracted value matches this airport code
     if (extractedCodes.includes(code)) {
       if (cities.some(city => requestedCodes.some(rc => rc.includes(city) || city.includes(rc)))) {
