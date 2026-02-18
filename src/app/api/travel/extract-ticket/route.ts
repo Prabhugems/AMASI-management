@@ -205,10 +205,11 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
     const city1Lower = match[1].toLowerCase()
     const city2Lower = match[2].toLowerCase()
 
-    // Map city names to airport codes
+    // Map city names to airport codes (with fuzzy matching for spelling variants)
     for (const [code, cityName] of Object.entries(AIRPORT_CODES)) {
-      if (cityName.toLowerCase() === city1Lower) depAirport = code
-      if (cityName.toLowerCase() === city2Lower) arrAirport = code
+      const cn = cityName.toLowerCase()
+      if (cn === city1Lower || (city1Lower.length >= 5 && levenshtein(cn, city1Lower) <= 2)) depAirport = code
+      if (cn === city2Lower || (city2Lower.length >= 5 && levenshtein(cn, city2Lower) <= 2)) arrAirport = code
     }
 
     routes.push({
@@ -510,13 +511,14 @@ function extractFlightDetails(text: string): ExtractedFlightDetails {
       const city1 = match[1].toLowerCase()
       const city2 = match[2].toLowerCase()
 
-      // Find airport codes for these cities
+      // Find airport codes for these cities (with fuzzy matching)
       for (const [code, cityName] of Object.entries(AIRPORT_CODES)) {
-        if (cityName.toLowerCase() === city1 || city1.includes(cityName.toLowerCase())) {
+        const cn = cityName.toLowerCase()
+        if (cn === city1 || city1.includes(cn) || (city1.length >= 5 && levenshtein(cn, city1) <= 2)) {
           result.departure_airport = code
           result.departure_city = cityName
         }
-        if (cityName.toLowerCase() === city2 || city2.includes(cityName.toLowerCase())) {
+        if (cn === city2 || city2.includes(cn) || (city2.length >= 5 && levenshtein(cn, city2) <= 2)) {
           result.arrival_airport = code
           result.arrival_city = cityName
         }
@@ -1063,6 +1065,24 @@ function normalizeCity(city: string): { name: string; code: string } {
   return { name, code }
 }
 
+// Simple Levenshtein distance for fuzzy city matching
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length
+  if (m === 0) return n
+  if (n === 0) return m
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0))
+  for (let i = 0; i <= m; i++) dp[i][0] = i
+  for (let j = 0; j <= n; j++) dp[0][j] = j
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+    }
+  }
+  return dp[m][n]
+}
+
 // Helper to check if city/airport matches
 function citiesMatch(requested: string, extracted: string, extractedAirport?: string | null): boolean {
   if (!requested || !extracted) return true // Skip if either is missing
@@ -1085,29 +1105,35 @@ function citiesMatch(requested: string, extracted: string, extractedAirport?: st
   // If extracted is just an airport code, compare with request's embedded code
   if (req.code && ext.code && req.code === ext.code) return true
 
-  // Check airport code to city mapping
+  // Fuzzy match: allow edit distance <= 2 for city names with 6+ chars
+  if (req.name.length >= 6 && ext.name.length >= 6) {
+    const dist = levenshtein(req.name, ext.name)
+    if (dist <= 2) return true
+  }
+
+  // Check airport code to city mapping (includes common spelling variants)
   const airportToCityMap: Record<string, string[]> = {
     "del": ["delhi", "new delhi"],
     "bom": ["mumbai", "bombay"],
-    "blr": ["bangalore", "bengaluru"],
+    "blr": ["bangalore", "bengaluru", "bangaluru"],
     "maa": ["chennai", "madras"],
     "ccu": ["kolkata", "calcutta"],
     "hyd": ["hyderabad"],
     "pat": ["patna"],
-    "amd": ["ahmedabad"],
+    "amd": ["ahmedabad", "ahemdabad"],
     "cok": ["kochi", "cochin"],
     "goi": ["goa"],
-    "pnq": ["pune"],
+    "pnq": ["pune", "poona"],
     "jai": ["jaipur"],
     "lko": ["lucknow"],
-    "gau": ["guwahati"],
+    "gau": ["guwahati", "gauhati"],
     "ixb": ["bagdogra"],
     "sxr": ["srinagar"],
     "trv": ["trivandrum", "thiruvananthapuram"],
-    "vns": ["varanasi"],
+    "vns": ["varanasi", "banaras", "benares"],
     "ixc": ["chandigarh"],
     "nag": ["nagpur"],
-    "bbi": ["bhubaneswar"],
+    "bbi": ["bhubaneswar", "bhubaneshwar", "bhubanesar"],
     "ixr": ["ranchi"],
     "rpr": ["raipur"],
     "idr": ["indore"],
