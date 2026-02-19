@@ -1701,76 +1701,98 @@ export default function RegistrationsPage() {
         title={selectedRegistration?.registration_number || "Attendee Details"}
       >
         {selectedRegistration && (
-          <div className="space-y-6">
-            {/* Status Badge */}
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-0.5">
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-sm font-medium border-0 capitalize",
-                    getStatusColor(selectedRegistration.status)
-                  )}
-                >
-                  {selectedRegistration.status}
-                </Badge>
-                {selectedRegistration.status === "confirmed" && selectedRegistration.confirmed_at && (
-                  <span className="text-[10px] text-muted-foreground">
-                    Confirmed {format(new Date(selectedRegistration.confirmed_at), "dd MMM yyyy")}
-                  </span>
+          <div className="space-y-0">
+            {/* Hero Header Card */}
+            <div className={cn(
+              "mx-4 mt-4 rounded-xl border p-4 space-y-4",
+              selectedRegistration.status === "confirmed" && "bg-gradient-to-br from-emerald-50/80 to-green-50/40 border-emerald-200/60 dark:from-emerald-950/20 dark:to-green-950/10 dark:border-emerald-800/40",
+              selectedRegistration.status === "pending" && "bg-gradient-to-br from-amber-50/80 to-yellow-50/40 border-amber-200/60 dark:from-amber-950/20 dark:to-yellow-950/10 dark:border-amber-800/40",
+              selectedRegistration.status === "cancelled" && "bg-gradient-to-br from-red-50/80 to-rose-50/40 border-red-200/60 dark:from-red-950/20 dark:to-rose-950/10 dark:border-red-800/40",
+              selectedRegistration.status === "refunded" && "bg-gradient-to-br from-slate-50/80 to-gray-50/40 border-slate-200/60 dark:from-slate-950/20 dark:to-gray-950/10 dark:border-slate-800/40",
+            )}>
+              {/* Attendee Profile */}
+              <div className="flex items-start gap-3.5">
+                <div className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-lg font-bold ring-2 ring-offset-2 ring-offset-background",
+                  selectedRegistration.status === "confirmed" && "bg-emerald-100 text-emerald-700 ring-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300 dark:ring-emerald-700",
+                  selectedRegistration.status === "pending" && "bg-amber-100 text-amber-700 ring-amber-300 dark:bg-amber-900/50 dark:text-amber-300 dark:ring-amber-700",
+                  selectedRegistration.status === "cancelled" && "bg-red-100 text-red-700 ring-red-300 dark:bg-red-900/50 dark:text-red-300 dark:ring-red-700",
+                  selectedRegistration.status === "refunded" && "bg-slate-100 text-slate-700 ring-slate-300 dark:bg-slate-900/50 dark:text-slate-300 dark:ring-slate-700",
+                )}>
+                  {selectedRegistration.attendee_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-base truncate">{selectedRegistration.attendee_name}</p>
+                  <p className="text-sm text-muted-foreground truncate">{selectedRegistration.attendee_email}</p>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-xs font-semibold capitalize px-2.5 py-0.5",
+                        selectedRegistration.status === "confirmed" && "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-700",
+                        selectedRegistration.status === "pending" && "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/50 dark:text-amber-300 dark:border-amber-700",
+                        selectedRegistration.status === "cancelled" && "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700",
+                        selectedRegistration.status === "refunded" && "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-900/50 dark:text-slate-300 dark:border-slate-700",
+                      )}
+                    >
+                      {selectedRegistration.status}
+                    </Badge>
+                    {selectedRegistration.participation_mode && selectedRegistration.participation_mode !== "offline" && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs font-medium px-2 py-0.5",
+                          selectedRegistration.participation_mode === "online" && "bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/50 dark:text-purple-300",
+                          selectedRegistration.participation_mode === "hybrid" && "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/50 dark:text-amber-300",
+                        )}
+                      >
+                        {selectedRegistration.participation_mode === "online" ? "Online" : "Hybrid"}
+                      </Badge>
+                    )}
+                    {selectedRegistration.checked_in && (
+                      <Badge variant="outline" className="text-xs font-medium px-2 py-0.5 bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300">
+                        Checked In
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact & Info Row */}
+              <div className="grid grid-cols-1 gap-1.5 text-sm pl-0.5">
+                {selectedRegistration.attendee_phone && (
+                  <a href={`tel:${selectedRegistration.attendee_phone}`} className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground transition-colors group">
+                    <Phone className="w-3.5 h-3.5 text-muted-foreground/60 group-hover:text-primary transition-colors" />
+                    <span>{selectedRegistration.attendee_phone}</span>
+                  </a>
+                )}
+                {selectedRegistration.attendee_institution && (
+                  <div className="flex items-center gap-2.5 text-muted-foreground">
+                    <Building2 className="w-3.5 h-3.5 text-muted-foreground/60" />
+                    <span>{selectedRegistration.attendee_institution}</span>
+                  </div>
+                )}
+                {selectedRegistration.attendee_designation && (
+                  <div className="flex items-center gap-2.5 text-muted-foreground">
+                    <FileText className="w-3.5 h-3.5 text-muted-foreground/60" />
+                    <span>{selectedRegistration.attendee_designation}</span>
+                  </div>
                 )}
               </div>
-              <span className="text-sm text-muted-foreground">
-                {format(new Date(selectedRegistration.created_at), "dd MMM yyyy, h:mm a")}
-              </span>
-            </div>
 
-            {/* Attendee Info */}
-            <SlideOverSection title="Attendee" icon={UserCheck}>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-lg font-semibold text-primary">
-                      {selectedRegistration.attendee_name.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-lg">{selectedRegistration.attendee_name}</p>
-                    <p className="text-sm text-muted-foreground">{selectedRegistration.attendee_email}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-2 text-sm">
-                  {selectedRegistration.attendee_phone && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Phone className="w-4 h-4" />
-                      <a href={`tel:${selectedRegistration.attendee_phone}`} className="hover:text-primary">
-                        {selectedRegistration.attendee_phone}
-                      </a>
-                    </div>
-                  )}
-                  {selectedRegistration.attendee_institution && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Building2 className="w-4 h-4" />
-                      <span>{selectedRegistration.attendee_institution}</span>
-                    </div>
-                  )}
-                  {selectedRegistration.attendee_designation && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <FileText className="w-4 h-4" />
-                      <span>{selectedRegistration.attendee_designation}</span>
-                    </div>
-                  )}
-                </div>
+              {/* Meta Row */}
+              <div className="flex items-center justify-between pt-2 border-t border-current/5 text-xs text-muted-foreground">
+                <span>Registered {format(new Date(selectedRegistration.created_at), "dd MMM yyyy, h:mm a")}</span>
+                {selectedRegistration.status === "confirmed" && selectedRegistration.confirmed_at && (
+                  <span>Confirmed {format(new Date(selectedRegistration.confirmed_at), "dd MMM yyyy")}</span>
+                )}
               </div>
-            </SlideOverSection>
+            </div>
 
             {/* Related Registrations (same email) */}
             {relatedRegistrations && relatedRegistrations.length > 0 && (
               <SlideOverSection title={`Related Registrations (${relatedRegistrations.length})`} icon={Users}>
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Other registrations with the same email address
-                  </p>
+                <div className="space-y-1.5">
                   {relatedRegistrations.map((reg: any) => (
                     <button
                       key={reg.id}
@@ -1778,21 +1800,26 @@ export default function RegistrationsPage() {
                         const fullReg = registrations?.find(r => r.id === reg.id)
                         if (fullReg) setSelectedRegistration(fullReg)
                       }}
-                      className="w-full flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+                      className="w-full flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/50 hover:border-border transition-all text-left group"
                     >
-                      <div>
-                        <p className="font-medium text-sm">{reg.registration_number}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {reg.ticket_type?.name || "Ticket"} · {format(new Date(reg.created_at), "d MMM yyyy")}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                          <Ticket className="w-3.5 h-3.5 text-primary/60" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{reg.registration_number}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {reg.ticket_type?.name || "Ticket"} · {format(new Date(reg.created_at), "d MMM yyyy")}
+                          </p>
+                        </div>
                       </div>
                       <Badge
                         variant="outline"
                         className={cn(
-                          "text-xs",
-                          reg.status === "confirmed" && "bg-success/10 text-success border-success/30",
-                          reg.status === "pending" && "bg-warning/10 text-warning border-warning/30",
-                          reg.status === "cancelled" && "bg-destructive/10 text-destructive border-destructive/30"
+                          "text-[10px] font-medium capitalize",
+                          reg.status === "confirmed" && "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300",
+                          reg.status === "pending" && "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/50 dark:text-amber-300",
+                          reg.status === "cancelled" && "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300"
                         )}
                       >
                         {reg.status}
@@ -1805,14 +1832,22 @@ export default function RegistrationsPage() {
 
             {/* Ticket Info */}
             <SlideOverSection title="Ticket" icon={Ticket}>
-              <div className="p-3 rounded-lg bg-muted/30">
-                <p className="font-medium">{selectedRegistration.ticket_type?.name || "Standard Ticket"}</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  ₹{selectedRegistration.unit_price.toLocaleString()}
-                  {selectedRegistration.tax_amount > 0 && (
-                    <span> + ₹{selectedRegistration.tax_amount.toLocaleString()} GST</span>
-                  )}
-                </p>
+              <div className="flex items-center gap-3.5 p-3.5 rounded-xl border border-border/50 bg-muted/20">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Ticket className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{selectedRegistration.ticket_type?.name || "Standard Ticket"}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    ₹{selectedRegistration.unit_price.toLocaleString()}
+                    {selectedRegistration.tax_amount > 0 && (
+                      <span className="text-muted-foreground/60"> + ₹{selectedRegistration.tax_amount.toLocaleString()} GST</span>
+                    )}
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-[10px] font-medium bg-primary/5 text-primary border-primary/20 shrink-0">
+                  {selectedRegistration.currency || "INR"}
+                </Badge>
               </div>
             </SlideOverSection>
 
@@ -1906,56 +1941,64 @@ export default function RegistrationsPage() {
             {/* Add-ons */}
             <SlideOverSection title="Add-ons" icon={Package}>
               {registrationAddons && registrationAddons.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {registrationAddons.map((item: any) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 group">
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">
+                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-muted/20 group hover:border-border transition-all">
+                      <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                        <Package className="w-4 h-4 text-orange-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
                           {item.addon?.name || "Add-on"}
                           {item.addon_variant?.name && (
-                            <span className="text-muted-foreground ml-1">
+                            <span className="text-muted-foreground font-normal ml-1">
                               ({item.addon_variant.name})
                             </span>
                           )}
                         </p>
-                        {item.quantity > 1 && (
-                          <p className="text-xs text-muted-foreground">
-                            Qty: {item.quantity} × ₹{item.unit_price.toLocaleString()}
-                          </p>
-                        )}
-                        {item.addon?.is_course && (
-                          <Badge variant="outline" className="mt-1 text-xs">
-                            Course
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {item.quantity > 1 && (
+                            <span className="text-xs text-muted-foreground">
+                              Qty: {item.quantity} × ₹{item.unit_price.toLocaleString()}
+                            </span>
+                          )}
+                          {item.addon?.is_course && (
+                            <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                              Course
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm">
-                          ₹{item.total_price.toLocaleString()}
-                        </p>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="font-semibold text-sm">₹{item.total_price.toLocaleString()}</span>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10 transition-opacity"
                           onClick={() => deleteAddonMutation.mutate({
                             registrationId: selectedRegistration.id,
                             addonId: item.addon?.id,
                             variantId: item.addon_variant?.id,
                           })}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No add-ons purchased</p>
+                <div className="flex flex-col items-center justify-center py-4 text-center">
+                  <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center mb-2">
+                    <Package className="w-5 h-5 text-muted-foreground/40" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">No add-ons purchased</p>
+                </div>
               )}
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full mt-3"
+                className="w-full mt-3 border-dashed hover:border-solid hover:bg-primary/5 transition-all"
                 onClick={() => setIsAddAddonOpen(true)}
               >
                 <Package className="h-4 w-4 mr-2" />
@@ -1965,133 +2008,156 @@ export default function RegistrationsPage() {
 
             {/* Payment Summary */}
             <SlideOverSection title="Payment" icon={IndianRupee}>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Ticket</span>
-                  <span>₹{selectedRegistration.unit_price.toLocaleString()}</span>
+              <div className="rounded-xl border border-border/50 overflow-hidden">
+                {/* Line Items */}
+                <div className="p-3.5 space-y-2.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Ticket</span>
+                    <span className="font-medium tabular-nums">₹{selectedRegistration.unit_price.toLocaleString()}</span>
+                  </div>
+                  {registrationAddons && registrationAddons.length > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Add-ons</span>
+                      <span className="font-medium tabular-nums">₹{registrationAddons.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {selectedRegistration.tax_amount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Tax (GST)</span>
+                      <span className="font-medium tabular-nums">₹{selectedRegistration.tax_amount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {selectedRegistration.discount_amount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Discount</span>
+                      <span className="font-medium tabular-nums text-emerald-600">-₹{selectedRegistration.discount_amount.toLocaleString()}</span>
+                    </div>
+                  )}
                 </div>
-                {registrationAddons && registrationAddons.length > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Add-ons</span>
-                    <span>₹{registrationAddons.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0).toLocaleString()}</span>
+                {/* Total Row */}
+                <div className="flex items-center justify-between px-3.5 py-3 bg-muted/30 border-t border-border/50">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">Total</span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] font-medium capitalize",
+                        selectedRegistration.payment_status === "completed" && "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300",
+                        selectedRegistration.payment_status === "pending" && "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/50 dark:text-amber-300",
+                        selectedRegistration.payment_status === "failed" && "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300",
+                        selectedRegistration.payment_status === "refunded" && "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-900/50 dark:text-slate-300",
+                      )}
+                    >
+                      {selectedRegistration.payment_status}
+                    </Badge>
                   </div>
-                )}
-                {selectedRegistration.tax_amount > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Tax (GST)</span>
-                    <span>₹{selectedRegistration.tax_amount.toLocaleString()}</span>
-                  </div>
-                )}
-                {selectedRegistration.discount_amount > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Discount</span>
-                    <span className="text-success">-₹{selectedRegistration.discount_amount.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="border-t pt-2 mt-2">
-                  <div className="flex justify-between font-semibold">
-                    <span>Total</span>
-                    <span className="text-primary">₹{(
-                      selectedRegistration.total_amount +
-                      (registrationAddons?.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0) || 0)
-                    ).toLocaleString()}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mt-3">
-                  {getPaymentStatusIcon(selectedRegistration.payment_status)}
-                  <span className="text-sm capitalize">{selectedRegistration.payment_status}</span>
+                  <span className="font-bold text-base tabular-nums text-primary">₹{(
+                    selectedRegistration.total_amount +
+                    (registrationAddons?.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0) || 0)
+                  ).toLocaleString()}</span>
                 </div>
               </div>
             </SlideOverSection>
 
             {/* Badge & Documents */}
             <SlideOverSection title="Documents" icon={FileDown}>
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 {/* Badge */}
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center",
-                      selectedRegistration.badge_url ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"
-                    )}>
-                      <ImageIcon className="w-4 h-4" />
-                    </div>
-                    <div>
+                <div className="flex items-center gap-3 p-3.5 rounded-xl border border-border/50 bg-muted/20 group hover:border-border transition-all">
+                  <div className={cn(
+                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
+                    selectedRegistration.badge_url ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400" : "bg-muted/60 text-muted-foreground/50"
+                  )}>
+                    <ImageIcon className="w-4.5 h-4.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
                       <p className="font-medium text-sm">Badge</p>
-                      {selectedRegistration.badge_generated_at ? (
-                        <p className="text-xs text-muted-foreground">
-                          Generated {format(new Date(selectedRegistration.badge_generated_at), "dd MMM, h:mm a")}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Not generated</p>
+                      {selectedRegistration.badge_url && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       )}
                     </div>
+                    {selectedRegistration.badge_generated_at ? (
+                      <p className="text-xs text-muted-foreground">
+                        Generated {format(new Date(selectedRegistration.badge_generated_at), "dd MMM, h:mm a")}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/60">Not generated</p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 shrink-0">
                     {selectedRegistration.badge_url ? (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
+                        className="h-7 text-xs"
                         onClick={() => window.open(selectedRegistration.badge_url!, "_blank")}
                       >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-3.5 h-3.5 mr-1" />
+                        View
                       </Button>
                     ) : badgeTemplates && badgeTemplates.length > 0 ? (
                       <Button
                         variant="outline"
                         size="sm"
+                        className="h-7 text-xs"
                         onClick={() => generateBadge(selectedRegistration)}
                         disabled={isGeneratingBadge === selectedRegistration.id}
                       >
                         {isGeneratingBadge === selectedRegistration.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
                           <>
-                            <BadgeCheck className="w-4 h-4 mr-1" />
+                            <BadgeCheck className="w-3.5 h-3.5 mr-1" />
                             Generate
                           </>
                         )}
                       </Button>
                     ) : (
-                      <span className="text-xs text-muted-foreground">No template</span>
+                      <span className="text-[10px] text-muted-foreground/50">No template</span>
                     )}
                   </div>
                 </div>
 
                 {/* Certificate */}
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center",
-                      selectedRegistration.certificate_url ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"
-                    )}>
-                      <Award className="w-4 h-4" />
-                    </div>
-                    <div>
+                <div className="flex items-center gap-3 p-3.5 rounded-xl border border-border/50 bg-muted/20 group hover:border-border transition-all">
+                  <div className={cn(
+                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
+                    selectedRegistration.certificate_url ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400" : "bg-muted/60 text-muted-foreground/50"
+                  )}>
+                    <Award className="w-4.5 h-4.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
                       <p className="font-medium text-sm">Certificate</p>
-                      {selectedRegistration.certificate_generated_at ? (
-                        <p className="text-xs text-muted-foreground">
-                          Generated {format(new Date(selectedRegistration.certificate_generated_at), "dd MMM, h:mm a")}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Not generated</p>
+                      {selectedRegistration.certificate_url && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       )}
-                      {selectedRegistration.certificate_downloaded_at ? (
-                        <p className="text-xs text-green-600">
-                          Downloaded {format(new Date(selectedRegistration.certificate_downloaded_at), "dd MMM, h:mm a")}
-                        </p>
-                      ) : selectedRegistration.certificate_generated_at ? (
-                        <p className="text-xs text-amber-600">Not downloaded yet</p>
-                      ) : null}
                     </div>
+                    {selectedRegistration.certificate_generated_at ? (
+                      <p className="text-xs text-muted-foreground">
+                        Generated {format(new Date(selectedRegistration.certificate_generated_at), "dd MMM, h:mm a")}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/60">Not generated</p>
+                    )}
+                    {selectedRegistration.certificate_downloaded_at ? (
+                      <p className="text-[10px] text-emerald-600">
+                        Downloaded {format(new Date(selectedRegistration.certificate_downloaded_at), "dd MMM, h:mm a")}
+                      </p>
+                    ) : selectedRegistration.certificate_generated_at ? (
+                      <p className="text-[10px] text-amber-600">Not downloaded yet</p>
+                    ) : null}
                   </div>
                   {selectedRegistration.certificate_url && (
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
+                      className="h-7 text-xs shrink-0"
                       onClick={() => window.open(selectedRegistration.certificate_url!, "_blank")}
                     >
-                      <Download className="w-4 h-4" />
+                      <Download className="w-3.5 h-3.5 mr-1" />
+                      View
                     </Button>
                   )}
                 </div>
@@ -2099,48 +2165,56 @@ export default function RegistrationsPage() {
             </SlideOverSection>
 
             {/* Check-in Status */}
-            <SlideOverSection title="Check-in Status" icon={QrCode}>
-              <div className="p-3 rounded-lg bg-muted/30">
-                {selectedRegistration.checked_in ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
-                      <CheckCircle2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm text-green-700">Checked In</p>
-                      {selectedRegistration.checked_in_at && (
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(selectedRegistration.checked_in_at), "dd MMM yyyy, h:mm a")}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
-                      <Clock className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Not checked in</p>
-                      <p className="text-xs text-muted-foreground">Awaiting arrival</p>
-                    </div>
-                  </div>
+            <SlideOverSection title="Check-in" icon={QrCode}>
+              <div className={cn(
+                "flex items-center gap-3.5 p-3.5 rounded-xl border",
+                selectedRegistration.checked_in
+                  ? "border-emerald-200/60 bg-gradient-to-r from-emerald-50/80 to-green-50/40 dark:from-emerald-950/20 dark:to-green-950/10 dark:border-emerald-800/40"
+                  : "border-border/50 bg-muted/20"
+              )}>
+                <div className={cn(
+                  "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
+                  selectedRegistration.checked_in
+                    ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400"
+                    : "bg-muted/60 text-muted-foreground/50"
+                )}>
+                  {selectedRegistration.checked_in ? (
+                    <CheckCircle2 className="w-4.5 h-4.5" />
+                  ) : (
+                    <Clock className="w-4.5 h-4.5" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className={cn(
+                    "font-medium text-sm",
+                    selectedRegistration.checked_in && "text-emerald-700 dark:text-emerald-400"
+                  )}>
+                    {selectedRegistration.checked_in ? "Checked In" : "Not checked in"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedRegistration.checked_in && selectedRegistration.checked_in_at
+                      ? format(new Date(selectedRegistration.checked_in_at), "dd MMM yyyy, h:mm a")
+                      : "Awaiting arrival"}
+                  </p>
+                </div>
+                {selectedRegistration.checked_in && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 )}
               </div>
             </SlideOverSection>
 
             {/* Communication Timeline */}
             <SlideOverSection title="Communication" icon={MessageSquare}>
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 {emailLogs && emailLogs.length > 0 ? (
                   emailLogs.map((log: any) => (
-                    <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                    <div key={log.id} className="flex items-start gap-3 p-3.5 rounded-xl border border-border/50 bg-muted/20 hover:border-border transition-all">
                       <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                        log.status === "bounced" ? "bg-destructive/10 text-destructive" :
-                        log.opened_at ? "bg-green-100 text-green-600" :
-                        log.delivered_at ? "bg-blue-100 text-blue-600" :
-                        "bg-muted text-muted-foreground"
+                        "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                        log.status === "bounced" ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400" :
+                        log.opened_at ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400" :
+                        log.delivered_at ? "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400" :
+                        "bg-muted/60 text-muted-foreground/50"
                       )}>
                         {log.status === "bounced" ? <AlertCircle className="w-4 h-4" /> :
                          log.clicked_at ? <MousePointerClick className="w-4 h-4" /> :
@@ -2155,27 +2229,27 @@ export default function RegistrationsPage() {
                            log.email_type === "reminder" ? "Reminder" :
                            log.subject || log.email_type}
                         </p>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            Sent {format(new Date(log.sent_at), "dd MMM, h:mm a")}
-                          </Badge>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {format(new Date(log.sent_at), "dd MMM yyyy, h:mm a")}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {log.delivered_at && (
-                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">
+                            <Badge variant="outline" className="text-[10px] py-0 h-4 bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
                               Delivered
                             </Badge>
                           )}
                           {log.opened_at && (
-                            <Badge variant="outline" className="text-xs bg-green-50 text-green-600 border-green-200">
+                            <Badge variant="outline" className="text-[10px] py-0 h-4 bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
                               Opened {log.open_count > 1 ? `(${log.open_count}x)` : ""}
                             </Badge>
                           )}
                           {log.clicked_at && (
-                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-600 border-purple-200">
+                            <Badge variant="outline" className="text-[10px] py-0 h-4 bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800">
                               Clicked
                             </Badge>
                           )}
                           {log.status === "bounced" && (
-                            <Badge variant="outline" className="text-xs bg-red-50 text-red-600 border-red-200">
+                            <Badge variant="outline" className="text-[10px] py-0 h-4 bg-red-50 text-red-600 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">
                               Bounced
                             </Badge>
                           )}
@@ -2184,7 +2258,12 @@ export default function RegistrationsPage() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground">No emails sent yet</p>
+                  <div className="flex flex-col items-center justify-center py-4 text-center">
+                    <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center mb-2">
+                      <Mail className="w-5 h-5 text-muted-foreground/40" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">No emails sent yet</p>
+                  </div>
                 )}
               </div>
             </SlideOverSection>
@@ -2192,70 +2271,18 @@ export default function RegistrationsPage() {
             {/* Notes */}
             {selectedRegistration.notes && (
               <SlideOverSection title="Notes" icon={FileText}>
-                <p className="text-sm">{selectedRegistration.notes}</p>
+                <div className="p-3.5 rounded-xl border border-border/50 bg-amber-50/30 dark:bg-amber-950/10">
+                  <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedRegistration.notes}</p>
+                </div>
               </SlideOverSection>
             )}
 
             {/* Actions */}
-            <SlideOverFooter>
-              <Button variant="outline" size="sm">
-                <Send className="w-4 h-4 mr-2" />
-                Resend Email
-              </Button>
-              <Button variant="outline" size="sm" onClick={openEditDialog}>
-                <Edit2 className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => printBadge(selectedRegistration)}
-                disabled={isPrintingBadge === selectedRegistration.id}
-              >
-                {isPrintingBadge === selectedRegistration.id ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Printer className="w-4 h-4 mr-2" />
-                )}
-                Print Badge
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => emailBadge(selectedRegistration)}
-                disabled={isEmailingBadge === selectedRegistration.id || selectedRegistration.status !== "confirmed"}
-              >
-                {isEmailingBadge === selectedRegistration.id ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Mail className="w-4 h-4 mr-2" />
-                )}
-                Email Badge
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  window.open(`/api/registrations/${selectedRegistration.id}/final-receipt`, "_blank")
-                }}
-              >
-                <FileDown className="w-4 h-4 mr-2" />
-                Final Receipt
-              </Button>
-              {!selectedRegistration.checked_in && (
-                <>
-                  <Button variant="outline" size="sm" onClick={openSwitchTicketDialog}>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Switch Course
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={openTransferEventDialog}>
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Transfer Event
-                  </Button>
-                </>
-              )}
+            <SlideOverFooter className="space-y-3">
+              {/* Primary Action */}
               {selectedRegistration.status === "pending" && (
                 <Button
+                  className="w-full"
                   size="sm"
                   onClick={() => {
                     updateStatus.mutate({ id: selectedRegistration.id, status: "confirmed" })
@@ -2264,9 +2291,71 @@ export default function RegistrationsPage() {
                   disabled={updateStatus.isPending}
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Confirm
+                  Confirm Registration
                 </Button>
               )}
+              {/* Action Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" size="sm" className="h-9 text-xs" onClick={openEditDialog}>
+                  <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+                  Edit Details
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 text-xs"
+                  onClick={() => printBadge(selectedRegistration)}
+                  disabled={isPrintingBadge === selectedRegistration.id}
+                >
+                  {isPrintingBadge === selectedRegistration.id ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Printer className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  Print Badge
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 text-xs"
+                  onClick={() => emailBadge(selectedRegistration)}
+                  disabled={isEmailingBadge === selectedRegistration.id || selectedRegistration.status !== "confirmed"}
+                >
+                  {isEmailingBadge === selectedRegistration.id ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Mail className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  Email Badge
+                </Button>
+                <Button variant="outline" size="sm" className="h-9 text-xs">
+                  <Send className="w-3.5 h-3.5 mr-1.5" />
+                  Resend Email
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 text-xs"
+                  onClick={() => {
+                    window.open(`/api/registrations/${selectedRegistration.id}/final-receipt`, "_blank")
+                  }}
+                >
+                  <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                  Final Receipt
+                </Button>
+                {!selectedRegistration.checked_in && (
+                  <>
+                    <Button variant="outline" size="sm" className="h-9 text-xs" onClick={openSwitchTicketDialog}>
+                      <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                      Switch Course
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-9 text-xs" onClick={openTransferEventDialog}>
+                      <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                      Transfer Event
+                    </Button>
+                  </>
+                )}
+              </div>
             </SlideOverFooter>
           </div>
         )}

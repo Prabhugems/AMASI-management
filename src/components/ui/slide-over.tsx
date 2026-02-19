@@ -243,10 +243,10 @@ export interface SlideOverSectionProps {
 
 export function SlideOverSection({ title, icon: Icon, children, className }: SlideOverSectionProps) {
   return (
-    <div className={cn("px-6 py-5", className)}>
+    <div className={cn("px-5 py-4 border-b border-border/40 last:border-b-0", className)}>
       {title && (
-        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          {Icon && <Icon className="h-4 w-4" />}
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+          {Icon && <Icon className="h-3.5 w-3.5" />}
           {title}
         </h3>
       )}
@@ -263,7 +263,7 @@ interface SlideOverFooterProps {
 
 export function SlideOverFooter({ children, className }: SlideOverFooterProps) {
   return (
-    <div className={cn("border-t border-border px-6 py-4 bg-secondary/30", className)}>
+    <div className={cn("border-t border-border px-5 py-4 bg-muted/20", className)}>
       {children}
     </div>
   )
