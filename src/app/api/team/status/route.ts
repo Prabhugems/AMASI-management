@@ -17,18 +17,21 @@ export async function GET() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adminClient = adminClientRaw as any
 
-    // Fetch team members
-    const { data: teamMembers, error: teamError } = await adminClient
-      .from('team_members')
-      .select('id, name, email, role, is_active, created_at')
-      .order('created_at', { ascending: false })
+    // Fetch team members and auth users in parallel
+    const [teamResult, authResult] = await Promise.all([
+      adminClient
+        .from('team_members')
+        .select('id, name, email, role, is_active, created_at')
+        .order('created_at', { ascending: false }),
+      adminClient.auth.admin.listUsers(),
+    ])
+
+    const { data: teamMembers, error: teamError } = teamResult
+    const { data: authData, error: authError } = authResult
 
     if (teamError) {
       return NextResponse.json({ error: teamError.message }, { status: 500 })
     }
-
-    // Fetch auth users to get real login data
-    const { data: authData, error: authError } = await adminClient.auth.admin.listUsers()
     if (authError) {
       return NextResponse.json({ error: authError.message }, { status: 500 })
     }
@@ -44,7 +47,7 @@ export async function GET() {
       }
     }
 
-    // Also fetch last_active_at from users table
+    // Fetch last_active_at from users table
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const emails = (teamMembers || []).map((m: any) => m.email.toLowerCase())
     const { data: usersData } = await adminClient

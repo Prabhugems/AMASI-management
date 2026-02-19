@@ -235,12 +235,82 @@ export default function PublicProgramPage() {
     },
   })
 
+  // Fetch faculty assignments (for panelists)
+  const { data: assignments } = useQuery({
+    queryKey: ["assignments-public", eventId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("faculty_assignments")
+        .select("faculty_name, role, session_id")
+        .eq("event_id", eventId)
+        .in("role", ["panelist", "chairperson", "moderator"])
+      return (data || []) as { faculty_name: string; role: string; session_id: string }[]
+    },
+  })
+
+  // Group assignments by session_id and role
+  const assignmentsBySession = useMemo(() => {
+    if (!assignments) return {}
+    const grouped: Record<string, { panelists: string[]; chairpersons: string[]; moderators: string[] }> = {}
+    assignments.forEach(a => {
+      if (!grouped[a.session_id]) grouped[a.session_id] = { panelists: [], chairpersons: [], moderators: [] }
+      if (a.role === "panelist") grouped[a.session_id].panelists.push(a.faculty_name)
+      if (a.role === "chairperson") grouped[a.session_id].chairpersons.push(a.faculty_name)
+      if (a.role === "moderator") grouped[a.session_id].moderators.push(a.faculty_name)
+    })
+    return grouped
+  }, [assignments])
+
   // Get unique dates
   const dates = useMemo(() => {
     if (!sessions) return []
     const uniqueDates = [...new Set(sessions.map(s => s.session_date))].sort()
     return uniqueDates
   }, [sessions])
+
+  // Group dates into phases (Online / Onsite / Examination) based on session content
+  const datePhases = useMemo(() => {
+    if (!sessions || dates.length === 0) return []
+
+    type Phase = { label: string; dates: string[]; color: string; activeColor: string }
+    const phases: Phase[] = []
+    let currentPhase: Phase | null = null
+
+    for (const date of dates) {
+      const daySessions = sessions.filter(s => s.session_date === date)
+      const hasOnline = daySessions.some(s => (s.session_name || "").toLowerCase().includes("online"))
+      const hasExam = daySessions.some(s =>
+        (s.specialty_track || "").toLowerCase().includes("exam") ||
+        (s.session_name || "").toLowerCase().includes("exam")
+      )
+
+      let phaseLabel: string
+      let color: string
+      let activeColor: string
+      if (hasExam) {
+        phaseLabel = "Examination"
+        color = "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+        activeColor = "bg-emerald-600 text-white shadow-lg"
+      } else if (hasOnline) {
+        phaseLabel = "Online Lectures"
+        color = "bg-purple-100 text-purple-700 hover:bg-purple-200"
+        activeColor = "bg-purple-600 text-white shadow-lg"
+      } else {
+        phaseLabel = "Onsite Sessions"
+        color = "bg-blue-100 text-blue-700 hover:bg-blue-200"
+        activeColor = "bg-blue-600 text-white shadow-lg"
+      }
+
+      if (!currentPhase || currentPhase.label !== phaseLabel) {
+        currentPhase = { label: phaseLabel, dates: [date], color, activeColor }
+        phases.push(currentPhase)
+      } else {
+        currentPhase.dates.push(date)
+      }
+    }
+
+    return phases
+  }, [sessions, dates])
 
   // Get unique halls
   const halls = useMemo(() => {
@@ -256,12 +326,22 @@ export default function PublicProgramPage() {
     }
   }, [dates, selectedDay])
 
+  // Helper: check if session is a metadata row (moderator/chairperson assignments)
+  const isMetaSession = (s: Session) => {
+    const name = (s.session_name || "").toLowerCase()
+    return name.startsWith("session moderator") || name.startsWith("session chairperson")
+  }
+
   // Filter sessions
   const filteredSessions = useMemo(() => {
     if (!sessions) return []
 
     return sessions.filter(session => {
-      // Exclude hall coordinator rows (session_name is just a hall name like "HALL A", "RED HALL", etc.)
+      // Exclude meta sessions (moderator/chairperson rows) - shown in track header instead
+      if (isMetaSession(session)) return false
+      // Exclude "Session Chair" track (metadata only)
+      if (session.specialty_track === "Session Chair") return false
+      // Exclude hall coordinator rows
       const sessionName = (session.session_name || "").toLowerCase().trim()
       if (/^hall\s*[a-z0-9]?$/i.test(sessionName)) return false
       if (/^(red|green|blue|yellow|main|conference)\s*hall/i.test(sessionName)) return false
@@ -285,6 +365,24 @@ export default function PublicProgramPage() {
       return true
     })
   }, [sessions, selectedDay, selectedHalls, searchQuery])
+
+  // Get moderator/chairperson info for the selected day from meta sessions
+  const dayMeta = useMemo(() => {
+    if (!sessions || !selectedDay) return { moderator: "", chairpersons: "" }
+    const daySessions = sessions.filter(s => s.session_date === selectedDay)
+    const modSession = daySessions.find(s => (s.session_name || "").toLowerCase().startsWith("session moderator"))
+    const chairSession = daySessions.find(s =>
+      (s.session_name || "").toLowerCase().startsWith("session chairperson") &&
+      s.specialty_track !== "Session Chair"
+    )
+    const chairSessions = daySessions.filter(s => s.specialty_track === "Session Chair")
+
+    return {
+      moderator: modSession?.moderators || "",
+      chairpersons: chairSession?.chairpersons || "",
+      chairSessionsByTime: chairSessions,
+    }
+  }, [sessions, selectedDay])
 
   // Group sessions by hall for the selected day
   const sessionsByHall = useMemo(() => {
@@ -503,22 +601,28 @@ export default function PublicProgramPage() {
       {/* Day Tabs & Filters */}
       <div className={cn("sticky top-0 z-40", themeConfig.nav)}>
         <div className="max-w-7xl mx-auto px-4">
-          {/* Day tabs */}
+          {/* Day tabs grouped by phase */}
           <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide">
-            {dates.map((date, index) => (
-              <button
-                key={date}
-                onClick={() => setSelectedDay(date)}
-                className={cn(
-                  "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-                  selectedDay === date
-                    ? "bg-blue-600 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                )}
-              >
-                Day {index + 1}
-                <span className="ml-1.5 text-xs opacity-75">{formatDate(date)}</span>
-              </button>
+            {datePhases.map((phase, phaseIdx) => (
+              <div key={phase.label} className="flex items-center gap-2">
+                {phaseIdx > 0 && <div className="w-px h-8 bg-gray-300 mx-1" />}
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap mr-1">
+                  {phase.label}
+                </span>
+                {phase.dates.map((date, dayIdx) => (
+                  <button
+                    key={date}
+                    onClick={() => setSelectedDay(date)}
+                    className={cn(
+                      "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+                      selectedDay === date ? phase.activeColor : phase.color
+                    )}
+                  >
+                    {phase.dates.length > 1 ? `Day ${dayIdx + 1}` : formatDate(date)}
+                    <span className="ml-1.5 text-xs opacity-75">{phase.dates.length > 1 ? formatDate(date) : ""}</span>
+                  </button>
+                ))}
+              </div>
             ))}
 
             <div className="flex-1" />
@@ -635,7 +739,7 @@ export default function PublicProgramPage() {
               const trackColor = track?.color || "#3B82F6"
               return (
                 <div key={trackName} className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                  {/* Session Header with Description & Chairpersons */}
+                  {/* Session Header with Moderator & Chairpersons */}
                   <div className="px-4 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
                     <div className="flex items-start gap-3">
                       <span
@@ -654,14 +758,21 @@ export default function PublicProgramPage() {
                         {track?.description && (
                           <p className="text-gray-700 mt-1 text-base font-medium">{track.description}</p>
                         )}
-                        {/* Session Chairpersons - Names only (no contact details in public view) */}
-                        {track?.chairpersons && (
-                          <div className="mt-3 p-2 bg-white/60 rounded-lg">
-                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Chairpersons</p>
-                            <p className="text-sm text-gray-800 flex items-center gap-2">
-                              <Users className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                              {extractNames(track.chairpersons).join(", ")}
-                            </p>
+                        {/* Moderator & Chairpersons */}
+                        {(dayMeta.moderator || track?.chairpersons || dayMeta.chairpersons) && (
+                          <div className="mt-3 p-2 bg-white/60 rounded-lg space-y-1">
+                            {dayMeta.moderator && (
+                              <p className="text-sm text-gray-800 flex items-center gap-2">
+                                <User className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                <span><span className="font-semibold">Moderator:</span> {dayMeta.moderator}</span>
+                              </p>
+                            )}
+                            {(track?.chairpersons || dayMeta.chairpersons) && (
+                              <p className="text-sm text-gray-800 flex items-center gap-2">
+                                <Users className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                <span><span className="font-semibold">Chairpersons:</span> {track?.chairpersons ? extractNames(track.chairpersons).join(", ") : dayMeta.chairpersons}</span>
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>
@@ -672,6 +783,8 @@ export default function PublicProgramPage() {
                   <div className="divide-y">
                     {trackSessions.map((session) => {
                       const SessionIcon = getSessionIcon(session.session_name, session.session_type)
+                      const isPanelSession = trackName.toLowerCase().includes("panel") || trackName.toLowerCase().includes("discussion")
+                      const panelists = panelistsBySession[session.id] || []
                       return (
                         <div
                           key={session.id}
@@ -680,7 +793,7 @@ export default function PublicProgramPage() {
                         >
                           <div className="flex items-start gap-4">
                             {/* Time */}
-                            <div className="text-sm text-gray-500 min-w-[80px]">
+                            <div className="text-sm text-gray-500 min-w-[140px] whitespace-nowrap">
                               <p className="font-medium">{formatTime(session.start_time)}</p>
                               <p>{formatTime(session.end_time)}</p>
                             </div>
@@ -706,6 +819,30 @@ export default function PublicProgramPage() {
                                         <User className="h-3.5 w-3.5 text-gray-500" />
                                         {session.speakers}
                                       </p>
+                                    </div>
+                                  )}
+
+                                  {/* Panel Discussion details */}
+                                  {isPanelSession && (
+                                    <div className="mt-2 space-y-2">
+                                      {session.moderators && (
+                                        <div>
+                                          <p className="text-xs font-medium text-gray-400 uppercase">Moderator</p>
+                                          <p className="text-sm text-gray-700">{session.moderators}</p>
+                                        </div>
+                                      )}
+                                      {panelists.length > 0 && (
+                                        <div>
+                                          <p className="text-xs font-medium text-gray-400 uppercase">Panelists</p>
+                                          <div className="flex flex-wrap gap-1.5 mt-1">
+                                            {panelists.map((name, i) => (
+                                              <span key={i} className="text-xs bg-gray-100 px-2 py-1 rounded-full text-gray-700">
+                                                {name}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
 
@@ -756,7 +893,7 @@ export default function PublicProgramPage() {
                         >
                           <div className="flex items-start gap-4">
                             {/* Time */}
-                            <div className="text-sm text-gray-500 min-w-[80px]">
+                            <div className="text-sm text-gray-500 min-w-[140px] whitespace-nowrap">
                               <p className="font-medium">{formatTime(session.start_time)}</p>
                               <p>{formatTime(session.end_time)}</p>
                             </div>

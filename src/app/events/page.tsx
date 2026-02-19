@@ -81,7 +81,10 @@ export default function EventsPage() {
       if (search) {
         query = query.or(`name.ilike.%${search}%,short_name.ilike.%${search}%,city.ilike.%${search}%`)
       }
-      if (statusFilter !== "all") {
+      if (statusFilter === "all") {
+        // Hide archived events by default
+        query = query.neq("status", "archived")
+      } else {
         query = query.eq("status", statusFilter)
       }
       if (typeFilter !== "all") {

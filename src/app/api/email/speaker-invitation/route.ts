@@ -58,6 +58,7 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
     registration_id,
     speaker_name,
     speaker_email,
+    event_id,
     event_name,
     event_start_date,
     event_end_date,
@@ -263,6 +264,24 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
             }
           })
           .eq("id", registration_id)
+      }
+
+      // Sync faculty_assignments.status to 'invited' so Program Dashboard reflects invitation state
+      if (event_id && speaker_email) {
+        try {
+          const syncClient = await createAdminClient()
+          await (syncClient as any)
+            .from("faculty_assignments")
+            .update({
+              status: 'invited',
+              invitation_sent_at: new Date().toISOString(),
+            })
+            .eq("event_id", event_id)
+            .ilike("faculty_email", speaker_email.toLowerCase())
+            .in("status", ["pending"])
+        } catch (syncError) {
+          console.error("Failed to sync faculty_assignments invitation status:", syncError)
+        }
       }
 
       // Send WhatsApp notification via Gallabox (non-blocking)

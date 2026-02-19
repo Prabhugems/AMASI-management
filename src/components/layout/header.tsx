@@ -51,7 +51,17 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
   const router = useRouter()
   const supabase = createClient()
 
-  // Get user permissions and info
+  // Get session info immediately (cached by Supabase, near-instant)
+  const { data: sessionData } = useQuery({
+    queryKey: ["session-info"],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      return session
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Get user permissions and info (slower — needs DB queries)
   const {
     userName,
     userEmail,
@@ -64,15 +74,9 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
     isLoading,
   } = usePermissions()
 
-  // Get session info for login time
-  const { data: sessionData } = useQuery({
-    queryKey: ["session-info"],
-    queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      return session
-    },
-    staleTime: 5 * 60 * 1000,
-  })
+  // Use session email/name as instant fallback while permissions load
+  const quickEmail = sessionData?.user?.email || ""
+  const quickName = sessionData?.user?.user_metadata?.name || quickEmail.split("@")[0] || ""
 
   // Get login time from session
   const loginTime = React.useMemo(() => {
@@ -307,15 +311,22 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground text-sm font-medium">
-                  {isLoading ? "..." : getInitials(userName || userEmail || "U")}
+                  {getInitials(userName || quickName || userEmail || quickEmail || "U")}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden sm:block text-left">
                 {isLoading ? (
-                  <div className="space-y-1">
-                    <div className="h-3.5 w-20 bg-muted rounded animate-pulse" />
-                    <div className="h-2.5 w-14 bg-muted rounded animate-pulse" />
-                  </div>
+                  quickName ? (
+                    <>
+                      <p className="text-sm font-medium text-foreground leading-tight">{quickName}</p>
+                      <p className="text-[10px] text-muted-foreground">Loading...</p>
+                    </>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="h-3.5 w-20 bg-muted rounded animate-pulse" />
+                      <div className="h-2.5 w-14 bg-muted rounded animate-pulse" />
+                    </div>
+                  )
                 ) : (
                   <>
                     <p className="text-sm font-medium text-foreground leading-tight">{userName || userEmail?.split("@")[0] || "User"}</p>
@@ -334,16 +345,20 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12">
                         <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground text-lg font-medium">
-                          {getInitials(userName || userEmail || "U")}
+                          {getInitials(userName || quickName || userEmail || quickEmail || "U")}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground truncate">{userName || "User"}</p>
-                        <p className="text-sm text-muted-foreground truncate">{userEmail}</p>
-                        <div className={cn("flex items-center gap-1 mt-1", roleDisplay.color)}>
-                          <roleDisplay.icon className="h-3 w-3" />
-                          <span className="text-xs font-medium">{roleDisplay.label}</span>
-                        </div>
+                        <p className="font-semibold text-foreground truncate">{userName || quickName || "User"}</p>
+                        <p className="text-sm text-muted-foreground truncate">{userEmail || quickEmail}</p>
+                        {isLoading ? (
+                          <div className="h-3 w-20 bg-muted rounded animate-pulse mt-1" />
+                        ) : (
+                          <div className={cn("flex items-center gap-1 mt-1", roleDisplay.color)}>
+                            <roleDisplay.icon className="h-3 w-3" />
+                            <span className="text-xs font-medium">{roleDisplay.label}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

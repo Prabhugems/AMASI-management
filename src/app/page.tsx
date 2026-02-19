@@ -27,33 +27,80 @@ import { StatCard } from "@/components/dashboard/stat-card"
 import { RecentFacultyTable } from "@/components/dashboard/recent-faculty-table"
 import { TasksWidget } from "@/components/dashboard/tasks-widget"
 
+function StatCardSkeleton() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl p-6 bg-white border border-gray-200/80 dark:bg-slate-800/50 dark:border-slate-700/50 animate-pulse">
+      <div className="flex items-start justify-between mb-6">
+        <div className="p-3.5 rounded-xl bg-gray-200 dark:bg-slate-700 w-[52px] h-[52px]" />
+        <div className="w-16 h-6 rounded-full bg-gray-200 dark:bg-slate-700" />
+      </div>
+      <div className="w-24 h-4 rounded bg-gray-200 dark:bg-slate-700 mb-2" />
+      <div className="w-20 h-10 rounded bg-gray-200 dark:bg-slate-700 mb-4" />
+      <div className="pt-4 border-t border-gray-200/80 dark:border-slate-700/50">
+        <div className="w-32 h-3 rounded bg-gray-200 dark:bg-slate-700" />
+      </div>
+    </div>
+  )
+}
+
+function WidgetSkeleton({ title }: { title: string }) {
+  return (
+    <div className="paper-card animate-pulse">
+      <div className="p-5 border-b border-border">
+        <div className="w-40 h-5 rounded bg-gray-200 dark:bg-slate-700" />
+      </div>
+      <div className="p-5 space-y-3">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-slate-700" />
+            <div className="flex-1 space-y-1.5">
+              <div className="w-3/4 h-3 rounded bg-gray-200 dark:bg-slate-700" />
+              <div className="w-1/2 h-3 rounded bg-gray-200 dark:bg-slate-700" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
   const supabase = createClient()
   const router = useRouter()
   const { isEventScoped, eventIds, isLoading: permissionsLoading, userName } = usePermissions()
 
-  // Fetch live stats from Supabase (must be before any early returns)
-  const { data: stats, error: statsError } = useQuery({
-    enabled: !permissionsLoading && !isEventScoped,
+  // Get session info immediately for quick display while permissions load
+  const { data: sessionData } = useQuery({
+    queryKey: ["session-info"],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      return session
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+  const quickName = sessionData?.user?.user_metadata?.name || sessionData?.user?.email?.split("@")[0] || ""
+
+  // Fetch live stats immediately (don't wait for permissions)
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
-      const [membersResult, facultyResult, eventsResult, delegatesResult] = await Promise.all([
+      const [membersResult, facultyResult, activeEventsResult, delegatesResult] = await Promise.all([
         supabase.from("members").select("*", { count: "exact", head: true }),
         supabase.from("faculty").select("*", { count: "exact", head: true }),
-        supabase.from("events").select("*", { count: "exact", head: true }),
+        supabase.from("events").select("*", { count: "exact", head: true }).not("status", "in", '("completed","archived")'),
         supabase.from("registrations").select("*", { count: "exact", head: true }),
       ])
 
       // Log any errors for debugging (only if error has message)
       if (membersResult.error?.message) console.error("Members error:", membersResult.error.message)
       if (facultyResult.error?.message) console.error("Faculty error:", facultyResult.error.message)
-      if (eventsResult.error?.message) console.error("Events error:", eventsResult.error.message)
+      if (activeEventsResult.error?.message) console.error("Active events error:", activeEventsResult.error.message)
       if (delegatesResult.error?.message) console.error("Delegates error:", delegatesResult.error.message)
 
       return {
         members: membersResult.count ?? 0,
         faculty: facultyResult.count ?? 0,
-        events: eventsResult.count ?? 0,
+        activeEvents: activeEventsResult.count ?? 0,
         delegates: delegatesResult.count ?? 0,
       }
     },
@@ -70,14 +117,14 @@ export default function Home() {
   // Log stats error if any
   if (statsError) console.error("Stats query error:", statsError)
 
-  // Show loading while checking permissions
-  if (permissionsLoading || (isEventScoped && eventIds.length > 0)) {
+  // Only block render for event-scoped redirect (brief)
+  if (!permissionsLoading && isEventScoped && eventIds.length > 0) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">Loading your dashboard...</p>
+            <p className="text-muted-foreground">Redirecting to your event...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -88,48 +135,61 @@ export default function Home() {
     <DashboardLayout>
       {/* Welcome Header - Paper Dashboard Style */}
       <div className="mb-6">
-        <h4 className="text-lg text-muted-foreground font-normal">{getGreeting()}, {userName || "Admin"}</h4>
+        <h4 className="text-lg text-muted-foreground font-normal">
+          {getGreeting()}, {userName || quickName || (permissionsLoading ? <span className="inline-block w-24 h-5 rounded bg-gray-200 dark:bg-slate-700 animate-pulse align-middle" /> : "Admin")}
+        </h4>
         <p className="text-sm text-muted-foreground/70">Here&apos;s your AMASI dashboard overview</p>
       </div>
 
       {/* Animated Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <StatCard
-          icon={Users}
-          value={stats?.members || 0}
-          label="Total Members"
-          subtext="Live from database"
-          trend={12}
-          color="rose"
-          delay={0}
-        />
-        <StatCard
-          icon={GraduationCap}
-          value={stats?.faculty || 0}
-          label="Faculty Database"
-          subtext="Master database"
-          trend={8}
-          color="amber"
-          delay={100}
-        />
-        <StatCard
-          icon={Calendar}
-          value={stats?.events || 0}
-          label="Active Events"
-          subtext="Planning/Ongoing"
-          trend={null}
-          color="teal"
-          delay={200}
-        />
-        <StatCard
-          icon={Award}
-          value={stats?.delegates || 0}
-          label="Total Attendees"
-          subtext="All events"
-          trend={5}
-          color="violet"
-          delay={300}
-        />
+        {statsLoading ? (
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
+        ) : (
+          <>
+            <StatCard
+              icon={Users}
+              value={stats?.members || 0}
+              label="Total Members"
+              subtext="Live from database"
+              trend={12}
+              color="rose"
+              delay={0}
+            />
+            <StatCard
+              icon={GraduationCap}
+              value={stats?.faculty || 0}
+              label="Faculty Database"
+              subtext="Master database"
+              trend={8}
+              color="amber"
+              delay={100}
+            />
+            <StatCard
+              icon={Calendar}
+              value={stats?.activeEvents || 0}
+              label="Active Events"
+              subtext="Planning/Ongoing"
+              trend={null}
+              color="teal"
+              delay={200}
+            />
+            <StatCard
+              icon={Award}
+              value={stats?.delegates || 0}
+              label="Total Attendees"
+              subtext="All events"
+              trend={5}
+              color="violet"
+              delay={300}
+            />
+          </>
+        )}
       </div>
 
       {/* Alerts Panel */}

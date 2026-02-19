@@ -208,11 +208,81 @@ export default function DelegateViewPage() {
     },
   })
 
+  // Fetch faculty assignments (for panelists and chairpersons)
+  const { data: assignments } = useQuery({
+    queryKey: ["assignments-delegate", eventId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("faculty_assignments")
+        .select("faculty_name, role, session_id")
+        .eq("event_id", eventId)
+        .in("role", ["panelist", "chairperson", "moderator"])
+      return (data || []) as { faculty_name: string; role: string; session_id: string }[]
+    },
+  })
+
+  // Group assignments by session_id and role
+  const assignmentsBySession = useMemo(() => {
+    if (!assignments) return {}
+    const grouped: Record<string, { panelists: string[]; chairpersons: string[]; moderators: string[] }> = {}
+    assignments.forEach(a => {
+      if (!grouped[a.session_id]) grouped[a.session_id] = { panelists: [], chairpersons: [], moderators: [] }
+      if (a.role === "panelist") grouped[a.session_id].panelists.push(a.faculty_name)
+      if (a.role === "chairperson") grouped[a.session_id].chairpersons.push(a.faculty_name)
+      if (a.role === "moderator") grouped[a.session_id].moderators.push(a.faculty_name)
+    })
+    return grouped
+  }, [assignments])
+
   // Get unique dates and halls
   const dates = useMemo(() => {
     if (!sessions) return []
     return [...new Set(sessions.map(s => s.session_date))].sort()
   }, [sessions])
+
+  // Group dates into phases (Online / Onsite / Examination) based on session content
+  const datePhases = useMemo(() => {
+    if (!sessions || dates.length === 0) return []
+
+    type Phase = { label: string; dates: string[]; color: string; activeColor: string }
+    const phases: Phase[] = []
+    let currentPhase: Phase | null = null
+
+    for (const date of dates) {
+      const daySessions = sessions.filter(s => s.session_date === date)
+      const hasOnline = daySessions.some(s => (s.session_name || "").toLowerCase().includes("online"))
+      const hasExam = daySessions.some(s =>
+        (s.specialty_track || "").toLowerCase().includes("exam") ||
+        (s.session_name || "").toLowerCase().includes("exam")
+      )
+
+      let phaseLabel: string
+      let color: string
+      let activeColor: string
+      if (hasExam) {
+        phaseLabel = "Examination"
+        color = "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+        activeColor = "bg-emerald-600 text-white shadow-lg"
+      } else if (hasOnline) {
+        phaseLabel = "Online Lectures"
+        color = "bg-purple-100 text-purple-700 hover:bg-purple-200"
+        activeColor = "bg-purple-600 text-white shadow-lg"
+      } else {
+        phaseLabel = "Onsite Sessions"
+        color = "bg-blue-100 text-blue-700 hover:bg-blue-200"
+        activeColor = "bg-blue-600 text-white shadow-lg"
+      }
+
+      if (!currentPhase || currentPhase.label !== phaseLabel) {
+        currentPhase = { label: phaseLabel, dates: [date], color, activeColor }
+        phases.push(currentPhase)
+      } else {
+        currentPhase.dates.push(date)
+      }
+    }
+
+    return phases
+  }, [sessions, dates])
 
   const halls = useMemo(() => {
     if (!sessions) return []
@@ -226,11 +296,25 @@ export default function DelegateViewPage() {
   }, [dates, halls, selectedDay, selectedHall])
 
   // Filter and group sessions
+  const hasHalls = halls.length > 0
+
+  // Helper: check if session is a metadata row (moderator/chairperson assignments, not actual talks)
+  const isMetaSession = (s: Session) => {
+    const name = (s.session_name || "").toLowerCase()
+    return name.startsWith("session moderator") || name.startsWith("session chairperson")
+  }
+
   const filteredSessions = useMemo(() => {
-    if (!sessions || !selectedDay || !selectedHall) return []
+    if (!sessions || !selectedDay) return []
+    if (hasHalls && !selectedHall) return []
     return sessions.filter(s => {
-      // Match day and hall
-      if (s.session_date !== selectedDay || s.hall !== selectedHall) return false
+      // Match day and (optionally) hall
+      if (s.session_date !== selectedDay) return false
+      if (hasHalls && s.hall !== selectedHall) return false
+      // Exclude meta sessions (moderator/chairperson rows) - shown in track header instead
+      if (isMetaSession(s)) return false
+      // Exclude "Session Chair" track (metadata only)
+      if (s.specialty_track === "Session Chair") return false
       // Exclude hall coordinator rows
       const sessionName = (s.session_name || "").toLowerCase().trim()
       if (/^hall\s*[a-z0-9]?$/i.test(sessionName)) return false
@@ -245,7 +329,26 @@ export default function DelegateViewPage() {
       }
       return true
     })
-  }, [sessions, selectedDay, selectedHall, searchQuery])
+  }, [sessions, selectedDay, selectedHall, hasHalls, searchQuery])
+
+  // Get moderator/chairperson info for a given day from meta sessions
+  const dayMeta = useMemo(() => {
+    if (!sessions || !selectedDay) return { moderator: "", chairpersons: "" }
+    const daySessions = sessions.filter(s => s.session_date === selectedDay)
+    const modSession = daySessions.find(s => (s.session_name || "").toLowerCase().startsWith("session moderator"))
+    const chairSession = daySessions.find(s =>
+      (s.session_name || "").toLowerCase().startsWith("session chairperson") &&
+      s.specialty_track !== "Session Chair"
+    )
+    // For offline days, get chairpersons from "Session Chair" track sessions
+    const chairSessions = daySessions.filter(s => s.specialty_track === "Session Chair")
+
+    return {
+      moderator: modSession?.moderators || "",
+      chairpersons: chairSession?.chairpersons || "",
+      chairSessionsByTime: chairSessions,
+    }
+  }, [sessions, selectedDay])
 
   // Group by track/session
   const sessionsByTrack = useMemo(() => {
@@ -265,7 +368,17 @@ export default function DelegateViewPage() {
       g.sessions.sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""))
     })
 
-    return grouped
+    // Sort tracks chronologically by first session start_time
+    const sorted: Record<string, { track: Track | null; sessions: Session[] }> = {}
+    Object.entries(grouped)
+      .sort(([, a], [, b]) => {
+        const aTime = a.sessions[0]?.start_time || ""
+        const bTime = b.sessions[0]?.start_time || ""
+        return aTime.localeCompare(bTime)
+      })
+      .forEach(([key, val]) => { sorted[key] = val })
+
+    return sorted
   }, [filteredSessions, tracks])
 
   // Get hall coordinators for selected hall
@@ -329,10 +442,22 @@ export default function DelegateViewPage() {
     return `${start} - ${end}`
   }
 
-  // Check if session is a panel discussion
-  const isPanelDiscussion = (session: Session) => {
-    const name = (session.session_name || "").toLowerCase()
-    return name.includes("panel") || name.includes("discussion") || session.moderators
+  // Check if a track is a panel discussion (by track name, not individual session content)
+  const isPanelTrack = (trackName: string) => {
+    const name = trackName.toLowerCase()
+    return name.includes("panel") || name.includes("discussion")
+  }
+
+  // Check if a track should render as a compact inline item (breaks, inauguration, etc.)
+  const isCompactTrack = (trackName: string, trackSessions: Session[]) => {
+    const name = trackName.toLowerCase()
+    if (name.includes("panel")) return false
+    const alwaysCompact = name.includes("inauguration") || name.includes("valedictory")
+    if (!alwaysCompact && trackSessions.length > 1) return false
+    return name.includes("tea") || name.includes("lunch") || name.includes("break") ||
+      name.includes("registration") || name.includes("inauguration") || name.includes("valedictory") ||
+      name.includes("welcome") || name.includes("closing") || name.includes("exam") ||
+      name.includes("video")
   }
 
   // Toggle track expansion
@@ -416,44 +541,54 @@ export default function DelegateViewPage() {
       <div className={cn("sticky top-0 z-40", themeConfig.nav)}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center gap-2 py-3 overflow-x-auto">
-            {/* Day Tabs */}
-            {dates.map((date, index) => (
-              <button
-                key={date}
-                onClick={() => setSelectedDay(date)}
-                className={cn(
-                  "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-                  selectedDay === date
-                    ? "bg-blue-600 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                )}
-              >
-                Day {index + 1}
-                <span className="ml-1.5 text-xs opacity-75">{formatDate(date)}</span>
-              </button>
+            {/* Day Tabs grouped by phase */}
+            {datePhases.map((phase, phaseIdx) => (
+              <div key={phase.label} className="flex items-center gap-2">
+                {phaseIdx > 0 && <div className="w-px h-8 bg-gray-300 mx-1" />}
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap mr-1">
+                  {phase.label}
+                </span>
+                {phase.dates.map((date, dayIdx) => (
+                  <button
+                    key={date}
+                    onClick={() => setSelectedDay(date)}
+                    className={cn(
+                      "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+                      selectedDay === date ? phase.activeColor : phase.color
+                    )}
+                  >
+                    {phase.dates.length > 1 ? `Day ${dayIdx + 1}` : formatDate(date)}
+                    <span className="ml-1.5 text-xs opacity-75">{phase.dates.length > 1 ? formatDate(date) : ""}</span>
+                  </button>
+                ))}
+              </div>
             ))}
 
-            <div className="w-px h-8 bg-gray-300 mx-2" />
+            {hasHalls && (
+              <>
+                <div className="w-px h-8 bg-gray-300 mx-2" />
 
-            {/* Hall Tabs */}
-            {halls.map(hall => {
-              const colors = getHallColors(hall)
-              const isSelected = selectedHall === hall
-              return (
-                <button
-                  key={hall}
-                  onClick={() => setSelectedHall(hall)}
-                  className={cn(
-                    "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border-2",
-                    isSelected
-                      ? `${colors.bg} text-white shadow-lg border-transparent`
-                      : `bg-white ${colors.text} ${colors.accent} hover:${colors.light}`
-                  )}
-                >
-                  {hall}
-                </button>
-              )
-            })}
+                {/* Hall Tabs */}
+                {halls.map(hall => {
+                  const colors = getHallColors(hall)
+                  const isSelected = selectedHall === hall
+                  return (
+                    <button
+                      key={hall}
+                      onClick={() => setSelectedHall(hall)}
+                      className={cn(
+                        "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border-2",
+                        isSelected
+                          ? `${colors.bg} text-white shadow-lg border-transparent`
+                          : `bg-white ${colors.text} ${colors.accent} hover:${colors.light}`
+                      )}
+                    >
+                      {hall}
+                    </button>
+                  )
+                })}
+              </>
+            )}
 
             <div className="flex-1" />
 
@@ -478,14 +613,16 @@ export default function DelegateViewPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* Hall Info Card */}
-        <div className={cn("rounded-xl p-6 mb-6 border-l-4", hallColors.light, hallColors.accent)}>
+        {/* Hall/Day Info Card */}
+        <div className={cn("rounded-xl p-6 mb-6 border-l-4", hasHalls ? hallColors.light : "bg-blue-50", hasHalls ? hallColors.accent : "border-blue-500")}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className={cn("text-xl sm:text-2xl font-bold", hallColors.text)}>
-                {selectedHall}
-              </h2>
-              <p className="text-gray-600 mt-1">
+              {hasHalls && (
+                <h2 className={cn("text-xl sm:text-2xl font-bold", hallColors.text)}>
+                  {selectedHall}
+                </h2>
+              )}
+              <p className={cn(hasHalls ? "text-gray-600 mt-1" : "text-xl sm:text-2xl font-bold text-blue-700")}>
                 Day {selectedDay ? getDayNumber(selectedDay) : 1} - {selectedDay ? formatFullDate(selectedDay) : ""}
               </p>
               {hallCoordinators.length > 0 && (
@@ -497,11 +634,11 @@ export default function DelegateViewPage() {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-center">
-                <p className={cn("text-2xl sm:text-3xl font-bold", hallColors.text)}>{stats.totalSessions}</p>
+                <p className={cn("text-2xl sm:text-3xl font-bold", hasHalls ? hallColors.text : "text-blue-700")}>{stats.totalSessions}</p>
                 <p className="text-sm text-gray-500">Sessions</p>
               </div>
               <div className="text-center">
-                <p className={cn("text-2xl sm:text-3xl font-bold", hallColors.text)}>{stats.totalTracks}</p>
+                <p className={cn("text-2xl sm:text-3xl font-bold", hasHalls ? hallColors.text : "text-blue-700")}>{stats.totalTracks}</p>
                 <p className="text-sm text-gray-500">Tracks</p>
               </div>
             </div>
@@ -525,124 +662,257 @@ export default function DelegateViewPage() {
           </div>
         </div>
 
-        {/* Sessions by Track */}
+        {/* Sessions by Track - flat timeline with compact items interleaved */}
         <div className="space-y-4">
-          {Object.entries(sessionsByTrack).map(([trackName, { track, sessions: trackSessions }]) => {
-            const isExpanded = expandedTracks.has(trackName)
-            const isPanel = trackSessions.some(isPanelDiscussion)
-            const timeRange = getTrackTimeRange(trackSessions)
-            const trackColor = track?.color || "#3B82F6"
+          {(() => {
+            // Build flat timeline: compact items + regular tracks, sorted chronologically
+            type TimelineEntry =
+              | { type: "compact"; key: string; label: string; session: Session; sortTime: string }
+              | { type: "track"; key: string; trackName: string; track: Track | null; sessions: Session[]; sortTime: string }
 
-            // Get chairpersons from track
-            const trackChairpersons = track?.chairpersons
-              ? extractNames(track.chairpersons)
-              : []
+            const timeline: TimelineEntry[] = []
 
-            return (
-              <div key={trackName} className={cn("rounded-xl overflow-hidden", themeConfig.card)}>
-                {/* Track Header - Clickable */}
-                <button
-                  onClick={() => toggleTrack(trackName)}
-                  className="w-full text-left hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center p-4">
-                    <span
-                      className="w-1 h-12 rounded-full mr-4"
-                      style={{ backgroundColor: trackColor }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-lg text-gray-900">{trackName}</h3>
-                        <Badge variant="secondary" className="bg-gray-100">
-                          {trackSessions.length} session{trackSessions.length !== 1 ? "s" : ""}
-                        </Badge>
-                      </div>
-                      {track?.description && (
-                        <p className="text-sm text-gray-500 mt-0.5 truncate">{track.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 ml-4">
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">{timeRange}</p>
-                        <p className="text-xs text-gray-500">Time Range</p>
-                      </div>
-                      {isExpanded ? (
-                        <ChevronDown className="h-5 w-5 text-gray-400" />
-                      ) : (
-                        <ChevronRight className="h-5 w-5 text-gray-400" />
-                      )}
-                    </div>
+            Object.entries(sessionsByTrack).forEach(([trackName, { track, sessions: trackSessions }]) => {
+              if (isCompactTrack(trackName, trackSessions)) {
+                trackSessions.forEach((sess, i) => {
+                  let label = trackName
+                  if (trackSessions.length > 1 && sess.session_name) {
+                    if (sess.session_name.toLowerCase().startsWith("welcome")) {
+                      label = "Welcome Address"
+                    } else {
+                      label = sess.session_name
+                    }
+                  }
+                  timeline.push({
+                    type: "compact",
+                    key: `compact-${trackName}-${i}`,
+                    label,
+                    session: sess,
+                    sortTime: sess.start_time || "",
+                  })
+                })
+              } else {
+                timeline.push({
+                  type: "track",
+                  key: `track-${trackName}`,
+                  trackName,
+                  track,
+                  sessions: trackSessions,
+                  sortTime: trackSessions[0]?.start_time || "",
+                })
+              }
+            })
+
+            timeline.sort((a, b) => a.sortTime.localeCompare(b.sortTime))
+
+            return timeline.map(item => {
+              if (item.type === "compact") {
+                const sessionNameLower = (item.session.session_name || "").toLowerCase().trim()
+                const labelLower = item.label.toLowerCase().trim()
+                const showSessionName = sessionNameLower !== labelLower &&
+                  !labelLower.includes(sessionNameLower) &&
+                  !sessionNameLower.includes(labelLower)
+                return (
+                  <div key={item.key} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
+                    <div className="w-1 h-8 rounded-full bg-amber-400 flex-shrink-0" />
+                    <span className="font-bold text-amber-800">{item.label}</span>
+                    <span className="text-amber-600 font-medium text-sm">
+                      {formatTime(item.session.start_time)} - {formatTime(item.session.end_time)}
+                    </span>
+                    {showSessionName && (
+                      <span className="text-amber-700 text-sm italic">{item.session.session_name}</span>
+                    )}
                   </div>
-                </button>
+                )
+              }
 
-                {/* Expanded Content */}
-                {isExpanded && (
-                  <div className="border-t">
-                    {/* Column Headers */}
-                    <div className={cn("text-xs font-medium uppercase tracking-wider", themeConfig.cardHeader, theme === "classic" ? "text-white" : themeConfig.textMuted)}>
-                      <div className="flex px-4 py-3">
-                        <div className="w-32">Time</div>
-                        <div className="flex-1">Topic</div>
-                        <div className="w-48">{isPanel ? "Moderator" : "Speaker"}</div>
-                        <div className="w-48">{isPanel ? "Panelists" : "Chairperson"}</div>
-                      </div>
-                    </div>
+              // Regular track card
+              const { trackName, track, sessions: trackSessions } = item
+              const isExpanded = expandedTracks.has(trackName)
+              const isPanel = isPanelTrack(trackName)
+              const timeRange = getTrackTimeRange(trackSessions)
+              const trackColor = track?.color || "#3B82F6"
 
-                    {/* Session Rows */}
-                    {trackSessions.map((session, idx) => {
-                      const isSessionPanel = isPanelDiscussion(session)
+              const trackModeratorName = dayMeta.moderator
+              const trackChairpersonNames = track?.chairpersons
+                ? extractNames(track.chairpersons).join(", ")
+                : dayMeta.chairpersons || ""
 
-                      // Rotate chairpersons for each row
-                      const chairpersonForRow = trackChairpersons.length > 0
-                        ? trackChairpersons[idx % trackChairpersons.length]
-                        : session.chairpersons || ""
+              const getChairpersonsForSession = (session: Session) => {
+                if (dayMeta.chairSessionsByTime && dayMeta.chairSessionsByTime.length > 0) {
+                  const match = dayMeta.chairSessionsByTime.find(cs =>
+                    cs.start_time && cs.end_time &&
+                    session.start_time >= cs.start_time && session.start_time < cs.end_time
+                  )
+                  if (match?.chairpersons) return match.chairpersons
+                }
+                return trackChairpersonNames
+              }
 
-                      return (
-                        <div
-                          key={session.id}
-                          className={cn(
-                            "flex px-4 py-3 text-sm border-t",
-                            idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                          )}
-                        >
-                          {/* Time */}
-                          <div className="w-32 font-medium text-gray-900">
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3.5 w-3.5 text-gray-400" />
-                              {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                            </div>
-                          </div>
-
-                          {/* Topic */}
-                          <div className="flex-1 text-gray-800 font-medium pr-4">
-                            {session.session_name}
-                          </div>
-
-                          {/* Speaker/Moderator */}
-                          <div className="w-48 text-gray-600">
-                            {isSessionPanel ? session.moderators : session.speakers}
-                          </div>
-
-                          {/* Chairperson/Panelists */}
-                          <div className="w-48 text-gray-600">
-                            {isSessionPanel ? (
-                              <div className="text-xs leading-relaxed">
-                                {session.speakers?.split(",").map((p, i) => (
-                                  <span key={i} className="inline-block mr-1">{p.trim()}{i < (session.speakers?.split(",").length || 0) - 1 ? "," : ""}</span>
-                                ))}
-                              </div>
-                            ) : (
-                              chairpersonForRow
+              return (
+                <div key={item.key} className={cn("rounded-xl overflow-hidden", themeConfig.card)}>
+                  {/* Track Header - Clickable */}
+                  <button
+                    onClick={() => toggleTrack(trackName)}
+                    className="w-full text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center p-4">
+                      <span
+                        className="w-1 h-12 rounded-full mr-4"
+                        style={{ backgroundColor: trackColor }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-lg text-gray-900">{trackName}</h3>
+                          <Badge variant="secondary" className="bg-gray-100">
+                            {trackSessions.length} session{trackSessions.length !== 1 ? "s" : ""}
+                          </Badge>
+                        </div>
+                        {track?.description && (
+                          <p className="text-sm text-gray-500 mt-0.5 truncate">{track.description}</p>
+                        )}
+                        {!isPanel && (trackModeratorName || trackChairpersonNames) && (
+                          <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-sm">
+                            {trackModeratorName && (
+                              <span className="text-gray-600">
+                                <span className="font-semibold text-gray-700">Moderator:</span> {trackModeratorName}
+                              </span>
+                            )}
+                            {trackChairpersonNames && (
+                              <span className="text-gray-600">
+                                <span className="font-semibold text-gray-700">Chairpersons:</span> {trackChairpersonNames}
+                              </span>
                             )}
                           </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 ml-4">
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-gray-900">{timeRange}</p>
+                          <p className="text-xs text-gray-500">Time Range</p>
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                        {isExpanded ? (
+                          <ChevronDown className="h-5 w-5 text-gray-400" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-gray-400" />
+                        )}
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Expanded Content */}
+                  {isExpanded && (
+                    <div className="border-t">
+                      {isPanel ? (
+                        <div>
+                          {trackSessions.map((session) => {
+                            const sessionAssignments = assignmentsBySession[session.id]
+                            const panelists = sessionAssignments?.panelists || []
+                            return (
+                              <div key={session.id} className="p-4">
+                                <h4 className="font-bold text-gray-900 mb-3">{session.session_name}</h4>
+                                <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                                </div>
+                                {session.moderators && (
+                                  <p className="text-sm text-gray-700 mb-2">
+                                    <span className="font-semibold">Moderator:</span> {session.moderators}
+                                  </p>
+                                )}
+                                {session.chairpersons && (
+                                  <p className="text-sm text-gray-700 mb-2">
+                                    <span className="font-semibold">Chairpersons:</span> {session.chairpersons}
+                                  </p>
+                                )}
+                                {panelists.length > 0 && (
+                                  <div className="mt-2">
+                                    <p className="text-sm font-semibold text-gray-700 mb-1">Panelists:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {panelists.map((name, i) => (
+                                        <span key={i} className="text-sm bg-gray-100 px-2.5 py-1 rounded-full text-gray-700">
+                                          {name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        (() => {
+                          const hasChairSlots = dayMeta.chairSessionsByTime && dayMeta.chairSessionsByTime.length > 0
+                          type ChairGroup = { chair: string; sessions: Session[] }
+                          const groups: ChairGroup[] = []
+
+                          if (hasChairSlots) {
+                            trackSessions.forEach(session => {
+                              const chair = getChairpersonsForSession(session)
+                              const existing = groups.find(g => g.chair === chair)
+                              if (existing) {
+                                existing.sessions.push(session)
+                              } else {
+                                groups.push({ chair, sessions: [session] })
+                              }
+                            })
+                          } else {
+                            groups.push({ chair: "", sessions: trackSessions })
+                          }
+
+                          let rowIdx = 0
+                          return groups.map((group, groupIdx) => (
+                            <div key={groupIdx}>
+                              {group.chair && (
+                                <div className="px-4 py-2 bg-blue-50 border-t text-sm text-blue-800 font-medium">
+                                  Chairpersons: {group.chair}
+                                </div>
+                              )}
+                              {groupIdx === 0 && (
+                                <div className={cn("text-xs font-medium uppercase tracking-wider", themeConfig.cardHeader, theme === "classic" ? "text-white" : themeConfig.textMuted)}>
+                                  <div className="flex px-4 py-3">
+                                    <div className="w-44">Time</div>
+                                    <div className="flex-1">Topic</div>
+                                    <div className="w-48">Speaker</div>
+                                  </div>
+                                </div>
+                              )}
+                              {group.sessions.map((session) => {
+                                const currentIdx = rowIdx++
+                                return (
+                                  <div
+                                    key={session.id}
+                                    className={cn(
+                                      "flex px-4 py-3 text-sm border-t",
+                                      currentIdx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                                    )}
+                                  >
+                                    <div className="w-44 font-medium text-gray-900 whitespace-nowrap">
+                                      <div className="flex items-center gap-1">
+                                        <Clock className="h-3.5 w-3.5 text-gray-400" />
+                                        {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                                      </div>
+                                    </div>
+                                    <div className="flex-1 text-gray-800 font-medium pr-4">
+                                      {session.session_name}
+                                    </div>
+                                    <div className="w-48 text-gray-600">
+                                      {session.speakers}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ))
+                        })()
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          })()}
         </div>
 
         {/* Empty State */}

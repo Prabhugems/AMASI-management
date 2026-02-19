@@ -533,15 +533,11 @@ function SectionHeader({
 // ============================================
 // STATS ROW
 // ============================================
-function StatsRow({ faculty, isDark }: { faculty: FacultyMember[]; isDark: boolean }) {
-  const confirmed = faculty.filter((f) => f.status === "confirmed" || f.status === "active").length
-  const pending = faculty.filter((f) => f.status === "pending" || !f.status).length
-  const declined = faculty.filter((f) => f.status === "declined" || f.status === "inactive").length
-
+function StatsRow({ counts, isDark }: { counts: { active: number; pending: number; inactive: number }; isDark: boolean }) {
   const stats = [
-    { label: "Active", value: confirmed, color: "emerald", icon: CheckCircle },
-    { label: "Pending", value: pending, color: "amber", icon: Clock },
-    { label: "Inactive", value: declined, color: "rose", icon: XCircle },
+    { label: "Active", value: counts.active, color: "emerald", icon: CheckCircle },
+    { label: "Pending", value: counts.pending, color: "amber", icon: Clock },
+    { label: "Inactive", value: counts.inactive, color: "rose", icon: XCircle },
   ]
 
   return (
@@ -709,18 +705,17 @@ export function RecentFacultyTable() {
 
   const isDark = mounted ? resolvedTheme === "dark" : false
 
-  // Fetch faculty from Supabase
-  const { data: facultyData } = useQuery({
-    queryKey: ["recent-faculty-table"],
+  // Fetch faculty stats and recent faculty from API
+  const { data: dashboardData } = useQuery({
+    queryKey: ["dashboard-faculty-stats"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("faculty")
-        .select("id, name, email, designation, institution, status")
-        .order("created_at", { ascending: false })
-        .limit(6)
-      return (data as FacultyMember[]) || []
+      const res = await fetch("/api/dashboard/faculty-stats")
+      if (!res.ok) throw new Error("Failed to fetch faculty stats")
+      return await res.json()
     },
   })
+
+  const facultyData = (dashboardData?.recent as FacultyMember[]) || []
 
   // Add faculty mutation
   const addFacultyMutation = useMutation({
@@ -817,15 +812,12 @@ export function RecentFacultyTable() {
   ]
 
   const faculty = facultyData && facultyData.length > 0 ? facultyData : fallbackFaculty
-
-  // Get total count
-  const { data: totalCount } = useQuery({
-    queryKey: ["faculty-total-count"],
-    queryFn: async () => {
-      const { count } = await supabase.from("faculty").select("*", { count: "exact", head: true })
-      return count || 0
-    },
-  })
+  const totalCount = dashboardData?.total || 0
+  const facultyCounts = {
+    active: dashboardData?.active || 0,
+    pending: dashboardData?.pending || 0,
+    inactive: dashboardData?.inactive || 0,
+  }
 
   return (
     <div
@@ -838,7 +830,7 @@ export function RecentFacultyTable() {
       <SectionHeader isDark={isDark} totalCount={totalCount || faculty.length} />
 
       {/* Stats Row */}
-      <StatsRow faculty={faculty} isDark={isDark} />
+      <StatsRow counts={facultyCounts} isDark={isDark} />
 
       {/* Search & Filters */}
       <SearchFilterBar isDark={isDark} onAddClick={() => setIsAddModalOpen(true)} />
