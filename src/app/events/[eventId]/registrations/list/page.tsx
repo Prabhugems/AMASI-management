@@ -69,6 +69,7 @@ import {
   Users,
   CheckSquare,
   FileText,
+  Wifi,
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { SlideOver, SlideOverSection, SlideOverFooter } from "@/components/ui/slide-over"
@@ -109,6 +110,7 @@ interface Registration {
   certificate_url: string | null
   certificate_generated_at: string | null
   certificate_downloaded_at: string | null
+  participation_mode: "online" | "offline" | "hybrid"
   ticket_type?: {
     name: string
     price: number
@@ -130,6 +132,7 @@ export default function RegistrationsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [ticketFilter, setTicketFilter] = useState<string>("all")
+  const [modeFilter, setModeFilter] = useState<string>("all")
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [_activeTab, _setActiveTab] = useState("details")
@@ -635,6 +638,7 @@ export default function RegistrationsPage() {
           attendee_phone: data.updates.attendee_phone,
           attendee_institution: data.updates.attendee_institution,
           attendee_designation: data.updates.attendee_designation,
+          participation_mode: data.updates.participation_mode,
           notes: data.updates.notes,
         })
         .eq("id", data.id)
@@ -657,6 +661,7 @@ export default function RegistrationsPage() {
         attendee_phone: selectedRegistration.attendee_phone || "",
         attendee_institution: selectedRegistration.attendee_institution || "",
         attendee_designation: selectedRegistration.attendee_designation || "",
+        participation_mode: selectedRegistration.participation_mode || "offline",
         notes: selectedRegistration.notes || "",
       })
       setIsEditOpen(true)
@@ -913,10 +918,14 @@ export default function RegistrationsPage() {
     setImportTicketId("")
   }
 
-  // Filter registrations by search and ticket type
+  // Filter registrations by search, ticket type, and participation mode
   const filteredRegistrations = registrations?.filter((reg) => {
     // Ticket type filter
     if (ticketFilter !== "all" && reg.ticket_type_id !== ticketFilter) {
+      return false
+    }
+    // Participation mode filter
+    if (modeFilter !== "all" && (reg.participation_mode || "offline") !== modeFilter) {
       return false
     }
     // Search filter
@@ -1179,6 +1188,29 @@ export default function RegistrationsPage() {
           })
           break
 
+        case "set_online":
+        case "set_offline":
+        case "set_hybrid": {
+          const mode = action.replace("set_", "") as "online" | "offline" | "hybrid"
+          for (const id of ids) {
+            const { error } = await (supabase as any)
+              .from("registrations")
+              .update({ participation_mode: mode })
+              .eq("id", id)
+            if (error) failCount++
+            else successCount++
+          }
+          toast.success(`Set ${successCount} registration(s) to ${mode}`)
+          logActivityClient({
+            action: "bulk_action",
+            entityType: "registration",
+            eventId,
+            description: `Bulk set ${successCount} registration(s) to ${mode}`,
+            metadata: { bulkAction: `set_${mode}`, count: successCount },
+          })
+          break
+        }
+
         case "delete":
           if (!confirm(`Are you sure you want to delete ${ids.length} registration(s)? This cannot be undone.`)) {
             setBulkActionLoading(false)
@@ -1337,6 +1369,26 @@ export default function RegistrationsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Wifi className="h-4 w-4 mr-2" />
+                  Mode
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => executeBulkAction("set_offline")}>
+                  Set Offline
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => executeBulkAction("set_online")}>
+                  Set Online
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => executeBulkAction("set_hybrid")}>
+                  Set Hybrid
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               variant="outline"
               size="sm"
@@ -1409,6 +1461,18 @@ export default function RegistrationsPage() {
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
             <SelectItem value="refunded">Refunded</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={modeFilter} onValueChange={setModeFilter}>
+          <SelectTrigger className="w-full md:w-40">
+            <Wifi className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Mode" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Modes</SelectItem>
+            <SelectItem value="offline">Offline</SelectItem>
+            <SelectItem value="online">Online</SelectItem>
+            <SelectItem value="hybrid">Hybrid</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -1517,15 +1581,30 @@ export default function RegistrationsPage() {
                       </div>
                     </td>
                     <td className="p-4">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[10px] font-medium border-0 capitalize",
-                          getStatusColor(reg.status)
+                      <div className="flex items-center gap-1.5">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] font-medium border-0 capitalize",
+                            getStatusColor(reg.status)
+                          )}
+                        >
+                          {reg.status}
+                        </Badge>
+                        {(reg.participation_mode || "offline") !== "offline" && (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] font-medium border-0 capitalize",
+                              reg.participation_mode === "online"
+                                ? "bg-purple-500/20 text-purple-700 dark:text-purple-400"
+                                : "bg-amber-500/20 text-amber-700 dark:text-amber-400"
+                            )}
+                          >
+                            {reg.participation_mode}
+                          </Badge>
                         )}
-                      >
-                        {reg.status}
-                      </Badge>
+                      </div>
                     </td>
                     <td className="p-4 text-right">
                       <DropdownMenu>
@@ -2156,6 +2235,22 @@ export default function RegistrationsPage() {
                   onChange={(e) => setEditData({ ...editData, attendee_designation: e.target.value })}
                 />
               </div>
+            </div>
+            <div>
+              <Label htmlFor="edit-mode">Participation Mode</Label>
+              <Select
+                value={editData.participation_mode || "offline"}
+                onValueChange={(value) => setEditData({ ...editData, participation_mode: value as "online" | "offline" | "hybrid" })}
+              >
+                <SelectTrigger id="edit-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="offline">Offline (In-person)</SelectItem>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="hybrid">Hybrid</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="edit-notes">Notes</Label>

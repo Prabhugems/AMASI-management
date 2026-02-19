@@ -240,6 +240,7 @@ export async function POST(request: NextRequest) {
         attendee_designation,
         ticket_type_id,
         status,
+        participation_mode,
         ticket_types (id, name)
       `)
       .eq("event_id", event_id)
@@ -260,6 +261,9 @@ export async function POST(request: NextRequest) {
     if (registration.status !== "confirmed") {
       return NextResponse.json({ error: "Check-in failed: registration is not confirmed" }, { status: 400 })
     }
+
+    // Warn (but don't block) for online-only participants
+    const isOnlineParticipant = registration.participation_mode === "online"
 
     // Verify the check-in list exists and check ticket type restrictions
     const { data: checkinList, error: listError } = await (supabase as any)
@@ -384,6 +388,7 @@ export async function POST(request: NextRequest) {
         success: true,
         action: "checked_in",
         list_name: checkinList.name,
+        ...(isOnlineParticipant && { warning: "This participant is registered as online-only" }),
         registration: {
           ...registration,
           checked_in: true,

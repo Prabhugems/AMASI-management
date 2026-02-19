@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         attendee_designation,
         ticket_type_id,
         status,
+        participation_mode,
         ticket_types (id, name)
       `)
       .eq("event_id", station.event_id)
@@ -86,6 +87,14 @@ export async function POST(request: NextRequest) {
     if (registration.status !== "confirmed") {
       return NextResponse.json({
         error: `Cannot print: Registration status is "${registration.status}"`,
+        registration
+      }, { status: 400 })
+    }
+
+    // Block badge printing for online-only participants
+    if (registration.participation_mode === "online") {
+      return NextResponse.json({
+        error: "Cannot print badge for online-only participants",
         registration
       }, { status: 400 })
     }

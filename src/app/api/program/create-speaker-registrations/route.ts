@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     // Legacy format stores in description as "Name | Email | Phone"
     const { data: sessions } = await (supabase as any)
       .from("sessions")
-      .select("description, speakers_text, chairpersons_text, moderators_text")
+      .select("session_name, description, speakers_text, chairpersons_text, moderators_text")
       .eq("event_id", event_id)
 
     if (!sessions || sessions.length === 0) {
@@ -77,10 +77,24 @@ export async function POST(request: NextRequest) {
       }).filter(p => p.name)
     }
 
-    // Extract unique faculty from sessions
+    // Extract unique faculty from sessions, tracking online/offline session counts
     const facultyMap = new Map<string, { name: string; email: string; phone: string }>()
+    // Track online vs offline session counts per faculty key
+    const facultySessionCounts = new Map<string, { online: number; offline: number }>()
+
+    const isOnlineSession = (sessionName: string | null) =>
+      sessionName ? /online/i.test(sessionName) : false
+
+    const trackSession = (key: string, sessionOnline: boolean) => {
+      const counts = facultySessionCounts.get(key) || { online: 0, offline: 0 }
+      if (sessionOnline) counts.online++
+      else counts.offline++
+      facultySessionCounts.set(key, counts)
+    }
 
     sessions.forEach((session: any) => {
+      const sessionIsOnline = isOnlineSession(session.session_name)
+
       // Parse from *_text columns (AI import format: "Name (email, phone) | Name2 (email, phone)")
       const textFields = [session.speakers_text, session.chairpersons_text, session.moderators_text]
       textFields.forEach((text: string | null) => {
@@ -89,12 +103,14 @@ export async function POST(request: NextRequest) {
           people.forEach(person => {
             if (person.email && person.email.includes("@")) {
               facultyMap.set(person.email, person)
+              trackSession(person.email, sessionIsOnline)
             } else if (person.name) {
               // Use name as key if no email
               const key = `name:${person.name.toLowerCase()}`
               if (!facultyMap.has(key)) {
                 facultyMap.set(key, person)
               }
+              trackSession(key, sessionIsOnline)
             }
           })
         }
@@ -113,6 +129,7 @@ export async function POST(request: NextRequest) {
           if (email && !facultyMap.has(email)) {
             facultyMap.set(email, { name, email, phone })
           }
+          if (email) trackSession(email, sessionIsOnline)
         } else {
           // CSV import format: comma-separated names like "Dr Chirag Parikh, Dr Shaishav Patel (Chairperson)"
           const names = session.description.split(",").map((s: string) => s.trim()).filter(Boolean)
@@ -126,6 +143,7 @@ export async function POST(request: NextRequest) {
                 if (!facultyMap.has(key)) {
                   facultyMap.set(key, { name, email: "", phone: "" })
                 }
+                trackSession(key, sessionIsOnline)
               }
             }
           })
@@ -150,13 +168,22 @@ export async function POST(request: NextRequest) {
           )
           if (match?.email) {
             // Upgrade from name-based key to email-based key
+            const oldCounts = facultySessionCounts.get(key)
             facultyMap.delete(key)
+            facultySessionCounts.delete(key)
             if (!facultyMap.has(match.email)) {
               facultyMap.set(match.email, {
                 name: entry.name,
                 email: match.email,
                 phone: match.phone || entry.phone,
               })
+              if (oldCounts) {
+                const existing = facultySessionCounts.get(match.email) || { online: 0, offline: 0 }
+                facultySessionCounts.set(match.email, {
+                  online: existing.online + oldCounts.online,
+                  offline: existing.offline + oldCounts.offline,
+                })
+              }
             }
           }
         })
@@ -238,6 +265,15 @@ export async function POST(request: NextRequest) {
       // Generate placeholder email if none available
       const attendeeEmail = email || `${faculty.name.toLowerCase().replace(/\s+/g, ".")}@placeholder.speaker`
 
+      // Determine participation_mode from session counts
+      const counts = facultySessionCounts.get(key) || { online: 0, offline: 0 }
+      let participationMode: "online" | "offline" | "hybrid" = "offline"
+      if (counts.online > 0 && counts.offline > 0) {
+        participationMode = "hybrid"
+      } else if (counts.online > 0) {
+        participationMode = "online"
+      }
+
       const { error: regError } = await (supabase as any)
         .from("registrations")
         .insert({
@@ -256,6 +292,7 @@ export async function POST(request: NextRequest) {
           total_amount: 0,
           status: "pending", // Speaker needs to confirm via portal
           payment_status: "completed",
+          participation_mode: participationMode,
           custom_fields: {
             portal_token: portalToken,
             invitation_sent: new Date().toISOString(),

@@ -40,19 +40,6 @@ export default function BadgesOverviewPage() {
     },
   })
 
-  // Fetch faculty/speakers count from faculty_assignments
-  const { data: faculty } = useQuery({
-    queryKey: ["badge-faculty", eventId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("faculty_assignments")
-        .select("id")
-        .eq("event_id", eventId)
-
-      return data || []
-    },
-  })
-
   // Fetch badge templates
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ["badge-templates", eventId],
@@ -68,20 +55,14 @@ export default function BadgesOverviewPage() {
     refetchOnMount: "always",
   })
 
-  // Stats
+  // Stats — one badge per registration (no double-counting with faculty_assignments)
   const stats = useMemo(() => {
     if (!registrations) return null
 
-    const delegatesCount = registrations.length
-    const facultyCount = faculty?.length || 0
-    const total = delegatesCount + facultyCount
+    const total = registrations.length
 
-    // Count unique registrations that have badges generated
-    const printedFromRegs = registrations.filter((r: any) => r.badge_generated_at).length
+    const printed = registrations.filter((r: any) => r.badge_generated_at).length
     const checkedIn = registrations.filter((r: any) => r.checked_in).length
-
-    // Use registration count for accurate "unique attendees with badges"
-    const printed = printedFromRegs
 
     return {
       total,
@@ -90,7 +71,7 @@ export default function BadgesOverviewPage() {
       checkedIn,
       templates: templates?.length || 0,
     }
-  }, [registrations, faculty, templates])
+  }, [registrations, templates])
 
   if (regLoading || templatesLoading) {
     return (
@@ -116,7 +97,7 @@ export default function BadgesOverviewPage() {
           <div className="flex items-center gap-2 text-muted-foreground">
             <Users className="h-4 w-4" />
             <span className="text-sm">Total Attendees</span>
-            <HelpTooltip content="Total count of delegates + faculty/speakers who need badges" />
+            <HelpTooltip content="Total confirmed registrations (delegates + speakers) who need badges" />
           </div>
           <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.total || 0}</p>
         </div>

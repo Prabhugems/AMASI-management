@@ -33,6 +33,7 @@ interface Registration {
   attendee_institution: string | null
   attendee_designation: string | null
   status: string
+  participation_mode: "online" | "offline" | "hybrid"
   ticket_type: { id: string; name: string } | null
   badge_generated_at: string | null
 }
@@ -55,6 +56,7 @@ export default function GenerateBadgesPage() {
   const [ticketDropdownOpen, setTicketDropdownOpen] = useState(false)
   const [selectedStatus, setSelectedStatus] = useState<string>("confirmed")
   const [badgeFilter, setBadgeFilter] = useState<string>("all") // all, without_badge, with_badge
+  const [modeFilter, setModeFilter] = useState<string>("all") // all, online, offline, hybrid
   const [selectedRegistrations, setSelectedRegistrations] = useState<string[]>([])
   const [exportFormat, setExportFormat] = useState<"pdf" | "png">("pdf")
   const [badgesPerPage, setBadgesPerPage] = useState<number>(1)
@@ -140,7 +142,8 @@ export default function GenerateBadgesPage() {
       badgeFilter === "all" ||
       (badgeFilter === "without_badge" && !r.badge_generated_at) ||
       (badgeFilter === "with_badge" && r.badge_generated_at)
-    return matchesSearch && matchesStatus && matchesTicketType && matchesBadgeFilter
+    const matchesMode = modeFilter === "all" || (r.participation_mode || "offline") === modeFilter
+    return matchesSearch && matchesStatus && matchesTicketType && matchesBadgeFilter && matchesMode
   })
 
   // Count for quick select
@@ -758,6 +761,16 @@ export default function GenerateBadgesPage() {
                     <option value="without_badge">Without Badge ({withoutBadgeCount})</option>
                     <option value="with_badge">With Badge</option>
                   </select>
+                  <select
+                    value={modeFilter}
+                    onChange={(e) => setModeFilter(e.target.value)}
+                    className="px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="all">All Modes</option>
+                    <option value="offline">Offline</option>
+                    <option value="online">Online</option>
+                    <option value="hybrid">Hybrid</option>
+                  </select>
                   <div className="relative">
                     <button
                       type="button"
@@ -875,6 +888,17 @@ export default function GenerateBadgesPage() {
                             ) : (
                               <span className="px-2 py-0.5 text-xs rounded-full bg-gray-500/10 text-gray-500">
                                 No Badge
+                              </span>
+                            )}
+                            {(reg.participation_mode || "offline") !== "offline" && (
+                              <span
+                                className={`px-2 py-0.5 text-xs rounded-full ${
+                                  reg.participation_mode === "online"
+                                    ? "bg-purple-500/10 text-purple-600"
+                                    : "bg-amber-500/10 text-amber-600"
+                                }`}
+                              >
+                                {reg.participation_mode}
                               </span>
                             )}
                           </div>

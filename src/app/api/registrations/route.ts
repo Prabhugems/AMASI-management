@@ -201,6 +201,7 @@ export async function POST(request: NextRequest) {
       payment_id, // Existing payment ID (for razorpay)
       custom_fields,
       addons, // Array of selected addons: { addonId, variantId?, quantity, unitPrice, totalPrice }
+      participation_mode = "offline", // online, offline, hybrid
     } = body
 
     // Validate required fields
@@ -422,6 +423,7 @@ export async function POST(request: NextRequest) {
         payment_status: paymentStatus,
         payment_id: finalPaymentId,
         confirmed_at: initialStatus === "confirmed" ? new Date().toISOString() : null,
+        participation_mode,
         custom_fields,
       })
       .select()

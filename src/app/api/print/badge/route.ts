@@ -57,6 +57,14 @@ export async function POST(request: NextRequest) {
 
     const reg = registration || {}
 
+    // Block badge printing for online-only participants
+    if (reg.participation_mode === "online") {
+      return NextResponse.json({
+        success: false,
+        error: "Cannot print badge for online-only participants"
+      }, { status: 400 })
+    }
+
     // 2. Find badge template for this event
     const { data: badgeTemplate } = await supabase
       .from("badge_templates")
@@ -227,4 +235,5 @@ function replacePlaceholders(text: string, reg: any): string {
     .replace(/\{\{designation\}\}/gi, reg.attendee_designation || "")
     .replace(/\{\{city\}\}/gi, reg.attendee_city || "")
     .replace(/\{\{event_name\}\}/gi, reg.events?.name || "")
+    .replace(/\{\{participation_mode\}\}/gi, reg.participation_mode || "offline")
 }
