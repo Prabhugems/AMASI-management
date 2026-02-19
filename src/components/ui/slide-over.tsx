@@ -243,10 +243,10 @@ export interface SlideOverSectionProps {
 
 export function SlideOverSection({ title, icon: Icon, children, className }: SlideOverSectionProps) {
   return (
-    <div className={cn("px-5 py-4 border-b border-border/40 last:border-b-0", className)}>
+    <div className={cn("px-5 py-4 border-b border-border/30 last:border-b-0", className)}>
       {title && (
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-          {Icon && <Icon className="h-3.5 w-3.5" />}
+        <h3 className="text-[11px] font-bold text-muted-foreground/70 uppercase tracking-[0.1em] mb-3 flex items-center gap-2">
+          {Icon && <Icon className="h-3.5 w-3.5 text-primary/50" />}
           {title}
         </h3>
       )}

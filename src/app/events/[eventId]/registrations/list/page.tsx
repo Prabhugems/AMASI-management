@@ -1704,53 +1704,51 @@ export default function RegistrationsPage() {
           <div className="space-y-0">
             {/* Hero Header Card */}
             <div className={cn(
-              "mx-4 mt-4 rounded-xl border p-4 space-y-4",
-              selectedRegistration.status === "confirmed" && "bg-gradient-to-br from-emerald-50/80 to-green-50/40 border-emerald-200/60 dark:from-emerald-950/20 dark:to-green-950/10 dark:border-emerald-800/40",
-              selectedRegistration.status === "pending" && "bg-gradient-to-br from-amber-50/80 to-yellow-50/40 border-amber-200/60 dark:from-amber-950/20 dark:to-yellow-950/10 dark:border-amber-800/40",
-              selectedRegistration.status === "cancelled" && "bg-gradient-to-br from-red-50/80 to-rose-50/40 border-red-200/60 dark:from-red-950/20 dark:to-rose-950/10 dark:border-red-800/40",
-              selectedRegistration.status === "refunded" && "bg-gradient-to-br from-slate-50/80 to-gray-50/40 border-slate-200/60 dark:from-slate-950/20 dark:to-gray-950/10 dark:border-slate-800/40",
+              "mx-4 mt-4 rounded-2xl border-2 p-5 space-y-4 shadow-sm",
+              selectedRegistration.status === "confirmed" && "bg-gradient-to-br from-emerald-50 via-green-50/60 to-teal-50/30 border-emerald-300 dark:from-emerald-950/30 dark:via-green-950/20 dark:to-teal-950/10 dark:border-emerald-700",
+              selectedRegistration.status === "pending" && "bg-gradient-to-br from-amber-50 via-yellow-50/60 to-orange-50/30 border-amber-300 dark:from-amber-950/30 dark:via-yellow-950/20 dark:to-orange-950/10 dark:border-amber-700",
+              selectedRegistration.status === "cancelled" && "bg-gradient-to-br from-red-50 via-rose-50/60 to-pink-50/30 border-red-300 dark:from-red-950/30 dark:via-rose-950/20 dark:to-pink-950/10 dark:border-red-700",
+              selectedRegistration.status === "refunded" && "bg-gradient-to-br from-slate-50 via-gray-50/60 to-zinc-50/30 border-slate-300 dark:from-slate-950/30 dark:via-gray-950/20 dark:to-zinc-950/10 dark:border-slate-700",
             )}>
               {/* Attendee Profile */}
-              <div className="flex items-start gap-3.5">
+              <div className="flex items-start gap-4">
                 <div className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-lg font-bold ring-2 ring-offset-2 ring-offset-background",
-                  selectedRegistration.status === "confirmed" && "bg-emerald-100 text-emerald-700 ring-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300 dark:ring-emerald-700",
-                  selectedRegistration.status === "pending" && "bg-amber-100 text-amber-700 ring-amber-300 dark:bg-amber-900/50 dark:text-amber-300 dark:ring-amber-700",
-                  selectedRegistration.status === "cancelled" && "bg-red-100 text-red-700 ring-red-300 dark:bg-red-900/50 dark:text-red-300 dark:ring-red-700",
-                  selectedRegistration.status === "refunded" && "bg-slate-100 text-slate-700 ring-slate-300 dark:bg-slate-900/50 dark:text-slate-300 dark:ring-slate-700",
+                  "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-xl font-bold shadow-sm",
+                  selectedRegistration.status === "confirmed" && "bg-gradient-to-br from-emerald-400 to-green-500 text-white",
+                  selectedRegistration.status === "pending" && "bg-gradient-to-br from-amber-400 to-orange-500 text-white",
+                  selectedRegistration.status === "cancelled" && "bg-gradient-to-br from-red-400 to-rose-500 text-white",
+                  selectedRegistration.status === "refunded" && "bg-gradient-to-br from-slate-400 to-gray-500 text-white",
                 )}>
                   {selectedRegistration.attendee_name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-base truncate">{selectedRegistration.attendee_name}</p>
+                  <p className="font-bold text-base truncate">{selectedRegistration.attendee_name}</p>
                   <p className="text-sm text-muted-foreground truncate">{selectedRegistration.attendee_email}</p>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
                     <Badge
-                      variant="outline"
                       className={cn(
-                        "text-xs font-semibold capitalize px-2.5 py-0.5",
-                        selectedRegistration.status === "confirmed" && "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-700",
-                        selectedRegistration.status === "pending" && "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/50 dark:text-amber-300 dark:border-amber-700",
-                        selectedRegistration.status === "cancelled" && "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700",
-                        selectedRegistration.status === "refunded" && "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-900/50 dark:text-slate-300 dark:border-slate-700",
+                        "text-xs font-bold capitalize px-2.5 py-0.5 border-0 shadow-sm",
+                        selectedRegistration.status === "confirmed" && "bg-emerald-500 text-white hover:bg-emerald-500",
+                        selectedRegistration.status === "pending" && "bg-amber-500 text-white hover:bg-amber-500",
+                        selectedRegistration.status === "cancelled" && "bg-red-500 text-white hover:bg-red-500",
+                        selectedRegistration.status === "refunded" && "bg-slate-500 text-white hover:bg-slate-500",
                       )}
                     >
                       {selectedRegistration.status}
                     </Badge>
                     {selectedRegistration.participation_mode && selectedRegistration.participation_mode !== "offline" && (
                       <Badge
-                        variant="outline"
                         className={cn(
-                          "text-xs font-medium px-2 py-0.5",
-                          selectedRegistration.participation_mode === "online" && "bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/50 dark:text-purple-300",
-                          selectedRegistration.participation_mode === "hybrid" && "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/50 dark:text-amber-300",
+                          "text-xs font-semibold px-2 py-0.5 border-0 shadow-sm",
+                          selectedRegistration.participation_mode === "online" && "bg-violet-500 text-white hover:bg-violet-500",
+                          selectedRegistration.participation_mode === "hybrid" && "bg-orange-500 text-white hover:bg-orange-500",
                         )}
                       >
                         {selectedRegistration.participation_mode === "online" ? "Online" : "Hybrid"}
                       </Badge>
                     )}
                     {selectedRegistration.checked_in && (
-                      <Badge variant="outline" className="text-xs font-medium px-2 py-0.5 bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300">
+                      <Badge className="text-xs font-semibold px-2 py-0.5 border-0 shadow-sm bg-sky-500 text-white hover:bg-sky-500">
                         Checked In
                       </Badge>
                     )}
@@ -1759,29 +1757,35 @@ export default function RegistrationsPage() {
               </div>
 
               {/* Contact & Info Row */}
-              <div className="grid grid-cols-1 gap-1.5 text-sm pl-0.5">
+              <div className="grid grid-cols-1 gap-2 text-sm">
                 {selectedRegistration.attendee_phone && (
-                  <a href={`tel:${selectedRegistration.attendee_phone}`} className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground transition-colors group">
-                    <Phone className="w-3.5 h-3.5 text-muted-foreground/60 group-hover:text-primary transition-colors" />
-                    <span>{selectedRegistration.attendee_phone}</span>
+                  <a href={`tel:${selectedRegistration.attendee_phone}`} className="flex items-center gap-2.5 hover:text-foreground transition-colors group">
+                    <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 group-hover:bg-blue-200 transition-colors">
+                      <Phone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <span className="text-muted-foreground group-hover:text-foreground">{selectedRegistration.attendee_phone}</span>
                   </a>
                 )}
                 {selectedRegistration.attendee_institution && (
-                  <div className="flex items-center gap-2.5 text-muted-foreground">
-                    <Building2 className="w-3.5 h-3.5 text-muted-foreground/60" />
-                    <span>{selectedRegistration.attendee_institution}</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+                      <Building2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <span className="text-muted-foreground">{selectedRegistration.attendee_institution}</span>
                   </div>
                 )}
                 {selectedRegistration.attendee_designation && (
-                  <div className="flex items-center gap-2.5 text-muted-foreground">
-                    <FileText className="w-3.5 h-3.5 text-muted-foreground/60" />
-                    <span>{selectedRegistration.attendee_designation}</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-pink-100 dark:bg-pink-900/40 flex items-center justify-center shrink-0">
+                      <FileText className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" />
+                    </div>
+                    <span className="text-muted-foreground">{selectedRegistration.attendee_designation}</span>
                   </div>
                 )}
               </div>
 
               {/* Meta Row */}
-              <div className="flex items-center justify-between pt-2 border-t border-current/5 text-xs text-muted-foreground">
+              <div className="flex items-center justify-between pt-3 border-t border-current/10 text-xs text-muted-foreground">
                 <span>Registered {format(new Date(selectedRegistration.created_at), "dd MMM yyyy, h:mm a")}</span>
                 {selectedRegistration.status === "confirmed" && selectedRegistration.confirmed_at && (
                   <span>Confirmed {format(new Date(selectedRegistration.confirmed_at), "dd MMM yyyy")}</span>
@@ -1800,11 +1804,11 @@ export default function RegistrationsPage() {
                         const fullReg = registrations?.find(r => r.id === reg.id)
                         if (fullReg) setSelectedRegistration(fullReg)
                       }}
-                      className="w-full flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/50 hover:border-border transition-all text-left group"
+                      className="w-full flex items-center justify-between p-3 rounded-xl border border-indigo-200/60 bg-gradient-to-r from-indigo-50/40 to-violet-50/20 hover:from-indigo-50/70 hover:to-violet-50/40 hover:border-indigo-300 dark:from-indigo-950/20 dark:to-violet-950/10 dark:border-indigo-800/40 transition-all text-left group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                          <Ticket className="w-3.5 h-3.5 text-primary/60" />
+                        <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/60 transition-colors">
+                          <Ticket className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <div>
                           <p className="font-medium text-sm">{reg.registration_number}</p>
@@ -1832,20 +1836,20 @@ export default function RegistrationsPage() {
 
             {/* Ticket Info */}
             <SlideOverSection title="Ticket" icon={Ticket}>
-              <div className="flex items-center gap-3.5 p-3.5 rounded-xl border border-border/50 bg-muted/20">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Ticket className="w-5 h-5 text-primary" />
+              <div className="flex items-center gap-3.5 p-4 rounded-xl border border-cyan-200/60 bg-gradient-to-r from-cyan-50/60 to-sky-50/30 dark:from-cyan-950/20 dark:to-sky-950/10 dark:border-cyan-800/40">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-400 to-sky-500 flex items-center justify-center shrink-0 shadow-sm">
+                  <Ticket className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm">{selectedRegistration.ticket_type?.name || "Standard Ticket"}</p>
+                  <p className="font-bold text-sm">{selectedRegistration.ticket_type?.name || "Standard Ticket"}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    ₹{selectedRegistration.unit_price.toLocaleString()}
+                    <span className="font-semibold text-cyan-700 dark:text-cyan-400">₹{selectedRegistration.unit_price.toLocaleString()}</span>
                     {selectedRegistration.tax_amount > 0 && (
                       <span className="text-muted-foreground/60"> + ₹{selectedRegistration.tax_amount.toLocaleString()} GST</span>
                     )}
                   </p>
                 </div>
-                <Badge variant="outline" className="text-[10px] font-medium bg-primary/5 text-primary border-primary/20 shrink-0">
+                <Badge className="text-[10px] font-bold border-0 shadow-sm bg-cyan-500 text-white hover:bg-cyan-500 shrink-0">
                   {selectedRegistration.currency || "INR"}
                 </Badge>
               </div>
@@ -1943,9 +1947,9 @@ export default function RegistrationsPage() {
               {registrationAddons && registrationAddons.length > 0 ? (
                 <div className="space-y-1.5">
                   {registrationAddons.map((item: any) => (
-                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-muted/20 group hover:border-border transition-all">
-                      <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
-                        <Package className="w-4 h-4 text-orange-600" />
+                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border border-orange-200/60 bg-gradient-to-r from-orange-50/40 to-amber-50/20 dark:from-orange-950/15 dark:to-amber-950/10 dark:border-orange-800/40 group hover:from-orange-50/70 hover:to-amber-50/40 hover:border-orange-300 transition-all">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center shrink-0 shadow-sm">
+                        <Package className="w-4 h-4 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">
@@ -1988,9 +1992,9 @@ export default function RegistrationsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-4 text-center">
-                  <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center mb-2">
-                    <Package className="w-5 h-5 text-muted-foreground/40" />
+                <div className="flex flex-col items-center justify-center py-5 text-center rounded-xl border border-dashed border-orange-200 dark:border-orange-800/40 bg-orange-50/20 dark:bg-orange-950/10">
+                  <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-2">
+                    <Package className="w-5 h-5 text-orange-400" />
                   </div>
                   <p className="text-sm text-muted-foreground">No add-ons purchased</p>
                 </div>
@@ -1998,7 +2002,7 @@ export default function RegistrationsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full mt-3 border-dashed hover:border-solid hover:bg-primary/5 transition-all"
+                className="w-full mt-3 border-dashed border-orange-300 text-orange-600 hover:bg-orange-50 hover:border-orange-400 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950/30 transition-all"
                 onClick={() => setIsAddAddonOpen(true)}
               >
                 <Package className="h-4 w-4 mr-2" />
@@ -2008,50 +2012,49 @@ export default function RegistrationsPage() {
 
             {/* Payment Summary */}
             <SlideOverSection title="Payment" icon={IndianRupee}>
-              <div className="rounded-xl border border-border/50 overflow-hidden">
+              <div className="rounded-xl border border-green-200/60 dark:border-green-800/40 overflow-hidden">
                 {/* Line Items */}
-                <div className="p-3.5 space-y-2.5">
+                <div className="p-4 space-y-3 bg-gradient-to-b from-green-50/30 to-transparent dark:from-green-950/10">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Ticket</span>
-                    <span className="font-medium tabular-nums">₹{selectedRegistration.unit_price.toLocaleString()}</span>
+                    <span className="font-semibold tabular-nums">₹{selectedRegistration.unit_price.toLocaleString()}</span>
                   </div>
                   {registrationAddons && registrationAddons.length > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Add-ons</span>
-                      <span className="font-medium tabular-nums">₹{registrationAddons.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0).toLocaleString()}</span>
+                      <span className="font-semibold tabular-nums">₹{registrationAddons.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0).toLocaleString()}</span>
                     </div>
                   )}
                   {selectedRegistration.tax_amount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Tax (GST)</span>
-                      <span className="font-medium tabular-nums">₹{selectedRegistration.tax_amount.toLocaleString()}</span>
+                      <span className="font-semibold tabular-nums">₹{selectedRegistration.tax_amount.toLocaleString()}</span>
                     </div>
                   )}
                   {selectedRegistration.discount_amount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Discount</span>
-                      <span className="font-medium tabular-nums text-emerald-600">-₹{selectedRegistration.discount_amount.toLocaleString()}</span>
+                      <span className="font-bold tabular-nums text-emerald-600">-₹{selectedRegistration.discount_amount.toLocaleString()}</span>
                     </div>
                   )}
                 </div>
                 {/* Total Row */}
-                <div className="flex items-center justify-between px-3.5 py-3 bg-muted/30 border-t border-border/50">
+                <div className="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-green-100/80 to-emerald-100/50 dark:from-green-900/30 dark:to-emerald-900/20 border-t border-green-200/60 dark:border-green-800/40">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm">Total</span>
+                    <span className="font-bold text-sm">Total</span>
                     <Badge
-                      variant="outline"
                       className={cn(
-                        "text-[10px] font-medium capitalize",
-                        selectedRegistration.payment_status === "completed" && "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300",
-                        selectedRegistration.payment_status === "pending" && "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/50 dark:text-amber-300",
-                        selectedRegistration.payment_status === "failed" && "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300",
-                        selectedRegistration.payment_status === "refunded" && "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-900/50 dark:text-slate-300",
+                        "text-[10px] font-bold capitalize border-0 shadow-sm",
+                        selectedRegistration.payment_status === "completed" && "bg-emerald-500 text-white hover:bg-emerald-500",
+                        selectedRegistration.payment_status === "pending" && "bg-amber-500 text-white hover:bg-amber-500",
+                        selectedRegistration.payment_status === "failed" && "bg-red-500 text-white hover:bg-red-500",
+                        selectedRegistration.payment_status === "refunded" && "bg-slate-500 text-white hover:bg-slate-500",
                       )}
                     >
                       {selectedRegistration.payment_status}
                     </Badge>
                   </div>
-                  <span className="font-bold text-base tabular-nums text-primary">₹{(
+                  <span className="font-black text-lg tabular-nums text-green-700 dark:text-green-400">₹{(
                     selectedRegistration.total_amount +
                     (registrationAddons?.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0) || 0)
                   ).toLocaleString()}</span>
@@ -2063,18 +2066,23 @@ export default function RegistrationsPage() {
             <SlideOverSection title="Documents" icon={FileDown}>
               <div className="space-y-1.5">
                 {/* Badge */}
-                <div className="flex items-center gap-3 p-3.5 rounded-xl border border-border/50 bg-muted/20 group hover:border-border transition-all">
+                <div className={cn(
+                  "flex items-center gap-3 p-3.5 rounded-xl border transition-all group",
+                  selectedRegistration.badge_url
+                    ? "border-teal-200/60 bg-gradient-to-r from-teal-50/50 to-emerald-50/30 hover:from-teal-50/80 hover:to-emerald-50/50 dark:from-teal-950/20 dark:to-emerald-950/10 dark:border-teal-800/40"
+                    : "border-border/50 bg-muted/10 hover:bg-muted/20"
+                )}>
                   <div className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
-                    selectedRegistration.badge_url ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400" : "bg-muted/60 text-muted-foreground/50"
+                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
+                    selectedRegistration.badge_url ? "bg-gradient-to-br from-teal-400 to-emerald-500 text-white" : "bg-muted/60 text-muted-foreground/40"
                   )}>
                     <ImageIcon className="w-4.5 h-4.5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm">Badge</p>
+                      <p className="font-semibold text-sm">Badge</p>
                       {selectedRegistration.badge_url && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
                       )}
                     </div>
                     {selectedRegistration.badge_generated_at ? (
@@ -2120,18 +2128,23 @@ export default function RegistrationsPage() {
                 </div>
 
                 {/* Certificate */}
-                <div className="flex items-center gap-3 p-3.5 rounded-xl border border-border/50 bg-muted/20 group hover:border-border transition-all">
+                <div className={cn(
+                  "flex items-center gap-3 p-3.5 rounded-xl border transition-all group",
+                  selectedRegistration.certificate_url
+                    ? "border-violet-200/60 bg-gradient-to-r from-violet-50/50 to-purple-50/30 hover:from-violet-50/80 hover:to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/10 dark:border-violet-800/40"
+                    : "border-border/50 bg-muted/10 hover:bg-muted/20"
+                )}>
                   <div className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
-                    selectedRegistration.certificate_url ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400" : "bg-muted/60 text-muted-foreground/50"
+                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
+                    selectedRegistration.certificate_url ? "bg-gradient-to-br from-violet-400 to-purple-500 text-white" : "bg-muted/60 text-muted-foreground/40"
                   )}>
                     <Award className="w-4.5 h-4.5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm">Certificate</p>
+                      <p className="font-semibold text-sm">Certificate</p>
                       {selectedRegistration.certificate_url && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
                       )}
                     </div>
                     {selectedRegistration.certificate_generated_at ? (
@@ -2167,27 +2180,27 @@ export default function RegistrationsPage() {
             {/* Check-in Status */}
             <SlideOverSection title="Check-in" icon={QrCode}>
               <div className={cn(
-                "flex items-center gap-3.5 p-3.5 rounded-xl border",
+                "flex items-center gap-3.5 p-4 rounded-xl border-2 transition-all",
                 selectedRegistration.checked_in
-                  ? "border-emerald-200/60 bg-gradient-to-r from-emerald-50/80 to-green-50/40 dark:from-emerald-950/20 dark:to-green-950/10 dark:border-emerald-800/40"
-                  : "border-border/50 bg-muted/20"
+                  ? "border-emerald-300 bg-gradient-to-r from-emerald-50 via-green-50/60 to-teal-50/30 shadow-sm shadow-emerald-100 dark:from-emerald-950/30 dark:via-green-950/20 dark:to-teal-950/10 dark:border-emerald-700 dark:shadow-emerald-900/20"
+                  : "border-slate-200/60 bg-gradient-to-r from-slate-50/40 to-gray-50/20 dark:from-slate-950/15 dark:to-gray-950/10 dark:border-slate-800/40"
               )}>
                 <div className={cn(
-                  "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
+                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
                   selectedRegistration.checked_in
-                    ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400"
-                    : "bg-muted/60 text-muted-foreground/50"
+                    ? "bg-gradient-to-br from-emerald-400 to-green-500 text-white"
+                    : "bg-gradient-to-br from-slate-300 to-gray-400 text-white dark:from-slate-600 dark:to-gray-700"
                 )}>
                   {selectedRegistration.checked_in ? (
-                    <CheckCircle2 className="w-4.5 h-4.5" />
+                    <CheckCircle2 className="w-5 h-5" />
                   ) : (
-                    <Clock className="w-4.5 h-4.5" />
+                    <Clock className="w-5 h-5" />
                   )}
                 </div>
                 <div className="flex-1">
                   <p className={cn(
-                    "font-medium text-sm",
-                    selectedRegistration.checked_in && "text-emerald-700 dark:text-emerald-400"
+                    "font-bold text-sm",
+                    selectedRegistration.checked_in ? "text-emerald-700 dark:text-emerald-400" : "text-slate-600 dark:text-slate-400"
                   )}>
                     {selectedRegistration.checked_in ? "Checked In" : "Not checked in"}
                   </p>
@@ -2198,7 +2211,11 @@ export default function RegistrationsPage() {
                   </p>
                 </div>
                 {selectedRegistration.checked_in && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse [animation-delay:150ms]" />
+                    <div className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse [animation-delay:300ms]" />
+                  </div>
                 )}
               </div>
             </SlideOverSection>
@@ -2208,13 +2225,19 @@ export default function RegistrationsPage() {
               <div className="space-y-1.5">
                 {emailLogs && emailLogs.length > 0 ? (
                   emailLogs.map((log: any) => (
-                    <div key={log.id} className="flex items-start gap-3 p-3.5 rounded-xl border border-border/50 bg-muted/20 hover:border-border transition-all">
+                    <div key={log.id} className={cn(
+                      "flex items-start gap-3 p-3.5 rounded-xl border transition-all",
+                      log.status === "bounced" ? "border-red-200/60 bg-gradient-to-r from-red-50/40 to-rose-50/20 dark:from-red-950/15 dark:to-rose-950/10 dark:border-red-800/40" :
+                      log.opened_at ? "border-emerald-200/60 bg-gradient-to-r from-emerald-50/40 to-green-50/20 dark:from-emerald-950/15 dark:to-green-950/10 dark:border-emerald-800/40" :
+                      log.delivered_at ? "border-blue-200/60 bg-gradient-to-r from-blue-50/40 to-sky-50/20 dark:from-blue-950/15 dark:to-sky-950/10 dark:border-blue-800/40" :
+                      "border-border/50 bg-muted/10"
+                    )}>
                       <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                        log.status === "bounced" ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400" :
-                        log.opened_at ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400" :
-                        log.delivered_at ? "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400" :
-                        "bg-muted/60 text-muted-foreground/50"
+                        "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm",
+                        log.status === "bounced" ? "bg-gradient-to-br from-red-400 to-rose-500 text-white" :
+                        log.opened_at ? "bg-gradient-to-br from-emerald-400 to-green-500 text-white" :
+                        log.delivered_at ? "bg-gradient-to-br from-blue-400 to-sky-500 text-white" :
+                        "bg-gradient-to-br from-slate-300 to-gray-400 text-white dark:from-slate-600 dark:to-gray-700"
                       )}>
                         {log.status === "bounced" ? <AlertCircle className="w-4 h-4" /> :
                          log.clicked_at ? <MousePointerClick className="w-4 h-4" /> :
@@ -2234,22 +2257,22 @@ export default function RegistrationsPage() {
                         </p>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {log.delivered_at && (
-                            <Badge variant="outline" className="text-[10px] py-0 h-4 bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                            <Badge className="text-[10px] py-0 h-4 border-0 shadow-sm bg-blue-500 text-white hover:bg-blue-500">
                               Delivered
                             </Badge>
                           )}
                           {log.opened_at && (
-                            <Badge variant="outline" className="text-[10px] py-0 h-4 bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
+                            <Badge className="text-[10px] py-0 h-4 border-0 shadow-sm bg-emerald-500 text-white hover:bg-emerald-500">
                               Opened {log.open_count > 1 ? `(${log.open_count}x)` : ""}
                             </Badge>
                           )}
                           {log.clicked_at && (
-                            <Badge variant="outline" className="text-[10px] py-0 h-4 bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800">
+                            <Badge className="text-[10px] py-0 h-4 border-0 shadow-sm bg-violet-500 text-white hover:bg-violet-500">
                               Clicked
                             </Badge>
                           )}
                           {log.status === "bounced" && (
-                            <Badge variant="outline" className="text-[10px] py-0 h-4 bg-red-50 text-red-600 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">
+                            <Badge className="text-[10px] py-0 h-4 border-0 shadow-sm bg-red-500 text-white hover:bg-red-500">
                               Bounced
                             </Badge>
                           )}
@@ -2258,9 +2281,9 @@ export default function RegistrationsPage() {
                     </div>
                   ))
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-4 text-center">
-                    <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center mb-2">
-                      <Mail className="w-5 h-5 text-muted-foreground/40" />
+                  <div className="flex flex-col items-center justify-center py-5 text-center rounded-xl border border-dashed border-blue-200 dark:border-blue-800/40 bg-blue-50/20 dark:bg-blue-950/10">
+                    <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2">
+                      <Mail className="w-5 h-5 text-blue-400" />
                     </div>
                     <p className="text-sm text-muted-foreground">No emails sent yet</p>
                   </div>
@@ -2271,8 +2294,13 @@ export default function RegistrationsPage() {
             {/* Notes */}
             {selectedRegistration.notes && (
               <SlideOverSection title="Notes" icon={FileText}>
-                <div className="p-3.5 rounded-xl border border-border/50 bg-amber-50/30 dark:bg-amber-950/10">
-                  <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedRegistration.notes}</p>
+                <div className="p-4 rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/60 to-yellow-50/30 dark:from-amber-950/20 dark:to-yellow-950/10 dark:border-amber-800/40">
+                  <div className="flex gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                      <FileText className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedRegistration.notes}</p>
+                  </div>
                 </div>
               </SlideOverSection>
             )}
@@ -2282,7 +2310,7 @@ export default function RegistrationsPage() {
               {/* Primary Action */}
               {selectedRegistration.status === "pending" && (
                 <Button
-                  className="w-full"
+                  className="w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white border-0 shadow-md shadow-emerald-200 dark:shadow-emerald-900/30"
                   size="sm"
                   onClick={() => {
                     updateStatus.mutate({ id: selectedRegistration.id, status: "confirmed" })
@@ -2296,14 +2324,14 @@ export default function RegistrationsPage() {
               )}
               {/* Action Grid */}
               <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm" className="h-9 text-xs" onClick={openEditDialog}>
+                <Button variant="outline" size="sm" className="h-9 text-xs border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30" onClick={openEditDialog}>
                   <Edit2 className="w-3.5 h-3.5 mr-1.5" />
                   Edit Details
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 text-xs"
+                  className="h-9 text-xs border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/30"
                   onClick={() => printBadge(selectedRegistration)}
                   disabled={isPrintingBadge === selectedRegistration.id}
                 >
@@ -2317,7 +2345,7 @@ export default function RegistrationsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 text-xs"
+                  className="h-9 text-xs border-teal-200 text-teal-700 hover:bg-teal-50 hover:border-teal-300 dark:border-teal-800 dark:text-teal-400 dark:hover:bg-teal-950/30"
                   onClick={() => emailBadge(selectedRegistration)}
                   disabled={isEmailingBadge === selectedRegistration.id || selectedRegistration.status !== "confirmed"}
                 >
@@ -2328,14 +2356,14 @@ export default function RegistrationsPage() {
                   )}
                   Email Badge
                 </Button>
-                <Button variant="outline" size="sm" className="h-9 text-xs">
+                <Button variant="outline" size="sm" className="h-9 text-xs border-sky-200 text-sky-700 hover:bg-sky-50 hover:border-sky-300 dark:border-sky-800 dark:text-sky-400 dark:hover:bg-sky-950/30">
                   <Send className="w-3.5 h-3.5 mr-1.5" />
                   Resend Email
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 text-xs"
+                  className="h-9 text-xs border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/30"
                   onClick={() => {
                     window.open(`/api/registrations/${selectedRegistration.id}/final-receipt`, "_blank")
                   }}
@@ -2345,11 +2373,11 @@ export default function RegistrationsPage() {
                 </Button>
                 {!selectedRegistration.checked_in && (
                   <>
-                    <Button variant="outline" size="sm" className="h-9 text-xs" onClick={openSwitchTicketDialog}>
+                    <Button variant="outline" size="sm" className="h-9 text-xs border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950/30" onClick={openSwitchTicketDialog}>
                       <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
                       Switch Course
                     </Button>
-                    <Button variant="outline" size="sm" className="h-9 text-xs" onClick={openTransferEventDialog}>
+                    <Button variant="outline" size="sm" className="h-9 text-xs border-pink-200 text-pink-700 hover:bg-pink-50 hover:border-pink-300 dark:border-pink-800 dark:text-pink-400 dark:hover:bg-pink-950/30" onClick={openTransferEventDialog}>
                       <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
                       Transfer Event
                     </Button>
