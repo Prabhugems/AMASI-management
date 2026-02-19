@@ -784,7 +784,7 @@ export default function PublicProgramPage() {
                     {trackSessions.map((session) => {
                       const SessionIcon = getSessionIcon(session.session_name, session.session_type)
                       const isPanelSession = trackName.toLowerCase().includes("panel") || trackName.toLowerCase().includes("discussion")
-                      const panelists = panelistsBySession[session.id] || []
+                      const panelists: string[] = []
                       return (
                         <div
                           key={session.id}
