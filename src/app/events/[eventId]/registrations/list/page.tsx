@@ -1816,6 +1816,93 @@ export default function RegistrationsPage() {
               </div>
             </SlideOverSection>
 
+            {/* Participation Mode */}
+            <SlideOverSection title="Participation Mode" icon={Wifi}>
+              {(() => {
+                const currentMode = selectedRegistration.participation_mode || "offline"
+                const modes = [
+                  { value: "offline", label: "Offline", desc: "In-person attendance", icon: UserCheck, color: "blue" },
+                  { value: "online", label: "Online", desc: "Virtual attendance", icon: Wifi, color: "purple" },
+                  { value: "hybrid", label: "Hybrid", desc: "Both online & in-person", icon: Users, color: "amber" },
+                ] as const
+                return (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-2">
+                      {modes.map((mode) => {
+                        const isActive = currentMode === mode.value
+                        const Icon = mode.icon
+                        return (
+                          <button
+                            key={mode.value}
+                            onClick={async () => {
+                              if (isActive) return
+                              const { error } = await (supabase as any)
+                                .from("registrations")
+                                .update({ participation_mode: mode.value })
+                                .eq("id", selectedRegistration.id)
+                              if (error) {
+                                toast.error("Failed to update")
+                              } else {
+                                setSelectedRegistration({ ...selectedRegistration, participation_mode: mode.value as "online" | "offline" | "hybrid" })
+                                queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] })
+                                toast.success(`Set to ${mode.label}`)
+                              }
+                            }}
+                            className={cn(
+                              "relative flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all text-center",
+                              isActive && mode.color === "blue" && "border-blue-500 bg-blue-50 dark:bg-blue-950/30",
+                              isActive && mode.color === "purple" && "border-purple-500 bg-purple-50 dark:bg-purple-950/30",
+                              isActive && mode.color === "amber" && "border-amber-500 bg-amber-50 dark:bg-amber-950/30",
+                              !isActive && "border-muted bg-muted/20 hover:bg-muted/40 hover:border-muted-foreground/30 cursor-pointer"
+                            )}
+                          >
+                            {isActive && (
+                              <div className={cn(
+                                "absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center",
+                                mode.color === "blue" && "bg-blue-500",
+                                mode.color === "purple" && "bg-purple-500",
+                                mode.color === "amber" && "bg-amber-500"
+                              )}>
+                                <CheckCircle2 className="w-3 h-3 text-white" />
+                              </div>
+                            )}
+                            <Icon className={cn(
+                              "w-4 h-4",
+                              isActive && mode.color === "blue" && "text-blue-600",
+                              isActive && mode.color === "purple" && "text-purple-600",
+                              isActive && mode.color === "amber" && "text-amber-600",
+                              !isActive && "text-muted-foreground"
+                            )} />
+                            <span className={cn(
+                              "text-xs font-semibold",
+                              isActive && mode.color === "blue" && "text-blue-700 dark:text-blue-400",
+                              isActive && mode.color === "purple" && "text-purple-700 dark:text-purple-400",
+                              isActive && mode.color === "amber" && "text-amber-700 dark:text-amber-400",
+                              !isActive && "text-muted-foreground"
+                            )}>
+                              {mode.label}
+                            </span>
+                            <span className={cn(
+                              "text-[10px] leading-tight",
+                              isActive ? "text-muted-foreground" : "text-muted-foreground/60"
+                            )}>
+                              {mode.desc}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {currentMode === "online" && (
+                      <div className="flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-2.5 rounded-lg">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span>Badge printing is blocked for online-only participants. Switch to Offline or Hybrid to enable badge printing.</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+            </SlideOverSection>
+
             {/* Add-ons */}
             <SlideOverSection title="Add-ons" icon={Package}>
               {registrationAddons && registrationAddons.length > 0 ? (
