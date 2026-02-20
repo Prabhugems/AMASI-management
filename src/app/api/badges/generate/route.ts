@@ -205,6 +205,9 @@ export async function POST(request: NextRequest) {
       query = query.eq("id", single_registration_id)
     } else if (registration_ids?.length > 0) {
       query = query.in("id", registration_ids)
+    } else {
+      // No specific IDs provided - only include confirmed registrations
+      query = query.eq("status", "confirmed")
     }
 
     const { data: registrations, error: regError } = await query

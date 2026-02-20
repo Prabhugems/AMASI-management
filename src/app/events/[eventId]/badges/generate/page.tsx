@@ -58,7 +58,6 @@ export default function GenerateBadgesPage() {
   const [badgeFilter, setBadgeFilter] = useState<string>("all") // all, without_badge, with_badge
   const [modeFilter, setModeFilter] = useState<string>("all") // all, online, offline, hybrid
   const [selectedRegistrations, setSelectedRegistrations] = useState<string[]>([])
-  const [exportFormat, setExportFormat] = useState<"pdf" | "png">("pdf")
   const [badgesPerPage, setBadgesPerPage] = useState<number>(1)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isEmailing, setIsEmailing] = useState(false)
@@ -234,8 +233,7 @@ export default function GenerateBadgesPage() {
           event_id: eventId,
           template_id: selectedTemplate,
           registration_ids: selectedRegistrations,
-          export_format: exportFormat,
-          badges_per_page: exportFormat === "pdf" ? badgesPerPage : 1,
+          badges_per_page: badgesPerPage,
         }),
       })
 
@@ -247,7 +245,7 @@ export default function GenerateBadgesPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `badges.${exportFormat === "pdf" ? "pdf" : "zip"}`
+      a.download = `badges.pdf`
       a.click()
       window.URL.revokeObjectURL(url)
 
@@ -488,38 +486,8 @@ export default function GenerateBadgesPage() {
                 })()}
               </div>
 
-              {/* Export Format */}
+              {/* Badges per page */}
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Export Format</label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setExportFormat("pdf")}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
-                      exportFormat === "pdf"
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-muted border-border hover:border-primary/50"
-                    }`}
-                  >
-                    <FileText className="w-4 h-4" />
-                    PDF
-                  </button>
-                  <button
-                    onClick={() => setExportFormat("png")}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
-                      exportFormat === "png"
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-muted border-border hover:border-primary/50"
-                    }`}
-                  >
-                    <FileImage className="w-4 h-4" />
-                    PNG (ZIP)
-                  </button>
-                </div>
-              </div>
-
-              {/* Badges per page (PDF only) */}
-              {exportFormat === "pdf" && (
-                <div className="mb-4">
                   <label className="block text-sm font-medium mb-2">Badges per Page</label>
                   <select
                     value={badgesPerPage}
@@ -532,17 +500,12 @@ export default function GenerateBadgesPage() {
                     <option value="6">6 badges per page</option>
                   </select>
                 </div>
-              )}
 
               {/* Summary */}
               <div className="p-3 bg-muted rounded-lg">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Selected</span>
                   <span className="font-medium">{selectedRegistrations.length} attendees</span>
-                </div>
-                <div className="flex items-center justify-between text-sm mt-1">
-                  <span className="text-muted-foreground">Format</span>
-                  <span className="font-medium uppercase">{exportFormat}</span>
                 </div>
               </div>
             </div>

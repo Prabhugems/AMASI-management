@@ -975,7 +975,7 @@ export default function BadgeDesignerPage() {
   const [snapGuides, setSnapGuides] = useState<{ horizontal: number[]; vertical: number[] }>({ horizontal: [], vertical: [] })
   const [showRulers, setShowRulers] = useState(true)
   const [isPreBuiltDialogOpen, setIsPreBuiltDialogOpen] = useState(false)
-  const [exportFormat, setExportFormat] = useState<"pdf" | "png" | "jpg">("pdf")
+  const [exportFormat, setExportFormat] = useState<"pdf">("pdf")
   const [badgesPerPage, setBadgesPerPage] = useState(1)
 
   // History
@@ -1254,6 +1254,7 @@ export default function BadgeDesignerPage() {
         .from("registrations")
         .select(`id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_institution, attendee_designation, ticket_type_id, ticket_types (name), registration_addons (addon_id, addons (name))`)
         .eq("event_id", eventId)
+        .eq("status", "confirmed")
         .order("created_at", { ascending: false })
       return data || []
     },
@@ -1937,8 +1938,7 @@ export default function BadgeDesignerPage() {
           event_id: eventId,
           template_id: savedTemplateId,
           registration_ids: filteredRegs.map((r: any) => r.id),
-          export_format: exportFormat,
-          badges_per_page: exportFormat === "pdf" ? badgesPerPage : 1,
+          badges_per_page: badgesPerPage,
         }),
       })
       if (!res.ok) throw new Error("Failed to generate")
@@ -1946,8 +1946,7 @@ export default function BadgeDesignerPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      const ext = exportFormat === "pdf" ? "pdf" : "zip"
-      a.download = `badges-${event?.short_name || "event"}.${ext}`
+      a.download = `badges-${event?.short_name || "event"}.pdf`
       a.click()
       window.URL.revokeObjectURL(url)
       toast.success(`Generated ${filteredRegs.length} badges!`)
@@ -3101,20 +3100,7 @@ export default function BadgeDesignerPage() {
             </div>
 
             <div>
-              <Label>Export Format</Label>
-              <Select value={exportFormat} onValueChange={(v: "pdf" | "png" | "jpg") => setExportFormat(v)}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pdf">PDF Document</SelectItem>
-                  <SelectItem value="png">PNG Images (ZIP)</SelectItem>
-                  <SelectItem value="jpg">JPG Images (ZIP)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {exportFormat === "pdf" && (
-              <div>
-                <Label>Badges per A4 Page</Label>
+              <Label>Badges per A4 Page</Label>
                 <Select value={badgesPerPage.toString()} onValueChange={(v) => setBadgesPerPage(parseInt(v))}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -3129,7 +3115,6 @@ export default function BadgeDesignerPage() {
                   <p className="text-xs text-muted-foreground mt-1">Badges will be arranged on A4 paper</p>
                 )}
               </div>
-            )}
 
             <div className="bg-muted/50 rounded-lg p-4">
               <p className="text-sm"><strong>{printFilter === "all"
@@ -3138,14 +3123,13 @@ export default function BadgeDesignerPage() {
                     : registrations?.length || 0)
                 : registrations?.filter((r: any) => r.ticket_type_id === printFilter).length || 0}</strong> badges will be generated</p>
               {!savedTemplateId && <p className="text-sm text-amber-600 mt-2">Save the template first</p>}
-              {exportFormat !== "pdf" && <p className="text-xs text-muted-foreground mt-2">Images will be downloaded as a ZIP file</p>}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsPrintDialogOpen(false)}>Cancel</Button>
             <Button onClick={generatePdf} disabled={!savedTemplateId || isGeneratingPdf}>
               {isGeneratingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-              Download {exportFormat.toUpperCase()}
+              Download PDF
             </Button>
           </DialogFooter>
         </DialogContent>
