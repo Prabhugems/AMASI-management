@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { DEFAULTS } from "@/lib/config"
 
-// Generate registration number
+// Generate speaker registration number with faculty-specific prefix
 async function generateRegistrationNumber(supabase: any, eventId: string): Promise<string> {
   const { data: settings } = await supabase
     .from("event_settings")
@@ -11,7 +11,7 @@ async function generateRegistrationNumber(supabase: any, eventId: string): Promi
     .maybeSingle()
 
   if (settings?.customize_registration_id) {
-    const prefix = settings.registration_prefix || ""
+    const delegatePrefix = settings.registration_prefix || ""
     const suffix = settings.registration_suffix || ""
     const startNumber = settings.registration_start_number || 1
     const currentNumber = (settings.current_registration_number || 0) + 1
@@ -22,7 +22,14 @@ async function generateRegistrationNumber(supabase: any, eventId: string): Promi
       .update({ current_registration_number: regNumber })
       .eq("event_id", eventId)
 
-    return `${prefix}${regNumber}${suffix}`
+    // Derive speaker prefix: replace last letter(s) before end with "F"
+    // e.g., "MMAS-BA" → "MMAS-BF", "EVENT-D" → "EVENT-F"
+    let speakerPrefix = delegatePrefix
+    if (delegatePrefix.length >= 2) {
+      speakerPrefix = delegatePrefix.slice(0, -1) + "F"
+    }
+
+    return `${speakerPrefix}${regNumber}${suffix}`
   }
 
   const date = new Date()
@@ -274,6 +281,9 @@ export async function POST(request: NextRequest) {
         participationMode = "online"
       }
 
+      // Generate checkin token for QR code on badges
+      const checkinToken = crypto.randomUUID()
+
       const { error: regError } = await (supabase as any)
         .from("registrations")
         .insert({
@@ -285,6 +295,7 @@ export async function POST(request: NextRequest) {
           attendee_phone: faculty.phone || null,
           attendee_designation: "Speaker",
           attendee_country: DEFAULTS.country,
+          checkin_token: checkinToken,
           quantity: 1,
           unit_price: 0,
           tax_amount: 0,

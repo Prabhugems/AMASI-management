@@ -206,8 +206,8 @@ export async function POST(request: NextRequest) {
     } else if (registration_ids?.length > 0) {
       query = query.in("id", registration_ids)
     } else {
-      // No specific IDs provided - only include confirmed registrations
-      query = query.eq("status", "confirmed")
+      // No specific IDs provided - include confirmed and pending (speakers are pending)
+      query = query.in("status", ["confirmed", "pending"])
     }
 
     query = query.order("registration_number", { ascending: true })
