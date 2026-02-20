@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     if (authError) return authError
 
     const body = await request.json()
-    const { event_id } = body
+    const { event_id, created_after } = body
 
     if (!event_id) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
@@ -27,12 +27,18 @@ export async function POST(request: NextRequest) {
     const prefix = event?.short_name || "REG"
 
     // Delete registrations matching the import pattern: {prefix}A{digits}
-    const { data, error } = await (supabase as any)
+    let query = (supabase as any)
       .from("registrations")
       .delete()
       .eq("event_id", event_id)
       .like("registration_number", `${prefix}A%`)
-      .select("id")
+
+    // If created_after is provided, only delete registrations created after that time
+    if (created_after) {
+      query = query.gte("created_at", created_after)
+    }
+
+    const { data, error } = await query.select("id")
 
     if (error) {
       return NextResponse.json({ error: "Failed to delete registrations" }, { status: 500 })
