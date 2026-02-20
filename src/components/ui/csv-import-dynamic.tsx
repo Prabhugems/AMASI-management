@@ -441,7 +441,7 @@ export function CSVImportDynamic({
             </p>
 
             <div className="space-y-3">
-              {csvHeaders.map(header => {
+              {csvHeaders.map((header, idx) => {
                 const currentMapping = columnMappings[header] || ""
                 const isCustom = currentMapping.startsWith("custom:")
                 const isSkipped = currentMapping === "skip"
@@ -451,7 +451,7 @@ export function CSVImportDynamic({
                 const sampleValue = parsedData[0]?.[header] || ""
 
                 return (
-                  <div key={header} className="flex items-center gap-3 p-3 bg-background rounded-lg border">
+                  <div key={`${header}-${idx}`} className="flex items-center gap-3 p-3 bg-background rounded-lg border">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{header}</p>
                       <p className="text-xs text-muted-foreground truncate">

@@ -155,7 +155,7 @@ export default function ImportRegistrationsPage() {
       <span className="whitespace-nowrap">Ticket Type</span>
     ),
     cell: (rowIndex: number) => {
-      const ticketForRow = rowTickets[rowIndex] || selectedTicketId
+      const override = rowTickets[rowIndex]
       return (
         <div className="flex items-center gap-2">
           <input
@@ -165,13 +165,13 @@ export default function ImportRegistrationsPage() {
             className="h-4 w-4 rounded border-gray-300"
           />
           <select
-            value={ticketForRow}
+            value={override || ""}
             onChange={(e) => {
               setRowTickets(prev => ({ ...prev, [rowIndex]: e.target.value }))
             }}
             className="px-2 py-1 border rounded text-xs bg-background min-w-[140px]"
           >
-            <option value="">Select ticket</option>
+            <option value="">Auto (from CSV)</option>
             {ticketTypes.map(t => (
               <option key={t.id} value={t.id}>
                 {t.name}
@@ -182,7 +182,7 @@ export default function ImportRegistrationsPage() {
       )
     },
     getRowData: (rowIndex: number) => ({
-      ticket_type_id: rowTickets[rowIndex] || selectedTicketId || undefined,
+      ticket_type_id: rowTickets[rowIndex] || undefined,
     }),
   }), [rowTickets, selectedTicketId, selectedRows, ticketTypes, toggleRow])
 
