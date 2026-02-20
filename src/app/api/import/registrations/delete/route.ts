@@ -17,13 +17,21 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createAdminClient()
 
-    // Delete registrations that were imported (payment_method = 'imported')
+    // Get event short_name to find imported registrations by prefix pattern
+    const { data: event } = await (supabase as any)
+      .from("events")
+      .select("short_name")
+      .eq("id", event_id)
+      .single()
+
+    const prefix = event?.short_name || "REG"
+
+    // Delete registrations matching the import pattern: {prefix}A{digits}
     const { data, error } = await (supabase as any)
       .from("registrations")
       .delete()
       .eq("event_id", event_id)
-      .eq("payment_status", "completed")
-      .or("total_amount.eq.0,registration_number.ilike.%FMASA%")
+      .like("registration_number", `${prefix}A%`)
       .select("id")
 
     if (error) {
