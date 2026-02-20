@@ -1262,8 +1262,12 @@ export default function BadgeDesignerPage() {
 
   const selectedElement = selectedElementIds.length === 1 ? template.elements.find((e) => e.id === selectedElementIds[0]) : null
 
-  // Filter registrations based on search
+  // Filter registrations based on search and template's assigned ticket types
   const filteredRegistrations = registrations?.filter((r: any) => {
+    // Filter by template's assigned ticket types
+    if (selectedTicketTypes.length > 0 && !selectedTicketTypes.includes(r.ticket_type_id)) {
+      return false
+    }
     if (!previewSearch.trim()) return true
     const search = previewSearch.toLowerCase()
     return (
@@ -2371,6 +2375,7 @@ export default function BadgeDesignerPage() {
                           onChange={(e) => {
                             if (e.target.checked) setSelectedTicketTypes([...selectedTicketTypes, t.id])
                             else setSelectedTicketTypes(selectedTicketTypes.filter((id) => id !== t.id))
+                            setPreviewIndex(0)
                             setHasUnsavedChanges(true)
                           }}
                           className="rounded border-gray-300"
