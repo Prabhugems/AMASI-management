@@ -189,6 +189,7 @@ export default function ProgramChangesPage() {
       queryClient.invalidateQueries({ queryKey: ["assignments-changes", eventId] })
       queryClient.invalidateQueries({ queryKey: ["program-change-log", eventId] })
       queryClient.invalidateQueries({ queryKey: ["confirmations", eventId] })
+      queryClient.invalidateQueries({ queryKey: ["sessions-list", eventId] })
     },
     onError: (error: Error) => {
       toast.error(error.message)
