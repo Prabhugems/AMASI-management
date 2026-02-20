@@ -1917,7 +1917,17 @@ export default function BadgeDesignerPage() {
     if (!savedTemplateId) { toast.error("Please save the template first"); return }
     setIsGeneratingPdf(true)
     try {
-      const filteredRegs = printFilter === "all" ? registrations : registrations?.filter((r: any) => r.ticket_type_id === printFilter)
+      let filteredRegs
+      if (printFilter === "all") {
+        // If template has assigned ticket types, only include those registrations
+        if (selectedTicketTypes.length > 0) {
+          filteredRegs = registrations?.filter((r: any) => selectedTicketTypes.includes(r.ticket_type_id))
+        } else {
+          filteredRegs = registrations
+        }
+      } else {
+        filteredRegs = registrations?.filter((r: any) => r.ticket_type_id === printFilter)
+      }
       if (!filteredRegs?.length) { toast.error("No registrations to generate"); return }
 
       const res = await fetch("/api/badges/generate", {
@@ -3077,7 +3087,11 @@ export default function BadgeDesignerPage() {
               <Select value={printFilter} onValueChange={setPrintFilter}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All ({registrations?.length || 0})</SelectItem>
+                  <SelectItem value="all">
+                    {selectedTicketTypes.length > 0
+                      ? `Assigned types (${registrations?.filter((r: any) => selectedTicketTypes.includes(r.ticket_type_id)).length || 0})`
+                      : `All (${registrations?.length || 0})`}
+                  </SelectItem>
                   {ticketTypes?.map((t: any) => {
                     const count = registrations?.filter((r: any) => r.ticket_type_id === t.id).length || 0
                     return <SelectItem key={t.id} value={t.id}>{t.name} ({count})</SelectItem>
@@ -3118,7 +3132,11 @@ export default function BadgeDesignerPage() {
             )}
 
             <div className="bg-muted/50 rounded-lg p-4">
-              <p className="text-sm"><strong>{printFilter === "all" ? registrations?.length || 0 : registrations?.filter((r: any) => r.ticket_type_id === printFilter).length || 0}</strong> badges will be generated</p>
+              <p className="text-sm"><strong>{printFilter === "all"
+                ? (selectedTicketTypes.length > 0
+                    ? registrations?.filter((r: any) => selectedTicketTypes.includes(r.ticket_type_id)).length || 0
+                    : registrations?.length || 0)
+                : registrations?.filter((r: any) => r.ticket_type_id === printFilter).length || 0}</strong> badges will be generated</p>
               {!savedTemplateId && <p className="text-sm text-amber-600 mt-2">Save the template first</p>}
               {exportFormat !== "pdf" && <p className="text-xs text-muted-foreground mt-2">Images will be downloaded as a ZIP file</p>}
             </div>
