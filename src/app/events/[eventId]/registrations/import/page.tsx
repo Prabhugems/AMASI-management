@@ -38,7 +38,7 @@ export default function ImportRegistrationsPage() {
       const res = await fetch(`/api/import/registrations/delete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event_id: eventId, created_after: new Date(new Date().setHours(0,0,0,0)).toISOString() }),
+        body: JSON.stringify({ event_id: eventId }),
       })
       if (res.ok) {
         const data = await res.json()
