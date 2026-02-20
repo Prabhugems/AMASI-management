@@ -1256,7 +1256,7 @@ export default function BadgeDesignerPage() {
         .select(`id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_institution, attendee_designation, ticket_type_id, checkin_token, ticket_types (name), registration_addons (addon_id, addons (name))`)
         .eq("event_id", eventId)
         .eq("status", "confirmed")
-        .order("registration_number", { ascending: true })
+        .order("attendee_name", { ascending: true })
       return data || []
     },
   })

@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
       query = query.eq("status", "confirmed")
     }
 
-    query = query.order("registration_number", { ascending: true })
+    query = query.order("attendee_name", { ascending: true })
     const { data: registrations, error: regError } = await query
 
     if (regError || !registrations?.length) {
