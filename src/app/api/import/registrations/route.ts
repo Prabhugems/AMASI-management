@@ -10,6 +10,7 @@ interface ImportRow {
   registered_on?: string
   total_amount?: string | number
   ticket_name?: string
+  ticket_type_id?: string
   [key: string]: any
 }
 
@@ -223,9 +224,11 @@ export async function POST(request: NextRequest) {
         const regNumber = `${prefix}A${nextNumber.toString().padStart(4, '0')}`
         nextNumber++
 
-        // Find ticket type by name if provided (fuzzy match)
+        // Find ticket type: per-row UI selection > CSV ticket_name > global default
         let ticketId = defaultTicketId
-        if (row.ticket_name) {
+        if (row.ticket_type_id) {
+          ticketId = row.ticket_type_id
+        } else if (row.ticket_name) {
           const matchedTicketId = findTicketByName(row.ticket_name)
           if (matchedTicketId) {
             ticketId = matchedTicketId

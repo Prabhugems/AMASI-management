@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useParams } from "next/navigation"
-import { CSVImportDynamic } from "@/components/ui/csv-import-dynamic"
+import { CSVImportDynamic, type PreviewExtra } from "@/components/ui/csv-import-dynamic"
 import Link from "next/link"
-import { ArrowLeft, Settings2, Trash2, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Settings2, Trash2, AlertTriangle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 
@@ -26,6 +26,10 @@ export default function ImportRegistrationsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
+  // Per-row ticket overrides: rowIndex -> ticketId
+  const [rowTickets, setRowTickets] = useState<Record<number, string>>({})
+  // Selected rows for bulk-assign
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set())
 
   // Delete imported registrations
   const handleDeleteImported = async () => {
@@ -124,6 +128,94 @@ export default function ImportRegistrationsPage() {
 
     return response.json()
   }
+
+  // Toggle a single row's selection
+  const toggleRow = useCallback((index: number) => {
+    setSelectedRows(prev => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }, [])
+
+  // Bulk-assign ticket to all selected rows
+  const bulkAssignTicket = useCallback((ticketId: string) => {
+    setRowTickets(prev => {
+      const next = { ...prev }
+      selectedRows.forEach(i => { next[i] = ticketId })
+      return next
+    })
+    setSelectedRows(new Set())
+  }, [selectedRows])
+
+  // Build previewExtra: checkbox + per-row ticket dropdown
+  const previewExtra: PreviewExtra = useMemo(() => ({
+    header: (
+      <span className="whitespace-nowrap">Ticket Type</span>
+    ),
+    cell: (rowIndex: number) => {
+      const ticketForRow = rowTickets[rowIndex] || selectedTicketId
+      return (
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={selectedRows.has(rowIndex)}
+            onChange={() => toggleRow(rowIndex)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <select
+            value={ticketForRow}
+            onChange={(e) => {
+              setRowTickets(prev => ({ ...prev, [rowIndex]: e.target.value }))
+            }}
+            className="px-2 py-1 border rounded text-xs bg-background min-w-[140px]"
+          >
+            <option value="">Select ticket</option>
+            {ticketTypes.map(t => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )
+    },
+    getRowData: (rowIndex: number) => ({
+      ticket_type_id: rowTickets[rowIndex] || selectedTicketId || undefined,
+    }),
+  }), [rowTickets, selectedTicketId, selectedRows, ticketTypes, toggleRow])
+
+  // Build previewToolbar: bulk-assign bar when rows are selected
+  const previewToolbar = useMemo(() => {
+    if (selectedRows.size === 0) return null
+    return (
+      <div className="flex items-center gap-3 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+        <span className="text-sm font-medium">{selectedRows.size} row{selectedRows.size > 1 ? "s" : ""} selected</span>
+        <select
+          defaultValue=""
+          onChange={(e) => {
+            if (e.target.value) bulkAssignTicket(e.target.value)
+          }}
+          className="px-2 py-1 border rounded text-sm bg-background"
+        >
+          <option value="" disabled>Assign ticket...</option>
+          {ticketTypes.map(t => (
+            <option key={t.id} value={t.id}>
+              {t.name} - ₹{t.price.toLocaleString()}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={() => setSelectedRows(new Set())}
+          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          <X className="h-3 w-3" />
+          Clear
+        </button>
+      </div>
+    )
+  }, [selectedRows, ticketTypes, bulkAssignTicket])
 
   return (
     <div className="space-y-6">
@@ -267,6 +359,9 @@ export default function ImportRegistrationsPage() {
           standardFields={standardFields}
           onImport={handleImport}
           templateFileName="attendees_import_template.csv"
+          previewExtra={previewExtra}
+          previewToolbar={previewToolbar}
+          showAllRowsInPreview={true}
         />
       </div>
 

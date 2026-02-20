@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, type ReactNode } from "react"
 import { Upload, FileSpreadsheet, X, AlertCircle, CheckCircle2, Download, Loader2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -18,12 +18,21 @@ interface StandardField {
   description?: string
 }
 
+export interface PreviewExtra {
+  header: ReactNode
+  cell: (rowIndex: number) => ReactNode
+  getRowData: (rowIndex: number) => Record<string, any>
+}
+
 interface CSVImportDynamicProps {
   title: string
   description: string
   standardFields: StandardField[]
   onImport: (data: Record<string, any>[]) => Promise<ImportResult>
   templateFileName?: string
+  previewExtra?: PreviewExtra
+  previewToolbar?: ReactNode
+  showAllRowsInPreview?: boolean
 }
 
 export function CSVImportDynamic({
@@ -32,6 +41,9 @@ export function CSVImportDynamic({
   standardFields,
   onImport,
   templateFileName = "import_template.csv",
+  previewExtra,
+  previewToolbar,
+  showAllRowsInPreview = false,
 }: CSVImportDynamicProps) {
   const [file, setFile] = useState<File | null>(null)
   const [parsedData, setParsedData] = useState<Record<string, any>[]>([])
@@ -224,7 +236,7 @@ export function CSVImportDynamic({
 
     try {
       // Transform data based on mappings
-      const mappedData = parsedData.map(row => {
+      const mappedData = parsedData.map((row, index) => {
         const mapped: Record<string, any> = {}
         const customFields: Record<string, any> = {}
 
@@ -248,6 +260,11 @@ export function CSVImportDynamic({
         // Add custom fields to form_responses
         if (Object.keys(customFields).length > 0) {
           mapped.form_responses = customFields
+        }
+
+        // Merge extra data from previewExtra (e.g. per-row ticket_type_id)
+        if (previewExtra) {
+          Object.assign(mapped, previewExtra.getRowData(index))
         }
 
         return mapped
@@ -545,12 +562,18 @@ export function CSVImportDynamic({
             </div>
           </div>
 
+          {/* Preview Toolbar (e.g. bulk-assign bar) */}
+          {previewToolbar}
+
           {/* Preview Table */}
           <div className="border rounded-xl overflow-hidden">
-            <div className="max-h-[300px] overflow-auto">
+            <div className={cn("overflow-auto", showAllRowsInPreview ? "max-h-[500px]" : "max-h-[300px]")}>
               <table className="w-full text-sm">
-                <thead className="bg-secondary/50 sticky top-0">
+                <thead className="bg-secondary/50 sticky top-0 z-10">
                   <tr>
+                    {previewExtra && (
+                      <th className="px-3 py-2 text-left font-medium">{previewExtra.header}</th>
+                    )}
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">#</th>
                     {csvHeaders.filter(h => columnMappings[h] !== "skip").slice(0, 5).map((header) => {
                       const mapping = columnMappings[header]
@@ -569,8 +592,11 @@ export function CSVImportDynamic({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {parsedData.slice(0, 5).map((row, index) => (
+                  {(showAllRowsInPreview ? parsedData : parsedData.slice(0, 5)).map((row, index) => (
                     <tr key={index} className="hover:bg-secondary/30">
+                      {previewExtra && (
+                        <td className="px-3 py-2">{previewExtra.cell(index)}</td>
+                      )}
                       <td className="px-3 py-2 text-muted-foreground">{index + 1}</td>
                       {csvHeaders.filter(h => columnMappings[h] !== "skip").slice(0, 5).map((header) => (
                         <td key={header} className="px-3 py-2 truncate max-w-[150px]">
@@ -585,7 +611,7 @@ export function CSVImportDynamic({
                 </tbody>
               </table>
             </div>
-            {parsedData.length > 5 && (
+            {!showAllRowsInPreview && parsedData.length > 5 && (
               <div className="px-3 py-2 bg-secondary/30 text-sm text-muted-foreground text-center">
                 ... and {parsedData.length - 5} more rows
               </div>
