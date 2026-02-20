@@ -1705,10 +1705,10 @@ export default function RegistrationsPage() {
             {/* Hero Header Card */}
             <div className={cn(
               "mx-4 mt-4 rounded-2xl border-2 p-5 space-y-4 shadow-sm",
-              selectedRegistration.status === "confirmed" && "bg-gradient-to-br from-emerald-50 via-green-50/60 to-teal-50/30 border-emerald-300 dark:from-emerald-950/30 dark:via-green-950/20 dark:to-teal-950/10 dark:border-emerald-700",
-              selectedRegistration.status === "pending" && "bg-gradient-to-br from-amber-50 via-yellow-50/60 to-orange-50/30 border-amber-300 dark:from-amber-950/30 dark:via-yellow-950/20 dark:to-orange-950/10 dark:border-amber-700",
-              selectedRegistration.status === "cancelled" && "bg-gradient-to-br from-red-50 via-rose-50/60 to-pink-50/30 border-red-300 dark:from-red-950/30 dark:via-rose-950/20 dark:to-pink-950/10 dark:border-red-700",
-              selectedRegistration.status === "refunded" && "bg-gradient-to-br from-slate-50 via-gray-50/60 to-zinc-50/30 border-slate-300 dark:from-slate-950/30 dark:via-gray-950/20 dark:to-zinc-950/10 dark:border-slate-700",
+              selectedRegistration.status === "confirmed" && "bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50/80 border-emerald-300 dark:from-emerald-950/40 dark:via-green-950/30 dark:to-teal-950/30 dark:border-emerald-700",
+              selectedRegistration.status === "pending" && "bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50/80 border-amber-300 dark:from-amber-950/40 dark:via-yellow-950/30 dark:to-orange-950/30 dark:border-amber-700",
+              selectedRegistration.status === "cancelled" && "bg-gradient-to-br from-red-50 via-rose-50 to-pink-50/80 border-red-300 dark:from-red-950/40 dark:via-rose-950/30 dark:to-pink-950/30 dark:border-red-700",
+              selectedRegistration.status === "refunded" && "bg-gradient-to-br from-slate-50 via-gray-50 to-zinc-50/80 border-slate-300 dark:from-slate-950/40 dark:via-gray-950/30 dark:to-zinc-950/30 dark:border-slate-700",
             )}>
               {/* Attendee Profile */}
               <div className="flex items-start gap-4">
@@ -1804,7 +1804,7 @@ export default function RegistrationsPage() {
                         const fullReg = registrations?.find(r => r.id === reg.id)
                         if (fullReg) setSelectedRegistration(fullReg)
                       }}
-                      className="w-full flex items-center justify-between p-3 rounded-xl border border-indigo-200/60 bg-gradient-to-r from-indigo-50/40 to-violet-50/20 hover:from-indigo-50/70 hover:to-violet-50/40 hover:border-indigo-300 dark:from-indigo-950/20 dark:to-violet-950/10 dark:border-indigo-800/40 transition-all text-left group"
+                      className="w-full flex items-center justify-between p-3 rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50/60 hover:from-indigo-50/70 hover:to-violet-50/40 hover:border-indigo-300 dark:from-indigo-950/40 dark:to-violet-950/30 dark:border-indigo-800 transition-all text-left group"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/60 transition-colors">
@@ -1836,7 +1836,7 @@ export default function RegistrationsPage() {
 
             {/* Ticket Info */}
             <SlideOverSection title="Ticket" icon={Ticket}>
-              <div className="flex items-center gap-3.5 p-4 rounded-xl border border-cyan-200/60 bg-gradient-to-r from-cyan-50/60 to-sky-50/30 dark:from-cyan-950/20 dark:to-sky-950/10 dark:border-cyan-800/40">
+              <div className="flex items-center gap-3.5 p-4 rounded-xl border border-cyan-200 bg-gradient-to-r from-cyan-50 to-sky-50/80 dark:from-cyan-950/40 dark:to-sky-950/30 dark:border-cyan-800">
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-400 to-sky-500 flex items-center justify-center shrink-0 shadow-sm">
                   <Ticket className="w-5 h-5 text-white" />
                 </div>
@@ -1892,7 +1892,7 @@ export default function RegistrationsPage() {
                               isActive && mode.color === "blue" && "border-blue-500 bg-blue-50 dark:bg-blue-950/30",
                               isActive && mode.color === "purple" && "border-purple-500 bg-purple-50 dark:bg-purple-950/30",
                               isActive && mode.color === "amber" && "border-amber-500 bg-amber-50 dark:bg-amber-950/30",
-                              !isActive && "border-muted bg-muted/20 hover:bg-muted/40 hover:border-muted-foreground/30 cursor-pointer"
+                              !isActive && "border-muted bg-muted/40 hover:bg-muted/40 hover:border-muted-foreground/30 cursor-pointer"
                             )}
                           >
                             {isActive && (
@@ -1947,7 +1947,7 @@ export default function RegistrationsPage() {
               {registrationAddons && registrationAddons.length > 0 ? (
                 <div className="space-y-1.5">
                   {registrationAddons.map((item: any) => (
-                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border border-orange-200/60 bg-gradient-to-r from-orange-50/40 to-amber-50/20 dark:from-orange-950/15 dark:to-amber-950/10 dark:border-orange-800/40 group hover:from-orange-50/70 hover:to-amber-50/40 hover:border-orange-300 transition-all">
+                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50/60 dark:from-orange-950/30 dark:to-amber-950/30 dark:border-orange-800 group hover:from-orange-50/70 hover:to-amber-50/40 hover:border-orange-300 transition-all">
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center shrink-0 shadow-sm">
                         <Package className="w-4 h-4 text-white" />
                       </div>
@@ -2012,9 +2012,9 @@ export default function RegistrationsPage() {
 
             {/* Payment Summary */}
             <SlideOverSection title="Payment" icon={IndianRupee}>
-              <div className="rounded-xl border border-green-200/60 dark:border-green-800/40 overflow-hidden">
+              <div className="rounded-xl border border-green-200 dark:border-green-800 overflow-hidden">
                 {/* Line Items */}
-                <div className="p-4 space-y-3 bg-gradient-to-b from-green-50/30 to-transparent dark:from-green-950/10">
+                <div className="p-4 space-y-3 bg-gradient-to-b from-green-50 to-transparent dark:from-green-950/40">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Ticket</span>
                     <span className="font-semibold tabular-nums">₹{selectedRegistration.unit_price.toLocaleString()}</span>
@@ -2039,7 +2039,7 @@ export default function RegistrationsPage() {
                   )}
                 </div>
                 {/* Total Row */}
-                <div className="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-green-100/80 to-emerald-100/50 dark:from-green-900/30 dark:to-emerald-900/20 border-t border-green-200/60 dark:border-green-800/40">
+                <div className="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-green-100/80 to-emerald-100/50 dark:from-green-900/30 dark:to-emerald-900/20 border-t border-green-200 dark:border-green-800">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm">Total</span>
                     <Badge
@@ -2069,8 +2069,8 @@ export default function RegistrationsPage() {
                 <div className={cn(
                   "flex items-center gap-3 p-3.5 rounded-xl border transition-all group",
                   selectedRegistration.badge_url
-                    ? "border-teal-200/60 bg-gradient-to-r from-teal-50/50 to-emerald-50/30 hover:from-teal-50/80 hover:to-emerald-50/50 dark:from-teal-950/20 dark:to-emerald-950/10 dark:border-teal-800/40"
-                    : "border-border/50 bg-muted/10 hover:bg-muted/20"
+                    ? "border-teal-200 bg-gradient-to-r from-teal-50 to-emerald-50/80 hover:from-teal-50/80 hover:to-emerald-50/50 dark:from-teal-950/40 dark:to-emerald-950/30 dark:border-teal-800"
+                    : "border-border bg-muted/30 hover:bg-muted/40"
                 )}>
                   <div className={cn(
                     "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
@@ -2131,8 +2131,8 @@ export default function RegistrationsPage() {
                 <div className={cn(
                   "flex items-center gap-3 p-3.5 rounded-xl border transition-all group",
                   selectedRegistration.certificate_url
-                    ? "border-violet-200/60 bg-gradient-to-r from-violet-50/50 to-purple-50/30 hover:from-violet-50/80 hover:to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/10 dark:border-violet-800/40"
-                    : "border-border/50 bg-muted/10 hover:bg-muted/20"
+                    ? "border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50/80 hover:from-violet-50/80 hover:to-purple-50/50 dark:from-violet-950/40 dark:to-purple-950/30 dark:border-violet-800"
+                    : "border-border bg-muted/30 hover:bg-muted/40"
                 )}>
                   <div className={cn(
                     "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
@@ -2182,8 +2182,8 @@ export default function RegistrationsPage() {
               <div className={cn(
                 "flex items-center gap-3.5 p-4 rounded-xl border-2 transition-all",
                 selectedRegistration.checked_in
-                  ? "border-emerald-300 bg-gradient-to-r from-emerald-50 via-green-50/60 to-teal-50/30 shadow-sm shadow-emerald-100 dark:from-emerald-950/30 dark:via-green-950/20 dark:to-teal-950/10 dark:border-emerald-700 dark:shadow-emerald-900/20"
-                  : "border-slate-200/60 bg-gradient-to-r from-slate-50/40 to-gray-50/20 dark:from-slate-950/15 dark:to-gray-950/10 dark:border-slate-800/40"
+                  ? "border-emerald-300 bg-gradient-to-r from-emerald-50 via-green-50 to-teal-50/80 shadow-sm shadow-emerald-100 dark:from-emerald-950/40 dark:via-green-950/30 dark:to-teal-950/30 dark:border-emerald-700 dark:shadow-emerald-900/20"
+                  : "border-slate-200 bg-gradient-to-r from-slate-50 to-gray-50/60 dark:from-slate-950/30 dark:to-gray-950/30 dark:border-slate-800"
               )}>
                 <div className={cn(
                   "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
@@ -2227,10 +2227,10 @@ export default function RegistrationsPage() {
                   emailLogs.map((log: any) => (
                     <div key={log.id} className={cn(
                       "flex items-start gap-3 p-3.5 rounded-xl border transition-all",
-                      log.status === "bounced" ? "border-red-200/60 bg-gradient-to-r from-red-50/40 to-rose-50/20 dark:from-red-950/15 dark:to-rose-950/10 dark:border-red-800/40" :
-                      log.opened_at ? "border-emerald-200/60 bg-gradient-to-r from-emerald-50/40 to-green-50/20 dark:from-emerald-950/15 dark:to-green-950/10 dark:border-emerald-800/40" :
-                      log.delivered_at ? "border-blue-200/60 bg-gradient-to-r from-blue-50/40 to-sky-50/20 dark:from-blue-950/15 dark:to-sky-950/10 dark:border-blue-800/40" :
-                      "border-border/50 bg-muted/10"
+                      log.status === "bounced" ? "border-red-200 bg-gradient-to-r from-red-50 to-rose-50/60 dark:from-red-950/30 dark:to-rose-950/30 dark:border-red-800" :
+                      log.opened_at ? "border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50/60 dark:from-emerald-950/30 dark:to-green-950/30 dark:border-emerald-800" :
+                      log.delivered_at ? "border-blue-200 bg-gradient-to-r from-blue-50 to-sky-50/60 dark:from-blue-950/30 dark:to-sky-950/30 dark:border-blue-800" :
+                      "border-border bg-muted/30"
                     )}>
                       <div className={cn(
                         "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm",
@@ -2294,7 +2294,7 @@ export default function RegistrationsPage() {
             {/* Notes */}
             {selectedRegistration.notes && (
               <SlideOverSection title="Notes" icon={FileText}>
-                <div className="p-4 rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/60 to-yellow-50/30 dark:from-amber-950/20 dark:to-yellow-950/10 dark:border-amber-800/40">
+                <div className="p-4 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50/80 dark:from-amber-950/40 dark:to-yellow-950/30 dark:border-amber-800">
                   <div className="flex gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
                       <FileText className="w-3.5 h-3.5 text-white" />

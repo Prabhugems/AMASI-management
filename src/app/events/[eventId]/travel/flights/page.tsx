@@ -179,35 +179,40 @@ export default function FlightsPage() {
   // Update flight
   const updateFlight = useMutation({
     mutationFn: async ({ id, type, flight }: { id: string; type: "onward" | "return"; flight: typeof flightForm }) => {
-      const { data: current } = await (supabase as any)
+      const { data: current, error: fetchError } = await (supabase as any)
         .from("registrations")
         .select("custom_fields")
         .eq("id", id)
         .single()
 
-      const prefix = type
-      const bookingUpdate = {
-        [`${prefix}_status`]: flight.status,
-        [`${prefix}_pnr`]: flight.pnr,
-        [`${prefix}_airline`]: flight.airline,
-        [`${prefix}_flight_number`]: flight.flight_number,
-        [`${prefix}_from_city`]: flight.from_city,
-        [`${prefix}_to_city`]: flight.to_city,
-        [`${prefix}_departure_date`]: flight.departure_date,
-        [`${prefix}_departure_time`]: flight.departure_time,
-        [`${prefix}_arrival_time`]: flight.arrival_time,
-        [`${prefix}_seat`]: flight.seat,
-        [`${prefix}_cost`]: flight.cost,
-        [`${prefix}_eticket`]: flight.eticket,
+      if (fetchError || !current) {
+        throw new Error("Failed to fetch current booking data")
       }
+
+      const prefix = type
+      const bookingUpdate: Record<string, string | number | null> = {}
+
+      // Only include non-empty fields to avoid overwriting with blanks
+      if (flight.status) bookingUpdate[`${prefix}_status`] = flight.status
+      if (flight.pnr) bookingUpdate[`${prefix}_pnr`] = flight.pnr
+      if (flight.airline) bookingUpdate[`${prefix}_airline`] = flight.airline
+      if (flight.flight_number) bookingUpdate[`${prefix}_flight_number`] = flight.flight_number
+      if (flight.from_city) bookingUpdate[`${prefix}_from_city`] = flight.from_city
+      if (flight.to_city) bookingUpdate[`${prefix}_to_city`] = flight.to_city
+      if (flight.departure_date) bookingUpdate[`${prefix}_departure_date`] = flight.departure_date
+      if (flight.departure_time) bookingUpdate[`${prefix}_departure_time`] = flight.departure_time
+      if (flight.arrival_time) bookingUpdate[`${prefix}_arrival_time`] = flight.arrival_time
+      if (flight.seat) bookingUpdate[`${prefix}_seat`] = flight.seat
+      if (flight.cost && !isNaN(Number(flight.cost))) bookingUpdate[`${prefix}_cost`] = Number(flight.cost)
+      if (flight.eticket) bookingUpdate[`${prefix}_eticket`] = flight.eticket
 
       const { error } = await (supabase as any)
         .from("registrations")
         .update({
           custom_fields: {
-            ...(current?.custom_fields || {}),
+            ...(current.custom_fields || {}),
             booking: {
-              ...(current?.custom_fields?.booking || {}),
+              ...(current.custom_fields?.booking || {}),
               ...bookingUpdate,
             },
           },
@@ -221,25 +226,27 @@ export default function FlightsPage() {
       setEditingGuest(null)
       queryClient.invalidateQueries({ queryKey: ["flight-guests", eventId] })
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(error.message || "Failed to save flight"),
   })
 
   // Quick status update
   const quickUpdateStatus = useMutation({
     mutationFn: async ({ id, status, type }: { id: string; status: string; type: "onward" | "return" }) => {
-      const { data: current } = await (supabase as any)
+      const { data: current, error: fetchError } = await (supabase as any)
         .from("registrations")
         .select("custom_fields")
         .eq("id", id)
         .single()
 
+      if (fetchError || !current) throw new Error("Failed to fetch current data")
+
       const { error } = await (supabase as any)
         .from("registrations")
         .update({
           custom_fields: {
-            ...(current?.custom_fields || {}),
+            ...(current.custom_fields || {}),
             booking: {
-              ...(current?.custom_fields?.booking || {}),
+              ...(current.custom_fields?.booking || {}),
               [`${type}_status`]: status,
             },
           },
@@ -251,25 +258,27 @@ export default function FlightsPage() {
       toast.success(`Status: ${status}`)
       queryClient.invalidateQueries({ queryKey: ["flight-guests", eventId] })
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(error.message || "Failed to update status"),
   })
 
   // Update airport transfer settings
   const updateAirportTransfer = useMutation({
     mutationFn: async ({ id, field, value }: { id: string; field: "pickup_required" | "drop_required"; value: boolean }) => {
-      const { data: current } = await (supabase as any)
+      const { data: current, error: fetchError } = await (supabase as any)
         .from("registrations")
         .select("custom_fields")
         .eq("id", id)
         .single()
 
+      if (fetchError || !current) throw new Error("Failed to fetch current data")
+
       const { error } = await (supabase as any)
         .from("registrations")
         .update({
           custom_fields: {
-            ...(current?.custom_fields || {}),
+            ...(current.custom_fields || {}),
             travel_details: {
-              ...(current?.custom_fields?.travel_details || {}),
+              ...(current.custom_fields?.travel_details || {}),
               [field]: value,
             },
           },

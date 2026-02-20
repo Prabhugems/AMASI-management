@@ -486,7 +486,7 @@ export default function ProgramDashboardPage() {
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Filter:</span>
           <Select value={selectedDay} onValueChange={setSelectedDay}>
-            <SelectTrigger className="w-[150px] bg-white">
+            <SelectTrigger className="w-[150px] bg-background">
               <SelectValue placeholder="All Days" />
             </SelectTrigger>
             <SelectContent>
@@ -500,7 +500,7 @@ export default function ProgramDashboardPage() {
           </Select>
 
           <Select value={selectedHall} onValueChange={setSelectedHall}>
-            <SelectTrigger className="w-[150px] bg-white">
+            <SelectTrigger className="w-[150px] bg-background">
               <SelectValue placeholder="All Halls" />
             </SelectTrigger>
             <SelectContent>
@@ -512,7 +512,7 @@ export default function ProgramDashboardPage() {
           </Select>
 
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-[180px] bg-white">
+            <SelectTrigger className="w-[180px] bg-background">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>

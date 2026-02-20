@@ -72,39 +72,36 @@ export default function EventDashboardPage() {
     enabled: !!eventId,
   })
 
-  // Fetch faculty stats from both faculty_assignments AND speaker registrations
+  // Fetch faculty/speaker stats from registrations (same source as speakers list page)
   const { data: facultyStats, isLoading: isLoadingFaculty } = useQuery({
     queryKey: ["event-faculty-stats", eventId],
     queryFn: async () => {
-      // Check faculty_assignments table
-      const { data: assignments } = await supabase
-        .from("faculty_assignments")
-        .select("faculty_name, faculty_email, status")
-        .eq("event_id", eventId)
-
-      // Also check registrations with speaker/faculty designations
-      const { data: speakerRegs } = await supabase
+      const { data } = await supabase
         .from("registrations")
-        .select("id, status")
+        .select("id, attendee_designation, status, ticket_type:ticket_types(name)")
         .eq("event_id", eventId)
-        .or("attendee_designation.ilike.%speaker%,attendee_designation.ilike.%faculty%,attendee_designation.ilike.%chairperson%,attendee_designation.ilike.%panelist%,attendee_designation.ilike.%moderator%")
 
-      const assignmentsList = Array.isArray(assignments) ? assignments : []
-      const speakersList = Array.isArray(speakerRegs) ? speakerRegs : []
+      const allRegs = Array.isArray(data) ? data : []
 
-      // Count unique faculty by name (email can be null/phone for some faculty)
-      const uniqueFaculty = new Set(assignmentsList.map((f: any) => f.faculty_name))
-      const uniqueConfirmed = new Set(assignmentsList.filter((f: any) => f.status === "confirmed").map((f: any) => f.faculty_name))
+      // Filter to speaker/faculty registrations - same logic as speakers list page
+      const speakers = allRegs.filter((reg: any) => {
+        const ticketName = (reg.ticket_type?.name || "").toLowerCase()
+        const designation = (reg.attendee_designation || "").toLowerCase()
+        return (
+          ticketName.includes("speaker") ||
+          ticketName.includes("faculty") ||
+          designation === "speaker" ||
+          designation === "chairperson" ||
+          designation === "moderator" ||
+          designation === "panelist" ||
+          designation === "faculty"
+        )
+      })
 
-      const totalFromSpeakers = speakersList.length
-      const confirmedFromSpeakers = speakersList.filter((r: any) => r.status === "confirmed").length
+      const total = speakers.length
+      const confirmed = speakers.filter((r: any) => r.status === "confirmed").length
 
-      // If faculty_assignments has data, use unique count; otherwise use speaker registrations
-      if (uniqueFaculty.size > 0) {
-        return { total: uniqueFaculty.size, confirmed: uniqueConfirmed.size }
-      }
-
-      return { total: totalFromSpeakers, confirmed: confirmedFromSpeakers }
+      return { total, confirmed }
     },
     enabled: !!eventId,
   })
@@ -115,16 +112,23 @@ export default function EventDashboardPage() {
     queryFn: async () => {
       const { data: allRegistrations, error } = await supabase
         .from("registrations")
-        .select("id, checked_in")
+        .select("id, checked_in, attendee_designation")
         .eq("event_id", eventId)
 
       if (error || !allRegistrations || !Array.isArray(allRegistrations)) {
         return { total: 0, checkedIn: 0 }
       }
 
+      // Exclude faculty/speaker registrations - those are counted in the Faculty card
+      const facultyDesignations = ["speaker", "faculty", "chairperson", "panelist", "moderator"]
+      const attendeesOnly = allRegistrations.filter((r: any) => {
+        const designation = (r.attendee_designation || "").toLowerCase()
+        return !facultyDesignations.some(d => designation.includes(d))
+      })
+
       return {
-        total: allRegistrations.length,
-        checkedIn: allRegistrations.filter((r: any) => r.checked_in).length,
+        total: attendeesOnly.length,
+        checkedIn: attendeesOnly.filter((r: any) => r.checked_in).length,
       }
     },
     enabled: !!eventId,

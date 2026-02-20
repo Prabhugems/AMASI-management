@@ -25,6 +25,7 @@ import {
   MapPin,
   CalendarDays,
   BookOpen,
+  RefreshCw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
@@ -47,6 +48,7 @@ const sidebarItems: SidebarItem[] = [
   { title: "Speakers", href: "/speakers", icon: Users, external: true },
   { title: "Import", href: "/import", icon: Upload },
   { title: "Conflicts", href: "/conflicts", icon: AlertTriangle },
+  { title: "Changes", href: "/changes", icon: RefreshCw },
   { title: "Print", href: "/print", icon: Printer },
   { title: "Public View", href: "/public", icon: Globe },
   { title: "Delegate View", href: "/delegate", icon: Calendar },
