@@ -1210,6 +1210,7 @@ export default function BadgeDesignerPage() {
         setSavedTemplateId(templateToLoad.id)
         setHasUnsavedChanges(false)
         setSelectedTicketTypes(templateToLoad.ticket_type_ids || [])
+        setPreviewIndex(0)
         setTemplateLoaded(true)
 
         // Show appropriate message based on elements
@@ -1252,7 +1253,7 @@ export default function BadgeDesignerPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select(`id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_institution, attendee_designation, ticket_type_id, ticket_types (name), registration_addons (addon_id, addons (name))`)
+        .select(`id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_institution, attendee_designation, ticket_type_id, checkin_token, ticket_types (name), registration_addons (addon_id, addons (name))`)
         .eq("event_id", eventId)
         .eq("status", "confirmed")
         .order("created_at", { ascending: false })
@@ -1308,6 +1309,13 @@ export default function BadgeDesignerPage() {
       .filter(Boolean)
       .join(", ")
     result = result.replace(/\{\{addons\}\}/g, addonNames || "")
+
+    // Check-in token and URL (used for QR codes)
+    const checkinToken = registration?.checkin_token || registration?.registration_number || "TOKEN"
+    result = result.replace(/\{\{checkin_token\}\}/g, checkinToken)
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://collegeofmas.org.in"
+    result = result.replace(/\{\{checkin_url\}\}/g, `${baseUrl}/v/${checkinToken}`)
+    result = result.replace(/\{\{verify_url\}\}/g, `${baseUrl}/v/${checkinToken}`)
 
     if (event?.start_date && event?.end_date) {
       const start = new Date(event.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
@@ -1737,6 +1745,7 @@ export default function BadgeDesignerPage() {
     setSavedTemplateId(t.id)
     setHasUnsavedChanges(false) // Loaded template has no unsaved changes
     setSelectedTicketTypes(t.ticket_type_ids || [])
+    setPreviewIndex(0)
     setIsTemplateDialogOpen(false)
 
     // Show appropriate message based on elements
@@ -2638,7 +2647,9 @@ export default function BadgeDesignerPage() {
                 </div>
                 {previewSearch && (
                   <p className="text-xs text-center mt-2 text-muted-foreground">
-                    Found <strong className="text-foreground">{filteredRegistrations.length}</strong> of {registrations?.length || 0} registrations
+                    Found <strong className="text-foreground">{filteredRegistrations.length}</strong> of {selectedTicketTypes.length > 0
+                      ? registrations?.filter((r: any) => selectedTicketTypes.includes(r.ticket_type_id)).length || 0
+                      : registrations?.length || 0} registrations
                   </p>
                 )}
               </div>
