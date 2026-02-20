@@ -968,6 +968,7 @@ export default function BadgeDesignerPage() {
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false)
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
   const [printFilter, setPrintFilter] = useState("all")
+  const [modeFilter, setModeFilter] = useState<"all" | "offline" | "online" | "hybrid">("all")
   const [selectedTicketTypes, setSelectedTicketTypes] = useState<string[]>([])
   const [leftTab, setLeftTab] = useState<"elements" | "design" | "layers">("elements")
   const [previewSearch, setPreviewSearch] = useState("")
@@ -1253,7 +1254,7 @@ export default function BadgeDesignerPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select(`id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_institution, attendee_designation, ticket_type_id, checkin_token, ticket_types (name), registration_addons (addon_id, addons (name))`)
+        .select(`id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_institution, attendee_designation, ticket_type_id, checkin_token, participation_mode, ticket_types (name), registration_addons (addon_id, addons (name))`)
         .eq("event_id", eventId)
         .in("status", ["confirmed", "pending"])
         .order("registration_number", { ascending: true })
@@ -1263,12 +1264,26 @@ export default function BadgeDesignerPage() {
 
   const selectedElement = selectedElementIds.length === 1 ? template.elements.find((e) => e.id === selectedElementIds[0]) : null
 
-  // Filter registrations based on search and template's assigned ticket types
-  const filteredRegistrations = registrations?.filter((r: any) => {
-    // Filter by template's assigned ticket types
+  // Helper: apply ticket type + participation mode filters
+  const applyFilters = (r: any) => {
     if (selectedTicketTypes.length > 0 && !selectedTicketTypes.includes(r.ticket_type_id)) {
       return false
     }
+    if (modeFilter !== "all") {
+      const mode = r.participation_mode || "offline"
+      if (modeFilter === "offline") {
+        // Include offline and hybrid (they attend in person)
+        if (mode !== "offline" && mode !== "hybrid") return false
+      } else if (mode !== modeFilter) {
+        return false
+      }
+    }
+    return true
+  }
+
+  // Filter registrations based on search, ticket types, and participation mode
+  const filteredRegistrations = registrations?.filter((r: any) => {
+    if (!applyFilters(r)) return false
     if (!previewSearch.trim()) return true
     const search = previewSearch.toLowerCase()
     return (
@@ -1941,6 +1956,14 @@ export default function BadgeDesignerPage() {
         }
       } else {
         filteredRegs = registrations?.filter((r: any) => r.ticket_type_id === printFilter)
+      }
+      // Apply participation mode filter
+      if (modeFilter !== "all" && filteredRegs) {
+        filteredRegs = filteredRegs.filter((r: any) => {
+          const mode = r.participation_mode || "offline"
+          if (modeFilter === "offline") return mode === "offline" || mode === "hybrid"
+          return mode === modeFilter
+        })
       }
       if (!filteredRegs?.length) { toast.error("No registrations to generate"); return }
 
@@ -2647,9 +2670,7 @@ export default function BadgeDesignerPage() {
                 </div>
                 {previewSearch && (
                   <p className="text-xs text-center mt-2 text-muted-foreground">
-                    Found <strong className="text-foreground">{filteredRegistrations.length}</strong> of {selectedTicketTypes.length > 0
-                      ? registrations?.filter((r: any) => selectedTicketTypes.includes(r.ticket_type_id)).length || 0
-                      : registrations?.length || 0} registrations
+                    Found <strong className="text-foreground">{filteredRegistrations.length}</strong> of {registrations?.filter((r: any) => applyFilters(r)).length || 0} registrations
                   </p>
                 )}
               </div>
@@ -3116,6 +3137,20 @@ export default function BadgeDesignerPage() {
             </div>
 
             <div>
+              <Label>Participation Mode</Label>
+              <Select value={modeFilter} onValueChange={(v) => setModeFilter(v as any)}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All modes</SelectItem>
+                  <SelectItem value="offline">Offline only (in-person attendees)</SelectItem>
+                  <SelectItem value="online">Online only</SelectItem>
+                  <SelectItem value="hybrid">Hybrid only</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Online participants don&apos;t need printed badges</p>
+            </div>
+
+            <div>
               <Label>Badges per A4 Page</Label>
                 <Select value={badgesPerPage.toString()} onValueChange={(v) => setBadgesPerPage(parseInt(v))}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
@@ -3133,11 +3168,26 @@ export default function BadgeDesignerPage() {
               </div>
 
             <div className="bg-muted/50 rounded-lg p-4">
-              <p className="text-sm"><strong>{printFilter === "all"
-                ? (selectedTicketTypes.length > 0
-                    ? registrations?.filter((r: any) => selectedTicketTypes.includes(r.ticket_type_id)).length || 0
-                    : registrations?.length || 0)
-                : registrations?.filter((r: any) => r.ticket_type_id === printFilter).length || 0}</strong> badges will be generated</p>
+              <p className="text-sm"><strong>{(() => {
+                let regs = registrations || []
+                // Apply ticket type filter
+                if (printFilter === "all") {
+                  if (selectedTicketTypes.length > 0) {
+                    regs = regs.filter((r: any) => selectedTicketTypes.includes(r.ticket_type_id))
+                  }
+                } else {
+                  regs = regs.filter((r: any) => r.ticket_type_id === printFilter)
+                }
+                // Apply mode filter
+                if (modeFilter !== "all") {
+                  regs = regs.filter((r: any) => {
+                    const mode = r.participation_mode || "offline"
+                    if (modeFilter === "offline") return mode === "offline" || mode === "hybrid"
+                    return mode === modeFilter
+                  })
+                }
+                return regs.length
+              })()}</strong> badges will be generated</p>
               {!savedTemplateId && <p className="text-sm text-amber-600 mt-2">Save the template first</p>}
             </div>
           </div>
