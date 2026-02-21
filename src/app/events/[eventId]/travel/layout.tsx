@@ -232,6 +232,11 @@ export default function TravelLayout({
     })
   }
 
+  // Print pages get a clean layout with no sidebar/chrome
+  if (pathname?.includes("/print")) {
+    return <>{children}</>
+  }
+
   // Transport user gets a standalone full-page layout
   if (userPermissions?.isTransportUser) {
     return (

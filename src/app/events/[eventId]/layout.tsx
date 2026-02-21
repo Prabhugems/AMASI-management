@@ -21,7 +21,7 @@ export default function EventLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Hide sidebar for public pages and print page (accessible without auth)
-  const isPublicPage = pathname?.includes("/program/public") || pathname?.includes("/program/print")
+  const isPublicPage = pathname?.includes("/program/public") || pathname?.includes("/print")
 
   // Check event access for event-scoped users
   const canAccessEvent = !isEventScoped || hasEventAccess(eventId)

@@ -53,6 +53,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import Link from "next/link"
 
 type Guest = {
   id: string
@@ -496,9 +497,16 @@ export default function FlightsPage() {
           <h1 className="text-xl sm:text-2xl font-bold">Flights</h1>
           <p className="text-muted-foreground">Manage flight bookings</p>
         </div>
-        <Button variant="outline" onClick={exportFlights}>
-          <Download className="h-4 w-4 mr-2" />Export
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href={`/events/${eventId}/travel/flights/print`} target="_blank">
+            <Button variant="outline">
+              <Plane className="h-4 w-4 mr-2" />Print View
+            </Button>
+          </Link>
+          <Button variant="outline" onClick={exportFlights}>
+            <Download className="h-4 w-4 mr-2" />Export
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
