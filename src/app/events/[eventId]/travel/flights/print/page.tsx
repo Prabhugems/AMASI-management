@@ -1,9 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -68,40 +66,20 @@ type Guest = {
 export default function FlightsPrintPage() {
   const params = useParams()
   const eventId = params.eventId as string
-  const supabase = createClient()
   const [activeTab, setActiveTab] = useState("arrivals")
+  const [event, setEvent] = useState<{ id: string; name: string; short_name: string | null; start_date: string; end_date: string } | null>(null)
+  const [guests, setGuests] = useState<Guest[] | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Fetch event details
-  const { data: event } = useQuery({
-    queryKey: ["event-print", eventId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("events")
-        .select("id, name, short_name, start_date, end_date")
-        .eq("id", eventId)
-        .single()
-      return data as { id: string; name: string; short_name: string | null; start_date: string; end_date: string } | null
-    },
-  })
-
-  // Fetch guests with travel/booking data
-  const { data: guests, isLoading } = useQuery({
-    queryKey: ["flight-guests-print", eventId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("registrations")
-        .select("id, attendee_name, attendee_phone, custom_fields")
-        .eq("event_id", eventId)
-        .order("attendee_name")
-
-      return (data || []).filter((g: Guest) =>
-        g.custom_fields?.needs_travel ||
-        g.custom_fields?.travel_details?.from_city ||
-        g.custom_fields?.travel_details?.onward_from_city ||
-        g.custom_fields?.booking?.onward_status
-      ) as Guest[]
-    },
-  })
+  useEffect(() => {
+    fetch(`/api/travel/flights-print?eventId=${eventId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setEvent(data.event || null)
+        setGuests(data.guests || [])
+      })
+      .finally(() => setIsLoading(false))
+  }, [eventId])
 
   const buildRemarks = (
     booking: NonNullable<Guest["custom_fields"]>["booking"],

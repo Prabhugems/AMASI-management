@@ -66,7 +66,10 @@ export async function middleware(request: NextRequest) {
     '/status',
   ]
 
-  const isProtectedRoute = protectedRoutes.some(
+  // Print pages under any route are public (e.g. /events/[id]/travel/flights/print)
+  const isPrintPage = request.nextUrl.pathname.endsWith('/print') || request.nextUrl.pathname.includes('/print/')
+
+  const isProtectedRoute = !isPrintPage && protectedRoutes.some(
     (route) =>
       request.nextUrl.pathname === route ||
       request.nextUrl.pathname.startsWith(`${route}/`)
@@ -99,6 +102,7 @@ export async function middleware(request: NextRequest) {
     '/api/abstract-reviewer', // Abstract reviewer APIs
     '/membership',          // Public membership application form
     '/api/membership/apply', // Public membership application API
+    '/api/travel/flights-print', // Public flights print data API
   ]
   const _isPublicRoute = publicRoutes.some(
     (route) =>
