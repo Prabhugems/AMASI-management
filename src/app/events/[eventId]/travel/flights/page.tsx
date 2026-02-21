@@ -957,12 +957,14 @@ function FlightTable({ guests, type, onEdit, formatDate, onQuickStatus }: { gues
       if (field === "to_city") return travel.onward_to_city
       if (field === "departure_date") return travel.onward_date || travel.arrival_date
       if (field === "departure_time") return travel.onward_departure_time
+      if (field === "arrival_time") return travel.onward_arrival_time
       if (field === "flight_number") return travel.onward_preferred_time
     } else {
       if (field === "from_city") return travel.return_from_city
       if (field === "to_city") return travel.return_to_city
       if (field === "departure_date") return travel.return_date || travel.departure_date
       if (field === "departure_time") return travel.return_departure_time
+      if (field === "arrival_time") return travel.return_arrival_time
       if (field === "flight_number") return travel.return_preferred_time
     }
     return undefined
@@ -983,7 +985,7 @@ function FlightTable({ guests, type, onEdit, formatDate, onQuickStatus }: { gues
             <TableHead>Route (Request)</TableHead>
             <TableHead>Date</TableHead>
             <TableHead>Flight</TableHead>
-            <TableHead>Time</TableHead>
+            <TableHead>Dep / Arr</TableHead>
             <TableHead>PNR</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="w-[60px]"></TableHead>
@@ -1007,7 +1009,26 @@ function FlightTable({ guests, type, onEdit, formatDate, onQuickStatus }: { gues
                   <span className="font-mono text-sm">{getSpeakerRequest(guest, "flight_number") || getBookingData(guest, "flight_number") || "-"}</span>
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm">{getSpeakerRequest(guest, "departure_time") || getBookingData(guest, "departure_time") || "-"}</span>
+                  {(() => {
+                    const depTime = getSpeakerRequest(guest, "departure_time") || getBookingData(guest, "departure_time")
+                    const arrTime = getSpeakerRequest(guest, "arrival_time") || getBookingData(guest, "arrival_time")
+                    const depDate = getSpeakerRequest(guest, "departure_date") || getBookingData(guest, "departure_date")
+                    const arrDate = getBookingData(guest, "arrival_date")
+                    const isNextDay = depDate && arrDate && arrDate > depDate
+                    return (
+                      <div className="text-sm space-y-0.5">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground text-xs">DEP</span>
+                          <span>{depTime || "-"}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground text-xs">ARR</span>
+                          <span>{arrTime || "-"}</span>
+                          {isNextDay && <span className="text-[10px] text-orange-500 font-semibold">+1</span>}
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </TableCell>
                 <TableCell>
                   <span className="font-mono text-sm">{getBookingData(guest, "pnr") || "-"}</span>
