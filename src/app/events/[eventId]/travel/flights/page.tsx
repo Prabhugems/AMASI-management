@@ -74,12 +74,14 @@ type Guest = {
       onward_date?: string
       onward_preferred_time?: string
       onward_departure_time?: string
+      onward_arrival_time?: string
       // Return
       return_from_city?: string
       return_to_city?: string
       return_date?: string
       return_preferred_time?: string
       return_departure_time?: string
+      return_arrival_time?: string
       // Airport Transfers
       pickup_required?: boolean
       drop_required?: boolean
