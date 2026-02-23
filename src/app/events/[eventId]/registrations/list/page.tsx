@@ -1290,7 +1290,7 @@ export default function RegistrationsPage() {
               Import
             </Link>
           </Button>
-          <Button>
+          <Button onClick={() => window.open(`/register/${event?.slug || eventId}`, '_blank')}>
             <UserPlus className="h-4 w-4 mr-2" />
             Add Attendee
           </Button>
