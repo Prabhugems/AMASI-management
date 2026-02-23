@@ -5,10 +5,18 @@ import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
-import { Loader2, Download, MessageSquare, CheckCircle, XCircle } from "lucide-react"
+import { Loader2, Download, MessageSquare, CheckCircle, XCircle, Search, Filter } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
@@ -17,6 +25,8 @@ export default function DelegatePortalFeedbackPage() {
   const eventId = params.eventId as string
   const supabase = createClient()
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
 
   // Fetch published feedback forms for this event
   const { data: forms, isLoading: formsLoading } = useQuery({
@@ -76,6 +86,21 @@ export default function DelegatePortalFeedbackPage() {
     },
     enabled: !!forms && forms.length > 0,
   })
+
+  const filteredAttendees = useMemo(() => {
+    if (!feedbackData?.attendees) return []
+    return feedbackData.attendees.filter((att: any) => {
+      if (statusFilter === "submitted" && !att.submitted) return false
+      if (statusFilter === "not_submitted" && att.submitted) return false
+      if (!searchQuery) return true
+      const q = searchQuery.toLowerCase()
+      return (
+        att.attendee_name?.toLowerCase().includes(q) ||
+        att.attendee_email?.toLowerCase().includes(q) ||
+        att.registration_number?.toLowerCase().includes(q)
+      )
+    })
+  }, [feedbackData?.attendees, statusFilter, searchQuery])
 
   const exportCSV = () => {
     if (!feedbackData?.attendees) return
@@ -170,6 +195,32 @@ export default function DelegatePortalFeedbackPage() {
         </div>
       )}
 
+      {/* Filters */}
+      {feedbackData?.attendees && (
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, reg #..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-48">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Submission Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="submitted">Submitted</SelectItem>
+              <SelectItem value="not_submitted">Not Submitted</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Attendees Table */}
       {feedbackLoading ? (
         <div className="flex items-center justify-center h-32">
@@ -191,7 +242,7 @@ export default function DelegatePortalFeedbackPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {feedbackData.attendees.map((att: any) => (
+              {filteredAttendees.map((att: any) => (
                 <TableRow key={att.registration_id}>
                   <TableCell className="font-mono text-sm">{att.registration_number}</TableCell>
                   <TableCell className="font-medium">{att.attendee_name}</TableCell>
@@ -218,10 +269,10 @@ export default function DelegatePortalFeedbackPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {feedbackData.attendees.length === 0 && (
+              {filteredAttendees.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    No confirmed registrations found
+                    {feedbackData.attendees.length === 0 ? "No confirmed registrations found" : "No results match your filters"}
                   </TableCell>
                 </TableRow>
               )}

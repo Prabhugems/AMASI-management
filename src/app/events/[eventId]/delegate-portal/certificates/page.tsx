@@ -1,14 +1,22 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
-import { Loader2, Download, Award, CheckCircle, Clock, Users, FileDown, Info } from "lucide-react"
+import { Loader2, Download, Award, CheckCircle, Clock, Users, FileDown, Info, Search, Ticket, Filter, UserCheck } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
@@ -17,17 +25,35 @@ export default function DelegatePortalCertificatesPage() {
   const eventId = params.eventId as string
   const supabase = createClient()
 
+  const [searchQuery, setSearchQuery] = useState("")
+  const [ticketFilter, setTicketFilter] = useState<string>("all")
+  const [downloadFilter, setDownloadFilter] = useState<string>("all")
+  const [checkinFilter, setCheckinFilter] = useState<string>("all")
+
   const { data: registrations, isLoading } = useQuery({
     queryKey: ["delegate-portal-certificates", eventId],
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, registration_number, attendee_name, attendee_email, checked_in, certificate_generated_at, certificate_downloaded_at, ticket_type:ticket_types(name)")
+        .select("id, registration_number, attendee_name, attendee_email, checked_in, certificate_generated_at, certificate_downloaded_at, ticket_type_id, ticket_type:ticket_types(name)")
         .eq("event_id", eventId)
         .eq("status", "confirmed")
         .order("attendee_name")
       return data || []
     },
+  })
+
+  const { data: ticketTypes } = useQuery({
+    queryKey: ["event-ticket-types", eventId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("ticket_types")
+        .select("id, name")
+        .eq("event_id", eventId)
+        .order("sort_order", { ascending: true })
+      return data || []
+    },
+    enabled: !!eventId,
   })
 
   const { data: downloadCounts } = useQuery({
@@ -46,6 +72,24 @@ export default function DelegatePortalCertificatesPage() {
       return counts
     },
   })
+
+  const filteredRegistrations = useMemo(() => {
+    if (!registrations) return []
+    return registrations.filter((reg: any) => {
+      if (ticketFilter !== "all" && reg.ticket_type_id !== ticketFilter) return false
+      if (downloadFilter === "downloaded" && !reg.certificate_downloaded_at) return false
+      if (downloadFilter === "not_downloaded" && reg.certificate_downloaded_at) return false
+      if (checkinFilter === "checked_in" && !reg.checked_in) return false
+      if (checkinFilter === "not_checked_in" && reg.checked_in) return false
+      if (!searchQuery) return true
+      const q = searchQuery.toLowerCase()
+      return (
+        reg.attendee_name?.toLowerCase().includes(q) ||
+        reg.attendee_email?.toLowerCase().includes(q) ||
+        reg.registration_number?.toLowerCase().includes(q)
+      )
+    })
+  }, [registrations, ticketFilter, downloadFilter, checkinFilter, searchQuery])
 
   const stats = useMemo(() => {
     if (!registrations) return null
@@ -149,6 +193,55 @@ export default function DelegatePortalCertificatesPage() {
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, email, reg #..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={ticketFilter} onValueChange={setTicketFilter}>
+          <SelectTrigger className="w-full md:w-48">
+            <Ticket className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="All Tickets" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Tickets</SelectItem>
+            {ticketTypes?.map((tt: any) => (
+              <SelectItem key={tt.id} value={tt.id}>
+                {tt.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={downloadFilter} onValueChange={setDownloadFilter}>
+          <SelectTrigger className="w-full md:w-48">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Download Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="downloaded">Downloaded</SelectItem>
+            <SelectItem value="not_downloaded">Not Downloaded</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={checkinFilter} onValueChange={setCheckinFilter}>
+          <SelectTrigger className="w-full md:w-48">
+            <UserCheck className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Check-in Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Check-in</SelectItem>
+            <SelectItem value="checked_in">Checked In</SelectItem>
+            <SelectItem value="not_checked_in">Not Checked In</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Table */}
       <div className="bg-card border rounded-lg overflow-x-auto">
         <Table>
@@ -164,7 +257,7 @@ export default function DelegatePortalCertificatesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {registrations?.map((reg: any) => (
+            {filteredRegistrations.map((reg: any) => (
               <TableRow key={reg.id}>
                 <TableCell className="font-mono text-sm">{reg.registration_number}</TableCell>
                 <TableCell className="font-medium">{reg.attendee_name}</TableCell>
@@ -198,10 +291,10 @@ export default function DelegatePortalCertificatesPage() {
                 <TableCell className="font-mono">{downloadCounts?.[reg.id] || 0}</TableCell>
               </TableRow>
             ))}
-            {(!registrations || registrations.length === 0) && (
+            {filteredRegistrations.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  No confirmed registrations found
+                  {registrations?.length === 0 ? "No confirmed registrations found" : "No results match your filters"}
                 </TableCell>
               </TableRow>
             )}
