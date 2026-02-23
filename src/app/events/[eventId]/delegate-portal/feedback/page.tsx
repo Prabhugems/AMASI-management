@@ -213,7 +213,7 @@ export default function DelegatePortalFeedbackPage() {
               <SelectValue placeholder="Submission Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="submitted">Submitted</SelectItem>
               <SelectItem value="not_submitted">Not Submitted</SelectItem>
             </SelectContent>

@@ -78,7 +78,8 @@ export default function DelegatePortalCertificatesPage() {
     return registrations.filter((reg: any) => {
       if (ticketFilter !== "all" && reg.ticket_type_id !== ticketFilter) return false
       if (downloadFilter === "downloaded" && !reg.certificate_downloaded_at) return false
-      if (downloadFilter === "not_downloaded" && reg.certificate_downloaded_at) return false
+      if (downloadFilter === "not_yet" && (!reg.certificate_generated_at || reg.certificate_downloaded_at)) return false
+      if (downloadFilter === "not_generated" && reg.certificate_generated_at) return false
       if (checkinFilter === "checked_in" && !reg.checked_in) return false
       if (checkinFilter === "not_checked_in" && reg.checked_in) return false
       if (!searchQuery) return true
@@ -224,9 +225,10 @@ export default function DelegatePortalCertificatesPage() {
             <SelectValue placeholder="Download Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             <SelectItem value="downloaded">Downloaded</SelectItem>
-            <SelectItem value="not_downloaded">Not Downloaded</SelectItem>
+            <SelectItem value="not_yet">Not Yet</SelectItem>
+            <SelectItem value="not_generated">Not Generated</SelectItem>
           </SelectContent>
         </Select>
         <Select value={checkinFilter} onValueChange={setCheckinFilter}>

@@ -80,7 +80,8 @@ export default function DelegatePortalBadgesPage() {
     return registrations.filter((reg: any) => {
       if (ticketFilter !== "all" && reg.ticket_type_id !== ticketFilter) return false
       if (downloadFilter === "downloaded" && !reg.badge_downloaded_by_delegate_at) return false
-      if (downloadFilter === "not_downloaded" && reg.badge_downloaded_by_delegate_at) return false
+      if (downloadFilter === "not_yet" && (!reg.badge_generated_at || reg.badge_downloaded_by_delegate_at)) return false
+      if (downloadFilter === "not_generated" && reg.badge_generated_at) return false
       if (!searchQuery) return true
       const q = searchQuery.toLowerCase()
       return (
@@ -305,9 +306,10 @@ export default function DelegatePortalBadgesPage() {
             <SelectValue placeholder="Download Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             <SelectItem value="downloaded">Downloaded</SelectItem>
-            <SelectItem value="not_downloaded">Not Downloaded</SelectItem>
+            <SelectItem value="not_yet">Not Yet</SelectItem>
+            <SelectItem value="not_generated">Not Generated</SelectItem>
           </SelectContent>
         </Select>
       </div>
