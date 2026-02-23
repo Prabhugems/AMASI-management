@@ -17,7 +17,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
-import { Loader2, Download, BadgeCheck, CheckCircle, Clock, Users, Info, Search, Send, Mail, Ticket, Filter } from "lucide-react"
+import { Loader2, Download, BadgeCheck, CheckCircle, Clock, Users, Info, Search, Send, Mail, Ticket, Filter, MessageCircle } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
@@ -31,18 +31,20 @@ export default function DelegatePortalBadgesPage() {
   const [downloadFilter, setDownloadFilter] = useState<string>("all")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [sendingState, setSendingState] = useState<{ active: boolean; sent: number; total: number } | null>(null)
+  const [whatsappSendingState, setWhatsappSendingState] = useState<{ active: boolean; sent: number; total: number } | null>(null)
 
   const { data: registrations, isLoading } = useQuery({
     queryKey: ["delegate-portal-badges", eventId],
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, registration_number, attendee_name, attendee_email, badge_generated_at, badge_downloaded_by_delegate_at, ticket_type_id, ticket_type:ticket_types(name)")
+        .select("id, registration_number, attendee_name, attendee_email, attendee_phone, badge_generated_at, badge_downloaded_by_delegate_at, ticket_type_id, ticket_type:ticket_types(name)")
         .eq("event_id", eventId)
         .eq("status", "confirmed")
         .order("attendee_name")
       return data || []
     },
+    refetchInterval: 30000,
   })
 
   const { data: ticketTypes } = useQuery({
@@ -73,6 +75,7 @@ export default function DelegatePortalBadgesPage() {
       })
       return counts
     },
+    refetchInterval: 30000,
   })
 
   const filteredRegistrations = useMemo(() => {
@@ -185,10 +188,72 @@ export default function DelegatePortalBadgesPage() {
     handleBulkSend(notDownloaded)
   }
 
-  const exportCSV = () => {
+  const sendBadgeWhatsApp = async (reg: any) => {
+    try {
+      const baseUrl = window.location.origin
+      const downloadLink = `${baseUrl}/api/badge/${reg.registration_number}/download`
+      const text = `Hi ${reg.attendee_name}, your badge is ready! Download it here: ${downloadLink}`
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: reg.attendee_phone,
+          recipient_name: reg.attendee_name,
+          type: "text",
+          text,
+          event_id: eventId,
+          registration_id: reg.id,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to send")
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const handleWhatsAppIndividual = async (reg: any) => {
+    toast.promise(sendBadgeWhatsApp(reg), {
+      loading: `Sending WhatsApp to ${reg.attendee_name}...`,
+      success: `Badge WhatsApp sent to ${reg.attendee_phone}`,
+      error: `Failed to send WhatsApp to ${reg.attendee_name}`,
+    })
+  }
+
+  const handleBulkWhatsApp = async () => {
     if (!registrations) return
+    const withPhone = filteredRegistrations.filter((r: any) => r.attendee_phone && selectedIds.has(r.id))
+    if (withPhone.length === 0) {
+      toast.error("No selected delegates have phone numbers")
+      return
+    }
+    setWhatsappSendingState({ active: true, sent: 0, total: withPhone.length })
+    let successCount = 0
+    let failCount = 0
+
+    for (let i = 0; i < withPhone.length; i++) {
+      const ok = await sendBadgeWhatsApp(withPhone[i])
+      if (ok) successCount++
+      else failCount++
+      setWhatsappSendingState({ active: true, sent: i + 1, total: withPhone.length })
+    }
+
+    setWhatsappSendingState(null)
+    setSelectedIds(new Set())
+    if (failCount === 0) {
+      toast.success(`Badge WhatsApp sent to ${successCount} delegate${successCount > 1 ? "s" : ""}`)
+    } else {
+      toast.warning(`Sent ${successCount}, failed ${failCount} of ${withPhone.length}`)
+    }
+  }
+
+  const exportCSV = () => {
+    if (filteredRegistrations.length === 0) {
+      toast.error("No rows to export")
+      return
+    }
     const headers = ["Reg Number", "Name", "Email", "Ticket Type", "Badge Generated", "Delegate Downloaded", "Downloaded At", "Download Count"]
-    const rows = registrations.map((r: any) => [
+    const rows = filteredRegistrations.map((r: any) => [
       r.registration_number,
       `"${r.attendee_name || ""}"`,
       r.attendee_email,
@@ -318,9 +383,13 @@ export default function DelegatePortalBadgesPage() {
       {selectedIds.size > 0 && (
         <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
-          <Button size="sm" onClick={handleSendSelected} disabled={!!sendingState}>
+          <Button size="sm" onClick={handleSendSelected} disabled={!!sendingState || !!whatsappSendingState}>
             <Send className="h-4 w-4 mr-2" />
             Send Badge Email
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleBulkWhatsApp} disabled={!!sendingState || !!whatsappSendingState}>
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Send WhatsApp
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
             Clear
@@ -333,7 +402,17 @@ export default function DelegatePortalBadgesPage() {
         <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
           <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
           <span className="text-sm text-blue-800 dark:text-blue-200">
-            Sending {sendingState.sent}/{sendingState.total}...
+            Sending emails {sendingState.sent}/{sendingState.total}...
+          </span>
+        </div>
+      )}
+
+      {/* WhatsApp Sending Progress */}
+      {whatsappSendingState && (
+        <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+          <Loader2 className="h-4 w-4 animate-spin text-green-600" />
+          <span className="text-sm text-green-800 dark:text-green-200">
+            Sending WhatsApp {whatsappSendingState.sent}/{whatsappSendingState.total}...
           </span>
         </div>
       )}
@@ -393,16 +472,30 @@ export default function DelegatePortalBadgesPage() {
                 </TableCell>
                 <TableCell className="font-mono">{downloadCounts?.[reg.id] || 0}</TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleSendIndividual(reg)}
-                    disabled={!!sendingState}
-                    title="Send badge email"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleSendIndividual(reg)}
+                      disabled={!!sendingState || !!whatsappSendingState}
+                      title="Send badge email"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                    {reg.attendee_phone && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-green-600"
+                        onClick={() => handleWhatsAppIndividual(reg)}
+                        disabled={!!sendingState || !!whatsappSendingState}
+                        title="Send badge via WhatsApp"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

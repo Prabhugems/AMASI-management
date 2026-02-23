@@ -1,11 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useCallback } from "react"
 import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -16,7 +17,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
-import { Loader2, Download, MessageSquare, CheckCircle, XCircle, Search, Filter } from "lucide-react"
+import { Loader2, Download, MessageSquare, CheckCircle, XCircle, Search, Filter, Send, Mail } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
@@ -27,6 +28,8 @@ export default function DelegatePortalFeedbackPage() {
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [sendingState, setSendingState] = useState<{ active: boolean; sent: number; total: number } | null>(null)
 
   // Fetch published feedback forms for this event
   const { data: forms, isLoading: formsLoading } = useQuery({
@@ -55,6 +58,7 @@ export default function DelegatePortalFeedbackPage() {
       return res.json()
     },
     enabled: !!activeFormId,
+    refetchInterval: 60000,
   })
 
   // Per-form summary stats
@@ -85,6 +89,7 @@ export default function DelegatePortalFeedbackPage() {
       return summaries
     },
     enabled: !!forms && forms.length > 0,
+    refetchInterval: 60000,
   })
 
   const filteredAttendees = useMemo(() => {
@@ -103,10 +108,13 @@ export default function DelegatePortalFeedbackPage() {
   }, [feedbackData?.attendees, statusFilter, searchQuery])
 
   const exportCSV = () => {
-    if (!feedbackData?.attendees) return
+    if (filteredAttendees.length === 0) {
+      toast.error("No rows to export")
+      return
+    }
     const formName = forms?.find((f: any) => f.id === activeFormId)?.name || "feedback"
     const headers = ["Reg Number", "Name", "Email", "Status", "Submitted At"]
-    const rows = feedbackData.attendees.map((a: any) => [
+    const rows = filteredAttendees.map((a: any) => [
       a.registration_number,
       `"${a.attendee_name || ""}"`,
       a.attendee_email,
@@ -121,6 +129,98 @@ export default function DelegatePortalFeedbackPage() {
     a.download = `feedback-${formName.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().split("T")[0]}.csv`
     a.click()
     toast.success("Report exported")
+  }
+
+  // Only "Not Submitted" rows are selectable
+  const selectableAttendees = filteredAttendees.filter((a: any) => !a.submitted)
+  const allSelectableSelected = selectableAttendees.length > 0 && selectableAttendees.every((a: any) => selectedIds.has(a.registration_id))
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (allSelectableSelected) {
+        selectableAttendees.forEach((a: any) => next.delete(a.registration_id))
+      } else {
+        selectableAttendees.forEach((a: any) => next.add(a.registration_id))
+      }
+      return next
+    })
+  }, [allSelectableSelected, selectableAttendees])
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const sendFeedbackReminder = async (registrationId: string) => {
+    try {
+      const formName = forms?.find((f: any) => f.id === activeFormId)?.name || "Feedback"
+      const res = await fetch("/api/email/feedback-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          registration_id: registrationId,
+          event_id: eventId,
+          form_id: activeFormId,
+          form_name: formName,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to send")
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const handleSendIndividual = async (att: any) => {
+    toast.promise(sendFeedbackReminder(att.registration_id), {
+      loading: `Sending reminder to ${att.attendee_name}...`,
+      success: `Feedback reminder sent to ${att.attendee_email}`,
+      error: `Failed to send reminder to ${att.attendee_name}`,
+    })
+  }
+
+  const handleBulkSend = async (ids: string[]) => {
+    if (ids.length === 0) return
+    setSendingState({ active: true, sent: 0, total: ids.length })
+    let successCount = 0
+    let failCount = 0
+
+    for (let i = 0; i < ids.length; i++) {
+      const ok = await sendFeedbackReminder(ids[i])
+      if (ok) successCount++
+      else failCount++
+      setSendingState({ active: true, sent: i + 1, total: ids.length })
+    }
+
+    setSendingState(null)
+    setSelectedIds(new Set())
+    if (failCount === 0) {
+      toast.success(`Feedback reminders sent to ${successCount} delegate${successCount > 1 ? "s" : ""}`)
+    } else {
+      toast.warning(`Sent ${successCount}, failed ${failCount} of ${ids.length}`)
+    }
+  }
+
+  const handleSendSelected = () => {
+    const ids = Array.from(selectedIds)
+    handleBulkSend(ids)
+  }
+
+  const handleRemindNotSubmitted = () => {
+    if (!feedbackData?.attendees) return
+    const notSubmitted = feedbackData.attendees
+      .filter((a: any) => !a.submitted)
+      .map((a: any) => a.registration_id)
+    if (notSubmitted.length === 0) {
+      toast.info("All delegates have already submitted feedback")
+      return
+    }
+    handleBulkSend(notSubmitted)
   }
 
   const isLoading = formsLoading
@@ -154,10 +254,16 @@ export default function DelegatePortalFeedbackPage() {
           <h1 className="text-xl sm:text-2xl font-bold">Feedback</h1>
           <p className="text-muted-foreground">Track feedback form submissions from delegates</p>
         </div>
-        <Button onClick={exportCSV} variant="outline" disabled={!feedbackData?.attendees}>
-          <Download className="h-4 w-4 mr-2" />
-          Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleRemindNotSubmitted} variant="outline" disabled={!!sendingState || !feedbackData?.attendees}>
+            <Mail className="h-4 w-4 mr-2" />
+            Remind Not Submitted
+          </Button>
+          <Button onClick={exportCSV} variant="outline" disabled={!feedbackData?.attendees}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Per-form summary cards */}
@@ -221,6 +327,30 @@ export default function DelegatePortalFeedbackPage() {
         </div>
       )}
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <Button size="sm" onClick={handleSendSelected} disabled={!!sendingState}>
+            <Send className="h-4 w-4 mr-2" />
+            Send Reminder
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+            Clear
+          </Button>
+        </div>
+      )}
+
+      {/* Sending Progress */}
+      {sendingState && (
+        <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg">
+          <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+          <span className="text-sm text-purple-800 dark:text-purple-200">
+            Sending {sendingState.sent}/{sendingState.total}...
+          </span>
+        </div>
+      )}
+
       {/* Attendees Table */}
       {feedbackLoading ? (
         <div className="flex items-center justify-center h-32">
@@ -234,16 +364,31 @@ export default function DelegatePortalFeedbackPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={allSelectableSelected && selectableAttendees.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </TableHead>
                 <TableHead>Reg #</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted At</TableHead>
+                <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAttendees.map((att: any) => (
                 <TableRow key={att.registration_id}>
+                  <TableCell>
+                    {!att.submitted ? (
+                      <Checkbox
+                        checked={selectedIds.has(att.registration_id)}
+                        onCheckedChange={() => toggleSelect(att.registration_id)}
+                      />
+                    ) : null}
+                  </TableCell>
                   <TableCell className="font-mono text-sm">{att.registration_number}</TableCell>
                   <TableCell className="font-medium">{att.attendee_name}</TableCell>
                   <TableCell className="text-sm">{att.attendee_email}</TableCell>
@@ -267,11 +412,25 @@ export default function DelegatePortalFeedbackPage() {
                       <span className="text-gray-400">-</span>
                     )}
                   </TableCell>
+                  <TableCell>
+                    {!att.submitted && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleSendIndividual(att)}
+                        disabled={!!sendingState}
+                        title="Send feedback reminder"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
               {filteredAttendees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     {feedbackData.attendees.length === 0 ? "No confirmed registrations found" : "No results match your filters"}
                   </TableCell>
                 </TableRow>

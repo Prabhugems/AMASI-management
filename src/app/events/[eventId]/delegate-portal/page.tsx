@@ -5,7 +5,8 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2, BadgeCheck, Award, MessageSquare, ArrowRight, Info } from "lucide-react"
+import { Loader2, BadgeCheck, Award, MessageSquare, ArrowRight, Info, Users, UserCheck, Download, Clock } from "lucide-react"
+import { format } from "date-fns"
 
 export default function DelegatePortalOverviewPage() {
   const params = useParams()
@@ -23,6 +24,7 @@ export default function DelegatePortalOverviewPage() {
         .eq("status", "confirmed")
       return data || []
     },
+    refetchInterval: 30000,
   })
 
   const { data: downloads, isLoading: dlLoading } = useQuery({
@@ -30,10 +32,11 @@ export default function DelegatePortalOverviewPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("delegate_portal_downloads")
-        .select("id, download_type")
+        .select("id, download_type, created_at")
         .eq("event_id", eventId)
       return data || []
     },
+    refetchInterval: 30000,
   })
 
   const { data: feedbackForms, isLoading: feedbackLoading } = useQuery({
@@ -53,6 +56,7 @@ export default function DelegatePortalOverviewPage() {
         .in("form_id", formIds)
       return { forms: forms.length, totalSubmissions: count || 0 }
     },
+    refetchInterval: 30000,
   })
 
   const stats = useMemo(() => {
@@ -64,7 +68,16 @@ export default function DelegatePortalOverviewPage() {
     const certsDownloaded = registrations.filter((r: any) => r.certificate_downloaded_at).length
     const badgeDownloadCount = downloads?.filter((d: any) => d.download_type === "badge").length || 0
     const certDownloadCount = downloads?.filter((d: any) => d.download_type === "certificate").length || 0
-    return { total, badgesGenerated, badgesDownloaded, certsIssued, certsDownloaded, badgeDownloadCount, certDownloadCount }
+    const checkedIn = registrations.filter((r: any) => r.checked_in).length
+    const totalDownloadCount = downloads?.length || 0
+    const lastActivity = downloads && downloads.length > 0
+      ? downloads.reduce((latest: string | null, d: any) => {
+          if (!d.created_at) return latest
+          if (!latest || d.created_at > latest) return d.created_at
+          return latest
+        }, null as string | null)
+      : null
+    return { total, badgesGenerated, badgesDownloaded, certsIssued, certsDownloaded, badgeDownloadCount, certDownloadCount, checkedIn, totalDownloadCount, lastActivity }
   }, [registrations, downloads])
 
   const isLoading = regsLoading || dlLoading || feedbackLoading
@@ -125,6 +138,40 @@ export default function DelegatePortalOverviewPage() {
         <span className="text-amber-800 dark:text-amber-200">
           Download tracking started when this feature was deployed. Historical downloads before that point are not included in the counts.
         </span>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-card border rounded-lg p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            <Users className="h-4 w-4" />
+            <span className="text-sm">Confirmed</span>
+          </div>
+          <p className="text-2xl font-bold">{stats?.total || 0}</p>
+        </div>
+        <div className="bg-card border rounded-lg p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            <UserCheck className="h-4 w-4 text-blue-500" />
+            <span className="text-sm">Checked In</span>
+          </div>
+          <p className="text-2xl font-bold text-blue-600">{stats?.checkedIn || 0}</p>
+        </div>
+        <div className="bg-card border rounded-lg p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            <Download className="h-4 w-4 text-green-500" />
+            <span className="text-sm">Total Downloads</span>
+          </div>
+          <p className="text-2xl font-bold text-green-600">{stats?.totalDownloadCount || 0}</p>
+        </div>
+        <div className="bg-card border rounded-lg p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            <Clock className="h-4 w-4 text-purple-500" />
+            <span className="text-sm">Last Activity</span>
+          </div>
+          <p className="text-sm font-semibold text-purple-600">
+            {stats?.lastActivity ? format(new Date(stats.lastActivity), "dd MMM, h:mm a") : "No activity"}
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
