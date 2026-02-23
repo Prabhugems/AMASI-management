@@ -126,6 +126,24 @@ export async function GET(
 
   // If badge already stored, redirect to it
   if (registration.badge_url) {
+    // Track delegate download
+    try {
+      await (supabase as any).from("delegate_portal_downloads").insert({
+        registration_id: registration.id,
+        event_id: registration.event_id,
+        download_type: "badge",
+        ip_address: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null,
+        user_agent: request.headers.get("user-agent") || null,
+      })
+      if (!registration.badge_downloaded_by_delegate_at) {
+        await (supabase as any)
+          .from("registrations")
+          .update({ badge_downloaded_by_delegate_at: new Date().toISOString() })
+          .eq("id", registration.id)
+      }
+    } catch {
+      // Non-critical - don't fail the download
+    }
     return NextResponse.redirect(registration.badge_url)
   }
 
@@ -389,6 +407,23 @@ export async function GET(
         badges_generated_count: (template.badges_generated_count || 0) + 1,
       })
       .eq("id", template.id)
+  }
+
+  // Track delegate download
+  try {
+    await (supabase as any).from("delegate_portal_downloads").insert({
+      registration_id: registration.id,
+      event_id: registration.event_id,
+      download_type: "badge",
+      ip_address: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null,
+      user_agent: request.headers.get("user-agent") || null,
+    })
+    await (supabase as any)
+      .from("registrations")
+      .update({ badge_downloaded_by_delegate_at: new Date().toISOString() })
+      .eq("id", registration.id)
+  } catch {
+    // Non-critical - don't fail the download
   }
 
   return new NextResponse(Buffer.from(pdfBytes), {

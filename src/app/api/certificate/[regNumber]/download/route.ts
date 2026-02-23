@@ -284,6 +284,19 @@ export async function GET(
       }
     }
 
+    // Track in delegate_portal_downloads
+    try {
+      await (supabase as any).from("delegate_portal_downloads").insert({
+        registration_id: registration.id,
+        event_id: registration.event_id,
+        download_type: "certificate",
+        ip_address: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null,
+        user_agent: request.headers.get("user-agent") || null,
+      })
+    } catch {
+      // Table may not exist yet - non-critical
+    }
+
     return new NextResponse(Buffer.from(pdfBytes), {
       headers: {
         "Content-Type": "application/pdf",

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     try {
       const { data: registration } = await (supabase as any)
         .from("registrations")
-        .select("id, certificate_downloaded_at")
+        .select("id, event_id, certificate_downloaded_at")
         .eq("id", registration_id)
         .maybeSingle()
 
@@ -29,6 +29,21 @@ export async function POST(request: NextRequest) {
           .from("registrations")
           .update({ certificate_downloaded_at: new Date().toISOString() })
           .eq("id", registration_id)
+      }
+
+      // Track in delegate_portal_downloads
+      if (registration) {
+        try {
+          await (supabase as any).from("delegate_portal_downloads").insert({
+            registration_id: registration.id,
+            event_id: registration.event_id,
+            download_type: "certificate",
+            ip_address: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null,
+            user_agent: request.headers.get("user-agent") || null,
+          })
+        } catch {
+          // Table may not exist yet - non-critical
+        }
       }
     } catch {
       // certificate_downloaded_at column may not exist yet - non-critical

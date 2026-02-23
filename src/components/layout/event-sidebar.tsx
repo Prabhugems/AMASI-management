@@ -32,6 +32,7 @@ import {
   Pin,
   PinOff,
   BookOpen,
+  BarChart3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -84,6 +85,7 @@ const navItems: NavItem[] = [
   { label: "Print Station", href: "/print-stations", icon: Printer },
   { label: "Badges", href: "/badges", icon: BadgeCheck, statusKey: "badges" },
   { label: "Certificates", href: "/certificates", icon: Award, statusKey: "certificates" },
+  { label: "Delegate Portal", href: "/delegate-portal", icon: BarChart3 },
   { label: "Travel", href: "/travel", icon: Plane },
   { label: "Accommodation", href: "/accommodation", icon: Hotel },
   { label: "Sponsors", href: "/sponsors", icon: Building2 },
