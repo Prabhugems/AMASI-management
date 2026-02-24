@@ -262,7 +262,15 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
         console.log("[Member Lookup] Member data:", member)
         console.log("[Member Lookup] Fields to match:", fields.map(f => f.label))
 
+        // Field types that can accept auto-filled text values
+        const textCompatibleTypes = new Set(["text", "email", "phone", "textarea", "number"])
+
         fields.forEach(field => {
+          // Skip non-text field types (date, file, select, checkbox, etc.)
+          if (!textCompatibleTypes.has(field.field_type)) {
+            return
+          }
+
           const fieldLabel = (field.label || "").toLowerCase().trim()
 
           for (const [memberKey, matchLabels] of fieldMappings) {
