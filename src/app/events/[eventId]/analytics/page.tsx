@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, use } from "react"
+import { useState, use, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
+import { toast } from "sonner"
 import {
   ArrowLeft,
   Eye,
@@ -15,6 +16,11 @@ import {
   RefreshCw,
   UserPlus,
   ArrowRight,
+  Copy,
+  Check,
+  Plus,
+  X,
+  Share2,
 } from "lucide-react"
 
 interface AnalyticsData {
@@ -47,6 +53,133 @@ interface AnalyticsData {
   }
 }
 
+const PRESET_CHANNELS = [
+  { name: "WhatsApp", source: "whatsapp", medium: "social", icon: "💬" },
+  { name: "Email", source: "email", medium: "newsletter", icon: "📧" },
+  { name: "Facebook", source: "facebook", medium: "social", icon: "📘" },
+  { name: "Instagram", source: "instagram", medium: "social", icon: "📸" },
+  { name: "SMS", source: "sms", medium: "direct", icon: "📱" },
+  { name: "Website", source: "website", medium: "banner", icon: "🌐" },
+  { name: "Twitter/X", source: "twitter", medium: "social", icon: "🐦" },
+]
+
+function UTMLinkGenerator({ eventSlug, eventShortName }: { eventSlug: string; eventShortName: string }) {
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
+  const [customName, setCustomName] = useState("")
+  const [customSource, setCustomSource] = useState("")
+  const [customLinks, setCustomLinks] = useState<{ name: string; source: string; medium: string }[]>([])
+
+  const campaign = (eventShortName || "event").toLowerCase().replace(/[^a-z0-9]+/g, "-")
+  const baseUrl = `https://collegeofmas.org.in/register/${eventSlug}`
+
+  const buildUrl = (source: string, medium: string) =>
+    `${baseUrl}?utm_source=${source}&utm_medium=${medium}&utm_campaign=${campaign}`
+
+  const allChannels = [...PRESET_CHANNELS, ...customLinks]
+
+  const copyToClipboard = useCallback(async (url: string, idx: number) => {
+    await navigator.clipboard.writeText(url)
+    setCopiedIdx(idx)
+    toast.success("Link copied!")
+    setTimeout(() => setCopiedIdx(null), 2000)
+  }, [])
+
+  const addCustomLink = () => {
+    if (!customName.trim() || !customSource.trim()) return
+    setCustomLinks(prev => [...prev, {
+      name: customName.trim(),
+      source: customSource.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+      medium: "referral",
+    }])
+    setCustomName("")
+    setCustomSource("")
+  }
+
+  return (
+    <div className="bg-white rounded-xl border p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <Share2 className="w-5 h-5 text-emerald-600" />
+        <h2 className="text-lg font-semibold text-gray-900">UTM Link Generator</h2>
+      </div>
+      <p className="text-sm text-gray-500 mb-5">
+        Share these tracked links to see which channel brings the most registrations.
+      </p>
+
+      {/* Preset channels */}
+      <div className="space-y-2 mb-5">
+        {allChannels.map((ch, idx) => {
+          const url = buildUrl(ch.source, ch.medium)
+          const isCopied = copiedIdx === idx
+          return (
+            <div key={idx} className="flex items-center gap-3 group">
+              <span className="w-8 text-center text-lg">{"icon" in ch ? (ch as any).icon : "🔗"}</span>
+              <span className="w-24 text-sm font-medium text-gray-700 shrink-0">{ch.name}</span>
+              <input
+                readOnly
+                value={url}
+                className="flex-1 text-xs bg-gray-50 border rounded-lg px-3 py-2 text-gray-600 truncate focus:outline-none cursor-pointer"
+                onClick={() => copyToClipboard(url, idx)}
+                title="Click to copy"
+              />
+              <button
+                onClick={() => copyToClipboard(url, idx)}
+                className="shrink-0 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Copy link"
+              >
+                {isCopied ? (
+                  <Check className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  <Copy className="w-4 h-4 text-gray-400" />
+                )}
+              </button>
+              {idx >= PRESET_CHANNELS.length && (
+                <button
+                  onClick={() => setCustomLinks(prev => prev.filter((_, i) => i !== idx - PRESET_CHANNELS.length))}
+                  className="shrink-0 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                  title="Remove"
+                >
+                  <X className="w-4 h-4 text-red-400" />
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Add custom promoter link */}
+      <div className="border-t pt-4">
+        <p className="text-sm font-medium text-gray-700 mb-3">Add Custom Promoter Link</p>
+        <div className="flex items-center gap-2">
+          <input
+            value={customName}
+            onChange={(e) => setCustomName(e.target.value)}
+            placeholder="Promoter name (e.g. Dr Sharma)"
+            className="flex-1 text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
+          />
+          <input
+            value={customSource}
+            onChange={(e) => setCustomSource(e.target.value)}
+            placeholder="Source ID (e.g. dr_sharma)"
+            className="flex-1 text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
+            onKeyDown={(e) => e.key === "Enter" && addCustomLink()}
+          />
+          <button
+            onClick={addCustomLink}
+            disabled={!customName.trim() || !customSource.trim()}
+            className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus className="w-4 h-4" />
+            Add
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-2">
+          Give each promoter a unique link. You'll see their registrations in UTM Sources above.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function EventAnalyticsPage({
   params,
 }: {
@@ -54,6 +187,7 @@ export default function EventAnalyticsPage({
 }) {
   const { eventId } = use(params)
   const [days, setDays] = useState(30)
+  const [showUtmGenerator, setShowUtmGenerator] = useState(false)
 
   // Fetch event details
   const { data: event } = useQuery({
@@ -119,6 +253,16 @@ export default function EventAnalyticsPage({
             <option value={90}>Last 90 days</option>
           </select>
 
+          {event?.slug && (
+            <button
+              onClick={() => setShowUtmGenerator(!showUtmGenerator)}
+              className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${showUtmGenerator ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "hover:bg-gray-50"}`}
+            >
+              <Share2 className="w-4 h-4" />
+              UTM Links
+            </button>
+          )}
+
           <button
             onClick={() => refetch()}
             disabled={isFetching}
@@ -129,6 +273,11 @@ export default function EventAnalyticsPage({
           </button>
         </div>
       </div>
+
+      {/* UTM Link Generator */}
+      {showUtmGenerator && event?.slug && (
+        <UTMLinkGenerator eventSlug={event.slug} eventShortName={event.short_name || event.name} />
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -304,10 +453,12 @@ export default function EventAnalyticsPage({
               )}
 
               <div className="mt-4 pt-4 border-t">
-                <p className="text-xs text-gray-500">
-                  Tip: Add UTM parameters to your links for tracking:<br/>
-                  <code className="bg-gray-100 px-1 rounded">?utm_source=facebook&utm_medium=social</code>
-                </p>
+                <button
+                  onClick={() => setShowUtmGenerator(true)}
+                  className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                >
+                  Generate tracked links →
+                </button>
               </div>
             </div>
 
