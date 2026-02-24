@@ -200,37 +200,21 @@ export default function EventDetailsPage() {
   const _isDark = mounted ? resolvedTheme === "dark" : false
   const supabase = createClient()
 
-  // Fetch event details
+  // Fetch event details via public API (bypasses RLS on ticket_types)
   const { data: event, isLoading, error } = useQuery({
     queryKey: ["public-event", eventSlug, directTicketId],
     queryFn: async () => {
-      // Try to find by slug first, then by ID
-      let query = supabase
-        .from("events")
-        .select(`
-          *,
-          ticket_types (*)
-        `)
-
-      // Check if it's a UUID
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(eventSlug)
+      const param = isUuid ? `id=${eventSlug}` : `slug=${eventSlug}`
+      const res = await fetch(`/api/events/public?${param}`)
 
-      if (isUuid) {
-        query = query.eq("id", eventSlug)
-      } else {
-        query = query.eq("slug", eventSlug)
+      if (!res.ok) {
+        if (res.status === 404) return null
+        throw new Error("Failed to fetch event")
       }
 
-      const { data, error } = await query.maybeSingle()
+      const eventData = await res.json() as EventDetails | null
 
-      if (error) {
-        console.error("Failed to fetch event:", error)
-        throw error
-      }
-
-      const eventData = (data ?? null) as EventDetails | null
-
-      // If we have a direct ticket ID, make sure to include it even if hidden
       // Filter out hidden tickets EXCEPT the one accessed via direct link
       if (eventData?.ticket_types) {
         eventData.ticket_types = eventData.ticket_types.filter(
