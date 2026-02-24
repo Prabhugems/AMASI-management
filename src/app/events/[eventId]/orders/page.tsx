@@ -559,10 +559,10 @@ export default function OrdersPage() {
                           <Download className="w-4 h-4 mr-2" />
                           Download Invoice
                         </DropdownMenuItem>
-                        {(order.status === "failed" || order.status === "pending") && (
+                        {(order.status === "failed" || order.status === "pending" || (order.status === "completed" && (!order.registrations || order.registrations.length === 0))) && (
                           <DropdownMenuItem onClick={(e) => openVerifyDialog(order, e)}>
                             <ShieldCheck className="w-4 h-4 mr-2" />
-                            Verify Payment
+                            {order.status === "completed" ? "Fix Missing Ticket" : "Verify Payment"}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
@@ -785,7 +785,7 @@ export default function OrdersPage() {
 
             {/* Actions */}
             <SlideOverFooter>
-              {(selectedOrder?.status === "failed" || selectedOrder?.status === "pending") && (
+              {(selectedOrder?.status === "failed" || selectedOrder?.status === "pending" || (selectedOrder?.status === "completed" && (!selectedOrder?.registrations || selectedOrder.registrations.length === 0))) && (
                 <Button
                   className="flex-1"
                   onClick={() => {
@@ -796,7 +796,7 @@ export default function OrdersPage() {
                   }}
                 >
                   <ShieldCheck className="w-4 h-4 mr-2" />
-                  Verify Payment
+                  {selectedOrder?.status === "completed" ? "Fix Missing Ticket" : "Verify Payment"}
                 </Button>
               )}
               <Button variant="outline" className="flex-1">

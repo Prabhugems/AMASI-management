@@ -30,13 +30,161 @@ export async function POST(
       return NextResponse.json({ error: "Payment not found" }, { status: 404 })
     }
 
-    // Already completed - no need to verify
+    // Already completed - check if registration exists
     if (payment.status === "completed") {
+      // Check if there's a linked registration
+      const { data: existingReg } = await (supabase as any)
+        .from("registrations")
+        .select("id, registration_number")
+        .eq("payment_id", id)
+        .maybeSingle()
+
+      if (existingReg) {
+        return NextResponse.json({
+          status: "already_completed",
+          message: "This payment is already marked as completed",
+          payment_id: payment.razorpay_payment_id,
+          completed_at: payment.completed_at,
+          registration_id: existingReg.id,
+          registration_number: existingReg.registration_number,
+        })
+      }
+
+      // Payment completed but NO registration - create one
+      console.log(`[VERIFY-MANUAL] Payment ${id} completed but no registration - creating one`)
+      const metadata = payment.metadata || {}
+      const ticketDetails = metadata.validated_tickets?.[0]
+
+      let ticketTypeId = ticketDetails?.ticket_type_id
+      if (!ticketTypeId && payment.event_id) {
+        const { data: defaultTicket } = await (supabase as any)
+          .from("ticket_types")
+          .select("id")
+          .eq("event_id", payment.event_id)
+          .eq("status", "active")
+          .order("sort_order", { ascending: true })
+          .limit(1)
+          .maybeSingle()
+        ticketTypeId = defaultTicket?.id
+      }
+
+      if (!ticketTypeId) {
+        return NextResponse.json({
+          status: "already_completed",
+          message: "Payment completed but no registration found and no ticket type available. Please create the registration manually.",
+          payment_id: payment.razorpay_payment_id,
+          completed_at: payment.completed_at,
+        })
+      }
+
+      // Generate registration number
+      const { data: eventSettings } = await (supabase as any)
+        .from("event_settings")
+        .select("customize_registration_id, registration_prefix, registration_start_number, registration_suffix, current_registration_number")
+        .eq("event_id", payment.event_id)
+        .maybeSingle()
+
+      let registrationNumber: string
+      if (eventSettings?.customize_registration_id) {
+        const prefix = eventSettings.registration_prefix || ""
+        const suffix = eventSettings.registration_suffix || ""
+        const startNumber = eventSettings.registration_start_number || 1
+        const currentNumber = (eventSettings.current_registration_number || 0) + 1
+        const regNumber = Math.max(startNumber, currentNumber)
+        await (supabase as any)
+          .from("event_settings")
+          .update({ current_registration_number: regNumber })
+          .eq("event_id", payment.event_id)
+        registrationNumber = `${prefix}${regNumber}${suffix}`
+      } else {
+        const date = new Date()
+        const dateStr = date.getFullYear().toString() +
+          (date.getMonth() + 1).toString().padStart(2, "0") +
+          date.getDate().toString().padStart(2, "0")
+        const random = Math.floor(1000 + Math.random() * 9000)
+        registrationNumber = `REG-${dateStr}-${random}`
+      }
+
+      const { data: newReg, error: regError } = await (supabase as any)
+        .from("registrations")
+        .insert({
+          registration_number: registrationNumber,
+          event_id: payment.event_id,
+          ticket_type_id: ticketTypeId,
+          attendee_name: payment.payer_name || "Pending Verification",
+          attendee_email: payment.payer_email,
+          attendee_phone: payment.payer_phone,
+          quantity: ticketDetails?.quantity || 1,
+          unit_price: ticketDetails?.price || payment.amount,
+          total_amount: payment.amount,
+          status: "confirmed",
+          payment_status: "completed",
+          payment_id: id,
+          confirmed_at: new Date().toISOString(),
+          custom_fields: {
+            auto_created_from_manual_verify: true,
+            created_at: new Date().toISOString(),
+          },
+        })
+        .select()
+        .single()
+
+      if (regError) {
+        console.error("[VERIFY-MANUAL] Failed to create registration:", regError)
+        return NextResponse.json({
+          status: "already_completed",
+          message: `Payment completed but failed to create registration: ${regError.message}`,
+          payment_id: payment.razorpay_payment_id,
+        })
+      }
+
+      // Trigger auto actions (receipt email, badge, etc.)
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+      try {
+        const { data: event } = await (supabase as any)
+          .from("events")
+          .select("name, start_date, venue_name")
+          .eq("id", payment.event_id)
+          .single()
+
+        const { data: ticket } = await (supabase as any)
+          .from("ticket_types")
+          .select("name")
+          .eq("id", ticketTypeId)
+          .single()
+
+        await fetch(`${baseUrl}/api/email/registration-confirmation`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            registration_id: newReg.id,
+            registration_number: registrationNumber,
+            attendee_name: payment.payer_name,
+            attendee_email: payment.payer_email,
+            event_name: event?.name || "Event",
+            event_date: event?.start_date || "",
+            event_venue: event?.venue_name || "",
+            ticket_name: ticket?.name || "Ticket",
+            quantity: ticketDetails?.quantity || 1,
+            total_amount: payment.amount,
+            payment_method: "razorpay",
+            payment_status: "completed",
+          }),
+        })
+        console.log(`[VERIFY-MANUAL] Receipt email sent to ${payment.payer_email}`)
+      } catch (emailErr) {
+        console.error("[VERIFY-MANUAL] Failed to send receipt:", emailErr)
+      }
+
       return NextResponse.json({
-        status: "already_completed",
-        message: "This payment is already marked as completed",
+        verified: true,
+        status: "registration_created",
+        message: `Payment was already completed. Registration ${registrationNumber} has been created and confirmation email sent.`,
         payment_id: payment.razorpay_payment_id,
         completed_at: payment.completed_at,
+        registration_id: newReg.id,
+        registration_number: registrationNumber,
+        registrations_confirmed: 1,
       })
     }
 
