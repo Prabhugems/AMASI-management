@@ -558,6 +558,21 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
     })
   }, [displayedInputFields, responses, emailVerificationState, requireEmailVerification])
 
+  // List of required fields that are still missing
+  const missingRequiredFields = useMemo(() => {
+    const requiredFields = displayedInputFields.filter(f => f.is_required)
+    return requiredFields.filter(field => {
+      const value = responses[field.id]
+      if (Array.isArray(value)) return value.length === 0
+      if (value === undefined || value === "" || value === null) return true
+      if (field.field_type === 'email' && requireEmailVerification) {
+        const verificationState = emailVerificationState[field.id]
+        if (!verificationState || verificationState.status !== 'verified') return true
+      }
+      return false
+    })
+  }, [displayedInputFields, responses, emailVerificationState, requireEmailVerification])
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
 
@@ -1618,11 +1633,20 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
               </span>
             </div>
           ) : (
-            <div className="flex items-center justify-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-500" />
-              <span className="text-sm font-medium text-red-600">
-                Please complete all required fields marked with *
-              </span>
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg space-y-1">
+              <div className="flex items-center justify-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <span className="text-sm font-medium text-red-600">
+                  Please complete the following required field{missingRequiredFields.length > 1 ? 's' : ''}:
+                </span>
+              </div>
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {missingRequiredFields.map(field => (
+                  <span key={field.id} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                    {field.label}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>
