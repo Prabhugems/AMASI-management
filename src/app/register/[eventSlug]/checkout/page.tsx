@@ -29,6 +29,7 @@ import {
 import { FormRenderer } from "@/components/forms/renderer/form-renderer"
 import { Form, FormField } from "@/lib/types"
 import { usePageTracking } from "@/hooks/usePageTracking"
+import { toast } from "sonner"
 
 declare global {
   interface Window {
@@ -91,6 +92,12 @@ export default function CheckoutPage() {
     showWarning: boolean
   } | null>(null)
   const [isCheckingEmail, setIsCheckingEmail] = useState(false)
+  // AMASI member lookup state
+  const [memberData, setMemberData] = useState<{
+    amasi_number: string | null
+    membership_type: string | null
+  } | null>(null)
+  const [isLookingUpMember, setIsLookingUpMember] = useState(false)
   const router = useRouter()
   const params = useParams()
   const eventSlug = params.eventSlug as string
@@ -324,6 +331,42 @@ export default function CheckoutPage() {
     }
   }
 
+  // Lookup AMASI member by email and auto-fill form
+  const lookupMember = async (email: string) => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
+
+    setIsLookingUpMember(true)
+    try {
+      const res = await fetch(`/api/members/amasi-lookup?email=${encodeURIComponent(email)}`)
+      const data = await res.json()
+
+      if (res.ok && data.found && data.member) {
+        const m = data.member
+        setFormData((prev) => ({
+          ...prev,
+          salutation: m.salutation || prev.salutation,
+          first_name: m.first_name || prev.first_name,
+          last_name: m.last_name || prev.last_name,
+          phone: m.phone || prev.phone,
+          designation: m.designation || prev.designation,
+          institution: m.institution || prev.institution,
+          city: m.city || prev.city,
+          state: m.state || prev.state,
+          country: m.country || prev.country,
+        }))
+        setMemberData({
+          amasi_number: m.amasi_number || null,
+          membership_type: m.membership_type || null,
+        })
+        toast.success("AMASI member found! Details auto-filled.")
+      }
+    } catch (err) {
+      console.error("Error looking up member:", err)
+    } finally {
+      setIsLookingUpMember(false)
+    }
+  }
+
   // Get enabled payment methods from event
   const paymentMethods = useMemo(() => {
     const defaultMethods: PaymentMethodsEnabled = { razorpay: true, bank_transfer: false, cash: false, free: true }
@@ -470,6 +513,8 @@ export default function CheckoutPage() {
           ...customFormResponses,
           form_id: primaryTicketFormId,
           verified_emails: customFormVerifiedEmails,
+          ...(memberData?.amasi_number && { amasi_number: memberData.amasi_number }),
+          ...(memberData?.membership_type && { membership_type: memberData.membership_type }),
         }
       : {
           salutation: formData.salutation,
@@ -478,6 +523,8 @@ export default function CheckoutPage() {
           dietary_preference: formData.dietary_preference,
           tshirt_size: formData.tshirt_size,
           special_requirements: formData.special_requirements,
+          ...(memberData?.amasi_number && { amasi_number: memberData.amasi_number }),
+          ...(memberData?.membership_type && { membership_type: memberData.membership_type }),
         }
 
     // Generate a common order ID to link all registrations
@@ -866,15 +913,18 @@ export default function CheckoutPage() {
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        onBlur={(e) => checkDuplicateEmail(e.target.value)}
+                        onBlur={(e) => {
+                          checkDuplicateEmail(e.target.value)
+                          lookupMember(e.target.value)
+                        }}
                         placeholder="john@example.com"
                         className={inputClassName}
                         required
                       />
-                      {isCheckingEmail && (
+                      {(isCheckingEmail || isLookingUpMember) && (
                         <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          Checking...
+                          {isLookingUpMember ? "Looking up member details..." : "Checking..."}
                         </p>
                       )}
                       {duplicateEmailInfo?.hasExisting && duplicateEmailInfo.showWarning && (

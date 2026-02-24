@@ -88,6 +88,10 @@ export default function GroupRegistrationPage() {
     department: "",
   })
 
+  // AMASI member lookup loading state
+  const [isLookingUpBuyer, setIsLookingUpBuyer] = useState(false)
+  const [isLookingUpAttendee, setIsLookingUpAttendee] = useState(false)
+
   // New attendee form data
   const [newAttendee, setNewAttendee] = useState({
     name: "",
@@ -233,6 +237,61 @@ export default function GroupRegistrationPage() {
     })
     setEditingAttendee(attendee)
     setIsAddingAttendee(true)
+  }
+
+  // Lookup AMASI member by email for buyer auto-fill
+  const lookupBuyerMember = async (email: string) => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
+
+    setIsLookingUpBuyer(true)
+    try {
+      const res = await fetch(`/api/members/amasi-lookup?email=${encodeURIComponent(email)}`)
+      const data = await res.json()
+
+      if (res.ok && data.found && data.member) {
+        const m = data.member
+        const fullName = [m.first_name, m.last_name].filter(Boolean).join(" ")
+        setBuyerData((prev) => ({
+          ...prev,
+          name: fullName || prev.name,
+          phone: m.phone || prev.phone,
+          institution: m.institution || prev.institution,
+        }))
+        toast.success("AMASI member found! Buyer details auto-filled.")
+      }
+    } catch (err) {
+      console.error("Error looking up buyer member:", err)
+    } finally {
+      setIsLookingUpBuyer(false)
+    }
+  }
+
+  // Lookup AMASI member by email for attendee auto-fill
+  const lookupAttendeeMember = async (email: string) => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
+
+    setIsLookingUpAttendee(true)
+    try {
+      const res = await fetch(`/api/members/amasi-lookup?email=${encodeURIComponent(email)}`)
+      const data = await res.json()
+
+      if (res.ok && data.found && data.member) {
+        const m = data.member
+        const fullName = [m.first_name, m.last_name].filter(Boolean).join(" ")
+        setNewAttendee((prev) => ({
+          ...prev,
+          name: fullName || prev.name,
+          phone: m.phone || prev.phone,
+          designation: m.designation || prev.designation,
+          institution: m.institution || prev.institution,
+        }))
+        toast.success("AMASI member found! Attendee details auto-filled.")
+      }
+    } catch (err) {
+      console.error("Error looking up attendee member:", err)
+    } finally {
+      setIsLookingUpAttendee(false)
+    }
   }
 
   // Validate discount code
@@ -555,9 +614,16 @@ export default function GroupRegistrationPage() {
                     type="email"
                     value={buyerData.email}
                     onChange={(e) => setBuyerData({ ...buyerData, email: e.target.value })}
+                    onBlur={(e) => lookupBuyerMember(e.target.value)}
                     placeholder="priya@aiims.edu"
                     className={inputClassName}
                   />
+                  {isLookingUpBuyer && (
+                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Looking up member details...
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -819,8 +885,15 @@ export default function GroupRegistrationPage() {
                   type="email"
                   value={newAttendee.email}
                   onChange={(e) => setNewAttendee({ ...newAttendee, email: e.target.value })}
+                  onBlur={(e) => lookupAttendeeMember(e.target.value)}
                   placeholder="amit@hospital.com"
                 />
+                {isLookingUpAttendee && (
+                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Looking up member details...
+                  </p>
+                )}
               </div>
 
               <div>
