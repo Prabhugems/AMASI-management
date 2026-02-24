@@ -201,7 +201,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
   const lookupMember = async (email: string, emailFieldId: string) => {
     try {
-      const response = await fetch(`/api/members/lookup?email=${encodeURIComponent(email)}`)
+      const response = await fetch(`/api/members/amasi-lookup?email=${encodeURIComponent(email)}`)
       if (!response.ok) {
         console.error("Member lookup API error:", response.status)
         return
@@ -216,6 +216,9 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
       if (data.found && data.member) {
         const member = data.member
+
+        // Build a display name from first_name + last_name
+        const displayName = [member.first_name, member.last_name].filter(Boolean).join(" ") || member.name || "Member"
 
         // Store member data in verification state
         setEmailVerificationState(prev => ({
@@ -243,7 +246,14 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
           ["amasi_number", ["amasi membership number", "amasi number", "amasi membership", "membership number", "member id", "amasi id"]],
           ["membership_type", ["membership type", "member type"]],
           ["phone", ["phone number", "mobile number", "contact number", "phone", "mobile"]],
-          // Name should be last since it's most generic
+          ["first_name", ["first name"]],
+          ["last_name", ["last name", "surname"]],
+          ["designation", ["degree", "designation", "qualification"]],
+          ["institution", ["institution", "college", "place of work", "present place of work"]],
+          ["city", ["city"]],
+          ["state", ["state"]],
+          ["country", ["country"]],
+          // Full name should be last since it's most generic
           ["name", ["full name", "your name", "member name", "name"]],
         ]
 
@@ -273,7 +283,11 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
             })
 
             if (isMatch) {
-              const value = member[memberKey as keyof typeof member]
+              let value = member[memberKey as keyof typeof member]
+              // For "name" key, compose from first_name + last_name if no direct "name" field
+              if (memberKey === "name" && !value) {
+                value = displayName
+              }
               console.log(`[AutoFill] Field "${field.label}" -> ${memberKey} = ${value}`)
               if (value !== undefined && value !== null) {
                 setResponses(prev => ({ ...prev, [field.id]: String(value) }))
@@ -286,25 +300,17 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
         if (autoFilledCount > 0) {
           toast.success(`Member verified! ${autoFilledCount} field(s) auto-filled`, {
-            description: `Welcome, ${member.name} (AMASI #${member.amasi_number})`,
+            description: `Welcome, ${displayName} (AMASI #${member.amasi_number})`,
             duration: 5000
           })
         } else {
-          toast.success(`Member verified: ${member.name}`, {
+          toast.success(`Member verified: ${displayName}`, {
             description: `AMASI #${member.amasi_number} - ${member.membership_type} Member`,
             duration: 5000
           })
         }
-
-        if (!data.is_active) {
-          toast.warning("Your membership status is not active", {
-            description: "Please contact AMASI for membership renewal",
-            duration: 8000
-          })
-        }
       } else {
-        // Member NOT found in local database - don't auto-block
-        // The member may exist in the main AMASI system but not yet synced
+        // Member NOT found — block in strict mode
         setEmailVerificationState(prev => ({
           ...prev,
           [emailFieldId]: {
@@ -314,8 +320,15 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
           }
         }))
 
-        // Don't auto-set "Are you member" to No — let the user choose
-        // They may be a member whose data isn't synced to this database yet
+        // For strict membership forms, auto-set "Are you member" to No to trigger blocker
+        if (form.membership_required_strict && memberQuestionField) {
+          const noOption = memberQuestionField.options?.find(
+            (opt: { value: string; label: string }) => (opt.value || "").toLowerCase() === 'no' || (opt.label || "").toLowerCase() === 'no'
+          )
+          const noValue = noOption?.value || 'no'
+          setResponses(prev => ({ ...prev, [memberQuestionField.id]: noValue }))
+        }
+
         toast.info("We couldn't automatically verify your membership", {
           description: "If you're an AMASI member, please select 'Yes' and enter your details manually",
           duration: 8000
@@ -448,11 +461,21 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
     const member = verifiedState.memberData as {
       name?: string
+      first_name?: string
+      last_name?: string
       email?: string
       amasi_number?: string
       membership_type?: string
       phone?: string
+      designation?: string
+      institution?: string
+      city?: string
+      state?: string
+      country?: string
     }
+
+    // Build display name
+    const displayName = [member.first_name, member.last_name].filter(Boolean).join(" ") || member.name || ""
 
     // Find field IDs that should be HIDDEN (data comes from membership)
     const hiddenFieldIds: string[] = []
@@ -468,7 +491,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
       if (field.field_type === 'email') {
         hiddenFieldIds.push(field.id)
       }
-      // Hide name field
+      // Hide first name / last name / full name fields
       if (label.includes("name") && !label.includes("bank") && !label.includes("account") && !label.includes("file")) {
         hiddenFieldIds.push(field.id)
       }
@@ -484,10 +507,19 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
       if (label.includes("membership type")) {
         hiddenFieldIds.push(field.id)
       }
+      // Hide designation/degree field when auto-filled
+      if (member.designation && (label.includes("designation") || label === "degree" || label.includes("qualification"))) {
+        hiddenFieldIds.push(field.id)
+      }
+      // Hide institution/place of work field when auto-filled
+      if (member.institution && (label.includes("institution") || label.includes("college") || label.includes("place of work"))) {
+        hiddenFieldIds.push(field.id)
+      }
     })
 
     return {
       ...member,
+      displayName,
       hiddenFieldIds
     }
   }, [emailVerificationState, fields])
@@ -1438,7 +1470,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
                 <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs text-gray-500">Name</p>
-                  <p className="font-semibold text-gray-900 truncate">{verifiedMember.name || "-"}</p>
+                  <p className="font-semibold text-gray-900 truncate">{verifiedMember.displayName || "-"}</p>
                 </div>
               </div>
 
@@ -1474,6 +1506,16 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
                   <div className="min-w-0">
                     <p className="text-xs text-gray-500">Membership Type</p>
                     <p className="font-medium text-gray-900">{verifiedMember.membership_type}</p>
+                  </div>
+                </div>
+              )}
+
+              {verifiedMember.institution && (
+                <div className="flex items-center gap-3">
+                  <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500">Institution</p>
+                    <p className="font-medium text-gray-900 truncate">{verifiedMember.institution}</p>
                   </div>
                 </div>
               )}
