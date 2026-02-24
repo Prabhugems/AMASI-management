@@ -549,7 +549,6 @@ async function createRegistrationFromPayment(paymentData: any, metadata: any) {
     status: "confirmed",
     payment_status: "completed",
     payment_id: paymentData.id,
-    payment_method: "razorpay",
     confirmed_at: new Date().toISOString(),
     custom_fields: {
       auto_created_from_webhook: true,
