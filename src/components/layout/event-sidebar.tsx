@@ -33,6 +33,8 @@ import {
   PinOff,
   BookOpen,
   BarChart3,
+  TrendingUp,
+  UserPlus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -92,6 +94,8 @@ const navItems: NavItem[] = [
   { label: "Team", href: "/team", icon: Users },
   { label: "Communications", href: "/communications", icon: MessageSquare, statusKey: "communications" },
   { label: "Email Templates", href: "/emails", icon: Mail },
+  { label: "Analytics", href: "/analytics", icon: TrendingUp },
+  { label: "Leads", href: "/leads", icon: UserPlus },
   { label: "Activity Log", href: "/activity", icon: Activity },
   { label: "Payment Settings", href: "/payment-settings", icon: Wallet },
   { label: "Settings", href: "/settings", icon: Settings },
