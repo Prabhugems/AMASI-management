@@ -102,7 +102,11 @@ async function getNextRegistrationNumber(eventId: string): Promise<string> {
     .eq("event_id", eventId)
     .maybeSingle()
 
-  if (settings?.customize_registration_id) {
+  const useCustomFormat = settings?.customize_registration_id === true
+    || settings?.customize_registration_id === "true"
+    || settings?.customize_registration_id === 1
+
+  if (useCustomFormat) {
     const prefix = settings.registration_prefix || ""
     const suffix = settings.registration_suffix || ""
     const startNumber = settings.registration_start_number || 1

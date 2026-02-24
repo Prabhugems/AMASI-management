@@ -88,6 +88,7 @@ export async function PATCH(
       "attendee_phone",
       "attendee_institution",
       "attendee_designation",
+      "registration_number",
       "notes",
     ]
 

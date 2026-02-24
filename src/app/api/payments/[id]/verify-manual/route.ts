@@ -77,15 +77,31 @@ export async function POST(
         })
       }
 
-      // Generate registration number
-      const { data: eventSettings } = await (supabase as any)
+      // Generate registration number using event settings
+      const { data: eventSettings, error: settingsError } = await (supabase as any)
         .from("event_settings")
         .select("customize_registration_id, registration_prefix, registration_start_number, registration_suffix, current_registration_number")
         .eq("event_id", payment.event_id)
         .maybeSingle()
 
+      if (settingsError) {
+        console.error(`[VERIFY-MANUAL] Failed to fetch event_settings:`, settingsError)
+      }
+
       let registrationNumber: string
-      if (eventSettings?.customize_registration_id) {
+      // Check for custom registration format (handle both boolean and string "true")
+      const useCustomFormat = eventSettings?.customize_registration_id === true
+        || eventSettings?.customize_registration_id === "true"
+        || eventSettings?.customize_registration_id === 1
+
+      console.log(`[VERIFY-MANUAL] Event settings:`, JSON.stringify({
+        customize_registration_id: eventSettings?.customize_registration_id,
+        useCustomFormat,
+        prefix: eventSettings?.registration_prefix,
+        current: eventSettings?.current_registration_number,
+      }))
+
+      if (useCustomFormat) {
         const prefix = eventSettings.registration_prefix || ""
         const suffix = eventSettings.registration_suffix || ""
         const startNumber = eventSettings.registration_start_number || 1
@@ -97,12 +113,40 @@ export async function POST(
           .eq("event_id", payment.event_id)
         registrationNumber = `${prefix}${regNumber}${suffix}`
       } else {
-        const date = new Date()
-        const dateStr = date.getFullYear().toString() +
-          (date.getMonth() + 1).toString().padStart(2, "0") +
-          date.getDate().toString().padStart(2, "0")
-        const random = Math.floor(1000 + Math.random() * 9000)
-        registrationNumber = `REG-${dateStr}-${random}`
+        // Fallback: try to match existing registration format from this event
+        const { data: lastReg } = await (supabase as any)
+          .from("registrations")
+          .select("registration_number")
+          .eq("event_id", payment.event_id)
+          .not("registration_number", "like", "REG-%")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (lastReg?.registration_number) {
+          // Extract prefix and number from existing format (e.g. MMAS-BA1062 -> prefix=MMAS-BA, number=1062)
+          const match = lastReg.registration_number.match(/^(.*?)(\d+)$/)
+          if (match) {
+            const existingPrefix = match[1]
+            const nextNum = parseInt(match[2]) + 1
+            registrationNumber = `${existingPrefix}${nextNum}`
+            console.log(`[VERIFY-MANUAL] Using pattern from existing registrations: ${registrationNumber}`)
+          } else {
+            const date = new Date()
+            const dateStr = date.getFullYear().toString() +
+              (date.getMonth() + 1).toString().padStart(2, "0") +
+              date.getDate().toString().padStart(2, "0")
+            const random = Math.floor(1000 + Math.random() * 9000)
+            registrationNumber = `REG-${dateStr}-${random}`
+          }
+        } else {
+          const date = new Date()
+          const dateStr = date.getFullYear().toString() +
+            (date.getMonth() + 1).toString().padStart(2, "0") +
+            date.getDate().toString().padStart(2, "0")
+          const random = Math.floor(1000 + Math.random() * 9000)
+          registrationNumber = `REG-${dateStr}-${random}`
+        }
       }
 
       const { data: newReg, error: regError } = await (supabase as any)
