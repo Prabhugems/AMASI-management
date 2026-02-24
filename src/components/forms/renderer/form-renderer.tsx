@@ -183,10 +183,20 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
       toast.success("Email verified successfully!")
 
+      // Capture lead: email verified = interested visitor
+      if (form.event_id) {
+        fetch("/api/analytics/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event_id: form.event_id,
+            email,
+            source: "form_started",
+          }),
+        }).catch(() => {}) // fire-and-forget
+      }
+
       const emailField = fields.find(f => f.id === fieldId)
-      console.log("[Email Verified] Field ID:", fieldId)
-      console.log("[Email Verified] Email field settings:", emailField?.settings)
-      console.log("[Email Verified] member_lookup enabled:", emailField?.settings?.member_lookup)
 
       // Always run member lookup for email fields (if settings exist or not)
       await lookupMember(email, fieldId)
@@ -305,6 +315,21 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
             }
           }
         })
+
+        // Enrich lead with name + phone from member data
+        if (form.event_id) {
+          fetch("/api/analytics/leads", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              event_id: form.event_id,
+              email: member.email || email,
+              name: displayName,
+              phone: member.phone || undefined,
+              source: "form_started",
+            }),
+          }).catch(() => {})
+        }
 
         if (autoFilledCount > 0) {
           toast.success(`Member verified! ${autoFilledCount} field(s) auto-filled`, {
