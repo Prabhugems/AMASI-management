@@ -144,26 +144,15 @@ export default function CheckoutPage() {
     setCheckoutData(data)
   }, [eventSlug, router])
 
-  // Fetch event details
+  // Fetch event details via public API (bypasses RLS on ticket_types)
   const { data: event, isLoading } = useQuery({
     queryKey: ["checkout-event", eventSlug],
     queryFn: async () => {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(eventSlug)
-
-      let query = supabase
-        .from("events")
-        .select(`*, ticket_types (*)`)
-
-      if (isUuid) {
-        query = query.eq("id", eventSlug)
-      } else {
-        query = query.eq("slug", eventSlug)
-      }
-
-      const { data, error } = await query.maybeSingle()
-      if (error) throw error
-
-      return data as any
+      const param = isUuid ? `id=${eventSlug}` : `slug=${eventSlug}`
+      const res = await fetch(`/api/events/public?${param}`)
+      if (!res.ok) throw new Error("Failed to fetch event")
+      return await res.json() as any
     },
     enabled: !!eventSlug,
   })
