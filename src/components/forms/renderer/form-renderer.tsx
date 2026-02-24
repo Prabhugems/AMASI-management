@@ -515,14 +515,6 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
       if (label.includes("membership type")) {
         hiddenFieldIds.push(field.id)
       }
-      // Hide designation/degree field when auto-filled
-      if (member.designation && (label.includes("designation") || label === "degree" || label.includes("qualification"))) {
-        hiddenFieldIds.push(field.id)
-      }
-      // Hide institution/place of work field when auto-filled
-      if (member.institution && (label.includes("institution") || label.includes("college") || label.includes("place of work"))) {
-        hiddenFieldIds.push(field.id)
-      }
     })
 
     return {
