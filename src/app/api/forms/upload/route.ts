@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // Dangerous extensions to block
@@ -18,18 +18,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Authentication check - require logged in user for file uploads
-    const supabaseAuth = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized - please login to upload files' },
-        { status: 401 }
-      )
-    }
-
     // Use service role key for storage uploads (allows bypassing RLS)
+    // Auth is optional — public registration forms need file uploads too
+    // Rate limiting (above) protects against abuse
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = (await createAdminClient()) as any
 
