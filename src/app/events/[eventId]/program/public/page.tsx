@@ -70,6 +70,7 @@ type Track = {
 type Event = {
   id: string
   name: string
+  slug: string | null
   event_number: string | null
   short_name: string | null
   tagline: string | null
@@ -201,7 +202,7 @@ export default function PublicProgramPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("events")
-        .select("id, name, event_number, short_name, tagline, start_date, end_date, venue_name, city, logo_url, settings")
+        .select("id, name, slug, event_number, short_name, tagline, start_date, end_date, venue_name, city, logo_url, settings")
         .eq("id", eventId)
         .single()
       return data as Event | null
@@ -534,6 +535,14 @@ export default function PublicProgramPage() {
             </div>
 
             <div className="flex items-center gap-3">
+              <Button
+                className="bg-white text-gray-900 hover:bg-gray-100 font-semibold"
+                asChild
+              >
+                <a href={`/register/${event?.slug || eventId}`}>
+                  Register Now
+                </a>
+              </Button>
               <Button
                 variant="outline"
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
@@ -1010,6 +1019,19 @@ export default function PublicProgramPage() {
           </Accordion>
         </section>
       )}
+
+      {/* Register CTA */}
+      <section className="bg-gradient-to-r from-blue-600 to-blue-800 py-12">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Ready to Join?</h2>
+          <p className="text-blue-100 mb-6">Secure your spot at {event?.short_name || event?.name || "the conference"}</p>
+          <Button size="lg" className="bg-white text-blue-700 hover:bg-gray-100 font-semibold text-lg px-8" asChild>
+            <a href={`/register/${event?.slug || eventId}`}>
+              Register Now
+            </a>
+          </Button>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer className="bg-slate-900 text-white py-8">

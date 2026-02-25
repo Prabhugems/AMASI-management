@@ -19,7 +19,7 @@ export async function GET(
     const [eventResult, sessionsResult, tracksResult] = await Promise.all([
       (supabase as any)
         .from("events")
-        .select("id, name, short_name, tagline, start_date, end_date, venue_name, city, logo_url, settings")
+        .select("id, name, slug, short_name, tagline, start_date, end_date, venue_name, city, logo_url, settings")
         .eq("id", eventId)
         .single(),
       (supabase as any)
