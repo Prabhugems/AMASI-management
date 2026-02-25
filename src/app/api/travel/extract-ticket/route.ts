@@ -1063,6 +1063,25 @@ function normalizeCity(city: string): { name: string; code: string } {
   return { name, code }
 }
 
+// Simple Levenshtein distance for fuzzy city name matching
+function levenshteinDistance(a: string, b: string): number {
+  const m = a.length, n = b.length
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) => {
+    const row = new Array(n + 1).fill(0)
+    row[0] = i
+    return row
+  })
+  for (let j = 0; j <= n; j++) dp[0][j] = j
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1])
+    }
+  }
+  return dp[m][n]
+}
+
 // Helper to check if city/airport matches
 function citiesMatch(requested: string, extracted: string, extractedAirport?: string | null): boolean {
   if (!requested || !extracted) return true // Skip if either is missing
@@ -1081,6 +1100,12 @@ function citiesMatch(requested: string, extracted: string, extractedAirport?: st
 
   // Partial match on normalized city names (one contains the other)
   if (ext.name.includes(req.name) || req.name.includes(ext.name)) return true
+
+  // Fuzzy match — allow 1-2 character edits for long city names (handles spelling variants like Bhubaneswar/Bhubaneshwar)
+  if (req.name.length >= 5 && ext.name.length >= 5) {
+    const maxDist = Math.max(req.name.length, ext.name.length) >= 8 ? 2 : 1
+    if (levenshteinDistance(req.name, ext.name) <= maxDist) return true
+  }
 
   // If extracted is just an airport code, compare with request's embedded code
   if (req.code && ext.code && req.code === ext.code) return true
@@ -1107,7 +1132,7 @@ function citiesMatch(requested: string, extracted: string, extractedAirport?: st
     "vns": ["varanasi"],
     "ixc": ["chandigarh"],
     "nag": ["nagpur"],
-    "bbi": ["bhubaneswar"],
+    "bbi": ["bhubaneswar", "bhubaneshwar"],
     "ixr": ["ranchi"],
     "rpr": ["raipur"],
     "idr": ["indore"],
