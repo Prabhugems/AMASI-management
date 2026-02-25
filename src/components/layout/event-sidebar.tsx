@@ -35,6 +35,11 @@ import {
   BarChart3,
   TrendingUp,
   UserPlus,
+  ListOrdered,
+  UtensilsCrossed,
+  Stamp,
+  IndianRupee,
+  ClipboardList,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -79,6 +84,7 @@ const navItems: NavItem[] = [
   { label: "Addons", href: "/addons", icon: Package },
   { label: "Orders", href: "/orders", icon: ShoppingCart },
   { label: "Attendees", href: "/registrations", icon: UserCheck },
+  { label: "Waitlist", href: "/waitlist", icon: ListOrdered },
   { label: "Forms", href: "/forms", icon: FileText },
   { label: "Abstracts", href: "/abstracts", icon: BookOpen, statusKey: "abstracts", moduleKey: "enable_abstracts" },
   { label: "Speakers", href: "/speakers", icon: Mic },
@@ -88,9 +94,13 @@ const navItems: NavItem[] = [
   { label: "Badges", href: "/badges", icon: BadgeCheck, statusKey: "badges" },
   { label: "Certificates", href: "/certificates", icon: Award, statusKey: "certificates" },
   { label: "Delegate Portal", href: "/delegate-portal", icon: BarChart3 },
+  { label: "Surveys", href: "/surveys", icon: ClipboardList },
   { label: "Travel", href: "/travel", icon: Plane },
   { label: "Accommodation", href: "/accommodation", icon: Hotel },
+  { label: "Meals", href: "/meals", icon: UtensilsCrossed },
+  { label: "Visa Letters", href: "/visa", icon: Stamp },
   { label: "Sponsors", href: "/sponsors", icon: Building2 },
+  { label: "Budget", href: "/budget", icon: IndianRupee },
   { label: "Team", href: "/team", icon: Users },
   { label: "Communications", href: "/communications", icon: MessageSquare, statusKey: "communications" },
   { label: "Email Templates", href: "/emails", icon: Mail },
