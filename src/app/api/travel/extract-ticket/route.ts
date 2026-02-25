@@ -190,27 +190,42 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
     })
   }
 
+  // Helper: find airport code for a city name (with fuzzy matching for spelling variants)
+  const findAirportCode = (cityName: string): string => {
+    const lower = cityName.toLowerCase()
+    // Exact match first
+    for (const [code, name] of Object.entries(AIRPORT_CODES)) {
+      if (name.toLowerCase() === lower) return code
+    }
+    // Fuzzy match for spelling variants (e.g., Bhubaneshwar → Bhubaneswar)
+    if (lower.length >= 5) {
+      for (const [code, name] of Object.entries(AIRPORT_CODES)) {
+        const cn = name.toLowerCase()
+        if (cn.length >= 5 && levenshteinDistance(cn, lower) <= 2) return code
+      }
+    }
+    return ""
+  }
+
   // Find all route patterns like "City1 - City2" with dates
+  // Pattern 1: "Kolkata-Bhubaneswar\nSat, 28 Mar 2026" (route + date on same/next line)
   const routeRegex = /([A-Za-z]+)\s*[-–]\s*([A-Za-z]+)\s*\n?\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s*(\d{1,2})\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(\d{4})?/gi
   const routes: Array<{ index: number; city1: string; city2: string; date: string; depAirport: string; arrAirport: string }> = []
+  const foundRouteKeys = new Set<string>()
+
+  const monthToNum = (m: string) => ({ jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06", jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12" }[m.toLowerCase().substring(0, 3)] || "01")
 
   while ((match = routeRegex.exec(normalized)) !== null) {
     const day = match[3]
     const month = match[4]
     const year = match[5] || "2026"
-    const monthNum = { jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06", jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12" }[month.toLowerCase().substring(0, 3)] || "01"
+    const monthNum = monthToNum(month)
 
-    let depAirport = ""
-    let arrAirport = ""
-    const city1Lower = match[1].toLowerCase()
-    const city2Lower = match[2].toLowerCase()
+    const depAirport = findAirportCode(match[1])
+    const arrAirport = findAirportCode(match[2])
 
-    // Map city names to airport codes
-    for (const [code, cityName] of Object.entries(AIRPORT_CODES)) {
-      if (cityName.toLowerCase() === city1Lower) depAirport = code
-      if (cityName.toLowerCase() === city2Lower) arrAirport = code
-    }
-
+    const routeKey = `${match[1].toLowerCase()}-${match[2].toLowerCase()}`
+    foundRouteKeys.add(routeKey)
     routes.push({
       index: match.index,
       city1: match[1],
@@ -220,6 +235,55 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
       arrAirport,
     })
   }
+
+  // Pattern 2: Route header "City1-City2" separated from its date by multiple lines
+  // This handles PDFs where the route header is at end of page and date is on next page
+  const routeHeaderRegex = /([A-Za-z]+)\s*[-–]\s*([A-Za-z]+)/g
+  const dateLineRegex = /(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s*(\d{1,2})\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(\d{4})/gi
+
+  let headerMatch
+  while ((headerMatch = routeHeaderRegex.exec(normalized)) !== null) {
+    const city1Lower = headerMatch[1].toLowerCase()
+    const city2Lower = headerMatch[2].toLowerCase()
+
+    // Only consider if both cities are known airports (fuzzy match)
+    const depAirport = findAirportCode(headerMatch[1])
+    const arrAirport = findAirportCode(headerMatch[2])
+    if (!depAirport || !arrAirport) continue
+
+    // Normalize route key using canonical city names for dedup
+    const depCity = AIRPORT_CODES[depAirport].toLowerCase()
+    const arrCity = AIRPORT_CODES[arrAirport].toLowerCase()
+    const routeKey = `${depCity}-${arrCity}`
+    if (foundRouteKeys.has(routeKey)) continue // Already found by primary regex
+    // Also check with raw names from Pattern 1
+    const rawKey = `${city1Lower}-${city2Lower}`
+    if (foundRouteKeys.has(rawKey)) continue
+
+    // Look for a date within the next 500 chars
+    const searchRegion = normalized.substring(headerMatch.index, headerMatch.index + 500)
+    const dateMatch = dateLineRegex.exec(searchRegion)
+    dateLineRegex.lastIndex = 0 // Reset for next use
+    if (dateMatch) {
+      const day = dateMatch[1]
+      const month = dateMatch[2]
+      const year = dateMatch[3] || "2026"
+      const monthNum = monthToNum(month)
+      foundRouteKeys.add(routeKey)
+      foundRouteKeys.add(rawKey)
+      routes.push({
+        index: headerMatch.index,
+        city1: headerMatch[1],
+        city2: headerMatch[2],
+        date: `${year}-${monthNum}-${day.padStart(2, "0")}`,
+        depAirport,
+        arrAirport,
+      })
+    }
+  }
+
+  // Sort routes by their position in the text
+  routes.sort((a, b) => a.index - b.index)
 
   // Find all flight numbers
   // Handle case where flight number is concatenated with duration like "6E-3421h 10m"
@@ -246,20 +310,36 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
   for (let i = 0; i < routes.length; i++) {
     const route = routes[i]
     const nextRouteIndex = i < routes.length - 1 ? routes[i + 1].index : normalized.length
+    const prevRouteIndex = i > 0 ? routes[i - 1].index : 0
 
     // Find flight number for this segment
-    const segmentFlight = flights.find(f => f.index > route.index && f.index < nextRouteIndex)
+    // First try: Look AFTER the route header (standard format)
+    let segmentFlight = flights.find(f => f.index > route.index && f.index < nextRouteIndex)
+    // Second try: Look BEFORE the route header (some PDFs put flight info in header before route)
+    if (!segmentFlight) {
+      const flightsBefore = flights.filter(f => f.index > prevRouteIndex && f.index < route.index)
+      if (flightsBefore.length > 0) {
+        segmentFlight = flightsBefore[flightsBefore.length - 1] // closest to route
+      }
+    }
 
-    // Find PNR for this segment - pick the PNR closest to but after this route
+    // Find PNR for this segment
     let segmentPNR: string | null = null
+    // First try: PNR after route header
     const segmentPnrs = pnrs.filter(p => p.index > route.index && p.index < nextRouteIndex)
     if (segmentPnrs.length > 0) {
       segmentPNR = segmentPnrs[0].pnr
-    } else if (pnrs.length > i) {
-      // Fallback: assign PNRs in order
-      segmentPNR = pnrs[i].pnr
-    } else if (pnrs.length > 0) {
-      segmentPNR = pnrs[0].pnr
+    } else {
+      // Second try: PNR before route header (between previous route and this one)
+      const pnrsBefore = pnrs.filter(p => p.index > prevRouteIndex && p.index < route.index)
+      if (pnrsBefore.length > 0) {
+        segmentPNR = pnrsBefore[pnrsBefore.length - 1].pnr
+      } else if (pnrs.length > i) {
+        // Fallback: assign PNRs in order
+        segmentPNR = pnrs[i].pnr
+      } else if (pnrs.length > 0) {
+        segmentPNR = pnrs[0].pnr
+      }
     }
 
     // Find times for this segment
@@ -270,7 +350,6 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
     const timesAfterRoute = airportTimes.filter(at => at.index > route.index && at.index < nextRouteIndex)
 
     // Second try: Look BEFORE the route pattern (some ticket formats)
-    const prevRouteIndex = i > 0 ? routes[i - 1].index : 0
     const timesBeforeRoute = airportTimes.filter(at => at.index > prevRouteIndex && at.index < route.index)
 
     // Find departure time - check after first, then before
