@@ -210,37 +210,25 @@ export default function CheckoutPage() {
     return selectedTicketsDetails[0]?.form_id || null
   }, [selectedTicketsDetails])
 
-  // Fetch ticket's custom form and fields
+  // Fetch ticket's custom form and fields via server API (bypasses RLS)
   const { data: ticketForm, isLoading: isLoadingForm } = useQuery({
     queryKey: ["ticket-form", primaryTicketFormId],
     queryFn: async () => {
       if (!primaryTicketFormId) return null
 
-      // Fetch form
-      const { data: form, error: formError } = await supabase
-        .from("forms")
-        .select("*")
-        .eq("id", primaryTicketFormId)
-        .eq("status", "published")
-        .maybeSingle()
+      const res = await fetch(`/api/forms/for-checkout?form_id=${primaryTicketFormId}`)
+      if (!res.ok) return null
 
-      if (formError || !form) return null
-
-      // Fetch form fields
-      const { data: fields, error: fieldsError } = await supabase
-        .from("form_fields")
-        .select("*")
-        .eq("form_id", primaryTicketFormId)
-        .order("sort_order")
-
-      if (fieldsError) return null
+      const data = await res.json()
+      if (!data.form) return null
 
       return {
-        form: form as Form,
-        fields: fields as FormField[],
+        form: data.form as Form,
+        fields: (data.fields || []) as FormField[],
       }
     },
     enabled: !!primaryTicketFormId,
+    retry: 1,
   })
 
   const hasCustomForm = !!ticketForm?.form && !!ticketForm?.fields?.length
