@@ -978,32 +978,26 @@ function AutomationSection({ eventId }: { eventId: string }) {
     enabled: !!eventId,
   })
 
-  // Check if default badge template exists
+  // Check if default badge template exists (use API to bypass RLS)
   const { data: hasDefaultBadgeTemplate } = useQuery({
     queryKey: ["default-badge-template", eventId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("badge_templates")
-        .select("id")
-        .eq("event_id", eventId)
-        .eq("is_default", true)
-        .single()
-      return !!data
+      const res = await fetch(`/api/badge-templates?event_id=${eventId}`)
+      if (!res.ok) return false
+      const templates = await res.json()
+      return Array.isArray(templates) && templates.some((t: any) => t.is_default)
     },
     enabled: !!eventId,
   })
 
-  // Check if default certificate template exists
+  // Check if default certificate template exists (use API to bypass RLS)
   const { data: hasDefaultCertTemplate } = useQuery({
     queryKey: ["default-certificate-template", eventId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("certificate_templates")
-        .select("id")
-        .eq("event_id", eventId)
-        .eq("is_default", true)
-        .single()
-      return !!data
+      const res = await fetch(`/api/certificate-templates?event_id=${eventId}`)
+      if (!res.ok) return false
+      const templates = await res.json()
+      return Array.isArray(templates) && templates.some((t: any) => t.is_default)
     },
     enabled: !!eventId,
   })
