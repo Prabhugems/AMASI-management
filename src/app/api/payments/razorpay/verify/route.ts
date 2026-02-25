@@ -656,6 +656,10 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000")
+    const internalHeaders = {
+      "Content-Type": "application/json",
+      "x-internal-secret": process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "",
+    }
 
     // Auto-send receipt (default true)
     if (eventSettings?.auto_send_receipt !== false) {
@@ -663,7 +667,7 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
         console.log(`[AUTO] Sending receipt for registration ${regData.registration_number}`)
         const receiptResult = await fetch(`${baseUrl}/api/email/registration-confirmation`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: internalHeaders,
           body: JSON.stringify({
             registration_id: regData.id,
             registration_number: regData.registration_number,
@@ -703,7 +707,7 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
           console.log(`[AUTO] Generating badge for registration ${regData.registration_number}`)
           const badgeResult = await fetch(`${baseUrl}/api/badges/generate`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: internalHeaders,
             body: JSON.stringify({
               event_id: eventId,
               template_id: (template as any).id,
@@ -718,7 +722,7 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
             if (eventSettings?.auto_email_badge) {
               const badgeEmailResult = await fetch(`${baseUrl}/api/badges/email`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: internalHeaders,
                 body: JSON.stringify({ registration_id: registrationId }),
               })
               if (badgeEmailResult.ok) {
@@ -750,7 +754,7 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
           console.log(`[AUTO] Generating certificate for registration ${regData.registration_number}`)
           const certResult = await fetch(`${baseUrl}/api/certificates/generate`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: internalHeaders,
             body: JSON.stringify({
               event_id: eventId,
               template_id: (certTemplate as any).id,
@@ -777,7 +781,7 @@ async function triggerAutoActions(registrationId: string, eventId: string) {
             if (eventSettings?.auto_email_certificate && regData.attendee_email) {
               const certEmailResult = await fetch(`${baseUrl}/api/certificates/email`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: internalHeaders,
                 body: JSON.stringify({
                   registration_id: registrationId,
                   email: regData.attendee_email,

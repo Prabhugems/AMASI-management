@@ -23,12 +23,22 @@ interface RegistrationEmailData {
   payment_status: string
 }
 
+// Check if request is an internal server-to-server call (from webhooks/auto-actions)
+function isInternalRequest(request: NextRequest): boolean {
+  const internalSecret = request.headers.get("x-internal-secret")
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  return !!(internalSecret && serviceKey && internalSecret === serviceKey)
+}
+
 // POST /api/email/registration-confirmation - Send registration confirmation email
 export async function POST(request: NextRequest) {
   try {
-    // Require authentication to prevent abuse
-    const { user, error: authError } = await getApiUser()
-    if (authError) return authError
+    // Allow internal server-to-server calls (from payment webhooks/auto-actions)
+    // OR require user authentication to prevent abuse
+    if (!isInternalRequest(request)) {
+      const { user, error: authError } = await getApiUser()
+      if (authError) return authError
+    }
 
     const body: RegistrationEmailData = await request.json()
 
