@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { useParams } from "next/navigation"
+import Link from "next/link"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,6 +50,7 @@ import {
   Send,
   Stamp,
   AlertTriangle,
+  BookOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -292,6 +294,12 @@ export default function VisaPage() {
           <p className="text-muted-foreground">Manage visa invitation letter requests</p>
         </div>
         <div className="flex gap-2">
+          <Link href={`/events/${eventId}/visa/instructions`}>
+            <Button variant="outline" size="sm">
+              <BookOpen className="h-4 w-4 mr-2" />
+              How to Use
+            </Button>
+          </Link>
           <Button variant="outline" onClick={exportRequests}>
             <Download className="h-4 w-4 mr-2" />
             Export

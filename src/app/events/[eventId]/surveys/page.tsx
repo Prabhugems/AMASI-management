@@ -38,6 +38,7 @@ import {
   ExternalLink,
   ClipboardList,
   BarChart3,
+  BookOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -148,10 +149,18 @@ export default function SurveysPage() {
           <h1 className="text-xl sm:text-2xl font-bold">Surveys</h1>
           <p className="text-muted-foreground">Collect feedback from attendees</p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Survey
-        </Button>
+        <div className="flex gap-2">
+          <Link href={`/events/${eventId}/surveys/instructions`}>
+            <Button variant="outline" size="sm">
+              <BookOpen className="h-4 w-4 mr-2" />
+              How to Use
+            </Button>
+          </Link>
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Survey
+          </Button>
+        </div>
       </div>
 
       {/* Response Rate Overview */}

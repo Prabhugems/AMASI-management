@@ -9,6 +9,7 @@ import {
   Award,
   Grid3X3,
   Map,
+  BookOpen,
 } from "lucide-react"
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/tiers", label: "Tiers", icon: Award },
   { href: "/stalls", label: "Stalls", icon: Grid3X3 },
   { href: "/floor-plan", label: "Floor Plan", icon: Map },
+  { href: "/instructions", label: "Instructions", icon: BookOpen },
 ]
 
 export default function SponsorsLayout({

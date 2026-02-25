@@ -3,11 +3,12 @@
 import Link from "next/link"
 import { useParams, usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Receipt } from "lucide-react"
+import { LayoutDashboard, Receipt, BookOpen } from "lucide-react"
 
 const navItems = [
   { href: "", label: "Overview", icon: LayoutDashboard },
   { href: "/expenses", label: "Expenses", icon: Receipt },
+  { href: "/instructions", label: "Instructions", icon: BookOpen },
 ]
 
 export default function BudgetLayout({
