@@ -897,43 +897,52 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Second pass: if no exact matches, find best match (fewest discrepancies)
-      if (!onwardMatch.matched && !returnMatch.matched && allJourneys.length > 0) {
-        let bestOnward: { journey: Journey; discrepancies: any[]; score: number } | null = null
-        let bestReturn: { journey: Journey; discrepancies: any[]; score: number } | null = null
+      // Second pass: for any unmatched journeys, find best match (fewest discrepancies)
+      if ((!onwardMatch.matched || !returnMatch.matched) && allJourneys.length > 0) {
+        // Get journeys already claimed by exact matches
+        const claimedJourneys = new Set<Journey>()
+        if (onwardMatch.matched && onwardMatch.journey) claimedJourneys.add(onwardMatch.journey)
+        if (returnMatch.matched && returnMatch.journey) claimedJourneys.add(returnMatch.journey)
 
-        for (const journey of allJourneys) {
-          if (onwardRequest) {
+        const unclaimed = allJourneys.filter(j => !claimedJourneys.has(j))
+
+        if (!onwardMatch.matched && onwardRequest) {
+          let bestOnward: { journey: Journey; discrepancies: any[]; score: number } | null = null
+          for (const journey of unclaimed) {
             const check = matchJourneyWithRequest(journey, onwardRequest)
             const score = check.discrepancies.length
             if (!bestOnward || score < bestOnward.score) {
               bestOnward = { journey, discrepancies: check.discrepancies, score }
             }
           }
-          if (returnRequest) {
+          if (bestOnward) {
+            const citiesOk = bestOnward.discrepancies.every(d => d.field === "Date")
+            onwardMatch = {
+              journey: bestOnward.journey,
+              matched: citiesOk && bestOnward.score <= 1,
+              discrepancies: bestOnward.discrepancies,
+            }
+          }
+        }
+
+        if (!returnMatch.matched && returnRequest) {
+          // Exclude journey already assigned to onward
+          const availableForReturn = unclaimed.filter(j => j !== onwardMatch.journey)
+          let bestReturn: { journey: Journey; discrepancies: any[]; score: number } | null = null
+          for (const journey of availableForReturn) {
             const check = matchJourneyWithRequest(journey, returnRequest)
             const score = check.discrepancies.length
             if (!bestReturn || score < bestReturn.score) {
               bestReturn = { journey, discrepancies: check.discrepancies, score }
             }
           }
-        }
-
-        // Use best matches - if cities match but only date differs, consider it matched
-        if (bestOnward) {
-          const citiesOk = bestOnward.discrepancies.every(d => d.field === "Date")
-          onwardMatch = {
-            journey: bestOnward.journey,
-            matched: citiesOk && bestOnward.score <= 1,
-            discrepancies: citiesOk && bestOnward.score <= 1 ? [] : bestOnward.discrepancies,
-          }
-        }
-        if (bestReturn && (!bestOnward || bestReturn.journey !== bestOnward?.journey || allJourneys.length > 1)) {
-          const citiesOk = bestReturn.discrepancies.every(d => d.field === "Date")
-          returnMatch = {
-            journey: bestReturn.journey,
-            matched: citiesOk && bestReturn.score <= 1,
-            discrepancies: citiesOk && bestReturn.score <= 1 ? [] : bestReturn.discrepancies,
+          if (bestReturn) {
+            const citiesOk = bestReturn.discrepancies.every(d => d.field === "Date")
+            returnMatch = {
+              journey: bestReturn.journey,
+              matched: citiesOk && bestReturn.score <= 1,
+              discrepancies: bestReturn.discrepancies,
+            }
           }
         }
       }
