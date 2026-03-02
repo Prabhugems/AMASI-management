@@ -366,6 +366,9 @@ export default function TravelAgentPortal() {
         // Show toast based on results
         const onwardOk = result.onward?.matched
         const returnOk = result.return?.matched
+        const onwardDateMismatch = result.onward?.discrepancies?.some((d: any) => d.field === "Date")
+        const returnDateMismatch = result.return?.discrepancies?.some((d: any) => d.field === "Date")
+
         if (ticketCategory === "roundtrip") {
           if (onwardOk && returnOk) {
             toast.success("Both journeys matched and extracted!")
@@ -373,12 +376,16 @@ export default function TravelAgentPortal() {
             toast.success("Onward journey matched! Return journey not matched.")
           } else if (returnOk) {
             toast.success("Return journey matched! Onward journey not matched.")
+          } else if (onwardDateMismatch || returnDateMismatch) {
+            toast.error("DATE MISMATCH! Ticket date does not match requested travel date. Please verify the correct ticket.", { duration: 8000 })
           } else {
             toast.error("No journeys matched speaker's request. Please check the ticket.")
           }
         } else {
           if (onwardOk || returnOk) {
             toast.success(`Ticket matched & extracted! (${result.confidence}% confidence)`)
+          } else if (onwardDateMismatch || returnDateMismatch) {
+            toast.error("DATE MISMATCH! Ticket date does not match requested travel date. Please verify the correct ticket.", { duration: 8000 })
           } else {
             toast.error("Ticket does not match speaker's request.")
           }

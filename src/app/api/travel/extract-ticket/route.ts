@@ -995,10 +995,11 @@ export async function POST(request: NextRequest) {
             }
           }
           if (bestOnward) {
-            const citiesOk = bestOnward.discrepancies.every(d => d.field === "Date")
+            // Only mark as matched if there are ZERO discrepancies
+            // Date mismatches are critical and must be flagged
             onwardMatch = {
               journey: bestOnward.journey,
-              matched: citiesOk && bestOnward.score <= 1,
+              matched: bestOnward.score === 0,
               discrepancies: bestOnward.discrepancies,
             }
           }
@@ -1016,10 +1017,11 @@ export async function POST(request: NextRequest) {
             }
           }
           if (bestReturn) {
-            const citiesOk = bestReturn.discrepancies.every(d => d.field === "Date")
+            // Only mark as matched if there are ZERO discrepancies
+            // Date mismatches are critical and must be flagged
             returnMatch = {
               journey: bestReturn.journey,
-              matched: citiesOk && bestReturn.score <= 1,
+              matched: bestReturn.score === 0,
               discrepancies: bestReturn.discrepancies,
             }
           }
