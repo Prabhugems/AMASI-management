@@ -9,6 +9,7 @@ import {
   Award,
   MessageSquare,
   ChevronLeft,
+  Settings,
 } from "lucide-react"
 
 const sidebarItems = [
@@ -16,6 +17,7 @@ const sidebarItems = [
   { title: "Badge Downloads", href: "/badges", icon: BadgeCheck },
   { title: "Certificate Downloads", href: "/certificates", icon: Award },
   { title: "Feedback", href: "/feedback", icon: MessageSquare },
+  { title: "Settings", href: "/settings", icon: Settings },
 ]
 
 export default function DelegatePortalLayout({ children }: { children: React.ReactNode }) {

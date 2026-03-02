@@ -100,7 +100,21 @@ interface Registration {
     city?: string
     logo_url?: string
     banner_url?: string
-    settings?: { whatsapp_group_url?: string; [key: string]: any }
+    settings?: {
+      whatsapp_group_url?: string
+      course_materials_url?: string
+      delegate_portal?: {
+        show_invitation?: boolean
+        show_badge?: boolean
+        show_certificate?: boolean
+        show_receipt?: boolean
+        show_program_schedule?: boolean
+        show_addons?: boolean
+        whatsapp_group_url?: string
+        custom_links?: { name: string; url: string }[]
+      }
+      [key: string]: any
+    }
   }
   payment?: Payment
   addons?: RegistrationAddon[]
@@ -776,6 +790,26 @@ export default function DelegatePortalPage() {
   const registration = selectedRegistration!
   const event = registration.event
 
+  // Resolve delegate portal settings (defaults: all features on)
+  const dp = event?.settings?.delegate_portal
+  const portalSettings = {
+    show_invitation: dp?.show_invitation !== false,
+    show_badge: dp?.show_badge !== false,
+    show_certificate: dp?.show_certificate !== false,
+    show_receipt: dp?.show_receipt !== false,
+    show_program_schedule: dp?.show_program_schedule !== false,
+    show_addons: dp?.show_addons !== false,
+    whatsapp_group_url: dp?.whatsapp_group_url || event?.settings?.whatsapp_group_url || "",
+    custom_links: dp?.custom_links || [],
+  }
+
+  // Auto-migrate: if no delegate_portal but flat course_materials_url exists, show it as a custom link
+  if (!dp && event?.settings?.course_materials_url) {
+    portalSettings.custom_links = [
+      { name: "Course Materials", url: event.settings.course_materials_url },
+    ]
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4 py-8">
       <div className="max-w-lg mx-auto space-y-4">
@@ -1001,6 +1035,7 @@ export default function DelegatePortalPage() {
           </div>
 
           {/* Purchased Addons */}
+          {portalSettings.show_addons && (
           <div className="border-t border-gray-100 pt-4 mt-2">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-700">Purchased Add-ons</h3>
@@ -1060,6 +1095,7 @@ export default function DelegatePortalPage() {
               </div>
             )}
           </div>
+          )}
         </div>
 
         {/* Abstract Submissions Section */}
@@ -1081,6 +1117,7 @@ export default function DelegatePortalPage() {
         {/* Download Buttons */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* Invitation Download */}
+          {portalSettings.show_invitation && (
           <button
             onClick={handleDownloadInvitation}
             disabled={downloadingInvitation || registration.status !== "confirmed"}
@@ -1096,8 +1133,10 @@ export default function DelegatePortalPage() {
             <h3 className="font-semibold text-gray-900 text-sm mb-1">Invitation</h3>
             <p className="text-xs text-blue-600">Download</p>
           </button>
+          )}
 
           {/* Badge Download */}
+          {portalSettings.show_badge && (
           <button
             onClick={handleDownloadBadge}
             disabled={downloadingBadge || registration.status !== "confirmed"}
@@ -1117,8 +1156,10 @@ export default function DelegatePortalPage() {
               <p className="text-xs text-gray-500">Download</p>
             )}
           </button>
+          )}
 
           {/* Certificate Download */}
+          {portalSettings.show_certificate && (
           <button
             onClick={handleDownloadCertificate}
             disabled={downloadingCert || !registration.certificate_generated_at || certGatedByFeedback || !registration.checked_in}
@@ -1147,8 +1188,10 @@ export default function DelegatePortalPage() {
               <p className="text-xs text-gray-500">Not yet</p>
             )}
           </button>
+          )}
 
           {/* Receipt Download */}
+          {portalSettings.show_receipt && (
           <button
             onClick={handleDownloadReceipt}
             disabled={downloadingReceipt || registration.status !== "confirmed"}
@@ -1164,6 +1207,7 @@ export default function DelegatePortalPage() {
             <h3 className="font-semibold text-gray-900 text-sm mb-1">Receipt</h3>
             <p className="text-xs text-green-600">Download</p>
           </button>
+          )}
         </div>
 
         {/* Pending Payments Section */}
@@ -1290,7 +1334,7 @@ export default function DelegatePortalPage() {
         )}
 
         {/* Program Schedule Link */}
-        {event && (
+        {portalSettings.show_program_schedule && event && (
           <a
             href={`/p/${event.id}`}
             target="_blank"
@@ -1313,9 +1357,9 @@ export default function DelegatePortalPage() {
         )}
 
         {/* WhatsApp Group Link */}
-        {event?.settings?.whatsapp_group_url && (
+        {portalSettings.whatsapp_group_url && (
           <a
-            href={event.settings.whatsapp_group_url}
+            href={portalSettings.whatsapp_group_url}
             target="_blank"
             rel="noopener noreferrer"
             className="block bg-[#25D366] rounded-2xl shadow-xl p-5 hover:bg-[#20bd5a] transition-all group"
@@ -1337,28 +1381,29 @@ export default function DelegatePortalPage() {
           </a>
         )}
 
-        {/* Course Materials Link */}
-        {event?.settings?.course_materials_url && (
+        {/* Custom Resource Links */}
+        {portalSettings.custom_links.map((link, index) => (
           <a
-            href={event.settings.course_materials_url}
+            key={index}
+            href={link.url}
             target="_blank"
             rel="noopener noreferrer"
             className="block bg-white rounded-2xl shadow-xl p-5 hover:shadow-2xl transition-all group"
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-violet-100 rounded-xl flex items-center justify-center group-hover:bg-violet-200 transition-colors">
-                <BookOpen className="w-6 h-6 text-violet-600" />
+                <ExternalLink className="w-6 h-6 text-violet-600" />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 group-hover:text-violet-600 transition-colors">
-                  Course Materials
+                  {link.name}
                 </h3>
-                <p className="text-sm text-gray-500">Study material & resources</p>
+                <p className="text-sm text-gray-500 truncate">{link.url}</p>
               </div>
               <ExternalLink className="w-5 h-5 text-gray-400 group-hover:text-violet-600 transition-colors" />
             </div>
           </a>
-        )}
+        ))}
 
         {/* Footer Note */}
         <div className="text-center text-white/60 text-sm py-4">
