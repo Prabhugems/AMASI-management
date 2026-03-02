@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
           venue_name,
           city,
           logo_url,
-          banner_url
+          banner_url,
+          settings
         ),
         payments (
           id,
