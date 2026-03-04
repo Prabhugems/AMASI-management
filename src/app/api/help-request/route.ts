@@ -123,6 +123,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
+    const priority = searchParams.get("priority")
+    const assignedTo = searchParams.get("assigned_to")
 
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
@@ -130,18 +132,43 @@ export async function GET(request: NextRequest) {
 
     const supabase: SupabaseClient = await createAdminClient()
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("help_requests")
-      .select("*")
+      .select("*, help_request_replies(id)")
       .eq("event_id", eventId)
       .order("created_at", { ascending: false })
+
+    if (priority) query = query.eq("priority", priority)
+    if (assignedTo) query = query.eq("assigned_to", assignedTo)
+
+    const { data, error } = await query
 
     if (error) {
       console.error("Error fetching help requests:", error)
       return NextResponse.json({ error: "Failed to fetch help requests" }, { status: 500 })
     }
 
-    return NextResponse.json(data || [])
+    // Collect assigned_to UUIDs and fetch team member info
+    const assignedIds = [...new Set((data || []).map((r: any) => r.assigned_to).filter(Boolean))]
+    let assigneeMap: Record<string, { id: string; name: string; email: string }> = {}
+    if (assignedIds.length > 0) {
+      const { data: members } = await supabase
+        .from("team_members")
+        .select("id, name, email")
+        .in("id", assignedIds)
+      if (members) {
+        assigneeMap = Object.fromEntries(members.map((m: any) => [m.id, m]))
+      }
+    }
+
+    const enriched = (data || []).map((r: any) => ({
+      ...r,
+      reply_count: r.help_request_replies?.length || 0,
+      assigned_member: r.assigned_to ? assigneeMap[r.assigned_to] || null : null,
+      help_request_replies: undefined,
+    }))
+
+    return NextResponse.json(enriched)
   } catch (error) {
     console.error("Error in GET /api/help-request:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -157,7 +184,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, status, admin_notes } = body
+    const { id, status, admin_notes, priority, assigned_to } = body
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
@@ -168,6 +195,8 @@ export async function PATCH(request: NextRequest) {
     const updates: Record<string, any> = {}
     if (status) updates.status = status
     if (admin_notes !== undefined) updates.admin_notes = admin_notes
+    if (priority) updates.priority = priority
+    if (assigned_to !== undefined) updates.assigned_to = assigned_to || null
     if (status === "resolved" || status === "closed") updates.resolved_at = new Date().toISOString()
 
     const { data, error } = await supabase

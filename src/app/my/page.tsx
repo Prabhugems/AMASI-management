@@ -1875,7 +1875,35 @@ function DelegateHelpForm({
   const [category, setCategory] = useState("")
   const [message, setMessage] = useState("")
   const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null)
+  const [replyTexts, setReplyTexts] = useState<Record<string, string>>({})
+  const [sendingReply, setSendingReply] = useState<string | null>(null)
+
+  // Fetch existing help requests for this delegate
+  const [myRequests, setMyRequests] = useState<any[]>([])
+  const [loadingRequests, setLoadingRequests] = useState(false)
+
+  const fetchMyRequests = useCallback(async () => {
+    if (!eventId || !email) return
+    setLoadingRequests(true)
+    try {
+      const res = await fetch(
+        `/api/help-request/my?email=${encodeURIComponent(email.toLowerCase())}&event_id=${eventId}`
+      )
+      if (res.ok) {
+        const data = await res.json()
+        setMyRequests(Array.isArray(data) ? data : [])
+      }
+    } catch {
+      // Silent fail
+    } finally {
+      setLoadingRequests(false)
+    }
+  }, [eventId, email])
+
+  useEffect(() => {
+    if (expanded) fetchMyRequests()
+  }, [expanded, fetchMyRequests])
 
   const handleSubmit = async () => {
     if (!message.trim()) {
@@ -1903,10 +1931,10 @@ function DelegateHelpForm({
         throw new Error(data.error || "Failed to submit")
       }
 
-      setSubmitted(true)
       setMessage("")
       setCategory("")
       toast.success("Help request sent! We'll get back to you soon.")
+      fetchMyRequests()
     } catch (error: any) {
       toast.error(error.message || "Failed to send help request")
     } finally {
@@ -1914,26 +1942,54 @@ function DelegateHelpForm({
     }
   }
 
-  if (submitted) {
-    return (
-      <div className="bg-white rounded-2xl shadow-xl p-5">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-            <CheckCircle className="w-5 h-5 text-emerald-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">Help Request Sent</h3>
-            <p className="text-sm text-gray-500">We&apos;ll get back to you via email.</p>
-          </div>
-        </div>
-        <button
-          onClick={() => setSubmitted(false)}
-          className="mt-3 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-        >
-          Send another request
-        </button>
-      </div>
-    )
+  const handleSendReply = async (requestId: string) => {
+    const text = replyTexts[requestId]?.trim()
+    if (!text) return
+    setSendingReply(requestId)
+    try {
+      const res = await fetch("/api/help-request/replies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          help_request_id: requestId,
+          sender_type: "delegate",
+          email: email.toLowerCase(),
+          message: text,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to send reply")
+      setReplyTexts((prev) => ({ ...prev, [requestId]: "" }))
+      toast.success("Reply sent")
+      fetchMyRequests()
+    } catch {
+      toast.error("Failed to send reply")
+    } finally {
+      setSendingReply(null)
+    }
+  }
+
+  const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+    open: { bg: "bg-red-100", text: "text-red-700" },
+    in_progress: { bg: "bg-amber-100", text: "text-amber-700" },
+    resolved: { bg: "bg-green-100", text: "text-green-700" },
+    closed: { bg: "bg-gray-100", text: "text-gray-600" },
+  }
+
+  const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
+    low: { bg: "bg-slate-100", text: "text-slate-600" },
+    medium: { bg: "bg-blue-100", text: "text-blue-700" },
+    high: { bg: "bg-orange-100", text: "text-orange-700" },
+    urgent: { bg: "bg-red-100", text: "text-red-700" },
+  }
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleString("en-IN", {
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
   }
 
   return (
@@ -1947,7 +2003,11 @@ function DelegateHelpForm({
         </div>
         <div className="flex-1 text-left">
           <h3 className="font-semibold text-gray-900">Need Help?</h3>
-          <p className="text-sm text-gray-500">Report an issue or ask a question</p>
+          <p className="text-sm text-gray-500">
+            {myRequests.length > 0
+              ? `${myRequests.length} request${myRequests.length > 1 ? "s" : ""} — Report an issue or ask a question`
+              : "Report an issue or ask a question"}
+          </p>
         </div>
         {expanded ? (
           <ChevronUp className="w-5 h-5 text-gray-400" />
@@ -1957,54 +2017,189 @@ function DelegateHelpForm({
       </button>
 
       {expanded && (
-        <div className="border-t border-gray-100 p-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-            >
-              <option value="">General</option>
-              <option value="Registration">Registration Issue</option>
-              <option value="Payment">Payment Issue</option>
-              <option value="Badge">Badge / ID Card</option>
-              <option value="Certificate">Certificate</option>
-              <option value="Accommodation">Accommodation / Travel</option>
-              <option value="Abstract">Abstract Submission</option>
-              <option value="Technical">Technical / Website Issue</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
+        <div className="border-t border-gray-100 p-5 space-y-5">
+          {/* Existing Requests */}
+          {loadingRequests ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            </div>
+          ) : myRequests.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-gray-700">Your Requests</h4>
+              {myRequests.map((req: any) => {
+                const sc = STATUS_COLORS[req.status] || STATUS_COLORS.open
+                const pc = PRIORITY_COLORS[req.priority] || PRIORITY_COLORS.medium
+                const isOpen = expandedRequestId === req.id
+                const canReply = req.status === "open" || req.status === "in_progress"
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Describe your issue *</label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Please describe what you need help with..."
-              rows={4}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-            />
-          </div>
+                return (
+                  <div key={req.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setExpandedRequestId(isOpen ? null : req.id)}
+                      className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}>
+                          {req.status === "in_progress" ? "In Progress" : req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${pc.bg} ${pc.text}`}>
+                          {(req.priority || "medium").charAt(0).toUpperCase() + (req.priority || "medium").slice(1)}
+                        </span>
+                        <span className="text-xs text-gray-500">{req.category || "General"}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                        {req.replies?.length > 0 && (
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <MessageSquare className="w-3 h-3" />
+                            {req.replies.length}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-400">{formatDate(req.created_at)}</span>
+                        {isOpen ? (
+                          <ChevronUp className="w-4 h-4 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-gray-400" />
+                        )}
+                      </div>
+                    </button>
 
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || !message.trim()}
-            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                Send Help Request
-              </>
+                    {isOpen && (
+                      <div className="border-t border-gray-100 p-3 space-y-3 bg-gray-50">
+                        {/* Original message */}
+                        <div className="bg-white rounded-lg p-3 border border-gray-200">
+                          <p className="text-xs text-gray-500 mb-1">Your message:</p>
+                          <p className="text-sm whitespace-pre-wrap text-gray-800">{req.message}</p>
+                        </div>
+
+                        {/* Conversation thread */}
+                        {req.replies?.length > 0 && (
+                          <div className="space-y-2">
+                            {req.replies.map((reply: any) => (
+                              <div
+                                key={reply.id}
+                                className={`flex ${reply.sender_type === "delegate" ? "justify-end" : "justify-start"}`}
+                              >
+                                <div
+                                  className={`max-w-[85%] rounded-lg p-3 ${
+                                    reply.sender_type === "delegate"
+                                      ? "bg-indigo-100 text-indigo-900"
+                                      : "bg-blue-100 text-blue-900"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-medium">
+                                      {reply.sender_type === "admin" ? reply.sender_name : "You"}
+                                    </span>
+                                    <span className="text-xs opacity-60">{formatDate(reply.created_at)}</span>
+                                  </div>
+                                  <p className="text-sm whitespace-pre-wrap">{reply.message}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Reply input (only for open/in_progress) */}
+                        {canReply && (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={replyTexts[req.id] || ""}
+                              onChange={(e) =>
+                                setReplyTexts((prev) => ({ ...prev, [req.id]: e.target.value }))
+                              }
+                              placeholder="Type your reply..."
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault()
+                                  handleSendReply(req.id)
+                                }
+                              }}
+                            />
+                            <button
+                              onClick={() => handleSendReply(req.id)}
+                              disabled={sendingReply === req.id || !replyTexts[req.id]?.trim()}
+                              className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {sendingReply === req.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Send className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        )}
+
+                        {!canReply && (
+                          <p className="text-xs text-gray-500 italic">
+                            This request has been {req.status}. Submit a new request if you need further help.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Submit New Request Form */}
+          <div className="space-y-4">
+            {myRequests.length > 0 && (
+              <h4 className="text-sm font-semibold text-gray-700 pt-2 border-t border-gray-100">
+                Submit New Request
+              </h4>
             )}
-          </button>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+              >
+                <option value="">General</option>
+                <option value="Registration">Registration Issue</option>
+                <option value="Payment">Payment Issue</option>
+                <option value="Badge">Badge / ID Card</option>
+                <option value="Certificate">Certificate</option>
+                <option value="Accommodation">Accommodation / Travel</option>
+                <option value="Abstract">Abstract Submission</option>
+                <option value="Technical">Technical / Website Issue</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Describe your issue *</label>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Please describe what you need help with..."
+                rows={4}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+              />
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || !message.trim()}
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Send Help Request
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>
