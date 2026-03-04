@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     const { data: event } = await supabase
       .from("events")
-      .select("name, short_name, contact_email")
+      .select("name, short_name, contact_email, created_by")
       .eq("id", event_id)
       .single()
 
@@ -33,8 +34,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
 
-    // Send email notification using Blastable directly (avoid @/lib/email static import which causes Turbopack hang)
-    const recipientEmail = event.contact_email
+    // Store help request in database
+    const { error: insertError } = await supabase
+      .from("help_requests")
+      .insert({
+        event_id,
+        name: name || null,
+        email: email.toLowerCase(),
+        registration_number: registration_number || null,
+        category: category || "General",
+        message,
+      })
+
+    if (insertError) {
+      console.error("Failed to store help request:", insertError)
+      // Continue even if DB insert fails — still try to send email
+    }
+
+    // Determine recipient: contact_email → event creator email → skip
+    let recipientEmail = event.contact_email
+    if (!recipientEmail && event.created_by) {
+      const { data: creator } = await supabase.auth.admin.getUserById(event.created_by)
+      recipientEmail = creator?.user?.email || null
+    }
+
     const blastableKey = process.env.BLASTABLE_API_KEY?.trim()
     const fromEmail = (process.env.BLASTABLE_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || "").trim()
 
@@ -87,5 +110,81 @@ ${registration_number ? `<tr><td style="padding:8px 0;color:#6b7280;">Reg. Numbe
       { error: "Internal server error" },
       { status: 500 }
     )
+  }
+}
+
+// GET /api/help-request?event_id=X - List help requests for an event (admin)
+export async function GET(request: NextRequest) {
+  try {
+    const user = await getApiUser()
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const eventId = searchParams.get("event_id")
+
+    if (!eventId) {
+      return NextResponse.json({ error: "event_id is required" }, { status: 400 })
+    }
+
+    const supabase: SupabaseClient = await createAdminClient()
+
+    const { data, error } = await supabase
+      .from("help_requests")
+      .select("*")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching help requests:", error)
+      return NextResponse.json({ error: "Failed to fetch help requests" }, { status: 500 })
+    }
+
+    return NextResponse.json(data || [])
+  } catch (error) {
+    console.error("Error in GET /api/help-request:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+// PATCH /api/help-request - Update help request status (admin)
+export async function PATCH(request: NextRequest) {
+  try {
+    const user = await getApiUser()
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { id, status, admin_notes } = body
+
+    if (!id) {
+      return NextResponse.json({ error: "id is required" }, { status: 400 })
+    }
+
+    const supabase: SupabaseClient = await createAdminClient()
+
+    const updates: Record<string, any> = {}
+    if (status) updates.status = status
+    if (admin_notes !== undefined) updates.admin_notes = admin_notes
+    if (status === "resolved" || status === "closed") updates.resolved_at = new Date().toISOString()
+
+    const { data, error } = await supabase
+      .from("help_requests")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error updating help request:", error)
+      return NextResponse.json({ error: "Failed to update" }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error("Error in PATCH /api/help-request:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

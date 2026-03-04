@@ -5,7 +5,7 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2, BadgeCheck, Award, MessageSquare, ArrowRight, Info, Users, UserCheck, Download, Clock } from "lucide-react"
+import { Loader2, BadgeCheck, Award, MessageSquare, HelpCircle, ArrowRight, Info, Users, UserCheck, Download, Clock } from "lucide-react"
 import { format } from "date-fns"
 
 export default function DelegatePortalOverviewPage() {
@@ -37,6 +37,16 @@ export default function DelegatePortalOverviewPage() {
       return data || []
     },
     refetchInterval: 30000,
+  })
+
+  const { data: helpRequests, isLoading: helpLoading } = useQuery({
+    queryKey: ["delegate-portal-overview-help", eventId],
+    queryFn: async () => {
+      const res = await fetch(`/api/help-request?event_id=${eventId}`)
+      if (!res.ok) return []
+      return res.json()
+    },
+    refetchInterval: 15000,
   })
 
   const { data: feedbackForms, isLoading: feedbackLoading } = useQuery({
@@ -80,7 +90,7 @@ export default function DelegatePortalOverviewPage() {
     return { total, badgesGenerated, badgesDownloaded, certsIssued, certsDownloaded, badgeDownloadCount, certDownloadCount, checkedIn, totalDownloadCount, lastActivity }
   }, [registrations, downloads])
 
-  const isLoading = regsLoading || dlLoading || feedbackLoading
+  const isLoading = regsLoading || dlLoading || feedbackLoading || helpLoading
 
   if (isLoading) {
     return (
@@ -123,6 +133,17 @@ export default function DelegatePortalOverviewPage() {
       label: "feedback submissions",
       totalLabel: "confirmed attendees",
       href: `${basePath}/feedback`,
+    },
+    {
+      title: "Help Requests",
+      icon: HelpCircle,
+      color: "text-red-600",
+      bgColor: "bg-red-50 dark:bg-red-950/30",
+      value: Array.isArray(helpRequests) ? helpRequests.filter((r: any) => r.status === "open").length : 0,
+      total: Array.isArray(helpRequests) ? helpRequests.length : 0,
+      label: "open requests",
+      totalLabel: "total requests",
+      href: `${basePath}/help-requests`,
     },
   ]
 
@@ -174,7 +195,7 @@ export default function DelegatePortalOverviewPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {cards.map((card) => {
           const Icon = card.icon
           const pct = card.total > 0 ? ((card.value / card.total) * 100).toFixed(1) : "0"
@@ -197,7 +218,8 @@ export default function DelegatePortalOverviewPage() {
                     <div
                       className={`h-full rounded-full transition-all ${
                         card.color.includes("blue") ? "bg-blue-500" :
-                        card.color.includes("green") ? "bg-green-500" : "bg-purple-500"
+                        card.color.includes("green") ? "bg-green-500" :
+                        card.color.includes("red") ? "bg-red-500" : "bg-purple-500"
                       }`}
                       style={{ width: `${Math.min(parseFloat(pct), 100)}%` }}
                     />

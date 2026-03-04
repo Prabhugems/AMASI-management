@@ -8,6 +8,7 @@ import {
   BadgeCheck,
   Award,
   MessageSquare,
+  HelpCircle,
   ChevronLeft,
   Settings,
 } from "lucide-react"
@@ -17,6 +18,7 @@ const sidebarItems = [
   { title: "Badge Downloads", href: "/badges", icon: BadgeCheck },
   { title: "Certificate Downloads", href: "/certificates", icon: Award },
   { title: "Feedback", href: "/feedback", icon: MessageSquare },
+  { title: "Help Requests", href: "/help-requests", icon: HelpCircle },
   { title: "Settings", href: "/settings", icon: Settings },
 ]
 
