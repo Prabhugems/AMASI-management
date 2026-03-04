@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
         .from("form_submissions")
         .select("id")
         .eq("form_id", form_id)
-        .eq("submitter_email", submitter_email)
+        .eq("submitter_email", submitter_email.toLowerCase())
         .limit(1)
 
       if (existing && existing.length > 0) {
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
         .from("registrations")
         .select("id, checked_in")
         .eq("event_id", form.event_id)
-        .eq("attendee_email", submitter_email)
+        .eq("attendee_email", submitter_email.toLowerCase())
         .limit(1)
         .maybeSingle()
 
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
       .from("form_submissions")
       .insert({
         form_id,
-        submitter_email: submitter_email || null,
+        submitter_email: submitter_email ? submitter_email.toLowerCase() : null,
         submitter_name: submitter_name || null,
         submitter_ip: clientIp,
         user_agent: userAgent,
@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
           .from("registrations")
           .select("id, attendee_email, certificate_url, custom_fields")
           .eq("event_id", form.event_id)
-          .eq("attendee_email", submitter_email)
+          .eq("attendee_email", submitter_email.toLowerCase())
           .limit(1)
           .maybeSingle()
 
@@ -287,7 +287,7 @@ export async function POST(request: NextRequest) {
             .from("form_submissions")
             .select("id, responses")
             .eq("form_id", form_id)
-            .eq("submitter_email", submitter_email)
+            .eq("submitter_email", submitter_email.toLowerCase())
             .order("submitted_at", { ascending: false })
             .limit(1)
             .maybeSingle()

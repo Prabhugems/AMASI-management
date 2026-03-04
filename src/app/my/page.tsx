@@ -34,6 +34,8 @@ import {
   ChevronDown,
   ChevronUp,
   Lock,
+  HelpCircle,
+  Send,
 } from "lucide-react"
 import { toast } from "sonner"
 import { FormRenderer } from "@/components/forms/renderer/form-renderer"
@@ -879,7 +881,7 @@ export default function DelegatePortalPage() {
                   {(event.venue_name || event.city) && (
                     <span className="flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                      <span className="line-clamp-1">{event.venue_name || event.city}</span>
+                      <span className="line-clamp-1">{[event.venue_name, event.city].filter(Boolean).join(", ")}</span>
                     </span>
                   )}
                 </div>
@@ -1405,6 +1407,14 @@ export default function DelegatePortalPage() {
           </a>
         ))}
 
+        {/* Need Help Section */}
+        <DelegateHelpForm
+          eventId={event?.id}
+          name={registration.attendee_name}
+          email={registration.attendee_email}
+          registrationNumber={registration.registration_number}
+        />
+
         {/* Footer Note */}
         <div className="text-center text-white/60 text-sm py-4">
           <p>Print your badge and bring it to the event venue.</p>
@@ -1841,6 +1851,158 @@ function EventFeedbackForms({
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+// Delegate Help Form Component
+function DelegateHelpForm({
+  eventId,
+  name,
+  email,
+  registrationNumber,
+}: {
+  eventId?: string
+  name: string
+  email: string
+  registrationNumber: string
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [category, setCategory] = useState("")
+  const [message, setMessage] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!message.trim()) {
+      toast.error("Please describe your issue")
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/help-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          name,
+          email: email.toLowerCase(),
+          registration_number: registrationNumber,
+          category: category || "General",
+          message: message.trim(),
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || "Failed to submit")
+      }
+
+      setSubmitted(true)
+      setMessage("")
+      setCategory("")
+      toast.success("Help request sent! We'll get back to you soon.")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send help request")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className="bg-white rounded-2xl shadow-xl p-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+            <CheckCircle className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">Help Request Sent</h3>
+            <p className="text-sm text-gray-500">We&apos;ll get back to you via email.</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setSubmitted(false)}
+          className="mt-3 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+        >
+          Send another request
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full p-5 flex items-center gap-4 hover:bg-gray-50 transition-colors"
+      >
+        <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+          <HelpCircle className="w-6 h-6 text-red-600" />
+        </div>
+        <div className="flex-1 text-left">
+          <h3 className="font-semibold text-gray-900">Need Help?</h3>
+          <p className="text-sm text-gray-500">Report an issue or ask a question</p>
+        </div>
+        {expanded ? (
+          <ChevronUp className="w-5 h-5 text-gray-400" />
+        ) : (
+          <ChevronDown className="w-5 h-5 text-gray-400" />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-gray-100 p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+            >
+              <option value="">General</option>
+              <option value="Registration">Registration Issue</option>
+              <option value="Payment">Payment Issue</option>
+              <option value="Badge">Badge / ID Card</option>
+              <option value="Certificate">Certificate</option>
+              <option value="Accommodation">Accommodation / Travel</option>
+              <option value="Abstract">Abstract Submission</option>
+              <option value="Technical">Technical / Website Issue</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Describe your issue *</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Please describe what you need help with..."
+              rows={4}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+            />
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !message.trim()}
+            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Send Help Request
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
