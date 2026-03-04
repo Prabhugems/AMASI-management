@@ -30,6 +30,7 @@ interface QueueJob {
   id: string
   print_number: number
   status: string
+  zpl_data: string | null
   registration_data: any
   created_at: string
   registrations: {
@@ -105,27 +106,6 @@ export default function PrintAgentPage() {
     connect()
   }, [token])
 
-  // Send ZPL to Zebra printer via server-side TCP
-  const sendToZebra = useCallback(async (zpl: string): Promise<{ success: boolean; error?: string }> => {
-    try {
-      const res = await fetch("/api/print-stations/zpl-print", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          printer_ip: printerIp,
-          printer_port: parseInt(printerPort),
-          test_print: false,
-          // We're sending pre-generated ZPL, but the API generates it from registration data
-          // So we use generate_only=false with the actual printer IP
-        })
-      })
-      const result = await res.json()
-      return { success: result.success, error: result.error }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  }, [printerIp, printerPort])
-
   // Process a single queued job
   const processJob = useCallback(async (job: QueueJob) => {
     const reg = job.registrations || job.registration_data
@@ -135,57 +115,102 @@ export default function PrintAgentPage() {
     setCurrentJob(regName)
 
     try {
-      // Generate ZPL from server
-      const zplRes = await fetch("/api/print-stations/zpl-print", {
-        method: "POST",
+      let zpl = job.zpl_data || null
+
+      // If no pre-generated ZPL, generate via server API
+      if (!zpl) {
+        const zplRes = await fetch("/api/print-stations/zpl-print", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            printer_ip: "GENERATE_ONLY",
+            registration: {
+              attendee_name: reg?.attendee_name,
+              attendee_email: reg?.attendee_email,
+              attendee_phone: reg?.attendee_phone,
+              attendee_institution: reg?.attendee_institution,
+              attendee_designation: reg?.attendee_designation,
+              registration_number: reg?.registration_number,
+              ticket_type: reg?.ticket_types?.name || "",
+            },
+            station: {
+              id: station?.id,
+              print_settings: station?.print_settings,
+              events: station?.event,
+            },
+            badge_template: station?.badge_template,
+          })
+        })
+        const zplResult = await zplRes.json()
+        if (!zplResult.success || !zplResult.zpl) {
+          throw new Error(zplResult.error || "ZPL generation failed")
+        }
+        zpl = zplResult.zpl
+      }
+
+      // Try direct HTTP print first (works if agent is on same network as printer)
+      let printed = false
+      try {
+        const { sendZPLToZebra } = await import("@/lib/zebra-printer")
+        const httpResult = await sendZPLToZebra(printerIp, zpl!)
+        if (httpResult.success) {
+          printed = true
+        }
+      } catch {
+        // HTTP print not available, fall back to server TCP
+      }
+
+      // Fallback: server-side TCP print
+      if (!printed) {
+        const tcpRes = await fetch("/api/print-stations/zpl-print", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            printer_ip: printerIp,
+            printer_port: parseInt(printerPort),
+            registration: {
+              attendee_name: reg?.attendee_name,
+              attendee_email: reg?.attendee_email,
+              attendee_phone: reg?.attendee_phone,
+              attendee_institution: reg?.attendee_institution,
+              attendee_designation: reg?.attendee_designation,
+              registration_number: reg?.registration_number,
+              ticket_type: reg?.ticket_types?.name || "",
+            },
+            station: {
+              id: station?.id,
+              print_settings: station?.print_settings,
+              events: station?.event,
+            },
+            badge_template: station?.badge_template,
+          })
+        })
+        const tcpResult = await tcpRes.json()
+        if (!tcpResult.success) {
+          throw new Error(tcpResult.error || "Print failed")
+        }
+      }
+
+      // Mark as completed
+      await fetch("/api/print-stations/queue", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          printer_ip: printerIp,
-          printer_port: parseInt(printerPort),
-          registration: {
-            attendee_name: reg?.attendee_name,
-            attendee_email: reg?.attendee_email,
-            attendee_phone: reg?.attendee_phone,
-            attendee_institution: reg?.attendee_institution,
-            attendee_designation: reg?.attendee_designation,
-            registration_number: reg?.registration_number,
-            ticket_type: reg?.ticket_types?.name || "",
-          },
-          station: {
-            id: station?.id,
-            print_settings: station?.print_settings,
-            events: station?.event,
-          },
-          badge_template: station?.badge_template,
+          job_id: job.id,
+          status: "completed",
+          agent_id: agentIdRef.current,
         })
       })
 
-      const zplResult = await zplRes.json()
+      setPrintedJobs(prev => [{
+        id: job.id,
+        name: regName,
+        regNumber,
+        time: new Date().toLocaleTimeString(),
+        status: "success" as const,
+      }, ...prev].slice(0, 50))
 
-      if (zplResult.success) {
-        // Mark as completed
-        await fetch("/api/print-stations/queue", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            job_id: job.id,
-            status: "completed",
-            agent_id: agentIdRef.current,
-          })
-        })
-
-        setPrintedJobs(prev => [{
-          id: job.id,
-          name: regName,
-          regNumber,
-          time: new Date().toLocaleTimeString(),
-          status: "success" as const,
-        }, ...prev].slice(0, 50))
-
-        setJobsProcessed(prev => prev + 1)
-      } else {
-        throw new Error(zplResult.error || "Print failed")
-      }
+      setJobsProcessed(prev => prev + 1)
     } catch (err: any) {
       // Mark as failed
       await fetch("/api/print-stations/queue", {

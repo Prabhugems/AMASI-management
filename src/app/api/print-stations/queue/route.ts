@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { job_id, status, error_message, agent_id } = body
+    const { job_id, status, error_message, agent_id, zpl_data } = body
 
     if (!job_id || !status) {
       return NextResponse.json({ error: "job_id and status are required" }, { status: 400 })
@@ -113,6 +113,10 @@ export async function PATCH(request: NextRequest) {
 
     if (agent_id) {
       updateData.agent_id = agent_id
+    }
+
+    if (zpl_data) {
+      updateData.zpl_data = zpl_data
     }
 
     const { data, error } = await db

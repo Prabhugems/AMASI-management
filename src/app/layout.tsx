@@ -33,6 +33,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${inter.variable}`}>
       <head>
         <ThemeScript />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Printo" />
+        <link rel="apple-touch-icon" href="/icons/printo-192.png" />
+        <meta name="theme-color" content="#7c3aed" />
       </head>
       <body className="font-poppins antialiased">
         <QueryProvider>

@@ -121,6 +121,7 @@ export default function PrintStationKioskPage() {
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([])
   const [selectedCameraId, setSelectedCameraId] = useState<string>("")
+  const [printerOnline, setPrinterOnline] = useState<boolean | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -159,17 +160,17 @@ export default function PrintStationKioskPage() {
   // Print mutation
   const printMutation = useMutation({
     mutationFn: async (registrationNumber: string) => {
-      // Queue mode: when printer IP is configured, create job as "queued"
-      // so the local print agent can pick it up
-      const useQueue = !!station?.print_settings?.printer_ip
+      const hasDirectPrinter = !!station?.print_settings?.printer_ip
 
+      // When Zebra IP is configured, create job as "completed" (we'll print locally)
+      // No queue needed — iPad sends ZPL directly to printer via HTTP
       const res = await fetch("/api/print-stations/print", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
           registration_number: registrationNumber,
-          queue: useQueue,
+          queue: false,
           device_info: {
             userAgent: navigator.userAgent,
             timestamp: new Date().toISOString()
@@ -183,6 +184,51 @@ export default function PrintStationKioskPage() {
         throw new Error(data.error || "Print failed")
       }
 
+      // If we have a direct printer, generate ZPL and send it
+      if (hasDirectPrinter) {
+        const { generateZPL } = await import("@/lib/zpl-generator")
+        const { sendZPLToZebra } = await import("@/lib/zebra-printer")
+
+        const reg = data.registration
+        const zpl = generateZPL(
+          {
+            attendee_name: reg.attendee_name,
+            attendee_email: reg.attendee_email,
+            attendee_phone: reg.attendee_phone,
+            attendee_institution: reg.attendee_institution,
+            attendee_designation: reg.attendee_designation,
+            registration_number: reg.registration_number,
+            ticket_type: reg.ticket_type,
+            ticket_types: reg.ticket_types,
+          },
+          {
+            id: station?.id,
+            name: station?.name,
+            print_settings: station?.print_settings,
+            events: station?.events,
+          },
+          station?.badge_templates
+        )
+
+        const printResult = await sendZPLToZebra(station!.print_settings!.printer_ip!, zpl)
+
+        if (!printResult.success) {
+          // Fallback: queue the job with pre-generated ZPL for print agent
+          await fetch("/api/print-stations/queue", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              job_id: data.job_id,
+              status: "queued",
+              zpl_data: zpl,
+            })
+          })
+          return { ...data, directPrintFailed: true, fallbackQueued: true }
+        }
+
+        return { ...data, directPrinted: true }
+      }
+
       return data
     },
     onSuccess: (data) => {
@@ -192,20 +238,38 @@ export default function PrintStationKioskPage() {
 
       if (soundEnabled) playSuccessSound()
 
-      // If job was queued (Zebra via print agent), show queue success
-      if (data.queued) {
-        setZplStatus({ success: true, message: "Sent to print queue!" })
+      const hasDirectPrinter = !!station?.print_settings?.printer_ip
+
+      // Direct print to Zebra succeeded
+      if (data.directPrinted) {
+        setZplStatus({ success: true, message: "Printed!" })
+        setPrintSuccess(true)
+        // Auto-reset after 1.5s for next scan
+        setTimeout(() => {
+          resetScan()
+        }, 1500)
+        return
+      }
+
+      // Direct print failed, fell back to queue
+      if (data.directPrintFailed) {
+        setZplStatus({
+          success: false,
+          message: data.fallbackQueued
+            ? "Printer unreachable — queued for print agent"
+            : "Print failed"
+        })
         setPrintSuccess(true)
         setTimeout(() => {
           setZplStatus(null)
           setPrintSuccess(false)
           setReprintInfo(null)
-        }, 3000)
+        }, 4000)
         return
       }
 
-      // Trigger auto-print if enabled (browser print for non-Zebra setups)
-      if (station?.auto_print || isPrinting) {
+      // Browser print path (no Zebra configured)
+      if (!hasDirectPrinter && (station?.auto_print || isPrinting)) {
         const printData = {
           registration: data.registration,
           station: {
@@ -353,6 +417,34 @@ export default function PrintStationKioskPage() {
         wakeLockRef.current.release()
         wakeLockRef.current = null
       }
+    }
+  }, [])
+
+  // Printer health check polling (every 15s)
+  useEffect(() => {
+    const printerIp = station?.print_settings?.printer_ip
+    if (!printerIp) return
+
+    let active = true
+    const check = async () => {
+      try {
+        const { isZebraReachable } = await import("@/lib/zebra-printer")
+        const online = await isZebraReachable(printerIp)
+        if (active) setPrinterOnline(online)
+      } catch {
+        if (active) setPrinterOnline(false)
+      }
+    }
+
+    check()
+    const interval = setInterval(check, 15000)
+    return () => { active = false; clearInterval(interval) }
+  }, [station?.print_settings?.printer_ip])
+
+  // Register service worker for PWA
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {})
     }
   }, [])
 
@@ -580,25 +672,53 @@ export default function PrintStationKioskPage() {
     setIsPrinting(false)
   }
 
-  // Queue print job for the local print agent to pick up
-  // The job was already created with queue:true by printMutation
-  // This is now just a visual confirmation since queueing happens in the scan step
-  const triggerZplPrint = async (_data: any) => {
+  // Direct ZPL print to Zebra (used by manual "Print to Zebra" button)
+  const triggerZplPrint = async (data: any) => {
     setZplPrinting(true)
     setZplStatus(null)
 
-    // The print job was already queued during the scan/printMutation step
-    // Just show success status
-    setTimeout(() => {
-      setZplStatus({ success: true, message: "Sent to print queue! Agent will print shortly." })
-      if (soundEnabled) playSuccessSound()
-      setPrintSuccess(true)
-      setZplPrinting(false)
-      setTimeout(() => {
-        setZplStatus(null)
-        setPrintSuccess(false)
-      }, 3000)
-    }, 300)
+    try {
+      const { generateZPL } = await import("@/lib/zpl-generator")
+      const { sendZPLToZebra } = await import("@/lib/zebra-printer")
+
+      const reg = data.registration
+      const zpl = generateZPL(
+        {
+          attendee_name: reg.attendee_name,
+          attendee_email: reg.attendee_email,
+          attendee_phone: reg.attendee_phone,
+          attendee_institution: reg.attendee_institution,
+          attendee_designation: reg.attendee_designation,
+          registration_number: reg.registration_number,
+          ticket_type: reg.ticket_type,
+          ticket_types: reg.ticket_types,
+        },
+        {
+          id: station?.id,
+          name: station?.name,
+          print_settings: station?.print_settings,
+          events: station?.events,
+        },
+        station?.badge_templates
+      )
+
+      const result = await sendZPLToZebra(station!.print_settings!.printer_ip!, zpl)
+
+      if (result.success) {
+        setZplStatus({ success: true, message: "Printed!" })
+        if (soundEnabled) playSuccessSound()
+        setPrintSuccess(true)
+        setTimeout(() => resetScan(), 1500)
+      } else {
+        setZplStatus({ success: false, message: result.error || "Print failed" })
+        if (soundEnabled) playErrorSound()
+      }
+    } catch (err: any) {
+      setZplStatus({ success: false, message: err.message || "Print failed" })
+      if (soundEnabled) playErrorSound()
+    }
+
+    setZplPrinting(false)
   }
 
   // Check if direct ZPL printing is available
@@ -1480,9 +1600,15 @@ export default function PrintStationKioskPage() {
             {hasZplPrinter && (
               <>
                 <span className="text-muted-foreground">•</span>
-                <div className="flex items-center gap-2 text-blue-600">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    printerOnline === null ? "bg-gray-400" : printerOnline ? "bg-emerald-500" : "bg-red-500"
+                  }`} />
                   <Printer className="w-4 h-4" />
-                  <span>Zebra: {station.print_settings?.printer_ip}</span>
+                  <span className={printerOnline ? "text-emerald-600" : printerOnline === false ? "text-red-600" : "text-muted-foreground"}>
+                    {printerOnline === null ? "Checking..." : printerOnline ? "Printer Online" : "Printer Offline"}
+                  </span>
+                  <span className="text-muted-foreground text-xs">({station.print_settings?.printer_ip})</span>
                 </div>
               </>
             )}
