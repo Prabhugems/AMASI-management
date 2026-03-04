@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
         event_id: body.event_id,
         name: body.name,
         description: body.description || null,
+        submission_instructions: body.submission_instructions || null,
         max_submissions: body.max_submissions || null,
         sort_order: nextSortOrder,
         is_active: body.is_active ?? true,
@@ -125,6 +126,7 @@ export async function POST(request: NextRequest) {
         eligibility_rules: body.eligibility_rules || {},
         award_name: body.award_name || null,
         is_award_category: body.is_award_category ?? false,
+        scoring_criteria: body.scoring_criteria || [],
       })
       .select()
       .single()
@@ -190,6 +192,7 @@ export async function PUT(request: NextRequest) {
     const updateData: Record<string, any> = {}
     if (body.name !== undefined) updateData.name = body.name
     if (body.description !== undefined) updateData.description = body.description
+    if (body.submission_instructions !== undefined) updateData.submission_instructions = body.submission_instructions
     if (body.max_submissions !== undefined) updateData.max_submissions = body.max_submissions
     if (body.sort_order !== undefined) updateData.sort_order = body.sort_order
     if (body.is_active !== undefined) updateData.is_active = body.is_active
@@ -200,6 +203,7 @@ export async function PUT(request: NextRequest) {
     if (body.eligibility_rules !== undefined) updateData.eligibility_rules = body.eligibility_rules
     if (body.award_name !== undefined) updateData.award_name = body.award_name
     if (body.is_award_category !== undefined) updateData.is_award_category = body.is_award_category
+    if (body.scoring_criteria !== undefined) updateData.scoring_criteria = body.scoring_criteria
 
     const { data, error } = await adminClient
       .from("abstract_categories")

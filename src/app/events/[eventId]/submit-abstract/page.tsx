@@ -45,6 +45,7 @@ interface Category {
   id: string
   name: string
   description: string | null
+  submission_instructions: string | null
   max_submissions: number | null
   submission_type: string
   allowed_file_types: string[]
@@ -722,6 +723,16 @@ export default function SubmitAbstractPage() {
               </Select>
             </div>
           </div>
+
+          {/* Category-specific Instructions */}
+          {selectedCategory?.submission_instructions && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <h3 className="font-semibold text-amber-800 mb-2">
+                Instructions for {selectedCategory.name}
+              </h3>
+              <p className="text-sm text-amber-700 whitespace-pre-wrap">{selectedCategory.submission_instructions}</p>
+            </div>
+          )}
 
           {/* Abstract Text */}
           <div className="bg-white rounded-xl border p-6">

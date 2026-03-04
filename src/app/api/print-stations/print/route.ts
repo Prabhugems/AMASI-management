@@ -138,17 +138,35 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Determine if this should be queued (for local print agent) or marked completed
+    const queueMode = body.queue === true
+
     // Create print job
+    const jobInsert: any = {
+      print_station_id: station.id,
+      registration_id: registration.id,
+      print_number: printNumber,
+      status: queueMode ? "queued" : "completed",
+      device_info: device_info || {},
+      registration_data: {
+        id: registration.id,
+        registration_number: registration.registration_number,
+        attendee_name: registration.attendee_name,
+        attendee_email: registration.attendee_email,
+        attendee_phone: registration.attendee_phone,
+        attendee_institution: registration.attendee_institution,
+        attendee_designation: registration.attendee_designation,
+        ticket_type: registration.ticket_types?.name || "",
+      },
+    }
+
+    if (!queueMode) {
+      jobInsert.printed_at = new Date().toISOString()
+    }
+
     const { data: printJob, error: jobError } = await (supabase as any)
       .from("print_jobs")
-      .insert({
-        print_station_id: station.id,
-        registration_id: registration.id,
-        print_number: printNumber,
-        status: "completed",
-        printed_at: new Date().toISOString(),
-        device_info: device_info || {}
-      })
+      .insert(jobInsert)
       .select()
       .single()
 
@@ -166,6 +184,7 @@ export async function POST(request: NextRequest) {
       print_job: printJob,
       print_number: printNumber,
       is_reprint: printNumber > 1,
+      queued: queueMode,
       registration: {
         ...registration,
         ticket_type: registration.ticket_types?.name

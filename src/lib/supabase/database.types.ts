@@ -1024,9 +1024,18 @@ export interface Database {
         event_id: string
         name: string
         description: string | null
+        submission_instructions: string | null
         max_submissions: number | null
         sort_order: number
         is_active: boolean
+        submission_type: string
+        allowed_file_types: string[]
+        required_file: boolean
+        declarations: Json | null
+        eligibility_rules: Json | null
+        award_name: string | null
+        is_award_category: boolean
+        scoring_criteria: Json | null
         created_at: string
         updated_at: string
       }
@@ -1035,9 +1044,18 @@ export interface Database {
         event_id: string
         name: string
         description?: string | null
+        submission_instructions?: string | null
         max_submissions?: number | null
         sort_order?: number
         is_active?: boolean
+        submission_type?: string
+        allowed_file_types?: string[]
+        required_file?: boolean
+        declarations?: Json | null
+        eligibility_rules?: Json | null
+        award_name?: string | null
+        is_award_category?: boolean
+        scoring_criteria?: Json | null
         created_at?: string
         updated_at?: string
       }
@@ -1046,9 +1064,18 @@ export interface Database {
         event_id?: string
         name?: string
         description?: string | null
+        submission_instructions?: string | null
         max_submissions?: number | null
         sort_order?: number
         is_active?: boolean
+        submission_type?: string
+        allowed_file_types?: string[]
+        required_file?: boolean
+        declarations?: Json | null
+        eligibility_rules?: Json | null
+        award_name?: string | null
+        is_award_category?: boolean
+        scoring_criteria?: Json | null
         created_at?: string
         updated_at?: string
       }
@@ -1186,6 +1213,10 @@ export interface Database {
         score_relevance: number | null
         score_clarity: number | null
         overall_score: number | null
+        scores: Json | null
+        total_score: number | null
+        max_possible_score: number | null
+        review_type: string
         recommendation: string | null
         comments_to_author: string | null
         comments_private: string | null
@@ -1204,6 +1235,10 @@ export interface Database {
         score_relevance?: number | null
         score_clarity?: number | null
         overall_score?: number | null
+        scores?: Json | null
+        total_score?: number | null
+        max_possible_score?: number | null
+        review_type?: string
         recommendation?: string | null
         comments_to_author?: string | null
         comments_private?: string | null
@@ -1222,6 +1257,10 @@ export interface Database {
         score_relevance?: number | null
         score_clarity?: number | null
         overall_score?: number | null
+        scores?: Json | null
+        total_score?: number | null
+        max_possible_score?: number | null
+        review_type?: string
         recommendation?: string | null
         comments_to_author?: string | null
         comments_private?: string | null
@@ -1252,6 +1291,8 @@ export interface Database {
         author_guidelines: string | null
         notify_on_submission: boolean
         notify_on_decision: boolean
+        restrict_reviewers: boolean
+        review_deadline: string | null
         created_at: string
         updated_at: string
       }
@@ -1276,6 +1317,8 @@ export interface Database {
         author_guidelines?: string | null
         notify_on_submission?: boolean
         notify_on_decision?: boolean
+        restrict_reviewers?: boolean
+        review_deadline?: string | null
         created_at?: string
         updated_at?: string
       }
@@ -1300,6 +1343,58 @@ export interface Database {
         author_guidelines?: string | null
         notify_on_submission?: boolean
         notify_on_decision?: boolean
+        restrict_reviewers?: boolean
+        review_deadline?: string | null
+        created_at?: string
+        updated_at?: string
+      }
+    }
+    abstract_reviewers: {
+      Row: {
+        id: string
+        event_id: string
+        name: string
+        email: string
+        phone: string | null
+        institution: string | null
+        city: string | null
+        specialty: string | null
+        years_of_experience: string | null
+        status: string
+        notes: string | null
+        assigned_abstracts: string[]
+        created_at: string
+        updated_at: string
+      }
+      Insert: {
+        id?: string
+        event_id: string
+        name: string
+        email: string
+        phone?: string | null
+        institution?: string | null
+        city?: string | null
+        specialty?: string | null
+        years_of_experience?: string | null
+        status?: string
+        notes?: string | null
+        assigned_abstracts?: string[]
+        created_at?: string
+        updated_at?: string
+      }
+      Update: {
+        id?: string
+        event_id?: string
+        name?: string
+        email?: string
+        phone?: string | null
+        institution?: string | null
+        city?: string | null
+        specialty?: string | null
+        years_of_experience?: string | null
+        status?: string
+        notes?: string | null
+        assigned_abstracts?: string[]
         created_at?: string
         updated_at?: string
       }

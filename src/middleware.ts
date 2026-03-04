@@ -66,10 +66,11 @@ export async function middleware(request: NextRequest) {
     '/status',
   ]
 
-  // Print pages under any route are public (e.g. /events/[id]/travel/flights/print)
+  // Print pages and public program pages under any route are public
   const isPrintPage = request.nextUrl.pathname.endsWith('/print') || request.nextUrl.pathname.includes('/print/')
+  const isPublicProgram = request.nextUrl.pathname.includes('/program/public')
 
-  const isProtectedRoute = !isPrintPage && protectedRoutes.some(
+  const isProtectedRoute = !isPrintPage && !isPublicProgram && protectedRoutes.some(
     (route) =>
       request.nextUrl.pathname === route ||
       request.nextUrl.pathname.startsWith(`${route}/`)
@@ -94,6 +95,7 @@ export async function middleware(request: NextRequest) {
     '/hall-coordinator',   // Hall coordinator portal (token-based)
     '/driver-portal',      // Driver portal (phone-based)
     '/print',              // Print/badge pages (token-based)
+    '/print-agent',        // Print agent page (token-based)
     '/badge',              // Badge pages (token-based)
     '/v',                  // Certificate verification (token-based)
     '/checkin/access',     // Check-in access (token-based)

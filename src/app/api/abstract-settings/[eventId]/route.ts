@@ -58,6 +58,8 @@ export async function GET(
         author_guidelines: null,
         notify_on_submission: true,
         notify_on_decision: true,
+        restrict_reviewers: false,
+        review_deadline: null,
       })
     }
 
@@ -177,6 +179,8 @@ export async function PUT(
     if (body.author_guidelines !== undefined) payload.author_guidelines = body.author_guidelines
     if (body.notify_on_submission !== undefined) payload.notify_on_submission = body.notify_on_submission
     if (body.notify_on_decision !== undefined) payload.notify_on_decision = body.notify_on_decision
+    if (body.restrict_reviewers !== undefined) payload.restrict_reviewers = body.restrict_reviewers
+    if (body.review_deadline !== undefined) payload.review_deadline = body.review_deadline
 
     const { data, error } = await adminClient
       .from("abstract_settings")

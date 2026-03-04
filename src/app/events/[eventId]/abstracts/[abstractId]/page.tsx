@@ -79,6 +79,10 @@ interface Abstract {
     score_relevance: number
     score_clarity: number
     overall_score: number
+    scores: Record<string, number> | null
+    total_score: number | null
+    max_possible_score: number | null
+    review_type: string
     recommendation: string
     comments_to_author: string
     comments_private: string
@@ -422,6 +426,11 @@ export default function AbstractDetailPage() {
                         <span className="font-medium">{review.reviewer_name}</span>
                       </div>
                       <div className="flex items-center gap-2">
+                        {review.review_type === "judge_score" && (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                            Judge
+                          </span>
+                        )}
                         {review.recommendation && (
                           <span className={cn(
                             "px-2 py-1 text-xs font-medium rounded-full capitalize",
@@ -433,13 +442,25 @@ export default function AbstractDetailPage() {
                             {review.recommendation}
                           </span>
                         )}
-                        {review.overall_score && (
+                        {review.total_score != null && review.max_possible_score ? (
+                          <span className="font-bold text-lg">{review.total_score}/{review.max_possible_score}</span>
+                        ) : review.overall_score ? (
                           <span className="font-bold text-lg">{review.overall_score.toFixed(1)}</span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
 
-                    {/* Scores Grid */}
+                    {/* Scores Grid - Dynamic or Legacy */}
+                    {review.scores && Object.keys(review.scores).length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+                        {Object.entries(review.scores).map(([label, score]) => (
+                          <div key={label} className="text-center p-2 bg-background rounded">
+                            <p className="text-xs text-muted-foreground truncate">{label}</p>
+                            <p className="font-semibold">{score as number}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
                     <div className="grid grid-cols-4 gap-2 mb-3">
                       {[
                         { label: "Originality", score: review.score_originality },
@@ -453,6 +474,7 @@ export default function AbstractDetailPage() {
                         </div>
                       ))}
                     </div>
+                    )}
 
                     {review.comments_to_author && (
                       <div className="mt-3 pt-3 border-t">

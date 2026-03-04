@@ -15,6 +15,7 @@ import {
   Loader2,
   Lock,
   LogOut,
+  Users,
   Calendar,
   MapPin,
 } from "lucide-react"
@@ -24,6 +25,7 @@ const sidebarItems = [
   { title: "All Submissions", href: "", icon: FileText },
   { title: "Categories", href: "/categories", icon: FolderTree },
   { title: "Review & Decide", href: "/review", icon: CheckSquare },
+  { title: "Reviewers", href: "/reviewers", icon: Users },
   { title: "Settings", href: "/settings", icon: Settings },
   { title: "Instructions", href: "/instructions", icon: BookOpen },
 ]

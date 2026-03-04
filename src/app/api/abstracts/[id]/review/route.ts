@@ -152,23 +152,37 @@ export async function POST(
       reviewer_email: teamMember.email || user.email,
     }
 
+    // Build insert data - supports both dynamic JSONB scores and legacy fixed scores
+    const insertData: Record<string, any> = {
+      abstract_id: id,
+      reviewer_id: reviewerInfo.reviewer_id,
+      reviewer_name: reviewerInfo.reviewer_name,
+      reviewer_email: reviewerInfo.reviewer_email,
+      recommendation: body.recommendation || null,
+      comments_to_author: body.comments_to_author || null,
+      comments_private: body.comments_private || null,
+      review_type: body.review_type || "review",
+    }
+
+    if (body.scores && typeof body.scores === "object" && Object.keys(body.scores).length > 0) {
+      // Dynamic scoring path
+      insertData.scores = body.scores
+      insertData.max_possible_score = body.max_possible_score || null
+      insertData.reviewed_at = new Date().toISOString()
+      // total_score and overall_score are auto-calculated by DB trigger
+    } else {
+      // Legacy fixed-column scoring path
+      insertData.score_originality = body.score_originality || null
+      insertData.score_methodology = body.score_methodology || null
+      insertData.score_relevance = body.score_relevance || null
+      insertData.score_clarity = body.score_clarity || null
+      // overall_score is auto-calculated by trigger
+      insertData.reviewed_at = body.score_originality ? new Date().toISOString() : null
+    }
+
     const { data, error } = await adminClient
       .from("abstract_reviews")
-      .insert({
-        abstract_id: id,
-        reviewer_id: reviewerInfo.reviewer_id,
-        reviewer_name: reviewerInfo.reviewer_name,
-        reviewer_email: reviewerInfo.reviewer_email,
-        score_originality: body.score_originality || null,
-        score_methodology: body.score_methodology || null,
-        score_relevance: body.score_relevance || null,
-        score_clarity: body.score_clarity || null,
-        // overall_score is auto-calculated by trigger
-        recommendation: body.recommendation || null,
-        comments_to_author: body.comments_to_author || null,
-        comments_private: body.comments_private || null,
-        reviewed_at: body.score_originality ? new Date().toISOString() : null,
-      })
+      .insert(insertData)
       .select()
       .single()
 
@@ -265,16 +279,24 @@ export async function PUT(
 
     const updateData: Record<string, any> = {}
 
+    // Dynamic JSONB scores
+    if (body.scores !== undefined) updateData.scores = body.scores
+    if (body.max_possible_score !== undefined) updateData.max_possible_score = body.max_possible_score
+
+    // Legacy fixed-column scores
     if (body.score_originality !== undefined) updateData.score_originality = body.score_originality
     if (body.score_methodology !== undefined) updateData.score_methodology = body.score_methodology
     if (body.score_relevance !== undefined) updateData.score_relevance = body.score_relevance
     if (body.score_clarity !== undefined) updateData.score_clarity = body.score_clarity
+
     if (body.recommendation !== undefined) updateData.recommendation = body.recommendation
     if (body.comments_to_author !== undefined) updateData.comments_to_author = body.comments_to_author
     if (body.comments_private !== undefined) updateData.comments_private = body.comments_private
 
-    // Mark as reviewed if all scores are provided (use !== undefined to handle score of 0)
-    if (body.score_originality !== undefined && body.score_methodology !== undefined && body.score_relevance !== undefined && body.score_clarity !== undefined) {
+    // Mark as reviewed if dynamic scores or all legacy scores are provided
+    if (body.scores && Object.keys(body.scores).length > 0) {
+      updateData.reviewed_at = new Date().toISOString()
+    } else if (body.score_originality !== undefined && body.score_methodology !== undefined && body.score_relevance !== undefined && body.score_clarity !== undefined) {
       updateData.reviewed_at = new Date().toISOString()
     }
 

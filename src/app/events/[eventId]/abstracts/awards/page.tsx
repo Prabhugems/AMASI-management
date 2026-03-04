@@ -44,7 +44,12 @@ interface Abstract {
   award_type: string | null
   is_podium_selected: boolean
   category_id: string | null
-  reviews?: { overall_score: number }[]
+  reviews?: {
+    overall_score: number
+    total_score: number | null
+    max_possible_score: number | null
+    review_type: string
+  }[]
   category?: { id: string; name: string }
 }
 
@@ -53,6 +58,7 @@ interface Category {
   name: string
   is_award_category: boolean
   award_name: string | null
+  scoring_criteria?: { label: string; description: string; max_score: number }[] | null
 }
 
 const awardTypeLabels: Record<string, { label: string; color: string }> = {
@@ -128,11 +134,20 @@ export default function AwardsPage() {
     initRankings()
   }
 
-  function getAvgScore(reviews?: { overall_score: number }[]): number | null {
+  function getAvgScore(reviews?: Abstract["reviews"]): number | null {
     if (!reviews || reviews.length === 0) return null
     const scores = reviews.filter(r => r.overall_score).map(r => r.overall_score)
     if (scores.length === 0) return null
     return scores.reduce((a, b) => a + b, 0) / scores.length
+  }
+
+  function getAvgTotalScore(reviews?: Abstract["reviews"]): { avg: number; max: number } | null {
+    if (!reviews || reviews.length === 0) return null
+    const scored = reviews.filter(r => r.total_score != null && r.max_possible_score)
+    if (scored.length === 0) return null
+    const avg = scored.reduce((sum, r) => sum + (r.total_score || 0), 0) / scored.length
+    const max = scored[0].max_possible_score || 0
+    return { avg, max }
   }
 
   function getAwardType(rank: number | null): string | null {
@@ -323,7 +338,7 @@ export default function AwardsPage() {
                     <TableHead>Abstract #</TableHead>
                     <TableHead className="min-w-[250px]">Title</TableHead>
                     <TableHead>Author</TableHead>
-                    <TableHead className="text-center">Avg Score</TableHead>
+                    <TableHead className="text-center">Score</TableHead>
                     <TableHead className="text-center">AMASI #</TableHead>
                     <TableHead className="text-center">Award</TableHead>
                   </TableRow>
@@ -332,6 +347,7 @@ export default function AwardsPage() {
                   {sortedAbstracts.map((abstract) => {
                     const rank = rankings[abstract.id] ?? abstract.award_rank
                     const avgScore = getAvgScore(abstract.reviews)
+                    const totalScore = getAvgTotalScore(abstract.reviews)
                     const awardType = getAwardType(rank ?? null)
                     const award = awardType ? awardTypeLabels[awardType] : null
 
@@ -371,7 +387,14 @@ export default function AwardsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          {avgScore ? (
+                          {totalScore ? (
+                            <div>
+                              <span className="font-bold text-sm">{totalScore.avg.toFixed(1)}/{totalScore.max}</span>
+                              {avgScore && (
+                                <p className="text-xs text-muted-foreground">{avgScore.toFixed(1)}/10</p>
+                              )}
+                            </div>
+                          ) : avgScore ? (
                             <span className={cn(
                               "inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium",
                               avgScore >= 7 ? "bg-green-100 text-green-700" :

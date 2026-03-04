@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Html5Qrcode } from "html5-qrcode"
+import QRCode from "qrcode"
 import {
   Printer,
   Camera,
@@ -123,8 +124,9 @@ export default function PrintStationKioskPage() {
 
   const inputRef = useRef<HTMLInputElement>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
-  const _printFrameRef = useRef<HTMLIFrameElement>(null)
+  const printFrameRef = useRef<HTMLIFrameElement>(null)
   const scannerContainerId = "qr-scanner-container"
+  const wakeLockRef = useRef<any>(null)
 
   // Fetch station details by token - always fetch fresh to get updated templates
   const { data: station, isLoading: stationLoading, error: stationError, refetch: refetchStation } = useQuery({
@@ -157,12 +159,17 @@ export default function PrintStationKioskPage() {
   // Print mutation
   const printMutation = useMutation({
     mutationFn: async (registrationNumber: string) => {
+      // Queue mode: when printer IP is configured, create job as "queued"
+      // so the local print agent can pick it up
+      const useQueue = !!station?.print_settings?.printer_ip
+
       const res = await fetch("/api/print-stations/print", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
           registration_number: registrationNumber,
+          queue: useQueue,
           device_info: {
             userAgent: navigator.userAgent,
             timestamp: new Date().toISOString()
@@ -185,7 +192,19 @@ export default function PrintStationKioskPage() {
 
       if (soundEnabled) playSuccessSound()
 
-      // Trigger auto-print if enabled
+      // If job was queued (Zebra via print agent), show queue success
+      if (data.queued) {
+        setZplStatus({ success: true, message: "Sent to print queue!" })
+        setPrintSuccess(true)
+        setTimeout(() => {
+          setZplStatus(null)
+          setPrintSuccess(false)
+          setReprintInfo(null)
+        }, 3000)
+        return
+      }
+
+      // Trigger auto-print if enabled (browser print for non-Zebra setups)
       if (station?.auto_print || isPrinting) {
         const printData = {
           registration: data.registration,
@@ -198,13 +217,7 @@ export default function PrintStationKioskPage() {
           },
           badge_template: station?.badge_templates
         }
-
-        // Use ZPL direct print if printer IP is configured, otherwise browser print
-        if (station?.print_settings?.printer_ip) {
-          triggerZplPrint(printData)
-        } else {
-          triggerPrint(data)
-        }
+        triggerPrint(printData)
       }
 
       setPrintSuccess(true)
@@ -293,14 +306,55 @@ export default function PrintStationKioskPage() {
   }
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen()
+    const doc = document as any
+    const el = document.documentElement as any
+    if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+      // Try standard first, then webkit (Safari/iPad)
+      if (el.requestFullscreen) {
+        el.requestFullscreen()
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen()
+      }
       setIsFullscreen(true)
     } else {
-      document.exitFullscreen()
+      if (doc.exitFullscreen) {
+        doc.exitFullscreen()
+      } else if (doc.webkitExitFullscreen) {
+        doc.webkitExitFullscreen()
+      }
       setIsFullscreen(false)
     }
   }
+
+  // Wake Lock - prevent iPad/tablet from sleeping
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLockRef.current = await (navigator as any).wakeLock.request("screen")
+        }
+      } catch (_e) {
+        // Wake Lock not supported or permission denied
+      }
+    }
+    requestWakeLock()
+
+    // Re-acquire wake lock when page becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        requestWakeLock()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release()
+        wakeLockRef.current = null
+      }
+    }
+  }, [])
 
   // ===========================================
   // Camera QR Scanner Functions
@@ -473,80 +527,78 @@ export default function PrintStationKioskPage() {
     printMutation.mutate(scannedRegistration.registration_number)
   }
 
-  const triggerPrint = (data: any, downloadPdf = false) => {
+  const triggerPrint = async (data: any, _downloadPdf = false) => {
+    // Pre-generate QR code data URLs for all QR elements in the template
+    const badgeTemplate = data.badge_template || station?.badge_templates
+    if (badgeTemplate?.template_data?.elements) {
+      const elements = badgeTemplate.template_data.elements
+      for (const el of elements) {
+        if (el.type === "qr_code") {
+          const qrValue = replacePlaceholders(el.content || "", data.registration)
+          if (qrValue) {
+            try {
+              el._qrDataUrl = await QRCode.toDataURL(qrValue, {
+                width: Math.min(el.width, el.height) * 2,
+                margin: 1,
+                errorCorrectionLevel: "M",
+              })
+            } catch (_e) {
+              // Fallback to external API if QRCode fails
+            }
+          }
+        }
+      }
+    }
+
     // Create printable content based on print mode and template
     const printContent = generatePrintContent(data)
 
-    // Open print dialog
-    const printWindow = window.open("", "_blank", "width=600,height=800")
-    if (printWindow) {
-      printWindow.document.write(printContent)
-      printWindow.document.close()
-      printWindow.focus()
+    // Use hidden iframe for printing (works on iPad Safari unlike window.open)
+    const iframe = printFrameRef.current
+    if (iframe) {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document
+      if (doc) {
+        doc.open()
+        doc.write(printContent)
+        doc.close()
 
-      if (downloadPdf) {
-        // Let user save/print from the preview
-        // They can use Ctrl+P or right-click > Print
-      } else {
+        // Wait for fonts/images to load then trigger print
         setTimeout(() => {
-          printWindow.print()
-        }, 500)
+          try {
+            iframe.contentWindow?.print()
+          } catch (_e) {
+            // Fallback: open in new tab if iframe print fails
+            const blob = new Blob([printContent], { type: "text/html" })
+            const url = URL.createObjectURL(blob)
+            window.open(url, "_blank")
+            setTimeout(() => URL.revokeObjectURL(url), 10000)
+          }
+        }, 600)
       }
     }
 
     setIsPrinting(false)
   }
 
-  // Direct ZPL printing to Zebra printer via network
-  const triggerZplPrint = async (data: any) => {
-    const printerIp = station?.print_settings?.printer_ip
-    if (!printerIp) {
-      setZplStatus({ success: false, message: "No printer IP configured" })
-      return
-    }
-
+  // Queue print job for the local print agent to pick up
+  // The job was already created with queue:true by printMutation
+  // This is now just a visual confirmation since queueing happens in the scan step
+  const triggerZplPrint = async (_data: any) => {
     setZplPrinting(true)
     setZplStatus(null)
 
-    try {
-      const res = await fetch("/api/print-stations/zpl-print", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          printer_ip: printerIp,
-          printer_port: station?.print_settings?.printer_port || 9100,
-          registration: data.registration,
-          station: {
-            id: station?.id,
-            print_settings: station?.print_settings,
-            events: station?.events
-          },
-          badge_template: data.badge_template
-        })
-      })
-
-      const result = await res.json()
-
-      if (result.success) {
-        setZplStatus({ success: true, message: "Badge sent to printer!" })
-        if (soundEnabled) playSuccessSound()
-        setPrintSuccess(true)
-        setTimeout(() => {
-          setZplStatus(null)
-          setPrintSuccess(false)
-        }, 3000)
-      } else {
-        setZplStatus({ success: false, message: result.error || "Print failed" })
-        if (soundEnabled) playErrorSound()
-        setTimeout(() => setZplStatus(null), 5000)
-      }
-    } catch (error: any) {
-      setZplStatus({ success: false, message: error.message || "Connection failed" })
-      if (soundEnabled) playErrorSound()
-      setTimeout(() => setZplStatus(null), 5000)
-    } finally {
+    // The print job was already queued during the scan/printMutation step
+    // Just show success status
+    setTimeout(() => {
+      setZplStatus({ success: true, message: "Sent to print queue! Agent will print shortly." })
+      if (soundEnabled) playSuccessSound()
+      setPrintSuccess(true)
       setZplPrinting(false)
-    }
+      setTimeout(() => {
+        setZplStatus(null)
+        setPrintSuccess(false)
+      }, 3000)
+    }, 300)
   }
 
   // Check if direct ZPL printing is available
@@ -569,9 +621,9 @@ export default function PrintStationKioskPage() {
   }
 
   // Render a single badge element to HTML
-  const renderElementToHtml = (element: any, registration: any): string => {
+  const renderElementToHtml = (element: any, registration: any, pageRotation: number = 0): string => {
     const content = replacePlaceholders(element.content || "", registration)
-    const rotation = element.rotation || 0
+    const rotation = (element.rotation || 0) + pageRotation
     const opacity = (element.opacity ?? 100) / 100
 
     const baseStyle = `
@@ -634,8 +686,11 @@ export default function PrintStationKioskPage() {
     if (element.type === "qr_code") {
       const qrValue = replacePlaceholders(element.content || "", registration)
       const qrSize = Math.min(element.width, element.height)
+      // Use pre-generated data URL if available, fallback to external API
+      const qrDataUrl = element._qrDataUrl
+      const qrSrc = qrDataUrl || `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(qrValue)}`
       return `<div style="${baseStyle} display: flex; align-items: center; justify-content: center;">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(qrValue)}" style="width: ${qrSize}px; height: ${qrSize}px;" />
+        <img src="${qrSrc}" style="width: ${qrSize}px; height: ${qrSize}px;" />
       </div>`
     }
 
@@ -677,7 +732,9 @@ export default function PrintStationKioskPage() {
     const { registration, station: stationInfo, badge_template } = data
     const settings = stationInfo.print_settings || {}
     const dimensions = getPaperDimensions(settings.paper_size, settings.orientation)
-    const rotation = settings.rotation || 0
+    // Default to 180° rotation for thermal/label printers (labels feed bottom-first)
+    // Use explicit rotation if set to a non-zero value, otherwise default to 180
+    const rotation = settings.rotation || 180
 
     // If we have a badge template, render it
     if (badge_template?.template_data) {
@@ -699,7 +756,7 @@ export default function PrintStationKioskPage() {
 
       // Sort elements by zIndex
       const sortedElements = [...elements].sort((a: any, b: any) => (a.zIndex || 0) - (b.zIndex || 0))
-      const elementsHtml = sortedElements.map((el: any) => renderElementToHtml(el, registration)).join("\n")
+      const elementsHtml = sortedElements.map((el: any) => renderElementToHtml(el, registration, rotation)).join("\n")
 
       return `
         <!DOCTYPE html>
@@ -731,14 +788,17 @@ export default function PrintStationKioskPage() {
               height: ${dimensions.height};
               background-color: ${bgColor};
               overflow: hidden;
-              ${rotation ? `transform: rotate(${rotation}deg);` : ""}
-              ${rotation === 90 || rotation === 270 ? `transform-origin: center center;` : ""}
+              /* rotation applied per-element for overlay alignment */
             }
             @media print {
               html, body {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
+              }
+              * {
+                -webkit-font-smoothing: none !important;
+                text-rendering: geometricPrecision !important;
               }
             }
           </style>
@@ -769,7 +829,7 @@ export default function PrintStationKioskPage() {
           * { margin: 0; padding: 0; box-sizing: border-box; }
           html, body { width: ${dimensions.width}; height: ${dimensions.height}; font-family: Arial, sans-serif; background: white; overflow: hidden; }
           .badge-wrapper { width: ${dimensions.width}; height: ${dimensions.height}; display: flex; align-items: center; justify-content: center; }
-          .badge { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: ${isLabel ? "5mm" : "10mm"}; text-align: center; background: white; ${rotation ? `transform: rotate(${rotation}deg);` : ""} }
+          .badge { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: ${isLabel ? "5mm" : "10mm"}; text-align: center; background: white; ${rotation ? `transform: rotate(${rotation}deg); transform-origin: center center;` : ""} }
           .event-name { font-size: ${isLabel ? "10pt" : "14pt"}; font-weight: bold; color: #333; margin-bottom: ${isLabel ? "3mm" : "8mm"}; text-transform: uppercase; }
           .attendee-name { font-size: ${isLabel ? "16pt" : "28pt"}; font-weight: bold; color: #000; margin-bottom: ${isLabel ? "2mm" : "5mm"}; }
           .designation { font-size: ${isLabel ? "11pt" : "16pt"}; color: #444; margin-bottom: 2mm; }
@@ -1428,10 +1488,18 @@ export default function PrintStationKioskPage() {
             )}
           </div>
           <div className="text-muted-foreground">
-            Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">ESC</kbd> to reset
+            Tap <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">ESC</kbd> to reset
           </div>
         </div>
       </footer>
+
+      {/* Hidden iframe for printing (iPad compatible) */}
+      <iframe
+        ref={printFrameRef}
+        className="hidden"
+        title="Print Frame"
+        style={{ position: "absolute", width: 0, height: 0, border: "none" }}
+      />
     </div>
   )
 }

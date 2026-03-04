@@ -41,6 +41,20 @@ import {
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
+type ScoringCriterion = {
+  label: string
+  description: string
+  max_score: number
+}
+
+type CategoryData = {
+  id: string
+  name: string
+  scoring_criteria: ScoringCriterion[] | null
+  is_award_category: boolean
+  award_name: string | null
+}
+
 type AbstractData = {
   id: string
   abstract_number: string
@@ -56,7 +70,7 @@ type AbstractData = {
   file_url: string | null
   file_name: string | null
   submitted_at: string
-  category?: { id: string; name: string }
+  category?: { id: string; name: string; scoring_criteria?: ScoringCriterion[] | null }
   authors?: { id: string; name: string; email?: string; affiliation?: string; author_order: number; is_presenting: boolean }[]
   reviews?: {
     id: string
@@ -67,6 +81,10 @@ type AbstractData = {
     score_relevance: number
     score_clarity: number
     overall_score: number
+    scores: Record<string, number> | null
+    total_score: number | null
+    max_possible_score: number | null
+    review_type: string
     recommendation: string
     comments_to_author: string
     reviewed_at: string
@@ -87,7 +105,9 @@ type PortalData = {
     blind_review: boolean
     review_enabled: boolean
     reviewers_per_abstract: number
+    restrict_reviewers: boolean
   }
+  categories: CategoryData[]
   abstracts: AbstractData[]
 }
 
@@ -109,6 +129,8 @@ export default function AbstractReviewerPortal() {
   const [reviewerName, setReviewerName] = useState("")
   const [reviewerEmail, setReviewerEmail] = useState("")
   const [hasEntered, setHasEntered] = useState(false)
+  const [validating, setValidating] = useState(false)
+  const [validationError, setValidationError] = useState("")
 
   // Portal state
   const [search, setSearch] = useState("")
@@ -126,32 +148,61 @@ export default function AbstractReviewerPortal() {
     comments_to_author: "",
     comments_private: "",
   })
+  const [dynamicScores, setDynamicScores] = useState<Record<string, number>>({})
 
-  // Fetch data
+  // Fetch data — only after entry, pass email for server-side filtering
   const { data: portalData, isLoading, error } = useQuery({
-    queryKey: ["abstract-reviewer", eventId],
+    queryKey: ["abstract-reviewer", eventId, reviewerEmail],
     queryFn: async () => {
-      const res = await fetch(`/api/abstract-reviewer/${eventId}`)
+      const url = reviewerEmail
+        ? `/api/abstract-reviewer/${eventId}?email=${encodeURIComponent(reviewerEmail.trim())}`
+        : `/api/abstract-reviewer/${eventId}`
+      const res = await fetch(url)
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error || "Failed to load data")
       }
       return res.json() as Promise<PortalData>
     },
+    enabled: hasEntered,
   })
+
+  // Helper: get scoring criteria for a given abstract
+  const getCriteriaForAbstract = (abstract: AbstractData | null): ScoringCriterion[] | null => {
+    if (!abstract?.category?.scoring_criteria?.length) return null
+    return abstract.category.scoring_criteria
+  }
 
   // Submit review mutation
   const submitReview = useMutation({
     mutationFn: async (abstractId: string) => {
+      const abstract = abstracts.find(a => a.id === abstractId)
+      const criteria = getCriteriaForAbstract(abstract || null)
+      const useDynamic = criteria && criteria.length > 0
+
+      const payload: Record<string, any> = {
+        abstract_id: abstractId,
+        reviewer_name: reviewerName,
+        reviewer_email: reviewerEmail,
+        recommendation: reviewScores.recommendation,
+        comments_to_author: reviewScores.comments_to_author,
+        comments_private: reviewScores.comments_private,
+      }
+
+      if (useDynamic) {
+        payload.scores = dynamicScores
+        payload.max_possible_score = criteria.reduce((s, c) => s + c.max_score, 0)
+      } else {
+        payload.score_originality = reviewScores.score_originality
+        payload.score_methodology = reviewScores.score_methodology
+        payload.score_relevance = reviewScores.score_relevance
+        payload.score_clarity = reviewScores.score_clarity
+      }
+
       const res = await fetch(`/api/abstract-reviewer/${eventId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          abstract_id: abstractId,
-          reviewer_name: reviewerName,
-          reviewer_email: reviewerEmail,
-          ...reviewScores,
-        }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) {
         const err = await res.json()
@@ -172,6 +223,7 @@ export default function AbstractReviewerPortal() {
         comments_to_author: "",
         comments_private: "",
       })
+      setDynamicScores({})
     },
     onError: (error: Error) => {
       toast.error(error.message)
@@ -249,15 +301,38 @@ export default function AbstractReviewerPortal() {
     return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
   }
 
-  const overallScore = (
+  const legacyOverallScore = (
     (reviewScores.score_originality +
       reviewScores.score_methodology +
       reviewScores.score_relevance +
       reviewScores.score_clarity) / 4
   ).toFixed(1)
 
-  // Loading state
-  if (isLoading) {
+  const getDynamicTotal = () => {
+    return Object.values(dynamicScores).reduce((a, b) => a + b, 0)
+  }
+
+  const getDynamicMax = (criteria: ScoringCriterion[]) => {
+    return criteria.reduce((s, c) => s + c.max_score, 0)
+  }
+
+  // We need event info for the entry screen — fetch it separately (lightweight)
+  const { data: eventInfo } = useQuery({
+    queryKey: ["abstract-reviewer-event", eventId],
+    queryFn: async () => {
+      const res = await fetch(`/api/abstract-reviewer/${eventId}`)
+      if (!res.ok) return null
+      const data = await res.json()
+      return { event: data.event, settings: data.settings }
+    },
+  })
+
+  // Use either the full portal data or the lightweight event info
+  const eventForDisplay = portalData?.event || eventInfo?.event
+  const settingsForDisplay = portalData?.settings || eventInfo?.settings
+
+  // Loading state (only show after entry)
+  if (hasEntered && isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -268,8 +343,8 @@ export default function AbstractReviewerPortal() {
     )
   }
 
-  // Error state
-  if (error || !event) {
+  // Error state (only show after entry)
+  if (hasEntered && (error || !portalData?.event)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md mx-auto p-6">
@@ -293,10 +368,10 @@ export default function AbstractReviewerPortal() {
               <ClipboardCheck className="h-7 w-7 text-primary" />
             </div>
             <h1 className="text-2xl font-bold">Abstract Reviewer Portal</h1>
-            <p className="text-muted-foreground mt-2">{event.name}</p>
-            {event.start_date && (
+            <p className="text-muted-foreground mt-2">{eventForDisplay?.name || "Loading..."}</p>
+            {eventForDisplay?.start_date && (
               <p className="text-sm text-muted-foreground">
-                {formatDate(event.start_date)} - {formatDate(event.end_date)}
+                {formatDate(eventForDisplay.start_date)} - {formatDate(eventForDisplay.end_date)}
               </p>
             )}
           </div>
@@ -306,7 +381,7 @@ export default function AbstractReviewerPortal() {
               <label className="text-sm font-medium">Your Name</label>
               <Input
                 value={reviewerName}
-                onChange={(e) => setReviewerName(e.target.value)}
+                onChange={(e) => { setReviewerName(e.target.value); setValidationError("") }}
                 placeholder="Enter your full name"
                 className="mt-1"
               />
@@ -316,16 +391,51 @@ export default function AbstractReviewerPortal() {
               <Input
                 type="email"
                 value={reviewerEmail}
-                onChange={(e) => setReviewerEmail(e.target.value)}
+                onChange={(e) => { setReviewerEmail(e.target.value); setValidationError("") }}
                 placeholder="Enter your email"
                 className="mt-1"
               />
             </div>
+            {validationError && (
+              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{validationError}</span>
+              </div>
+            )}
             <Button
-              onClick={() => setHasEntered(true)}
-              disabled={!reviewerName.trim() || !reviewerEmail.trim()}
+              onClick={async () => {
+                if (settingsForDisplay?.restrict_reviewers) {
+                  setValidating(true)
+                  setValidationError("")
+                  try {
+                    const res = await fetch(`/api/abstract-reviewers/${eventId}/validate`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email: reviewerEmail.trim() }),
+                    })
+                    const data = await res.json()
+                    if (!data.valid) {
+                      setValidationError("This email is not registered as a reviewer for this event. Please contact the organizers.")
+                      setValidating(false)
+                      return
+                    }
+                    // Pre-fill name from reviewer record
+                    if (data.reviewer?.name) {
+                      setReviewerName(data.reviewer.name)
+                    }
+                  } catch {
+                    setValidationError("Failed to validate. Please try again.")
+                    setValidating(false)
+                    return
+                  }
+                  setValidating(false)
+                }
+                setHasEntered(true)
+              }}
+              disabled={!reviewerName.trim() || !reviewerEmail.trim() || validating}
               className="w-full"
             >
+              {validating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Enter Portal
             </Button>
           </div>
@@ -351,13 +461,13 @@ export default function AbstractReviewerPortal() {
                 <h1 className="text-xl font-bold">Abstract Reviewer Portal</h1>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                {event.name} {event.city ? `\u2022 ${event.city}` : ""}
+                {event?.name} {event?.city ? `\u2022 ${event.city}` : ""}
               </p>
             </div>
             <div className="flex items-center gap-3">
               <Badge variant="outline" className="text-sm">
                 <Calendar className="h-3.5 w-3.5 mr-1" />
-                {formatDate(event.start_date)} - {formatDate(event.end_date)}
+                {event?.start_date && formatDate(event.start_date)} - {event?.end_date && formatDate(event.end_date)}
               </Badge>
               <Badge variant="secondary" className="text-sm">
                 <User className="h-3.5 w-3.5 mr-1" />
@@ -466,7 +576,18 @@ export default function AbstractReviewerPortal() {
               return (
                 <button
                   key={abstract.id}
-                  onClick={() => setSelectedAbstract(abstract)}
+                  onClick={() => {
+                    setSelectedAbstract(abstract)
+                    // Initialize dynamic scores if the category has scoring criteria
+                    const criteria = getCriteriaForAbstract(abstract)
+                    if (criteria && criteria.length > 0) {
+                      const initial: Record<string, number> = {}
+                      criteria.forEach(c => { initial[c.label] = 0 })
+                      setDynamicScores(initial)
+                    } else {
+                      setDynamicScores({})
+                    }
+                  }}
                   className={cn(
                     "w-full text-left bg-white rounded-lg border p-4 transition-all hover:shadow-md hover:border-primary/30",
                     reviewed && "border-green-200 bg-green-50/30"
@@ -656,7 +777,11 @@ export default function AbstractReviewerPortal() {
                                   {review.recommendation}
                                 </span>
                               )}
-                              {review.overall_score && (
+                              {review.total_score != null && review.max_possible_score ? (
+                                <span className="text-sm font-bold">
+                                  {review.total_score}/{review.max_possible_score}
+                                </span>
+                              ) : review.overall_score ? (
                                 <span className={cn(
                                   "w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold",
                                   review.overall_score >= 7 ? "bg-green-100 text-green-700" :
@@ -665,9 +790,19 @@ export default function AbstractReviewerPortal() {
                                 )}>
                                   {review.overall_score.toFixed(1)}
                                 </span>
-                              )}
+                              ) : null}
                             </div>
                           </div>
+                          {review.scores && Object.keys(review.scores).length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                              {Object.entries(review.scores).map(([label, score]) => (
+                                <div key={label} className="text-center p-1.5 bg-background rounded">
+                                  <p className="text-muted-foreground truncate">{label}</p>
+                                  <p className="font-semibold">{score as number}</p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
                           <div className="grid grid-cols-4 gap-2 text-xs">
                             {[
                               { label: "Originality", score: review.score_originality },
@@ -681,6 +816,7 @@ export default function AbstractReviewerPortal() {
                               </div>
                             ))}
                           </div>
+                          )}
                           {review.comments_to_author && (
                             <p className="text-sm text-muted-foreground mt-2 italic">
                               &ldquo;{review.comments_to_author}&rdquo;
@@ -706,56 +842,114 @@ export default function AbstractReviewerPortal() {
                     </h3>
 
                     {/* Scoring Criteria */}
-                    <div className="space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                        Rate each criterion from 1 (Poor) to 10 (Excellent)
-                      </p>
-
-                      {[
-                        { key: "score_originality", label: "Originality", desc: "Novelty and innovation of the research" },
-                        { key: "score_methodology", label: "Methodology", desc: "Quality and rigor of methods used" },
-                        { key: "score_relevance", label: "Relevance", desc: "Importance and relevance to the field" },
-                        { key: "score_clarity", label: "Clarity", desc: "Quality of writing and presentation" },
-                      ].map((criterion) => (
-                        <div key={criterion.key} className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <label className="font-medium">{criterion.label}</label>
-                              <p className="text-xs text-muted-foreground">{criterion.desc}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="range"
-                                min="1"
-                                max="10"
-                                value={reviewScores[criterion.key as keyof typeof reviewScores] as number}
-                                onChange={(e) =>
-                                  setReviewScores({
-                                    ...reviewScores,
-                                    [criterion.key]: parseInt(e.target.value),
-                                  })
-                                }
-                                className="w-32 accent-primary"
-                              />
-                              <span className={cn(
-                                "w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm",
-                                (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 7 ? "bg-green-100 text-green-700" :
-                                (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 5 ? "bg-yellow-100 text-yellow-700" :
-                                "bg-red-100 text-red-700"
-                              )}>
-                                {reviewScores[criterion.key as keyof typeof reviewScores]}
-                              </span>
+                    {(() => {
+                      const criteria = getCriteriaForAbstract(selectedAbstract)
+                      if (criteria && criteria.length > 0) {
+                        // Dynamic scoring based on category criteria
+                        const maxTotal = getDynamicMax(criteria)
+                        const currentTotal = getDynamicTotal()
+                        return (
+                          <div className="space-y-4">
+                            <p className="text-sm text-muted-foreground">
+                              Rate each criterion using the slider (0 to max score)
+                            </p>
+                            {criteria.map((criterion) => {
+                              const score = dynamicScores[criterion.label] ?? 0
+                              return (
+                                <div key={criterion.label} className="space-y-2">
+                                  <div className="flex justify-between items-center">
+                                    <div>
+                                      <label className="font-medium">{criterion.label}</label>
+                                      <p className="text-xs text-muted-foreground">{criterion.description}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="range"
+                                        min="0"
+                                        max={criterion.max_score}
+                                        value={score}
+                                        onChange={(e) =>
+                                          setDynamicScores({
+                                            ...dynamicScores,
+                                            [criterion.label]: parseInt(e.target.value),
+                                          })
+                                        }
+                                        className="w-32 accent-primary"
+                                      />
+                                      <span className={cn(
+                                        "w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm",
+                                        score >= criterion.max_score * 0.7 ? "bg-green-100 text-green-700" :
+                                        score >= criterion.max_score * 0.5 ? "bg-yellow-100 text-yellow-700" :
+                                        "bg-red-100 text-red-700"
+                                      )}>
+                                        {score}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">/{criterion.max_score}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            {/* Total Score */}
+                            <div className="p-4 bg-primary/5 rounded-lg flex items-center justify-between">
+                              <span className="font-medium">Total Score</span>
+                              <span className="text-2xl font-bold text-primary">{currentTotal} / {maxTotal}</span>
                             </div>
                           </div>
+                        )
+                      }
+                      // Fallback: Legacy 4 fixed criteria
+                      return (
+                        <div className="space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Rate each criterion from 1 (Poor) to 10 (Excellent)
+                          </p>
+                          {[
+                            { key: "score_originality", label: "Originality", desc: "Novelty and innovation of the research" },
+                            { key: "score_methodology", label: "Methodology", desc: "Quality and rigor of methods used" },
+                            { key: "score_relevance", label: "Relevance", desc: "Importance and relevance to the field" },
+                            { key: "score_clarity", label: "Clarity", desc: "Quality of writing and presentation" },
+                          ].map((criterion) => (
+                            <div key={criterion.key} className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <label className="font-medium">{criterion.label}</label>
+                                  <p className="text-xs text-muted-foreground">{criterion.desc}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="range"
+                                    min="1"
+                                    max="10"
+                                    value={reviewScores[criterion.key as keyof typeof reviewScores] as number}
+                                    onChange={(e) =>
+                                      setReviewScores({
+                                        ...reviewScores,
+                                        [criterion.key]: parseInt(e.target.value),
+                                      })
+                                    }
+                                    className="w-32 accent-primary"
+                                  />
+                                  <span className={cn(
+                                    "w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm",
+                                    (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 7 ? "bg-green-100 text-green-700" :
+                                    (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 5 ? "bg-yellow-100 text-yellow-700" :
+                                    "bg-red-100 text-red-700"
+                                  )}>
+                                    {reviewScores[criterion.key as keyof typeof reviewScores]}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          {/* Overall Score */}
+                          <div className="p-4 bg-primary/5 rounded-lg flex items-center justify-between">
+                            <span className="font-medium">Overall Score (auto-calculated)</span>
+                            <span className="text-2xl font-bold text-primary">{legacyOverallScore}</span>
+                          </div>
                         </div>
-                      ))}
-
-                      {/* Overall Score */}
-                      <div className="p-4 bg-primary/5 rounded-lg flex items-center justify-between">
-                        <span className="font-medium">Overall Score (auto-calculated)</span>
-                        <span className="text-2xl font-bold text-primary">{overallScore}</span>
-                      </div>
-                    </div>
+                      )
+                    })()}
 
                     {/* Recommendation */}
                     <div className="mt-4">

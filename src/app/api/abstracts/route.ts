@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         *,
         category:abstract_categories(id, name),
         authors:abstract_authors(id, name, email, affiliation, author_order, is_presenting),
-        reviews:abstract_reviews(id, overall_score, recommendation, reviewer_name, reviewed_at)
+        reviews:abstract_reviews(id, overall_score, total_score, max_possible_score, review_type, recommendation, reviewer_name, reviewed_at)
       `)
       .eq("event_id", eventId)
       .order("submitted_at", { ascending: false })

@@ -17,6 +17,16 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
   Calendar,
   Presentation,
   Users,
@@ -33,6 +43,7 @@ import {
   UserCheck,
   AlertTriangle,
   Eye,
+  ArrowLeftRight,
 } from "lucide-react"
 import { toast } from "sonner"
 import { HelpTooltip } from "@/components/ui/help-tooltip"
@@ -91,6 +102,10 @@ export default function ProgramDashboardPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
   const [syncing, setSyncing] = useState(false)
+  const [swapDialogOpen, setSwapDialogOpen] = useState(false)
+  const [swapAssignment, setSwapAssignment] = useState<FacultyAssignment | null>(null)
+  const [swapForm, setSwapForm] = useState({ name: "", email: "", phone: "", sendInvitation: false })
+  const [swapping, setSwapping] = useState(false)
 
   // Fetch sessions
   const { data: sessions, isLoading: sessionsLoading } = useQuery({
@@ -288,6 +303,46 @@ export default function ProgramDashboardPage() {
       toast.error("Error syncing assignments")
     } finally {
       setSyncing(false)
+    }
+  }
+
+  const openSwapDialog = (assignment: FacultyAssignment) => {
+    setSwapAssignment(assignment)
+    setSwapForm({ name: "", email: "", phone: "", sendInvitation: false })
+    setSwapDialogOpen(true)
+  }
+
+  const handleSwap = async () => {
+    if (!swapAssignment || !swapForm.name.trim()) {
+      toast.error("New faculty name is required")
+      return
+    }
+    setSwapping(true)
+    try {
+      const response = await fetch(`/api/events/${eventId}/program/swap-speaker`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignment_id: swapAssignment.id,
+          new_faculty_name: swapForm.name,
+          new_faculty_email: swapForm.email || null,
+          new_faculty_phone: swapForm.phone || null,
+          send_invitation: swapForm.sendInvitation,
+        }),
+      })
+      if (response.ok) {
+        const result = await response.json()
+        toast.success(result.summary || "Faculty replaced successfully")
+        queryClient.invalidateQueries({ queryKey: ["dashboard-assignments", eventId] })
+        setSwapDialogOpen(false)
+      } else {
+        const err = await response.json()
+        toast.error(err.error || "Failed to replace faculty")
+      }
+    } catch (_error) {
+      toast.error("Error replacing faculty")
+    } finally {
+      setSwapping(false)
     }
   }
 
@@ -699,6 +754,15 @@ export default function ProgramDashboardPage() {
                                       Remind
                                     </Button>
                                   )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={(e) => { e.stopPropagation(); openSwapDialog(assignment) }}
+                                  >
+                                    <ArrowLeftRight className="h-3 w-3 mr-1" />
+                                    Change
+                                  </Button>
                                   <Button variant="ghost" size="sm" className="h-7 text-xs">
                                     <Eye className="h-3 w-3" />
                                   </Button>
@@ -755,6 +819,73 @@ export default function ProgramDashboardPage() {
           <p className="text-xs text-muted-foreground">Import program data</p>
         </Link>
       </div>
+
+      {/* Swap Faculty Dialog */}
+      <Dialog open={swapDialogOpen} onOpenChange={setSwapDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Replace Faculty</DialogTitle>
+          </DialogHeader>
+          {swapAssignment && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                <p className="text-muted-foreground">Replacing</p>
+                <p className="font-medium">{swapAssignment.faculty_name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {swapAssignment.role} &middot; {swapAssignment.session_name}
+                </p>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="swap-name">New Faculty Name *</Label>
+                  <Input
+                    id="swap-name"
+                    placeholder="Dr. Full Name"
+                    value={swapForm.name}
+                    onChange={(e) => setSwapForm(f => ({ ...f, name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="swap-email">Email</Label>
+                  <Input
+                    id="swap-email"
+                    type="email"
+                    placeholder="email@example.com"
+                    value={swapForm.email}
+                    onChange={(e) => setSwapForm(f => ({ ...f, email: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="swap-phone">Phone</Label>
+                  <Input
+                    id="swap-phone"
+                    placeholder="+91 9876543210"
+                    value={swapForm.phone}
+                    onChange={(e) => setSwapForm(f => ({ ...f, phone: e.target.value }))}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="swap-invite"
+                    checked={swapForm.sendInvitation}
+                    onCheckedChange={(checked) => setSwapForm(f => ({ ...f, sendInvitation: !!checked }))}
+                  />
+                  <Label htmlFor="swap-invite" className="text-sm font-normal cursor-pointer">
+                    Send invitation email to new faculty
+                  </Label>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSwapDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSwap} disabled={swapping || !swapForm.name.trim()}>
+              {swapping && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Replace Faculty
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

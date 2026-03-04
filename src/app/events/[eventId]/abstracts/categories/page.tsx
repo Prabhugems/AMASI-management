@@ -61,6 +61,13 @@ const CATEGORY_TEMPLATES = {
           { text: "The abstract does not contain the name of my institution or co-authors", required: true },
           { text: "I understand that the decision of the judges is final", required: true },
         ],
+        scoring_criteria: [
+          { label: "Originality", description: "Novelty and innovation of the research", max_score: 10 },
+          { label: "Methodology", description: "Quality and rigor of methods used", max_score: 10 },
+          { label: "Results & Analysis", description: "Quality of results and data analysis", max_score: 10 },
+          { label: "Presentation", description: "Quality of oral presentation and slides", max_score: 10 },
+          { label: "Clinical Relevance", description: "Relevance to clinical practice", max_score: 10 },
+        ],
       },
       {
         name: "Best Institutional Video",
@@ -78,6 +85,13 @@ const CATEGORY_TEMPLATES = {
           { text: "The video is original and produced by my institution", required: true },
           { text: "I understand that the decision of the judges is final", required: true },
         ],
+        scoring_criteria: [
+          { label: "Video Quality", description: "Technical quality of video production", max_score: 10 },
+          { label: "Surgical Technique", description: "Demonstration of surgical skill and technique", max_score: 10 },
+          { label: "Educational Value", description: "Teaching and learning value of the video", max_score: 10 },
+          { label: "Narration & Editing", description: "Quality of narration and video editing", max_score: 10 },
+          { label: "Clinical Relevance", description: "Relevance to clinical practice", max_score: 10 },
+        ],
       },
       {
         name: "Best Faculty Video",
@@ -93,6 +107,13 @@ const CATEGORY_TEMPLATES = {
           { text: "I am the primary author and will present this video in person", required: true },
           { text: "No proxy presentation will be done", required: true },
           { text: "I understand that the decision of the judges is final", required: true },
+        ],
+        scoring_criteria: [
+          { label: "Video Quality", description: "Technical quality of video production", max_score: 10 },
+          { label: "Surgical Technique", description: "Demonstration of surgical skill and technique", max_score: 10 },
+          { label: "Educational Value", description: "Teaching and learning value of the video", max_score: 10 },
+          { label: "Narration & Editing", description: "Quality of narration and video editing", max_score: 10 },
+          { label: "Clinical Relevance", description: "Relevance to clinical practice", max_score: 10 },
         ],
       },
       {
@@ -113,6 +134,13 @@ const CATEGORY_TEMPLATES = {
           { text: "The abstract does not contain the name of my institution or co-authors", required: true },
           { text: "I understand that the decision of the judges is final", required: true },
         ],
+        scoring_criteria: [
+          { label: "Originality", description: "Novelty and innovation of the research", max_score: 10 },
+          { label: "Methodology", description: "Quality and rigor of methods used", max_score: 10 },
+          { label: "Results & Analysis", description: "Quality of results and data analysis", max_score: 10 },
+          { label: "Presentation", description: "Quality of oral presentation and slides", max_score: 10 },
+          { label: "Clinical Relevance", description: "Relevance to clinical practice", max_score: 10 },
+        ],
       },
       {
         name: "Best Poster Award",
@@ -130,6 +158,18 @@ const CATEGORY_TEMPLATES = {
           { text: "The abstract does not contain the name of my institution or co-authors", required: true },
           { text: "I understand that the decision of the judges is final", required: true },
         ],
+        scoring_criteria: [
+          { label: "Title & Introduction", description: "Clarity of title and introduction", max_score: 5 },
+          { label: "Objectives", description: "Clearly stated objectives", max_score: 5 },
+          { label: "Methodology", description: "Appropriateness of methods", max_score: 5 },
+          { label: "Results", description: "Quality of results presentation", max_score: 5 },
+          { label: "Discussion", description: "Quality of discussion and interpretation", max_score: 5 },
+          { label: "Conclusion", description: "Validity and clarity of conclusions", max_score: 5 },
+          { label: "Poster Design", description: "Visual layout and design quality", max_score: 5 },
+          { label: "Figures & Tables", description: "Quality of figures and tables", max_score: 5 },
+          { label: "References", description: "Appropriate and relevant references", max_score: 5 },
+          { label: "Overall Impression", description: "Overall quality and impact", max_score: 5 },
+        ],
       },
       {
         name: "Free Paper / Video / Poster",
@@ -143,6 +183,7 @@ const CATEGORY_TEMPLATES = {
         declarations: [
           { text: "I am the primary author and will present in person or have arranged a co-author to present", required: true },
         ],
+        scoring_criteria: [],
       },
     ],
   },
@@ -181,11 +222,18 @@ interface Declaration {
   required: boolean
 }
 
+interface ScoringCriterion {
+  label: string
+  description: string
+  max_score: number
+}
+
 interface Category {
   id: string
   event_id: string
   name: string
   description: string | null
+  submission_instructions: string | null
   max_submissions: number | null
   sort_order: number
   is_active: boolean
@@ -197,6 +245,7 @@ interface Category {
   eligibility_rules: Record<string, any>
   award_name: string | null
   is_award_category: boolean
+  scoring_criteria: ScoringCriterion[]
 }
 
 export default function CategoriesPage() {
@@ -210,6 +259,7 @@ export default function CategoriesPage() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    submission_instructions: "",
     max_submissions: "",
     is_active: true,
     submission_type: "paper",
@@ -217,6 +267,7 @@ export default function CategoriesPage() {
     required_file: false,
     is_award_category: false,
     award_name: "",
+    scoring_criteria: [] as ScoringCriterion[],
   })
   const [deleteConfirm, setDeleteConfirm] = useState<Category | null>(null)
   const [loadingTemplate, setLoadingTemplate] = useState(false)
@@ -242,6 +293,7 @@ export default function CategoriesPage() {
           event_id: eventId,
           max_submissions: data.max_submissions ? parseInt(data.max_submissions) : null,
           allowed_file_types: data.allowed_file_types.split(",").map((s: string) => s.trim()).filter(Boolean),
+          scoring_criteria: data.scoring_criteria || [],
         }),
       })
       if (!res.ok) {
@@ -282,6 +334,7 @@ export default function CategoriesPage() {
     setFormData({
       name: "",
       description: "",
+      submission_instructions: "",
       max_submissions: "",
       is_active: true,
       submission_type: "paper",
@@ -289,6 +342,7 @@ export default function CategoriesPage() {
       required_file: false,
       is_award_category: false,
       award_name: "",
+      scoring_criteria: [],
     })
   }
 
@@ -297,6 +351,7 @@ export default function CategoriesPage() {
     setFormData({
       name: category.name,
       description: category.description || "",
+      submission_instructions: category.submission_instructions || "",
       max_submissions: category.max_submissions?.toString() || "",
       is_active: category.is_active,
       submission_type: category.submission_type || "paper",
@@ -304,6 +359,7 @@ export default function CategoriesPage() {
       required_file: category.required_file || false,
       is_award_category: category.is_award_category || false,
       award_name: category.award_name || "",
+      scoring_criteria: (category.scoring_criteria || []) as ScoringCriterion[],
     })
     setShowDialog(true)
   }
@@ -341,6 +397,7 @@ export default function CategoriesPage() {
               eligibility_rules: (cat as any).eligibility_rules || {},
               award_name: (cat as any).award_name || null,
               is_award_category: (cat as any).is_award_category ?? false,
+              scoring_criteria: (cat as any).scoring_criteria || [],
             }),
           })
           if (!res.ok) {
@@ -437,6 +494,7 @@ export default function CategoriesPage() {
                 <TableHead>Description</TableHead>
                 <TableHead className="text-center">Type</TableHead>
                 <TableHead className="text-center">Award</TableHead>
+                <TableHead className="text-center">Scoring</TableHead>
                 <TableHead className="text-center">Status</TableHead>
                 <TableHead className="w-16"></TableHead>
               </TableRow>
@@ -466,6 +524,15 @@ export default function CategoriesPage() {
                       </span>
                     ) : (
                       <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {(category.scoring_criteria as ScoringCriterion[] | undefined)?.length ? (
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                        {(category.scoring_criteria as ScoringCriterion[]).length} criteria / {(category.scoring_criteria as ScoringCriterion[]).reduce((sum, c) => sum + c.max_score, 0)} pts
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">Default</span>
                     )}
                   </TableCell>
                   <TableCell className="text-center">
@@ -510,7 +577,7 @@ export default function CategoriesPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingCategory ? "Edit Category" : "Create Category"}
@@ -533,9 +600,22 @@ export default function CategoriesPage() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Brief description of this category..."
-                rows={3}
+                rows={2}
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Submission Instructions</label>
+              <textarea
+                value={formData.submission_instructions}
+                onChange={(e) => setFormData({ ...formData, submission_instructions: e.target.value })}
+                placeholder="Detailed instructions shown to submitters when they select this category..."
+                rows={4}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                These instructions will be displayed on the submission form when this category is selected
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -626,6 +706,100 @@ export default function CategoriesPage() {
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
               />
             </div>
+
+            {/* Scoring Criteria Editor */}
+            {formData.is_award_category && (
+              <div className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Scoring Criteria</p>
+                    <p className="text-xs text-muted-foreground">
+                      Define criteria judges will use to score submissions
+                      {formData.scoring_criteria.length > 0 && (
+                        <span className="ml-1 font-medium text-purple-600">
+                          ({formData.scoring_criteria.length} criteria, {formData.scoring_criteria.reduce((s, c) => s + c.max_score, 0)} pts total)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setFormData({
+                      ...formData,
+                      scoring_criteria: [...formData.scoring_criteria, { label: "", description: "", max_score: 10 }],
+                    })}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Add
+                  </Button>
+                </div>
+
+                {formData.scoring_criteria.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    No scoring criteria defined. Default 4-criteria (originality, methodology, relevance, clarity) will be used.
+                  </p>
+                )}
+
+                {formData.scoring_criteria.map((criterion, index) => (
+                  <div key={index} className="flex items-start gap-2 p-2 bg-muted/50 rounded-md">
+                    <div className="flex-1 space-y-1.5">
+                      <Input
+                        value={criterion.label}
+                        onChange={(e) => {
+                          const updated = [...formData.scoring_criteria]
+                          updated[index] = { ...updated[index], label: e.target.value }
+                          setFormData({ ...formData, scoring_criteria: updated })
+                        }}
+                        placeholder="Criterion name (e.g. Originality)"
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        value={criterion.description}
+                        onChange={(e) => {
+                          const updated = [...formData.scoring_criteria]
+                          updated[index] = { ...updated[index], description: e.target.value }
+                          setFormData({ ...formData, scoring_criteria: updated })
+                        }}
+                        placeholder="Brief description..."
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="text-center">
+                        <label className="text-[10px] text-muted-foreground">Max</label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={criterion.max_score}
+                          onChange={(e) => {
+                            const updated = [...formData.scoring_criteria]
+                            updated[index] = { ...updated[index], max_score: parseInt(e.target.value) || 1 }
+                            setFormData({ ...formData, scoring_criteria: updated })
+                          }}
+                          className="h-8 w-14 text-sm text-center"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => {
+                          const updated = formData.scoring_criteria.filter((_, i) => i !== index)
+                          setFormData({ ...formData, scoring_criteria: updated })
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 type="button"

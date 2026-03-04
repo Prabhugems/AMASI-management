@@ -36,11 +36,12 @@ export async function GET(
       .from("abstracts")
       .select(`
         *,
-        category:abstract_categories(id, name, description),
+        category:abstract_categories(id, name, description, scoring_criteria, is_award_category, award_name),
         authors:abstract_authors(id, name, email, affiliation, author_order, is_presenting),
         reviews:abstract_reviews(
           id, reviewer_id, reviewer_name, reviewer_email,
           score_originality, score_methodology, score_relevance, score_clarity, overall_score,
+          scores, total_score, max_possible_score, review_type,
           recommendation, comments_to_author, comments_private, reviewed_at
         ),
         registration:registrations(id, registration_number, attendee_name)
