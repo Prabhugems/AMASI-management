@@ -802,7 +802,7 @@ export default function DelegatePortalPage() {
     show_program_schedule: dp?.show_program_schedule !== false,
     show_addons: dp?.show_addons !== false,
     whatsapp_group_url: dp?.whatsapp_group_url || event?.settings?.whatsapp_group_url || "",
-    custom_links: dp?.custom_links || [],
+    custom_links: Array.isArray(dp?.custom_links) ? dp.custom_links : [],
   }
 
   // Auto-migrate: if no delegate_portal but flat course_materials_url exists, show it as a custom link
@@ -1464,8 +1464,10 @@ function AbstractSubmissions({
         const abstractsRes = await fetch(
           `/api/abstracts?event_id=${eventId}&email=${encodeURIComponent(email.toLowerCase())}`
         )
-        const abstractsData = await abstractsRes.json()
-        setAbstracts(abstractsData || [])
+        if (abstractsRes.ok) {
+          const abstractsData = await abstractsRes.json()
+          setAbstracts(Array.isArray(abstractsData) ? abstractsData : [])
+        }
       } catch (error) {
         console.error("Failed to fetch abstracts:", error)
       } finally {
@@ -1654,15 +1656,17 @@ function EventFeedbackForms({
       const res = await fetch(
         `/api/forms/public?event_id=${eventId}&email=${encodeURIComponent(email.toLowerCase())}`
       )
-      const data = await res.json()
-      const formsList = data.forms || []
-      setForms(formsList)
+      if (res.ok) {
+        const data = await res.json()
+        const formsList = Array.isArray(data.forms) ? data.forms : []
+        setForms(formsList)
 
-      // Check if any unsubmitted form gates the certificate
-      const hasGatingForm = formsList.some(
-        (f: any) => f.release_certificate_on_submission && !f.submitted
-      )
-      onCertGateChange(hasGatingForm)
+        // Check if any unsubmitted form gates the certificate
+        const hasGatingForm = formsList.some(
+          (f: any) => f.release_certificate_on_submission && !f.submitted
+        )
+        onCertGateChange(hasGatingForm)
+      }
     } catch (error) {
       console.error("Failed to fetch feedback forms:", error)
     } finally {
