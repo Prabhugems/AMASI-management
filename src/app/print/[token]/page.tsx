@@ -621,9 +621,9 @@ export default function PrintStationKioskPage() {
   }
 
   // Render a single badge element to HTML
-  const renderElementToHtml = (element: any, registration: any, pageRotation: number = 0): string => {
+  const renderElementToHtml = (element: any, registration: any): string => {
     const content = replacePlaceholders(element.content || "", registration)
-    const rotation = (element.rotation || 0) + pageRotation
+    const rotation = element.rotation || 0
     const opacity = (element.opacity ?? 100) / 100
 
     const baseStyle = `
@@ -756,7 +756,7 @@ export default function PrintStationKioskPage() {
 
       // Sort elements by zIndex
       const sortedElements = [...elements].sort((a: any, b: any) => (a.zIndex || 0) - (b.zIndex || 0))
-      const elementsHtml = sortedElements.map((el: any) => renderElementToHtml(el, registration, rotation)).join("\n")
+      const elementsHtml = sortedElements.map((el: any) => renderElementToHtml(el, registration)).join("\n")
 
       return `
         <!DOCTYPE html>
@@ -788,7 +788,7 @@ export default function PrintStationKioskPage() {
               height: ${dimensions.height};
               background-color: ${bgColor};
               overflow: hidden;
-              /* rotation applied per-element for overlay alignment */
+              ${rotation ? `transform: rotate(${rotation}deg); transform-origin: center center;` : ""}
             }
             @media print {
               html, body {
