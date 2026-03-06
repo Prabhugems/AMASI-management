@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
 
     // Enrich reviewers with membership/faculty info
     const enriched = reviewers.map((r: any) => {
-      const member = memberMap.get(r.email.toLowerCase())
+      const member: any = memberMap.get(r.email.toLowerCase())
       const isFaculty = facultyMap.has(r.email.toLowerCase())
       return {
         ...r,
