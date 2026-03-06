@@ -40,6 +40,19 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { CSVImportDynamic } from "@/components/ui/csv-import-dynamic"
+import { Checkbox } from "@/components/ui/checkbox"
+
+type PoolReviewer = {
+  id: string
+  name: string
+  email: string
+  phone: string | null
+  institution: string | null
+  city: string | null
+  specialty: string | null
+  years_of_experience: string | null
+  status: string
+}
 
 type Reviewer = {
   id: string
@@ -80,6 +93,9 @@ export default function ReviewersPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [showImport, setShowImport] = useState(false)
   const [showAddDialog, setShowAddDialog] = useState(false)
+  const [addMode, setAddMode] = useState<"pool" | "manual">("pool")
+  const [poolSearch, setPoolSearch] = useState("")
+  const [selectedFromPool, setSelectedFromPool] = useState<string[]>([])
   const [editingReviewer, setEditingReviewer] = useState<Reviewer | null>(null)
   const [editForm, setEditForm] = useState({
     name: "",
@@ -112,6 +128,31 @@ export default function ReviewersPage() {
       return res.json()
     },
   })
+
+  // Fetch global reviewers pool
+  const { data: poolReviewers = [] } = useQuery({
+    queryKey: ["reviewers-pool"],
+    queryFn: async () => {
+      const res = await fetch("/api/reviewers-pool")
+      if (!res.ok) throw new Error("Failed to fetch pool")
+      return res.json() as Promise<PoolReviewer[]>
+    },
+  })
+
+  // Filter pool reviewers not already in event
+  const availableFromPool = useMemo(() => {
+    const eventEmails = new Set(reviewers.map(r => r.email.toLowerCase()))
+    return poolReviewers
+      .filter(p => p.status === "active" && !eventEmails.has(p.email.toLowerCase()))
+      .filter(p => {
+        if (!poolSearch) return true
+        const s = poolSearch.toLowerCase()
+        return p.name.toLowerCase().includes(s) ||
+          p.email.toLowerCase().includes(s) ||
+          (p.institution || "").toLowerCase().includes(s) ||
+          (p.specialty || "").toLowerCase().includes(s)
+      })
+  }, [poolReviewers, reviewers, poolSearch])
 
   // Toggle restrict_reviewers
   const toggleRestrict = useMutation({
@@ -242,7 +283,7 @@ export default function ReviewersPage() {
     onError: () => toast.error("Failed to update deadline"),
   })
 
-  // Add reviewer
+  // Add reviewer (manual or from pool)
   const addReviewer = useMutation({
     mutationFn: async (data: Record<string, any>) => {
       const res = await fetch(`/api/abstract-reviewers/${eventId}`, {
@@ -260,6 +301,80 @@ export default function ReviewersPage() {
       queryClient.invalidateQueries({ queryKey: ["abstract-reviewers", eventId] })
       toast.success("Reviewer added")
       setShowAddDialog(false)
+      setEditForm({
+        name: "", email: "", phone: "", institution: "", city: "",
+        specialty: "", years_of_experience: "", status: "active", notes: "",
+      })
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
+  // Add selected reviewers from pool
+  const addFromPool = useMutation({
+    mutationFn: async (poolIds: string[]) => {
+      const selected = poolReviewers.filter(p => poolIds.includes(p.id))
+      const toAdd = selected.map(p => ({
+        name: p.name,
+        email: p.email,
+        phone: p.phone,
+        institution: p.institution,
+        city: p.city,
+        specialty: p.specialty,
+        years_of_experience: p.years_of_experience,
+        status: "active",
+      }))
+      const res = await fetch(`/api/abstract-reviewers/${eventId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(toAdd),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Failed to add reviewers")
+      }
+      return res.json()
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["abstract-reviewers", eventId] })
+      toast.success(`Added ${result.success || selectedFromPool.length} reviewer(s)`)
+      setShowAddDialog(false)
+      setSelectedFromPool([])
+      setPoolSearch("")
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
+  // Add new reviewer to pool AND event
+  const addNewToPoolAndEvent = useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      // First add to global pool
+      const poolRes = await fetch("/api/reviewers-pool", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!poolRes.ok) {
+        const err = await poolRes.json()
+        throw new Error(err.error || "Failed to add to pool")
+      }
+      // Then add to event
+      const eventRes = await fetch(`/api/abstract-reviewers/${eventId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!eventRes.ok) {
+        const err = await eventRes.json()
+        throw new Error(err.error || "Failed to add to event")
+      }
+      return eventRes.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["abstract-reviewers", eventId] })
+      queryClient.invalidateQueries({ queryKey: ["reviewers-pool"] })
+      toast.success("Reviewer added to pool and event")
+      setShowAddDialog(false)
+      setAddMode("pool")
       setEditForm({
         name: "", email: "", phone: "", institution: "", city: "",
         specialty: "", years_of_experience: "", status: "active", notes: "",
@@ -612,96 +727,189 @@ export default function ReviewersPage() {
       )}
 
       {/* Add Reviewer Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent>
+      <Dialog open={showAddDialog} onOpenChange={(open) => {
+        setShowAddDialog(open)
+        if (!open) {
+          setAddMode("pool")
+          setPoolSearch("")
+          setSelectedFromPool([])
+        }
+      }}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add Reviewer</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Name *</label>
-              <Input
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                placeholder="Full name"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Email *</label>
-              <Input
-                type="email"
-                value={editForm.email}
-                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                placeholder="email@example.com"
-                className="mt-1"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Phone</label>
-                <Input
-                  value={editForm.phone}
-                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">City</label>
-                <Input
-                  value={editForm.city}
-                  onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Institution</label>
-              <Input
-                value={editForm.institution}
-                onChange={(e) => setEditForm({ ...editForm, institution: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Specialty</label>
-                <Input
-                  value={editForm.specialty}
-                  onChange={(e) => setEditForm({ ...editForm, specialty: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Years of Experience</label>
-                <Input
-                  value={editForm.years_of_experience}
-                  onChange={(e) => setEditForm({ ...editForm, years_of_experience: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Notes (Internal)</label>
-              <textarea
-                value={editForm.notes}
-                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                rows={2}
-                placeholder="Internal notes..."
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+
+          {/* Mode Toggle */}
+          <div className="flex gap-2 border-b pb-3">
             <Button
-              onClick={() => addReviewer.mutate(editForm)}
-              disabled={!editForm.name.trim() || !editForm.email.trim() || addReviewer.isPending}
+              variant={addMode === "pool" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setAddMode("pool")}
             >
-              {addReviewer.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Add Reviewer
+              <Users className="h-4 w-4 mr-2" />
+              Select from Pool
             </Button>
-          </DialogFooter>
+            <Button
+              variant={addMode === "manual" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setAddMode("manual")}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add New
+            </Button>
+          </div>
+
+          {addMode === "pool" ? (
+            <>
+              {/* Pool Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search reviewers by name, email, specialty..."
+                  value={poolSearch}
+                  onChange={(e) => setPoolSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              {/* Pool List */}
+              <div className="border rounded-lg max-h-[300px] overflow-auto">
+                {availableFromPool.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground">
+                    {poolSearch ? "No matching reviewers found" : "No available reviewers in pool"}
+                    <Button
+                      variant="link"
+                      className="block mx-auto mt-2"
+                      onClick={() => setAddMode("manual")}
+                    >
+                      Add new reviewer
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {availableFromPool.slice(0, 50).map((p) => (
+                      <label
+                        key={p.id}
+                        className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedFromPool.includes(p.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedFromPool(prev =>
+                              checked ? [...prev, p.id] : prev.filter(id => id !== p.id)
+                            )
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{p.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{p.email}</p>
+                        </div>
+                        <div className="text-right text-xs text-muted-foreground">
+                          {p.specialty && <p className="truncate max-w-[150px]">{p.specialty}</p>}
+                          {p.institution && <p className="truncate max-w-[150px]">{p.institution}</p>}
+                        </div>
+                      </label>
+                    ))}
+                    {availableFromPool.length > 50 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">
+                        Showing first 50 of {availableFromPool.length} - refine your search
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+                <Button
+                  onClick={() => addFromPool.mutate(selectedFromPool)}
+                  disabled={selectedFromPool.length === 0 || addFromPool.isPending}
+                >
+                  {addFromPool.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Add {selectedFromPool.length} Reviewer{selectedFromPool.length !== 1 ? "s" : ""}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              {/* Manual Add Form */}
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Add a new reviewer. They will be added to the global pool and this event.
+                  {!editForm.specialty && " A form will be sent to collect their specialty."}
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Name *</label>
+                    <Input
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      placeholder="Full name"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Email *</label>
+                    <Input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      placeholder="email@example.com"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Phone</label>
+                    <Input
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Institution</label>
+                    <Input
+                      value={editForm.institution}
+                      onChange={(e) => setEditForm({ ...editForm, institution: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">City</label>
+                    <Input
+                      value={editForm.city}
+                      onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Specialty</label>
+                    <Input
+                      value={editForm.specialty}
+                      onChange={(e) => setEditForm({ ...editForm, specialty: e.target.value })}
+                      placeholder="Leave empty to send form"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+                <Button
+                  onClick={() => addNewToPoolAndEvent.mutate(editForm)}
+                  disabled={!editForm.name.trim() || !editForm.email.trim() || addNewToPoolAndEvent.isPending}
+                >
+                  {addNewToPoolAndEvent.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Add Reviewer
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
