@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       .from("abstracts")
       .select(`
         *,
-        category:abstract_categories(id, name),
+        category:abstract_categories!category_id(id, name),
         authors:abstract_authors(id, name, email, affiliation, author_order, is_presenting),
         reviews:abstract_reviews(id, overall_score, total_score, max_possible_score, review_type, recommendation, reviewer_name, reviewed_at)
       `)
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error("Error fetching abstracts:", error)
       return NextResponse.json(
-        { error: "Failed to fetch abstracts", details: error.message, code: error.code },
+        { error: "Failed to fetch abstracts" },
         { status: 500 }
       )
     }
