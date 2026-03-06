@@ -540,7 +540,10 @@ export default function ReviewersPoolPage() {
           </DialogHeader>
           <CSVImportDynamic
             fields={csvFields}
-            onImport={(data) => importMutation.mutate(data)}
+            onImport={async (data) => {
+              const result = await importMutation.mutateAsync(data)
+              return { success: result.success || 0, failed: result.failed || 0, errors: [] }
+            }}
             isLoading={importMutation.isPending}
           />
         </DialogContent>
