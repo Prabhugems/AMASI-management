@@ -61,21 +61,11 @@ export async function POST(
       )
     }
 
-    // Check ticket availability
-    if (newTicket.status !== "active") {
-      return NextResponse.json(
-        { error: "New ticket is not available for sale" },
-        { status: 400 }
-      )
-    }
-
-    const availableQty = (newTicket.quantity_total || 0) - (newTicket.quantity_sold || 0)
-    if (availableQty < (currentReg.quantity || 1)) {
-      return NextResponse.json(
-        { error: `Not enough tickets available. Only ${availableQty} left.` },
-        { status: 400 }
-      )
-    }
+    // Note: Skip availability check for admin ticket switches
+    // Admins can change tickets regardless of availability since:
+    // 1. This is a switch, not a new registration
+    // 2. The old ticket count will be decremented
+    // 3. Admins need flexibility to manage registrations
 
     // Calculate new pricing
     const quantity = currentReg.quantity || 1
