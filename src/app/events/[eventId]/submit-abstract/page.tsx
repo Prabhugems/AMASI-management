@@ -515,31 +515,65 @@ export default function SubmitAbstractPage() {
   if (step === "success" && submittedAbstract) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-lg text-center">
-          <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-6" />
-          <h2 className="text-xl sm:text-2xl font-bold mb-2">Abstract Submitted!</h2>
-          <p className="text-muted-foreground mb-6">
-            Your abstract has been received and is pending review.
-          </p>
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-lg">
+          <div className="text-center">
+            <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-6" />
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">Abstract Submitted Successfully!</h2>
+            <p className="text-muted-foreground mb-6">
+              Your abstract has been received and is pending review.
+            </p>
+          </div>
 
-          <div className="bg-indigo-50 border-2 border-dashed border-indigo-200 rounded-xl p-6 mb-6">
+          <div className="bg-indigo-50 border-2 border-dashed border-indigo-200 rounded-xl p-6 mb-6 text-center">
             <p className="text-xs text-indigo-600 font-medium mb-1">YOUR ABSTRACT NUMBER</p>
             <p className="text-3xl font-mono font-bold text-indigo-700">
               {submittedAbstract.abstract_number}
             </p>
+            <p className="text-xs text-indigo-500 mt-2">Save this number for future reference</p>
           </div>
 
-          <div className="text-left bg-gray-50 rounded-xl p-4 mb-6">
-            <h3 className="font-semibold mb-2">{submittedAbstract.title}</h3>
-            <p className="text-sm text-muted-foreground line-clamp-3">
-              {submittedAbstract.abstract_text}
-            </p>
+          {/* Submission Summary */}
+          <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-3">
+            <h3 className="font-semibold text-sm text-gray-600 uppercase tracking-wide">Submission Summary</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Title:</span>
+                <span className="font-medium text-right max-w-[60%] truncate">{submittedAbstract.title}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Category:</span>
+                <span className="font-medium">{categories.find(c => c.id === submittedAbstract.category_id)?.name || "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Presentation:</span>
+                <span className="font-medium capitalize">{submittedAbstract.presentation_type}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Presenter:</span>
+                <span className="font-medium">{submittedAbstract.presenting_author_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Email:</span>
+                <span className="font-medium">{submittedAbstract.presenting_author_email}</span>
+              </div>
+              {registrationInfo?.registration_number && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Registration:</span>
+                  <span className="font-mono font-medium">{registrationInfo.registration_number}</span>
+                </div>
+              )}
+            </div>
           </div>
 
-          <p className="text-sm text-muted-foreground mb-6">
-            A confirmation email has been sent to {submittedAbstract.presenting_author_email}.
-            You can track your submission status in the delegate portal.
-          </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm">
+            <p className="font-medium text-amber-800 mb-1">What happens next?</p>
+            <ul className="text-amber-700 space-y-1 list-disc list-inside">
+              <li>A confirmation email has been sent to {submittedAbstract.presenting_author_email}</li>
+              <li>Your abstract will be reviewed by the scientific committee</li>
+              <li>You will be notified of the decision via email</li>
+              <li>Track your submission status in the delegate portal</li>
+            </ul>
+          </div>
 
           <div className="flex gap-4">
             <Button
@@ -645,19 +679,39 @@ export default function SubmitAbstractPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-3xl mx-auto px-4">
-        {/* Header */}
+        {/* Header with Registration Details */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white mb-6">
           <h1 className="text-xl sm:text-2xl font-bold mb-1">Submit Abstract</h1>
           <p className="text-white/80">{event?.name}</p>
-          <div className="flex items-center gap-4 mt-4 text-sm">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              {registrationInfo?.attendee_name || "Guest"}
+
+          {/* Registration Details Card */}
+          <div className="mt-4 bg-white/10 backdrop-blur rounded-xl p-4">
+            <p className="text-xs text-white/60 uppercase tracking-wide mb-2">Your Registration Details</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-white/70" />
+                <span className="font-medium">{registrationInfo?.attendee_name || "Guest"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-white/70" />
+                <span>{registrationInfo?.attendee_email || email}</span>
+              </div>
+              {registrationInfo?.registration_number && (
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-white/70" />
+                  <span>Reg: <span className="font-mono font-medium">{registrationInfo.registration_number}</span></span>
+                </div>
+              )}
+              {registrationInfo?.ticket_name && (
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-white/70" />
+                  <span className="truncate">{registrationInfo.ticket_name}</span>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              {registrationInfo?.attendee_email || email}
-            </div>
+            <p className="text-xs text-white/50 mt-3">
+              Not you? <button type="button" onClick={() => { setStep("lookup"); setEmail(""); setRegistrationInfo(null); }} className="underline hover:text-white">Use different email</button>
+            </p>
           </div>
         </div>
 
