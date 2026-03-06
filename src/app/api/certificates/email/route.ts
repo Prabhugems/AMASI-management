@@ -201,6 +201,12 @@ export async function POST(request: NextRequest) {
         })
       }
 
+      // Mark certificate as issued (for tracking in delegate portal)
+      await db
+        .from("registrations")
+        .update({ certificate_generated_at: new Date().toISOString() })
+        .eq("id", registration_id)
+
       return NextResponse.json({
         success: true,
         message: "Certificate email sent",
