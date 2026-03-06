@@ -143,6 +143,15 @@ export default function RegistrationsPage() {
   const [importCsvData, setImportCsvData] = useState("")
   const [importPreview, setImportPreview] = useState<any[]>([])
   const [importResult, setImportResult] = useState<any>(null)
+  // Offline registration state
+  const [isOfflineRegOpen, setIsOfflineRegOpen] = useState(false)
+  const [offlineRegData, setOfflineRegData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    ticket_type_id: "",
+    registration_number: "",
+  })
   const [isPrintingBadge, setIsPrintingBadge] = useState<string | null>(null)
   const [isEmailingBadge, setIsEmailingBadge] = useState<string | null>(null)
   const [isGeneratingBadge, setIsGeneratingBadge] = useState<string | null>(null)
@@ -810,6 +819,41 @@ export default function RegistrationsPage() {
     },
   })
 
+  // Offline registration mutation
+  const offlineRegistration = useMutation({
+    mutationFn: async (data: typeof offlineRegData) => {
+      const response = await fetch("/api/import/registrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          ticket_type_id: data.ticket_type_id,
+          rows: [{
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            registration_number: data.registration_number || undefined,
+          }],
+        }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Registration failed")
+      }
+      return response.json()
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] })
+      queryClient.invalidateQueries({ queryKey: ["event-ticket-types", eventId] })
+      toast.success(`Registration ${data.registrations?.[0]?.registration_number || ''} created successfully!`)
+      setIsOfflineRegOpen(false)
+      setOfflineRegData({ name: "", email: "", phone: "", ticket_type_id: "", registration_number: "" })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message)
+    },
+  })
+
   // Parse CSV data (Tito-style with ticket column)
   const parseCsvData = (csv: string) => {
     const lines = csv.trim().split("\n").filter(line => line.trim())
@@ -1290,9 +1334,13 @@ export default function RegistrationsPage() {
               Import
             </Link>
           </Button>
-          <Button onClick={() => window.open(`/register/${event?.slug || eventId}`, '_blank')}>
+          <Button variant="outline" onClick={() => setIsOfflineRegOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
-            Add Attendee
+            Offline Registration
+          </Button>
+          <Button onClick={() => window.open(`/register/${event?.slug || eventId}`, '_blank')}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Online Form
           </Button>
         </div>
       </div>
@@ -2959,6 +3007,95 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
                 )}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Offline Registration Dialog */}
+      <Dialog open={isOfflineRegOpen} onOpenChange={setIsOfflineRegOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Offline Registration
+            </DialogTitle>
+            <DialogDescription>
+              Add a new registration directly without payment
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Name *</Label>
+              <Input
+                value={offlineRegData.name}
+                onChange={(e) => setOfflineRegData({ ...offlineRegData, name: e.target.value })}
+                placeholder="Full name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                value={offlineRegData.email}
+                onChange={(e) => setOfflineRegData({ ...offlineRegData, email: e.target.value })}
+                placeholder="email@example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input
+                value={offlineRegData.phone}
+                onChange={(e) => setOfflineRegData({ ...offlineRegData, phone: e.target.value })}
+                placeholder="Mobile number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Ticket Type *</Label>
+              <Select value={offlineRegData.ticket_type_id} onValueChange={(value) => setOfflineRegData({ ...offlineRegData, ticket_type_id: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select ticket..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {ticketTypes?.map((ticket) => (
+                    <SelectItem key={ticket.id} value={ticket.id}>
+                      {ticket.name} - {ticket.price?.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Registration Number (optional)</Label>
+              <Input
+                value={offlineRegData.registration_number}
+                onChange={(e) => setOfflineRegData({ ...offlineRegData, registration_number: e.target.value })}
+                placeholder="Auto-generated if empty"
+              />
+              <p className="text-xs text-muted-foreground">Leave empty to auto-generate</p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsOfflineRegOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => offlineRegistration.mutate(offlineRegData)}
+              disabled={!offlineRegData.name || !offlineRegData.email || !offlineRegData.ticket_type_id || offlineRegistration.isPending}
+            >
+              {offlineRegistration.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Create Registration
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
