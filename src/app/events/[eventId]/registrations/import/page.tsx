@@ -99,6 +99,7 @@ export default function ImportRegistrationsPage() {
   }
 
   const standardFields = [
+    { key: "registration_number", label: "Registration Number", description: "Use existing reg number (e.g., 122A1157)" },
     { key: "name", label: "Name", required: true, description: "Attendee full name" },
     { key: "email", label: "Email", required: true, description: "Email address" },
     { key: "phone", label: "Phone/Mobile", description: "Contact number" },
@@ -373,7 +374,7 @@ export default function ImportRegistrationsPage() {
         <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
           <li>• <strong>Standard fields</strong> (Name, Email, Phone, Status) are stored in main columns</li>
           <li>• <strong>Custom fields</strong> (AMASI Membership, Food Preference, etc.) are stored in form_responses</li>
-          <li>• <strong>Registration numbers</strong> are auto-generated as {registrationPrefix || "PREFIX"}A1001, {registrationPrefix || "PREFIX"}A1002, ...</li>
+          <li>• <strong>Registration numbers</strong> can be imported from CSV, or auto-generated as {registrationPrefix || "PREFIX"}A1001, {registrationPrefix || "PREFIX"}A1002, ...</li>
           <li>• <strong>Duplicates</strong> are skipped (based on email)</li>
         </ul>
       </div>

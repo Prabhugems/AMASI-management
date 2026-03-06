@@ -11,6 +11,7 @@ interface ImportRow {
   total_amount?: string | number
   ticket_name?: string
   ticket_type_id?: string
+  registration_number?: string
   [key: string]: any
 }
 
@@ -220,9 +221,12 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Generate registration number: PREFIX + A + NUMBER (e.g., 121A1001)
-        const regNumber = `${prefix}A${nextNumber.toString().padStart(4, '0')}`
-        nextNumber++
+        // Use provided registration number or generate one: PREFIX + A + NUMBER (e.g., 121A1001)
+        let regNumber = row.registration_number?.trim()
+        if (!regNumber) {
+          regNumber = `${prefix}A${nextNumber.toString().padStart(4, '0')}`
+          nextNumber++
+        }
 
         // Find ticket type: per-row UI selection > CSV ticket_name > global default
         let ticketId = defaultTicketId

@@ -105,11 +105,16 @@ export function CSVImportDynamic({
   }
 
   // Auto-map columns based on common patterns
-  const autoMapColumns = (headers: string[]): Record<string, string> => {
+  const autoMapColumns = (headers: string[], sampleRow?: Record<string, string>): Record<string, string> => {
     const mappings: Record<string, string> = {}
+
+    // Regex to detect registration numbers like 122A1157, 121A1001, etc.
+    const regNumberPattern = /^\d{2,4}[A-Z]\d{3,5}$/
 
     // Order matters! More specific patterns should come first
     const patterns: [string, string[]][] = [
+      // Registration number patterns
+      ["registration_number", ["registration number", "reg number", "registration no", "reg no", "registration_number"]],
       // Ticket name MUST be checked before "name" to avoid false matches
       ["ticket_name", ["ticket name", "ticket type", "ticket"]],
       ["registered_on", ["registered on", "registration date", "order date"]],
@@ -135,8 +140,14 @@ export function CSVImportDynamic({
     headers.forEach(header => {
       const lowerHeader = header.toLowerCase().trim()
 
-      // Check if should be skipped
+      // Check if column looks like S.No but contains registration numbers
       if (skipPatterns.some(k => lowerHeader === k || lowerHeader.includes(k))) {
+        // Check sample data to see if it contains registration numbers
+        const sampleValue = sampleRow?.[header]?.trim()
+        if (sampleValue && regNumberPattern.test(sampleValue)) {
+          mappings[header] = "registration_number"
+          return
+        }
         mappings[header] = "skip"
         return
       }
@@ -190,8 +201,8 @@ export function CSVImportDynamic({
       setCsvHeaders(headers)
       setParsedData(rows)
 
-      // Auto-map columns
-      const autoMappings = autoMapColumns(headers)
+      // Auto-map columns (pass first row for smart detection)
+      const autoMappings = autoMapColumns(headers, rows[0])
       setColumnMappings(autoMappings)
 
       setStep("mapping")
