@@ -268,6 +268,12 @@ export default function CategoriesPage() {
     is_award_category: false,
     award_name: "",
     scoring_criteria: [] as ScoringCriterion[],
+    // Eligibility rules
+    require_dob: false,
+    max_age: "",
+    allowed_positions: "",
+    // Declarations
+    declarations: [] as Declaration[],
   })
   const [deleteConfirm, setDeleteConfirm] = useState<Category | null>(null)
   const [loadingTemplate, setLoadingTemplate] = useState(false)
@@ -285,6 +291,18 @@ export default function CategoriesPage() {
   // Create/Update mutation
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData & { id?: string }) => {
+      // Build eligibility rules object
+      const eligibility_rules: Record<string, any> = {}
+      if (data.require_dob) {
+        eligibility_rules.require_dob = true
+        if (data.max_age) {
+          eligibility_rules.max_age = parseInt(data.max_age)
+        }
+        if (data.allowed_positions) {
+          eligibility_rules.allowed_positions = data.allowed_positions.split(",").map(s => s.trim()).filter(Boolean)
+        }
+      }
+
       const res = await fetch("/api/abstract-categories", {
         method: data.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -294,6 +312,8 @@ export default function CategoriesPage() {
           max_submissions: data.max_submissions ? parseInt(data.max_submissions) : null,
           allowed_file_types: data.allowed_file_types.split(",").map((s: string) => s.trim()).filter(Boolean),
           scoring_criteria: data.scoring_criteria || [],
+          eligibility_rules,
+          declarations: data.declarations || [],
         }),
       })
       if (!res.ok) {
@@ -343,11 +363,16 @@ export default function CategoriesPage() {
       is_award_category: false,
       award_name: "",
       scoring_criteria: [],
+      require_dob: false,
+      max_age: "",
+      allowed_positions: "",
+      declarations: [],
     })
   }
 
   const handleEdit = (category: Category) => {
     setEditingCategory(category)
+    const rules = category.eligibility_rules || {}
     setFormData({
       name: category.name,
       description: category.description || "",
@@ -360,6 +385,10 @@ export default function CategoriesPage() {
       is_award_category: category.is_award_category || false,
       award_name: category.award_name || "",
       scoring_criteria: (category.scoring_criteria || []) as ScoringCriterion[],
+      require_dob: rules.require_dob || false,
+      max_age: rules.max_age?.toString() || "",
+      allowed_positions: (rules.allowed_positions || []).join(", "),
+      declarations: (category.declarations || []) as Declaration[],
     })
     setShowDialog(true)
   }
@@ -705,6 +734,136 @@ export default function CategoriesPage() {
                 checked={formData.is_active}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
               />
+            </div>
+
+            {/* Eligibility Rules */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <div>
+                <p className="font-medium">Eligibility Rules</p>
+                <p className="text-xs text-muted-foreground">
+                  Set age restrictions or position requirements (e.g., for Young Scholar)
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm font-medium">Require Date of Birth</p>
+                  <p className="text-xs text-muted-foreground">
+                    Submitters must provide their DOB for age verification
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.require_dob}
+                  onCheckedChange={(checked) => setFormData({ ...formData, require_dob: checked })}
+                />
+              </div>
+
+              {formData.require_dob && (
+                <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-primary/20">
+                  <div>
+                    <label className="text-sm font-medium">Maximum Age</label>
+                    <Input
+                      type="number"
+                      value={formData.max_age}
+                      onChange={(e) => setFormData({ ...formData, max_age: e.target.value })}
+                      placeholder="e.g., 40"
+                      className="mt-1"
+                      min={1}
+                      max={100}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Leave empty for no age limit
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Allowed Positions</label>
+                    <Input
+                      value={formData.allowed_positions}
+                      onChange={(e) => setFormData({ ...formData, allowed_positions: e.target.value })}
+                      placeholder="PG Resident, Fellow, Senior Resident"
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Comma-separated list (leave empty for any)
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Declarations */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Declarations</p>
+                  <p className="text-xs text-muted-foreground">
+                    Statements submitters must agree to
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setFormData({
+                    ...formData,
+                    declarations: [...formData.declarations, { text: "", required: true }],
+                  })}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Add
+                </Button>
+              </div>
+
+              {formData.declarations.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  No declarations required for this category
+                </p>
+              )}
+
+              {formData.declarations.map((decl, index) => (
+                <div key={index} className="flex items-start gap-2 p-2 bg-muted/50 rounded-md">
+                  <div className="flex-1">
+                    <textarea
+                      value={decl.text}
+                      onChange={(e) => {
+                        const updated = [...formData.declarations]
+                        updated[index] = { ...updated[index], text: e.target.value }
+                        setFormData({ ...formData, declarations: updated })
+                      }}
+                      placeholder="Declaration text (e.g., I confirm this work has not been published elsewhere)"
+                      rows={2}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={decl.required}
+                        onChange={(e) => {
+                          const updated = [...formData.declarations]
+                          updated[index] = { ...updated[index], required: e.target.checked }
+                          setFormData({ ...formData, declarations: updated })
+                        }}
+                        className="rounded"
+                      />
+                      Required
+                    </label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => {
+                        const updated = formData.declarations.filter((_, i) => i !== index)
+                        setFormData({ ...formData, declarations: updated })
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Scoring Criteria Editor */}
