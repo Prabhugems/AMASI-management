@@ -562,13 +562,7 @@ export default function ReviewersPoolPage() {
 
       {/* Import Dialog */}
       <Dialog open={showImport} onOpenChange={setShowImport}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Import Reviewers</DialogTitle>
-            <DialogDescription>
-              Upload a CSV file to import reviewers to the global pool
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <CSVImportDynamic
             title="Import Reviewers"
             description="Upload a CSV file with reviewer information"
