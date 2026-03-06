@@ -2375,7 +2375,7 @@ export default function RegistrationsPage() {
                   <>
                     <Button variant="outline" size="sm" className="h-9 text-xs border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950/30" onClick={openSwitchTicketDialog}>
                       <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                      Switch Course
+                      Change Ticket
                     </Button>
                     <Button variant="outline" size="sm" className="h-9 text-xs border-pink-200 text-pink-700 hover:bg-pink-50 hover:border-pink-300 dark:border-pink-800 dark:text-pink-400 dark:hover:bg-pink-950/30" onClick={openTransferEventDialog}>
                       <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
@@ -2528,21 +2528,21 @@ export default function RegistrationsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Switch Ticket/Course Dialog */}
+      {/* Change Ticket Dialog */}
       <Dialog open={isSwitchTicketOpen} onOpenChange={setIsSwitchTicketOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5" />
-              Switch Course / Ticket
+              Change Ticket
             </DialogTitle>
             <DialogDescription>
-              Change the registered course for {selectedRegistration?.attendee_name}
+              Change the ticket type for {selectedRegistration?.attendee_name}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="p-3 bg-secondary/50 rounded-lg">
-              <p className="text-sm font-medium">Current Course</p>
+              <p className="text-sm font-medium">Current Ticket</p>
               <p className="text-lg">{selectedRegistration?.ticket_type?.name}</p>
               <p className="text-sm text-muted-foreground">
                 {selectedRegistration?.total_amount?.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
@@ -2550,10 +2550,10 @@ export default function RegistrationsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Switch to Course</Label>
+              <Label>New Ticket</Label>
               <Select value={switchToTicketId} onValueChange={setSwitchToTicketId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select new course..." />
+                  <SelectValue placeholder="Select new ticket..." />
                 </SelectTrigger>
                 <SelectContent>
                   {ticketTypes
@@ -2574,7 +2574,7 @@ export default function RegistrationsPage() {
 
             {switchToTicketId && (
               <div className="p-3 bg-primary/10 rounded-lg">
-                <p className="text-sm font-medium">New Course</p>
+                <p className="text-sm font-medium">New Ticket</p>
                 <p className="text-lg">
                   {ticketTypes?.find((t) => t.id === switchToTicketId)?.name}
                 </p>
@@ -2602,12 +2602,12 @@ export default function RegistrationsPage() {
               {switchTicket.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Switching...
+                  Changing...
                 </>
               ) : (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Switch Course
+                  Change Ticket
                 </>
               )}
             </Button>
