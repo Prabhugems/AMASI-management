@@ -35,10 +35,22 @@ function getReviewerFormEmail(name: string, formUrl: string): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
+// Helper to normalize names for duplicate detection
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/^(dr\.?\s*|prof\.?\s*|mr\.?\s*|ms\.?\s*|mrs\.?\s*)/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 // GET /api/reviewers-pool - List all reviewers in global pool with membership/faculty lookup
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase: SupabaseClient = await createAdminClient()
+    const { searchParams } = new URL(request.url)
+    const checkDuplicates = searchParams.get("check_duplicates") === "true"
 
     // Fetch reviewers
     const { data: reviewers, error } = await supabase
@@ -52,7 +64,7 @@ export async function GET() {
     }
 
     if (!reviewers || reviewers.length === 0) {
-      return NextResponse.json([])
+      return NextResponse.json(checkDuplicates ? { reviewers: [], duplicates: [] } : [])
     }
 
     // Get all reviewer emails for batch lookup
@@ -90,6 +102,28 @@ export async function GET() {
         is_amasi_faculty: isFaculty,
       }
     })
+
+    // If duplicate check requested, detect and return duplicates
+    if (checkDuplicates) {
+      const nameMap = new Map<string, any[]>()
+      for (const r of enriched) {
+        const normalized = normalizeName(r.name || "")
+        if (normalized) {
+          if (!nameMap.has(normalized)) nameMap.set(normalized, [])
+          nameMap.get(normalized)!.push(r)
+        }
+      }
+
+      // Find names that appear more than once (potential duplicates)
+      const duplicates: { name: string; reviewers: any[] }[] = []
+      for (const [name, list] of nameMap.entries()) {
+        if (list.length > 1) {
+          duplicates.push({ name, reviewers: list })
+        }
+      }
+
+      return NextResponse.json({ reviewers: enriched, duplicates })
+    }
 
     return NextResponse.json(enriched)
   } catch (error) {
