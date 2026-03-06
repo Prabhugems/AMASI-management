@@ -26,6 +26,7 @@ import {
   Users,
   UserCheck,
   Upload,
+  Download,
   Plus,
   Pencil,
   Trash2,
@@ -293,6 +294,34 @@ export default function ReviewersPage() {
     return result
   }
 
+  const exportCSV = () => {
+    if (filtered.length === 0) {
+      toast.error("No reviewers to export")
+      return
+    }
+    const headers = ["Name", "Email", "Phone", "Institution", "City", "Specialty", "Years of Experience", "Status", "Event", "Notes"]
+    const rows = filtered.map((r) => [
+      `"${r.name || ""}"`,
+      r.email,
+      r.phone || "",
+      `"${r.institution || ""}"`,
+      r.city || "",
+      `"${r.specialty || ""}"`,
+      r.years_of_experience || "",
+      r.status,
+      `"${r.event_name || ""}"`,
+      `"${(r.notes || "").replace(/"/g, '""')}"`,
+    ])
+    const csv = [headers, ...rows].map(row => row.join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `reviewers-${new Date().toISOString().split("T")[0]}.csv`
+    a.click()
+    toast.success(`Exported ${filtered.length} reviewers`)
+  }
+
   const toggleSelectReviewer = (id: string) => {
     setSelectedReviewers(prev =>
       prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]
@@ -368,6 +397,10 @@ export default function ReviewersPage() {
           }}>
             <Plus className="h-4 w-4 mr-2" />
             Add Reviewer
+          </Button>
+          <Button variant="outline" onClick={exportCSV}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
           </Button>
           <Button onClick={() => setShowImport(true)}>
             <Upload className="h-4 w-4 mr-2" />
