@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error("Error fetching abstracts:", error)
       return NextResponse.json(
-        { error: "Failed to fetch abstracts" },
+        { error: "Failed to fetch abstracts", details: error.message, code: error.code },
         { status: 500 }
       )
     }
