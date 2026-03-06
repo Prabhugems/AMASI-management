@@ -1,9 +1,35 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
+import { sendEmail } from "@/lib/email"
 import crypto from "crypto"
 
 function generateToken(): string {
   return crypto.randomBytes(16).toString("hex")
+}
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://collegeofmas.org.in"
+
+function getReviewerFormEmail(name: string, formUrl: string): string {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #1a365d;">AMASI Reviewer Registration</h2>
+      <p>Dear ${name},</p>
+      <p>Thank you for agreeing to be part of the AMASI reviewer pool. We appreciate your expertise and willingness to contribute to the peer review process.</p>
+      <p>Please complete your registration by providing your specialty and other details:</p>
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="${formUrl}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+          Complete Registration
+        </a>
+      </p>
+      <p style="color: #666;">If the button doesn't work, copy and paste this link: <br/><a href="${formUrl}">${formUrl}</a></p>
+      <p>This information helps us match you with relevant abstracts for review.</p>
+      <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+      <p style="color: #888; font-size: 12px;">
+        Association of Minimal Access Surgeons of India (AMASI)<br/>
+        This is an automated message. Please do not reply directly.
+      </p>
+    </div>
+  `
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,6 +100,26 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Error inserting reviewers:", error)
       return NextResponse.json({ error: "Failed to import reviewers: " + error.message }, { status: 500 })
+    }
+
+    // Send form email for single manual adds with form_token
+    // (skip for bulk imports - they come as arrays)
+    if (!Array.isArray(body) && data?.length === 1) {
+      const reviewer = data[0]
+      if (reviewer.form_token && !reviewer.specialty) {
+        const formUrl = `${BASE_URL}/reviewer-form/${reviewer.form_token}`
+        try {
+          await sendEmail({
+            to: reviewer.email,
+            subject: "AMASI Reviewer Registration - Complete Your Details",
+            html: getReviewerFormEmail(reviewer.name, formUrl),
+          })
+          console.log(`[Reviewer] Form email sent to ${reviewer.email}`)
+        } catch (emailErr) {
+          console.error(`[Reviewer] Failed to send form email to ${reviewer.email}:`, emailErr)
+          // Don't fail the request - reviewer was still added
+        }
+      }
     }
 
     return NextResponse.json({
