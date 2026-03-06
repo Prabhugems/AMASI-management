@@ -61,6 +61,7 @@ async function runMigrations() {
     ['event_settings', 'allow_buyers'],
     ['event_settings', 'customize_registration_id'],
     ['registrations', 'order_id'],
+    ['abstracts', 'subject'],
   ]
 
   console.log('')
