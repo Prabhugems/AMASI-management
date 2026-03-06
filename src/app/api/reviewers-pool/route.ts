@@ -75,18 +75,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No reviewers provided" }, { status: 400 })
     }
 
-    const toInsert = reviewers.map((r: any) => ({
-      name: (r.name || "").trim(),
-      email: (r.email || "").trim().toLowerCase(),
-      phone: r.phone?.toString().trim() || null,
-      institution: r.institution?.trim() || null,
-      city: r.city?.trim() || null,
-      specialty: r.specialty?.trim() || null,
-      years_of_experience: r.years_of_experience?.toString().trim() || null,
-      status: r.status === "Yes" || r.status === "active" || r.status === "Maybe" ? "active" : r.status === "No" ? "inactive" : "active",
-      notes: r.notes?.trim() || null,
-      form_token: sendForm && !r.specialty ? generateToken() : null, // Generate token if no specialty (needs form)
-    })).filter((r: any) => r.name && r.email)
+    const toInsert = reviewers.map((r: any) => {
+      // Clean name - remove Dr./DR./dr. prefix for consistency
+      let name = (r.name || "").trim()
+      name = name.replace(/^(Dr\.?\s*|DR\.?\s*|dr\.?\s*)/i, "").trim()
+
+      return {
+        name,
+        email: (r.email || "").trim().toLowerCase(),
+        phone: r.phone?.toString().trim() || null,
+        institution: r.institution?.trim() || null,
+        city: r.city?.trim() || null,
+        specialty: r.specialty?.trim() || null,
+        years_of_experience: r.years_of_experience?.toString().trim() || null,
+        status: r.status === "Yes" || r.status === "active" || r.status === "Maybe" ? "active" : r.status === "No" ? "inactive" : "active",
+        notes: r.notes?.trim() || null,
+        form_token: sendForm && !r.specialty ? generateToken() : null, // Generate token if no specialty (needs form)
+      }
+    }).filter((r: any) => r.name && r.email)
 
     if (toInsert.length === 0) {
       return NextResponse.json({ error: "No valid reviewers (name and email required)" }, { status: 400 })
@@ -180,7 +186,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE /api/reviewers-pool - Remove a reviewer
+// DELETE /api/reviewers-pool - Remove a reviewer (or all with id=all)
 export async function DELETE(request: NextRequest) {
   try {
     const authSupabase: SupabaseClient = await createServerSupabaseClient()
@@ -195,6 +201,20 @@ export async function DELETE(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ error: "Reviewer ID is required" }, { status: 400 })
+    }
+
+    // Support clearing all reviewers
+    if (id === "all") {
+      const { error } = await supabase
+        .from("reviewers_pool")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000") // Delete all rows
+
+      if (error) {
+        console.error("Error clearing reviewers:", error)
+        return NextResponse.json({ error: "Failed to clear reviewers" }, { status: 500 })
+      }
+      return NextResponse.json({ success: true, cleared: true })
     }
 
     const { error } = await supabase

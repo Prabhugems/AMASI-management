@@ -140,6 +140,22 @@ export default function ReviewersPoolPage() {
     },
   })
 
+  // Clear all mutation
+  const clearAllMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/reviewers-pool?id=all`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Failed to clear")
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reviewers-pool"] })
+      toast.success("All reviewers cleared")
+    },
+    onError: () => {
+      toast.error("Failed to clear reviewers")
+    },
+  })
+
   // Import mutation
   const importMutation = useMutation({
     mutationFn: async (data: any[]) => {
@@ -280,6 +296,21 @@ export default function ReviewersPoolPage() {
           <p className="text-sm text-muted-foreground">Global pool of reviewers across all events</p>
         </div>
         <div className="flex items-center gap-2">
+          {reviewers.length > 0 && (
+            <Button
+              variant="outline"
+              className="text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                if (confirm(`Delete ALL ${reviewers.length} reviewers from the pool? This cannot be undone.`)) {
+                  clearAllMutation.mutate()
+                }
+              }}
+              disabled={clearAllMutation.isPending}
+            >
+              {clearAllMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Clear All
+            </Button>
+          )}
           <Button variant="outline" onClick={() => {
             resetForm()
             setShowAddDialog(true)
