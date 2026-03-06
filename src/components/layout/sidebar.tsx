@@ -62,6 +62,7 @@ const mainNavItems = [
       { name: "Directory", href: "/faculty" },
       { name: "Add Faculty", href: "/faculty/new" },
       { name: "Import", href: "/faculty/import" },
+      { name: "Reviewers Pool", href: "/reviewers" },
     ],
   },
   {
