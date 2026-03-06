@@ -213,6 +213,7 @@ export default function SubmitAbstractPage() {
   // Validate form before submission
   const validateForm = (): string | null => {
     if (!title.trim()) return "Title is required"
+    if (!subject) return "Subject/Specialty is required"
     if (!abstractText.trim()) return "Abstract text is required"
     if (wordCount > (settings?.word_limit || 300)) return "Abstract exceeds word limit"
     if (categories.length > 0 && !categoryId) return "Please select a category"
@@ -677,13 +678,32 @@ export default function SubmitAbstractPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">
-                Subject / Topic
+                Subject / Specialty *
               </label>
-              <Input
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g., Laparoscopic Surgery, Bariatric Surgery, Hernia"
-              />
+              <Select value={subject} onValueChange={setSubject}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="General & GI Surgery">General & GI Surgery</SelectItem>
+                  <SelectItem value="Bariatric & Metabolic Surgery">Bariatric & Metabolic Surgery</SelectItem>
+                  <SelectItem value="Hepatobiliary & Pancreatic Surgery">Hepatobiliary & Pancreatic Surgery</SelectItem>
+                  <SelectItem value="Colorectal Surgery">Colorectal Surgery</SelectItem>
+                  <SelectItem value="Hernia Surgery">Hernia Surgery</SelectItem>
+                  <SelectItem value="Esophageal Surgery">Esophageal Surgery</SelectItem>
+                  <SelectItem value="Upper GI Surgery">Upper GI Surgery</SelectItem>
+                  <SelectItem value="Thoracic Surgery (VATS)">Thoracic Surgery (VATS)</SelectItem>
+                  <SelectItem value="Pediatric Minimal Access Surgery">Pediatric Minimal Access Surgery</SelectItem>
+                  <SelectItem value="Urological Minimal Access Surgery">Urological Minimal Access Surgery</SelectItem>
+                  <SelectItem value="Gynecological Minimal Access Surgery">Gynecological Minimal Access Surgery</SelectItem>
+                  <SelectItem value="Surgical Oncology">Surgical Oncology (Minimally invasive)</SelectItem>
+                  <SelectItem value="Endoscopy">Endoscopy (Diagnostic & Therapeutic)</SelectItem>
+                  <SelectItem value="Robotic Surgery">Robotic Surgery</SelectItem>
+                  <SelectItem value="Single Incision Laparoscopic Surgery (SILS)">Single Incision Laparoscopic Surgery (SILS)</SelectItem>
+                  <SelectItem value="Endoscopic Bariatric Procedures">Endoscopic Bariatric Procedures</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -1137,7 +1157,7 @@ export default function SubmitAbstractPage() {
 
             <Button
               type="submit"
-              disabled={submitMutation.isPending || !title || !abstractText || wordCount > (settings?.word_limit || 300) || (categories.length > 0 && !categoryId) || (isFileRequired && !fileUrl) || fileUploading}
+              disabled={submitMutation.isPending || !title || !subject || !abstractText || wordCount > (settings?.word_limit || 300) || (categories.length > 0 && !categoryId) || (isFileRequired && !fileUrl) || fileUploading}
               className="w-full py-6 text-lg"
             >
               {submitMutation.isPending ? (
