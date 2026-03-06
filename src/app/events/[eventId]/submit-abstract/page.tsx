@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import Link from "next/link"
@@ -346,6 +346,20 @@ export default function SubmitAbstractPage() {
   const eligibilityRules = selectedCategory?.eligibility_rules || {}
   const requiresDob = eligibilityRules.require_dob === true
   const categoryAllowedFileTypes = selectedCategory?.allowed_file_types || (settings?.allowed_file_types || ['pdf', 'mp4'])
+
+  // Auto-set presentation type based on category submission_type
+  useEffect(() => {
+    if (selectedCategory?.submission_type) {
+      const submissionType = selectedCategory.submission_type
+      if (submissionType === 'video') {
+        setPresentationType('video')
+      } else if (submissionType === 'poster') {
+        setPresentationType('poster')
+      } else if (submissionType === 'paper') {
+        setPresentationType('oral')
+      }
+    }
+  }, [categoryId, selectedCategory?.submission_type])
 
   // Handle file upload - uses signed URL for large files (>4MB), direct upload for small ones
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -738,24 +752,16 @@ export default function SubmitAbstractPage() {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Presentation Preference</label>
-              <Select value={presentationType} onValueChange={setPresentationType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(settings?.presentation_types || ["oral", "poster"]).includes("oral") && (
-                    <SelectItem value="oral">Oral Presentation</SelectItem>
-                  )}
-                  {(settings?.presentation_types || ["oral", "poster"]).includes("poster") && (
-                    <SelectItem value="poster">Poster / ePoster</SelectItem>
-                  )}
-                  {(settings?.presentation_types || []).includes("video") && (
-                    <SelectItem value="video">Video Presentation</SelectItem>
-                  )}
-                  <SelectItem value="either">No Preference</SelectItem>
-                </SelectContent>
-              </Select>
+              <label className="block text-sm font-medium mb-2">Presentation Type</label>
+              <div className="h-10 px-3 py-2 border rounded-md bg-muted/50 flex items-center text-sm">
+                {presentationType === 'video' && 'Video Presentation'}
+                {presentationType === 'poster' && 'Poster / ePoster'}
+                {presentationType === 'oral' && 'Oral Presentation'}
+                {presentationType === 'either' && 'Select a category first'}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Auto-set based on category type
+              </p>
             </div>
           </div>
 
