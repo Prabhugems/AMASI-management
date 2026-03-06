@@ -6,13 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -20,6 +13,15 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Search,
   Loader2,
@@ -30,17 +32,16 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Copy,
-  Building2,
+  Mail,
+  CheckCircle,
 } from "lucide-react"
 import { toast } from "sonner"
 import { CSVImportDynamic } from "@/components/ui/csv-import-dynamic"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 type Reviewer = {
   id: string
-  event_id: string
-  event_name?: string
   name: string
   email: string
   phone: string | null
@@ -50,15 +51,9 @@ type Reviewer = {
   years_of_experience: string | null
   status: string
   notes: string | null
-  assigned_abstracts: string[]
-  review_count?: number
+  form_token: string | null
+  form_completed_at: string | null
   created_at: string
-}
-
-type Event = {
-  id: string
-  name: string
-  short_name: string
 }
 
 const csvFields = [
@@ -67,23 +62,19 @@ const csvFields = [
   { key: "phone", label: "Phone Number", description: "Contact number" },
   { key: "institution", label: "Institution/Hospital", description: "Organization name" },
   { key: "city", label: "City", description: "City location" },
-  { key: "specialty", label: "Specialty Interests", description: "Areas of expertise (comma-separated)" },
+  { key: "specialty", label: "Specialty Interests", description: "Areas of expertise" },
   { key: "years_of_experience", label: "Years of Experience", description: "Years in the field" },
   { key: "status", label: "Availability Status", description: "Yes/Maybe = active, No = inactive" },
   { key: "notes", label: "Notes (Internal)", description: "Internal notes" },
 ]
 
-export default function ReviewersPage() {
+export default function ReviewersPoolPage() {
   const queryClient = useQueryClient()
 
   const [search, setSearch] = useState("")
-  const [eventFilter, setEventFilter] = useState("all")
   const [showImport, setShowImport] = useState(false)
-  const [importEventId, setImportEventId] = useState("")
   const [showAddDialog, setShowAddDialog] = useState(false)
-  const [showCopyDialog, setShowCopyDialog] = useState(false)
   const [selectedReviewers, setSelectedReviewers] = useState<string[]>([])
-  const [copyToEventId, setCopyToEventId] = useState("")
   const [editingReviewer, setEditingReviewer] = useState<Reviewer | null>(null)
   const [editForm, setEditForm] = useState({
     name: "",
@@ -95,166 +86,127 @@ export default function ReviewersPage() {
     years_of_experience: "",
     status: "active",
     notes: "",
-    event_id: "",
   })
 
-  // Fetch all events
-  const { data: events = [] } = useQuery({
-    queryKey: ["all-events"],
+  // Fetch all reviewers from global pool
+  const { data: reviewers = [], isLoading } = useQuery({
+    queryKey: ["reviewers-pool"],
     queryFn: async () => {
-      const res = await fetch("/api/events")
-      if (!res.ok) throw new Error("Failed to fetch events")
-      const data = await res.json()
-      return (data.events || data) as Event[]
+      const res = await fetch("/api/reviewers-pool")
+      if (!res.ok) throw new Error("Failed to fetch")
+      return res.json() as Promise<Reviewer[]>
     },
   })
 
-  // Fetch all reviewers across all events
-  const { data: allReviewers = [], isLoading } = useQuery({
-    queryKey: ["all-reviewers"],
-    queryFn: async () => {
-      // Fetch reviewers for each event
-      const reviewerPromises = events.map(async (event) => {
-        const res = await fetch(`/api/abstract-reviewers/${event.id}`)
-        if (!res.ok) return []
-        const reviewers = await res.json()
-        return reviewers.map((r: Reviewer) => ({ ...r, event_name: event.name }))
-      })
-      const results = await Promise.all(reviewerPromises)
-      return results.flat() as Reviewer[]
-    },
-    enabled: events.length > 0,
-  })
-
-  // Add reviewer mutation
-  const addReviewer = useMutation({
-    mutationFn: async (data: typeof editForm) => {
-      if (!data.event_id) throw new Error("Please select an event")
-      const res = await fetch(`/api/abstract-reviewers/${data.event_id}`, {
-        method: "POST",
+  // Add/update reviewer mutation
+  const saveMutation = useMutation({
+    mutationFn: async (data: typeof editForm & { id?: string }) => {
+      const method = data.id ? "PUT" : "POST"
+      const res = await fetch("/api/reviewers-pool", {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       })
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.error || "Failed to add reviewer")
+        throw new Error(err.error || "Failed to save")
       }
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["all-reviewers"] })
-      toast.success("Reviewer added")
+      queryClient.invalidateQueries({ queryKey: ["reviewers-pool"] })
       setShowAddDialog(false)
-      resetForm()
-    },
-    onError: (err: Error) => toast.error(err.message),
-  })
-
-  // Update reviewer mutation
-  const updateReviewer = useMutation({
-    mutationFn: async (data: { id: string; event_id: string } & typeof editForm) => {
-      const res = await fetch(`/api/abstract-reviewers/${data.event_id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      })
-      if (!res.ok) throw new Error("Failed to update reviewer")
-      return res.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["all-reviewers"] })
-      toast.success("Reviewer updated")
       setEditingReviewer(null)
+      toast.success(editingReviewer ? "Reviewer updated" : "Reviewer added")
     },
-    onError: () => toast.error("Failed to update reviewer"),
+    onError: (error: Error) => {
+      toast.error(error.message)
+    },
   })
 
   // Delete reviewer mutation
-  const deleteReviewer = useMutation({
-    mutationFn: async ({ id, eventId }: { id: string; eventId: string }) => {
-      const res = await fetch(`/api/abstract-reviewers/${eventId}?id=${id}`, {
-        method: "DELETE",
-      })
-      if (!res.ok) throw new Error("Failed to delete reviewer")
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/reviewers-pool?id=${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Failed to delete")
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["all-reviewers"] })
-      toast.success("Reviewer removed")
+      queryClient.invalidateQueries({ queryKey: ["reviewers-pool"] })
+      toast.success("Reviewer deleted")
     },
-    onError: () => toast.error("Failed to remove reviewer"),
+    onError: () => {
+      toast.error("Failed to delete reviewer")
+    },
   })
 
-  // Copy reviewers to another event
-  const copyReviewers = useMutation({
-    mutationFn: async ({ reviewerIds, targetEventId }: { reviewerIds: string[]; targetEventId: string }) => {
-      const reviewersToCopy = allReviewers.filter(r => reviewerIds.includes(r.id))
-      const res = await fetch(`/api/abstract-reviewers/${targetEventId}`, {
+  // Import mutation
+  const importMutation = useMutation({
+    mutationFn: async (data: any[]) => {
+      const res = await fetch("/api/reviewers-pool", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(reviewersToCopy.map(r => ({
-          name: r.name,
-          email: r.email,
-          phone: r.phone,
-          institution: r.institution,
-          city: r.city,
-          specialty: r.specialty,
-          years_of_experience: r.years_of_experience,
-          status: r.status,
-          notes: r.notes,
-        }))),
+        body: JSON.stringify(data),
       })
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.error || "Failed to copy reviewers")
+        throw new Error(err.error || "Import failed")
       }
       return res.json()
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["all-reviewers"] })
-      toast.success(`Copied ${data.success} reviewers to event`)
-      setShowCopyDialog(false)
-      setSelectedReviewers([])
-      setCopyToEventId("")
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["reviewers-pool"] })
+      setShowImport(false)
+      toast.success(`Imported ${result.success} reviewers`)
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (error: Error) => {
+      toast.error(error.message)
+    },
   })
+
+  // Filter reviewers
+  const filtered = useMemo(() => {
+    return reviewers.filter((r) => {
+      if (search) {
+        const s = search.toLowerCase()
+        if (
+          !r.name?.toLowerCase().includes(s) &&
+          !r.email?.toLowerCase().includes(s) &&
+          !r.institution?.toLowerCase().includes(s) &&
+          !r.specialty?.toLowerCase().includes(s) &&
+          !r.city?.toLowerCase().includes(s)
+        ) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [reviewers, search])
+
+  // Stats
+  const stats = useMemo(() => ({
+    total: reviewers.length,
+    active: reviewers.filter((r) => r.status === "active").length,
+    pending: reviewers.filter((r) => r.form_token && !r.form_completed_at).length,
+    completed: reviewers.filter((r) => r.form_completed_at).length,
+  }), [reviewers])
 
   const resetForm = () => {
     setEditForm({
-      name: "", email: "", phone: "", institution: "", city: "",
-      specialty: "", years_of_experience: "", status: "active", notes: "", event_id: "",
+      name: "",
+      email: "",
+      phone: "",
+      institution: "",
+      city: "",
+      specialty: "",
+      years_of_experience: "",
+      status: "active",
+      notes: "",
     })
+    setEditingReviewer(null)
   }
 
-  // Filtered reviewers
-  const filtered = useMemo(() => {
-    return allReviewers.filter((r) => {
-      const matchesSearch =
-        !search ||
-        r.name.toLowerCase().includes(search.toLowerCase()) ||
-        r.email.toLowerCase().includes(search.toLowerCase()) ||
-        (r.institution || "").toLowerCase().includes(search.toLowerCase()) ||
-        (r.specialty || "").toLowerCase().includes(search.toLowerCase())
-
-      const matchesEvent = eventFilter === "all" || r.event_id === eventFilter
-      return matchesSearch && matchesEvent
-    })
-  }, [allReviewers, search, eventFilter])
-
-  // Stats
-  const stats = useMemo(() => {
-    const uniqueEmails = new Set(allReviewers.map(r => r.email.toLowerCase()))
-    const active = allReviewers.filter(r => r.status === "active").length
-    return {
-      total: allReviewers.length,
-      unique: uniqueEmails.size,
-      active,
-      events: events.length,
-    }
-  }, [allReviewers, events])
-
-  const handleEditClick = (reviewer: Reviewer) => {
+  const openEdit = (reviewer: Reviewer) => {
     setEditingReviewer(reviewer)
     setEditForm({
       name: reviewer.name,
@@ -266,32 +218,8 @@ export default function ReviewersPage() {
       years_of_experience: reviewer.years_of_experience || "",
       status: reviewer.status,
       notes: reviewer.notes || "",
-      event_id: reviewer.event_id,
     })
-  }
-
-  const handleCSVImport = async (data: Record<string, any>[]) => {
-    if (!importEventId) throw new Error("Please select an event first")
-
-    // Transform status values
-    const transformed = data.map(r => ({
-      ...r,
-      status: r.status?.toLowerCase() === "yes" || r.status?.toLowerCase() === "maybe" ? "active" :
-              r.status?.toLowerCase() === "no" ? "inactive" : r.status || "active"
-    }))
-
-    const res = await fetch(`/api/abstract-reviewers/${importEventId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(transformed),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.error || "Import failed")
-    }
-    const result = await res.json()
-    queryClient.invalidateQueries({ queryKey: ["all-reviewers"] })
-    return result
+    setShowAddDialog(true)
   }
 
   const exportCSV = () => {
@@ -299,7 +227,7 @@ export default function ReviewersPage() {
       toast.error("No reviewers to export")
       return
     }
-    const headers = ["Name", "Email", "Phone", "Institution", "City", "Specialty", "Years of Experience", "Status", "Event", "Notes"]
+    const headers = ["Name", "Email", "Phone", "Institution", "City", "Specialty", "Years of Experience", "Status", "Form Status", "Notes"]
     const rows = filtered.map((r) => [
       `"${r.name || ""}"`,
       r.email,
@@ -309,7 +237,7 @@ export default function ReviewersPage() {
       `"${r.specialty || ""}"`,
       r.years_of_experience || "",
       r.status,
-      `"${r.event_name || ""}"`,
+      r.form_completed_at ? "Completed" : r.form_token ? "Pending" : "N/A",
       `"${(r.notes || "").replace(/"/g, '""')}"`,
     ])
     const csv = [headers, ...rows].map(row => row.join(",")).join("\n")
@@ -317,7 +245,7 @@ export default function ReviewersPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `reviewers-${new Date().toISOString().split("T")[0]}.csv`
+    a.download = `reviewers-pool-${new Date().toISOString().split("T")[0]}.csv`
     a.click()
     toast.success(`Exported ${filtered.length} reviewers`)
   }
@@ -328,51 +256,18 @@ export default function ReviewersPage() {
     )
   }
 
-  const selectAllFiltered = () => {
-    const allIds = filtered.map(r => r.id)
-    setSelectedReviewers(allIds)
+  const toggleSelectAll = () => {
+    if (selectedReviewers.length === filtered.length) {
+      setSelectedReviewers([])
+    } else {
+      setSelectedReviewers(filtered.map(r => r.id))
+    }
   }
 
-  if (showImport) {
+  if (isLoading) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <Button variant="outline" onClick={() => setShowImport(false)} className="mb-4">
-          &larr; Back to Reviewers
-        </Button>
-
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <Label className="text-sm font-medium">Select Event to Import Into *</Label>
-          <Select value={importEventId} onValueChange={setImportEventId}>
-            <SelectTrigger className="mt-2 w-full max-w-md">
-              <SelectValue placeholder="Select an event..." />
-            </SelectTrigger>
-            <SelectContent>
-              {events.map(event => (
-                <SelectItem key={event.id} value={event.id}>
-                  {event.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground mt-2">
-            Reviewers will be imported into this event. You can copy them to other events later.
-          </p>
-        </div>
-
-        {importEventId ? (
-          <CSVImportDynamic
-            title="Import Reviewers"
-            description="Upload a CSV file with reviewer details. Status values: Yes/Maybe = active, No = inactive"
-            standardFields={csvFields}
-            onImport={handleCSVImport}
-            templateFileName="reviewers_template.csv"
-          />
-        ) : (
-          <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed">
-            <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Please select an event above to start importing</p>
-          </div>
-        )}
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -382,15 +277,9 @@ export default function ReviewersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Reviewers Pool</h1>
-          <p className="text-sm text-muted-foreground">Manage reviewers across all events</p>
+          <p className="text-sm text-muted-foreground">Global pool of reviewers across all events</p>
         </div>
         <div className="flex items-center gap-2">
-          {selectedReviewers.length > 0 && (
-            <Button variant="outline" onClick={() => setShowCopyDialog(true)}>
-              <Copy className="h-4 w-4 mr-2" />
-              Copy {selectedReviewers.length} to Event
-            </Button>
-          )}
           <Button variant="outline" onClick={() => {
             resetForm()
             setShowAddDialog(true)
@@ -414,16 +303,9 @@ export default function ReviewersPage() {
         <div className="bg-white rounded-lg border p-4">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            <span className="text-sm text-muted-foreground">Total Entries</span>
+            <span className="text-sm text-muted-foreground">Total Reviewers</span>
           </div>
           <p className="text-3xl font-bold mt-2">{stats.total}</p>
-        </div>
-        <div className="bg-white rounded-lg border p-4">
-          <div className="flex items-center gap-2">
-            <UserCheck className="h-5 w-5 text-blue-500" />
-            <span className="text-sm text-muted-foreground">Unique Reviewers</span>
-          </div>
-          <p className="text-3xl font-bold mt-2 text-blue-600">{stats.unique}</p>
         </div>
         <div className="bg-white rounded-lg border p-4">
           <div className="flex items-center gap-2">
@@ -434,16 +316,23 @@ export default function ReviewersPage() {
         </div>
         <div className="bg-white rounded-lg border p-4">
           <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-purple-500" />
-            <span className="text-sm text-muted-foreground">Events</span>
+            <Mail className="h-5 w-5 text-yellow-500" />
+            <span className="text-sm text-muted-foreground">Form Pending</span>
           </div>
-          <p className="text-3xl font-bold mt-2 text-purple-600">{stats.events}</p>
+          <p className="text-3xl font-bold mt-2 text-yellow-600">{stats.pending}</p>
+        </div>
+        <div className="bg-white rounded-lg border p-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-blue-500" />
+            <span className="text-sm text-muted-foreground">Form Completed</span>
+          </div>
+          <p className="text-3xl font-bold mt-2 text-blue-600">{stats.completed}</p>
         </div>
       </div>
 
-      {/* Search & Filter */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+      {/* Search */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by name, email, institution, specialty..."
@@ -452,172 +341,113 @@ export default function ReviewersPage() {
             className="pl-10"
           />
         </div>
-        <Select value={eventFilter} onValueChange={setEventFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by event" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Events</SelectItem>
-            {events.map(event => (
-              <SelectItem key={event.id} value={event.id}>
-                {event.short_name || event.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button variant="outline" size="sm" onClick={selectAllFiltered}>
-          Select All ({filtered.length})
-        </Button>
-        {selectedReviewers.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => setSelectedReviewers([])}>
-            Clear Selection
-          </Button>
-        )}
         <span className="text-sm text-muted-foreground">
-          {filtered.length} reviewer{filtered.length !== 1 ? "s" : ""}
+          {filtered.length} of {reviewers.length} reviewers
         </span>
       </div>
 
       {/* Table */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-dashed">
-          <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">No reviewers found</h3>
-          <p className="text-muted-foreground mb-4">
-            {allReviewers.length === 0
-              ? "Import reviewers from a CSV file to get started"
-              : "Try adjusting your search or filters"}
-          </p>
-          {allReviewers.length === 0 && (
-            <Button onClick={() => setShowImport(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Import CSV
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left px-4 py-3 w-10">
-                    <input
-                      type="checkbox"
-                      checked={selectedReviewers.length === filtered.length && filtered.length > 0}
-                      onChange={() => {
-                        if (selectedReviewers.length === filtered.length) {
-                          setSelectedReviewers([])
-                        } else {
-                          selectAllFiltered()
-                        }
-                      }}
-                      className="rounded"
+      <div className="border rounded-lg overflow-hidden bg-white">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={selectedReviewers.length === filtered.length && filtered.length > 0}
+                  onCheckedChange={toggleSelectAll}
+                />
+              </TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Institution</TableHead>
+              <TableHead>Specialty</TableHead>
+              <TableHead>Experience</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  No reviewers found
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((reviewer) => (
+                <TableRow key={reviewer.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedReviewers.includes(reviewer.id)}
+                      onCheckedChange={() => toggleSelectReviewer(reviewer.id)}
                     />
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium">Name</th>
-                  <th className="text-left px-4 py-3 font-medium">Email</th>
-                  <th className="text-left px-4 py-3 font-medium">Institution</th>
-                  <th className="text-left px-4 py-3 font-medium">Specialty</th>
-                  <th className="text-left px-4 py-3 font-medium">Event</th>
-                  <th className="text-center px-4 py-3 font-medium">Status</th>
-                  <th className="text-center px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((reviewer) => (
-                  <tr key={reviewer.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedReviewers.includes(reviewer.id)}
-                        onChange={() => toggleSelectReviewer(reviewer.id)}
-                        className="rounded"
-                      />
-                    </td>
-                    <td className="px-4 py-3 font-medium">{reviewer.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{reviewer.email}</td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">
-                      {reviewer.institution || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">
-                      {reviewer.specialty || "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant="outline" className="text-xs">
-                        {reviewer.event_name || "Unknown"}
+                  </TableCell>
+                  <TableCell className="font-medium">{reviewer.name}</TableCell>
+                  <TableCell className="text-sm">{reviewer.email}</TableCell>
+                  <TableCell className="text-sm">{reviewer.institution || "-"}</TableCell>
+                  <TableCell className="text-sm max-w-[200px] truncate" title={reviewer.specialty || ""}>
+                    {reviewer.specialty || "-"}
+                  </TableCell>
+                  <TableCell className="text-sm">{reviewer.years_of_experience || "-"}</TableCell>
+                  <TableCell>
+                    <Badge variant={reviewer.status === "active" ? "default" : "secondary"}>
+                      {reviewer.status}
+                    </Badge>
+                    {reviewer.form_token && !reviewer.form_completed_at && (
+                      <Badge variant="outline" className="ml-1 text-yellow-600">
+                        Form Pending
                       </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge variant={reviewer.status === "active" ? "default" : "secondary"}>
-                        {reviewer.status}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditClick(reviewer)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm("Remove this reviewer?")) {
-                              deleteReviewer.mutate({ id: reviewer.id, eventId: reviewer.event_id })
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(reviewer)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          if (confirm("Delete this reviewer?")) {
+                            deleteMutation.mutate(reviewer.id)
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-      {/* Add Reviewer Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      {/* Add/Edit Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={(open) => {
+        if (!open) {
+          resetForm()
+        }
+        setShowAddDialog(open)
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Reviewer</DialogTitle>
-            <DialogDescription>Add a new reviewer to an event</DialogDescription>
+            <DialogTitle>{editingReviewer ? "Edit Reviewer" : "Add Reviewer"}</DialogTitle>
+            <DialogDescription>
+              {editingReviewer
+                ? "Update reviewer details"
+                : "Add a new reviewer. If specialty is empty, a form will be sent to collect details."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label>Event *</Label>
-              <Select value={editForm.event_id} onValueChange={(v) => setEditForm({ ...editForm, event_id: v })}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select event..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {events.map(event => (
-                    <SelectItem key={event.id} value={event.id}>
-                      {event.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Name *</Label>
                 <Input
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  placeholder="Full name"
-                  className="mt-1"
+                  placeholder="Dr. John Doe"
                 />
               </div>
               <div>
@@ -626,8 +456,7 @@ export default function ReviewersPage() {
                   type="email"
                   value={editForm.email}
                   onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  placeholder="email@example.com"
-                  className="mt-1"
+                  placeholder="john@example.com"
                 />
               </div>
             </div>
@@ -637,177 +466,83 @@ export default function ReviewersPage() {
                 <Input
                   value={editForm.phone}
                   onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                  className="mt-1"
+                  placeholder="9876543210"
                 />
               </div>
+              <div>
+                <Label>Institution</Label>
+                <Input
+                  value={editForm.institution}
+                  onChange={(e) => setEditForm({ ...editForm, institution: e.target.value })}
+                  placeholder="Hospital/College name"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>City</Label>
                 <Input
                   value={editForm.city}
                   onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                  className="mt-1"
+                  placeholder="Mumbai"
                 />
               </div>
-            </div>
-            <div>
-              <Label>Institution</Label>
-              <Input
-                value={editForm.institution}
-                onChange={(e) => setEditForm({ ...editForm, institution: e.target.value })}
-                className="mt-1"
-              />
+              <div>
+                <Label>Years of Experience</Label>
+                <Input
+                  value={editForm.years_of_experience}
+                  onChange={(e) => setEditForm({ ...editForm, years_of_experience: e.target.value })}
+                  placeholder="10"
+                />
+              </div>
             </div>
             <div>
               <Label>Specialty</Label>
               <Input
                 value={editForm.specialty}
                 onChange={(e) => setEditForm({ ...editForm, specialty: e.target.value })}
-                placeholder="e.g., General & GI Surgery, Hernia Surgery"
-                className="mt-1"
+                placeholder="General Surgery, Hernia Surgery, etc."
+              />
+            </div>
+            <div>
+              <Label>Notes (Internal)</Label>
+              <Textarea
+                value={editForm.notes}
+                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                placeholder="Internal notes about this reviewer"
+                rows={2}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+              Cancel
+            </Button>
             <Button
-              onClick={() => addReviewer.mutate(editForm)}
-              disabled={!editForm.name.trim() || !editForm.email.trim() || !editForm.event_id || addReviewer.isPending}
+              onClick={() => saveMutation.mutate(editingReviewer ? { ...editForm, id: editingReviewer.id } : editForm)}
+              disabled={saveMutation.isPending || !editForm.name || !editForm.email}
             >
-              {addReviewer.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Add Reviewer
+              {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {editingReviewer ? "Update" : "Add Reviewer"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
-      <Dialog open={!!editingReviewer} onOpenChange={(open) => !open && setEditingReviewer(null)}>
-        <DialogContent>
+      {/* Import Dialog */}
+      <Dialog open={showImport} onOpenChange={setShowImport}>
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Edit Reviewer</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Name</Label>
-                <Input
-                  value={editForm.name}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Email</Label>
-                <Input
-                  value={editForm.email}
-                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Phone</Label>
-                <Input
-                  value={editForm.phone}
-                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>City</Label>
-                <Input
-                  value={editForm.city}
-                  onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Institution</Label>
-              <Input
-                value={editForm.institution}
-                onChange={(e) => setEditForm({ ...editForm, institution: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label>Specialty</Label>
-              <Input
-                value={editForm.specialty}
-                onChange={(e) => setEditForm({ ...editForm, specialty: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label>Status</Label>
-              <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingReviewer(null)}>Cancel</Button>
-            <Button
-              onClick={() => {
-                if (editingReviewer) {
-                  updateReviewer.mutate({ id: editingReviewer.id, ...editForm })
-                }
-              }}
-              disabled={updateReviewer.isPending}
-            >
-              {updateReviewer.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Copy to Event Dialog */}
-      <Dialog open={showCopyDialog} onOpenChange={setShowCopyDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Copy Reviewers to Event</DialogTitle>
+            <DialogTitle>Import Reviewers</DialogTitle>
             <DialogDescription>
-              Copy {selectedReviewers.length} selected reviewer(s) to another event
+              Upload a CSV file to import reviewers to the global pool
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Target Event *</Label>
-              <Select value={copyToEventId} onValueChange={setCopyToEventId}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select event..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {events.map(event => (
-                    <SelectItem key={event.id} value={event.id}>
-                      {event.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Existing reviewers with the same email will be updated.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCopyDialog(false)}>Cancel</Button>
-            <Button
-              onClick={() => copyReviewers.mutate({ reviewerIds: selectedReviewers, targetEventId: copyToEventId })}
-              disabled={!copyToEventId || copyReviewers.isPending}
-            >
-              {copyReviewers.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Copy Reviewers
-            </Button>
-          </DialogFooter>
+          <CSVImportDynamic
+            fields={csvFields}
+            onImport={(data) => importMutation.mutate(data)}
+            isLoading={importMutation.isPending}
+          />
         </DialogContent>
       </Dialog>
     </div>
