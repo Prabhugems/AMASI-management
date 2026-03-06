@@ -121,9 +121,15 @@ export function CSVImportDynamic({
       ["total_amount", ["total amount", "amount paid", "amount", "total", "payment", "price", "fee", "ticket price", "order amount"]],
       ["email", ["email", "email address", "e-mail", "mail"]],
       ["phone", ["phone", "mobile", "mobile number", "phone number", "contact", "cell"]],
-      ["status", ["status", "registration status"]],
+      ["status", ["status", "registration status", "availability status", "availability"]],
+      // Reviewer-specific fields
+      ["institution", ["institution", "hospital", "organization", "organisation", "college", "university", "institute"]],
+      ["city", ["city", "location", "place"]],
+      ["specialty", ["specialty", "speciality", "specialization", "specialisation", "specialty interests", "area of interest", "expertise"]],
+      ["years_of_experience", ["years of experience", "experience", "years", "yrs of experience"]],
+      ["notes", ["notes", "comments", "remarks", "additional comments"]],
       // "name" checked last to avoid matching "ticket name"
-      ["name", ["name", "full name", "attendee name", "participant name"]],
+      ["name", ["name", "full name", "attendee name", "participant name", "reviewer name"]],
     ]
 
     // Columns to skip by default (serial numbers, order IDs, payment info we don't need)
