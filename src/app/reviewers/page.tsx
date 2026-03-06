@@ -539,12 +539,14 @@ export default function ReviewersPoolPage() {
             </DialogDescription>
           </DialogHeader>
           <CSVImportDynamic
-            fields={csvFields}
+            title="Import Reviewers"
+            description="Upload a CSV file with reviewer information"
+            standardFields={csvFields}
+            templateFileName="reviewers-template.csv"
             onImport={async (data) => {
               const result = await importMutation.mutateAsync(data)
               return { success: result.success || 0, failed: result.failed || 0, errors: [] }
             }}
-            isLoading={importMutation.isPending}
           />
         </DialogContent>
       </Dialog>
