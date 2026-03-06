@@ -37,13 +37,7 @@ export async function POST(
       )
     }
 
-    // Can't switch if already checked in
-    if (currentReg.checked_in) {
-      return NextResponse.json(
-        { error: "Cannot switch ticket for checked-in registration" },
-        { status: 400 }
-      )
-    }
+    // Note: Admins can now change tickets even after check-in
 
     // Get the new ticket type
     const { data: newTicket, error: ticketError } = await (supabase as any)

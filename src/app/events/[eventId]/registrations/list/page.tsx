@@ -2371,17 +2371,15 @@ export default function RegistrationsPage() {
                   <FileDown className="w-3.5 h-3.5 mr-1.5" />
                   Final Receipt
                 </Button>
+                <Button variant="outline" size="sm" className="h-9 text-xs border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950/30" onClick={openSwitchTicketDialog}>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                  Change Ticket
+                </Button>
                 {!selectedRegistration.checked_in && (
-                  <>
-                    <Button variant="outline" size="sm" className="h-9 text-xs border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950/30" onClick={openSwitchTicketDialog}>
-                      <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                      Change Ticket
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-9 text-xs border-pink-200 text-pink-700 hover:bg-pink-50 hover:border-pink-300 dark:border-pink-800 dark:text-pink-400 dark:hover:bg-pink-950/30" onClick={openTransferEventDialog}>
-                      <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                      Transfer Event
-                    </Button>
-                  </>
+                  <Button variant="outline" size="sm" className="h-9 text-xs border-pink-200 text-pink-700 hover:bg-pink-50 hover:border-pink-300 dark:border-pink-800 dark:text-pink-400 dark:hover:bg-pink-950/30" onClick={openTransferEventDialog}>
+                    <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                    Transfer Event
+                  </Button>
                 )}
               </div>
             </SlideOverFooter>
