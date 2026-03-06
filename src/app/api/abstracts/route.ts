@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Use admin client to bypass RLS - access is controlled by the checks above
+    // Always use admin client since access is already controlled by checks above
     const queryClient: SupabaseClient = await createAdminClient()
 
     let query = queryClient
