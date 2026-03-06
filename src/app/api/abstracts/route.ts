@@ -318,6 +318,7 @@ export async function POST(request: NextRequest) {
           category_id: body.category_id || null,
           abstract_number: abstractNumber,
           title: body.title,
+          subject: body.subject || null,
           abstract_text: body.abstract_text,
           keywords: body.keywords || [],
           presentation_type: body.presentation_type || "either",

@@ -89,6 +89,7 @@ export default function SubmitAbstractPage() {
 
   // Form state
   const [title, setTitle] = useState("")
+  const [subject, setSubject] = useState("")
   const [abstractText, setAbstractText] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [presentationType, setPresentationType] = useState("either")
@@ -276,6 +277,7 @@ export default function SubmitAbstractPage() {
           registration_id: registrationInfo?.id || null,
           category_id: categoryId || null,
           title,
+          subject: subject || null,
           abstract_text: abstractText,
           keywords,
           presentation_type: presentationType,
@@ -531,6 +533,7 @@ export default function SubmitAbstractPage() {
               onClick={() => {
                 setStep("lookup")
                 setTitle("")
+                setSubject("")
                 setAbstractText("")
                 setCategoryId("")
                 setKeywords([])
@@ -659,17 +662,29 @@ export default function SubmitAbstractPage() {
           }}
           className="space-y-6"
         >
-          {/* Title */}
-          <div className="bg-white rounded-xl border p-6">
-            <label className="block text-sm font-medium mb-2">
-              Abstract Title *
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter your abstract title"
-              required
-            />
+          {/* Title & Subject */}
+          <div className="bg-white rounded-xl border p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Abstract Title *
+              </label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Enter your abstract title"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Subject / Topic
+              </label>
+              <Input
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="e.g., Laparoscopic Surgery, Bariatric Surgery, Hernia"
+              />
+            </div>
           </div>
 
           {/* Category & Type */}
