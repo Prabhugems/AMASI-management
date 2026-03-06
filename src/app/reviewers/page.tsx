@@ -39,6 +39,10 @@ import {
   FileText,
   Send,
   ExternalLink,
+  Award,
+  GraduationCap,
+  BadgeCheck,
+  Crown,
 } from "lucide-react"
 import { toast } from "sonner"
 import { CSVImportDynamic } from "@/components/ui/csv-import-dynamic"
@@ -60,6 +64,11 @@ type Reviewer = {
   form_completed_at: string | null
   created_at: string
   updated_at: string
+  // AMASI membership/faculty info (enriched from API)
+  amasi_membership_number: string | null
+  is_amasi_member: boolean
+  member_status: string | null
+  is_amasi_faculty: boolean
 }
 
 const csvFields = [
@@ -407,25 +416,61 @@ export default function ReviewersPoolPage() {
                   <button
                     key={reviewer.id}
                     onClick={() => { setSelectedReviewer(reviewer); setIsEditing(false) }}
-                    className={`w-full text-left p-4 hover:bg-white transition-colors ${
-                      selectedReviewer?.id === reviewer.id ? "bg-white border-l-2 border-l-primary" : ""
+                    className={`w-full text-left p-4 hover:bg-white transition-all ${
+                      selectedReviewer?.id === reviewer.id
+                        ? "bg-white border-l-4 border-l-primary shadow-sm"
+                        : "border-l-4 border-l-transparent"
                     }`}
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{reviewer.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-semibold truncate">{reviewer.name}</p>
+                          {reviewer.is_amasi_member && (
+                            <Award className="h-3.5 w-3.5 text-purple-500 flex-shrink-0" title="AMASI Member" />
+                          )}
+                          {reviewer.is_amasi_faculty && (
+                            <GraduationCap className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" title="AMASI Faculty" />
+                          )}
+                          {reviewer.form_completed_at && (
+                            <CheckCircle className="h-3.5 w-3.5 text-green-500 flex-shrink-0" title="Form Completed" />
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground truncate">{reviewer.email}</p>
                         {reviewer.institution && (
-                          <p className="text-xs text-muted-foreground truncate mt-1">{reviewer.institution}</p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            <Building className="h-3 w-3 inline mr-1" />
+                            {reviewer.institution}
+                          </p>
+                        )}
+                        {reviewer.specialty && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {reviewer.specialty.split(",").slice(0, 2).map((s, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700"
+                              >
+                                {s.trim()}
+                              </span>
+                            ))}
+                            {reviewer.specialty.split(",").length > 2 && (
+                              <span className="text-[10px] text-muted-foreground">
+                                +{reviewer.specialty.split(",").length - 2} more
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
-                      <div className="flex flex-col items-end gap-1 ml-2">
-                        <Badge variant={reviewer.status === "active" ? "default" : "secondary"} className="text-xs">
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge
+                          variant={reviewer.status === "active" ? "default" : "secondary"}
+                          className={`text-[10px] ${reviewer.status === "active" ? "bg-green-100 text-green-700 hover:bg-green-100" : ""}`}
+                        >
                           {reviewer.status}
                         </Badge>
                         {reviewer.form_token && !reviewer.form_completed_at && (
-                          <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-300">
-                            Pending
+                          <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 bg-amber-50">
+                            Form Pending
                           </Badge>
                         )}
                       </div>
@@ -553,82 +598,175 @@ export default function ReviewersPoolPage() {
               ) : (
                 /* Detail View */
                 <div>
-                  <div className="flex items-start justify-between mb-6">
-                    <div>
-                      <h2 className="text-xl font-semibold">{selectedReviewer.name}</h2>
-                      <p className="text-muted-foreground">{selectedReviewer.email}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={startEditing}>
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          if (confirm("Delete this reviewer?")) {
-                            deleteMutation.mutate(selectedReviewer.id)
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                  {/* Header Card */}
+                  <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-blue-50 rounded-xl p-5 mb-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-14 w-14 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xl">
+                          {selectedReviewer.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold">{selectedReviewer.name}</h2>
+                          <p className="text-muted-foreground flex items-center gap-1">
+                            <Mail className="h-3.5 w-3.5" />
+                            {selectedReviewer.email}
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <Badge
+                              className={`text-xs ${selectedReviewer.status === "active"
+                                ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {selectedReviewer.status === "active" ? "Active" : "Inactive"}
+                            </Badge>
+                            {selectedReviewer.is_amasi_member && (
+                              <Badge className="bg-purple-100 text-purple-700 text-xs">
+                                <Award className="h-3 w-3 mr-1" />
+                                AMASI Member
+                              </Badge>
+                            )}
+                            {selectedReviewer.is_amasi_faculty && (
+                              <Badge className="bg-orange-100 text-orange-700 text-xs">
+                                <GraduationCap className="h-3 w-3 mr-1" />
+                                Faculty
+                              </Badge>
+                            )}
+                            {selectedReviewer.form_completed_at ? (
+                              <Badge className="bg-blue-100 text-blue-700 text-xs">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Verified
+                              </Badge>
+                            ) : selectedReviewer.form_token ? (
+                              <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Pending
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={startEditing}>
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            if (confirm("Delete this reviewer?")) {
+                              deleteMutation.mutate(selectedReviewer.id)
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    {/* Status */}
-                    <div className="flex gap-2">
-                      <Badge variant={selectedReviewer.status === "active" ? "default" : "secondary"}>
-                        {selectedReviewer.status}
-                      </Badge>
-                      {selectedReviewer.form_completed_at ? (
-                        <Badge variant="outline" className="text-green-600 border-green-300">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Form Completed
-                        </Badge>
-                      ) : selectedReviewer.form_token ? (
-                        <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-                          <Mail className="h-3 w-3 mr-1" />
-                          Form Pending
-                        </Badge>
-                      ) : null}
-                    </div>
+                  <div className="space-y-5">
 
-                    {/* Contact Info */}
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    {/* Contact Info Grid */}
+                    <div className="grid grid-cols-2 gap-3">
                       {selectedReviewer.phone && (
-                        <div className="flex items-center gap-3">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span>{selectedReviewer.phone}</span>
-                        </div>
-                      )}
-                      {selectedReviewer.institution && (
-                        <div className="flex items-center gap-3">
-                          <Building className="h-4 w-4 text-muted-foreground" />
-                          <span>{selectedReviewer.institution}</span>
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Phone className="h-3.5 w-3.5" />
+                            <span className="text-xs font-medium">Phone</span>
+                          </div>
+                          <p className="text-sm font-medium">{selectedReviewer.phone}</p>
                         </div>
                       )}
                       {selectedReviewer.city && (
-                        <div className="flex items-center gap-3">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span>{selectedReviewer.city}</span>
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            <span className="text-xs font-medium">City</span>
+                          </div>
+                          <p className="text-sm font-medium">{selectedReviewer.city}</p>
+                        </div>
+                      )}
+                      {selectedReviewer.institution && (
+                        <div className="bg-gray-50 rounded-lg p-3 col-span-2">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Building className="h-3.5 w-3.5" />
+                            <span className="text-xs font-medium">Institution</span>
+                          </div>
+                          <p className="text-sm font-medium">{selectedReviewer.institution}</p>
                         </div>
                       )}
                       {selectedReviewer.years_of_experience && (
-                        <div className="flex items-center gap-3">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>{selectedReviewer.years_of_experience} years experience</span>
+                        <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 col-span-2">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span className="text-xs font-medium">Experience</span>
+                          </div>
+                          <p className="text-sm font-medium">{selectedReviewer.years_of_experience} years</p>
                         </div>
                       )}
                     </div>
 
-                    {/* Specialty */}
+                    {/* AMASI Membership & Faculty */}
+                    {(selectedReviewer.is_amasi_member || selectedReviewer.is_amasi_faculty) && (
+                      <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 rounded-xl p-4 border border-amber-200">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Crown className="h-5 w-5 text-amber-600" />
+                          <h3 className="font-semibold text-amber-800">AMASI Association</h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {selectedReviewer.is_amasi_member && (
+                            <div className="bg-white/70 rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Award className="h-4 w-4 text-purple-600" />
+                                <span className="text-xs font-medium text-purple-700">Member</span>
+                              </div>
+                              {selectedReviewer.amasi_membership_number ? (
+                                <p className="text-sm font-bold text-purple-800">
+                                  #{selectedReviewer.amasi_membership_number}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-purple-600">Active Member</p>
+                              )}
+                              {selectedReviewer.member_status && (
+                                <Badge className="mt-1 text-[10px] bg-purple-100 text-purple-700">
+                                  {selectedReviewer.member_status}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                          {selectedReviewer.is_amasi_faculty && (
+                            <div className="bg-white/70 rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-1">
+                                <GraduationCap className="h-4 w-4 text-orange-600" />
+                                <span className="text-xs font-medium text-orange-700">Faculty</span>
+                              </div>
+                              <p className="text-sm font-bold text-orange-800">AMASI Faculty</p>
+                              <Badge className="mt-1 text-[10px] bg-orange-100 text-orange-700">
+                                <BadgeCheck className="h-3 w-3 mr-1" />
+                                Verified
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Specialty Tags */}
                     {selectedReviewer.specialty && (
                       <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-2">Specialty</h3>
-                        <p className="text-sm">{selectedReviewer.specialty}</p>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-2">Specialties</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedReviewer.specialty.split(",").map((s, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+                            >
+                              {s.trim()}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -640,34 +778,62 @@ export default function ReviewersPoolPage() {
                       </div>
                     )}
 
-                    {/* Form Link */}
-                    {selectedReviewer.form_token && !selectedReviewer.form_completed_at && (
+                    {/* Form Section */}
+                    {selectedReviewer.form_token && (
                       <div className="border-t pt-4 mt-4">
-                        <h3 className="text-sm font-medium text-muted-foreground mb-2">Form Link</h3>
-                        <div className="flex gap-2">
-                          <Input
-                            readOnly
-                            value={getFormUrl(selectedReviewer.form_token)}
-                            className="text-xs font-mono"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              navigator.clipboard.writeText(getFormUrl(selectedReviewer.form_token!))
-                              toast.success("Link copied!")
-                            }}
-                          >
-                            Copy
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(getFormUrl(selectedReviewer.form_token!), "_blank")}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-medium text-muted-foreground">Registration Form</h3>
+                          {selectedReviewer.form_completed_at ? (
+                            <Badge className="bg-green-100 text-green-700 border-green-200">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Completed {new Date(selectedReviewer.form_completed_at).toLocaleDateString()}
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Awaiting Response
+                            </Badge>
+                          )}
                         </div>
+
+                        {!selectedReviewer.form_completed_at && (
+                          <>
+                            <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                              <p className="text-xs text-muted-foreground mb-2">Share this link with the reviewer:</p>
+                              <code className="text-xs bg-white px-2 py-1 rounded border block truncate">
+                                {getFormUrl(selectedReviewer.form_token)}
+                              </code>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(getFormUrl(selectedReviewer.form_token!))
+                                  toast.success("Link copied!")
+                                }}
+                              >
+                                Copy Link
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(getFormUrl(selectedReviewer.form_token!), "_blank")}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => window.open(`mailto:${selectedReviewer.email}?subject=AMASI Reviewer Registration&body=Please complete your registration: ${getFormUrl(selectedReviewer.form_token!)}`)}
+                              >
+                                <Send className="h-4 w-4 mr-1" />
+                                Email
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
 

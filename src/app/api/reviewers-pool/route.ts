@@ -35,12 +35,13 @@ function getReviewerFormEmail(name: string, formUrl: string): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
-// GET /api/reviewers-pool - List all reviewers in global pool
+// GET /api/reviewers-pool - List all reviewers in global pool with membership/faculty lookup
 export async function GET() {
   try {
     const supabase: SupabaseClient = await createAdminClient()
 
-    const { data, error } = await supabase
+    // Fetch reviewers
+    const { data: reviewers, error } = await supabase
       .from("reviewers_pool")
       .select("*")
       .order("name", { ascending: true })
@@ -50,7 +51,47 @@ export async function GET() {
       return NextResponse.json({ error: "Failed to fetch reviewers" }, { status: 500 })
     }
 
-    return NextResponse.json(data || [])
+    if (!reviewers || reviewers.length === 0) {
+      return NextResponse.json([])
+    }
+
+    // Get all reviewer emails for batch lookup
+    const emails = reviewers.map((r: any) => r.email.toLowerCase())
+
+    // Lookup members by email
+    const { data: members } = await supabase
+      .from("members")
+      .select("email, membership_number, status")
+      .in("email", emails)
+
+    // Lookup faculty by email
+    const { data: faculty } = await supabase
+      .from("faculty")
+      .select("email, name")
+      .in("email", emails)
+
+    // Create lookup maps
+    const memberMap = new Map(
+      (members || []).map((m: any) => [m.email.toLowerCase(), m])
+    )
+    const facultyMap = new Map(
+      (faculty || []).map((f: any) => [f.email.toLowerCase(), f])
+    )
+
+    // Enrich reviewers with membership/faculty info
+    const enriched = reviewers.map((r: any) => {
+      const member = memberMap.get(r.email.toLowerCase())
+      const isFaculty = facultyMap.has(r.email.toLowerCase())
+      return {
+        ...r,
+        amasi_membership_number: member?.membership_number || r.amasi_membership_number || null,
+        is_amasi_member: !!member,
+        member_status: member?.status || null,
+        is_amasi_faculty: isFaculty,
+      }
+    })
+
+    return NextResponse.json(enriched)
   } catch (error) {
     console.error("Error in GET /api/reviewers-pool:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
