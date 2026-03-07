@@ -67,14 +67,58 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(checkDuplicates ? { reviewers: [], duplicates: [] } : [])
     }
 
+    // Helper to normalize phone numbers
+    const normalizePhone = (phone: string | number | null | undefined): string | null => {
+      if (!phone) return null
+      const phoneStr = String(phone)
+      const cleaned = phoneStr.replace(/[\s\-\(\)]/g, "")
+      if (cleaned.startsWith("+91")) return cleaned.slice(3)
+      if (cleaned.startsWith("91") && cleaned.length > 10) return cleaned.slice(2)
+      if (cleaned.startsWith("0")) return cleaned.slice(1)
+      return cleaned
+    }
+
     // Get all reviewer emails for batch lookup
     const emails = reviewers.map((r: any) => r.email.toLowerCase())
 
-    // Lookup members by email
-    const { data: members } = await supabase
-      .from("members")
-      .select("email, membership_number, status")
-      .in("email", emails)
+    // Helper to normalize names for matching
+    const normalizeName = (name: string | null): string | null => {
+      if (!name) return null
+      return name
+        .toLowerCase()
+        .trim()
+        .replace(/^(dr\.?\s*|prof\.?\s*|mr\.?\s*|ms\.?\s*|mrs\.?\s*)/i, "")
+        .replace(/\s+/g, " ")
+        .trim()
+    }
+
+    // Lookup all members (to match by email, phone, or name)
+    // Fetch in batches since Supabase has 1000 row limit per query
+    let allMembers: any[] = []
+    let offset = 0
+    const batchSize = 1000
+    let hasMore = true
+
+    while (hasMore) {
+      const { data: batch } = await supabase
+        .from("members")
+        .select("email, phone, name, amasi_number, status")
+        .range(offset, offset + batchSize - 1)
+
+      if (batch && batch.length > 0) {
+        allMembers = allMembers.concat(batch)
+        offset += batchSize
+        hasMore = batch.length === batchSize
+      } else {
+        hasMore = false
+      }
+    }
+
+    console.log(`[Sync] Fetched ${allMembers.length} total members`)
+
+    // Debug: Check if specific member exists
+    const janiMember = allMembers.find((m: any) => m.email?.toLowerCase().includes('kvjani'))
+    console.log(`[Sync] Kalpesh Jani in members:`, janiMember ? JSON.stringify(janiMember) : 'NOT FOUND')
 
     // Lookup faculty by email
     const { data: faculty } = await supabase
@@ -82,23 +126,51 @@ export async function GET(request: NextRequest) {
       .select("email, name")
       .in("email", emails)
 
-    // Create lookup maps
-    const memberMap = new Map(
-      (members || []).map((m: any) => [m.email.toLowerCase(), m])
-    )
+    // Create lookup maps - by email, phone, and name
+    const memberByEmail = new Map<string, any>()
+    const memberByPhone = new Map<string, any>()
+    const memberByName = new Map<string, any>()
+
+    for (const m of (allMembers || [])) {
+      if (m.email) {
+        memberByEmail.set(m.email.toLowerCase(), m)
+      }
+      const normalizedPhone = normalizePhone(m.phone)
+      if (normalizedPhone) {
+        memberByPhone.set(normalizedPhone, m)
+      }
+      const normalizedName = normalizeName(m.name)
+      if (normalizedName) {
+        memberByName.set(normalizedName, m)
+      }
+    }
+
     const facultyMap = new Map(
       (faculty || []).map((f: any) => [f.email.toLowerCase(), f])
     )
 
     // Enrich reviewers with membership/faculty info
     const enriched = reviewers.map((r: any) => {
-      const member: any = memberMap.get(r.email.toLowerCase())
+      // Try email first, then phone, then name
+      let member: any = memberByEmail.get(r.email.toLowerCase())
+      if (!member && r.phone) {
+        const normalizedPhone = normalizePhone(r.phone)
+        if (normalizedPhone) {
+          member = memberByPhone.get(normalizedPhone)
+        }
+      }
+      if (!member && r.name) {
+        const normalizedName = normalizeName(r.name)
+        if (normalizedName) {
+          member = memberByName.get(normalizedName)
+        }
+      }
       const isFaculty = facultyMap.has(r.email.toLowerCase())
       return {
         ...r,
-        amasi_membership_number: member?.membership_number || r.amasi_membership_number || null,
-        is_amasi_member: !!member,
-        member_status: member?.status || null,
+        amasi_membership_number: member?.amasi_number || r.amasi_membership_number || null,
+        is_amasi_member: !!member || !!r.amasi_membership_number,
+        member_status: member?.status || r.member_status || null,
         is_amasi_faculty: isFaculty,
       }
     })
@@ -241,6 +313,12 @@ export async function PUT(request: NextRequest) {
     if (updates.years_of_experience !== undefined) payload.years_of_experience = updates.years_of_experience
     if (updates.status !== undefined) payload.status = updates.status
     if (updates.notes !== undefined) payload.notes = updates.notes
+    if (updates.available_for_review !== undefined) payload.available_for_review = updates.available_for_review
+
+    // Generate form_token if requested
+    if (updates.generate_token === true) {
+      payload.form_token = generateToken()
+    }
 
     const { data, error } = await supabase
       .from("reviewers_pool")
@@ -257,6 +335,195 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(data)
   } catch (error) {
     console.error("Error in PUT /api/reviewers-pool:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+// PATCH /api/reviewers-pool - Sync reviewers with members table
+export async function PATCH(request: NextRequest) {
+  try {
+    const authSupabase: SupabaseClient = await createServerSupabaseClient()
+    const { data: { user }, error: authError } = await authSupabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const supabase: SupabaseClient = await createAdminClient()
+    const { searchParams } = new URL(request.url)
+    const action = searchParams.get("action")
+
+    if (action === "sync-members") {
+      // Get all reviewers with email and phone
+      const { data: reviewers, error: fetchError } = await supabase
+        .from("reviewers_pool")
+        .select("id, email, phone")
+
+      if (fetchError) {
+        console.error("Error fetching reviewers:", fetchError)
+        return NextResponse.json({ error: "Failed to fetch reviewers" }, { status: 500 })
+      }
+
+      if (!reviewers || reviewers.length === 0) {
+        return NextResponse.json({ synced: 0, message: "No reviewers to sync" })
+      }
+
+      // Helper to normalize phone numbers (remove spaces, dashes, +91, etc.)
+      const normalizePhone = (phone: string | number | null | undefined): string | null => {
+        if (!phone) return null
+        const phoneStr = String(phone)
+        const cleaned = phoneStr.replace(/[\s\-\(\)]/g, "")
+        // Remove country code prefix
+        if (cleaned.startsWith("+91")) return cleaned.slice(3)
+        if (cleaned.startsWith("91") && cleaned.length > 10) return cleaned.slice(2)
+        if (cleaned.startsWith("0")) return cleaned.slice(1)
+        return cleaned
+      }
+
+      // Get all member emails and phones for matching
+      const emails = reviewers.map((r: any) => r.email.toLowerCase())
+      const phones = reviewers
+        .map((r: any) => normalizePhone(r.phone))
+        .filter((p: string | null): p is string => !!p)
+
+      // Helper to normalize names for matching
+      const normalizeName = (name: string | null): string | null => {
+        if (!name) return null
+        return name
+          .toLowerCase()
+          .trim()
+          .replace(/^(dr\.?\s*|prof\.?\s*|mr\.?\s*|ms\.?\s*|mrs\.?\s*)/i, "")
+          .replace(/\s+/g, " ")
+          .trim()
+      }
+
+      // Fetch all members in batches (Supabase has 1000 row limit per query)
+      let allMembers: any[] = []
+      let offset = 0
+      const batchSize = 1000
+      let hasMore = true
+
+      while (hasMore) {
+        const { data: batch, error: batchError } = await supabase
+          .from("members")
+          .select("email, phone, name, amasi_number, status")
+          .range(offset, offset + batchSize - 1)
+
+        if (batchError) {
+          console.error("Error fetching members batch:", batchError)
+          return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 })
+        }
+
+        if (batch && batch.length > 0) {
+          allMembers = allMembers.concat(batch)
+          offset += batchSize
+          hasMore = batch.length === batchSize
+        } else {
+          hasMore = false
+        }
+      }
+
+      console.log(`[Sync] Fetched ${allMembers.length} total members from database`)
+
+      // Get faculty info
+      const { data: faculty } = await supabase
+        .from("faculty")
+        .select("email")
+        .in("email", emails)
+
+      // Create lookup maps - by email, phone, and name
+      const memberByEmail = new Map<string, any>()
+      const memberByPhone = new Map<string, any>()
+      const memberByName = new Map<string, any>()
+
+      for (const m of (allMembers || [])) {
+        if (m.email) {
+          memberByEmail.set(m.email.toLowerCase(), m)
+        }
+        const normalizedPhone = normalizePhone(m.phone)
+        if (normalizedPhone) {
+          memberByPhone.set(normalizedPhone, m)
+        }
+        const normalizedName = normalizeName(m.name)
+        if (normalizedName) {
+          memberByName.set(normalizedName, m)
+        }
+      }
+
+      const facultySet = new Set(
+        (faculty || []).map((f: any) => f.email.toLowerCase())
+      )
+
+      // Update each reviewer with matched member data
+      let syncedCount = 0
+      let syncedByEmail = 0
+      let syncedByPhone = 0
+      let syncedByName = 0
+      let facultyCount = 0
+
+      for (const reviewer of reviewers) {
+        // Try to find member by email first, then phone, then name
+        let member = memberByEmail.get(reviewer.email.toLowerCase())
+        let matchedBy = "email"
+
+        if (!member && reviewer.phone) {
+          const normalizedPhone = normalizePhone(reviewer.phone)
+          if (normalizedPhone) {
+            member = memberByPhone.get(normalizedPhone)
+            matchedBy = "phone"
+          }
+        }
+
+        if (!member && reviewer.name) {
+          const normalizedName = normalizeName(reviewer.name)
+          if (normalizedName) {
+            member = memberByName.get(normalizedName)
+            matchedBy = "name"
+          }
+        }
+
+        const isFaculty = facultySet.has(reviewer.email.toLowerCase())
+
+        if (member || isFaculty) {
+          const updateData: Record<string, any> = {
+            updated_at: new Date().toISOString(),
+          }
+
+          if (member) {
+            updateData.is_amasi_member = true
+            updateData.amasi_membership_number = member.amasi_number
+            updateData.member_status = member.status
+            syncedCount++
+            if (matchedBy === "email") syncedByEmail++
+            else if (matchedBy === "phone") syncedByPhone++
+            else if (matchedBy === "name") syncedByName++
+          }
+
+          if (isFaculty) {
+            updateData.is_amasi_faculty = true
+            facultyCount++
+          }
+
+          await supabase
+            .from("reviewers_pool")
+            .update(updateData)
+            .eq("id", reviewer.id)
+        }
+      }
+
+      return NextResponse.json({
+        synced: syncedCount,
+        syncedByEmail,
+        syncedByPhone,
+        syncedByName,
+        faculty: facultyCount,
+        total: reviewers.length,
+        message: `Synced ${syncedCount} members (${syncedByEmail} by email, ${syncedByPhone} by phone, ${syncedByName} by name) and ${facultyCount} faculty from ${reviewers.length} reviewers`
+      })
+    }
+
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 })
+  } catch (error) {
+    console.error("Error in PATCH /api/reviewers-pool:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
