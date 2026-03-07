@@ -37,6 +37,15 @@ import {
   MessageSquare,
   ClipboardCheck,
   BarChart3,
+  Sparkles,
+  Award,
+  Trophy,
+  ChevronRight,
+  Zap,
+  Target,
+  TrendingUp,
+  Filter,
+  RefreshCw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -361,44 +370,63 @@ export default function AbstractReviewerPortal() {
   // Entry screen
   if (!hasEntered) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-full max-w-md mx-auto p-8 bg-white rounded-xl border shadow-sm">
-          <div className="text-center mb-6">
-            <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <ClipboardCheck className="h-7 w-7 text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+        {/* Animated Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
+          <div className="absolute top-1/2 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: "1s" }} />
+          <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: "2s" }} />
+        </div>
+
+        <div className="relative z-10 w-full max-w-md mx-auto p-8 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl">
+          <div className="text-center mb-8">
+            <div className="relative inline-block">
+              <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-purple-500/30">
+                <ClipboardCheck className="h-10 w-10 text-white" />
+              </div>
+              <Sparkles className="h-6 w-6 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
             </div>
-            <h1 className="text-2xl font-bold">Abstract Reviewer Portal</h1>
-            <p className="text-muted-foreground mt-2">{eventForDisplay?.name || "Loading..."}</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Abstract Reviewer Portal</h1>
+            <p className="text-purple-200 text-lg">{eventForDisplay?.name || "Loading..."}</p>
             {eventForDisplay?.start_date && (
-              <p className="text-sm text-muted-foreground">
-                {formatDate(eventForDisplay.start_date)} - {formatDate(eventForDisplay.end_date)}
-              </p>
+              <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-white/10 border border-white/20">
+                <Calendar className="h-4 w-4 text-purple-300" />
+                <span className="text-sm text-purple-200">
+                  {formatDate(eventForDisplay.start_date)} - {formatDate(eventForDisplay.end_date)}
+                </span>
+              </div>
             )}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label className="text-sm font-medium">Your Name</label>
-              <Input
-                value={reviewerName}
-                onChange={(e) => { setReviewerName(e.target.value); setValidationError("") }}
-                placeholder="Enter your full name"
-                className="mt-1"
-              />
+              <label className="text-sm font-medium text-purple-200 mb-2 block">Your Name</label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-purple-400" />
+                <Input
+                  value={reviewerName}
+                  onChange={(e) => { setReviewerName(e.target.value); setValidationError("") }}
+                  placeholder="Enter your full name"
+                  className="pl-12 h-12 bg-white/5 border-white/20 text-white placeholder:text-purple-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
             </div>
             <div>
-              <label className="text-sm font-medium">Your Email</label>
-              <Input
-                type="email"
-                value={reviewerEmail}
-                onChange={(e) => { setReviewerEmail(e.target.value); setValidationError("") }}
-                placeholder="Enter your email"
-                className="mt-1"
-              />
+              <label className="text-sm font-medium text-purple-200 mb-2 block">Your Email</label>
+              <div className="relative">
+                <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-purple-400" />
+                <Input
+                  type="email"
+                  value={reviewerEmail}
+                  onChange={(e) => { setReviewerEmail(e.target.value); setValidationError("") }}
+                  placeholder="Enter your email"
+                  className="pl-12 h-12 bg-white/5 border-white/20 text-white placeholder:text-purple-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
             </div>
             {validationError && (
-              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-sm text-red-200">
+                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-red-400" />
                 <span>{validationError}</span>
               </div>
             )}
@@ -419,7 +447,6 @@ export default function AbstractReviewerPortal() {
                       setValidating(false)
                       return
                     }
-                    // Pre-fill name from reviewer record
                     if (data.reviewer?.name) {
                       setReviewerName(data.reviewer.name)
                     }
@@ -433,14 +460,16 @@ export default function AbstractReviewerPortal() {
                 setHasEntered(true)
               }}
               disabled={!reviewerName.trim() || !reviewerEmail.trim() || validating}
-              className="w-full"
+              className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl shadow-lg shadow-purple-500/25 font-semibold text-base"
             >
-              {validating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {validating && <Loader2 className="h-5 w-5 mr-2 animate-spin" />}
+              <Zap className="h-5 w-5 mr-2" />
               Enter Portal
             </Button>
           </div>
 
-          <p className="text-xs text-muted-foreground text-center mt-4">
+          <p className="text-xs text-purple-300/60 text-center mt-6 flex items-center justify-center gap-2">
+            <User className="h-3 w-3" />
             Your name and email will be attached to reviews you submit.
           </p>
         </div>
@@ -450,120 +479,198 @@ export default function AbstractReviewerPortal() {
 
   // Main portal
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-slate-50">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      <header className="bg-white/80 backdrop-blur-xl border-b border-purple-100 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <ClipboardCheck className="h-6 w-6 text-primary" />
-                <h1 className="text-xl font-bold">Abstract Reviewer Portal</h1>
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                <ClipboardCheck className="h-6 w-6 text-white" />
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                {event?.name} {event?.city ? `\u2022 ${event.city}` : ""}
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold">Abstract Reviewer Portal</h1>
+                  <Sparkles className="h-4 w-4 text-yellow-500" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {event?.name} {event?.city ? `• ${event.city}` : ""}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant="outline" className="text-sm">
-                <Calendar className="h-3.5 w-3.5 mr-1" />
-                {event?.start_date && formatDate(event.start_date)} - {event?.end_date && formatDate(event.end_date)}
-              </Badge>
-              <Badge variant="secondary" className="text-sm">
-                <User className="h-3.5 w-3.5 mr-1" />
-                {reviewerName}
-              </Badge>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-50 border border-purple-100">
+                <Calendar className="h-4 w-4 text-purple-500" />
+                <span className="text-sm font-medium text-purple-700">
+                  {event?.start_date && formatDate(event.start_date)} - {event?.end_date && formatDate(event.end_date)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                <User className="h-4 w-4" />
+                <span className="text-sm font-medium">{reviewerName}</span>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg border p-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              <span className="text-sm text-muted-foreground">Total Abstracts</span>
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Progress & Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 border border-primary/20 p-5 hover:shadow-lg hover:shadow-primary/10 transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-4xl font-bold text-primary">{stats.total}</p>
+                <p className="text-sm text-muted-foreground mt-1">Total Abstracts</p>
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <FileText className="h-6 w-6 text-primary" />
+              </div>
             </div>
-            <p className="text-3xl font-bold mt-2">{stats.total}</p>
+            <div className="absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
           </div>
-          <div className="bg-white rounded-lg border p-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-500" />
-              <span className="text-sm text-muted-foreground">Pending Review</span>
+
+          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-5 hover:shadow-lg hover:shadow-amber-500/10 transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-4xl font-bold text-amber-600">{stats.pending}</p>
+                <p className="text-sm text-muted-foreground mt-1">Pending Review</p>
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-amber-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Clock className="h-6 w-6 text-amber-600" />
+              </div>
             </div>
-            <p className="text-3xl font-bold mt-2 text-amber-600">{stats.pending}</p>
+            {stats.pending > 0 && (
+              <div className="absolute top-3 right-3">
+                <div className="h-3 w-3 bg-amber-500 rounded-full animate-pulse" />
+              </div>
+            )}
+            <div className="absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-amber-500/10 blur-2xl" />
           </div>
-          <div className="bg-white rounded-lg border p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-sm text-muted-foreground">Reviewed by Me</span>
+
+          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 p-5 hover:shadow-lg hover:shadow-emerald-500/10 transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-4xl font-bold text-emerald-600">{stats.reviewedByMe}</p>
+                <p className="text-sm text-muted-foreground mt-1">Reviewed by Me</p>
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <CheckCircle className="h-6 w-6 text-emerald-600" />
+              </div>
             </div>
-            <p className="text-3xl font-bold mt-2 text-green-600">{stats.reviewedByMe}</p>
+            <div className="absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-emerald-500/10 blur-2xl" />
           </div>
-          <div className="bg-white rounded-lg border p-4">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-500" />
-              <span className="text-sm text-muted-foreground">Average Score</span>
+
+          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 p-5 hover:shadow-lg hover:shadow-blue-500/10 transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-4xl font-bold text-blue-600">{stats.avgScore || "—"}</p>
+                <p className="text-sm text-muted-foreground mt-1">Average Score</p>
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <TrendingUp className="h-6 w-6 text-blue-600" />
+              </div>
             </div>
-            <p className="text-3xl font-bold mt-2 text-blue-600">{stats.avgScore || "—"}</p>
+            <div className="absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-blue-500/10 blur-2xl" />
           </div>
         </div>
 
+        {/* Progress Bar */}
+        {stats.total > 0 && (
+          <div className="p-5 rounded-2xl bg-white/80 backdrop-blur-sm border border-purple-100 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-purple-500" />
+                <span className="font-medium">Your Progress</span>
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {stats.reviewedByMe} of {stats.total} reviewed ({Math.round((stats.reviewedByMe / stats.total) * 100)}%)
+              </span>
+            </div>
+            <div className="h-3 rounded-full bg-purple-100 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
+                style={{ width: `${Math.round((stats.reviewedByMe / stats.total) * 100)}%` }}
+              />
+            </div>
+            {stats.reviewedByMe === stats.total && stats.total > 0 && (
+              <div className="flex items-center gap-2 mt-3 text-emerald-600">
+                <Trophy className="h-5 w-5" />
+                <span className="font-medium">All abstracts reviewed! Great work!</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Search & Filters */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-purple-100">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-purple-400" />
             <Input
               placeholder="Search by title, number, or author..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              className="pl-12 h-11 bg-white border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="submitted">Submitted</SelectItem>
-              <SelectItem value="under_review">Under Review</SelectItem>
-              <SelectItem value="accepted">Accepted</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
-          {categories.length > 0 && (
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Category" />
+          <div className="flex items-center gap-3">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px] h-11 bg-white border-purple-100 rounded-xl">
+                <Filter className="h-4 w-4 mr-2 text-purple-400" />
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(([id, name]) => (
-                  <SelectItem key={id} value={id}>
-                    {name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="submitted">Submitted</SelectItem>
+                <SelectItem value="under_review">Under Review</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
-          )}
-          <span className="text-sm text-muted-foreground">
+            {categories.length > 0 && (
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[180px] h-11 bg-white border-purple-100 rounded-xl">
+                  <Tag className="h-4 w-4 mr-2 text-purple-400" />
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map(([id, name]) => (
+                    <SelectItem key={id} value={id}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <Badge variant="secondary" className="px-4 py-2 bg-purple-100 text-purple-700 border-0 rounded-xl">
             {filteredAbstracts.length} abstract{filteredAbstracts.length !== 1 ? "s" : ""}
-          </span>
+          </Badge>
         </div>
 
         {/* Abstracts List */}
         {filteredAbstracts.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg border border-dashed">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No abstracts found</h3>
-            <p className="text-muted-foreground">
+          <div className="text-center py-16 rounded-2xl border-2 border-dashed border-purple-200 bg-white/50">
+            <div className="h-20 w-20 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
+              <FileText className="h-10 w-10 text-purple-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No abstracts found</h3>
+            <p className="text-muted-foreground max-w-md mx-auto">
               {abstracts.length === 0
                 ? "No abstracts have been submitted for this event yet"
                 : "Try adjusting your search or filters"}
             </p>
+            {search || statusFilter !== "all" || categoryFilter !== "all" ? (
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => { setSearch(""); setStatusFilter("all"); setCategoryFilter("all") }}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Clear filters
+              </Button>
+            ) : null}
           </div>
         ) : (
           <div className="space-y-3">
@@ -578,7 +685,6 @@ export default function AbstractReviewerPortal() {
                   key={abstract.id}
                   onClick={() => {
                     setSelectedAbstract(abstract)
-                    // Initialize dynamic scores if the category has scoring criteria
                     const criteria = getCriteriaForAbstract(abstract)
                     if (criteria && criteria.length > 0) {
                       const initial: Record<string, number> = {}
@@ -589,62 +695,71 @@ export default function AbstractReviewerPortal() {
                     }
                   }}
                   className={cn(
-                    "w-full text-left bg-white rounded-lg border p-4 transition-all hover:shadow-md hover:border-primary/30",
-                    reviewed && "border-green-200 bg-green-50/30"
+                    "w-full text-left rounded-2xl border p-5 transition-all hover:shadow-lg group",
+                    reviewed
+                      ? "bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200 hover:border-emerald-300"
+                      : "bg-white/80 backdrop-blur-sm border-purple-100 hover:border-purple-300"
                   )}
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start justify-between gap-5">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-mono text-sm font-semibold text-primary">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="font-mono text-sm font-bold px-3 py-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white">
                           {abstract.abstract_number}
                         </span>
-                        <span className={cn("px-2 py-0.5 text-xs font-medium rounded-full", status.bg, status.text)}>
+                        <span className={cn("px-3 py-1 text-xs font-semibold rounded-lg", status.bg, status.text)}>
                           {status.label}
                         </span>
                         {abstract.category && (
-                          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
+                          <span className="px-3 py-1 text-xs font-medium rounded-lg bg-purple-100 text-purple-700">
                             {abstract.category.name}
                           </span>
                         )}
-                        <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-600 capitalize">
+                        <span className="px-3 py-1 text-xs font-medium rounded-lg bg-blue-100 text-blue-700 capitalize">
                           {abstract.presentation_type}
                         </span>
                         {reviewed && (
-                          <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">
-                            <CheckCircle className="h-3 w-3" />
+                          <span className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-white">
+                            <CheckCircle className="h-3.5 w-3.5" />
                             Reviewed
                           </span>
                         )}
                       </div>
-                      <h3 className="font-medium text-base truncate">{abstract.title}</h3>
+                      <h3 className="font-semibold text-base line-clamp-2 group-hover:text-purple-700 transition-colors">
+                        {abstract.title}
+                      </h3>
                       {!settings?.blind_review && abstract.presenting_author_name && (
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
+                          <User className="h-4 w-4" />
                           {abstract.presenting_author_name}
-                          {abstract.presenting_author_affiliation && ` \u2022 ${abstract.presenting_author_affiliation}`}
+                          {abstract.presenting_author_affiliation && ` • ${abstract.presenting_author_affiliation}`}
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-4 shrink-0">
                       {/* Review count */}
-                      <div className="text-center">
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          <span className="text-sm">{reviewCount}</span>
+                      <div className="text-center px-4 py-2 rounded-xl bg-purple-50">
+                        <div className="flex items-center justify-center gap-1.5 text-purple-600">
+                          <MessageSquare className="h-4 w-4" />
+                          <span className="font-bold">{reviewCount}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">reviews</p>
+                        <p className="text-[10px] uppercase tracking-wide text-purple-400 mt-0.5">reviews</p>
                       </div>
                       {/* Average score */}
                       {avgScore && (
                         <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold",
-                          parseFloat(avgScore) >= 7 ? "bg-green-100 text-green-700" :
-                          parseFloat(avgScore) >= 5 ? "bg-yellow-100 text-yellow-700" :
-                          "bg-red-100 text-red-700"
+                          "w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold shadow-sm",
+                          parseFloat(avgScore) >= 7 ? "bg-gradient-to-br from-emerald-400 to-green-500 text-white" :
+                          parseFloat(avgScore) >= 5 ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white" :
+                          "bg-gradient-to-br from-red-400 to-pink-500 text-white"
                         )}>
                           {avgScore}
                         </div>
                       )}
+                      <ChevronRight className={cn(
+                        "h-5 w-5 transition-transform",
+                        reviewed ? "text-emerald-400" : "text-purple-300 group-hover:text-purple-500 group-hover:translate-x-1"
+                      )} />
                     </div>
                   </div>
                 </button>

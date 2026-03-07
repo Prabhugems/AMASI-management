@@ -37,10 +37,22 @@ import {
   RefreshCw,
   XCircle,
   CalendarClock,
+  Sparkles,
+  ChevronRight,
+  Target,
+  TrendingUp,
+  Award,
+  Zap,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Mail,
+  Building,
 } from "lucide-react"
 import { toast } from "sonner"
 import { CSVImportDynamic } from "@/components/ui/csv-import-dynamic"
 import { Checkbox } from "@/components/ui/checkbox"
+import { cn } from "@/lib/utils"
 
 type PoolReviewer = {
   id: string
@@ -450,10 +462,51 @@ export default function ReviewersPage() {
     return result
   }
 
+  // Gradient colors for avatars
+  const gradients = [
+    "from-pink-500 to-rose-500",
+    "from-violet-500 to-purple-500",
+    "from-blue-500 to-cyan-500",
+    "from-emerald-500 to-teal-500",
+    "from-orange-500 to-amber-500",
+    "from-red-500 to-pink-500",
+    "from-indigo-500 to-blue-500",
+    "from-fuchsia-500 to-pink-500",
+  ]
+
+  const getGradient = (name: string) => {
+    const index = name.charCodeAt(0) % gradients.length
+    return gradients[index]
+  }
+
+  const getInitials = (name: string) => {
+    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+  }
+
+  // Workload distribution
+  const workloadData = useMemo(() => {
+    const maxAssigned = Math.max(...reviewers.map(r => (r.assigned_abstracts || []).length), 1)
+    return reviewers.map(r => ({
+      ...r,
+      assignedCount: (r.assigned_abstracts || []).length,
+      pendingCount: Math.max(0, (r.assigned_abstracts || []).length - r.review_count),
+      completedPercent: (r.assigned_abstracts || []).length > 0
+        ? Math.round((r.review_count / (r.assigned_abstracts || []).length) * 100)
+        : 0,
+      workloadPercent: Math.round(((r.assigned_abstracts || []).length / maxAssigned) * 100),
+    }))
+  }, [reviewers])
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="relative">
+            <div className="h-16 w-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin mx-auto" />
+            <Sparkles className="h-6 w-6 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <p className="mt-4 text-muted-foreground font-medium">Loading reviewers...</p>
+        </div>
       </div>
     )
   }
@@ -476,11 +529,20 @@ export default function ReviewersPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Reviewers</h1>
-          <p className="text-sm text-muted-foreground">Manage registered reviewers for this event</p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/25">
+            <Users className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              Event Reviewers
+              <Sparkles className="h-5 w-5 text-yellow-500" />
+            </h1>
+            <p className="text-sm text-muted-foreground">Manage and assign reviewers for this event</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button
@@ -491,8 +553,9 @@ export default function ReviewersPage() {
               }
             }}
             disabled={autoAssign.isPending}
+            className="border-primary/20 hover:bg-primary/5"
           >
-            {autoAssign.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shuffle className="h-4 w-4 mr-2" />}
+            {autoAssign.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shuffle className="h-4 w-4 mr-2 text-primary" />}
             Auto Assign
           </Button>
           <Button
@@ -503,9 +566,10 @@ export default function ReviewersPage() {
               }
             }}
             disabled={reassignPending.isPending}
+            className="border-amber-500/20 hover:bg-amber-500/5"
           >
-            {reassignPending.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Reassign Pending
+            {reassignPending.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2 text-amber-600" />}
+            Reassign
           </Button>
           <Button
             variant="outline"
@@ -515,123 +579,160 @@ export default function ReviewersPage() {
               }
             }}
             disabled={clearAssignments.isPending}
+            className="border-red-500/20 hover:bg-red-500/5"
           >
-            {clearAssignments.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <XCircle className="h-4 w-4 mr-2" />}
+            {clearAssignments.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <XCircle className="h-4 w-4 mr-2 text-red-500" />}
             Clear
           </Button>
-          <Button variant="outline" onClick={() => {
-            setEditForm({
-              name: "", email: "", phone: "", institution: "", city: "",
-              specialty: "", years_of_experience: "", status: "active", notes: "",
-            })
-            setShowAddDialog(true)
-          }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Reviewer
+          <Button
+            variant="outline"
+            onClick={() => {
+              setEditForm({
+                name: "", email: "", phone: "", institution: "", city: "",
+                specialty: "", years_of_experience: "", status: "active", notes: "",
+              })
+              setShowAddDialog(true)
+            }}
+            className="border-green-500/20 hover:bg-green-500/5"
+          >
+            <Plus className="h-4 w-4 mr-2 text-green-600" />
+            Add
           </Button>
-          <Button onClick={() => setShowImport(true)}>
+          <Button onClick={() => setShowImport(true)} className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg shadow-primary/25">
             <Upload className="h-4 w-4 mr-2" />
             Import CSV
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border p-4">
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            <span className="text-sm text-muted-foreground">Total Reviewers</span>
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 border border-primary/20 p-5 hover:shadow-lg hover:shadow-primary/10 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-4xl font-bold text-primary">{stats.total}</p>
+              <p className="text-sm text-muted-foreground mt-1">Total Reviewers</p>
+            </div>
+            <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Users className="h-6 w-6 text-primary" />
+            </div>
           </div>
-          <p className="text-3xl font-bold mt-2">{stats.total}</p>
+          <div className="absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
         </div>
-        <div className="bg-white rounded-lg border p-4">
-          <div className="flex items-center gap-2">
-            <UserCheck className="h-5 w-5 text-green-500" />
-            <span className="text-sm text-muted-foreground">Active</span>
+
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 p-5 hover:shadow-lg hover:shadow-emerald-500/10 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-4xl font-bold text-emerald-600">{stats.active}</p>
+              <p className="text-sm text-muted-foreground mt-1">Active</p>
+            </div>
+            <div className="h-12 w-12 rounded-xl bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <UserCheck className="h-6 w-6 text-emerald-600" />
+            </div>
           </div>
-          <p className="text-3xl font-bold mt-2 text-green-600">{stats.active}</p>
+          <div className="absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-emerald-500/10 blur-2xl" />
         </div>
-        <div className="bg-white rounded-lg border p-4">
-          <div className="flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5 text-blue-500" />
-            <span className="text-sm text-muted-foreground">Reviews Submitted</span>
+
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 p-5 hover:shadow-lg hover:shadow-blue-500/10 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-4xl font-bold text-blue-600">{stats.totalReviews}</p>
+              <p className="text-sm text-muted-foreground mt-1">Reviews Done</p>
+            </div>
+            <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <ClipboardCheck className="h-6 w-6 text-blue-600" />
+            </div>
           </div>
-          <p className="text-3xl font-bold mt-2 text-blue-600">{stats.totalReviews}</p>
+          <div className="absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-blue-500/10 blur-2xl" />
         </div>
-        <div className="bg-white rounded-lg border p-4">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-purple-500" />
-            <span className="text-sm text-muted-foreground">Avg Reviews/Reviewer</span>
+
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 p-5 hover:shadow-lg hover:shadow-purple-500/10 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-4xl font-bold text-purple-600">{stats.avgReviews}</p>
+              <p className="text-sm text-muted-foreground mt-1">Avg/Reviewer</p>
+            </div>
+            <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <BarChart3 className="h-6 w-6 text-purple-600" />
+            </div>
           </div>
-          <p className="text-3xl font-bold mt-2 text-purple-600">{stats.avgReviews}</p>
+          <div className="absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-purple-500/10 blur-2xl" />
         </div>
       </div>
 
-      {/* Restrict toggle */}
-      <div className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <div className="flex items-center gap-3">
-          <Shield className="h-5 w-5 text-amber-600" />
-          <div>
-            <p className="font-medium text-sm">Restrict portal to registered reviewers</p>
-            <p className="text-xs text-muted-foreground">
-              When enabled, only emails registered here can access the reviewer portal
-            </p>
+      {/* Settings Cards */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Restrict toggle */}
+        <div className="flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-amber-500/5 to-orange-500/5 border border-amber-500/20">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+              <Shield className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="font-medium">Restrict Portal Access</p>
+              <p className="text-xs text-muted-foreground">
+                Only registered reviewers can access
+              </p>
+            </div>
           </div>
-        </div>
-        <Switch
-          checked={settings?.restrict_reviewers ?? false}
-          onCheckedChange={(checked) => toggleRestrict.mutate(checked)}
-          disabled={toggleRestrict.isPending}
-        />
-      </div>
-
-      {/* Review Deadline */}
-      <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-center gap-3">
-          <CalendarClock className="h-5 w-5 text-blue-600" />
-          <div>
-            <p className="font-medium text-sm">Review Deadline</p>
-            <p className="text-xs text-muted-foreground">
-              Unreviewed abstracts will be auto-reassigned after this deadline
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Input
-            type="datetime-local"
-            className="w-[220px]"
-            value={settings?.review_deadline ? new Date(settings.review_deadline).toISOString().slice(0, 16) : ""}
-            onChange={(e) => {
-              const val = e.target.value
-              updateDeadline.mutate(val ? new Date(val).toISOString() : null)
-            }}
+          <Switch
+            checked={settings?.restrict_reviewers ?? false}
+            onCheckedChange={(checked) => toggleRestrict.mutate(checked)}
+            disabled={toggleRestrict.isPending}
+            className="data-[state=checked]:bg-amber-500"
           />
-          {settings?.review_deadline && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => updateDeadline.mutate(null)}
-            >
-              <XCircle className="h-4 w-4" />
-            </Button>
-          )}
+        </div>
+
+        {/* Review Deadline */}
+        <div className="flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-blue-500/5 to-cyan-500/5 border border-blue-500/20">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+              <CalendarClock className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="font-medium">Review Deadline</p>
+              <p className="text-xs text-muted-foreground">
+                Auto-reassign after deadline
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="datetime-local"
+              className="w-[200px] h-9 text-sm"
+              value={settings?.review_deadline ? new Date(settings.review_deadline).toISOString().slice(0, 16) : ""}
+              onChange={(e) => {
+                const val = e.target.value
+                updateDeadline.mutate(val ? new Date(val).toISOString() : null)
+              }}
+            />
+            {settings?.review_deadline && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => updateDeadline.mutate(null)}
+                className="h-9 w-9 p-0"
+              >
+                <XCircle className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Search & Filter */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by name, email, institution..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-10 bg-background"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-[140px] h-10 bg-background">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -640,89 +741,172 @@ export default function ReviewersPage() {
             <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-sm text-muted-foreground">
+        <Badge variant="secondary" className="text-sm px-3 py-1.5">
           {filtered.length} reviewer{filtered.length !== 1 ? "s" : ""}
-        </span>
+        </Badge>
       </div>
 
-      {/* Table */}
+      {/* Reviewer Cards */}
       {filtered.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-dashed">
-          <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">No reviewers found</h3>
-          <p className="text-muted-foreground mb-4">
+        <div className="text-center py-16 rounded-2xl border-2 border-dashed bg-muted/20">
+          <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <Users className="h-10 w-10 text-primary" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">No reviewers found</h3>
+          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
             {reviewers.length === 0
-              ? "Import reviewers from a CSV file to get started"
+              ? "Import reviewers from CSV or add from the global pool to get started"
               : "Try adjusting your search or filters"}
           </p>
           {reviewers.length === 0 && (
-            <Button onClick={() => setShowImport(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Import CSV
-            </Button>
+            <div className="flex items-center justify-center gap-3">
+              <Button onClick={() => setShowImport(true)} className="bg-gradient-to-r from-primary to-purple-600">
+                <Upload className="h-4 w-4 mr-2" />
+                Import CSV
+              </Button>
+              <Button variant="outline" onClick={() => setShowAddDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Reviewer
+              </Button>
+            </div>
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-lg border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left px-4 py-3 font-medium">Name</th>
-                  <th className="text-left px-4 py-3 font-medium">Email</th>
-                  <th className="text-left px-4 py-3 font-medium">Institution</th>
-                  <th className="text-left px-4 py-3 font-medium">Specialty</th>
-                  <th className="text-center px-4 py-3 font-medium">Status</th>
-                  <th className="text-center px-4 py-3 font-medium">Assigned</th>
-                  <th className="text-center px-4 py-3 font-medium">Pending</th>
-                  <th className="text-center px-4 py-3 font-medium">Reviews</th>
-                  <th className="text-center px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((reviewer) => (
-                  <tr key={reviewer.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium">{reviewer.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{reviewer.email}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{reviewer.institution || "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{reviewer.specialty || "—"}</td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge variant={reviewer.status === "active" ? "default" : "secondary"}>
-                        {reviewer.status}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-center font-medium">{(reviewer.assigned_abstracts || []).length}</td>
-                    <td className="px-4 py-3 text-center font-medium text-amber-600">
-                      {Math.max(0, (reviewer.assigned_abstracts || []).length - reviewer.review_count)}
-                    </td>
-                    <td className="px-4 py-3 text-center font-medium">{reviewer.review_count}</td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditClick(reviewer)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm("Remove this reviewer?")) {
-                              deleteReviewer.mutate(reviewer.id)
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="grid gap-3">
+          {workloadData.filter(r => filtered.some(f => f.id === r.id)).map((reviewer) => (
+            <div
+              key={reviewer.id}
+              className={cn(
+                "group relative overflow-hidden rounded-2xl border p-5 transition-all hover:shadow-lg",
+                reviewer.status === "active"
+                  ? "bg-gradient-to-r from-background to-muted/30 hover:border-primary/30"
+                  : "bg-muted/20 opacity-60"
+              )}
+            >
+              <div className="flex items-center gap-5">
+                {/* Avatar */}
+                <div className={cn(
+                  "h-14 w-14 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white font-bold text-lg shadow-lg",
+                  getGradient(reviewer.name)
+                )}>
+                  {getInitials(reviewer.name)}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold truncate">{reviewer.name}</h3>
+                    <Badge
+                      variant={reviewer.status === "active" ? "default" : "secondary"}
+                      className={cn(
+                        "text-[10px] px-2",
+                        reviewer.status === "active" && "bg-emerald-500/20 text-emerald-700 border-emerald-500/30"
+                      )}
+                    >
+                      {reviewer.status === "active" ? <Zap className="h-3 w-3 mr-1" /> : null}
+                      {reviewer.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1 truncate">
+                      <Mail className="h-3.5 w-3.5" />
+                      {reviewer.email}
+                    </span>
+                    {reviewer.institution && (
+                      <span className="flex items-center gap-1 truncate">
+                        <Building className="h-3.5 w-3.5" />
+                        {reviewer.institution}
+                      </span>
+                    )}
+                  </div>
+                  {reviewer.specialty && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {reviewer.specialty.split(",").slice(0, 3).map((s, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                          {s.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats */}
+                <div className="flex items-center gap-6">
+                  {/* Workload Progress */}
+                  <div className="w-40">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-semibold">{reviewer.completedPercent}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all",
+                          reviewer.completedPercent >= 80 ? "bg-emerald-500" :
+                          reviewer.completedPercent >= 50 ? "bg-amber-500" :
+                          reviewer.completedPercent > 0 ? "bg-blue-500" : "bg-muted"
+                        )}
+                        style={{ width: `${reviewer.completedPercent}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Assigned */}
+                  <div className="text-center min-w-[60px]">
+                    <p className="text-2xl font-bold">{reviewer.assignedCount}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Assigned</p>
+                  </div>
+
+                  {/* Pending */}
+                  <div className="text-center min-w-[60px]">
+                    <p className={cn(
+                      "text-2xl font-bold",
+                      reviewer.pendingCount > 0 ? "text-amber-500" : "text-muted-foreground"
+                    )}>
+                      {reviewer.pendingCount}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Pending</p>
+                  </div>
+
+                  {/* Completed */}
+                  <div className="text-center min-w-[60px]">
+                    <p className="text-2xl font-bold text-emerald-600">{reviewer.review_count}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Done</p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditClick(reviewer)}
+                      className="h-9 w-9 rounded-xl hover:bg-primary/10"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        if (confirm("Remove this reviewer from the event?")) {
+                          deleteReviewer.mutate(reviewer.id)
+                        }
+                      }}
+                      className="h-9 w-9 rounded-xl hover:bg-red-500/10"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Workload Bar (background) */}
+              <div
+                className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-primary/50 to-purple-500/50 transition-all"
+                style={{ width: `${reviewer.workloadPercent}%` }}
+              />
+            </div>
+          ))}
         </div>
       )}
 
@@ -737,27 +921,40 @@ export default function ReviewersPage() {
       }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Add Reviewer</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
+                <Plus className="h-4 w-4 text-white" />
+              </div>
+              Add Reviewer
+            </DialogTitle>
           </DialogHeader>
 
           {/* Mode Toggle */}
-          <div className="flex gap-2 border-b pb-3">
-            <Button
-              variant={addMode === "pool" ? "default" : "outline"}
-              size="sm"
+          <div className="flex gap-2 p-1 rounded-xl bg-muted/50">
+            <button
               onClick={() => setAddMode("pool")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all",
+                addMode === "pool"
+                  ? "bg-background shadow-sm text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
-              <Users className="h-4 w-4 mr-2" />
+              <Users className="h-4 w-4" />
               Select from Pool
-            </Button>
-            <Button
-              variant={addMode === "manual" ? "default" : "outline"}
-              size="sm"
+            </button>
+            <button
               onClick={() => setAddMode("manual")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all",
+                addMode === "manual"
+                  ? "bg-background shadow-sm text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Add New
-            </Button>
+            </button>
           </div>
 
           {addMode === "pool" ? (
@@ -769,20 +966,26 @@ export default function ReviewersPage() {
                   placeholder="Search reviewers by name, email, specialty..."
                   value={poolSearch}
                   onChange={(e) => setPoolSearch(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-11 rounded-xl"
                 />
               </div>
 
               {/* Pool List */}
-              <div className="border rounded-lg max-h-[300px] overflow-auto">
+              <div className="rounded-xl border max-h-[320px] overflow-auto">
                 {availableFromPool.length === 0 ? (
-                  <div className="p-6 text-center text-muted-foreground">
-                    {poolSearch ? "No matching reviewers found" : "No available reviewers in pool"}
+                  <div className="p-8 text-center">
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                      <Users className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-muted-foreground">
+                      {poolSearch ? "No matching reviewers found" : "No available reviewers in pool"}
+                    </p>
                     <Button
                       variant="link"
-                      className="block mx-auto mt-2"
+                      className="mt-2"
                       onClick={() => setAddMode("manual")}
                     >
+                      <Plus className="h-4 w-4 mr-1" />
                       Add new reviewer
                     </Button>
                   </div>
@@ -791,7 +994,12 @@ export default function ReviewersPage() {
                     {availableFromPool.slice(0, 50).map((p) => (
                       <label
                         key={p.id}
-                        className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer"
+                        className={cn(
+                          "flex items-center gap-4 p-4 cursor-pointer transition-colors",
+                          selectedFromPool.includes(p.id)
+                            ? "bg-primary/5"
+                            : "hover:bg-muted/50"
+                        )}
                       >
                         <Checkbox
                           checked={selectedFromPool.includes(p.id)}
@@ -800,19 +1008,28 @@ export default function ReviewersPage() {
                               checked ? [...prev, p.id] : prev.filter(id => id !== p.id)
                             )
                           }}
+                          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                         />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm">{p.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{p.email}</p>
+                        <div className={cn(
+                          "h-10 w-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-semibold text-sm flex-shrink-0",
+                          getGradient(p.name)
+                        )}>
+                          {getInitials(p.name)}
                         </div>
-                        <div className="text-right text-xs text-muted-foreground">
-                          {p.specialty && <p className="truncate max-w-[150px]">{p.specialty}</p>}
-                          {p.institution && <p className="truncate max-w-[150px]">{p.institution}</p>}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium">{p.name}</p>
+                          <p className="text-sm text-muted-foreground truncate">{p.email}</p>
+                        </div>
+                        <div className="text-right text-xs text-muted-foreground flex-shrink-0">
+                          {p.specialty && (
+                            <p className="truncate max-w-[150px] px-2 py-0.5 rounded-full bg-muted">{p.specialty.split(",")[0]}</p>
+                          )}
+                          {p.institution && <p className="truncate max-w-[150px] mt-1">{p.institution}</p>}
                         </div>
                       </label>
                     ))}
                     {availableFromPool.length > 50 && (
-                      <p className="text-xs text-muted-foreground text-center py-2">
+                      <p className="text-xs text-muted-foreground text-center py-3 bg-muted/30">
                         Showing first 50 of {availableFromPool.length} - refine your search
                       </p>
                     )}
@@ -820,25 +1037,55 @@ export default function ReviewersPage() {
                 )}
               </div>
 
+              {selectedFromPool.length > 0 && (
+                <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20">
+                  <span className="text-sm">
+                    <strong>{selectedFromPool.length}</strong> reviewer{selectedFromPool.length !== 1 ? "s" : ""} selected
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedFromPool([])}
+                    className="text-xs"
+                  >
+                    Clear all
+                  </Button>
+                </div>
+              )}
+
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setShowAddDialog(false)} className="rounded-xl">
+                  Cancel
+                </Button>
                 <Button
                   onClick={() => addFromPool.mutate(selectedFromPool)}
                   disabled={selectedFromPool.length === 0 || addFromPool.isPending}
+                  className="rounded-xl bg-gradient-to-r from-primary to-purple-600"
                 >
                   {addFromPool.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Add {selectedFromPool.length} Reviewer{selectedFromPool.length !== 1 ? "s" : ""}
+                  Add {selectedFromPool.length || ""} Reviewer{selectedFromPool.length !== 1 ? "s" : ""}
                 </Button>
               </DialogFooter>
             </>
           ) : (
             <>
               {/* Manual Add Form */}
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Add a new reviewer. They will be added to the global pool and this event.
-                  {!editForm.specialty && " A form will be sent to collect their specialty."}
-                </p>
+              <div className="space-y-5">
+                <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Sparkles className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">New Reviewer</p>
+                      <p className="text-xs text-blue-700 mt-0.5">
+                        They will be added to the global pool and this event.
+                        {!editForm.specialty && " A form will be sent to collect their specialty."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium">Name *</label>
@@ -846,7 +1093,7 @@ export default function ReviewersPage() {
                       value={editForm.name}
                       onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                       placeholder="Full name"
-                      className="mt-1"
+                      className="mt-1.5 h-10 rounded-xl"
                     />
                   </div>
                   <div>
@@ -856,7 +1103,7 @@ export default function ReviewersPage() {
                       value={editForm.email}
                       onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                       placeholder="email@example.com"
-                      className="mt-1"
+                      className="mt-1.5 h-10 rounded-xl"
                     />
                   </div>
                 </div>
@@ -866,7 +1113,8 @@ export default function ReviewersPage() {
                     <Input
                       value={editForm.phone}
                       onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                      className="mt-1"
+                      placeholder="Contact number"
+                      className="mt-1.5 h-10 rounded-xl"
                     />
                   </div>
                   <div>
@@ -874,7 +1122,8 @@ export default function ReviewersPage() {
                     <Input
                       value={editForm.institution}
                       onChange={(e) => setEditForm({ ...editForm, institution: e.target.value })}
-                      className="mt-1"
+                      placeholder="Hospital/University"
+                      className="mt-1.5 h-10 rounded-xl"
                     />
                   </div>
                 </div>
@@ -884,7 +1133,8 @@ export default function ReviewersPage() {
                     <Input
                       value={editForm.city}
                       onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                      className="mt-1"
+                      placeholder="Location"
+                      className="mt-1.5 h-10 rounded-xl"
                     />
                   </div>
                   <div>
@@ -893,16 +1143,19 @@ export default function ReviewersPage() {
                       value={editForm.specialty}
                       onChange={(e) => setEditForm({ ...editForm, specialty: e.target.value })}
                       placeholder="Leave empty to send form"
-                      className="mt-1"
+                      className="mt-1.5 h-10 rounded-xl"
                     />
                   </div>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setShowAddDialog(false)} className="rounded-xl">
+                  Cancel
+                </Button>
                 <Button
                   onClick={() => addNewToPoolAndEvent.mutate(editForm)}
                   disabled={!editForm.name.trim() || !editForm.email.trim() || addNewToPoolAndEvent.isPending}
+                  className="rounded-xl bg-gradient-to-r from-primary to-purple-600"
                 >
                   {addNewToPoolAndEvent.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Add Reviewer
@@ -915,26 +1168,38 @@ export default function ReviewersPage() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingReviewer} onOpenChange={(open) => !open && setEditingReviewer(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Reviewer</DialogTitle>
+            <DialogTitle className="flex items-center gap-3">
+              {editingReviewer && (
+                <div className={cn(
+                  "h-10 w-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-bold",
+                  getGradient(editingReviewer.name)
+                )}>
+                  {getInitials(editingReviewer.name)}
+                </div>
+              )}
+              Edit Reviewer
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Name</label>
-              <Input
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Email</label>
-              <Input
-                value={editForm.email}
-                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                className="mt-1"
-              />
+          <div className="space-y-5 pt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Name</label>
+                <Input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="mt-1.5 h-10 rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Email</label>
+                <Input
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="mt-1.5 h-10 rounded-xl"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -942,7 +1207,7 @@ export default function ReviewersPage() {
                 <Input
                   value={editForm.phone}
                   onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                  className="mt-1"
+                  className="mt-1.5 h-10 rounded-xl"
                 />
               </div>
               <div>
@@ -950,7 +1215,7 @@ export default function ReviewersPage() {
                 <Input
                   value={editForm.city}
                   onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                  className="mt-1"
+                  className="mt-1.5 h-10 rounded-xl"
                 />
               </div>
             </div>
@@ -959,7 +1224,7 @@ export default function ReviewersPage() {
               <Input
                 value={editForm.institution}
                 onChange={(e) => setEditForm({ ...editForm, institution: e.target.value })}
-                className="mt-1"
+                className="mt-1.5 h-10 rounded-xl"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -968,45 +1233,71 @@ export default function ReviewersPage() {
                 <Input
                   value={editForm.specialty}
                   onChange={(e) => setEditForm({ ...editForm, specialty: e.target.value })}
-                  className="mt-1"
+                  className="mt-1.5 h-10 rounded-xl"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Years of Experience</label>
+                <label className="text-sm font-medium">Experience (Years)</label>
                 <Input
                   value={editForm.years_of_experience}
                   onChange={(e) => setEditForm({ ...editForm, years_of_experience: e.target.value })}
-                  className="mt-1"
+                  className="mt-1.5 h-10 rounded-xl"
                 />
               </div>
             </div>
-            <div>
+            <div className="p-4 rounded-xl bg-muted/30 border">
               <label className="text-sm font-medium">Status</label>
-              <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, status: "active" })}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border transition-all",
+                    editForm.status === "active"
+                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700"
+                      : "border-muted hover:border-muted-foreground/20"
+                  )}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Active
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, status: "inactive" })}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border transition-all",
+                    editForm.status === "inactive"
+                      ? "bg-gray-500/10 border-gray-500/30 text-gray-700"
+                      : "border-muted hover:border-muted-foreground/20"
+                  )}
+                >
+                  <Clock className="h-4 w-4" />
+                  Inactive
+                </button>
+              </div>
             </div>
             <div>
-              <label className="text-sm font-medium">Notes (Internal)</label>
+              <label className="text-sm font-medium">Internal Notes</label>
               <textarea
                 value={editForm.notes}
                 onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
                 rows={2}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Private notes about this reviewer..."
+                className="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingReviewer(null)}>Cancel</Button>
-            <Button onClick={handleSaveEdit} disabled={updateReviewer.isPending}>
+          <DialogFooter className="pt-4">
+            <Button variant="outline" onClick={() => setEditingReviewer(null)} className="rounded-xl">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={updateReviewer.isPending}
+              className="rounded-xl bg-gradient-to-r from-primary to-purple-600"
+            >
               {updateReviewer.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>

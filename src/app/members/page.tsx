@@ -49,6 +49,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatPhoneNumber } from "@/lib/formatters"
 import Link from "next/link"
 import { toast } from "sonner"
 import {
@@ -574,14 +575,16 @@ export default function MembersPage() {
                             </div>
                           </div>
                         )}
-                        {selectedMember.phone && (
+                        {selectedMember.phone && selectedMember.phone > 0 && (
                           <div className="flex items-start gap-3">
                             <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                               <Phone className="h-4 w-4 text-muted-foreground" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs text-muted-foreground mb-0.5">Phone</p>
-                              <p className="text-sm font-medium text-foreground">{selectedMember.phone}</p>
+                              <p className="text-sm font-medium text-foreground">
+                                {formatPhoneNumber(String(selectedMember.phone))}
+                              </p>
                             </div>
                           </div>
                         )}
