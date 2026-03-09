@@ -1207,7 +1207,7 @@ export default function ReviewersPoolPage() {
             title="Import Reviewers"
             fields={csvFields}
             onClose={() => setShowImport(false)}
-            onImport={async (data) => { await importMutation.mutateAsync(data); return { success: data.length } }}
+            onImport={async (data) => { await importMutation.mutateAsync(data); return { success: data.length, failed: 0, errors: [] } }}
           />
         </DialogContent>
       </Dialog>
