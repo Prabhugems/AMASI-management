@@ -90,36 +90,19 @@ export function useAuth() {
       throw new Error('Supabase is not configured. Please add your Supabase credentials to .env.local')
     }
 
-    // Try custom API route first (sends designed email via Resend/Blastable)
-    try {
-      const res = await fetch('/api/auth/magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, redirectTo }),
-      })
+    // Send magic link via server API (validates email against users/team_members)
+    const res = await fetch('/api/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, redirectTo }),
+    })
 
-      if (res.ok) {
-        return { success: true }
-      }
+    const data = await res.json().catch(() => ({}))
 
-      // If custom route fails, log and fall through to Supabase fallback
-      const data = await res.json().catch(() => ({}))
-      console.warn('[Auth] Custom magic link failed, falling back to Supabase:', data.error)
-    } catch (err) {
-      console.warn('[Auth] Custom magic link API unreachable, falling back to Supabase')
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to send magic link')
     }
 
-    // Fallback: use Supabase built-in magic link email
-    const callbackUrl = redirectTo
-      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
-      : `${window.location.origin}/auth/callback`
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: callbackUrl,
-      },
-    })
-    if (error) throw error
     return { success: true }
   }
 

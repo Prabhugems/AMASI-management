@@ -172,6 +172,18 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Security: Only allow login for known users or team members
+    const [userResult, teamResult] = await Promise.all([
+      adminClient.from("users").select("id").ilike("email", normalizedEmail).maybeSingle(),
+      adminClient.from("team_members").select("id").ilike("email", normalizedEmail).eq("is_active", true).maybeSingle(),
+    ])
+
+    if (!userResult.data && !teamResult.data) {
+      // Return same generic message to avoid email enumeration
+      console.warn(`[Magic Link] Blocked login attempt for unknown email: ${normalizedEmail}`)
+      return NextResponse.json({ success: true })
+    }
+
     const { data: linkData, error: linkError } =
       await adminClient.auth.admin.generateLink({
         type: "magiclink",
