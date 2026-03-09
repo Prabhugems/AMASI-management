@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
+import { mapTeamRoleToPlatformRole } from '@/lib/auth/role-mapping'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
           user.email
             ? adminClient
                 .from('team_members')
-                .select('name')
+                .select('name, role')
                 .eq('email', user.email.toLowerCase())
                 .eq('is_active', true)
                 .maybeSingle()
@@ -74,13 +75,14 @@ export async function GET(request: NextRequest) {
             .eq('id', user.id)
         } else if (teamResult.data) {
           // New user but is an active team member - auto-create profile
+          const platformRole = mapTeamRoleToPlatformRole(teamResult.data.role)
           await adminClient
             .from('users')
             .insert({
               id: user.id,
               email: user.email || '',
               name: teamMemberName || user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-              platform_role: 'member',
+              platform_role: platformRole,
               is_super_admin: false,
               is_active: true,
               is_verified: true,

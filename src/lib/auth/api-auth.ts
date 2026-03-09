@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { Database } from '@/lib/supabase/database.types'
 import { createAdminClient } from '@/lib/supabase/server'
+import { mapTeamRoleToPlatformRole } from './role-mapping'
 
 export type PlatformRole = 'super_admin' | 'admin' | 'event_admin' | 'staff' | 'faculty' | 'member'
 
@@ -66,17 +67,39 @@ export async function getApiUser(): Promise<AuthResult> {
     .eq('id', authUser.id)
     .maybeSingle()
 
-  // If profile doesn't exist, create it automatically using admin client (bypasses RLS)
+  // If profile doesn't exist, only create if user is an invited team member
   if (!userProfile) {
     const adminClient = await createAdminClient()
+
+    // Check if this user is an active team member (invited)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: teamMember } = await (adminClient as any)
+      .from('team_members')
+      .select('name, role')
+      .ilike('email', authUser.email || '')
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (!teamMember) {
+      return {
+        user: null,
+        error: NextResponse.json(
+          { error: 'Access denied - You have not been invited' },
+          { status: 403 }
+        )
+      }
+    }
+
+    const platformRole = mapTeamRoleToPlatformRole(teamMember.role)
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: newProfile, error: createError } = await (adminClient as any)
       .from('users')
       .insert({
         id: authUser.id,
         email: authUser.email || '',
-        name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
-        platform_role: 'member', // Default to member - admins must promote manually
+        name: teamMember.name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+        platform_role: platformRole,
         is_super_admin: false,
         is_active: true,
         is_verified: true,

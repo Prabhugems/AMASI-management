@@ -508,10 +508,24 @@ export default function TeamPage() {
         })
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: ["team-members"] })
       toast.success("Team member added successfully!")
       setIsAddOpen(false)
+      // Auto-send invite email to the new team member
+      fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email.toLowerCase(),
+          isInvite: true,
+        }),
+      }).then(res => {
+        if (res.ok) toast.success("Invite email sent!")
+        else toast.error("Member added but invite email failed to send")
+      }).catch(() => {
+        toast.error("Member added but invite email failed to send")
+      })
       resetForm()
     },
     onError: (error: any) => {
@@ -569,26 +583,18 @@ export default function TeamPage() {
 
   const sendMagicLink = useMutation({
     mutationFn: async (email: string) => {
-      // Try custom API route first (designed email)
-      try {
-        const res = await fetch('/api/auth/magic-link', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: email.toLowerCase(),
-            redirectTo: '/team-portal',
-          }),
-        })
-        if (res.ok) return
-      } catch {
-        // Fallback below
-      }
-      // Fallback: Supabase built-in
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.toLowerCase(),
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/team-portal')}` },
+      const res = await fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.toLowerCase(),
+          redirectTo: '/team-portal',
+        }),
       })
-      if (error) throw error
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to send login link')
+      }
     },
     onSuccess: () => toast.success("Login link sent!"),
     onError: (error: any) => toast.error(error.message || "Failed to send"),

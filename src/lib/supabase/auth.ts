@@ -4,30 +4,17 @@ import type { Tables, UpdateTables } from './database.types'
 export type UserProfile = Tables<'users'>
 export type UserProfileUpdate = UpdateTables<'users'>
 
-// Sign in with magic link (sends custom designed email via API, with Supabase fallback)
+// Sign in with magic link (sends custom designed email via API)
 export async function signInWithMagicLink(email: string, redirectTo?: string) {
-  // Try custom API route first (sends designed email)
-  try {
-    const res = await fetch('/api/auth/magic-link', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, redirectTo }),
-    })
-    if (res.ok) return { success: true }
-  } catch {
-    // Custom route failed, fall through to Supabase
-  }
-
-  // Fallback: use Supabase built-in magic link
-  const supabase = createClient()
-  const callbackUrl = redirectTo
-    ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
-    : `${window.location.origin}/auth/callback`
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: callbackUrl },
+  const res = await fetch('/api/auth/magic-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, redirectTo }),
   })
-  if (error) throw error
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || 'Failed to send login link')
+  }
   return { success: true }
 }
 
