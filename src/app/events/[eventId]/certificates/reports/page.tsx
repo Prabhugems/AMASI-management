@@ -21,6 +21,7 @@ import {
   CheckCircle,
   XCircle,
   FileDown,
+  Send,
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -36,7 +37,7 @@ export default function CertificateReportsPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, registration_number, attendee_name, attendee_email, status, certificate_generated_at, certificate_downloaded_at, certificate_url, checked_in, ticket_type:ticket_types(name)")
+        .select("id, registration_number, attendee_name, attendee_email, status, certificate_generated_at, certificate_downloaded_at, certificate_url, checked_in, custom_fields, ticket_type:ticket_types(name)")
         .eq("event_id", eventId)
         .eq("status", "confirmed")
         .order("attendee_name")
@@ -53,6 +54,7 @@ export default function CertificateReportsPage() {
     const checkedIn = registrations.filter((r: any) => r.checked_in).length
     const generated = registrations.filter((r: any) => r.certificate_generated_at).length
     const downloaded = registrations.filter((r: any) => r.certificate_downloaded_at).length
+    const sent = registrations.filter((r: any) => r.custom_fields?.certificate_sent).length
     const pending = checkedIn - generated
     const notCheckedIn = total - checkedIn
 
@@ -74,6 +76,7 @@ export default function CertificateReportsPage() {
       checkedIn,
       generated,
       downloaded,
+      sent,
       pending: pending > 0 ? pending : 0,
       notCheckedIn,
       percentGenerated: checkedIn > 0 ? ((generated / checkedIn) * 100).toFixed(1) : 0,
@@ -84,7 +87,7 @@ export default function CertificateReportsPage() {
   const exportCSV = () => {
     if (!registrations) return
 
-    const headers = ["Reg Number", "Name", "Email", "Ticket Type", "Checked In", "Certificate Status", "Generated At", "Downloaded", "Downloaded At"]
+    const headers = ["Reg Number", "Name", "Email", "Ticket Type", "Checked In", "Certificate Status", "Generated At", "Email Sent", "Email Sent At", "Downloaded", "Downloaded At"]
     const rows = registrations.map((r: any) => [
       r.registration_number,
       `"${r.attendee_name || ''}"`,
@@ -93,6 +96,8 @@ export default function CertificateReportsPage() {
       r.checked_in ? "Yes" : "No",
       r.certificate_generated_at ? "Issued" : (r.checked_in ? "Pending" : "Not Eligible"),
       r.certificate_generated_at ? format(new Date(r.certificate_generated_at), "dd MMM yyyy HH:mm") : "",
+      r.custom_fields?.certificate_sent ? "Yes" : "No",
+      r.custom_fields?.certificate_sent_at ? format(new Date(r.custom_fields.certificate_sent_at), "dd MMM yyyy HH:mm") : "",
       r.certificate_downloaded_at ? "Yes" : "No",
       r.certificate_downloaded_at ? format(new Date(r.certificate_downloaded_at), "dd MMM yyyy HH:mm") : "",
     ])
@@ -129,7 +134,7 @@ export default function CertificateReportsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <div className="bg-card border rounded-lg p-4">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <Award className="h-4 w-4" />
@@ -153,6 +158,17 @@ export default function CertificateReportsPage() {
           </div>
           <p className="text-xl sm:text-2xl font-bold text-green-600">{stats?.generated || 0}</p>
           <p className="text-xs text-muted-foreground">{stats?.percentGenerated}% of checked-in</p>
+        </div>
+
+        <div className="bg-card border rounded-lg p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            <Send className="h-4 w-4 text-blue-500" />
+            <span className="text-sm">Email Sent</span>
+          </div>
+          <p className="text-xl sm:text-2xl font-bold text-blue-600">{stats?.sent || 0}</p>
+          <p className="text-xs text-muted-foreground">
+            {stats?.generated ? ((stats.sent / stats.generated) * 100).toFixed(1) : 0}% of issued
+          </p>
         </div>
 
         <div className="bg-card border rounded-lg p-4">
@@ -219,6 +235,7 @@ export default function CertificateReportsPage() {
               <TableHead>Checked In</TableHead>
               <TableHead>Certificate</TableHead>
               <TableHead>Issued At</TableHead>
+              <TableHead>Email Sent</TableHead>
               <TableHead>Downloaded</TableHead>
             </TableRow>
           </TableHeader>
@@ -256,6 +273,20 @@ export default function CertificateReportsPage() {
                     : "-"}
                 </TableCell>
                 <TableCell>
+                  {reg.custom_fields?.certificate_sent ? (
+                    <span className="flex items-center gap-1 text-blue-600">
+                      <Send className="h-4 w-4" />
+                      {reg.custom_fields?.certificate_sent_at
+                        ? format(new Date(reg.custom_fields.certificate_sent_at), "dd MMM, h:mm a")
+                        : "Yes"}
+                    </span>
+                  ) : reg.certificate_generated_at ? (
+                    <span className="text-gray-400">Not sent</span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
                   {reg.certificate_downloaded_at ? (
                     <span className="flex items-center gap-1 text-purple-600">
                       <FileDown className="h-4 w-4" />
@@ -271,7 +302,7 @@ export default function CertificateReportsPage() {
             ))}
             {(!registrations || registrations.length === 0) && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   No confirmed registrations found
                 </TableCell>
               </TableRow>

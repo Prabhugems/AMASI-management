@@ -32,6 +32,7 @@ import {
   Clock,
   Users,
   AlertCircle,
+  Eye,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -162,18 +163,7 @@ export default function GenerateCertificatesPage() {
         throw new Error(errorData.error || "Failed to generate certificates")
       }
 
-      // Download the generated PDF
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `certificates-${eventId.slice(0, 8)}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-
-      // Mark registrations as certificate generated
+      // Mark registrations as certificate generated immediately (PDF was created server-side)
       const now = new Date().toISOString()
       for (const id of registrationIds) {
         await (supabase as any)
@@ -189,6 +179,17 @@ export default function GenerateCertificatesPage() {
           .eq("id", id)
       }
 
+      // Download the generated PDF
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `certificates-${eventId.slice(0, 8)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
       queryClient.invalidateQueries({ queryKey: ["certificate-attendees", eventId] })
       toast.success(`Generated and downloaded ${selectedAttendees.size} certificates`)
       setSelectedAttendees(new Set())
@@ -199,10 +200,58 @@ export default function GenerateCertificatesPage() {
     }
   }
 
+  const previewCertificate = async () => {
+    if (!selectedTemplate) {
+      toast.error("Select a template first")
+      return
+    }
+    // Use the first selected attendee, or fall back to the first attendee
+    const previewId = selectedAttendees.size > 0
+      ? Array.from(selectedAttendees)[0]
+      : attendees?.[0]?.id
+    if (!previewId) {
+      toast.error("No attendees available to preview")
+      return
+    }
+
+    try {
+      const response = await fetch("/api/certificates/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          template_id: selectedTemplate,
+          registration_ids: [previewId],
+        }),
+      })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || "Failed to generate preview")
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      window.open(url, "_blank")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate preview")
+    }
+  }
+
   if (attendeesLoading || templatesLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!attendees?.length) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12 bg-card rounded-lg border border-dashed">
+          <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">No confirmed attendees</h3>
+          <p className="text-muted-foreground">No confirmed attendees found for this event.</p>
+        </div>
       </div>
     )
   }
@@ -269,9 +318,19 @@ export default function GenerateCertificatesPage() {
         </div>
       )}
 
+      {/* Batch size warning */}
+      {selectedAttendees.size >= 300 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+          <p className="text-sm text-amber-700">
+            Large batches ({selectedAttendees.size} selected) may timeout. Consider generating in batches of 200.
+          </p>
+        </div>
+      )}
+
       {/* Actions */}
       {selectedAttendees.size > 0 && (
-        <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex-wrap">
           <Award className="h-5 w-5 text-blue-600" />
           <span className="font-medium text-blue-800">{selectedAttendees.size} selected</span>
           <div className="flex-1" />
@@ -287,6 +346,10 @@ export default function GenerateCertificatesPage() {
           </Select>
           <Button size="sm" variant="outline" onClick={() => setSelectedAttendees(new Set())}>
             Clear
+          </Button>
+          <Button size="sm" variant="outline" onClick={previewCertificate} disabled={!selectedTemplate}>
+            <Eye className="h-4 w-4 mr-2" />
+            Preview
           </Button>
           <Button size="sm" onClick={generateCertificates} disabled={generating || !selectedTemplate}>
             <Download className="h-4 w-4 mr-2" />

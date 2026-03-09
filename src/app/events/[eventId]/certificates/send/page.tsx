@@ -25,6 +25,7 @@ import {
   Mail,
   Award,
   FileDown,
+  AlertCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -55,6 +56,9 @@ export default function SendCertificatesPage() {
   const [filter, setFilter] = useState<"all" | "ready" | "sent">("all")
   const [selectedAttendees, setSelectedAttendees] = useState<Set<string>>(new Set())
   const [sending, setSending] = useState(false)
+  const [sendProgress, setSendProgress] = useState(0)
+  const [sendTotal, setSendTotal] = useState(0)
+  const [failedIds, setFailedIds] = useState<Set<string>>(new Set())
 
   // Fetch attendees with generated certificates
   const { data: attendees, isLoading } = useQuery({
@@ -113,51 +117,77 @@ export default function SendCertificatesPage() {
     setSelectedAttendees(new Set(ready.map(a => a.id)))
   }
 
-  const sendCertificates = async () => {
-    if (selectedAttendees.size === 0) {
-      toast.error("Select attendees first")
+  const sendCertificates = async (retryOnly = false) => {
+    const idsToSend = retryOnly ? failedIds : selectedAttendees
+    if (idsToSend.size === 0) {
+      toast.error(retryOnly ? "No failed sends to retry" : "Select attendees first")
       return
     }
 
     setSending(true)
+    setSendProgress(0)
+    setFailedIds(new Set())
     let successCount = 0
-    let failCount = 0
+    const newFailedIds = new Set<string>()
+
+    // Filter out already-sent attendees
+    const idsArray = Array.from(idsToSend).filter(id => {
+      const attendee = attendees?.find(a => a.id === id)
+      return attendee && !attendee.custom_fields?.certificate_sent
+    })
+    setSendTotal(idsArray.length)
+
+    if (idsArray.length === 0) {
+      toast.info("All selected attendees have already been sent certificates")
+      setSending(false)
+      return
+    }
 
     try {
-      for (const id of selectedAttendees) {
-        const attendee = attendees?.find(a => a.id === id)
-        if (!attendee) continue
+      // Process in batches of 5 concurrent requests
+      const batchSize = 5
+      for (let i = 0; i < idsArray.length; i += batchSize) {
+        const batch = idsArray.slice(i, i + batchSize)
+        const results = await Promise.allSettled(
+          batch.map(async (id) => {
+            const attendee = attendees?.find(a => a.id === id)
+            if (!attendee) throw new Error("Attendee not found")
 
-        try {
-          const response = await fetch("/api/certificates/email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              registration_id: id,
-              event_id: eventId,
-            }),
+            const response = await fetch("/api/certificates/email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                registration_id: id,
+                event_id: eventId,
+              }),
+            })
+
+            if (response.ok) {
+              await (supabase as any)
+                .from("registrations")
+                .update({
+                  custom_fields: {
+                    ...attendee.custom_fields,
+                    certificate_sent: true,
+                    certificate_sent_at: new Date().toISOString(),
+                  },
+                })
+                .eq("id", id)
+              return { id, success: true }
+            } else {
+              throw new Error("Failed to send")
+            }
           })
+        )
 
-          if (response.ok) {
-            // Update registration record to mark certificate as sent
-            await (supabase as any)
-              .from("registrations")
-              .update({
-                custom_fields: {
-                  ...attendee?.custom_fields,
-                  certificate_sent: true,
-                  certificate_sent_at: new Date().toISOString(),
-                },
-              })
-              .eq("id", id)
+        results.forEach((result, idx) => {
+          if (result.status === "fulfilled") {
             successCount++
           } else {
-            failCount++
+            newFailedIds.add(batch[idx])
           }
-        } catch (error) {
-          console.error("Error sending certificate:", error)
-          failCount++
-        }
+        })
+        setSendProgress(Math.min(i + batch.length, idsArray.length))
       }
 
       queryClient.invalidateQueries({ queryKey: ["certificate-send-attendees", eventId] })
@@ -165,10 +195,11 @@ export default function SendCertificatesPage() {
       if (successCount > 0) {
         toast.success(`Sent certificates to ${successCount} attendee${successCount > 1 ? "s" : ""}`)
       }
-      if (failCount > 0) {
-        toast.error(`Failed to send to ${failCount} attendee${failCount > 1 ? "s" : ""}`)
+      if (newFailedIds.size > 0) {
+        setFailedIds(newFailedIds)
+        toast.error(`Failed to send to ${newFailedIds.size} attendee${newFailedIds.size > 1 ? "s" : ""}`)
       }
-      setSelectedAttendees(new Set())
+      if (!retryOnly) setSelectedAttendees(new Set())
     } catch {
       toast.error("Failed to send certificates")
     } finally {
@@ -261,14 +292,32 @@ export default function SendCertificatesPage() {
       {selectedAttendees.size > 0 && (
         <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <Mail className="h-5 w-5 text-blue-600" />
-          <span className="font-medium text-blue-800">{selectedAttendees.size} selected</span>
+          <span className="font-medium text-blue-800">
+            {sending ? `Sending ${sendProgress}/${sendTotal}...` : `${selectedAttendees.size} selected`}
+          </span>
           <div className="flex-1" />
-          <Button size="sm" variant="outline" onClick={() => setSelectedAttendees(new Set())}>
+          <Button size="sm" variant="outline" onClick={() => setSelectedAttendees(new Set())} disabled={sending}>
             Clear
           </Button>
-          <Button size="sm" onClick={sendCertificates} disabled={sending}>
+          <Button size="sm" onClick={() => sendCertificates(false)} disabled={sending}>
             <Send className="h-4 w-4 mr-2" />
-            {sending ? "Sending..." : "Send Emails"}
+            {sending ? `Sending ${sendProgress}/${sendTotal}...` : "Send Emails"}
+          </Button>
+        </div>
+      )}
+
+      {/* Retry Failed */}
+      {failedIds.size > 0 && !sending && (
+        <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <AlertCircle className="h-5 w-5 text-red-600" />
+          <span className="font-medium text-red-800">{failedIds.size} failed to send</span>
+          <div className="flex-1" />
+          <Button size="sm" variant="outline" onClick={() => setFailedIds(new Set())}>
+            Dismiss
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => sendCertificates(true)}>
+            <Send className="h-4 w-4 mr-2" />
+            Retry {failedIds.size} Failed
           </Button>
         </div>
       )}

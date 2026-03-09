@@ -358,6 +358,15 @@ export default function CertificateDesignerPage() {
     }
   }, [history, historyIndex])
 
+  // Helper: set template and save to history in one step
+  const setTemplateWithHistory = useCallback((updater: (prev: CertificateTemplate) => CertificateTemplate) => {
+    setTemplate((prev) => {
+      const newTemplate = updater(prev)
+      saveToHistory(newTemplate)
+      return newTemplate
+    })
+  }, [saveToHistory])
+
   const copyElements = useCallback(() => {
     const elementsToCopy = template.elements.filter((e) => selectedElementIds.includes(e.id))
     if (elementsToCopy.length > 0) {
@@ -487,13 +496,13 @@ export default function CertificateDesignerPage() {
   }, [selectedElementIds, template.elements, saveToHistory])
 
   const toggleVisibility = useCallback((elementId: string) => {
-    setTemplate((prev) => ({
+    setTemplateWithHistory((prev) => ({
       ...prev,
       elements: prev.elements.map((el) =>
         el.id === elementId ? { ...el, visible: el.visible === false ? true : false } : el
       ),
     }))
-  }, [])
+  }, [setTemplateWithHistory])
 
   // Queries
   const { data: event } = useQuery({
@@ -694,7 +703,7 @@ export default function CertificateDesignerPage() {
       align: "center",
       zIndex: template.elements.length + 1,
     }
-    setTemplate((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
+    setTemplateWithHistory((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
     setSelectedElementIds([newElement.id])
   }
 
@@ -710,7 +719,7 @@ export default function CertificateDesignerPage() {
       content: "{{verification_url}}",
       zIndex: template.elements.length + 1,
     }
-    setTemplate((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
+    setTemplateWithHistory((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
     setSelectedElementIds([newElement.id])
   }
 
@@ -728,7 +737,7 @@ export default function CertificateDesignerPage() {
       shapeType,
       zIndex: 0,
     }
-    setTemplate((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
+    setTemplateWithHistory((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
     setSelectedElementIds([newElement.id])
   }
 
@@ -744,7 +753,7 @@ export default function CertificateDesignerPage() {
       barcodeFormat: "CODE128",
       zIndex: template.elements.length + 1,
     }
-    setTemplate((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
+    setTemplateWithHistory((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
     setSelectedElementIds([newElement.id])
   }
 
@@ -762,7 +771,7 @@ export default function CertificateDesignerPage() {
       borderColor: "#e5e7eb",
       zIndex: template.elements.length + 1,
     }
-    setTemplate((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
+    setTemplateWithHistory((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
     setSelectedElementIds([newElement.id])
   }
 
@@ -791,7 +800,7 @@ export default function CertificateDesignerPage() {
       imageUrl: event?.logo_url || "",
       zIndex: template.elements.length + 1,
     }
-    setTemplate((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
+    setTemplateWithHistory((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
     setSelectedElementIds([newElement.id])
   }
 
@@ -808,12 +817,12 @@ export default function CertificateDesignerPage() {
       opacity: 100,
       zIndex: template.elements.length + 1,
     }
-    setTemplate((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
+    setTemplateWithHistory((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
     setSelectedElementIds([newElement.id])
   }
 
   const deleteElement = (elementId: string) => {
-    setTemplate((prev) => ({ ...prev, elements: prev.elements.filter((e) => e.id !== elementId) }))
+    setTemplateWithHistory((prev) => ({ ...prev, elements: prev.elements.filter((e) => e.id !== elementId) }))
     setSelectedElementIds((prev) => prev.filter((id) => id !== elementId))
   }
 
@@ -827,7 +836,7 @@ export default function CertificateDesignerPage() {
       y: element.y + 20,
       zIndex: Math.max(...template.elements.map((e) => e.zIndex), 0) + 1,
     }
-    setTemplate((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
+    setTemplateWithHistory((prev) => ({ ...prev, elements: [...prev.elements, newElement] }))
     setSelectedElementIds([newElement.id])
   }
 
@@ -1177,19 +1186,31 @@ export default function CertificateDesignerPage() {
         position={{ x: element.x * zoom, y: element.y * zoom }}
         onDragStop={(e, d) => {
           const { snapX, snapY } = calculateSnapGuides(element.id, d.x / zoom, d.y / zoom, element.width, element.height)
-          updateElement(element.id, { x: Math.max(0, Math.round(snapX)), y: Math.max(0, Math.round(snapY)) })
+          const updates = { x: Math.max(0, Math.round(snapX)), y: Math.max(0, Math.round(snapY)) }
+          setTemplate((prev) => {
+            const newTemplate = { ...prev, elements: prev.elements.map((el) => el.id === element.id ? { ...el, ...updates } : el) }
+            saveToHistory(newTemplate)
+            return newTemplate
+          })
           setSnapGuides({ horizontal: [], vertical: [] })
         }}
         onDrag={(e, d) => {
           const { guides } = calculateSnapGuides(element.id, d.x / zoom, d.y / zoom, element.width, element.height)
           setSnapGuides(guides)
         }}
-        onResizeStop={(e, direction, ref, delta, position) => updateElement(element.id, {
-          width: Math.round(parseInt(ref.style.width) / zoom),
-          height: Math.round(parseInt(ref.style.height) / zoom),
-          x: Math.max(0, Math.round(position.x / zoom)),
-          y: Math.max(0, Math.round(position.y / zoom)),
-        })}
+        onResizeStop={(e, direction, ref, delta, position) => {
+          const updates = {
+            width: Math.round(parseInt(ref.style.width) / zoom),
+            height: Math.round(parseInt(ref.style.height) / zoom),
+            x: Math.max(0, Math.round(position.x / zoom)),
+            y: Math.max(0, Math.round(position.y / zoom)),
+          }
+          setTemplate((prev) => {
+            const newTemplate = { ...prev, elements: prev.elements.map((el) => el.id === element.id ? { ...el, ...updates } : el) }
+            saveToHistory(newTemplate)
+            return newTemplate
+          })
+        }}
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleElementSelect(element.id, e) }}
         onContextMenu={(e: React.MouseEvent) => {
           e.preventDefault(); e.stopPropagation()

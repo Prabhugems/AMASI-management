@@ -51,7 +51,7 @@ export default function VerifyCertificatePage() {
         .from("events")
         .select("id, name, start_date, end_date")
         .eq("id", eventId)
-        .single()
+        .maybeSingle()
 
       return data
     },
@@ -93,7 +93,7 @@ export default function VerifyCertificatePage() {
         registrationQuery = registrationQuery.ilike("registration_number", query)
       }
 
-      const { data, error } = await registrationQuery.single()
+      const { data, error } = await registrationQuery.maybeSingle()
 
       if (error || !data) {
         setResult({

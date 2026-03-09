@@ -32,7 +32,7 @@ export default function CertificatesOverviewPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, attendee_name, status, custom_fields")
+        .select("id, attendee_name, status, custom_fields, certificate_generated_at, certificate_downloaded_at")
         .eq("event_id", eventId)
 
       return data || []
@@ -41,10 +41,10 @@ export default function CertificatesOverviewPage() {
 
   // Fetch certificate templates via API route (bypasses RLS)
   const { data: templates, isLoading: templatesLoading } = useQuery({
-    queryKey: ["certificate-templates", eventId],
+    queryKey: ["certificate-templates-list", eventId],
     queryFn: async () => {
       const res = await fetch(`/api/certificate-templates?event_id=${eventId}`, { cache: "no-store" })
-      if (!res.ok) return []
+      if (!res.ok) throw new Error("Failed to load templates")
       const allTemplates = await res.json()
       return allTemplates.filter((t: any) => t.is_active !== false) as { id: string; name: string }[]
     },
@@ -59,10 +59,13 @@ export default function CertificatesOverviewPage() {
 
     const total = registrations.length
     const generated = registrations.filter((r: any) =>
-      r.custom_fields?.certificate_generated
+      r.certificate_generated_at
     ).length
     const sent = registrations.filter((r: any) =>
       r.custom_fields?.certificate_sent
+    ).length
+    const downloaded = registrations.filter((r: any) =>
+      r.certificate_downloaded_at
     ).length
     const confirmed = registrations.filter((r: any) => r.status === "confirmed").length
 
@@ -70,6 +73,7 @@ export default function CertificatesOverviewPage() {
       total,
       generated,
       sent,
+      downloaded,
       pending: total - generated,
       confirmed,
       templates: templates?.length || 0,
@@ -95,7 +99,7 @@ export default function CertificatesOverviewPage() {
       </div>
 
       {/* Main Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Users className="h-4 w-4" />
@@ -121,6 +125,15 @@ export default function CertificatesOverviewPage() {
             <HelpTooltip content="Certificates emailed to attendees. They receive a link to download their certificate." />
           </div>
           <p className="text-2xl sm:text-3xl font-bold mt-2 text-blue-500">{stats?.sent || 0}</p>
+        </div>
+
+        <div className="bg-card rounded-lg border p-4">
+          <div className="flex items-center gap-2 text-purple-500">
+            <Download className="h-4 w-4" />
+            <span className="text-sm">Downloaded</span>
+            <HelpTooltip content="Certificates downloaded by attendees via their verification link." />
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-purple-500">{stats?.downloaded || 0}</p>
         </div>
 
         <div className="bg-card rounded-lg border p-4">

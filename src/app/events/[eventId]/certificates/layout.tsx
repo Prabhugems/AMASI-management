@@ -29,6 +29,7 @@ const sidebarItems = [
   { title: "Templates", href: "/templates", icon: FolderOpen },
   { title: "Generate", href: "/generate", icon: Download },
   { title: "Send", href: "/send", icon: Send },
+  { title: "Reports", href: "/reports", icon: FileText },
   { title: "Verify", href: "/verify", icon: CheckCircle },
 ]
 
