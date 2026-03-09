@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -43,11 +44,18 @@ type Attendee = {
   attendee_email: string
   attendee_designation?: string
   status: string
+  ticket_type_id: string | null
   certificate_generated_at: string | null
   custom_fields: {
     certificate_generated?: boolean
     certificate_url?: string
   } | null
+}
+
+type Template = {
+  id: string
+  name: string
+  ticket_type_ids: string[] | null
 }
 
 export default function GenerateCertificatesPage() {
@@ -68,7 +76,7 @@ export default function GenerateCertificatesPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, attendee_name, attendee_email, attendee_designation, status, certificate_generated_at, custom_fields")
+        .select("id, attendee_name, attendee_email, attendee_designation, status, ticket_type_id, certificate_generated_at, custom_fields")
         .eq("event_id", eventId)
         .eq("status", "confirmed")
         .order("attendee_name")
@@ -85,17 +93,27 @@ export default function GenerateCertificatesPage() {
       if (!res.ok) return []
       const allTemplates = await res.json()
       // Filter to only active templates
-      return allTemplates.filter((t: any) => t.is_active !== false) as { id: string; name: string }[]
+      return allTemplates.filter((t: any) => t.is_active !== false) as Template[]
     },
     retry: 2,
     staleTime: 0,
     refetchOnMount: "always",
   })
 
+  // Get the selected template's ticket type restrictions
+  const activeTemplate = templates?.find(t => t.id === selectedTemplate)
+  const templateTicketTypeIds = activeTemplate?.ticket_type_ids
+
+  // Base attendees filtered by template's ticket types
+  const baseAttendees = useMemo(() => {
+    if (!attendees) return []
+    if (!templateTicketTypeIds || templateTicketTypeIds.length === 0) return attendees
+    return attendees.filter(a => a.ticket_type_id && templateTicketTypeIds.includes(a.ticket_type_id))
+  }, [attendees, templateTicketTypeIds])
+
   // Filter attendees
   const filteredAttendees = useMemo(() => {
-    if (!attendees) return []
-    return attendees.filter(a => {
+    return baseAttendees.filter(a => {
       const matchesSearch =
         a.attendee_name.toLowerCase().includes(search.toLowerCase()) ||
         a.attendee_email.toLowerCase().includes(search.toLowerCase())
@@ -108,18 +126,18 @@ export default function GenerateCertificatesPage() {
 
       return matchesSearch && matchesFilter
     })
-  }, [attendees, search, filter])
+  }, [baseAttendees, search, filter])
 
   // Stats
   const stats = useMemo(() => {
-    if (!attendees) return { total: 0, generated: 0, pending: 0 }
-    const generated = attendees.filter(a => !!a.certificate_generated_at).length
+    const total = baseAttendees.length
+    const generated = baseAttendees.filter(a => !!a.certificate_generated_at).length
     return {
-      total: attendees.length,
+      total,
       generated,
-      pending: attendees.length - generated,
+      pending: total - generated,
     }
-  }, [attendees])
+  }, [baseAttendees])
 
   const toggleSelection = (id: string) => {
     const newSelection = new Set(selectedAttendees)
@@ -264,6 +282,31 @@ export default function GenerateCertificatesPage() {
         <p className="text-muted-foreground">Bulk generate certificates for attendees</p>
       </div>
 
+      {/* Template Selector */}
+      <div className="bg-card rounded-lg border p-4">
+        <Label className="text-sm font-medium">Certificate Template</Label>
+        <Select value={selectedTemplate} onValueChange={(v) => { setSelectedTemplate(v); setSelectedAttendees(new Set()) }}>
+          <SelectTrigger className="mt-1.5 w-full max-w-sm">
+            <SelectValue placeholder="Select a template..." />
+          </SelectTrigger>
+          <SelectContent>
+            {templates?.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.name}
+                {t.ticket_type_ids && t.ticket_type_ids.length > 0 && (
+                  <span className="text-muted-foreground ml-1">({t.ticket_type_ids.length} ticket types)</span>
+                )}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {activeTemplate && templateTicketTypeIds && templateTicketTypeIds.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-1.5">
+            Showing only attendees with assigned ticket types ({baseAttendees.length} of {attendees?.length || 0})
+          </p>
+        )}
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div
@@ -334,16 +377,6 @@ export default function GenerateCertificatesPage() {
           <Award className="h-5 w-5 text-blue-600" />
           <span className="font-medium text-blue-800">{selectedAttendees.size} selected</span>
           <div className="flex-1" />
-          <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select template" />
-            </SelectTrigger>
-            <SelectContent>
-              {templates?.map((t: any) => (
-                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Button size="sm" variant="outline" onClick={() => setSelectedAttendees(new Set())}>
             Clear
           </Button>
