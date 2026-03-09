@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { logEmail } from "@/lib/email-tracking"
 import { escapeHtml } from "@/lib/string-utils"
@@ -7,6 +8,10 @@ import { escapeHtml } from "@/lib/string-utils"
 // POST /api/certificates/email - Send certificate email to attendee
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { registration_id, event_id } = await request.json()
 
     if (!registration_id) {

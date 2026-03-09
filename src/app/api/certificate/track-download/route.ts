@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/server"
 export const dynamic = "force-dynamic"
 
 // POST /api/certificate/track-download - Track that a delegate downloaded their certificate
+// Note: Called from public delegate portal, no admin auth required
+// but validates registration_id format to prevent abuse
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -11,6 +13,11 @@ export async function POST(request: NextRequest) {
 
     if (!registration_id) {
       return NextResponse.json({ error: "registration_id is required" }, { status: 400 })
+    }
+
+    // Validate UUID format to prevent abuse
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(registration_id)) {
+      return NextResponse.json({ error: "Invalid registration_id" }, { status: 400 })
     }
 
     const supabase = await createAdminClient()

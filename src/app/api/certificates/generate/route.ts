@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import { logActivity } from "@/lib/activity-logger"
@@ -86,14 +87,34 @@ function replacePlaceholders(text: string, registration: any, event: any): strin
   return result
 }
 
+// Fetch image with timeout
+async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 // POST /api/certificates/generate - Generate PDF certificates
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { user, error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body = await request.json()
     const { event_id, template_id, registration_ids, single_registration_id } = body
 
     if (!event_id || !template_id) {
       return NextResponse.json({ error: "event_id and template_id are required" }, { status: 400 })
+    }
+
+    // Validate registration_ids limit
+    if (registration_ids && Array.isArray(registration_ids) && registration_ids.length > 500) {
+      return NextResponse.json({ error: "Cannot generate more than 500 certificates at once" }, { status: 400 })
     }
 
     const supabase = await createAdminClient()
@@ -107,6 +128,10 @@ export async function POST(request: NextRequest) {
 
     if (templateError || !template) {
       return NextResponse.json({ error: "Template not found" }, { status: 404 })
+    }
+
+    if (template.is_active === false) {
+      return NextResponse.json({ error: "Template is inactive" }, { status: 400 })
     }
 
     // Fetch event
@@ -161,7 +186,7 @@ export async function POST(request: NextRequest) {
     let backgroundImage: any = null
     if (template.template_image_url) {
       try {
-        const imageResponse = await fetch(template.template_image_url)
+        const imageResponse = await fetchWithTimeout(template.template_image_url)
         const imageBytes = await imageResponse.arrayBuffer()
         const uint8Array = new Uint8Array(imageBytes)
 
@@ -275,7 +300,7 @@ export async function POST(request: NextRequest) {
 
         if (element.type === "image" && element.imageUrl) {
           try {
-            const imageResponse = await fetch(element.imageUrl)
+            const imageResponse = await fetchWithTimeout(element.imageUrl)
             const imageBytes = await imageResponse.arrayBuffer()
             const uint8Array = new Uint8Array(imageBytes)
             const isPNG = uint8Array[0] === 0x89 && uint8Array[1] === 0x50

@@ -76,22 +76,11 @@ export async function POST(request: NextRequest) {
       is_default: is_default || false,
     }
 
-    // Try with is_active first, fallback without it if column doesn't exist yet
-    let result = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from("certificate_templates")
       .insert({ ...insertData, is_active: true })
       .select()
       .single()
-
-    if (result.error?.message?.includes("is_active")) {
-      result = await (supabase as any)
-        .from("certificate_templates")
-        .insert(insertData)
-        .select()
-        .single()
-    }
-
-    const { data, error } = result
 
     if (error) {
       return NextResponse.json({ error: "Failed to process certificate template request" }, { status: 500 })
@@ -139,25 +128,12 @@ export async function PUT(request: NextRequest) {
     if (is_default !== undefined) updateData.is_default = is_default
     if (is_active !== undefined) updateData.is_active = is_active
 
-    let result = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from("certificate_templates")
       .update(updateData)
       .eq("id", id)
       .select()
       .single()
-
-    // If is_active column doesn't exist yet, retry without it
-    if (result.error?.message?.includes("is_active") && is_active !== undefined) {
-      delete updateData.is_active
-      result = await (supabase as any)
-        .from("certificate_templates")
-        .update(updateData)
-        .eq("id", id)
-        .select()
-        .single()
-    }
-
-    const { data, error } = result
 
     if (error) {
       return NextResponse.json({ error: "Failed to process certificate template request" }, { status: 500 })
@@ -179,6 +155,7 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
+    const eventId = searchParams.get("event_id")
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
@@ -186,10 +163,16 @@ export async function DELETE(request: NextRequest) {
 
     const supabase = await createAdminClient()
 
-    const { error } = await (supabase as any)
+    let query = (supabase as any)
       .from("certificate_templates")
       .delete()
       .eq("id", id)
+
+    if (eventId) {
+      query = query.eq("event_id", eventId)
+    }
+
+    const { error } = await query
 
     if (error) {
       return NextResponse.json({ error: "Failed to process certificate template request" }, { status: 500 })

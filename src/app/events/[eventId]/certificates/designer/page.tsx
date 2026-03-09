@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -277,6 +277,8 @@ interface CertificateTemplate {
 export default function CertificateDesignerPage() {
   const params = useParams()
   const eventId = params.eventId as string
+  const searchParams = useSearchParams()
+  const templateIdParam = searchParams.get("template")
   const supabase = createClient()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -510,11 +512,11 @@ export default function CertificateDesignerPage() {
     },
   })
 
-  const { data: savedTemplates, isLoading: isLoadingTemplates } = useQuery({
-    queryKey: ["certificate-templates", eventId],
+  const { data: savedTemplates, isLoading: isLoadingTemplates, error: templatesError } = useQuery({
+    queryKey: ["certificate-templates-list", eventId],
     queryFn: async () => {
       const res = await fetch(`/api/certificate-templates?event_id=${eventId}`, { cache: "no-store" })
-      if (!res.ok) return []
+      if (!res.ok) throw new Error("Failed to load templates")
       return res.json()
     },
     retry: 2,
@@ -530,8 +532,8 @@ export default function CertificateDesignerPage() {
         .from("registrations")
         .select(`id, registration_number, attendee_name, attendee_email, attendee_phone, attendee_institution, attendee_designation, ticket_type_id, ticket_types (name)`)
         .eq("event_id", eventId)
+        .eq("status", "confirmed")
         .order("registration_number", { ascending: true })
-        .limit(100)
       return data || []
     },
   })
@@ -945,7 +947,6 @@ export default function CertificateDesignerPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to save template")
       setSavedTemplateId(data.id)
-      queryClient.invalidateQueries({ queryKey: ["certificate-templates", eventId] })
       queryClient.invalidateQueries({ queryKey: ["certificate-templates-list", eventId] })
       toast.success("Template saved!")
     } catch (error: any) {
@@ -955,12 +956,12 @@ export default function CertificateDesignerPage() {
     }
   }
 
-  const loadTemplate = (t: any) => {
+  const loadTemplate = (t: any, showToast = true) => {
     const data = t.template_data || {}
     setTemplate({
       id: t.id,
       name: t.name,
-      size: t.size || "4x3",
+      size: t.size || "A4-landscape",
       backgroundColor: data.backgroundColor || "#ffffff",
       backgroundImageUrl: t.template_image_url,
       elements: data.elements || [],
@@ -968,14 +969,21 @@ export default function CertificateDesignerPage() {
     setSavedTemplateId(t.id)
     setSelectedTicketTypes(t.ticket_type_ids || [])
     setIsTemplateDialogOpen(false)
-    toast.success(`Loaded: ${t.name}`)
+    if (showToast) toast.success(`Loaded: ${t.name}`)
   }
+
+  // Auto-load template from URL param (?template=id)
+  useEffect(() => {
+    if (templateIdParam && savedTemplates && !savedTemplateId) {
+      const t = savedTemplates.find((t: any) => t.id === templateIdParam)
+      if (t) loadTemplate(t, false)
+    }
+  }, [templateIdParam, savedTemplates])
 
   const deleteTemplateById = async (id: string) => {
     if (!confirm("Delete this template?")) return
     try {
       await fetch(`/api/certificate-templates?id=${id}`, { method: "DELETE" })
-      queryClient.invalidateQueries({ queryKey: ["certificate-templates", eventId] })
       queryClient.invalidateQueries({ queryKey: ["certificate-templates-list", eventId] })
       if (savedTemplateId === id) {
         setSavedTemplateId(null)
@@ -992,7 +1000,7 @@ export default function CertificateDesignerPage() {
     setIsGeneratingPdf(true)
     try {
       const filteredRegs = printFilter === "all" ? registrations : registrations?.filter((r: any) => r.ticket_type_id === printFilter)
-      if (!filteredRegs?.length) { toast.error("No registrations to generate"); return }
+      if (!filteredRegs?.length) { toast.error("No registrations to generate"); setIsGeneratingPdf(false); return }
 
       const res = await fetch("/api/certificates/generate", {
         method: "POST",

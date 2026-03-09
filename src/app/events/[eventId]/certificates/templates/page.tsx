@@ -114,7 +114,7 @@ export default function CertificateTemplatesPage() {
       const createRes = await fetch("/api/certificate-templates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...rest, name: `${template.name} (Copy)` }),
+        body: JSON.stringify({ ...rest, event_id: eventId, name: `${template.name} (Copy)` }),
       })
       if (!createRes.ok) throw new Error("Failed to duplicate template")
     },
