@@ -73,14 +73,15 @@ export async function GET(request: NextRequest) {
             .update(updateData)
             .eq('id', user.id)
         } else {
-          // New user - auto-create profile so dashboard works immediately
+          // New user - auto-create profile with restricted role
+          // Admins must manually promote users to event_admin or higher
           await adminClient
             .from('users')
             .insert({
               id: user.id,
               email: user.email || '',
               name: teamMemberName || user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-              platform_role: 'event_admin',
+              platform_role: 'member',
               is_super_admin: false,
               is_active: true,
               is_verified: true,

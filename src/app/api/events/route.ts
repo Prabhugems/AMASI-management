@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createAdminClient, createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 import { eventCreateSchema, formatZodError } from "@/lib/schemas"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
@@ -14,14 +15,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Authenticate user
-    const supabase = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Authenticate user and verify admin role (event_admin, admin, or super_admin)
+    const { user, error: authError } = await requireAdmin()
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized - Please log in" },
-        { status: 401 }
+      return authError || NextResponse.json(
+        { error: "Forbidden - Admin access required" },
+        { status: 403 }
       )
     }
 
