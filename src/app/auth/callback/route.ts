@@ -72,9 +72,8 @@ export async function GET(request: NextRequest) {
             .from('users')
             .update(updateData)
             .eq('id', user.id)
-        } else {
-          // New user - auto-create profile with restricted role
-          // Admins must manually promote users to event_admin or higher
+        } else if (teamResult.data) {
+          // New user but is an active team member - auto-create profile
           await adminClient
             .from('users')
             .insert({
@@ -91,6 +90,14 @@ export async function GET(request: NextRequest) {
               created_at: now,
               updated_at: now,
             })
+        } else {
+          // Unknown user - not in users table and not an active team member
+          // Sign them out and block access
+          console.warn(`[Auth Callback] Blocked login for unknown user: ${user.email}`)
+          await supabase.auth.signOut()
+          return NextResponse.redirect(
+            new URL('/login?error=unauthorized', requestUrl.origin)
+          )
         }
 
         // Auto-link unlinked team_members records by matching email
