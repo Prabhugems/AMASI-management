@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient()
 
     // Get reviewer
-    const { data: reviewer } = await supabase
+    const { data: reviewer } = await (supabase as any)
       .from("reviewers_pool")
       .select("id, email, name")
       .eq("email", reviewerEmail)
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
       review_type: "initial",
     }))
 
-    const { data: reviewData, error: reviewError } = await supabase
+    const { data: reviewData, error: reviewError } = await (supabase as any)
       .from("abstract_reviews")
       .insert(reviews)
       .select()
@@ -203,23 +203,23 @@ export async function PATCH() {
     // Use local test video (no CORS issues)
     const videoUrl = "/test_video.mp4"
 
-    await supabase
+    await (supabase as any)
       .from("abstracts")
       .update({ file_url: videoUrl })
       .eq("abstract_number", "AWARD-VID-001")
 
-    await supabase
+    await (supabase as any)
       .from("abstracts")
       .update({ file_url: videoUrl })
       .eq("abstract_number", "AWARD-VID-002")
 
-    await supabase
+    await (supabase as any)
       .from("abstracts")
       .update({ file_url: videoUrl })
       .eq("abstract_number", "FV-001")
 
     // Update poster abstract with real PDF URL
-    await supabase
+    await (supabase as any)
       .from("abstracts")
       .update({
         file_url: "https://www.w3.org/WAI/WCAG21/Techniques/pdf/img/table-word.pdf"
