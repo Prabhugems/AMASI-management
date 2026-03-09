@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
     ]
 
     // Insert abstracts
-    const { data: abstracts, error: abstractError } = await supabase
+    const { data: abstracts, error: abstractError } = await (supabase as any)
       .from("abstracts")
       .insert(testAbstracts)
       .select()
