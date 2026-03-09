@@ -1172,7 +1172,7 @@ export default function ReviewerPortalPage() {
                               </div>
                               <Slider
                                 value={[reviewForm.scores[criteria.key] || 0]}
-                                onValueChange={([v]) =>
+                                onValueChange={([v]: number[]) =>
                                   setReviewForm({
                                     ...reviewForm,
                                     scores: { ...reviewForm.scores, [criteria.key]: v },

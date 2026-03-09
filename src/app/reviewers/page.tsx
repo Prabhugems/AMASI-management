@@ -1205,8 +1205,8 @@ export default function ReviewersPoolPage() {
         <DialogContent className="max-w-2xl">
           <CSVImportDynamic
             title="Import Reviewers"
-            fields={csvFields}
-            onClose={() => setShowImport(false)}
+            description="Upload a CSV file to import reviewers in bulk"
+            standardFields={csvFields}
             onImport={async (data) => { await importMutation.mutateAsync(data); return { success: data.length, failed: 0, errors: [] } }}
           />
         </DialogContent>
