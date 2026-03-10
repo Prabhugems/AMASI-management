@@ -95,6 +95,7 @@ import {
   Wifi,
   WifiOff,
   CircleDot,
+  Settings,
 } from "lucide-react"
 import { toast } from "sonner"
 import { format, formatDistanceToNow } from "date-fns"
@@ -405,6 +406,8 @@ type Event = {
   name: string
   short_name: string
   start_date: string
+  end_date: string | null
+  status: string | null
 }
 
 const ROLES = ROLE_DETAILS.map(r => ({
@@ -418,6 +421,158 @@ const ROLES = ROLE_DETAILS.map(r => ({
   borderColor: r.borderColor,
   description: r.description,
 }))
+
+const ROLE_PRESETS = [
+  {
+    value: "administrator",
+    label: "Administrator",
+    icon: Shield,
+    description: "Full system access",
+    role: "admin",
+    permissions: [] as string[],
+    allEvents: true,
+    allPermissions: true,
+    gradient: "from-purple-500 to-pink-500",
+    borderColor: "border-purple-300",
+    bgLight: "bg-purple-50",
+  },
+  {
+    value: "event-manager",
+    label: "Event Manager",
+    icon: UserCog,
+    description: "All event modules",
+    role: "coordinator",
+    permissions: ["speakers", "program", "checkin", "badges", "certificates", "registrations", "abstracts"],
+    allEvents: false,
+    allPermissions: false,
+    gradient: "from-blue-500 to-indigo-500",
+    borderColor: "border-blue-300",
+    bgLight: "bg-blue-50",
+  },
+  {
+    value: "registration-manager",
+    label: "Registration Mgr",
+    icon: ClipboardList,
+    description: "Registrations only",
+    role: "coordinator",
+    permissions: ["registrations"],
+    allEvents: false,
+    allPermissions: false,
+    gradient: "from-teal-500 to-emerald-500",
+    borderColor: "border-teal-300",
+    bgLight: "bg-teal-50",
+  },
+  {
+    value: "program-coordinator",
+    label: "Program Coord.",
+    icon: Calendar,
+    description: "Speakers & program",
+    role: "coordinator",
+    permissions: ["speakers", "program"],
+    allEvents: false,
+    allPermissions: false,
+    gradient: "from-indigo-500 to-violet-500",
+    borderColor: "border-indigo-300",
+    bgLight: "bg-indigo-50",
+  },
+  {
+    value: "checkin-staff",
+    label: "Check-in Staff",
+    icon: CheckCircle,
+    description: "Check-in & badges",
+    role: "coordinator",
+    permissions: ["checkin", "badges"],
+    allEvents: false,
+    allPermissions: false,
+    gradient: "from-green-500 to-emerald-500",
+    borderColor: "border-green-300",
+    bgLight: "bg-green-50",
+  },
+  {
+    value: "badge-certificate",
+    label: "Badge & Cert",
+    icon: Award,
+    description: "Badges & certificates",
+    role: "coordinator",
+    permissions: ["badges", "certificates"],
+    allEvents: false,
+    allPermissions: false,
+    gradient: "from-pink-500 to-rose-500",
+    borderColor: "border-pink-300",
+    bgLight: "bg-pink-50",
+  },
+  {
+    value: "travel-manager",
+    label: "Travel Manager",
+    icon: MapPin,
+    description: "All travel modules",
+    role: "travel",
+    permissions: ["flights", "hotels", "transfers", "trains"],
+    allEvents: false,
+    allPermissions: false,
+    gradient: "from-cyan-500 to-blue-500",
+    borderColor: "border-cyan-300",
+    bgLight: "bg-cyan-50",
+  },
+  {
+    value: "hotel-coordinator",
+    label: "Hotel Coord.",
+    icon: Hotel,
+    description: "Hotels only",
+    role: "travel",
+    permissions: ["hotels"],
+    allEvents: false,
+    allPermissions: false,
+    gradient: "from-amber-500 to-orange-500",
+    borderColor: "border-amber-300",
+    bgLight: "bg-amber-50",
+  },
+  {
+    value: "flight-coordinator",
+    label: "Flight Coord.",
+    icon: Plane,
+    description: "Flights only",
+    role: "travel",
+    permissions: ["flights"],
+    allEvents: false,
+    allPermissions: false,
+    gradient: "from-sky-500 to-blue-500",
+    borderColor: "border-sky-300",
+    bgLight: "bg-sky-50",
+  },
+  {
+    value: "custom",
+    label: "Custom",
+    icon: Settings,
+    description: "Configure manually",
+    role: "",
+    permissions: [] as string[],
+    allEvents: false,
+    allPermissions: false,
+    gradient: "from-slate-400 to-slate-500",
+    borderColor: "border-slate-300",
+    bgLight: "bg-slate-50",
+  },
+]
+
+function detectPresetForMember(member: TeamMember) {
+  const hasAllPerms = !member.permissions || member.permissions.length === 0
+  const hasAllEvents = !member.event_ids || member.event_ids.length === 0
+  const memberPerms = [...(member.permissions || [])].sort()
+  for (const preset of ROLE_PRESETS) {
+    if (preset.value === "custom") continue
+    if (preset.role !== member.role) continue
+    if (preset.allPermissions !== hasAllPerms) continue
+    if (preset.allEvents !== hasAllEvents) continue
+    if (!preset.allPermissions) {
+      const presetPerms = [...preset.permissions].sort()
+      if (presetPerms.length !== memberPerms.length) continue
+      if (presetPerms.some((p, i) => p !== memberPerms[i])) continue
+    }
+    return preset
+  }
+  return null
+}
 
 export default function TeamPage() {
   const router = useRouter()
@@ -435,7 +590,10 @@ export default function TeamPage() {
   const itemsPerPage = 10
   const allPermissionValues = PERMISSIONS.map(p => p.value)
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    email: string; name: string; phone: string; role: string; notes: string;
+    event_ids: string[]; all_events: boolean; permissions: string[]; all_permissions: boolean;
+  }>({
     email: "",
     name: "",
     phone: "",
@@ -446,6 +604,35 @@ export default function TeamPage() {
     permissions: allPermissionValues,
     all_permissions: true,
   })
+
+  const detectedPreset = useMemo(() => {
+    const formPerms = [...formData.permissions].sort()
+    for (const preset of ROLE_PRESETS) {
+      if (preset.value === "custom") continue
+      if (preset.role !== formData.role) continue
+      if (preset.allPermissions !== formData.all_permissions) continue
+      if (preset.allEvents !== formData.all_events) continue
+      if (!preset.allPermissions) {
+        const presetPerms = [...preset.permissions].sort()
+        if (presetPerms.length !== formPerms.length) continue
+        if (presetPerms.some((p, i) => p !== formPerms[i])) continue
+      }
+      return preset.value
+    }
+    return "custom"
+  }, [formData.role, formData.permissions, formData.all_permissions, formData.all_events])
+
+  const applyPreset = (presetValue: string) => {
+    const preset = ROLE_PRESETS.find(p => p.value === presetValue)
+    if (!preset || preset.value === "custom") return
+    setFormData(prev => ({
+      ...prev,
+      role: preset.role,
+      permissions: preset.allPermissions ? [] : preset.permissions,
+      all_events: preset.allEvents,
+      all_permissions: preset.allPermissions,
+    }))
+  }
 
   const { data: teamMembers, isLoading, refetch } = useQuery({
     queryKey: ["team-members"],
@@ -486,11 +673,30 @@ export default function TeamPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("events")
-        .select("id, name, short_name, start_date")
+        .select("id, name, short_name, start_date, end_date, status")
         .order("start_date", { ascending: false })
       return (data || []) as Event[]
     },
   })
+
+  const [eventSearch, setEventSearch] = useState("")
+
+  const categorizedEvents = useMemo(() => {
+    if (!events) return { live: [], completed: [] }
+    const now = new Date()
+    const live: Event[] = []
+    const completed: Event[] = []
+    for (const event of events) {
+      const endDate = event.end_date ? new Date(event.end_date) : null
+      const isCompleted = event.status === "completed" || event.status === "cancelled" || (endDate && endDate < now)
+      if (isCompleted) {
+        completed.push(event)
+      } else {
+        live.push(event)
+      }
+    }
+    return { live, completed }
+  }, [events])
 
   const addMember = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -605,6 +811,7 @@ export default function TeamPage() {
       email: "", name: "", phone: "", role: "travel", notes: "",
       event_ids: [], all_events: true, permissions: allPermissionValues, all_permissions: true,
     })
+    setEventSearch("")
   }
 
   const getRoleInfo = (role: string) => ROLES.find(r => r.value === role) || ROLES[0]
@@ -642,6 +849,7 @@ export default function TeamPage() {
       permissions: member.permissions || [],
       all_permissions: !member.permissions || member.permissions.length === 0,
     })
+    setEventSearch("")
     setIsEditing(true)
   }
 
@@ -853,6 +1061,12 @@ export default function TeamPage() {
                             <RoleIcon className="h-3 w-3 mr-1" />
                             {roleInfo.label.split(" ")[0]}
                           </Badge>
+                          {(() => {
+                            const preset = detectPresetForMember(member)
+                            return preset ? (
+                              <p className="text-[10px] text-muted-foreground">{preset.label}</p>
+                            ) : null
+                          })()}
                           {/* Show event names for event-scoped users */}
                           {member.event_ids && member.event_ids.length > 0 && (
                             <div className="flex flex-wrap gap-1">
@@ -1040,6 +1254,12 @@ export default function TeamPage() {
                             <RoleIcon className="h-3 w-3 mr-1" />
                             {roleInfo.label.split(" ")[0]}
                           </Badge>
+                          {(() => {
+                            const preset = detectPresetForMember(member)
+                            return preset ? (
+                              <Badge variant="outline" className="text-[10px]">{preset.label}</Badge>
+                            ) : null
+                          })()}
                           {hasFullAccess && (
                             <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-0">
                               <Sparkles className="h-3 w-3 mr-1" />Full Access
@@ -1191,6 +1411,12 @@ export default function TeamPage() {
                         <Badge className={cn("text-white mt-1 bg-gradient-to-r", roleInfo.gradient)}>
                           <RoleIcon className="h-3 w-3 mr-1" />{roleInfo.label}
                         </Badge>
+                        {(() => {
+                          const preset = detectPresetForMember(selectedMember)
+                          return preset ? (
+                            <p className="text-xs text-muted-foreground mt-1">{preset.label}</p>
+                          ) : null
+                        })()}
                       </div>
                     </div>
                     <div className="flex gap-1">
@@ -1352,16 +1578,53 @@ export default function TeamPage() {
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {events?.filter(e => selectedMember.event_ids?.includes(e.id)).map(event => (
-                          <div key={event.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">{event.short_name || event.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    ) : (() => {
+                      const memberEvents = events?.filter(e => selectedMember.event_ids?.includes(e.id)) || []
+                      const now = new Date()
+                      const liveEvents = memberEvents.filter(e => {
+                        const endDate = e.end_date ? new Date(e.end_date) : null
+                        return !(e.status === "completed" || e.status === "cancelled" || (endDate && endDate < now))
+                      })
+                      const completedEvents = memberEvents.filter(e => {
+                        const endDate = e.end_date ? new Date(e.end_date) : null
+                        return e.status === "completed" || e.status === "cancelled" || (endDate && endDate < now)
+                      })
+                      return (
+                        <div className="space-y-3">
+                          {liveEvents.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-2">
+                                <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                                <span className="text-xs font-semibold text-green-700 uppercase tracking-wider">Live / Upcoming ({liveEvents.length})</span>
+                              </div>
+                              {liveEvents.map(event => (
+                                <div key={event.id} className="flex items-center gap-3 p-3 rounded-xl bg-green-50 mb-1.5">
+                                  <Calendar className="h-4 w-4 text-green-600" />
+                                  <span className="text-sm font-medium">{event.short_name || event.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {completedEvents.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-2">
+                                <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completed ({completedEvents.length})</span>
+                              </div>
+                              {completedEvents.map(event => (
+                                <div key={event.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 mb-1.5">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium text-muted-foreground">{event.short_name || event.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {memberEvents.length === 0 && (
+                            <p className="text-sm text-muted-foreground">No events assigned</p>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Notes */}
@@ -1470,6 +1733,46 @@ export default function TeamPage() {
               </div>
             </div>
 
+            <div className="space-y-3">
+              <div>
+                <Label>Quick Setup</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Pick a role to auto-configure permissions</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {ROLE_PRESETS.map((preset) => {
+                  const isActive = detectedPreset === preset.value
+                  const PresetIcon = preset.icon
+                  return (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => preset.value !== "custom" ? applyPreset(preset.value) : undefined}
+                      className={cn(
+                        "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center",
+                        isActive
+                          ? `${preset.borderColor} ${preset.bgLight}`
+                          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
+                        preset.value === "custom" && !isActive && "opacity-50 cursor-default"
+                      )}
+                    >
+                      <div className={cn("h-9 w-9 rounded-lg bg-gradient-to-br text-white flex items-center justify-center", preset.gradient)}>
+                        <PresetIcon className="h-4 w-4" />
+                      </div>
+                      <p className="text-xs font-medium leading-tight">{preset.label}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">{preset.description}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <details className="group">
+              <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-1">
+                <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                Role & Permissions (Advanced)
+              </summary>
+              <div className="mt-3 space-y-4 pl-1">
+
             <div className="space-y-2">
               <Label>Role</Label>
               <div className="space-y-2">
@@ -1501,18 +1804,61 @@ export default function TeamPage() {
                 </div>
                 <Switch checked={formData.all_events} onCheckedChange={(checked) => setFormData({ ...formData, all_events: checked })} />
               </div>
-              {!formData.all_events && events && (
-                <div className="space-y-2 max-h-32 overflow-y-auto p-1">
-                  {events.map((event) => (
-                    <label key={event.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-                      <input type="checkbox" checked={formData.event_ids.includes(event.id)} onChange={(e) => {
-                        setFormData({ ...formData, event_ids: e.target.checked ? [...formData.event_ids, event.id] : formData.event_ids.filter(id => id !== event.id) })
-                      }} className="rounded" />
-                      <span className="text-sm">{event.short_name || event.name}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
+              {!formData.all_events && events && (() => {
+                const q = eventSearch.toLowerCase()
+                const filterEvents = (list: Event[]) => q ? list.filter(e => (e.short_name || e.name || "").toLowerCase().includes(q)) : list
+                const filteredLive = filterEvents(categorizedEvents.live)
+                const filteredCompleted = filterEvents(categorizedEvents.completed)
+                const selectedCount = formData.event_ids.length
+                return (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input placeholder="Search events..." value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} className="pl-8 h-8 text-sm" />
+                    </div>
+                    {selectedCount > 0 && (
+                      <p className="text-xs text-muted-foreground">{selectedCount} event{selectedCount !== 1 ? "s" : ""} selected</p>
+                    )}
+                    <div className="max-h-48 overflow-y-auto space-y-3 p-1">
+                      {filteredLive.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-white py-1">
+                            <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                            <span className="text-xs font-semibold text-green-700 uppercase tracking-wider">Live / Upcoming ({filteredLive.length})</span>
+                          </div>
+                          {filteredLive.map((event) => (
+                            <label key={event.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-green-50 cursor-pointer">
+                              <input type="checkbox" checked={formData.event_ids.includes(event.id)} onChange={(e) => {
+                                setFormData({ ...formData, event_ids: e.target.checked ? [...formData.event_ids, event.id] : formData.event_ids.filter(id => id !== event.id) })
+                              }} className="rounded" />
+                              <span className="text-sm">{event.short_name || event.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                      {filteredCompleted.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-white py-1">
+                            <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completed ({filteredCompleted.length})</span>
+                          </div>
+                          {filteredCompleted.map((event) => (
+                            <label key={event.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                              <input type="checkbox" checked={formData.event_ids.includes(event.id)} onChange={(e) => {
+                                setFormData({ ...formData, event_ids: e.target.checked ? [...formData.event_ids, event.id] : formData.event_ids.filter(id => id !== event.id) })
+                              }} className="rounded" />
+                              <span className="text-sm text-muted-foreground">{event.short_name || event.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                      {filteredLive.length === 0 && filteredCompleted.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-3">No events found</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             <div className="space-y-3">
@@ -1559,6 +1905,9 @@ export default function TeamPage() {
                 </div>
               )}
             </div>
+
+              </div>
+            </details>
 
             <div className="space-y-2">
               <Label>Notes</Label>
@@ -1618,8 +1967,48 @@ export default function TeamPage() {
               <p className="text-xs text-muted-foreground">A magic link will be sent to this email for login</p>
             </div>
 
+            <div className="space-y-3">
+              <div>
+                <Label>Quick Setup *</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Pick a role to auto-configure permissions</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {ROLE_PRESETS.map((preset) => {
+                  const isActive = detectedPreset === preset.value
+                  const PresetIcon = preset.icon
+                  return (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => preset.value !== "custom" ? applyPreset(preset.value) : undefined}
+                      className={cn(
+                        "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center",
+                        isActive
+                          ? `${preset.borderColor} ${preset.bgLight}`
+                          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
+                        preset.value === "custom" && !isActive && "opacity-50 cursor-default"
+                      )}
+                    >
+                      <div className={cn("h-9 w-9 rounded-lg bg-gradient-to-br text-white flex items-center justify-center", preset.gradient)}>
+                        <PresetIcon className="h-4 w-4" />
+                      </div>
+                      <p className="text-xs font-medium leading-tight">{preset.label}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">{preset.description}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <details className="group">
+              <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-1">
+                <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                Role & Permissions (Advanced)
+              </summary>
+              <div className="mt-3 space-y-4 pl-1">
+
             <div className="space-y-2">
-              <Label>Role *</Label>
+              <Label>Role</Label>
               <div className="space-y-2">
                 {ROLES.map((role) => {
                   const isSelected = formData.role === role.value
@@ -1649,6 +2038,61 @@ export default function TeamPage() {
                 </div>
                 <Switch checked={formData.all_events} onCheckedChange={(checked) => setFormData({ ...formData, all_events: checked })} />
               </div>
+              {!formData.all_events && events && (() => {
+                const q = eventSearch.toLowerCase()
+                const filterEvents = (list: Event[]) => q ? list.filter(e => (e.short_name || e.name || "").toLowerCase().includes(q)) : list
+                const filteredLive = filterEvents(categorizedEvents.live)
+                const filteredCompleted = filterEvents(categorizedEvents.completed)
+                const selectedCount = formData.event_ids.length
+                return (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input placeholder="Search events..." value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} className="pl-8 h-8 text-sm" />
+                    </div>
+                    {selectedCount > 0 && (
+                      <p className="text-xs text-muted-foreground">{selectedCount} event{selectedCount !== 1 ? "s" : ""} selected</p>
+                    )}
+                    <div className="max-h-48 overflow-y-auto space-y-3 p-1">
+                      {filteredLive.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-white py-1">
+                            <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                            <span className="text-xs font-semibold text-green-700 uppercase tracking-wider">Live / Upcoming ({filteredLive.length})</span>
+                          </div>
+                          {filteredLive.map((event) => (
+                            <label key={event.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-green-50 cursor-pointer">
+                              <input type="checkbox" checked={formData.event_ids.includes(event.id)} onChange={(e) => {
+                                setFormData({ ...formData, event_ids: e.target.checked ? [...formData.event_ids, event.id] : formData.event_ids.filter(id => id !== event.id) })
+                              }} className="rounded" />
+                              <span className="text-sm">{event.short_name || event.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                      {filteredCompleted.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-white py-1">
+                            <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completed ({filteredCompleted.length})</span>
+                          </div>
+                          {filteredCompleted.map((event) => (
+                            <label key={event.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                              <input type="checkbox" checked={formData.event_ids.includes(event.id)} onChange={(e) => {
+                                setFormData({ ...formData, event_ids: e.target.checked ? [...formData.event_ids, event.id] : formData.event_ids.filter(id => id !== event.id) })
+                              }} className="rounded" />
+                              <span className="text-sm text-muted-foreground">{event.short_name || event.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                      {filteredLive.length === 0 && filteredCompleted.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-3">No events found</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             <div className="space-y-3">
@@ -1695,6 +2139,9 @@ export default function TeamPage() {
                 </div>
               )}
             </div>
+
+              </div>
+            </details>
 
             <div className="space-y-2">
               <Label>Notes</Label>
