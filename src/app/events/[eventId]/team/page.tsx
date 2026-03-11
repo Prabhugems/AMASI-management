@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -34,12 +34,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   Users,
   Loader2,
@@ -64,13 +63,17 @@ import {
   Palette,
   CheckCircle,
   ChevronLeft,
+  Send,
+  Settings,
+  MapPin,
+  BookOpen,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
 import { SkeletonTable } from "@/components/ui/skeleton"
 
-// Type definitions for Supabase queries
+// Type definitions
 type TeamMember = {
   id: string
   email: string
@@ -91,28 +94,162 @@ type EventType = {
 }
 
 const PERMISSIONS = [
-  { value: "flights", label: "Flights", icon: Plane, color: "text-sky-500", description: "Manage flight bookings" },
-  { value: "hotels", label: "Hotels", icon: Hotel, color: "text-amber-500", description: "Manage hotel bookings" },
-  { value: "transfers", label: "Transfers", icon: Car, color: "text-emerald-500", description: "Manage pickups/drops" },
-  { value: "trains", label: "Trains", icon: Train, color: "text-orange-500", description: "Manage train bookings" },
   { value: "speakers", label: "Speakers", icon: Users, color: "text-purple-500", description: "Manage speakers" },
   { value: "program", label: "Program", icon: Calendar, color: "text-blue-500", description: "Manage schedule" },
   { value: "checkin", label: "Check-in", icon: QrCode, color: "text-green-500", description: "Manage check-in" },
   { value: "badges", label: "Badges", icon: Palette, color: "text-pink-500", description: "Design badges" },
   { value: "certificates", label: "Certificates", icon: Award, color: "text-indigo-500", description: "Manage certificates" },
   { value: "registrations", label: "Registrations", icon: ClipboardList, color: "text-cyan-500", description: "Manage attendees" },
+  { value: "abstracts", label: "Abstracts", icon: BookOpen, color: "text-teal-500", description: "Manage abstracts" },
+  { value: "flights", label: "Flights", icon: Plane, color: "text-sky-500", description: "Manage flight bookings" },
+  { value: "hotels", label: "Hotels", icon: Hotel, color: "text-amber-500", description: "Manage hotel bookings" },
+  { value: "transfers", label: "Transfers", icon: Car, color: "text-emerald-500", description: "Manage pickups/drops" },
+  { value: "trains", label: "Trains", icon: Train, color: "text-orange-500", description: "Manage train bookings" },
 ]
 
-const ROLES = [
-  { value: "admin", label: "Event Admin", description: "Full access to this event" },
-  { value: "travel", label: "Travel Coordinator", description: "Manage travel & accommodation" },
-  { value: "coordinator", label: "Event Coordinator", description: "Manage event operations" },
+const ROLE_PRESETS = [
+  {
+    value: "administrator",
+    label: "Administrator",
+    icon: Shield,
+    description: "Full access to all modules",
+    role: "admin",
+    permissions: [] as string[],
+    allPermissions: true,
+    gradient: "from-purple-500 to-pink-500",
+    borderColor: "border-purple-300",
+    bgLight: "bg-purple-50",
+  },
+  {
+    value: "event-manager",
+    label: "Event Manager",
+    icon: UserCog,
+    description: "All event modules",
+    role: "coordinator",
+    permissions: ["speakers", "program", "checkin", "badges", "certificates", "registrations", "abstracts"],
+    allPermissions: false,
+    gradient: "from-blue-500 to-indigo-500",
+    borderColor: "border-blue-300",
+    bgLight: "bg-blue-50",
+  },
+  {
+    value: "registration-manager",
+    label: "Registration Mgr",
+    icon: ClipboardList,
+    description: "Registrations only",
+    role: "coordinator",
+    permissions: ["registrations"],
+    allPermissions: false,
+    gradient: "from-teal-500 to-emerald-500",
+    borderColor: "border-teal-300",
+    bgLight: "bg-teal-50",
+  },
+  {
+    value: "program-coordinator",
+    label: "Program Coord.",
+    icon: Calendar,
+    description: "Speakers & program",
+    role: "coordinator",
+    permissions: ["speakers", "program"],
+    allPermissions: false,
+    gradient: "from-indigo-500 to-violet-500",
+    borderColor: "border-indigo-300",
+    bgLight: "bg-indigo-50",
+  },
+  {
+    value: "checkin-staff",
+    label: "Check-in Staff",
+    icon: CheckCircle,
+    description: "Check-in & badges",
+    role: "coordinator",
+    permissions: ["checkin", "badges"],
+    allPermissions: false,
+    gradient: "from-green-500 to-emerald-500",
+    borderColor: "border-green-300",
+    bgLight: "bg-green-50",
+  },
+  {
+    value: "badge-certificate",
+    label: "Badge & Cert",
+    icon: Award,
+    description: "Badges & certificates",
+    role: "coordinator",
+    permissions: ["badges", "certificates"],
+    allPermissions: false,
+    gradient: "from-pink-500 to-rose-500",
+    borderColor: "border-pink-300",
+    bgLight: "bg-pink-50",
+  },
+  {
+    value: "travel-manager",
+    label: "Travel Manager",
+    icon: MapPin,
+    description: "All travel modules",
+    role: "travel",
+    permissions: ["flights", "hotels", "transfers", "trains"],
+    allPermissions: false,
+    gradient: "from-cyan-500 to-blue-500",
+    borderColor: "border-cyan-300",
+    bgLight: "bg-cyan-50",
+  },
+  {
+    value: "hotel-coordinator",
+    label: "Hotel Coord.",
+    icon: Hotel,
+    description: "Hotels only",
+    role: "travel",
+    permissions: ["hotels"],
+    allPermissions: false,
+    gradient: "from-amber-500 to-orange-500",
+    borderColor: "border-amber-300",
+    bgLight: "bg-amber-50",
+  },
+  {
+    value: "flight-coordinator",
+    label: "Flight Coord.",
+    icon: Plane,
+    description: "Flights only",
+    role: "travel",
+    permissions: ["flights"],
+    allPermissions: false,
+    gradient: "from-sky-500 to-blue-500",
+    borderColor: "border-sky-300",
+    bgLight: "bg-sky-50",
+  },
+  {
+    value: "custom",
+    label: "Custom",
+    icon: Settings,
+    description: "Configure manually",
+    role: "",
+    permissions: [] as string[],
+    allPermissions: false,
+    gradient: "from-slate-400 to-slate-500",
+    borderColor: "border-slate-300",
+    bgLight: "bg-slate-50",
+  },
 ]
 
 const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  admin: { label: "Event Admin", color: "text-rose-700", bg: "bg-rose-100" },
+  admin: { label: "Administrator", color: "text-rose-700", bg: "bg-rose-100" },
   travel: { label: "Travel Coordinator", color: "text-sky-700", bg: "bg-sky-100" },
-  coordinator: { label: "Event Coordinator", color: "text-emerald-700", bg: "bg-emerald-100" },
+  coordinator: { label: "Coordinator", color: "text-emerald-700", bg: "bg-emerald-100" },
+}
+
+function detectPreset(role: string, permissions: string[], allPermissions: boolean) {
+  const sortedPerms = [...permissions].sort()
+  for (const preset of ROLE_PRESETS) {
+    if (preset.value === "custom") continue
+    if (preset.role !== role) continue
+    if (preset.allPermissions !== allPermissions) continue
+    if (!preset.allPermissions) {
+      const presetPerms = [...preset.permissions].sort()
+      if (presetPerms.length !== sortedPerms.length) continue
+      if (presetPerms.some((p, i) => p !== sortedPerms[i])) continue
+    }
+    return preset.value
+  }
+  return "custom"
 }
 
 export default function EventTeamPage() {
@@ -125,6 +262,7 @@ export default function EventTeamPage() {
   const [search, setSearch] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
+  const [sendingInvite, setSendingInvite] = useState<string | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -133,8 +271,25 @@ export default function EventTeamPage() {
     phone: "",
     role: "coordinator",
     permissions: [] as string[],
+    allPermissions: false,
     notes: "",
   })
+
+  // Detect current preset from form state
+  const detectedPreset = useMemo(() => {
+    return detectPreset(formData.role, formData.permissions, formData.allPermissions)
+  }, [formData.role, formData.permissions, formData.allPermissions])
+
+  const applyPreset = (presetValue: string) => {
+    const preset = ROLE_PRESETS.find(p => p.value === presetValue)
+    if (!preset || preset.value === "custom") return
+    setFormData(prev => ({
+      ...prev,
+      role: preset.role,
+      permissions: preset.allPermissions ? [] : preset.permissions,
+      allPermissions: preset.allPermissions,
+    }))
+  }
 
   // Fetch event details
   const { data: event } = useQuery({
@@ -160,8 +315,6 @@ export default function EventTeamPage() {
 
       if (error) throw error
 
-      // Filter members who have ONLY this event (event-specific members)
-      // OR members explicitly assigned to this event
       const members = (data as TeamMember[] | null) || []
       return members.filter(m => m.event_ids?.includes(eventId))
     },
@@ -177,23 +330,37 @@ export default function EventTeamPage() {
           email: data.email.toLowerCase(),
           phone: data.phone || null,
           role: data.role,
-          permissions: data.role === "admin" ? [] : data.permissions, // Admin gets full access
+          permissions: data.allPermissions ? [] : data.permissions,
           notes: data.notes || null,
-          event_ids: [eventId], // Only this event
+          event_ids: [eventId],
           is_active: true,
         })
 
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: ["event-team", eventId] })
       toast.success("Team member added successfully")
+      // Auto-send invite email
+      fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email.toLowerCase(),
+          isInvite: true,
+        }),
+      }).then(res => {
+        if (res.ok) toast.success("Invite email sent!")
+        else toast.error("Member added but invite email failed")
+      }).catch(() => {
+        toast.error("Member added but invite email failed")
+      })
       resetForm()
       setDialogOpen(false)
     },
     onError: (error: any) => {
       if (error.message?.includes("duplicate")) {
-        toast.error("This email is already registered")
+        toast.error("This email is already registered as a team member")
       } else {
         toast.error("Failed to add team member", { description: error.message })
       }
@@ -210,7 +377,7 @@ export default function EventTeamPage() {
           email: data.email.toLowerCase(),
           phone: data.phone || null,
           role: data.role,
-          permissions: data.role === "admin" ? [] : data.permissions,
+          permissions: data.allPermissions ? [] : data.permissions,
           notes: data.notes || null,
         })
         .eq("id", id)
@@ -248,17 +415,44 @@ export default function EventTeamPage() {
     },
   })
 
-  // Copy login info for team member
-  const copyLoginInfo = async (member: TeamMember) => {
-    const loginUrl = `${window.location.origin}/login`
-    const info = `Login URL: ${loginUrl}\nEmail: ${member.email}\n\nThe team member can use their email to sign in.`
-
-    // Copy to clipboard
-    await navigator.clipboard.writeText(info)
-    toast.success("Login info copied!", {
-      description: "Share this with the team member to give them access",
-    })
+  // Send magic link
+  const sendInvite = async (member: TeamMember) => {
+    setSendingInvite(member.id)
+    try {
+      const res = await fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: member.email.toLowerCase(),
+          redirectTo: '/team-portal',
+        }),
+      })
+      if (res.ok) {
+        toast.success("Login link sent!", { description: `Sent to ${member.email}` })
+      } else {
+        toast.error("Failed to send login link")
+      }
+    } catch {
+      toast.error("Failed to send login link")
+    } finally {
+      setSendingInvite(null)
+    }
   }
+
+  // Toggle active status
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error } = await (supabase as any)
+        .from("team_members")
+        .update({ is_active })
+        .eq("id", id)
+      if (error) throw error
+    },
+    onSuccess: (_, v) => {
+      queryClient.invalidateQueries({ queryKey: ["event-team", eventId] })
+      toast.success(v.is_active ? "Member activated" : "Member deactivated")
+    },
+  })
 
   const resetForm = () => {
     setFormData({
@@ -267,18 +461,21 @@ export default function EventTeamPage() {
       phone: "",
       role: "coordinator",
       permissions: [],
+      allPermissions: false,
       notes: "",
     })
   }
 
   const openEditDialog = (member: TeamMember) => {
     setEditingMember(member)
+    const isFullAccess = member.role === "admin" || !member.permissions?.length
     setFormData({
       name: member.name,
       email: member.email,
       phone: member.phone || "",
       role: member.role,
       permissions: member.permissions || [],
+      allPermissions: isFullAccess,
       notes: member.notes || "",
     })
     setDialogOpen(true)
@@ -308,7 +505,7 @@ export default function EventTeamPage() {
       ...prev,
       permissions: prev.permissions.includes(perm)
         ? prev.permissions.filter(p => p !== perm)
-        : [...prev.permissions, perm]
+        : [...prev.permissions, perm],
     }))
   }
 
@@ -329,6 +526,11 @@ export default function EventTeamPage() {
 
   const getRoleConfig = (role: string) => {
     return ROLE_CONFIG[role] || { label: role, color: "text-gray-700", bg: "bg-gray-100" }
+  }
+
+  const getPresetForMember = (member: TeamMember) => {
+    const isFullAccess = member.role === "admin" || !member.permissions?.length
+    return detectPreset(member.role, member.permissions || [], isFullAccess)
   }
 
   return (
@@ -378,7 +580,7 @@ export default function EventTeamPage() {
                 <p className="text-xl sm:text-2xl font-bold">
                   {eventTeam?.filter(m => m.role === "admin").length || 0}
                 </p>
-                <p className="text-sm text-muted-foreground">Event Admins</p>
+                <p className="text-sm text-muted-foreground">Admins</p>
               </div>
             </div>
           </CardContent>
@@ -428,7 +630,7 @@ export default function EventTeamPage() {
               <h3 className="text-lg font-semibold mb-1">No team members yet</h3>
               <p className="text-sm text-muted-foreground mb-6 max-w-sm">
                 Add team members to give them access to manage this event.
-                They'll receive a magic link to login.
+                They'll receive an invite email with a login link.
               </p>
               <Button onClick={openCreateDialog}>
                 <UserPlus className="h-4 w-4 mr-2" />
@@ -450,6 +652,8 @@ export default function EventTeamPage() {
               <TableBody>
                 {filteredTeam.map((member) => {
                   const roleConfig = getRoleConfig(member.role)
+                  const presetValue = getPresetForMember(member)
+                  const preset = ROLE_PRESETS.find(p => p.value === presetValue)
                   return (
                     <TableRow key={member.id}>
                       <TableCell>
@@ -472,9 +676,18 @@ export default function EventTeamPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className={cn("text-xs", roleConfig.bg, roleConfig.color)}>
-                          {roleConfig.label}
-                        </Badge>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Badge variant="secondary" className={cn("text-xs", roleConfig.bg, roleConfig.color)}>
+                                {preset && preset.value !== "custom" ? preset.label : roleConfig.label}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{preset?.description || roleConfig.label}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell>
                         {member.role === "admin" || !member.permissions?.length ? (
@@ -496,9 +709,21 @@ export default function EventTeamPage() {
                               )
                             })}
                             {member.permissions.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{member.permissions.length - 3}
-                              </Badge>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Badge variant="outline" className="text-xs">
+                                      +{member.permissions.length - 3}
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{member.permissions.slice(3).map(p => {
+                                      const config = PERMISSIONS.find(c => c.value === p)
+                                      return config?.label || p
+                                    }).join(", ")}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                           </div>
                         )}
@@ -516,19 +741,45 @@ export default function EventTeamPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => copyLoginInfo(member)}>
-                              <Link2 className="h-4 w-4 mr-2" />
-                              Copy Login Info
-                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openEditDialog(member)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Edit Member
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => sendInvite(member)}
+                              disabled={sendingInvite === member.id}
+                            >
+                              {sendingInvite === member.id ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Send className="h-4 w-4 mr-2" />
+                              )}
+                              Send Login Link
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <a href={`mailto:${member.email}`}>
                                 <Mail className="h-4 w-4 mr-2" />
                                 Send Email
                               </a>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => toggleActiveMutation.mutate({
+                                id: member.id,
+                                is_active: !member.is_active,
+                              })}
+                            >
+                              {member.is_active ? (
+                                <>
+                                  <UserCog className="h-4 w-4 mr-2" />
+                                  Deactivate
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Activate
+                                </>
+                              )}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -565,12 +816,50 @@ export default function EventTeamPage() {
             <DialogDescription>
               {editingMember
                 ? "Update team member details and permissions"
-                : "Add a new team member who will have access to this event only"
+                : "Add a new team member. They'll receive an invite email with a login link."
               }
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {/* Role Presets */}
+            <div className="space-y-3">
+              <Label>Quick Role Preset</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {ROLE_PRESETS.map((preset) => {
+                  const Icon = preset.icon
+                  const isSelected = detectedPreset === preset.value
+                  return (
+                    <button
+                      key={preset.value}
+                      onClick={() => preset.value !== "custom" ? applyPreset(preset.value) : null}
+                      className={cn(
+                        "relative flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all text-center",
+                        isSelected
+                          ? `${preset.borderColor} ${preset.bgLight} ring-1 ring-offset-1`
+                          : "border-muted hover:border-muted-foreground/30 hover:bg-muted/50",
+                        preset.value === "custom" && "opacity-60 cursor-default"
+                      )}
+                    >
+                      <div className={cn(
+                        "h-8 w-8 rounded-full flex items-center justify-center bg-gradient-to-br text-white",
+                        preset.gradient
+                      )}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-medium leading-tight">{preset.label}</span>
+                      <span className="text-[10px] text-muted-foreground leading-tight">{preset.description}</span>
+                      {isSelected && (
+                        <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                          <CheckCircle className="h-3 w-3 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -594,47 +883,24 @@ export default function EventTeamPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="+91 98765 43210"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Role *</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES.map((role) => (
-                      <SelectItem key={role.value} value={role.value}>
-                        <div>
-                          <p className="font-medium">{role.label}</p>
-                          <p className="text-xs text-muted-foreground">{role.description}</p>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="+91 98765 43210"
+              />
             </div>
 
-            {/* Permissions - only show if not admin */}
-            {formData.role !== "admin" && (
+            {/* Permissions - only show if not full access */}
+            {!formData.allPermissions && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>Permissions</Label>
+                  <Label>Module Permissions</Label>
                   <p className="text-xs text-muted-foreground">
                     {formData.permissions.length === 0
-                      ? "No permissions = Full access"
+                      ? "Select at least one module"
                       : `${formData.permissions.length} selected`
                     }
                   </p>
@@ -664,17 +930,14 @@ export default function EventTeamPage() {
                     )
                   })}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Leave empty to give full access to all modules
-                </p>
               </div>
             )}
 
-            {formData.role === "admin" && (
+            {formData.allPermissions && (
               <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
                 <div className="flex items-center gap-2 text-rose-700">
                   <Shield className="h-5 w-5" />
-                  <span className="font-medium">Event Admin</span>
+                  <span className="font-medium">Full Access</span>
                 </div>
                 <p className="text-sm text-rose-600 mt-1">
                   This member will have full access to all modules for this event
