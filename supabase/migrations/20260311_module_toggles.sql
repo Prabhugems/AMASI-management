@@ -1,0 +1,19 @@
+-- Add module toggle columns to event_settings for sidebar visibility
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_speakers BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_program BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_checkin BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_badges BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_certificates BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_travel BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_accommodation BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_meals BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_sponsors BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_budget BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_visa BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_surveys BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_delegate_portal BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_print_station BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_leads BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_waitlist BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_addons BOOLEAN DEFAULT true;
+ALTER TABLE event_settings ADD COLUMN IF NOT EXISTS enable_forms BOOLEAN DEFAULT true;

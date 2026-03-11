@@ -40,6 +40,7 @@ import {
   Stamp,
   IndianRupee,
   ClipboardList,
+  GraduationCap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -76,36 +77,56 @@ type SetupStatus = {
 
 type ModuleSettings = {
   enable_abstracts: boolean
+  enable_examination: boolean
+  enable_speakers: boolean
+  enable_program: boolean
+  enable_checkin: boolean
+  enable_badges: boolean
+  enable_certificates: boolean
+  enable_travel: boolean
+  enable_accommodation: boolean
+  enable_meals: boolean
+  enable_sponsors: boolean
+  enable_budget: boolean
+  enable_visa: boolean
+  enable_surveys: boolean
+  enable_delegate_portal: boolean
+  enable_print_station: boolean
+  enable_leads: boolean
+  enable_waitlist: boolean
+  enable_addons: boolean
+  enable_forms: boolean
 }
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "", icon: LayoutDashboard },
   { label: "Tickets", href: "/tickets", icon: Ticket, statusKey: "tickets" },
-  { label: "Addons", href: "/addons", icon: Package },
+  { label: "Addons", href: "/addons", icon: Package, moduleKey: "enable_addons" },
   { label: "Orders", href: "/orders", icon: ShoppingCart },
   { label: "Attendees", href: "/registrations", icon: UserCheck },
-  { label: "Waitlist", href: "/waitlist", icon: ListOrdered },
-  { label: "Forms", href: "/forms", icon: FileText },
+  { label: "Waitlist", href: "/waitlist", icon: ListOrdered, moduleKey: "enable_waitlist" },
+  { label: "Forms", href: "/forms", icon: FileText, moduleKey: "enable_forms" },
   { label: "Abstracts", href: "/abstracts", icon: BookOpen, statusKey: "abstracts", moduleKey: "enable_abstracts" },
-  { label: "Speakers", href: "/speakers", icon: Mic },
-  { label: "Program", href: "/program", icon: Calendar },
-  { label: "Checkin Hub", href: "/checkin", icon: QrCode },
-  { label: "Print Station", href: "/print-stations", icon: Printer },
-  { label: "Badges", href: "/badges", icon: BadgeCheck, statusKey: "badges" },
-  { label: "Certificates", href: "/certificates", icon: Award, statusKey: "certificates" },
-  { label: "Delegate Portal", href: "/delegate-portal", icon: BarChart3 },
-  { label: "Surveys", href: "/surveys", icon: ClipboardList },
-  { label: "Travel", href: "/travel", icon: Plane },
-  { label: "Accommodation", href: "/accommodation", icon: Hotel },
-  { label: "Meals", href: "/meals", icon: UtensilsCrossed },
-  { label: "Visa Letters", href: "/visa", icon: Stamp },
-  { label: "Sponsors", href: "/sponsors", icon: Building2 },
-  { label: "Budget", href: "/budget", icon: IndianRupee },
+  { label: "Examination", href: "/examination", icon: GraduationCap, moduleKey: "enable_examination" },
+  { label: "Speakers", href: "/speakers", icon: Mic, moduleKey: "enable_speakers" },
+  { label: "Program", href: "/program", icon: Calendar, moduleKey: "enable_program" },
+  { label: "Checkin Hub", href: "/checkin", icon: QrCode, moduleKey: "enable_checkin" },
+  { label: "Print Station", href: "/print-stations", icon: Printer, moduleKey: "enable_print_station" },
+  { label: "Badges", href: "/badges", icon: BadgeCheck, statusKey: "badges", moduleKey: "enable_badges" },
+  { label: "Certificates", href: "/certificates", icon: Award, statusKey: "certificates", moduleKey: "enable_certificates" },
+  { label: "Delegate Portal", href: "/delegate-portal", icon: BarChart3, moduleKey: "enable_delegate_portal" },
+  { label: "Surveys", href: "/surveys", icon: ClipboardList, moduleKey: "enable_surveys" },
+  { label: "Travel", href: "/travel", icon: Plane, moduleKey: "enable_travel" },
+  { label: "Accommodation", href: "/accommodation", icon: Hotel, moduleKey: "enable_accommodation" },
+  { label: "Meals", href: "/meals", icon: UtensilsCrossed, moduleKey: "enable_meals" },
+  { label: "Visa Letters", href: "/visa", icon: Stamp, moduleKey: "enable_visa" },
+  { label: "Sponsors", href: "/sponsors", icon: Building2, moduleKey: "enable_sponsors" },
+  { label: "Budget", href: "/budget", icon: IndianRupee, moduleKey: "enable_budget" },
   { label: "Team", href: "/team", icon: Users },
   { label: "Communications", href: "/communications", icon: MessageSquare, statusKey: "communications" },
   { label: "Email Templates", href: "/emails", icon: Mail },
   { label: "Analytics", href: "/analytics", icon: TrendingUp },
-  { label: "Leads", href: "/leads", icon: UserPlus },
+  { label: "Leads", href: "/leads", icon: UserPlus, moduleKey: "enable_leads" },
   { label: "Activity Log", href: "/activity", icon: Activity },
   { label: "Payment Settings", href: "/payment-settings", icon: Wallet },
   { label: "Settings", href: "/settings", icon: Settings },
@@ -210,18 +231,41 @@ export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   })
 
   // Fetch module settings for conditional nav display
+  const MODULE_FIELDS = "enable_abstracts, enable_examination, enable_speakers, enable_program, enable_checkin, enable_badges, enable_certificates, enable_travel, enable_accommodation, enable_meals, enable_sponsors, enable_budget, enable_visa, enable_surveys, enable_delegate_portal, enable_print_station, enable_leads, enable_waitlist, enable_addons, enable_forms"
+
   const { data: moduleSettings, refetch: refetchModules } = useQuery({
     queryKey: ["event-module-settings", eventId],
     queryFn: async (): Promise<ModuleSettings> => {
       const { data } = await supabase
         .from("event_settings")
-        .select("enable_abstracts")
+        .select(MODULE_FIELDS)
         .eq("event_id", eventId)
         .maybeSingle()
 
-      const settings = data as { enable_abstracts?: boolean } | null
+      const s = data as Partial<ModuleSettings> | null
       return {
-        enable_abstracts: settings?.enable_abstracts ?? false,
+        // These default to false (opt-in)
+        enable_abstracts: s?.enable_abstracts ?? false,
+        enable_examination: s?.enable_examination ?? false,
+        // These default to true (opt-out) so existing events keep their sidebar
+        enable_speakers: s?.enable_speakers ?? true,
+        enable_program: s?.enable_program ?? true,
+        enable_checkin: s?.enable_checkin ?? true,
+        enable_badges: s?.enable_badges ?? true,
+        enable_certificates: s?.enable_certificates ?? true,
+        enable_travel: s?.enable_travel ?? true,
+        enable_accommodation: s?.enable_accommodation ?? true,
+        enable_meals: s?.enable_meals ?? true,
+        enable_sponsors: s?.enable_sponsors ?? true,
+        enable_budget: s?.enable_budget ?? true,
+        enable_visa: s?.enable_visa ?? true,
+        enable_surveys: s?.enable_surveys ?? true,
+        enable_delegate_portal: s?.enable_delegate_portal ?? true,
+        enable_print_station: s?.enable_print_station ?? true,
+        enable_leads: s?.enable_leads ?? true,
+        enable_waitlist: s?.enable_waitlist ?? true,
+        enable_addons: s?.enable_addons ?? true,
+        enable_forms: s?.enable_forms ?? true,
       }
     },
     enabled: !!eventId,

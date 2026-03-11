@@ -58,8 +58,28 @@ export async function GET(request: NextRequest) {
         // Registration control
         allow_duplicate_email: true, // Allow same email to register multiple times
         show_duplicate_warning: true, // Show warning when email already registered
-        // Module toggles
+        // Module toggles (opt-in, default off)
         enable_abstracts: false,
+        enable_examination: false,
+        // Module toggles (opt-out, default on)
+        enable_speakers: true,
+        enable_program: true,
+        enable_checkin: true,
+        enable_badges: true,
+        enable_certificates: true,
+        enable_travel: true,
+        enable_accommodation: true,
+        enable_meals: true,
+        enable_sponsors: true,
+        enable_budget: true,
+        enable_visa: true,
+        enable_surveys: true,
+        enable_delegate_portal: true,
+        enable_print_station: true,
+        enable_leads: true,
+        enable_waitlist: true,
+        enable_addons: true,
+        enable_forms: true,
       })
     }
 
@@ -164,7 +184,16 @@ export async function POST(request: NextRequest) {
     if (body.allow_duplicate_email !== undefined) payload.allow_duplicate_email = body.allow_duplicate_email
     if (body.show_duplicate_warning !== undefined) payload.show_duplicate_warning = body.show_duplicate_warning
     // Module toggles
-    if (body.enable_abstracts !== undefined) payload.enable_abstracts = body.enable_abstracts
+    const moduleKeys = [
+      "enable_abstracts", "enable_examination", "enable_speakers", "enable_program",
+      "enable_checkin", "enable_badges", "enable_certificates", "enable_travel",
+      "enable_accommodation", "enable_meals", "enable_sponsors", "enable_budget",
+      "enable_visa", "enable_surveys", "enable_delegate_portal", "enable_print_station",
+      "enable_leads", "enable_waitlist", "enable_addons", "enable_forms",
+    ]
+    for (const key of moduleKeys) {
+      if (body[key] !== undefined) payload[key] = body[key]
+    }
 
     const { data, error } = await adminClient
       .from("event_settings")

@@ -36,6 +36,7 @@ import {
   Blocks,
   BookOpen,
   ChevronLeft,
+  GraduationCap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -1211,11 +1212,53 @@ function AutomationSection({ eventId }: { eventId: string }) {
   )
 }
 
+// Module definitions for the settings UI
+const MODULE_DEFS = [
+  // Category: Event Operations
+  { category: "Event Operations", modules: [
+    { key: "enable_speakers", label: "Speakers", icon: "Mic", description: "Manage speakers, invitations, portal links, travel & accommodation", defaultOn: true },
+    { key: "enable_program", label: "Program", icon: "Calendar", description: "Build event schedule with sessions, tracks, and speaker assignments", defaultOn: true },
+    { key: "enable_checkin", label: "Checkin Hub", icon: "QrCode", description: "QR-based check-in, session tracking, and attendance reports", defaultOn: true },
+    { key: "enable_badges", label: "Badges", icon: "BadgeCheck", description: "Design and print attendee badges with templates", defaultOn: true },
+    { key: "enable_certificates", label: "Certificates", icon: "Award", description: "Generate and email certificates to attendees", defaultOn: true },
+    { key: "enable_print_station", label: "Print Station", icon: "Printer", description: "Kiosk mode for on-site badge printing", defaultOn: true },
+  ]},
+  // Category: Registration & Forms
+  { category: "Registration & Forms", modules: [
+    { key: "enable_addons", label: "Addons", icon: "Package", description: "Optional add-on items for registration (meals, kits, etc.)", defaultOn: true },
+    { key: "enable_waitlist", label: "Waitlist", icon: "ListOrdered", description: "Manage waitlist when tickets are sold out", defaultOn: true },
+    { key: "enable_forms", label: "Forms", icon: "FileText", description: "Custom form builder for collecting additional data", defaultOn: true },
+    { key: "enable_delegate_portal", label: "Delegate Portal", icon: "BarChart3", description: "Self-service portal for attendees to manage their registration", defaultOn: true },
+    { key: "enable_surveys", label: "Surveys", icon: "ClipboardList", description: "Post-event feedback and surveys", defaultOn: true },
+    { key: "enable_leads", label: "Leads", icon: "UserPlus", description: "Capture and manage potential attendee leads", defaultOn: true },
+  ]},
+  // Category: Travel & Logistics
+  { category: "Travel & Logistics", modules: [
+    { key: "enable_travel", label: "Travel", icon: "Plane", description: "Manage flight bookings and transfers for speakers/delegates", defaultOn: true },
+    { key: "enable_accommodation", label: "Accommodation", icon: "Hotel", description: "Manage hotel bookings and room allocations", defaultOn: true },
+    { key: "enable_meals", label: "Meals", icon: "UtensilsCrossed", description: "Meal preferences, dietary requirements, and meal tracking", defaultOn: true },
+    { key: "enable_visa", label: "Visa Letters", icon: "Stamp", description: "Generate visa invitation letters for international delegates", defaultOn: true },
+  ]},
+  // Category: Finance & Sponsors
+  { category: "Finance & Sponsors", modules: [
+    { key: "enable_sponsors", label: "Sponsors", icon: "Building2", description: "Manage event sponsors, tiers, and sponsorship packages", defaultOn: true },
+    { key: "enable_budget", label: "Budget", icon: "IndianRupee", description: "Track event budget, expenses, and financial reports", defaultOn: true },
+  ]},
+  // Category: Advanced Modules (default off)
+  { category: "Advanced Modules", modules: [
+    { key: "enable_abstracts", label: "Abstract Management", icon: "BookOpen", description: "Abstract submission, review workflow, accept/reject decisions", defaultOn: false },
+    { key: "enable_examination", label: "Examination (FMAS / MMAS)", icon: "GraduationCap", description: "Marks entry, results, convocation numbering, address collection", defaultOn: false },
+  ]},
+] as const
+
 // Modules Section Component
 function ModulesSection({ eventId }: { eventId: string }) {
   const supabase = createClient()
   const queryClient = useQueryClient()
   const [saving, setSaving] = useState(false)
+
+  const ALL_MODULE_KEYS = MODULE_DEFS.flatMap(c => c.modules.map(m => m.key))
+  const MODULE_FIELDS = ALL_MODULE_KEYS.join(", ")
 
   // Fetch event settings
   const { data: settings, isLoading } = useQuery({
@@ -1223,26 +1266,33 @@ function ModulesSection({ eventId }: { eventId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("event_settings")
-        .select("enable_abstracts")
+        .select(MODULE_FIELDS)
         .eq("event_id", eventId)
         .maybeSingle()
 
       if (error) throw error
-      return data || { enable_abstracts: false }
+      return data as Record<string, boolean> | null
     },
     enabled: !!eventId,
   })
 
-  const [formData, setFormData] = useState({
-    enable_abstracts: false,
-  })
+  const getDefault = (key: string) => {
+    for (const cat of MODULE_DEFS) {
+      const mod = cat.modules.find(m => m.key === key)
+      if (mod) return mod.defaultOn
+    }
+    return true
+  }
+
+  const [formData, setFormData] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    if (settings) {
-      setFormData({
-        enable_abstracts: settings.enable_abstracts ?? false,
-      })
+    const initial: Record<string, boolean> = {}
+    for (const key of ALL_MODULE_KEYS) {
+      initial[key] = settings?.[key] ?? getDefault(key)
     }
+    setFormData(initial)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings])
 
   const handleSave = async () => {
@@ -1256,13 +1306,30 @@ function ModulesSection({ eventId }: { eventId: string }) {
       if (!res.ok) throw new Error("Failed to save")
       await queryClient.invalidateQueries({ queryKey: ["event-module-settings", eventId] })
       await queryClient.invalidateQueries({ queryKey: ["event-setup-status", eventId] })
-      // Dispatch event to trigger sidebar update
       window.dispatchEvent(new CustomEvent("event-settings-saved"))
     } catch (error) {
       console.error("Failed to save module settings:", error)
     }
     setSaving(false)
   }
+
+  const toggleModule = (key: string) => {
+    setFormData(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const enableAll = () => {
+    const updated: Record<string, boolean> = {}
+    for (const key of ALL_MODULE_KEYS) updated[key] = true
+    setFormData(updated)
+  }
+
+  const disableOptional = () => {
+    const updated: Record<string, boolean> = {}
+    for (const key of ALL_MODULE_KEYS) updated[key] = false
+    setFormData(updated)
+  }
+
+  const enabledCount = Object.values(formData).filter(Boolean).length
 
   if (isLoading) {
     return (
@@ -1274,60 +1341,79 @@ function ModulesSection({ eventId }: { eventId: string }) {
 
   return (
     <div className="bg-card border border-border rounded-xl p-6 space-y-6">
-      <div className="flex items-center gap-3 pb-4 border-b border-border">
-        <div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
-          <Blocks className="h-5 w-5 text-violet-500" />
+      <div className="flex items-center justify-between pb-4 border-b border-border">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
+            <Blocks className="h-5 w-5 text-violet-500" />
+          </div>
+          <div>
+            <h3 className="font-semibold">Event Modules</h3>
+            <p className="text-sm text-muted-foreground">
+              {enabledCount} of {ALL_MODULE_KEYS.length} modules enabled
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-semibold">Event Modules</h3>
-          <p className="text-sm text-muted-foreground">Enable optional features for this event</p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={enableAll}>Enable All</Button>
+          <Button variant="outline" size="sm" onClick={disableOptional}>Disable All</Button>
         </div>
       </div>
 
       {/* Info Box */}
       <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-xl">
         <p className="text-sm text-blue-800 dark:text-blue-200">
-          <strong>About Modules:</strong> Modules are optional features that can be enabled per event.
-          When enabled, they appear in the sidebar and provide additional functionality.
+          Toggle modules to show or hide them from the sidebar. Core items like Dashboard, Tickets,
+          Attendees, Orders, Team, Communications, and Settings are always visible.
         </p>
       </div>
 
-      <div className="grid gap-4">
-        {/* Abstract Management Module */}
-        <div className="flex items-start justify-between p-4 bg-secondary/30 rounded-xl border border-border">
-          <div className="flex-1 pr-4">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-              <p className="font-medium">Abstract Management</p>
-              {formData.enable_abstracts && (
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Enabled</span>
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Allow delegates to submit research abstracts, papers, posters, and videos for review.
-            </p>
-            <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-              <strong>Features include:</strong> Abstract submission form, category management, review workflow,
-              accept/reject decisions, presenter assignments, and integration with certificates.
-            </div>
+      {MODULE_DEFS.map((category) => (
+        <div key={category.category} className="space-y-3">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            {category.category}
+          </h4>
+          <div className="grid gap-2">
+            {category.modules.map((mod) => {
+              const isEnabled = formData[mod.key] ?? mod.defaultOn
+              return (
+                <div
+                  key={mod.key}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer",
+                    isEnabled
+                      ? "bg-secondary/30 border-border"
+                      : "bg-muted/20 border-dashed border-border opacity-60"
+                  )}
+                  onClick={() => toggleModule(mod.key)}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={cn(
+                      "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                      isEnabled ? "bg-primary/10" : "bg-muted"
+                    )}>
+                      <Blocks className={cn("h-4 w-4", isEnabled ? "text-primary" : "text-muted-foreground")} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm">{mod.label}</p>
+                        {isEnabled && (
+                          <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded-full">On</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{mod.description}</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={isEnabled}
+                    onCheckedChange={() => toggleModule(mod.key)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              )
+            })}
           </div>
-          <Switch
-            checked={formData.enable_abstracts}
-            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enable_abstracts: checked }))}
-          />
         </div>
-
-        {/* Future modules placeholder */}
-        <div className="p-4 border border-dashed border-border rounded-xl opacity-50">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Blocks className="h-4 w-4" />
-            <p className="text-sm font-medium">More modules coming soon</p>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Sponsorship, Exhibition, Awards, and more modules will be available in future updates.
-          </p>
-        </div>
-      </div>
+      ))}
 
       <div className="flex justify-end pt-4 border-t border-border">
         <Button onClick={handleSave} disabled={saving} className="gap-2">
