@@ -1536,29 +1536,71 @@ export default function TeamPage() {
                   <div>
                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Module Access</h4>
                     {hasFullAccess ? (
-                      <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
-                            <Sparkles className="h-5 w-5 text-white" />
+                      <div className="space-y-3">
+                        <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                              <Sparkles className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-emerald-800">Full Access Granted</p>
+                              <p className="text-sm text-emerald-600">Can access all {PERMISSIONS.length} modules</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-emerald-800">Full Access Granted</p>
-                            <p className="text-sm text-emerald-600">Can access all modules and features</p>
-                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {PERMISSIONS.map(perm => (
+                            <div key={perm.value} className="flex items-center gap-1.5 p-2 rounded-lg bg-emerald-50/50 border border-emerald-100">
+                              <perm.icon className={cn("h-3.5 w-3.5", perm.color)} />
+                              <span className="text-xs font-medium text-emerald-700">{perm.label}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-3 gap-2">
-                        {selectedMember.permissions?.map(p => {
-                          const perm = PERMISSIONS.find(x => x.value === p)
-                          if (!perm) return null
+                      <div className="space-y-3">
+                        {/* Accessible modules */}
+                        {selectedMember.permissions && selectedMember.permissions.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-green-600 mb-1.5 flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              Accessible ({selectedMember.permissions.length})
+                            </p>
+                            <div className="grid grid-cols-3 gap-1.5">
+                              {selectedMember.permissions.map(p => {
+                                const perm = PERMISSIONS.find(x => x.value === p)
+                                if (!perm) return null
+                                return (
+                                  <div key={p} className={cn("p-2.5 rounded-lg border text-center", perm.bgLight)}>
+                                    <perm.icon className={cn("h-4 w-4 mx-auto mb-0.5", perm.color)} />
+                                    <p className="text-[10px] font-medium">{perm.label}</p>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        {/* Restricted modules */}
+                        {(() => {
+                          const restricted = PERMISSIONS.filter(p => !selectedMember.permissions?.includes(p.value))
+                          if (restricted.length === 0) return null
                           return (
-                            <div key={p} className={cn("p-3 rounded-xl border text-center", perm.bgLight)}>
-                              <perm.icon className={cn("h-5 w-5 mx-auto mb-1", perm.color)} />
-                              <p className="text-xs font-medium">{perm.label}</p>
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                                <UserX className="h-3 w-3" />
+                                No Access ({restricted.length})
+                              </p>
+                              <div className="grid grid-cols-3 gap-1.5">
+                                {restricted.map(perm => (
+                                  <div key={perm.value} className="p-2.5 rounded-lg border border-dashed text-center opacity-40">
+                                    <perm.icon className="h-4 w-4 mx-auto mb-0.5 text-muted-foreground" />
+                                    <p className="text-[10px] font-medium text-muted-foreground">{perm.label}</p>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )
-                        })}
+                        })()}
                       </div>
                     )}
                   </div>
