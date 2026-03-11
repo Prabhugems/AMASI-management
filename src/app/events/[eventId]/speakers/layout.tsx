@@ -138,12 +138,10 @@ export default function SpeakersLayout({
         }
       }
 
-      // Event-scoped users should NOT get isAdmin or hasFullAccess
-      const isAdmin = isEventScoped ? false : teamMember.role?.includes("admin")
-      // Check if team user (not admin) - for standalone layout
+      // Respect role and permissions even for event-scoped users
+      const isAdmin = teamMember.role?.includes("admin") || false
       const isTeamUser = !isAdmin
-      // Empty permissions array means full access (only for non-event-scoped users)
-      const hasFullAccess = isEventScoped ? false : (!teamMember.permissions || teamMember.permissions.length === 0)
+      const hasFullAccess = !teamMember.permissions || teamMember.permissions.length === 0
       // Check if has speakers permission
       const hasSpeakersPermission = teamMember.permissions?.includes("speakers")
 

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 
 export type Permission =
   | "flights" | "hotels" | "transfers" | "trains"
-  | "speakers" | "program" | "checkin" | "badges" | "certificates" | "registrations"
+  | "speakers" | "program" | "checkin" | "badges" | "certificates" | "registrations" | "abstracts"
 
 export type Role = "admin" | "travel" | "coordinator"
 
@@ -113,11 +113,11 @@ export function usePermissions(): UserPermissions {
       const isEventScoped = teamMember.event_ids && teamMember.event_ids.length > 0
       const eventIds = teamMember.event_ids || []
 
-      // Event-scoped users should NOT have main dashboard admin access
-      // They can only access their assigned events
-      const isAdmin = !isEventScoped && (teamMember.role?.includes("admin") || false)
+      // Respect role and permissions even for event-scoped users
+      // Event-scoped admins get admin access within their assigned events
+      const isAdmin = teamMember.role?.includes("admin") || false
       const isTeamUser = !isAdmin
-      const hasFullAccess = !isEventScoped && (!teamMember.permissions || teamMember.permissions.length === 0)
+      const hasFullAccess = !teamMember.permissions || teamMember.permissions.length === 0
 
       return {
         permissions: (teamMember.permissions || []) as Permission[],

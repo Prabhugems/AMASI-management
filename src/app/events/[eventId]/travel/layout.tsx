@@ -163,11 +163,11 @@ export default function TravelLayout({
       }
 
       // Event-scoped users should NOT get isAdmin or hasFullAccess
-      const isAdmin = isEventScoped ? false : teamMember.role?.includes("admin")
+      const isAdmin = teamMember.role?.includes("admin") || false
       // Check if transport/travel user (not admin)
       const isTransportUser = (teamMember.role?.includes("travel") || teamMember.role?.includes("transport")) && !isAdmin
       // Empty permissions array means full access (only for non-event-scoped users)
-      const hasFullAccess = isEventScoped ? false : (!teamMember.permissions || teamMember.permissions.length === 0)
+      const hasFullAccess = !teamMember.permissions || teamMember.permissions.length === 0
       // Check specific permissions
       const hasHotelsPermission = teamMember.permissions?.includes("hotels")
       const hasFlightsPermission = teamMember.permissions?.includes("flights")

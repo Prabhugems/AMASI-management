@@ -98,9 +98,9 @@ export default function CertificatesLayout({ children }: { children: React.React
       }
 
       // Event-scoped users should NOT get isAdmin or hasFullAccess
-      const isAdmin = isEventScoped ? false : teamMember.role?.includes("admin")
+      const isAdmin = teamMember.role?.includes("admin") || false
       const isTeamUser = !isAdmin
-      const hasFullAccess = isEventScoped ? false : (!teamMember.permissions || teamMember.permissions.length === 0)
+      const hasFullAccess = !teamMember.permissions || teamMember.permissions.length === 0
       const hasCertificatesPermission = teamMember.permissions?.includes("certificates")
 
       return {

@@ -121,9 +121,9 @@ export default function ProgramLayout({ children }: { children: React.ReactNode 
       }
 
       // Event-scoped users should NOT get isAdmin or hasFullAccess
-      const isAdmin = isEventScoped ? false : teamMember.role?.includes("admin")
+      const isAdmin = teamMember.role?.includes("admin") || false
       const isTeamUser = !isAdmin
-      const hasFullAccess = isEventScoped ? false : (!teamMember.permissions || teamMember.permissions.length === 0)
+      const hasFullAccess = !teamMember.permissions || teamMember.permissions.length === 0
       const hasProgramPermission = teamMember.permissions?.includes("program")
 
       return {
