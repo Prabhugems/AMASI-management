@@ -48,6 +48,9 @@ import {
   AlertTriangle,
   Mail,
   Building,
+  Link2,
+  Send,
+  Copy,
 } from "lucide-react"
 import { toast } from "sonner"
 import { CSVImportDynamic } from "@/components/ui/csv-import-dynamic"
@@ -598,6 +601,18 @@ export default function ReviewersPage() {
             <Plus className="h-4 w-4 mr-2 text-green-600" />
             Add
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const link = `${window.location.origin}/abstract-reviewer/${eventId}`
+              navigator.clipboard.writeText(link)
+              toast.success("Review portal link copied!", { description: link })
+            }}
+            className="border-blue-500/20 hover:bg-blue-500/5"
+          >
+            <Link2 className="h-4 w-4 mr-2 text-blue-500" />
+            Portal Link
+          </Button>
           <Button onClick={() => setShowImport(true)} className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg shadow-primary/25">
             <Upload className="h-4 w-4 mr-2" />
             Import CSV
@@ -879,6 +894,21 @@ export default function ReviewersPage() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      title="Copy review link"
+                      onClick={() => {
+                        const link = `${window.location.origin}/abstract-reviewer/${eventId}`
+                        const text = `Review Portal Link: ${link}\nEmail: ${reviewer.email}\n\nOpen the link and enter your email to access your assigned abstracts.`
+                        navigator.clipboard.writeText(text)
+                        toast.success("Review link copied!", { description: `Link + email for ${reviewer.name}` })
+                      }}
+                      className="h-9 w-9 rounded-xl hover:bg-blue-500/10"
+                    >
+                      <Copy className="h-4 w-4 text-blue-500" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Edit reviewer"
                       onClick={() => handleEditClick(reviewer)}
                       className="h-9 w-9 rounded-xl hover:bg-primary/10"
                     >
@@ -887,6 +917,7 @@ export default function ReviewersPage() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      title="Remove reviewer"
                       onClick={() => {
                         if (confirm("Remove this reviewer from the event?")) {
                           deleteReviewer.mutate(reviewer.id)
