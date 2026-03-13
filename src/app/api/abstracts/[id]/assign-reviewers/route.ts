@@ -148,11 +148,11 @@ export async function POST(
         .eq("review_round", review_round)
 
       const assignedReviewerIds = new Set(
-        existingAssignments?.map(a => a.reviewer_id) || []
+        existingAssignments?.map((a: any) => a.reviewer_id) || []
       )
 
       // Filter out already assigned reviewers and those with conflict of interest
-      const availableReviewers = reviewers.filter(r => {
+      const availableReviewers = (reviewers as any[]).filter((r: any) => {
         // Not already assigned
         if (assignedReviewerIds.has(r.id)) return false
         // Not the author
@@ -170,8 +170,8 @@ export async function POST(
       }
 
       // Calculate match scores
-      const categoryKeywords = (abstract.abstract_categories as any)?.keywords || []
-      const scoredReviewers = availableReviewers.map(reviewer => ({
+      const categoryKeywords = (abstract as any).abstract_categories?.keywords || []
+      const scoredReviewers = availableReviewers.map((reviewer: any) => ({
         reviewer,
         score: calculateMatchScore(reviewer, abstract as any, categoryKeywords),
       }))
@@ -304,12 +304,12 @@ export async function GET(
       .eq("abstract_id", abstractId)
 
     const assignedReviewerIds = new Set(
-      existingAssignments?.map(a => a.reviewer_id) || []
+      existingAssignments?.map((a: any) => a.reviewer_id) || []
     )
 
     // Calculate match scores
     const categoryKeywords = (abstract as any).abstract_categories?.keywords || []
-    const scoredReviewers = (reviewers || []).map(reviewer => {
+    const scoredReviewers = ((reviewers || []) as any[]).map((reviewer: any) => {
       const score = calculateMatchScore(reviewer, abstract as any, categoryKeywords)
       const isAssigned = assignedReviewerIds.has(reviewer.id)
       const isAuthor = reviewer.email.toLowerCase() === (abstract as any).presenting_author_email?.toLowerCase()
