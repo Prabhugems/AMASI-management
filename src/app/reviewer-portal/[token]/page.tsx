@@ -67,6 +67,9 @@ import {
   Video,
   FileIcon,
   Image,
+  XCircle,
+  Flag,
+  CalendarPlus,
 } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { cn } from "@/lib/utils"
@@ -339,6 +342,13 @@ export default function ReviewerPortalPage() {
   const [selectedReview, setSelectedReview] = useState<Review | null>(null)
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
 
+  // Action dialogs state
+  const [actionDialogOpen, setActionDialogOpen] = useState(false)
+  const [actionType, setActionType] = useState<"decline" | "flag_mismatch" | "request_extension" | null>(null)
+  const [actionReason, setActionReason] = useState("")
+  const [suggestedCategory, setSuggestedCategory] = useState("")
+  const [extensionDays, setExtensionDays] = useState(3)
+
   // Review form state
   const [reviewForm, setReviewForm] = useState({
     scores: {} as Record<string, number>,
@@ -490,6 +500,68 @@ export default function ReviewerPortalPage() {
       toast.error(err.message || "Failed to submit review")
     },
   })
+
+  // Reviewer action mutation (decline, flag mismatch, request extension)
+  const reviewerAction = useMutation({
+    mutationFn: async (actionData: {
+      action: "decline" | "flag_mismatch" | "request_extension"
+      abstract_id: string
+      reason?: string
+      suggested_category?: string
+      extension_days?: number
+    }) => {
+      const response = await fetch(`/api/abstracts/${actionData.abstract_id}/reviewer-action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...actionData,
+          reviewer_token: token,
+        }),
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || "Failed to perform action")
+      }
+      return response.json()
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "Action completed successfully")
+      setActionDialogOpen(false)
+      setActionType(null)
+      setActionReason("")
+      setSuggestedCategory("")
+      setReviewDialogOpen(false)
+      queryClient.invalidateQueries({ queryKey: ["reviewer-portal", token] })
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to perform action")
+    },
+  })
+
+  const handleReviewerAction = () => {
+    if (!selectedReview || !actionType) return
+
+    if (!actionReason && actionType !== "request_extension") {
+      toast.error("Please provide a reason")
+      return
+    }
+
+    reviewerAction.mutate({
+      action: actionType,
+      abstract_id: selectedReview.abstract.id,
+      reason: actionReason,
+      suggested_category: suggestedCategory || undefined,
+      extension_days: actionType === "request_extension" ? extensionDays : undefined,
+    })
+  }
+
+  const openActionDialog = (type: "decline" | "flag_mismatch" | "request_extension") => {
+    setActionType(type)
+    setActionReason("")
+    setSuggestedCategory("")
+    setExtensionDays(3)
+    setActionDialogOpen(true)
+  }
 
   const openReviewDialog = (review: Review) => {
     setSelectedReview(review)
@@ -1068,11 +1140,10 @@ export default function ReviewerPortalPage() {
                             src={selectedReview.abstract.file_url.startsWith('http')
                               ? selectedReview.abstract.file_url
                               : `${window.location.origin}${selectedReview.abstract.file_url}`}
-                            onError={(e) => {
-                              const video = e.target as HTMLVideoElement
-                              console.error('Video error:', video.error?.message || 'Unknown error')
+                            onError={() => {
+                              toast.error("Video failed to load. Please try refreshing.")
                             }}
-                            onLoadedData={() => console.log('Video loaded successfully')}
+                            onLoadedData={() => { /* Video loaded */ }}
                           />
                           <p className="text-xs text-gray-400 mt-2">
                             Video: {selectedReview.abstract.file_url}
@@ -1252,23 +1323,189 @@ export default function ReviewerPortalPage() {
                 </div>
               </div>
 
-              <DialogFooter className="mt-6">
-                <Button variant="outline" onClick={() => setReviewDialogOpen(false)}>
-                  {selectedReview.reviewed_at ? "Close" : "Cancel"}
-                </Button>
+              <DialogFooter className="mt-6 flex-col sm:flex-row gap-2">
+                {/* Action buttons for pending reviews */}
                 {!selectedReview.reviewed_at && (
-                  <Button onClick={handleSubmitReview} disabled={submitReview.isPending}>
-                    {submitReview.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Send className="h-4 w-4 mr-2" />
-                    )}
-                    Submit Review
-                  </Button>
+                  <div className="flex gap-2 mr-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => openActionDialog("decline")}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Decline
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                      onClick={() => openActionDialog("flag_mismatch")}
+                    >
+                      <Flag className="h-4 w-4 mr-1" />
+                      Flag Mismatch
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                      onClick={() => openActionDialog("request_extension")}
+                    >
+                      <CalendarPlus className="h-4 w-4 mr-1" />
+                      Request Extension
+                    </Button>
+                  </div>
                 )}
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setReviewDialogOpen(false)}>
+                    {selectedReview.reviewed_at ? "Close" : "Cancel"}
+                  </Button>
+                  {!selectedReview.reviewed_at && (
+                    <Button onClick={handleSubmitReview} disabled={submitReview.isPending}>
+                      {submitReview.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Send className="h-4 w-4 mr-2" />
+                      )}
+                      Submit Review
+                    </Button>
+                  )}
+                </div>
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Action Dialog (Decline/Flag/Extension) */}
+      <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {actionType === "decline" && (
+                <>
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  Decline Review Assignment
+                </>
+              )}
+              {actionType === "flag_mismatch" && (
+                <>
+                  <Flag className="h-5 w-5 text-amber-500" />
+                  Flag Category Mismatch
+                </>
+              )}
+              {actionType === "request_extension" && (
+                <>
+                  <CalendarPlus className="h-5 w-5 text-blue-500" />
+                  Request Extension
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {actionType === "decline" && (
+              <>
+                <p className="text-sm text-gray-600">
+                  If you cannot review this abstract, please provide a reason. The committee will reassign it to another reviewer.
+                </p>
+                <div>
+                  <Label>Reason for declining</Label>
+                  <Textarea
+                    value={actionReason}
+                    onChange={e => setActionReason(e.target.value)}
+                    placeholder="e.g., Conflict of interest, Outside my expertise area, Time constraints..."
+                    rows={3}
+                    className="mt-1"
+                  />
+                </div>
+              </>
+            )}
+
+            {actionType === "flag_mismatch" && (
+              <>
+                <p className="text-sm text-gray-600">
+                  If this abstract doesn't match your expertise or seems to be in the wrong category, please let us know.
+                </p>
+                <div>
+                  <Label>Issue description</Label>
+                  <Textarea
+                    value={actionReason}
+                    onChange={e => setActionReason(e.target.value)}
+                    placeholder="e.g., This abstract is about bariatric surgery but assigned under general surgery category..."
+                    rows={3}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Suggested category (optional)</Label>
+                  <Input
+                    value={suggestedCategory}
+                    onChange={e => setSuggestedCategory(e.target.value)}
+                    placeholder="e.g., Bariatric Surgery"
+                    className="mt-1"
+                  />
+                </div>
+              </>
+            )}
+
+            {actionType === "request_extension" && (
+              <>
+                <p className="text-sm text-gray-600">
+                  If you need more time to complete this review, you can request an extension.
+                </p>
+                <div>
+                  <Label>Additional days needed</Label>
+                  <Select
+                    value={String(extensionDays)}
+                    onValueChange={v => setExtensionDays(Number(v))}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2">2 days</SelectItem>
+                      <SelectItem value="3">3 days</SelectItem>
+                      <SelectItem value="5">5 days</SelectItem>
+                      <SelectItem value="7">7 days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Reason (optional)</Label>
+                  <Textarea
+                    value={actionReason}
+                    onChange={e => setActionReason(e.target.value)}
+                    placeholder="e.g., Currently traveling, will be back next week..."
+                    rows={2}
+                    className="mt-1"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActionDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleReviewerAction}
+              disabled={reviewerAction.isPending}
+              className={cn(
+                actionType === "decline" && "bg-red-600 hover:bg-red-700",
+                actionType === "flag_mismatch" && "bg-amber-600 hover:bg-amber-700",
+                actionType === "request_extension" && "bg-blue-600 hover:bg-blue-700"
+              )}
+            >
+              {reviewerAction.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {actionType === "decline" && "Decline Assignment"}
+              {actionType === "flag_mismatch" && "Submit Flag"}
+              {actionType === "request_extension" && "Request Extension"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -19,6 +19,10 @@ import {
   Eye,
   Link2,
   ChevronLeft,
+  Video,
+  Image,
+  File,
+  HardDrive,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -44,12 +48,31 @@ interface AbstractSettings {
   author_guidelines: string | null
   notify_on_submission: boolean
   notify_on_decision: boolean
+  // Video URL settings
+  allow_video_url: boolean
+  allowed_video_platforms: string[]
 }
 
 const presentationTypeOptions = [
   { value: "oral", label: "Oral Presentation" },
   { value: "poster", label: "Poster / ePoster" },
   { value: "video", label: "Video Presentation" },
+]
+
+const fileTypePresets = [
+  { label: "PDF Only", value: ["pdf"], icon: FileText, color: "text-red-500" },
+  { label: "Documents", value: ["pdf", "doc", "docx"], icon: File, color: "text-blue-500" },
+  { label: "Images", value: ["jpg", "jpeg", "png", "gif"], icon: Image, color: "text-green-500" },
+  { label: "Videos", value: ["mp4", "mov", "avi", "webm"], icon: Video, color: "text-purple-500" },
+  { label: "All Media", value: ["pdf", "doc", "docx", "jpg", "jpeg", "png", "mp4", "mov"], icon: HardDrive, color: "text-amber-500" },
+]
+
+const fileSizePresets = [
+  { label: "5 MB", value: 5, description: "PDFs, documents" },
+  { label: "10 MB", value: 10, description: "Images, posters" },
+  { label: "50 MB", value: 50, description: "Short videos" },
+  { label: "100 MB", value: 100, description: "Standard videos" },
+  { label: "500 MB", value: 500, description: "HD videos" },
 ]
 
 export default function AbstractSettingsPage() {
@@ -303,30 +326,155 @@ export default function AbstractSettingsPage() {
               <p className="text-xs text-muted-foreground mt-1">Abstract body word limit</p>
             </div>
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Allowed File Types</label>
-              <Input
-                value={(formData.allowed_file_types || []).join(", ")}
-                onChange={(e) => updateField("allowed_file_types", e.target.value.split(",").map((t) => t.trim().toLowerCase()))}
-                className="mt-1"
-                placeholder="pdf, docx"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Comma-separated file extensions</p>
+        {/* File Upload Section */}
+        <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+          <div className="flex items-center gap-3 pb-4 border-b border-border">
+            <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+              <HardDrive className="h-5 w-5 text-purple-500" />
             </div>
             <div>
-              <label className="text-sm font-medium">Max File Size (MB)</label>
+              <h3 className="font-semibold">File & Video Settings</h3>
+              <p className="text-sm text-muted-foreground">Configure file uploads and video submissions</p>
+            </div>
+          </div>
+
+          {/* File Type Presets */}
+          <div>
+            <label className="text-sm font-medium mb-3 block">Allowed File Types</label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {fileTypePresets.map((preset) => {
+                const Icon = preset.icon
+                const currentTypes = formData.allowed_file_types || []
+                const isSelected = preset.value.every(v => currentTypes.includes(v)) &&
+                                   currentTypes.every(v => preset.value.includes(v))
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => updateField("allowed_file_types", preset.value)}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all",
+                      isSelected
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <Icon className={cn("h-4 w-4", preset.color)} />
+                    <span className="text-sm font-medium">{preset.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <Input
+              value={(formData.allowed_file_types || []).join(", ")}
+              onChange={(e) => updateField("allowed_file_types", e.target.value.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean))}
+              placeholder="pdf, docx, mp4"
+              className="mt-2"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Or enter custom extensions (comma-separated)</p>
+          </div>
+
+          {/* File Size Presets */}
+          <div>
+            <label className="text-sm font-medium mb-3 block">Max File Size</label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {fileSizePresets.map((preset) => {
+                const isSelected = formData.max_file_size_mb === preset.value
+                return (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => updateField("max_file_size_mb", preset.value)}
+                    className={cn(
+                      "flex flex-col items-center px-4 py-2 rounded-lg border-2 transition-all min-w-[80px]",
+                      isSelected
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <span className="text-lg font-bold">{preset.label}</span>
+                    <span className="text-xs text-muted-foreground">{preset.description}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Custom:</span>
               <Input
                 type="number"
                 value={formData.max_file_size_mb || ""}
                 onChange={(e) => updateField("max_file_size_mb", parseInt(e.target.value) || 5)}
-                className="mt-1"
+                className="w-24"
                 min={1}
-                max={100}
+                max={1000}
               />
-              <p className="text-xs text-muted-foreground mt-1">For videos, consider higher limits</p>
+              <span className="text-sm text-muted-foreground">MB</span>
             </div>
+          </div>
+
+          {/* Video URL Settings */}
+          <div className="pt-4 border-t border-border">
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-200">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-white flex items-center justify-center">
+                  <Video className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="font-medium">Allow YouTube/Vimeo Links</p>
+                  <p className="text-sm text-muted-foreground">
+                    Authors can submit video URLs instead of uploading files
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={formData.allow_video_url ?? false}
+                onCheckedChange={(checked) => updateField("allow_video_url", checked)}
+              />
+            </div>
+
+            {formData.allow_video_url && (
+              <div className="mt-4 ml-4 p-4 bg-secondary/30 rounded-lg border border-border">
+                <label className="text-sm font-medium mb-2 block">Allowed Video Platforms</label>
+                <div className="flex flex-wrap gap-2">
+                  {["youtube", "vimeo", "google_drive", "dropbox"].map((platform) => {
+                    const platforms = formData.allowed_video_platforms || ["youtube", "vimeo"]
+                    const isSelected = platforms.includes(platform)
+                    const labels: Record<string, string> = {
+                      youtube: "YouTube",
+                      vimeo: "Vimeo",
+                      google_drive: "Google Drive",
+                      dropbox: "Dropbox",
+                    }
+                    return (
+                      <button
+                        key={platform}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            updateField("allowed_video_platforms", platforms.filter(p => p !== platform))
+                          } else {
+                            updateField("allowed_video_platforms", [...platforms, platform])
+                          }
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all",
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        {labels[platform]}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Recommended: YouTube or Vimeo - no file size limits, easy embedding
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

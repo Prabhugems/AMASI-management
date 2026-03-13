@@ -47,6 +47,10 @@ import {
   TrendingUp,
   ArrowRightLeft,
   Trophy,
+  BookOpen,
+  Settings2,
+  UserCog,
+  FolderKanban,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -283,7 +287,31 @@ export default function AbstractsPage() {
             Manage and review abstract submissions
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => router.push(`/events/${eventId}/abstracts/guide`)}
+          >
+            <BookOpen className="h-4 w-4 text-blue-500" />
+            Workflow Guide
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => router.push(`/events/${eventId}/abstracts/reviewers`)}
+          >
+            <UserCog className="h-4 w-4 text-purple-500" />
+            Reviewers
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => router.push(`/events/${eventId}/abstracts/categories`)}
+          >
+            <FolderKanban className="h-4 w-4 text-teal-500" />
+            Categories
+          </Button>
           <Button
             variant="outline"
             className="gap-2"
@@ -508,11 +536,52 @@ export default function AbstractsPage() {
         <div className="text-center py-12 bg-muted/30 rounded-xl border border-dashed">
           <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No Abstracts Yet</h3>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-6">
             {search || statusFilter !== "all" || categoryFilter !== "all"
               ? "No abstracts match your filters"
               : "Abstracts will appear here when submitted"}
           </p>
+
+          {/* Setup Quick Links */}
+          {!(search || statusFilter !== "all" || categoryFilter !== "all") && (
+            <div className="space-y-4 max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground">Get started with abstract management:</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="gap-2 h-auto py-3 flex-col"
+                  onClick={() => router.push(`/events/${eventId}/abstracts/guide`)}
+                >
+                  <BookOpen className="h-5 w-5 text-blue-500" />
+                  <span className="text-xs">Workflow Guide</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2 h-auto py-3 flex-col"
+                  onClick={() => router.push(`/events/${eventId}/abstracts/categories`)}
+                >
+                  <FolderKanban className="h-5 w-5 text-teal-500" />
+                  <span className="text-xs">Setup Categories</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2 h-auto py-3 flex-col"
+                  onClick={() => router.push(`/events/${eventId}/abstracts/reviewers`)}
+                >
+                  <UserCog className="h-5 w-5 text-purple-500" />
+                  <span className="text-xs">Add Reviewers</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2 h-auto py-3 flex-col"
+                  onClick={() => router.push(`/events/${eventId}/abstracts/settings`)}
+                >
+                  <Settings2 className="h-5 w-5 text-gray-500" />
+                  <span className="text-xs">Settings</span>
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-card border rounded-xl overflow-x-auto">

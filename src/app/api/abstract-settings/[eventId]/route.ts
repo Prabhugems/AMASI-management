@@ -60,6 +60,9 @@ export async function GET(
         notify_on_decision: true,
         restrict_reviewers: false,
         review_deadline: null,
+        // Video URL settings
+        allow_video_url: false,
+        allowed_video_platforms: ["youtube", "vimeo"],
       })
     }
 
@@ -181,6 +184,9 @@ export async function PUT(
     if (body.notify_on_decision !== undefined) payload.notify_on_decision = body.notify_on_decision
     if (body.restrict_reviewers !== undefined) payload.restrict_reviewers = body.restrict_reviewers
     if (body.review_deadline !== undefined) payload.review_deadline = body.review_deadline
+    // Video URL settings
+    if (body.allow_video_url !== undefined) payload.allow_video_url = body.allow_video_url
+    if (body.allowed_video_platforms !== undefined) payload.allowed_video_platforms = body.allowed_video_platforms
 
     const { data, error } = await adminClient
       .from("abstract_settings")
