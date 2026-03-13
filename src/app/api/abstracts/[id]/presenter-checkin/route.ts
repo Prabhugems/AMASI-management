@@ -8,7 +8,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getApiUser()
+    const { user } = await getApiUser()
     const { id } = await params
     const body = await request.json()
 
