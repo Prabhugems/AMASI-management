@@ -209,9 +209,9 @@ export async function POST(
       status: "pending",
     }))
 
-    const { data: createdAssignments, error: assignError } = await supabase
+    const { data: createdAssignments, error: assignError } = await (supabase as any)
       .from("abstract_review_assignments")
-      .insert(assignments as any)
+      .insert(assignments)
       .select(`
         id,
         reviewer_id,
@@ -230,13 +230,13 @@ export async function POST(
     }
 
     // Update abstract status to under_review
-    await supabase
+    await (supabase as any)
       .from("abstracts")
       .update({
         status: "under_review",
         workflow_stage: "review",
         review_round,
-      } as any)
+      })
       .eq("id", abstractId)
 
     return NextResponse.json({
