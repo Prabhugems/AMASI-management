@@ -211,7 +211,7 @@ export async function POST(
 
     const { data: createdAssignments, error: assignError } = await supabase
       .from("abstract_review_assignments")
-      .insert(assignments)
+      .insert(assignments as any)
       .select(`
         id,
         reviewer_id,
