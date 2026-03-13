@@ -15,7 +15,7 @@ export async function GET(
     const supabase = await createAdminClient()
 
     // Get all abstracts for this event with review data
-    const { data: abstracts, error } = await supabase
+    const { data: abstracts, error } = await (supabase as any)
       .from("abstracts")
       .select(`
         id,
@@ -43,7 +43,7 @@ export async function GET(
     // Get reviews for each abstract
     const abstractIds = abstracts?.map(a => a.id) || []
 
-    const { data: reviews } = await supabase
+    const { data: reviews } = await (supabase as any)
       .from("abstract_reviews")
       .select(`
         id,
@@ -58,7 +58,7 @@ export async function GET(
       .order("reviewed_at", { ascending: false })
 
     // Get review assignments to check completion
-    const { data: assignments } = await supabase
+    const { data: assignments } = await (supabase as any)
       .from("abstract_review_assignments")
       .select("abstract_id, status, review_round")
       .in("abstract_id", abstractIds)

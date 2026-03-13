@@ -19,7 +19,7 @@ export async function POST(
     const supabase = await createAdminClient()
 
     // Check if draft exists
-    const { data: existing } = await supabase
+    const { data: existing } = await (supabase as any)
       .from("abstract_drafts")
       .select("id")
       .eq("event_id", eventId)
@@ -28,7 +28,7 @@ export async function POST(
 
     if (existing) {
       // Update existing draft
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("abstract_drafts")
         .update({
           draft_data,
@@ -42,7 +42,7 @@ export async function POST(
       }
     } else {
       // Create new draft
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("abstract_drafts")
         .insert({
           event_id: eventId,
@@ -84,7 +84,7 @@ export async function GET(
 
     const supabase = await createAdminClient()
 
-    const { data: draft, error } = await supabase
+    const { data: draft, error } = await (supabase as any)
       .from("abstract_drafts")
       .select("draft_data, last_saved_at")
       .eq("event_id", eventId)
@@ -122,7 +122,7 @@ export async function DELETE(
 
     const supabase = await createAdminClient()
 
-    await supabase
+    await (supabase as any)
       .from("abstract_drafts")
       .delete()
       .eq("event_id", eventId)

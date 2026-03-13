@@ -35,7 +35,7 @@ export async function POST(
     const supabase = await createAdminClient()
 
     // Get the abstract
-    const { data: abstract, error: fetchError } = await supabase
+    const { data: abstract, error: fetchError } = await (supabase as any)
       .from("abstracts")
       .select("*, event_id, presenting_author_email, presenting_author_name, review_round")
       .eq("id", id)
@@ -46,7 +46,7 @@ export async function POST(
     }
 
     // Get committee member info
-    const { data: committeeMember } = await supabase
+    const { data: committeeMember } = await (supabase as any)
       .from("abstract_committee_members")
       .select("id, name")
       .eq("event_id", abstract.event_id)
@@ -79,7 +79,7 @@ export async function POST(
     }
 
     // Update abstract
-    const { data: updatedAbstract, error: updateError } = await supabase
+    const { data: updatedAbstract, error: updateError } = await (supabase as any)
       .from("abstracts")
       .update(updateData)
       .eq("id", id)
@@ -92,7 +92,7 @@ export async function POST(
     }
 
     // Log the decision
-    const { error: logError } = await supabase
+    const { error: logError } = await (supabase as any)
       .from("abstract_committee_decisions")
       .insert({
         abstract_id: id,
@@ -114,7 +114,7 @@ export async function POST(
     // If second review, we need to clear old assignments and prepare for new ones
     if (decision === 'second_review') {
       // Mark existing assignments as completed/closed
-      await supabase
+      await (supabase as any)
         .from("abstract_review_assignments")
         .update({ status: 'completed' })
         .eq("abstract_id", id)
@@ -124,7 +124,7 @@ export async function POST(
     // Check registration if accepted
     let registrationStatus = null
     if (decision.startsWith('accept_')) {
-      const { data: registration } = await supabase
+      const { data: registration } = await (supabase as any)
         .from("registrations")
         .select("id, registration_number, attendee_name, status")
         .eq("event_id", abstract.event_id)
@@ -140,7 +140,7 @@ export async function POST(
 
       // Update abstract with registration info
       if (registration) {
-        await supabase
+        await (supabase as any)
           .from("abstracts")
           .update({
             registration_id: registration.id,
@@ -162,7 +162,7 @@ export async function POST(
         notificationType = 'accepted'
       }
 
-      await supabase
+      await (supabase as any)
         .from("abstract_notifications")
         .insert({
           abstract_id: id,
@@ -200,7 +200,7 @@ export async function GET(
 
     const supabase = await createAdminClient()
 
-    const { data: decisions, error } = await supabase
+    const { data: decisions, error } = await (supabase as any)
       .from("abstract_committee_decisions")
       .select("*")
       .eq("abstract_id", id)

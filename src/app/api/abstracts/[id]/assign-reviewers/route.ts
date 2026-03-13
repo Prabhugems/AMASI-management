@@ -99,7 +99,7 @@ export async function POST(
     const supabase = await createAdminClient()
 
     // Get abstract details
-    const { data: abstract, error: abstractError } = await supabase
+    const { data: abstract, error: abstractError } = await (supabase as any)
       .from("abstracts")
       .select(`
         id,
@@ -127,7 +127,7 @@ export async function POST(
       selectedReviewerIds = reviewer_ids
     } else {
       // Auto-matching based on expertise
-      const { data: reviewers, error: reviewersError } = await supabase
+      const { data: reviewers, error: reviewersError } = await (supabase as any)
         .from("abstract_reviewer_pool")
         .select("*")
         .eq("event_id", (abstract as any).event_id)
@@ -141,7 +141,7 @@ export async function POST(
       }
 
       // Get existing assignments for this abstract (to avoid duplicates)
-      const { data: existingAssignments } = await supabase
+      const { data: existingAssignments } = await (supabase as any)
         .from("abstract_review_assignments")
         .select("reviewer_id")
         .eq("abstract_id", abstractId)
@@ -265,7 +265,7 @@ export async function GET(
     const supabase = await createAdminClient()
 
     // Get abstract details
-    const { data: abstract, error: abstractError } = await supabase
+    const { data: abstract, error: abstractError } = await (supabase as any)
       .from("abstracts")
       .select(`
         id,
@@ -287,7 +287,7 @@ export async function GET(
     }
 
     // Get all active reviewers
-    const { data: reviewers, error: reviewersError } = await supabase
+    const { data: reviewers, error: reviewersError } = await (supabase as any)
       .from("abstract_reviewer_pool")
       .select("*")
       .eq("event_id", (abstract as any).event_id)
@@ -298,7 +298,7 @@ export async function GET(
     }
 
     // Get existing assignments
-    const { data: existingAssignments } = await supabase
+    const { data: existingAssignments } = await (supabase as any)
       .from("abstract_review_assignments")
       .select("reviewer_id, review_round, status")
       .eq("abstract_id", abstractId)

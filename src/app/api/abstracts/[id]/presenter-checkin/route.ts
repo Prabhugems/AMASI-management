@@ -20,7 +20,7 @@ export async function POST(
     const supabase = await createAdminClient()
 
     // Get abstract details
-    const { data: abstract, error: fetchError } = await supabase
+    const { data: abstract, error: fetchError } = await (supabase as any)
       .from("abstracts")
       .select(`
         *,
@@ -47,7 +47,7 @@ export async function POST(
     // Verify registration if not already done
     let registrationId = abstract.registration_id
     if (!abstract.registration_verified) {
-      const { data: registration } = await supabase
+      const { data: registration } = await (supabase as any)
         .from("registrations")
         .select("id, registration_number, status, checked_in")
         .eq("event_id", abstract.event_id)
@@ -65,7 +65,7 @@ export async function POST(
     }
 
     // Record check-in
-    const { data: checkin, error: checkinError } = await supabase
+    const { data: checkin, error: checkinError } = await (supabase as any)
       .from("abstract_presenter_checkins")
       .insert({
         abstract_id: id,
@@ -86,7 +86,7 @@ export async function POST(
     }
 
     // Update abstract
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from("abstracts")
       .update({
         presenter_checked_in: true,
@@ -103,7 +103,7 @@ export async function POST(
 
     // Also check-in the registration if not already
     if (registrationId) {
-      await supabase
+      await (supabase as any)
         .from("registrations")
         .update({
           checked_in: true,
@@ -144,7 +144,7 @@ export async function PUT(
     const supabase = await createAdminClient()
 
     // Get check-in record
-    const { data: checkin, error: fetchError } = await supabase
+    const { data: checkin, error: fetchError } = await (supabase as any)
       .from("abstract_presenter_checkins")
       .select("*")
       .eq("abstract_id", id)
@@ -166,7 +166,7 @@ export async function PUT(
     }
 
     // Update check-in record
-    const { error: updateCheckinError } = await supabase
+    const { error: updateCheckinError } = await (supabase as any)
       .from("abstract_presenter_checkins")
       .update(updateData)
       .eq("id", checkin.id)
@@ -177,7 +177,7 @@ export async function PUT(
 
     // Update abstract if completed
     if (action === 'complete') {
-      await supabase
+      await (supabase as any)
         .from("abstracts")
         .update({
           presentation_completed: true,
@@ -208,7 +208,7 @@ export async function GET(
     const supabase = await createAdminClient()
 
     // Get abstract with check-in info
-    const { data: abstract, error: fetchError } = await supabase
+    const { data: abstract, error: fetchError } = await (supabase as any)
       .from("abstracts")
       .select(`
         id,
@@ -235,7 +235,7 @@ export async function GET(
     }
 
     // Get check-in records
-    const { data: checkins } = await supabase
+    const { data: checkins } = await (supabase as any)
       .from("abstract_presenter_checkins")
       .select("*")
       .eq("abstract_id", id)
@@ -244,7 +244,7 @@ export async function GET(
     // Get registration details if available
     let registration = null
     if (abstract.registration_id) {
-      const { data: reg } = await supabase
+      const { data: reg } = await (supabase as any)
         .from("registrations")
         .select("id, registration_number, attendee_name, status, checked_in, checked_in_at")
         .eq("id", abstract.registration_id)

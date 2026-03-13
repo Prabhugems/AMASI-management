@@ -35,7 +35,7 @@ export async function GET(
 
     const isTeamMember = !!teamMember
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("abstract_reviews")
       .select("*")
       .eq("abstract_id", id)

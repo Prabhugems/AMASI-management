@@ -32,7 +32,7 @@ export async function GET(
       isTeamMember = !!teamMember
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("abstracts")
       .select(`
         *,

@@ -80,7 +80,7 @@ export async function POST(
     const supabase = await createAdminClient()
 
     // Verify event exists and abstracts are enabled
-    const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await (supabase as any)
       .from("events")
       .select("id, name, status")
       .eq("id", eventId)
@@ -91,7 +91,7 @@ export async function POST(
     }
 
     // Check abstract settings
-    const { data: settings } = await supabase
+    const { data: settings } = await (supabase as any)
       .from("abstract_settings")
       .select("*")
       .eq("event_id", eventId)
@@ -128,7 +128,7 @@ export async function POST(
 
     // Check max submissions per person
     if (settings.max_submissions_per_person) {
-      const { count } = await supabase
+      const { count } = await (supabase as any)
         .from("abstracts")
         .select("id", { count: "exact", head: true })
         .eq("event_id", eventId)
@@ -164,7 +164,7 @@ export async function POST(
     }
 
     // Verify category exists
-    const { data: category } = await supabase
+    const { data: category } = await (supabase as any)
       .from("abstract_categories")
       .select("id, name")
       .eq("id", body.category_id)
@@ -180,7 +180,7 @@ export async function POST(
     let registrationId = body.registration_id
     if (settings.require_registration && !registrationId) {
       // Try to find registration by email
-      const { data: registration } = await supabase
+      const { data: registration } = await (supabase as any)
         .from("registrations")
         .select("id")
         .eq("event_id", eventId)
@@ -201,7 +201,7 @@ export async function POST(
     const abstractNumber = await generateAbstractNumber(supabase, eventId)
 
     // Create abstract
-    const { data: abstract, error: createError } = await supabase
+    const { data: abstract, error: createError } = await (supabase as any)
       .from("abstracts")
       .insert({
         event_id: eventId,
@@ -259,7 +259,7 @@ export async function POST(
         is_presenting: true,
       })
 
-      const { error: authorError } = await supabase
+      const { error: authorError } = await (supabase as any)
         .from("abstract_authors")
         .insert(authorInserts)
 
@@ -270,7 +270,7 @@ export async function POST(
 
     // Log notification
     if (settings.notify_on_submission) {
-      await supabase
+      await (supabase as any)
         .from("abstract_notifications")
         .insert({
           abstract_id: abstract.id,
@@ -288,7 +288,7 @@ export async function POST(
     }
 
     // Delete any saved draft
-    await supabase
+    await (supabase as any)
       .from("abstract_drafts")
       .delete()
       .eq("event_id", eventId)
@@ -323,7 +323,7 @@ export async function GET(
     const supabase = await createAdminClient()
 
     // Get event
-    const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await (supabase as any)
       .from("events")
       .select("id, name, short_name, start_date, end_date, venue, city")
       .eq("id", eventId)
@@ -334,7 +334,7 @@ export async function GET(
     }
 
     // Get settings
-    const { data: settings } = await supabase
+    const { data: settings } = await (supabase as any)
       .from("abstract_settings")
       .select("*")
       .eq("event_id", eventId)
@@ -348,7 +348,7 @@ export async function GET(
     }
 
     // Get categories
-    const { data: categories } = await supabase
+    const { data: categories } = await (supabase as any)
       .from("abstract_categories")
       .select("id, name, description, scoring_criteria, is_award_category, award_name")
       .eq("event_id", eventId)
@@ -373,7 +373,7 @@ export async function GET(
     let savedDraft = null
 
     if (email) {
-      const { count } = await supabase
+      const { count } = await (supabase as any)
         .from("abstracts")
         .select("id", { count: "exact", head: true })
         .eq("event_id", eventId)
@@ -383,7 +383,7 @@ export async function GET(
       existingSubmissions = count || 0
 
       // Get saved draft
-      const { data: draft } = await supabase
+      const { data: draft } = await (supabase as any)
         .from("abstract_drafts")
         .select("draft_data, last_saved_at")
         .eq("event_id", eventId)
@@ -436,7 +436,7 @@ async function generateAbstractNumber(supabase: ReturnType<typeof createAdminCli
   const year = new Date().getFullYear()
 
   // Get count of existing abstracts
-  const { count } = await supabase
+  const { count } = await (supabase as any)
     .from("abstracts")
     .select("id", { count: "exact", head: true })
     .eq("event_id", eventId)

@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient()
 
     // Get event details
-    const { data: event } = await supabase
+    const { data: event } = await (supabase as any)
       .from("events")
       .select("id, name, website_url, contact_email")
       .eq("id", event_id)
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get abstracts to notify
-    let query = supabase
+    let query = (supabase as any)
       .from("abstracts")
       .select(`
         id,
@@ -306,7 +306,7 @@ export async function POST(request: NextRequest) {
         })
 
         // Log notification
-        await supabase
+        await (supabase as any)
           .from("abstract_notifications")
           .insert({
             abstract_id: abstract.id,

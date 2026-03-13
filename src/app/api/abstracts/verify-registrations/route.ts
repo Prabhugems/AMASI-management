@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient()
 
     // Get all accepted abstracts for this event (or specific IDs)
-    let query = supabase
+    let query = (supabase as any)
       .from("abstracts")
       .select("id, presenting_author_email, presenting_author_name, registration_verified")
       .eq("event_id", event_id)
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get all confirmed registrations for this event
-    const { data: registrations, error: regError } = await supabase
+    const { data: registrations, error: regError } = await (supabase as any)
       .from("registrations")
       .select("id, attendee_email, registration_number, attendee_name")
       .eq("event_id", event_id)
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
       if (registration) {
         // Update abstract with registration
-        await supabase
+        await (supabase as any)
           .from("abstracts")
           .update({
             registration_id: registration.id,
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createAdminClient()
 
     // Get summary
-    const { data: abstracts, error } = await supabase
+    const { data: abstracts, error } = await (supabase as any)
       .from("abstracts")
       .select(`
         id,

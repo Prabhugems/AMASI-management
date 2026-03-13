@@ -36,7 +36,7 @@ export async function POST(
     const supabase = await createAdminClient()
 
     // Get abstract details
-    const { data: abstract, error: fetchError } = await supabase
+    const { data: abstract, error: fetchError } = await (supabase as any)
       .from("abstracts")
       .select("*, event_id, accepted_as, presenting_author_email, presenting_author_name, title")
       .eq("id", id)
@@ -73,7 +73,7 @@ export async function POST(
     }
 
     // Check for existing slot
-    const { data: existingSlot } = await supabase
+    const { data: existingSlot } = await (supabase as any)
       .from("abstract_presentation_slots")
       .select("id")
       .eq("abstract_id", id)
@@ -82,7 +82,7 @@ export async function POST(
     let slotResult
     if (existingSlot) {
       // Update existing slot
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("abstract_presentation_slots")
         .update(slotData)
         .eq("abstract_id", id)
@@ -91,7 +91,7 @@ export async function POST(
       slotResult = { data, error }
     } else {
       // Insert new slot
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("abstract_presentation_slots")
         .insert(slotData)
         .select()
@@ -105,7 +105,7 @@ export async function POST(
     }
 
     // Update abstract with session info
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from("abstracts")
       .update({
         session_id,
@@ -123,7 +123,7 @@ export async function POST(
 
     // Send notification to presenter
     if (send_notification) {
-      await supabase
+      await (supabase as any)
         .from("abstract_notifications")
         .insert({
           abstract_id: id,
@@ -142,7 +142,7 @@ export async function POST(
         })
 
       // Mark email sent
-      await supabase
+      await (supabase as any)
         .from("abstracts")
         .update({
           schedule_email_sent: true,
@@ -172,7 +172,7 @@ export async function GET(
 
     const supabase = await createAdminClient()
 
-    const { data: slot, error } = await supabase
+    const { data: slot, error } = await (supabase as any)
       .from("abstract_presentation_slots")
       .select(`
         *,
@@ -204,7 +204,7 @@ export async function DELETE(
 
     const supabase = await createAdminClient()
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("abstract_presentation_slots")
       .delete()
       .eq("abstract_id", id)
@@ -215,7 +215,7 @@ export async function DELETE(
     }
 
     // Update abstract workflow stage
-    await supabase
+    await (supabase as any)
       .from("abstracts")
       .update({
         session_id: null,

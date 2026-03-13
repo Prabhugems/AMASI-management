@@ -17,7 +17,7 @@ export async function GET(
     const supabase = await createAdminClient()
 
     // Build query for accepted abstracts
-    let query = supabase
+    let query = (supabase as any)
       .from("abstracts")
       .select(`
         id,
@@ -62,7 +62,7 @@ export async function GET(
     let registrations: Record<string, { id: string; registration_number: string; checked_in: boolean }> = {}
 
     if (registrationIds.length > 0) {
-      const { data: regData } = await supabase
+      const { data: regData } = await (supabase as any)
         .from("registrations")
         .select("id, registration_number, checked_in")
         .in("id", registrationIds)

@@ -24,7 +24,7 @@ export async function POST(
     const supabase = await createAdminClient()
 
     // Get settings to validate file
-    const { data: settings } = await supabase
+    const { data: settings } = await (supabase as any)
       .from("abstract_settings")
       .select("allowed_file_types, max_file_size_mb")
       .eq("event_id", eventId)

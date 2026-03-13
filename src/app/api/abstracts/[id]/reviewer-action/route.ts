@@ -28,14 +28,14 @@ export async function POST(
     // Authenticate reviewer by token or ID
     let reviewer = null
     if (reviewer_token) {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("abstract_reviewer_pool")
         .select("*")
         .eq("access_token", reviewer_token)
         .single()
       reviewer = data
     } else if (reviewer_id) {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("abstract_reviewer_pool")
         .select("*")
         .eq("id", reviewer_id)
@@ -48,7 +48,7 @@ export async function POST(
     }
 
     // Get the assignment
-    const { data: assignment, error: assignmentError } = await supabase
+    const { data: assignment, error: assignmentError } = await (supabase as any)
       .from("abstract_review_assignments")
       .select("*")
       .eq("abstract_id", abstractId)
@@ -66,14 +66,14 @@ export async function POST(
     }
 
     // Get abstract details
-    const { data: abstract } = await supabase
+    const { data: abstract } = await (supabase as any)
       .from("abstracts")
       .select("*, abstract_categories(name)")
       .eq("id", abstractId)
       .single()
 
     // Get committee members for notifications
-    const { data: committeeMembers } = await supabase
+    const { data: committeeMembers } = await (supabase as any)
       .from("abstract_committee_members")
       .select("email, name")
       .eq("event_id", abstract?.event_id)
@@ -86,7 +86,7 @@ export async function POST(
     switch (action) {
       case "decline": {
         // Reviewer declines the assignment
-        const { error: updateError } = await supabase
+        const { error: updateError } = await (supabase as any)
           .from("abstract_review_assignments")
           .update({
             status: "declined",
@@ -99,7 +99,7 @@ export async function POST(
         }
 
         // Log the decline action
-        await supabase.from("abstract_notifications").insert({
+        await (supabase as any).from("abstract_notifications").insert({
           abstract_id: abstractId,
           notification_type: "reviewer_declined",
           recipient_email: committeeEmail,
@@ -123,7 +123,7 @@ export async function POST(
 
       case "flag_mismatch": {
         // Reviewer flags that the abstract doesn't match their expertise or the category is wrong
-        const { error: updateError } = await supabase
+        const { error: updateError } = await (supabase as any)
           .from("abstract_review_assignments")
           .update({
             status: "flagged",
@@ -135,7 +135,7 @@ export async function POST(
         }
 
         // Update abstract with mismatch flag
-        await supabase
+        await (supabase as any)
           .from("abstracts")
           .update({
             has_category_mismatch: true,
@@ -147,7 +147,7 @@ export async function POST(
           .eq("id", abstractId)
 
         // Notify committee
-        await supabase.from("abstract_notifications").insert({
+        await (supabase as any).from("abstract_notifications").insert({
           abstract_id: abstractId,
           notification_type: "category_mismatch",
           recipient_email: committeeEmail,
@@ -177,7 +177,7 @@ export async function POST(
         )
 
         // Log extension request (don't auto-approve, needs committee approval)
-        await supabase.from("abstract_notifications").insert({
+        await (supabase as any).from("abstract_notifications").insert({
           abstract_id: abstractId,
           notification_type: "extension_requested",
           recipient_email: committeeEmail,
@@ -241,7 +241,7 @@ export async function PUT(
         }
 
         // Get old assignment
-        const { data: oldAssignment } = await supabase
+        const { data: oldAssignment } = await (supabase as any)
           .from("abstract_review_assignments")
           .select("*")
           .eq("id", assignment_id)
@@ -252,13 +252,13 @@ export async function PUT(
         }
 
         // Mark old assignment as reassigned
-        await supabase
+        await (supabase as any)
           .from("abstract_review_assignments")
           .update({ status: "reassigned" })
           .eq("id", assignment_id)
 
         // Create new assignment
-        const { data: newAssignment, error: createError } = await supabase
+        const { data: newAssignment, error: createError } = await (supabase as any)
           .from("abstract_review_assignments")
           .insert({
             abstract_id: abstractId,
@@ -294,7 +294,7 @@ export async function PUT(
           )
         }
 
-        const { error: updateError } = await supabase
+        const { error: updateError } = await (supabase as any)
           .from("abstract_review_assignments")
           .update({
             due_date: new_due_date,
@@ -318,7 +318,7 @@ export async function PUT(
           return NextResponse.json({ error: "New category ID required" }, { status: 400 })
         }
 
-        const { error: updateError } = await supabase
+        const { error: updateError } = await (supabase as any)
           .from("abstracts")
           .update({
             category_id: new_category_id,
