@@ -236,7 +236,7 @@ export async function POST(
         status: "under_review",
         workflow_stage: "review",
         review_round,
-      })
+      } as any)
       .eq("id", abstractId)
 
     return NextResponse.json({
