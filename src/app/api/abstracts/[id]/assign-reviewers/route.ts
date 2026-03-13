@@ -130,7 +130,7 @@ export async function POST(
       const { data: reviewers, error: reviewersError } = await supabase
         .from("abstract_reviewer_pool")
         .select("*")
-        .eq("event_id", abstract.event_id)
+        .eq("event_id", (abstract as any).event_id)
         .eq("status", "active")
 
       if (reviewersError || !reviewers?.length) {
@@ -156,7 +156,7 @@ export async function POST(
         // Not already assigned
         if (assignedReviewerIds.has(r.id)) return false
         // Not the author
-        if (r.email.toLowerCase() === abstract.presenting_author_email?.toLowerCase()) return false
+        if (r.email.toLowerCase() === (abstract as any).presenting_author_email?.toLowerCase()) return false
         // Has capacity
         if (r.current_assignments >= r.max_assignments) return false
         return true
@@ -290,7 +290,7 @@ export async function GET(
     const { data: reviewers, error: reviewersError } = await supabase
       .from("abstract_reviewer_pool")
       .select("*")
-      .eq("event_id", abstract.event_id)
+      .eq("event_id", (abstract as any).event_id)
       .eq("status", "active")
 
     if (reviewersError) {
@@ -308,11 +308,11 @@ export async function GET(
     )
 
     // Calculate match scores
-    const categoryKeywords = (abstract.abstract_categories as any)?.keywords || []
+    const categoryKeywords = (abstract as any).abstract_categories?.keywords || []
     const scoredReviewers = (reviewers || []).map(reviewer => {
       const score = calculateMatchScore(reviewer, abstract as any, categoryKeywords)
       const isAssigned = assignedReviewerIds.has(reviewer.id)
-      const isAuthor = reviewer.email.toLowerCase() === abstract.presenting_author_email?.toLowerCase()
+      const isAuthor = reviewer.email.toLowerCase() === (abstract as any).presenting_author_email?.toLowerCase()
       const hasCapacity = reviewer.current_assignments < reviewer.max_assignments
 
       return {
@@ -331,10 +331,10 @@ export async function GET(
 
     return NextResponse.json({
       abstract: {
-        id: abstract.id,
-        title: abstract.title,
-        keywords: abstract.keywords,
-        category: (abstract.abstract_categories as any)?.name,
+        id: (abstract as any).id,
+        title: (abstract as any).title,
+        keywords: (abstract as any).keywords,
+        category: (abstract as any).abstract_categories?.name,
       },
       reviewers: scoredReviewers,
       summary: {
