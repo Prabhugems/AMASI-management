@@ -5,7 +5,10 @@ import { NextRequest, NextResponse } from "next/server"
 // POST /api/abstracts/verify-registrations - Bulk verify registrations for accepted abstracts
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin()
+    const { error: authError } = await requireAdmin()
+    if (authError) {
+      return authError
+    }
     const body = await request.json()
 
     const { event_id, abstract_ids } = body
@@ -115,7 +118,10 @@ export async function POST(request: NextRequest) {
 // GET /api/abstracts/verify-registrations - Get registration status summary
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin()
+    const { error: authError } = await requireAdmin()
+    if (authError) {
+      return authError
+    }
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 

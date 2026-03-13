@@ -8,7 +8,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin()
+    const { error: authError } = await requireAdmin()
+    if (authError) {
+      return authError
+    }
     const { id } = await params
     const body = await request.json()
 
@@ -199,7 +202,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin()
+    const { error: authError } = await requireAdmin()
+    if (authError) {
+      return authError
+    }
     const { id } = await params
 
     const supabase = await createAdminClient()

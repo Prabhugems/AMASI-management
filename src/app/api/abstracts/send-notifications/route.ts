@@ -174,7 +174,10 @@ ${data.event_name} Scientific Committee`,
 // POST /api/abstracts/send-notifications - Send notifications to presenters
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAdmin()
+    const { user, error: authError } = await requireAdmin()
+    if (!user || authError) {
+      return authError || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     const body = await request.json()
 
     const {
@@ -347,8 +350,10 @@ export async function POST(request: NextRequest) {
 // GET /api/abstracts/send-notifications - Get notification templates
 export async function GET() {
   try {
-    await requireAdmin()
-
+    const { error: authError } = await requireAdmin()
+    if (authError) {
+      return authError
+    }
     return NextResponse.json({
       templates: Object.keys(templates).map(key => ({
         type: key,

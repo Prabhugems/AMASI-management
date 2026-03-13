@@ -9,7 +9,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAdmin()
+    const { user, error: authError } = await requireAdmin()
+    if (!user || authError) {
+      return authError || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     const { id } = await params
     const body = await request.json()
 
@@ -195,7 +198,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin()
+    const { error: authError } = await requireAdmin()
+    if (authError) {
+      return authError
+    }
     const { id } = await params
 
     const supabase = await createAdminClient()
