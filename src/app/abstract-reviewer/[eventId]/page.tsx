@@ -46,6 +46,8 @@ import {
   TrendingUp,
   Filter,
   RefreshCw,
+  Ban,
+  AlertOctagon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -159,6 +161,12 @@ export default function AbstractReviewerPortal() {
   })
   const [dynamicScores, setDynamicScores] = useState<Record<string, number>>({})
 
+  // Decline dialog state
+  const [showDeclineDialog, setShowDeclineDialog] = useState(false)
+  const [declineReason, setDeclineReason] = useState("")
+  const [declineNotes, setDeclineNotes] = useState("")
+  const [decliningAbstract, setDecliningAbstract] = useState<AbstractData | null>(null)
+
   // Fetch data — only after entry, pass email for server-side filtering
   const { data: portalData, isLoading, error } = useQuery({
     queryKey: ["abstract-reviewer", eventId, reviewerEmail],
@@ -181,6 +189,40 @@ export default function AbstractReviewerPortal() {
     if (!abstract?.category?.scoring_criteria?.length) return null
     return abstract.category.scoring_criteria
   }
+
+  // Decline assignment mutation
+  const declineAssignment = useMutation({
+    mutationFn: async (abstractId: string) => {
+      const res = await fetch(`/api/abstracts/${abstractId}/reviewer-action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "decline",
+          reviewer_id: null, // Server will look up by email
+          reviewer_token: null,
+          reason: declineReason,
+          declined_notes: declineNotes,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Failed to decline")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success("Assignment declined. The committee will reassign this abstract.")
+      queryClient.invalidateQueries({ queryKey: ["abstract-reviewer", eventId] })
+      setShowDeclineDialog(false)
+      setDecliningAbstract(null)
+      setDeclineReason("")
+      setDeclineNotes("")
+      setSelectedAbstract(null)
+    },
+    onError: (error: Error) => {
+      toast.error(error.message)
+    },
+  })
 
   // Submit review mutation
   const submitReview = useMutation({
@@ -1131,14 +1173,30 @@ export default function AbstractReviewerPortal() {
                 )}
               </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setSelectedAbstract(null)}>
-                  Close
-                </Button>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button variant="outline" onClick={() => setSelectedAbstract(null)}>
+                    Close
+                  </Button>
+                  {!isReviewedByMe(selectedAbstract) && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setDecliningAbstract(selectedAbstract)
+                        setShowDeclineDialog(true)
+                      }}
+                      className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    >
+                      <Ban className="h-4 w-4 mr-2" />
+                      Decline
+                    </Button>
+                  )}
+                </div>
                 {!isReviewedByMe(selectedAbstract) && (
                   <Button
                     onClick={() => submitReview.mutate(selectedAbstract.id)}
                     disabled={submitReview.isPending}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                   >
                     {submitReview.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Submit Review
@@ -1147,6 +1205,110 @@ export default function AbstractReviewerPortal() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Decline Assignment Dialog */}
+      <Dialog open={showDeclineDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowDeclineDialog(false)
+          setDecliningAbstract(null)
+          setDeclineReason("")
+          setDeclineNotes("")
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-red-600">
+              <div className="h-10 w-10 rounded-xl bg-red-100 flex items-center justify-center">
+                <AlertOctagon className="h-5 w-5 text-red-600" />
+              </div>
+              Decline Assignment
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              You are about to decline reviewing abstract{" "}
+              <strong className="text-foreground">{decliningAbstract?.abstract_number}</strong>.
+              Please select a reason.
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Reason for declining *</label>
+              <div className="space-y-2">
+                {[
+                  { value: "not_my_specialty", label: "Not in my specialty", icon: "🔬", desc: "This abstract is outside my area of expertise" },
+                  { value: "conflict_of_interest", label: "Conflict of interest", icon: "⚠️", desc: "I have a conflict with the author(s)" },
+                  { value: "no_time", label: "No time available", icon: "⏰", desc: "I cannot complete the review in time" },
+                  { value: "other", label: "Other reason", icon: "📝", desc: "Another reason (please specify below)" },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setDeclineReason(option.value)}
+                    className={cn(
+                      "w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all",
+                      declineReason === option.value
+                        ? "border-red-300 bg-red-50"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    )}
+                  >
+                    <span className="text-xl">{option.icon}</span>
+                    <div className="flex-1">
+                      <p className={cn(
+                        "font-medium text-sm",
+                        declineReason === option.value ? "text-red-700" : "text-foreground"
+                      )}>
+                        {option.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{option.desc}</p>
+                    </div>
+                    {declineReason === option.value && (
+                      <CheckCircle className="h-5 w-5 text-red-500 shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(declineReason === "other" || declineReason === "not_my_specialty") && (
+              <div>
+                <label className="text-sm font-medium">
+                  {declineReason === "not_my_specialty" ? "What specialty would be appropriate?" : "Additional details"}
+                </label>
+                <textarea
+                  value={declineNotes}
+                  onChange={(e) => setDeclineNotes(e.target.value)}
+                  placeholder={declineReason === "not_my_specialty"
+                    ? "e.g., This abstract is about Robotic Surgery, suggest a reviewer with that expertise..."
+                    : "Please provide details..."
+                  }
+                  rows={3}
+                  className="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                />
+              </div>
+            )}
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>The committee will be notified and will reassign this abstract to another reviewer.</span>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeclineDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => decliningAbstract && declineAssignment.mutate(decliningAbstract.id)}
+              disabled={!declineReason || declineAssignment.isPending}
+            >
+              {declineAssignment.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirm Decline
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

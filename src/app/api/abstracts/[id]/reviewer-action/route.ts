@@ -1,6 +1,97 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 
+// Valid decline reasons
+const DECLINE_REASONS = {
+  not_my_specialty: "Not in my specialty",
+  conflict_of_interest: "Conflict of interest",
+  no_time: "No time available",
+  already_reviewed_elsewhere: "Already reviewed elsewhere",
+  other: "Other reason",
+}
+
+// GET /api/abstracts/[id]/reviewer-action - Track view (call when reviewer opens abstract)
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: abstractId } = await params
+    const { searchParams } = new URL(request.url)
+    const reviewerEmail = searchParams.get("reviewer_email")
+    const action = searchParams.get("action") // "view" or "email_opened"
+
+    if (!reviewerEmail) {
+      return NextResponse.json({ error: "Reviewer email required" }, { status: 400 })
+    }
+
+    const supabase = await createAdminClient()
+
+    // Find the reviewer
+    const { data: reviewer } = await (supabase as any)
+      .from("abstract_reviewers")
+      .select("id, email, event_id")
+      .ilike("email", reviewerEmail)
+      .maybeSingle()
+
+    if (!reviewer) {
+      // Try the reviewer pool table
+      const { data: poolReviewer } = await (supabase as any)
+        .from("abstract_reviewer_pool")
+        .select("id, email, event_id")
+        .ilike("email", reviewerEmail)
+        .maybeSingle()
+
+      if (!poolReviewer) {
+        return NextResponse.json({ error: "Reviewer not found" }, { status: 404 })
+      }
+
+      // Update pool reviewer tracking
+      if (action === "email_opened") {
+        await (supabase as any)
+          .from("abstract_reviewer_pool")
+          .update({
+            total_emails_opened: (supabase as any).rpc('increment', { row_id: poolReviewer.id, table_name: 'abstract_reviewer_pool', column_name: 'total_emails_opened' }),
+          })
+          .eq("id", poolReviewer.id)
+      }
+
+      // Update assignment tracking
+      const { data: assignment } = await (supabase as any)
+        .from("abstract_review_assignments")
+        .select("id, view_count")
+        .eq("abstract_id", abstractId)
+        .eq("reviewer_id", poolReviewer.id)
+        .order("review_round", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (assignment) {
+        const updateData: Record<string, any> = {
+          last_viewed_at: new Date().toISOString(),
+          view_count: (assignment.view_count || 0) + 1,
+        }
+
+        if (action === "email_opened" && !assignment.email_opened_at) {
+          updateData.email_opened_at = new Date().toISOString()
+        }
+
+        await (supabase as any)
+          .from("abstract_review_assignments")
+          .update(updateData)
+          .eq("id", assignment.id)
+      }
+
+      return NextResponse.json({ success: true, tracked: true })
+    }
+
+    return NextResponse.json({ success: true, tracked: true })
+  } catch (error) {
+    console.error("Error tracking reviewer view:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
 // POST /api/abstracts/[id]/reviewer-action - Reviewer actions (decline, flag mismatch)
 export async function POST(
   request: NextRequest,
@@ -85,18 +176,33 @@ export async function POST(
 
     switch (action) {
       case "decline": {
+        // Valid decline reasons
+        const validReasons = ["not_my_specialty", "conflict_of_interest", "no_time", "already_reviewed_elsewhere", "other"]
+        const declineReason = validReasons.includes(reason) ? reason : "other"
+        const reasonLabel = DECLINE_REASONS[declineReason as keyof typeof DECLINE_REASONS] || reason
+
         // Reviewer declines the assignment
         const { error: updateError } = await (supabase as any)
           .from("abstract_review_assignments")
           .update({
             status: "declined",
             completed_at: new Date().toISOString(),
+            declined_reason: declineReason,
+            declined_notes: body.declined_notes || null,
           })
           .eq("id", assignment.id)
 
         if (updateError) {
           return NextResponse.json({ error: "Failed to decline assignment" }, { status: 500 })
         }
+
+        // Update reviewer's decline count
+        await (supabase as any)
+          .from("abstract_reviewer_pool")
+          .update({
+            decline_count: reviewer.decline_count ? reviewer.decline_count + 1 : 1,
+          })
+          .eq("id", reviewer.id)
 
         // Log the decline action
         await (supabase as any).from("abstract_notifications").insert({
@@ -105,11 +211,13 @@ export async function POST(
           recipient_email: committeeEmail,
           recipient_name: committeeName,
           subject: `Reviewer Declined: ${abstract?.title}`,
-          body_preview: `${reviewer.name} has declined to review abstract #${abstract?.abstract_number}. Reason: ${reason || "Not specified"}`,
+          body_preview: `${reviewer.name} has declined to review abstract #${abstract?.abstract_number}. Reason: ${reasonLabel}${body.declined_notes ? ` - ${body.declined_notes}` : ""}`,
           metadata: {
             reviewer_id: reviewer.id,
             reviewer_name: reviewer.name,
-            reason,
+            reason: declineReason,
+            reason_label: reasonLabel,
+            declined_notes: body.declined_notes,
             suggested_reviewer_email,
           },
         })
@@ -118,6 +226,7 @@ export async function POST(
           success: true,
           message: "Assignment declined. Committee will be notified to reassign.",
           needs_reassignment: true,
+          reason: declineReason,
         })
       }
 

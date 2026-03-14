@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/reassign-reviews",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/reviewer-reminders",
+      "schedule": "30 3 * * *"
     }
   ]
 }

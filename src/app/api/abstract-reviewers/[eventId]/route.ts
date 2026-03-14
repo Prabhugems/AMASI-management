@@ -6,7 +6,7 @@ type SupabaseClient = any
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-// GET /api/abstract-reviewers/[eventId] - List reviewers with review counts
+// GET /api/abstract-reviewers/[eventId] - List reviewers with review counts and activity
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
@@ -46,11 +46,143 @@ export async function GET(
       }
     }
 
-    // Merge review counts into reviewers
-    const reviewersWithCounts = (reviewers || []).map((reviewer: any) => ({
-      ...reviewer,
-      review_count: reviewCounts[reviewer.email.toLowerCase()] || 0,
-    }))
+    // Fetch activity tracking from abstract_reviewer_pool and assignments
+    const reviewerEmails = (reviewers || []).map((r: any) => r.email.toLowerCase())
+
+    // Get pool data for tracking info
+    const { data: poolData } = await supabase
+      .from("abstract_reviewer_pool")
+      .select("email, last_login_at, total_emails_sent, total_emails_opened, decline_count")
+      .eq("event_id", eventId)
+      .in("email", reviewerEmails)
+
+    // Get assignment activity
+    const { data: assignments } = await supabase
+      .from("abstract_review_assignments")
+      .select(`
+        id,
+        abstract_id,
+        status,
+        assigned_at,
+        email_opened_at,
+        last_viewed_at,
+        reminder_count,
+        declined_reason,
+        abstract_reviewer_pool!inner (email, event_id)
+      `)
+      .eq("abstract_reviewer_pool.event_id", eventId)
+
+    // Build activity tracking map by email
+    const activityByEmail: Record<string, {
+      last_login_at: string | null
+      total_emails_sent: number
+      total_emails_opened: number
+      decline_count: number
+      assignments_total: number
+      assignments_opened: number
+      assignments_viewed: number
+      assignments_pending: number
+      assignments_completed: number
+      assignments_declined: number
+      last_viewed_at: string | null
+      reminders_sent: number
+      activity_status: string
+    }> = {}
+
+    // Initialize from pool data
+    if (poolData) {
+      for (const p of poolData) {
+        const email = p.email.toLowerCase()
+        activityByEmail[email] = {
+          last_login_at: p.last_login_at,
+          total_emails_sent: p.total_emails_sent || 0,
+          total_emails_opened: p.total_emails_opened || 0,
+          decline_count: p.decline_count || 0,
+          assignments_total: 0,
+          assignments_opened: 0,
+          assignments_viewed: 0,
+          assignments_pending: 0,
+          assignments_completed: 0,
+          assignments_declined: 0,
+          last_viewed_at: null,
+          reminders_sent: 0,
+          activity_status: "unknown",
+        }
+      }
+    }
+
+    // Aggregate assignment data
+    if (assignments) {
+      for (const a of assignments) {
+        const email = ((a.abstract_reviewer_pool as any)?.email || "").toLowerCase()
+        if (!activityByEmail[email]) {
+          activityByEmail[email] = {
+            last_login_at: null,
+            total_emails_sent: 0,
+            total_emails_opened: 0,
+            decline_count: 0,
+            assignments_total: 0,
+            assignments_opened: 0,
+            assignments_viewed: 0,
+            assignments_pending: 0,
+            assignments_completed: 0,
+            assignments_declined: 0,
+            last_viewed_at: null,
+            reminders_sent: 0,
+            activity_status: "unknown",
+          }
+        }
+        const act = activityByEmail[email]
+        act.assignments_total++
+        if (a.email_opened_at) act.assignments_opened++
+        if (a.last_viewed_at) {
+          act.assignments_viewed++
+          if (!act.last_viewed_at || new Date(a.last_viewed_at) > new Date(act.last_viewed_at)) {
+            act.last_viewed_at = a.last_viewed_at
+          }
+        }
+        if (a.status === "pending") act.assignments_pending++
+        if (a.status === "completed") act.assignments_completed++
+        if (a.status === "declined") act.assignments_declined++
+        act.reminders_sent += a.reminder_count || 0
+      }
+    }
+
+    // Calculate activity status
+    const now = new Date()
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000)
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+    for (const email of Object.keys(activityByEmail)) {
+      const act = activityByEmail[email]
+      const lastActivity = act.last_viewed_at || act.last_login_at
+
+      if (!lastActivity) {
+        act.activity_status = "never_active"
+      } else {
+        const lastDate = new Date(lastActivity)
+        if (lastDate > oneDayAgo) {
+          act.activity_status = "active_today"
+        } else if (lastDate > threeDaysAgo) {
+          act.activity_status = "active_recently"
+        } else if (lastDate > sevenDaysAgo) {
+          act.activity_status = "inactive_week"
+        } else {
+          act.activity_status = "inactive_long"
+        }
+      }
+    }
+
+    // Merge review counts and activity into reviewers
+    const reviewersWithCounts = (reviewers || []).map((reviewer: any) => {
+      const email = reviewer.email.toLowerCase()
+      return {
+        ...reviewer,
+        review_count: reviewCounts[email] || 0,
+        activity: activityByEmail[email] || null,
+      }
+    })
 
     return NextResponse.json(reviewersWithCounts)
   } catch (error) {

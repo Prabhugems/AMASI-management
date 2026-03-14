@@ -51,6 +51,12 @@ import {
   Link2,
   Send,
   Copy,
+  Eye,
+  EyeOff,
+  MailOpen,
+  Bell,
+  Activity,
+  AlertOctagon,
 } from "lucide-react"
 import { toast } from "sonner"
 import { CSVImportDynamic } from "@/components/ui/csv-import-dynamic"
@@ -69,6 +75,22 @@ type PoolReviewer = {
   status: string
 }
 
+type ReviewerActivity = {
+  last_login_at: string | null
+  total_emails_sent: number
+  total_emails_opened: number
+  decline_count: number
+  assignments_total: number
+  assignments_opened: number
+  assignments_viewed: number
+  assignments_pending: number
+  assignments_completed: number
+  assignments_declined: number
+  last_viewed_at: string | null
+  reminders_sent: number
+  activity_status: "never_active" | "active_today" | "active_recently" | "inactive_week" | "inactive_long" | "unknown"
+}
+
 type Reviewer = {
   id: string
   event_id: string
@@ -85,6 +107,7 @@ type Reviewer = {
   review_count: number
   created_at: string
   updated_at: string
+  activity: ReviewerActivity | null
 }
 
 const csvFields = [
@@ -486,7 +509,7 @@ export default function ReviewersPage() {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
   }
 
-  // Workload distribution
+  // Workload distribution with activity data
   const workloadData = useMemo(() => {
     const maxAssigned = Math.max(...reviewers.map(r => (r.assigned_abstracts || []).length), 1)
     return reviewers.map(r => ({
@@ -497,6 +520,7 @@ export default function ReviewersPage() {
         ? Math.round((r.review_count / (r.assigned_abstracts || []).length) * 100)
         : 0,
       workloadPercent: Math.round(((r.assigned_abstracts || []).length / maxAssigned) * 100),
+      activity: r.activity,
     }))
   }, [reviewers])
 
@@ -847,6 +871,101 @@ export default function ReviewersPage() {
 
                 {/* Stats */}
                 <div className="flex items-center gap-6">
+                  {/* Activity Status */}
+                  {reviewer.activity && (
+                    <div className="flex items-center gap-2">
+                      {/* Email opened indicator */}
+                      <div
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium",
+                          reviewer.activity.assignments_opened > 0
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-gray-100 text-gray-500"
+                        )}
+                        title={reviewer.activity.assignments_opened > 0
+                          ? `Opened ${reviewer.activity.assignments_opened} email(s)`
+                          : "Email not opened"
+                        }
+                      >
+                        {reviewer.activity.assignments_opened > 0 ? (
+                          <MailOpen className="h-3.5 w-3.5" />
+                        ) : (
+                          <Mail className="h-3.5 w-3.5" />
+                        )}
+                        {reviewer.activity.assignments_opened > 0 && reviewer.activity.assignments_opened}
+                      </div>
+
+                      {/* Viewed indicator */}
+                      <div
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium",
+                          reviewer.activity.assignments_viewed > 0
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-gray-100 text-gray-500"
+                        )}
+                        title={reviewer.activity.assignments_viewed > 0
+                          ? `Viewed ${reviewer.activity.assignments_viewed} abstract(s)`
+                          : "No abstracts viewed"
+                        }
+                      >
+                        {reviewer.activity.assignments_viewed > 0 ? (
+                          <Eye className="h-3.5 w-3.5" />
+                        ) : (
+                          <EyeOff className="h-3.5 w-3.5" />
+                        )}
+                        {reviewer.activity.assignments_viewed > 0 && reviewer.activity.assignments_viewed}
+                      </div>
+
+                      {/* Reminders sent indicator */}
+                      {reviewer.activity.reminders_sent > 0 && (
+                        <div
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-amber-100 text-amber-700"
+                          title={`${reviewer.activity.reminders_sent} reminder(s) sent`}
+                        >
+                          <Bell className="h-3.5 w-3.5" />
+                          {reviewer.activity.reminders_sent}
+                        </div>
+                      )}
+
+                      {/* Activity status badge */}
+                      <div
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium",
+                          reviewer.activity.activity_status === "active_today" && "bg-emerald-100 text-emerald-700",
+                          reviewer.activity.activity_status === "active_recently" && "bg-blue-100 text-blue-700",
+                          reviewer.activity.activity_status === "inactive_week" && "bg-amber-100 text-amber-700",
+                          reviewer.activity.activity_status === "inactive_long" && "bg-red-100 text-red-700",
+                          reviewer.activity.activity_status === "never_active" && "bg-gray-100 text-gray-500"
+                        )}
+                        title={
+                          reviewer.activity.activity_status === "active_today" ? "Active today" :
+                          reviewer.activity.activity_status === "active_recently" ? "Active in last 3 days" :
+                          reviewer.activity.activity_status === "inactive_week" ? "Inactive for 3-7 days" :
+                          reviewer.activity.activity_status === "inactive_long" ? "Inactive for 7+ days" :
+                          "Never active"
+                        }
+                      >
+                        <Activity className="h-3.5 w-3.5" />
+                        {reviewer.activity.activity_status === "active_today" && "Today"}
+                        {reviewer.activity.activity_status === "active_recently" && "Recent"}
+                        {reviewer.activity.activity_status === "inactive_week" && "3-7d"}
+                        {reviewer.activity.activity_status === "inactive_long" && "7d+"}
+                        {reviewer.activity.activity_status === "never_active" && "Never"}
+                      </div>
+
+                      {/* Declined count */}
+                      {reviewer.activity.assignments_declined > 0 && (
+                        <div
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700"
+                          title={`${reviewer.activity.assignments_declined} declined`}
+                        >
+                          <AlertOctagon className="h-3.5 w-3.5" />
+                          {reviewer.activity.assignments_declined}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Workload Progress */}
                   <div className="w-40">
                     <div className="flex items-center justify-between text-xs mb-1">
