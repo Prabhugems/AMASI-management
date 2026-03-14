@@ -19,6 +19,7 @@ import {
   Calendar,
   MapPin,
   BarChart3,
+  CalendarDays,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -28,6 +29,7 @@ const sidebarItems = [
   { title: "Review & Decide", href: "/review", icon: CheckSquare },
   { title: "Reviewers", href: "/reviewers", icon: Users },
   { title: "Reviewer Tracking", href: "/reviewer-tracking", icon: BarChart3 },
+  { title: "Scheduling", href: "/scheduling", icon: CalendarDays },
   { title: "Settings", href: "/settings", icon: Settings },
   { title: "Instructions", href: "/instructions", icon: BookOpen },
 ]
