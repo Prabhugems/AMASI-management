@@ -1439,6 +1439,8 @@ function AbstractSubmissions({
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<any>(null)
   const [abstractSettings, setAbstractSettings] = useState<any>(null)
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null)
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState<string | null>(null)
 
   useEffect(() => {
     if (!eventId) return
@@ -1494,6 +1496,38 @@ function AbstractSubmissions({
     })
   }
 
+  const handleWithdraw = async (abstractId: string) => {
+    setWithdrawingId(abstractId)
+    try {
+      const res = await fetch("/api/my/abstracts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          abstract_id: abstractId,
+          email: email,
+          action: "withdraw",
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || "Failed to withdraw abstract")
+        return
+      }
+      toast.success("Abstract withdrawn successfully")
+      // Update local state
+      setAbstracts((prev) =>
+        prev.map((a) =>
+          a.id === abstractId ? { ...a, status: "withdrawn" } : a
+        )
+      )
+      setShowWithdrawConfirm(null)
+    } catch (error) {
+      toast.error("Failed to withdraw abstract")
+    } finally {
+      setWithdrawingId(null)
+    }
+  }
+
   const statusColors: Record<string, { bg: string; text: string }> = {
     submitted: { bg: "bg-blue-100", text: "text-blue-700" },
     under_review: { bg: "bg-yellow-100", text: "text-yellow-700" },
@@ -1524,7 +1558,7 @@ function AbstractSubmissions({
         </div>
         {canSubmitMore && (
           <a
-            href={`/events/${eventId}/submit-abstract`}
+            href={`/submit-abstract/${eventId}`}
             className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -1567,6 +1601,39 @@ function AbstractSubmissions({
                       {formatDate(abstract.submitted_at)}
                     </p>
                   </div>
+                  {/* Withdraw button - only show for submitted/under_review */}
+                  {["submitted", "under_review"].includes(abstract.status) && (
+                    <div className="shrink-0">
+                      {showWithdrawConfirm === abstract.id ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleWithdraw(abstract.id)}
+                            disabled={withdrawingId === abstract.id}
+                            className="px-2 py-1 text-xs font-medium text-white bg-red-500 rounded hover:bg-red-600 disabled:opacity-50"
+                          >
+                            {withdrawingId === abstract.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              "Confirm"
+                            )}
+                          </button>
+                          <button
+                            onClick={() => setShowWithdrawConfirm(null)}
+                            className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowWithdrawConfirm(abstract.id)}
+                          className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                        >
+                          Withdraw
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {abstract.status === "revision_requested" && abstract.decision_notes && (
@@ -1606,7 +1673,7 @@ function AbstractSubmissions({
           <p className="text-sm text-gray-500 mb-3">No abstracts submitted yet</p>
           {canSubmitMore && (
             <a
-              href={`/events/${eventId}/submit-abstract`}
+              href={`/submit-abstract/${eventId}`}
               className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 text-sm font-medium"
             >
               <Plus className="w-4 h-4" />

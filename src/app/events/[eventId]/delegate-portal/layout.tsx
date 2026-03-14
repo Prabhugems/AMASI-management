@@ -11,10 +11,12 @@ import {
   HelpCircle,
   ChevronLeft,
   Settings,
+  FileText,
 } from "lucide-react"
 
 const sidebarItems = [
   { title: "Overview", href: "", icon: LayoutDashboard },
+  { title: "My Abstracts", href: "/abstracts", icon: FileText },
   { title: "Badge Downloads", href: "/badges", icon: BadgeCheck },
   { title: "Certificate Downloads", href: "/certificates", icon: Award },
   { title: "Feedback", href: "/feedback", icon: MessageSquare },
