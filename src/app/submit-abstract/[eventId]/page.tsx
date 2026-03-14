@@ -342,17 +342,25 @@ export default function SubmitAbstractPage() {
 
       case 4:
         if (!formData.category_id) {
-          toast.error("Please select a category")
+          toast.error("Please select a speciality")
           return false
         }
         if (!formData.presentation_type) {
-          toast.error("Please select presentation type")
+          toast.error("Please select a category (Paper/Video/Poster)")
+          return false
+        }
+        if (!formData.competition_type) {
+          toast.error("Please select competition type (Best or Free)")
           return false
         }
         return true
 
       case 5:
-        // File is optional
+        // File is REQUIRED for Best category submissions (full manuscript)
+        if (formData.competition_type === "best" && !formData.file_url && !formData.video_url) {
+          toast.error("Full manuscript/video is required for Best category submissions")
+          return false
+        }
         return true
 
       case 6:
@@ -1069,10 +1077,24 @@ export default function SubmitAbstractPage() {
             {currentStep === 5 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-semibold mb-1">Supporting Documents</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Upload a file or provide a video link (optional)
-                  </p>
+                  <h2 className="text-xl font-semibold mb-1">
+                    {formData.competition_type === "best" ? "Upload Manuscript/Video *" : "Supporting Documents"}
+                  </h2>
+                  {formData.competition_type === "best" ? (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-2">
+                      <p className="text-sm text-yellow-800 font-medium flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        Full manuscript/video is REQUIRED for Best {formData.presentation_type} submissions
+                      </p>
+                      <p className="text-xs text-yellow-700 mt-1">
+                        Please upload your complete manuscript (PDF) or video for the award competition.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Upload a file or provide a video link (optional for Free category)
+                    </p>
+                  )}
                 </div>
 
                 {/* Upload Mode Toggle - only show if video URLs are allowed */}
