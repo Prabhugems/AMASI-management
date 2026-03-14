@@ -51,7 +51,11 @@ import {
   Settings2,
   UserCog,
   FolderKanban,
+  Mail,
+  FileSpreadsheet,
+  BookText,
 } from "lucide-react"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 interface Abstract {
@@ -104,6 +108,8 @@ export default function AbstractsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [sendingNotifications, setSendingNotifications] = useState(false)
+  const [generatingPDF, setGeneratingPDF] = useState(false)
 
   // Fetch abstracts
   const { data: abstracts = [], isLoading, refetch } = useQuery({
@@ -277,6 +283,94 @@ export default function AbstractsPage() {
     URL.revokeObjectURL(url)
   }
 
+  // Send bulk notifications
+  const sendBulkNotifications = async () => {
+    if (selectedIds.length === 0) {
+      toast.error("Please select abstracts to notify")
+      return
+    }
+
+    const selectedAbstracts = abstracts.filter(a => selectedIds.includes(a.id))
+    const statusCounts = selectedAbstracts.reduce((acc, a) => {
+      acc[a.status] = (acc[a.status] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+
+    // Only allow notifications for accepted/rejected/revision_requested
+    const validStatuses = ["accepted", "rejected", "revision_requested"]
+    const invalidCount = selectedAbstracts.filter(a => !validStatuses.includes(a.status)).length
+    if (invalidCount > 0) {
+      toast.error(`${invalidCount} abstract(s) don't have a decision yet. Only accepted/rejected/revision can be notified.`)
+      return
+    }
+
+    setSendingNotifications(true)
+    try {
+      const res = await fetch(`/api/abstracts/bulk/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ abstract_ids: selectedIds }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || "Failed to send notifications")
+        return
+      }
+      toast.success(`Notifications sent to ${data.sent} author(s)`)
+      setSelectedIds([])
+    } catch (error) {
+      toast.error("Failed to send notifications")
+    } finally {
+      setSendingNotifications(false)
+    }
+  }
+
+  // Generate Abstract Book PDF
+  const generateAbstractBook = async () => {
+    setGeneratingPDF(true)
+    try {
+      const res = await fetch(`/api/abstracts/book?event_id=${eventId}`)
+      if (!res.ok) {
+        const data = await res.json()
+        toast.error(data.error || "Failed to generate PDF")
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `abstract-book-${new Date().toISOString().split("T")[0]}.pdf`
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success("Abstract book downloaded!")
+    } catch (error) {
+      toast.error("Failed to generate PDF")
+    } finally {
+      setGeneratingPDF(false)
+    }
+  }
+
+  // Export to Excel
+  const exportToExcel = async () => {
+    try {
+      const res = await fetch(`/api/abstracts/export?event_id=${eventId}&format=xlsx`)
+      if (!res.ok) {
+        toast.error("Failed to export")
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `abstracts-${eventId}-${new Date().toISOString().split("T")[0]}.xlsx`
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success("Excel file downloaded!")
+    } catch (error) {
+      toast.error("Failed to export")
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -324,10 +418,29 @@ export default function AbstractsPage() {
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
-          <Button variant="outline" className="gap-2" onClick={exportToCSV}>
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportToCSV}>
+                <FileText className="h-4 w-4 mr-2" />
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToExcel}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export as Excel
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={generateAbstractBook} disabled={generatingPDF}>
+                <BookText className="h-4 w-4 mr-2" />
+                {generatingPDF ? "Generating..." : "Generate Abstract Book (PDF)"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -516,6 +629,20 @@ export default function AbstractsPage() {
           >
             <ArrowRightLeft className="h-4 w-4 text-indigo-600" />
             Redirect to Free
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={sendBulkNotifications}
+            disabled={sendingNotifications}
+            className="gap-2"
+          >
+            {sendingNotifications ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Mail className="h-4 w-4 text-blue-600" />
+            )}
+            Send Notifications
           </Button>
           <Button
             size="sm"
