@@ -7,6 +7,11 @@ export type TemplateType =
   | "certificate_email"
   | "speaker_invitation"
   | "speaker_reminder"
+  | "abstract_accepted"
+  | "abstract_rejected"
+  | "abstract_revision"
+  | "abstract_schedule"
+  | "abstract_reminder"
   | "custom"
 
 export interface TemplateVariables {
@@ -32,6 +37,23 @@ export interface TemplateVariables {
   session_time?: string
   hall_name?: string
   response_url?: string
+
+  // Abstract
+  abstract_number?: string
+  abstract_title?: string
+  abstract_status?: string
+  abstract_decision?: string
+  accepted_as?: string
+  presentation_type?: string
+  presentation_date?: string
+  presentation_time?: string
+  presentation_location?: string
+  category_name?: string
+  reviewer_comments?: string
+  decision_notes?: string
+  author_name?: string
+  author_email?: string
+  portal_url?: string
 
   // URLs
   badge_url?: string
@@ -272,6 +294,84 @@ export function buildSpeakerVariables(
     response_url: responseUrl,
     event_name: event.name,
     venue_name: event.venue_name || "",
+    organizer_name: "AMASI",
+    organizer_email: organizerEmail || "support@amasi.org",
+    year: new Date().getFullYear().toString(),
+  }
+}
+
+/**
+ * Build variables for abstract notifications
+ */
+export function buildAbstractVariables(
+  abstract: {
+    abstract_number: string
+    title: string
+    status: string
+    decision?: string | null
+    accepted_as?: string | null
+    decision_notes?: string | null
+    presenting_author_name: string
+    presenting_author_email: string
+    category_name?: string | null
+    session_date?: string | null
+    session_time?: string | null
+    session_location?: string | null
+  },
+  event: {
+    name: string
+    short_name?: string | null
+    start_date?: string | null
+    city?: string | null
+  },
+  portalUrl?: string,
+  organizerEmail?: string
+): TemplateVariables {
+  const formatDate = (date: string | null | undefined) => {
+    if (!date) return ""
+    return new Date(date).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+  }
+
+  const formatTime = (time?: string | null) => {
+    if (!time || !time.includes(":")) return time || ""
+    const [hours, minutes] = time.split(":")
+    const hour = parseInt(hours)
+    if (isNaN(hour)) return time
+    const ampm = hour >= 12 ? "PM" : "AM"
+    const hour12 = hour % 12 || 12
+    return `${hour12}:${minutes || "00"} ${ampm}`
+  }
+
+  const statusLabels: Record<string, string> = {
+    accepted: "Accepted",
+    rejected: "Rejected",
+    revision_requested: "Revision Requested",
+    under_review: "Under Review",
+    submitted: "Submitted",
+  }
+
+  return {
+    abstract_number: abstract.abstract_number,
+    abstract_title: abstract.title,
+    abstract_status: statusLabels[abstract.status] || abstract.status,
+    abstract_decision: abstract.decision || "",
+    accepted_as: abstract.accepted_as || "",
+    presentation_type: abstract.accepted_as || "",
+    presentation_date: formatDate(abstract.session_date),
+    presentation_time: formatTime(abstract.session_time),
+    presentation_location: abstract.session_location || "",
+    category_name: abstract.category_name || "",
+    decision_notes: abstract.decision_notes || "",
+    author_name: abstract.presenting_author_name,
+    author_email: abstract.presenting_author_email,
+    event_name: event.name,
+    event_date: formatDate(event.start_date),
+    venue_address: event.city || "",
+    portal_url: portalUrl || "",
     organizer_name: "AMASI",
     organizer_email: organizerEmail || "support@amasi.org",
     year: new Date().getFullYear().toString(),

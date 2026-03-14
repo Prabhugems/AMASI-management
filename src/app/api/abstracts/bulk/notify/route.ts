@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { renderEmailTemplate, buildAbstractVariables, TemplateType } from "@/lib/email-templates"
+import { sendEmail } from "@/lib/email"
 
 // POST /api/abstracts/bulk/notify - Send notifications to authors
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { abstract_ids } = body
+    const { abstract_ids, send_email = true } = body
 
     if (!abstract_ids || !Array.isArray(abstract_ids) || abstract_ids.length === 0) {
       return NextResponse.json({ error: "No abstracts selected" }, { status: 400 })
@@ -27,7 +29,11 @@ export async function POST(request: NextRequest) {
         presenting_author_name,
         presenting_author_email,
         event_id,
-        events(name, short_name)
+        session_date,
+        session_time,
+        session_location,
+        category:abstract_categories(name),
+        events(id, name, short_name, start_date, city)
       `)
       .in("id", abstract_ids)
 
@@ -45,70 +51,110 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Group by email to send one notification per author
-    const authorAbstracts = new Map<string, any[]>()
+    let sentCount = 0
+    let emailsSent = 0
+    const notifications: any[] = []
+    const errors: string[] = []
+
+    // Process each abstract individually for personalized emails
     for (const abstract of notifiableAbstracts) {
       const email = abstract.presenting_author_email?.toLowerCase()
       if (!email) continue
-      if (!authorAbstracts.has(email)) {
-        authorAbstracts.set(email, [])
-      }
-      authorAbstracts.get(email)!.push(abstract)
-    }
 
-    let sentCount = 0
-    const notifications: any[] = []
+      const eventName = abstract.events?.short_name || abstract.events?.name || "Event"
 
-    for (const [email, authorAbs] of authorAbstracts) {
-      const firstAbstract = authorAbs[0]
-      const eventName = firstAbstract.events?.short_name || firstAbstract.events?.name || "Event"
+      // Determine template type based on status
+      let templateType: TemplateType = "abstract_accepted"
+      let fallbackSubject = `Abstract Decision - ${eventName}`
 
-      // Determine notification type based on status
-      const statuses = [...new Set(authorAbs.map((a: any) => a.status))]
-      let notificationType = "abstract_decision"
-      let subject = `Abstract Decision: ${eventName}`
-
-      if (statuses.length === 1) {
-        if (statuses[0] === "accepted") {
-          notificationType = "abstract_accepted"
-          subject = `Congratulations! Your Abstract has been Accepted - ${eventName}`
-        } else if (statuses[0] === "rejected") {
-          notificationType = "abstract_rejected"
-          subject = `Abstract Decision - ${eventName}`
-        } else if (statuses[0] === "revision_requested") {
-          notificationType = "abstract_revision"
-          subject = `Revision Requested for Your Abstract - ${eventName}`
-        }
+      if (abstract.status === "accepted") {
+        templateType = "abstract_accepted"
+        fallbackSubject = `Congratulations! Your Abstract has been Accepted - ${eventName}`
+      } else if (abstract.status === "rejected") {
+        templateType = "abstract_rejected"
+        fallbackSubject = `Abstract Decision - ${eventName}`
+      } else if (abstract.status === "revision_requested") {
+        templateType = "abstract_revision"
+        fallbackSubject = `Revision Requested for Your Abstract - ${eventName}`
       }
 
-      // Build notification body
-      const abstractList = authorAbs.map((a: any) => {
-        let statusText = a.status
-        if (a.status === "accepted" && a.accepted_as) {
-          statusText = `Accepted as ${a.accepted_as}`
-        }
-        return `- ${a.abstract_number}: "${a.title}" - ${statusText}${a.decision_notes ? ` (${a.decision_notes})` : ""}`
-      }).join("\n")
+      // Build template variables
+      const variables = buildAbstractVariables(
+        {
+          abstract_number: abstract.abstract_number,
+          title: abstract.title,
+          status: abstract.status,
+          decision: abstract.decision,
+          accepted_as: abstract.accepted_as,
+          decision_notes: abstract.decision_notes,
+          presenting_author_name: abstract.presenting_author_name,
+          presenting_author_email: abstract.presenting_author_email,
+          category_name: abstract.category?.name,
+          session_date: abstract.session_date,
+          session_time: abstract.session_time,
+          session_location: abstract.session_location,
+        },
+        {
+          name: abstract.events?.name || eventName,
+          short_name: abstract.events?.short_name,
+          start_date: abstract.events?.start_date,
+          city: abstract.events?.city,
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL || ""}/my`
+      )
 
-      const bodyPreview = `Dear ${firstAbstract.presenting_author_name},\n\nWe have made a decision on your abstract submission(s) for ${eventName}:\n\n${abstractList}`
+      // Try to get template
+      const rendered = await renderEmailTemplate(templateType, variables, abstract.event_id)
+
+      // Build email content
+      let subject = fallbackSubject
+      let htmlBody = buildFallbackEmail(abstract, eventName)
+
+      if (rendered) {
+        subject = rendered.subject
+        htmlBody = rendered.body_html
+      }
 
       // Create notification record
-      for (const abstract of authorAbs) {
-        notifications.push({
-          abstract_id: abstract.id,
-          notification_type: notificationType,
-          recipient_email: email,
-          recipient_name: firstAbstract.presenting_author_name,
-          subject,
-          body_preview: bodyPreview,
-          metadata: {
-            event_id: abstract.event_id,
-            event_name: eventName,
-            status: abstract.status,
-            accepted_as: abstract.accepted_as,
-            decision_notes: abstract.decision_notes,
-          },
-        })
+      notifications.push({
+        abstract_id: abstract.id,
+        notification_type: templateType,
+        recipient_email: email,
+        recipient_name: abstract.presenting_author_name,
+        subject,
+        body_preview: htmlBody.substring(0, 500).replace(/<[^>]*>/g, ""),
+        metadata: {
+          event_id: abstract.event_id,
+          event_name: eventName,
+          status: abstract.status,
+          accepted_as: abstract.accepted_as,
+          decision_notes: abstract.decision_notes,
+        },
+        delivery_status: "pending",
+      })
+
+      // Send email if requested
+      if (send_email) {
+        try {
+          const result = await sendEmail({
+            to: email,
+            subject,
+            html: htmlBody,
+          })
+
+          if (result.success) {
+            emailsSent++
+            // Update notification status
+            notifications[notifications.length - 1].delivery_status = "sent"
+            notifications[notifications.length - 1].sent_at = new Date().toISOString()
+          } else {
+            errors.push(`Failed to send to ${email}: ${result.error}`)
+            notifications[notifications.length - 1].delivery_status = "failed"
+          }
+        } catch (emailError: any) {
+          errors.push(`Error sending to ${email}: ${emailError.message}`)
+          notifications[notifications.length - 1].delivery_status = "failed"
+        }
       }
 
       sentCount++
@@ -134,11 +180,101 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       sent: sentCount,
+      emails_sent: emailsSent,
       total_abstracts: notifiableAbstracts.length,
-      message: `Notifications queued for ${sentCount} author(s) covering ${notifiableAbstracts.length} abstract(s)`,
+      errors: errors.length > 0 ? errors : undefined,
+      message: send_email
+        ? `Sent ${emailsSent} email(s) for ${notifiableAbstracts.length} abstract(s)`
+        : `Notifications queued for ${sentCount} abstract(s)`,
     })
   } catch (error) {
     console.error("Error sending bulk notifications:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
+}
+
+// Fallback email template when no custom template exists
+function buildFallbackEmail(abstract: any, eventName: string): string {
+  const statusLabels: Record<string, string> = {
+    accepted: "Accepted",
+    rejected: "Not Accepted",
+    revision_requested: "Revision Requested",
+  }
+
+  const statusText = statusLabels[abstract.status] || abstract.status
+  const acceptedAsText = abstract.accepted_as ? ` as <strong>${abstract.accepted_as.toUpperCase()}</strong> presentation` : ""
+
+  let decisionSection = ""
+  if (abstract.status === "accepted") {
+    decisionSection = `
+      <p style="color: #059669; font-size: 18px; font-weight: bold;">
+        Your abstract has been ${statusText}${acceptedAsText}!
+      </p>
+    `
+  } else if (abstract.status === "rejected") {
+    decisionSection = `
+      <p>After careful review, we regret to inform you that your abstract was not selected for presentation at this event.</p>
+    `
+  } else if (abstract.status === "revision_requested") {
+    decisionSection = `
+      <p style="color: #d97706;">Revisions have been requested for your abstract. Please review the comments below and submit an updated version.</p>
+    `
+  }
+
+  const notesSection = abstract.decision_notes
+    ? `<div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <strong>Reviewer Notes:</strong>
+        <p style="margin-top: 10px;">${abstract.decision_notes}</p>
+      </div>`
+    : ""
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">${eventName}</h1>
+        <p style="margin: 10px 0 0; opacity: 0.9;">Abstract Decision Notification</p>
+      </div>
+
+      <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+        <p>Dear <strong>${abstract.presenting_author_name}</strong>,</p>
+
+        <p>Thank you for submitting your abstract to ${eventName}.</p>
+
+        <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1e3a5f;">
+          <p style="margin: 0 0 10px; color: #6b7280; font-size: 14px;">Abstract #${abstract.abstract_number}</p>
+          <p style="margin: 0; font-weight: 600; font-size: 16px;">${abstract.title}</p>
+        </div>
+
+        ${decisionSection}
+        ${notesSection}
+
+        <p>You can view your submission status and any updates in your author portal.</p>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || ""}/my"
+             style="display: inline-block; background: #1e3a5f; color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            View My Submissions
+          </a>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+        <p style="color: #6b7280; font-size: 14px; margin: 0;">
+          Best regards,<br>
+          The ${eventName} Organizing Committee
+        </p>
+      </div>
+
+      <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 20px;">
+        This is an automated message. Please do not reply directly to this email.
+      </p>
+    </body>
+    </html>
+  `
 }
