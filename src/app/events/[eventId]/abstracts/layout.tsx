@@ -18,6 +18,7 @@ import {
   Users,
   Calendar,
   MapPin,
+  BarChart3,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -26,6 +27,7 @@ const sidebarItems = [
   { title: "Specialities", href: "/categories", icon: FolderTree },
   { title: "Review & Decide", href: "/review", icon: CheckSquare },
   { title: "Reviewers", href: "/reviewers", icon: Users },
+  { title: "Reviewer Tracking", href: "/reviewer-tracking", icon: BarChart3 },
   { title: "Settings", href: "/settings", icon: Settings },
   { title: "Instructions", href: "/instructions", icon: BookOpen },
 ]
