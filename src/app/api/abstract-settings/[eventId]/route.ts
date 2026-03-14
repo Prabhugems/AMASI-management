@@ -63,6 +63,12 @@ export async function GET(
         // Video URL settings
         allow_video_url: false,
         allowed_video_platforms: ["youtube", "vimeo"],
+        // New features
+        enable_blind_review: false,
+        auto_reminders_enabled: false,
+        reminder_days_before: [7, 3, 1],
+        enable_reviewer_matching: false,
+        require_coi_declaration: false,
       })
     }
 
@@ -187,6 +193,12 @@ export async function PUT(
     // Video URL settings
     if (body.allow_video_url !== undefined) payload.allow_video_url = body.allow_video_url
     if (body.allowed_video_platforms !== undefined) payload.allowed_video_platforms = body.allowed_video_platforms
+    // New features
+    if (body.enable_blind_review !== undefined) payload.enable_blind_review = body.enable_blind_review
+    if (body.auto_reminders_enabled !== undefined) payload.auto_reminders_enabled = body.auto_reminders_enabled
+    if (body.reminder_days_before !== undefined) payload.reminder_days_before = body.reminder_days_before
+    if (body.enable_reviewer_matching !== undefined) payload.enable_reviewer_matching = body.enable_reviewer_matching
+    if (body.require_coi_declaration !== undefined) payload.require_coi_declaration = body.require_coi_declaration
 
     const { data, error } = await adminClient
       .from("abstract_settings")

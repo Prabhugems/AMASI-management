@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         abstract_text,
         keywords,
         presentation_type,
+        accepted_as,
         award_type,
         status,
         decision,
@@ -35,6 +36,16 @@ export async function GET(request: NextRequest) {
         presenting_author_name,
         presenting_author_email,
         presenting_author_affiliation,
+        session_date,
+        session_time,
+        session_location,
+        presentation_completed,
+        presentation_completed_at,
+        presentation_url,
+        presentation_name,
+        presentation_uploaded_at,
+        revision_count,
+        last_revision_at,
         category:abstract_categories(id, name),
         event:events(id, name, short_name, start_date, end_date, city),
         authors:abstract_authors(id, name, email, affiliation, author_order, is_presenting),
@@ -64,6 +75,7 @@ export async function GET(request: NextRequest) {
           abstract_text,
           keywords,
           presentation_type,
+          accepted_as,
           award_type,
           status,
           decision,
@@ -76,6 +88,16 @@ export async function GET(request: NextRequest) {
           presenting_author_name,
           presenting_author_email,
           presenting_author_affiliation,
+          session_date,
+          session_time,
+          session_location,
+          presentation_completed,
+          presentation_completed_at,
+          presentation_url,
+          presentation_name,
+          presentation_uploaded_at,
+          revision_count,
+          last_revision_at,
           category:abstract_categories(id, name),
           event:events(id, name, short_name, start_date, end_date, city),
           authors:abstract_authors(id, name, email, affiliation, author_order, is_presenting),
@@ -124,7 +146,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/my/abstracts - Withdraw an abstract
+// POST /api/my/abstracts - Withdraw, revise, or upload presentation
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -139,7 +161,7 @@ export async function POST(request: NextRequest) {
     // Verify the abstract belongs to this email
     const { data: abstract, error: fetchError } = await (supabase as any)
       .from("abstracts")
-      .select("id, status, presenting_author_email, event_id")
+      .select("id, status, presenting_author_email, event_id, title, abstract_text, keywords, category_id, revision_count")
       .eq("id", abstract_id)
       .ilike("presenting_author_email", email.trim())
       .single()
@@ -174,6 +196,97 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "Abstract withdrawn successfully",
+      })
+    }
+
+    if (action === "submit_revision") {
+      // Check if revision is allowed
+      if (abstract.status !== "revision_requested") {
+        return NextResponse.json({
+          error: "Revision can only be submitted when revision is requested"
+        }, { status: 400 })
+      }
+
+      const { title, abstract_text, keywords, file_url, file_name, revision_notes } = body
+
+      if (!title || !abstract_text) {
+        return NextResponse.json({ error: "Title and abstract text are required" }, { status: 400 })
+      }
+
+      // Store previous version in history
+      await (supabase as any)
+        .from("abstract_revisions")
+        .insert({
+          abstract_id: abstract.id,
+          event_id: abstract.event_id,
+          version_number: abstract.revision_count || 1,
+          title: abstract.title,
+          abstract_text: abstract.abstract_text,
+          keywords: abstract.keywords,
+          revised_at: new Date().toISOString(),
+        })
+
+      // Update abstract with new content
+      const { error: updateError } = await (supabase as any)
+        .from("abstracts")
+        .update({
+          title,
+          abstract_text,
+          keywords: keywords || abstract.keywords,
+          file_url: file_url || undefined,
+          file_name: file_name || undefined,
+          status: "submitted", // Reset to submitted for re-review
+          revision_count: (abstract.revision_count || 0) + 1,
+          revision_notes,
+          last_revision_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", abstract_id)
+
+      if (updateError) {
+        console.error("Error submitting revision:", updateError)
+        return NextResponse.json({ error: "Failed to submit revision" }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Revision submitted successfully",
+      })
+    }
+
+    if (action === "upload_presentation") {
+      // Check if upload is allowed (only for accepted abstracts)
+      if (abstract.status !== "accepted") {
+        return NextResponse.json({
+          error: "Presentation can only be uploaded for accepted abstracts"
+        }, { status: 400 })
+      }
+
+      const { presentation_url, presentation_name, presentation_type } = body
+
+      if (!presentation_url) {
+        return NextResponse.json({ error: "Presentation file URL is required" }, { status: 400 })
+      }
+
+      // Update abstract with presentation file
+      const { error: updateError } = await (supabase as any)
+        .from("abstracts")
+        .update({
+          presentation_url,
+          presentation_name,
+          presentation_type: presentation_type || "slides",
+          presentation_uploaded_at: new Date().toISOString(),
+        })
+        .eq("id", abstract_id)
+
+      if (updateError) {
+        console.error("Error uploading presentation:", updateError)
+        return NextResponse.json({ error: "Failed to upload presentation" }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Presentation uploaded successfully",
       })
     }
 

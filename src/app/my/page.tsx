@@ -1636,29 +1636,74 @@ function AbstractSubmissions({
                   )}
                 </div>
 
-                {abstract.status === "revision_requested" && abstract.decision_notes && (
+                {abstract.status === "revision_requested" && (
                   <div className="mt-3 p-3 bg-orange-50 rounded-lg border border-orange-100">
-                    <p className="text-xs font-medium text-orange-700 mb-1">Revision Requested:</p>
-                    <p className="text-sm text-orange-600">{abstract.decision_notes}</p>
+                    {abstract.decision_notes && (
+                      <>
+                        <p className="text-xs font-medium text-orange-700 mb-1">Revision Requested:</p>
+                        <p className="text-sm text-orange-600 mb-3">{abstract.decision_notes}</p>
+                      </>
+                    )}
+                    <a
+                      href={`/submit-abstract/${abstract.event?.id}?revision=${abstract.id}`}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white text-xs font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Submit Revision
+                    </a>
                   </div>
                 )}
 
-                {abstract.status === "accepted" && (abstract.session_date || abstract.session_location) && (
+                {abstract.status === "accepted" && (
                   <div className="mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                    <p className="text-xs font-medium text-emerald-700 mb-1">Presentation Details:</p>
-                    <div className="text-sm text-emerald-600">
-                      {abstract.session_date && (
-                        <p className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {formatDate(abstract.session_date)}
-                          {abstract.session_time && ` at ${abstract.session_time}`}
-                        </p>
+                    {(abstract.session_date || abstract.session_location) && (
+                      <>
+                        <p className="text-xs font-medium text-emerald-700 mb-1">Presentation Details:</p>
+                        <div className="text-sm text-emerald-600 mb-3">
+                          {abstract.session_date && (
+                            <p className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {formatDate(abstract.session_date)}
+                              {abstract.session_time && ` at ${abstract.session_time}`}
+                            </p>
+                          )}
+                          {abstract.session_location && (
+                            <p className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {abstract.session_location}
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {/* Presentation Upload */}
+                      {!abstract.presentation_url && (
+                        <a
+                          href={`/upload-presentation/${abstract.id}?email=${encodeURIComponent(email)}`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <FileText className="w-3 h-3" />
+                          Upload Presentation
+                        </a>
                       )}
-                      {abstract.session_location && (
-                        <p className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {abstract.session_location}
-                        </p>
+                      {abstract.presentation_url && (
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg">
+                          <CheckCircle className="w-3 h-3" />
+                          Presentation Uploaded
+                        </span>
+                      )}
+                      {/* Certificate Download - only if presented */}
+                      {abstract.presentation_completed && (
+                        <a
+                          href={`/verify/abstract/${abstract.abstract_number}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+                        >
+                          <Award className="w-3 h-3" />
+                          View Certificate
+                        </a>
                       )}
                     </div>
                   </div>
