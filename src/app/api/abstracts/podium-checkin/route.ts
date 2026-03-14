@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { escapeHtml } from "@/lib/string-utils"
 
 // POST /api/abstracts/podium-checkin - Scan badge to mark presenter as presented
 export async function POST(request: NextRequest) {
@@ -177,9 +179,129 @@ export async function POST(request: NextRequest) {
         notes: notes || "Podium check-in via QR scan",
       })
 
+    // Send presenter certificate email
+    let emailSent = false
+    if (abstract.presenting_author_email && isEmailEnabled()) {
+      try {
+        const eventName = abstract.events?.short_name || abstract.events?.name || "Conference"
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+        const verifyUrl = `${baseUrl}/verify/abstract/${abstract.abstract_number}`
+        const portalUrl = `${baseUrl}/my`
+
+        const presentationType = abstract.accepted_as === "oral" ? "Oral Presentation" :
+          abstract.accepted_as === "poster" ? "Poster Presentation" :
+          abstract.accepted_as === "video" ? "Video Presentation" :
+          abstract.accepted_as === "eposter" ? "E-Poster Presentation" :
+          abstract.accepted_as || "Presentation"
+
+        const emailHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td align="center" style="padding: 40px 20px;">
+                  <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
+                    <!-- Header -->
+                    <tr>
+                      <td style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">🎤</div>
+                        <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">Presentation Completed!</h1>
+                        <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px;">Your certificate is ready</p>
+                      </td>
+                    </tr>
+                    <!-- Content -->
+                    <tr>
+                      <td style="background-color: white; padding: 30px;">
+                        <p style="color: #1f2937; font-size: 16px; margin: 0 0 15px 0;">
+                          Dear <strong>${escapeHtml(abstract.presenting_author_name || "")}</strong>,
+                        </p>
+                        <p style="color: #4b5563; font-size: 15px; margin: 0 0 20px 0; line-height: 1.6;">
+                          Congratulations on completing your ${presentationType.toLowerCase()} at <strong>${escapeHtml(eventName)}</strong>!
+                          Your presenter certificate is now available for download.
+                        </p>
+                        <!-- Details Box -->
+                        <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+                          <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                              <td style="padding: 8px 0; color: #065f46; width: 35%;">Abstract #:</td>
+                              <td style="padding: 8px 0; color: #1f2937; font-weight: bold;">${escapeHtml(abstract.abstract_number || "")}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 8px 0; color: #065f46;">Paper Title:</td>
+                              <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(abstract.title || "")}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 8px 0; color: #065f46;">Type:</td>
+                              <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(presentationType)}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 8px 0; color: #065f46;">Presented at:</td>
+                              <td style="padding: 8px 0; color: #1f2937;">${new Date(presentedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</td>
+                            </tr>
+                          </table>
+                        </div>
+                        <!-- CTA Button -->
+                        <table role="presentation" style="width: 100%; margin: 30px 0;">
+                          <tr>
+                            <td align="center">
+                              <a href="${portalUrl}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                                Download Certificate
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                        <p style="color: #6b7280; font-size: 13px; margin: 20px 0 0 0; text-align: center; line-height: 1.6;">
+                          Visit the Author Portal and enter your email<br>
+                          <strong>${escapeHtml(abstract.presenting_author_email || "")}</strong> to download your certificate.
+                        </p>
+                        <p style="color: #9ca3af; font-size: 12px; margin: 20px 0 0 0; text-align: center;">
+                          <a href="${verifyUrl}" style="color: #6b7280;">Verify this certificate</a>
+                        </p>
+                      </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                      <td style="background-color: #1f2937; padding: 25px 30px; border-radius: 0 0 16px 16px; text-align: center;">
+                        <p style="color: #9ca3af; margin: 0 0 10px 0; font-size: 14px;">
+                          Thank you for presenting at ${escapeHtml(eventName)}!
+                        </p>
+                        <p style="color: #6b7280; margin: 0; font-size: 12px;">
+                          &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+          </html>
+        `
+
+        const result = await sendEmail({
+          to: abstract.presenting_author_email,
+          subject: `Your Presenter Certificate - ${eventName}`,
+          html: emailHtml,
+        })
+
+        emailSent = result.success
+        if (result.success) {
+          console.log(`Presenter certificate email sent to ${abstract.presenting_author_email}`)
+        }
+      } catch (emailError) {
+        console.error("Failed to send presenter certificate email:", emailError)
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: `${abstract.presenting_author_name} marked as presented`,
+      message: `${abstract.presenting_author_name} marked as presented${emailSent ? " - Certificate emailed" : ""}`,
+      email_sent: emailSent,
       abstract: {
         id: abstract.id,
         number: abstract.abstract_number,
