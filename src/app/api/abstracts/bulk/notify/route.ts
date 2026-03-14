@@ -1,16 +1,27 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 import { renderEmailTemplate, buildAbstractVariables, TemplateType } from "@/lib/email-templates"
 import { sendEmail } from "@/lib/email"
+
+const MAX_BULK_SIZE = 500
 
 // POST /api/abstracts/bulk/notify - Send notifications to authors
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body = await request.json()
     const { abstract_ids, send_email = true } = body
 
     if (!abstract_ids || !Array.isArray(abstract_ids) || abstract_ids.length === 0) {
       return NextResponse.json({ error: "No abstracts selected" }, { status: 400 })
+    }
+
+    if (abstract_ids.length > MAX_BULK_SIZE) {
+      return NextResponse.json({ error: `Maximum ${MAX_BULK_SIZE} abstracts per request` }, { status: 400 })
     }
 
     const supabase = await createAdminClient()

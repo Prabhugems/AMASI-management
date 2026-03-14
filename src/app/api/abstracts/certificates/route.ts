@@ -6,6 +6,31 @@ import QRCode from "qrcode"
 
 export const dynamic = "force-dynamic"
 
+// Allowed URL domains for template images (prevent SSRF)
+const ALLOWED_IMAGE_DOMAINS = [
+  "supabase.co",
+  "supabase.com",
+  "collegeofmas.org.in",
+  "vercel-storage.com",
+  "amazonaws.com",
+]
+
+// Validate template image URL to prevent SSRF
+function isAllowedImageUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString)
+    // Only allow HTTPS
+    if (url.protocol !== "https:") return false
+    // Check against allowed domains
+    const hostname = url.hostname.toLowerCase()
+    return ALLOWED_IMAGE_DOMAINS.some(domain =>
+      hostname === domain || hostname.endsWith(`.${domain}`)
+    )
+  } catch {
+    return false
+  }
+}
+
 // Certificate sizes in points
 const CERTIFICATE_SIZES: Record<string, { width: number; height: number }> = {
   "A4-landscape": { width: 842, height: 595 },
@@ -513,8 +538,8 @@ async function drawTemplateElements(
   const scaleFactor = 72 / 96
   const { width: pageWidth, height: pageHeight } = page.getSize()
 
-  // Draw background
-  if (template.template_image_url) {
+  // Draw background (with URL validation to prevent SSRF)
+  if (template.template_image_url && isAllowedImageUrl(template.template_image_url)) {
     try {
       const response = await fetch(template.template_image_url)
       const imageBytes = await response.arrayBuffer()

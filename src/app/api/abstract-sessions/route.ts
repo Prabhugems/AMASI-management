@@ -5,6 +5,10 @@ import { requireAdmin } from "@/lib/auth/api-auth"
 // GET /api/abstract-sessions?event_id=...
 export async function GET(request: NextRequest) {
   try {
+    // Require admin authentication
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 

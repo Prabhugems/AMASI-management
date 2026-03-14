@@ -140,7 +140,7 @@ export default function PresenterCheckinPage() {
     refetchInterval: 15000,
     queryFn: async () => {
       const res = await fetch(
-        `/api/abstracts/podium-checkin?event_id=${coordinator!.event_id}&date=${today}&hall=${encodeURIComponent(coordinator!.hall_name)}`
+        `/api/abstracts/podium-checkin?event_id=${coordinator!.event_id}&date=${today}&hall=${encodeURIComponent(coordinator!.hall_name)}&token=${token}`
       )
       if (!res.ok) return []
       const data = await res.json()

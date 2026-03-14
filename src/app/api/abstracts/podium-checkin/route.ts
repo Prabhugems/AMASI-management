@@ -18,21 +18,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Scan data is required" }, { status: 400 })
     }
 
+    // Validate scan_data length
+    const trimmedScan = scan_data.trim()
+    if (trimmedScan.length > 500) {
+      return NextResponse.json({ error: "Invalid scan data" }, { status: 400 })
+    }
+
+    // Require hall_token for authorization
+    if (!hall_token || hall_token.length < 20) {
+      return NextResponse.json({ error: "Valid hall token is required" }, { status: 401 })
+    }
+
     const supabase = await createAdminClient()
 
-    // Verify hall coordinator token if provided
-    let coordinatorInfo = null
-    if (hall_token) {
-      const { data: coordinator } = await (supabase as any)
-        .from("hall_coordinators")
-        .select("id, hall_name, coordinator_name, event_id")
-        .eq("portal_token", hall_token)
-        .single()
+    // Verify hall coordinator token - REQUIRED
+    const { data: coordinator } = await (supabase as any)
+      .from("hall_coordinators")
+      .select("id, hall_name, coordinator_name, event_id")
+      .eq("portal_token", hall_token)
+      .single()
 
-      if (coordinator) {
-        coordinatorInfo = coordinator
-      }
+    if (!coordinator) {
+      return NextResponse.json({ error: "Invalid or expired hall token" }, { status: 401 })
     }
+
+    const coordinatorInfo = coordinator
 
     // Try to find the abstract by various identifiers
     let abstract = null
@@ -319,19 +329,41 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/abstracts/podium-checkin?event_id=...&hall=... - Get presenters for a hall/session
+// GET /api/abstracts/podium-checkin?event_id=...&hall=...&token=... - Get presenters for a hall/session
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
     const sessionDate = searchParams.get("date") || new Date().toISOString().split("T")[0]
     const hall = searchParams.get("hall")
+    const hallToken = searchParams.get("token")
 
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
 
+    // Require hall token for authorization
+    if (!hallToken || hallToken.length < 20) {
+      return NextResponse.json({ error: "Valid hall token is required" }, { status: 401 })
+    }
+
     const supabase = await createAdminClient()
+
+    // Verify hall coordinator token
+    const { data: coordinator } = await (supabase as any)
+      .from("hall_coordinators")
+      .select("id, hall_name, event_id")
+      .eq("portal_token", hallToken)
+      .single()
+
+    if (!coordinator) {
+      return NextResponse.json({ error: "Invalid or expired hall token" }, { status: 401 })
+    }
+
+    // Verify coordinator has access to this event
+    if (coordinator.event_id !== eventId) {
+      return NextResponse.json({ error: "Access denied for this event" }, { status: 403 })
+    }
 
     // Get today's scheduled presenters
     let query = (supabase as any)
