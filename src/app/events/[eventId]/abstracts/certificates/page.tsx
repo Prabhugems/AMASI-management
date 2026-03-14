@@ -23,6 +23,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import {
   Award,
   Download,
@@ -32,6 +33,7 @@ import {
   Users,
   Search,
   Filter,
+  ScanLine,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -64,6 +66,7 @@ export default function CertificatesPage() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [templateId, setTemplateId] = useState<string>("")
+  const [requirePresented, setRequirePresented] = useState<boolean>(false)
 
   // Fetch accepted abstracts
   const { data: abstracts = [], isLoading } = useQuery({
@@ -132,6 +135,7 @@ export default function CertificatesPage() {
           event_id: eventId,
           abstract_ids: selectedIds,
           template_id: templateId || undefined,
+          require_presented: requirePresented,
         }),
       })
 
@@ -172,6 +176,7 @@ export default function CertificatesPage() {
           event_id: eventId,
           abstract_ids: abstracts.map((a) => a.id),
           template_id: templateId || undefined,
+          require_presented: requirePresented,
         }),
       })
 
@@ -277,28 +282,58 @@ export default function CertificatesPage() {
         </Card>
       </div>
 
-      {/* Template Selection */}
-      {certInfo?.templates && certInfo.templates.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Certificate Template</CardTitle>
-            <CardDescription>Select a custom template or use the default design</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Select value={templateId} onValueChange={setTemplateId}>
-              <SelectTrigger className="w-[300px]">
-                <SelectValue placeholder="Default Certificate Design" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Default Certificate Design</SelectItem>
-                {certInfo.templates.map((t: Template) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      )}
+      {/* Certificate Settings */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Certificate Settings</CardTitle>
+          <CardDescription>Configure certificate generation options</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Template Selection */}
+          {certInfo?.templates && certInfo.templates.length > 0 && (
+            <div className="space-y-2">
+              <Label>Certificate Template</Label>
+              <Select value={templateId} onValueChange={setTemplateId}>
+                <SelectTrigger className="w-[300px]">
+                  <SelectValue placeholder="Default Certificate Design" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Default Certificate Design</SelectItem>
+                  {certInfo.templates.map((t: Template) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Require Presented Toggle */}
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+            <div className="flex items-center gap-3">
+              <ScanLine className="h-5 w-5 text-emerald-500" />
+              <div>
+                <Label htmlFor="require-presented" className="text-sm font-medium cursor-pointer">
+                  Require Podium Check-in
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Only generate certificates for presenters who have been scanned at the podium
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="require-presented"
+              checked={requirePresented}
+              onCheckedChange={setRequirePresented}
+            />
+          </div>
+          {requirePresented && (
+            <p className="text-xs text-amber-600 flex items-center gap-1.5 pl-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              Certificates will only be generated for presenters checked in via QR scanner
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <div className="flex items-center gap-4 flex-wrap">

@@ -136,8 +136,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
 
+    // Check if we should require presentation_completed
+    const requirePresented = body.require_presented !== false // Default true
+
     // Fetch abstracts
-    const { data: abstracts, error: absError } = await (supabase as any)
+    let query = (supabase as any)
       .from("abstracts")
       .select(`
         id,
@@ -151,13 +154,25 @@ export async function POST(request: NextRequest) {
         session_date,
         session_time,
         session_location,
+        presentation_completed,
+        presentation_completed_at,
         category:abstract_categories(name)
       `)
       .in("id", abstract_ids)
       .eq("status", "accepted")
 
+    // If require_presented is true, only get those who have presented
+    if (requirePresented) {
+      query = query.eq("presentation_completed", true)
+    }
+
+    const { data: abstracts, error: absError } = await query
+
     if (absError || !abstracts || abstracts.length === 0) {
-      return NextResponse.json({ error: "No accepted abstracts found" }, { status: 404 })
+      const errorMsg = requirePresented
+        ? "No presenters found who have completed their presentation. Presenters must be checked in via podium scanner before certificates can be generated."
+        : "No accepted abstracts found"
+      return NextResponse.json({ error: errorMsg }, { status: 404 })
     }
 
     // Fetch template if provided, otherwise use default design
