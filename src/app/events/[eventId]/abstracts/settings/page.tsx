@@ -71,7 +71,7 @@ const fileSizePresets = [
   { label: "5 MB", value: 5, description: "PDFs, documents" },
   { label: "10 MB", value: 10, description: "Images, posters" },
   { label: "50 MB", value: 50, description: "Short videos" },
-  { label: "100 MB", value: 100, description: "Standard videos" },
+  { label: "200 MB", value: 200, description: "Full videos (recommended)" },
   { label: "500 MB", value: 500, description: "HD videos" },
 ]
 
