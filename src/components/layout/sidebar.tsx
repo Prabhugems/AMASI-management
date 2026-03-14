@@ -29,10 +29,21 @@ interface SidebarProps {
   onMobileClose?: () => void
 }
 
-const mainNavItems = [
+interface NavItem {
+  name: string
+  icon: React.ComponentType<{ className?: string }>
+  superAdminOnly?: boolean
+  requiresPermission?: string
+  children?: { name: string; href: string }[]
+}
+
+// Navigation items with access control
+// superAdminOnly: true = only visible to super admins (not event-scoped users)
+const mainNavItems: NavItem[] = [
   {
     name: "Dashboard",
     icon: LayoutDashboard,
+    superAdminOnly: true,
     children: [
       { name: "Overview", href: "/" },
     ],
@@ -40,6 +51,7 @@ const mainNavItems = [
   {
     name: "Events",
     icon: Calendar,
+    superAdminOnly: false, // All users can see Events
     children: [
       { name: "All Events", href: "/events" },
       { name: "Create Event", href: "/events/new" },
@@ -48,6 +60,7 @@ const mainNavItems = [
   {
     name: "Members",
     icon: IdCard,
+    superAdminOnly: true,
     children: [
       { name: "All Members", href: "/members" },
       { name: "Applications", href: "/members/applications" },
@@ -58,6 +71,7 @@ const mainNavItems = [
   {
     name: "Faculty",
     icon: GraduationCap,
+    superAdminOnly: true,
     children: [
       { name: "Directory", href: "/faculty" },
       { name: "Add Faculty", href: "/faculty/new" },
@@ -68,6 +82,7 @@ const mainNavItems = [
   {
     name: "Attendees",
     icon: UserCheck,
+    superAdminOnly: true,
     children: [
       { name: "All Attendees", href: "/delegates" },
       { name: "By Event", href: "/delegates?view=by-event" },
@@ -76,6 +91,7 @@ const mainNavItems = [
   {
     name: "Forms",
     icon: FileText,
+    superAdminOnly: true,
     children: [
       { name: "All Forms", href: "/forms" },
     ],
@@ -83,6 +99,8 @@ const mainNavItems = [
   {
     name: "Travel",
     icon: Plane,
+    superAdminOnly: false, // Travel users can see this
+    requiresPermission: "flights", // But only if they have travel permissions
     children: [
       { name: "Dashboard", href: "/travel-dashboard" },
     ],
@@ -90,6 +108,7 @@ const mainNavItems = [
   {
     name: "Team",
     icon: Users,
+    superAdminOnly: true,
     children: [
       { name: "All Members", href: "/team" },
       { name: "Audit Log", href: "/audit" },
@@ -107,7 +126,34 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const [userMenuOpen, setUserMenuOpen] = React.useState(false)
 
   // Get user permissions and info
-  const { userName, userEmail, role, isAdmin, isEventScoped, hasFullAccess, isLoading } = usePermissions()
+  const { userName, userEmail, role, isAdmin, isEventScoped, hasFullAccess, isLoading, permissions } = usePermissions()
+
+  // Filter nav items based on user access
+  const filteredNavItems = React.useMemo((): NavItem[] => {
+    // Super admins see everything
+    if (!isEventScoped && (isAdmin || hasFullAccess)) {
+      return mainNavItems
+    }
+
+    // Event-scoped users only see allowed items
+    return mainNavItems.filter(item => {
+      // Hide super admin only items from event-scoped users
+      if (item.superAdminOnly && isEventScoped) {
+        return false
+      }
+
+      // Check permission requirement
+      if (item.requiresPermission) {
+        // Travel role or specific permission needed
+        if (role === "travel" || permissions.includes(item.requiresPermission as "flights" | "hotels" | "transfers" | "trains" | "speakers" | "program" | "checkin" | "badges" | "certificates" | "registrations" | "abstracts")) {
+          return true
+        }
+        return false
+      }
+
+      return true
+    })
+  }, [isEventScoped, isAdmin, hasFullAccess, role, permissions])
 
   // Get initials from name
   const getInitials = (name: string) => {
@@ -217,7 +263,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-thin">
         <ul className="space-y-1">
-          {mainNavItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const isOpen = openMenus.includes(item.name)
             const isActive = item.children?.some((child) => pathname === child.href)
 

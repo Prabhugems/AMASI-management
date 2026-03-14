@@ -19,8 +19,9 @@ interface SubmissionData {
   title: string
   abstract_text: string
   keywords: string[]
-  category_id: string
-  presentation_type: string // oral, poster, video, either
+  category_id: string // Actually speciality_id (Bariatric, Robotic, etc.)
+  presentation_type: string // Category: paper, video, poster
+  competition_type?: string // best (award competition) or free (certificate only)
 
   // Co-authors
   authors: Author[]
@@ -206,12 +207,13 @@ export async function POST(
       .insert({
         event_id: eventId,
         registration_id: registrationId,
-        category_id: body.category_id,
+        category_id: body.category_id, // This is speciality_id
         abstract_number: abstractNumber,
         title: body.title.trim(),
         abstract_text: body.abstract_text.trim(),
         keywords: body.keywords || [],
-        presentation_type: body.presentation_type,
+        presentation_type: body.presentation_type, // paper, video, poster
+        award_type: body.competition_type || 'free', // best or free (stored in existing award_type column)
         presenting_author_name: body.presenting_author_name.trim(),
         presenting_author_email: body.presenting_author_email.toLowerCase().trim(),
         presenting_author_phone: body.presenting_author_phone,
@@ -224,7 +226,6 @@ export async function POST(
         amasi_membership_number: body.amasi_membership_number,
         declarations_accepted: body.declarations_accepted,
         status: "submitted",
-        workflow_stage: "submission",
         submitted_at: new Date().toISOString(),
       })
       .select()

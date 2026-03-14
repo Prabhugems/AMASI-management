@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button"
 
 const sidebarItems = [
   { title: "All Submissions", href: "", icon: FileText },
-  { title: "Categories", href: "/categories", icon: FolderTree },
+  { title: "Specialities", href: "/categories", icon: FolderTree },
   { title: "Review & Decide", href: "/review", icon: CheckSquare },
   { title: "Reviewers", href: "/reviewers", icon: Users },
   { title: "Settings", href: "/settings", icon: Settings },

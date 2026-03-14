@@ -453,7 +453,7 @@ export default function CategoriesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Abstract Categories</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Abstract Specialities</h1>
           <p className="text-muted-foreground mt-1">
             Define categories or tracks for abstract submissions
           </p>
@@ -476,7 +476,7 @@ export default function CategoriesPage() {
             className="gap-2"
           >
             <Plus className="h-4 w-4" />
-            Add Category
+            Add Speciality
           </Button>
         </div>
       </div>
@@ -484,7 +484,7 @@ export default function CategoriesPage() {
       {/* Info Box */}
       <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-xl">
         <p className="text-sm text-blue-800 dark:text-blue-200">
-          <strong>Categories</strong> help organize abstract submissions by topic or track.
+          <strong>Specialities</strong> help organize abstract submissions by medical speciality (e.g., Bariatric Surgery, Robotic Surgery).
           Common examples: Free Paper, Video, Poster, Young Investigator, Case Report.
           You can set a maximum number of submissions per category if needed.
         </p>
@@ -498,7 +498,7 @@ export default function CategoriesPage() {
       ) : categories.length === 0 ? (
         <div className="text-center py-12 bg-muted/30 rounded-xl border border-dashed">
           <FolderTree className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Categories Yet</h3>
+          <h3 className="text-lg font-semibold mb-2">No Specialities Yet</h3>
           <p className="text-muted-foreground mb-4">
             Create categories to organize abstract submissions
           </p>
@@ -510,7 +510,7 @@ export default function CategoriesPage() {
             className="gap-2"
           >
             <Plus className="h-4 w-4" />
-            Create First Category
+            Create First Speciality
           </Button>
         </div>
       ) : (
@@ -519,7 +519,7 @@ export default function CategoriesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10"></TableHead>
-                <TableHead>Category Name</TableHead>
+                <TableHead>Speciality Name</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="text-center">Type</TableHead>
                 <TableHead className="text-center">Award</TableHead>
@@ -609,12 +609,12 @@ export default function CategoriesPage() {
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingCategory ? "Edit Category" : "Create Category"}
+              {editingCategory ? "Edit Speciality" : "Create Speciality"}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Category Name *</label>
+              <label className="text-sm font-medium">Speciality Name *</label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -971,7 +971,7 @@ export default function CategoriesPage() {
                 {saveMutation.isPending && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
-                {editingCategory ? "Save Changes" : "Create Category"}
+                {editingCategory ? "Save Changes" : "Create Speciality"}
               </Button>
             </DialogFooter>
             {saveMutation.isError && (
@@ -988,7 +988,7 @@ export default function CategoriesPage() {
       <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Category</DialogTitle>
+            <DialogTitle>Delete Speciality</DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground">
             Are you sure you want to delete "{deleteConfirm?.name}"? This action cannot be undone.

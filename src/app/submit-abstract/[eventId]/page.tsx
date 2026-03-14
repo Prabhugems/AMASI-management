@@ -93,9 +93,10 @@ interface FormData {
   // Step 3: Co-authors
   authors: Author[]
 
-  // Step 4: Category
-  category_id: string
-  presentation_type: string
+  // Step 4: Speciality & Category
+  category_id: string // This is actually speciality_id (Bariatric, Robotic, etc.)
+  presentation_type: string // Category: paper, video, poster
+  competition_type: string // best (award) or free (certificate only)
 
   // Step 5: File or Video URL
   file_url: string
@@ -122,7 +123,8 @@ const initialFormData: FormData = {
   keywords: [],
   authors: [],
   category_id: "",
-  presentation_type: "either",
+  presentation_type: "paper", // paper, video, poster
+  competition_type: "free", // best (award) or free (certificate)
   file_url: "",
   file_name: "",
   file_size: 0,
@@ -138,7 +140,7 @@ const steps = [
   { id: 1, name: "Author", icon: User },
   { id: 2, name: "Abstract", icon: FileText },
   { id: 3, name: "Co-Authors", icon: Users },
-  { id: 4, name: "Category", icon: Tag },
+  { id: 4, name: "Speciality", icon: Tag },
   { id: 5, name: "Upload", icon: Upload },
   { id: 6, name: "Submit", icon: CheckSquare },
 ]
@@ -896,131 +898,165 @@ export default function SubmitAbstractPage() {
               </div>
             )}
 
-            {/* Step 4: Category & Presentation Type */}
+            {/* Step 4: Speciality, Category & Competition Type */}
             {currentStep === 4 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-semibold mb-1">Category & Presentation</h2>
+                  <h2 className="text-xl font-semibold mb-1">Speciality & Category</h2>
                   <p className="text-sm text-muted-foreground">
-                    Select the category and your preferred presentation format
+                    Select your speciality, presentation category, and competition type
                   </p>
                 </div>
 
                 <div className="space-y-6">
+                  {/* Speciality Selection */}
                   <div className="space-y-3">
-                    <Label>Abstract Category *</Label>
+                    <Label className="text-base font-semibold">1. Select Speciality *</Label>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Choose the medical speciality that best fits your abstract
+                    </p>
                     <RadioGroup
                       value={formData.category_id}
                       onValueChange={(value) => updateFormData("category_id", value)}
                     >
-                      {categories.map((category) => (
-                        <div
-                          key={category.id}
-                          className={`flex items-start space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-gray-50 ${
-                            formData.category_id === category.id ? "border-primary bg-primary/5" : ""
-                          }`}
-                          onClick={() => updateFormData("category_id", category.id)}
-                        >
-                          <RadioGroupItem value={category.id} id={category.id} className="mt-1" />
-                          <div className="flex-1">
-                            <Label htmlFor={category.id} className="cursor-pointer font-medium">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {categories.map((category) => (
+                          <div
+                            key={category.id}
+                            className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition-colors ${
+                              formData.category_id === category.id ? "border-primary bg-primary/5 ring-1 ring-primary" : ""
+                            }`}
+                            onClick={() => updateFormData("category_id", category.id)}
+                          >
+                            <RadioGroupItem value={category.id} id={category.id} />
+                            <Label htmlFor={category.id} className="cursor-pointer font-medium flex-1">
                               {category.name}
-                              {category.is_award_category && (
-                                <Badge className="ml-2 bg-yellow-100 text-yellow-800">
-                                  {category.award_name || "Award Category"}
-                                </Badge>
-                              )}
                             </Label>
-                            {category.description && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {category.description}
-                              </p>
-                            )}
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </RadioGroup>
                   </div>
 
                   <Separator />
 
+                  {/* Category Selection (Paper/Video/Poster) */}
                   <div className="space-y-3">
-                    <Label>Preferred Presentation Type *</Label>
+                    <Label className="text-base font-semibold">2. Select Category *</Label>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Choose how you want to present your work
+                    </p>
                     <RadioGroup
                       value={formData.presentation_type}
                       onValueChange={(value) => updateFormData("presentation_type", value)}
                     >
-                      {(settings?.presentation_types || ["oral", "poster"]).includes("oral") && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div
-                          className={`flex items-start space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-gray-50 ${
-                            formData.presentation_type === "oral" ? "border-primary bg-primary/5" : ""
+                          className={`flex flex-col items-center justify-center border rounded-xl p-6 cursor-pointer hover:bg-gray-50 transition-all ${
+                            formData.presentation_type === "paper" ? "border-primary bg-primary/5 ring-2 ring-primary" : ""
                           }`}
-                          onClick={() => updateFormData("presentation_type", "oral")}
+                          onClick={() => updateFormData("presentation_type", "paper")}
                         >
-                          <RadioGroupItem value="oral" id="oral" className="mt-1" />
-                          <div>
-                            <Label htmlFor="oral" className="cursor-pointer font-medium">
-                              Oral Presentation
-                            </Label>
-                            <p className="text-sm text-muted-foreground">
-                              Present your work as a podium talk (7-10 minutes)
-                            </p>
-                          </div>
+                          <RadioGroupItem value="paper" id="paper" className="sr-only" />
+                          <FileText className="h-10 w-10 mb-3 text-blue-600" />
+                          <Label htmlFor="paper" className="cursor-pointer font-semibold text-lg">
+                            Paper
+                          </Label>
+                          <p className="text-sm text-muted-foreground text-center mt-1">
+                            Oral presentation (7-10 min)
+                          </p>
                         </div>
-                      )}
 
-                      {(settings?.presentation_types || ["oral", "poster"]).includes("poster") && (
                         <div
-                          className={`flex items-start space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-gray-50 ${
-                            formData.presentation_type === "poster" ? "border-primary bg-primary/5" : ""
-                          }`}
-                          onClick={() => updateFormData("presentation_type", "poster")}
-                        >
-                          <RadioGroupItem value="poster" id="poster" className="mt-1" />
-                          <div>
-                            <Label htmlFor="poster" className="cursor-pointer font-medium">
-                              Poster Presentation
-                            </Label>
-                            <p className="text-sm text-muted-foreground">
-                              Display your work as a poster during poster sessions
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {(settings?.presentation_types || []).includes("video") && (
-                        <div
-                          className={`flex items-start space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-gray-50 ${
-                            formData.presentation_type === "video" ? "border-primary bg-primary/5" : ""
+                          className={`flex flex-col items-center justify-center border rounded-xl p-6 cursor-pointer hover:bg-gray-50 transition-all ${
+                            formData.presentation_type === "video" ? "border-primary bg-primary/5 ring-2 ring-primary" : ""
                           }`}
                           onClick={() => updateFormData("presentation_type", "video")}
                         >
-                          <RadioGroupItem value="video" id="video" className="mt-1" />
-                          <div>
-                            <Label htmlFor="video" className="cursor-pointer font-medium">
-                              Video Presentation
-                            </Label>
-                            <p className="text-sm text-muted-foreground">
-                              Submit a pre-recorded video presentation (max 10 minutes)
+                          <RadioGroupItem value="video" id="video" className="sr-only" />
+                          <Video className="h-10 w-10 mb-3 text-red-600" />
+                          <Label htmlFor="video" className="cursor-pointer font-semibold text-lg">
+                            Video
+                          </Label>
+                          <p className="text-sm text-muted-foreground text-center mt-1">
+                            Pre-recorded video (max 10 min)
+                          </p>
+                        </div>
+
+                        <div
+                          className={`flex flex-col items-center justify-center border rounded-xl p-6 cursor-pointer hover:bg-gray-50 transition-all ${
+                            formData.presentation_type === "poster" ? "border-primary bg-primary/5 ring-2 ring-primary" : ""
+                          }`}
+                          onClick={() => updateFormData("presentation_type", "poster")}
+                        >
+                          <RadioGroupItem value="poster" id="poster" className="sr-only" />
+                          <MapPin className="h-10 w-10 mb-3 text-green-600" />
+                          <Label htmlFor="poster" className="cursor-pointer font-semibold text-lg">
+                            Poster
+                          </Label>
+                          <p className="text-sm text-muted-foreground text-center mt-1">
+                            Poster display session
+                          </p>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <Separator />
+
+                  {/* Competition Type Selection (Best/Free) */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">3. Competition Type *</Label>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Are you submitting for the Best Award competition or just for presentation?
+                    </p>
+                    <RadioGroup
+                      value={formData.competition_type}
+                      onValueChange={(value) => updateFormData("competition_type", value)}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div
+                          className={`flex items-start space-x-3 border rounded-xl p-5 cursor-pointer hover:bg-gray-50 transition-all ${
+                            formData.competition_type === "best" ? "border-yellow-500 bg-yellow-50 ring-2 ring-yellow-500" : ""
+                          }`}
+                          onClick={() => updateFormData("competition_type", "best")}
+                        >
+                          <RadioGroupItem value="best" id="best" className="mt-1" />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor="best" className="cursor-pointer font-semibold text-lg">
+                                Best {formData.presentation_type === "paper" ? "Paper" : formData.presentation_type === "video" ? "Video" : "Poster"}
+                              </Label>
+                              <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                                Award Competition
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-2">
+                              Compete for the Best {formData.presentation_type === "paper" ? "Paper" : formData.presentation_type === "video" ? "Video" : "Poster"} Award. Your abstract will be judged and ranked.
                             </p>
                           </div>
                         </div>
-                      )}
 
-                      <div
-                        className={`flex items-start space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-gray-50 ${
-                          formData.presentation_type === "either" ? "border-primary bg-primary/5" : ""
-                        }`}
-                        onClick={() => updateFormData("presentation_type", "either")}
-                      >
-                        <RadioGroupItem value="either" id="either" className="mt-1" />
-                        <div>
-                          <Label htmlFor="either" className="cursor-pointer font-medium">
-                            No Preference
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Let the committee decide the best format for your abstract
-                          </p>
+                        <div
+                          className={`flex items-start space-x-3 border rounded-xl p-5 cursor-pointer hover:bg-gray-50 transition-all ${
+                            formData.competition_type === "free" ? "border-primary bg-primary/5 ring-2 ring-primary" : ""
+                          }`}
+                          onClick={() => updateFormData("competition_type", "free")}
+                        >
+                          <RadioGroupItem value="free" id="free" className="mt-1" />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor="free" className="cursor-pointer font-semibold text-lg">
+                                Free {formData.presentation_type === "paper" ? "Paper" : formData.presentation_type === "video" ? "Video" : "Poster"}
+                              </Label>
+                              <Badge variant="outline">
+                                Certificate Only
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-2">
+                              Present your work and receive a participation certificate. Not competing for awards.
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </RadioGroup>
@@ -1281,14 +1317,24 @@ export default function SubmitAbstractPage() {
                           <p className="text-muted-foreground">{formData.presenting_author_email}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Category:</span>
+                          <span className="text-muted-foreground">Speciality:</span>
                           <p className="font-medium">
                             {categories.find(c => c.id === formData.category_id)?.name}
                           </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Presentation Type:</span>
+                          <span className="text-muted-foreground">Category:</span>
                           <p className="font-medium capitalize">{formData.presentation_type}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Competition Type:</span>
+                          <p className="font-medium">
+                            {formData.competition_type === "best" ? (
+                              <Badge className="bg-yellow-100 text-yellow-800">Best {formData.presentation_type} (Award Competition)</Badge>
+                            ) : (
+                              <Badge variant="outline">Free {formData.presentation_type} (Certificate Only)</Badge>
+                            )}
+                          </p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Authors:</span>
