@@ -22,6 +22,7 @@ import {
   CalendarDays,
   Mail,
   PieChart,
+  Award,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -32,6 +33,7 @@ const sidebarItems = [
   { title: "Reviewers", href: "/reviewers", icon: Users },
   { title: "Reviewer Tracking", href: "/reviewer-tracking", icon: BarChart3 },
   { title: "Scheduling", href: "/scheduling", icon: CalendarDays },
+  { title: "Certificates", href: "/certificates", icon: Award },
   { title: "Analytics", href: "/analytics", icon: PieChart },
   { title: "Email Templates", href: "/email-templates", icon: Mail },
   { title: "Settings", href: "/settings", icon: Settings },
