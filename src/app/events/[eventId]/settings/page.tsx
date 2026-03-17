@@ -39,6 +39,7 @@ import {
   GraduationCap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface EventSettings {
   id: string
@@ -1295,8 +1296,34 @@ function ModulesSection({ eventId }: { eventId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings])
 
-  const handleSave = async () => {
-    setSaving(true)
+  const [savingCategory, setSavingCategory] = useState<string | null>(null)
+
+  const handleSaveCategory = async (category: typeof MODULE_DEFS[number]) => {
+    setSavingCategory(category.category)
+    try {
+      const categoryData: Record<string, boolean> = {}
+      for (const mod of category.modules) {
+        categoryData[mod.key] = formData[mod.key] ?? mod.defaultOn
+      }
+      const res = await fetch("/api/event-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId, ...categoryData }),
+      })
+      if (!res.ok) throw new Error("Failed to save")
+      await queryClient.invalidateQueries({ queryKey: ["event-module-settings", eventId] })
+      await queryClient.invalidateQueries({ queryKey: ["event-setup-status", eventId] })
+      window.dispatchEvent(new CustomEvent("event-settings-saved"))
+      toast.success(`${category.category} saved`)
+    } catch (error) {
+      console.error("Failed to save module settings:", error)
+      toast.error(`Failed to save ${category.category}`)
+    }
+    setSavingCategory(null)
+  }
+
+  const handleSaveAll = async () => {
+    setSavingCategory("all")
     try {
       const res = await fetch("/api/event-settings", {
         method: "POST",
@@ -1307,10 +1334,12 @@ function ModulesSection({ eventId }: { eventId: string }) {
       await queryClient.invalidateQueries({ queryKey: ["event-module-settings", eventId] })
       await queryClient.invalidateQueries({ queryKey: ["event-setup-status", eventId] })
       window.dispatchEvent(new CustomEvent("event-settings-saved"))
+      toast.success("All modules saved")
     } catch (error) {
       console.error("Failed to save module settings:", error)
+      toast.error("Failed to save modules")
     }
-    setSaving(false)
+    setSavingCategory(null)
   }
 
   const toggleModule = (key: string) => {
@@ -1367,57 +1396,80 @@ function ModulesSection({ eventId }: { eventId: string }) {
         </p>
       </div>
 
-      {MODULE_DEFS.map((category) => (
-        <div key={category.category} className="space-y-3">
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            {category.category}
-          </h4>
-          <div className="grid gap-2">
-            {category.modules.map((mod) => {
-              const isEnabled = formData[mod.key] ?? mod.defaultOn
-              return (
-                <div
-                  key={mod.key}
-                  className={cn(
-                    "flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer",
-                    isEnabled
-                      ? "bg-secondary/30 border-border"
-                      : "bg-muted/20 border-dashed border-border opacity-60"
-                  )}
-                  onClick={() => toggleModule(mod.key)}
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className={cn(
-                      "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                      isEnabled ? "bg-primary/10" : "bg-muted"
-                    )}>
-                      <Blocks className={cn("h-4 w-4", isEnabled ? "text-primary" : "text-muted-foreground")} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm">{mod.label}</p>
-                        {isEnabled && (
-                          <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded-full">On</span>
-                        )}
+      {MODULE_DEFS.map((category) => {
+        const categoryEnabledCount = category.modules.filter(m => formData[m.key] ?? m.defaultOn).length
+        const isSavingThis = savingCategory === category.category
+        return (
+          <div key={category.category} className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                {category.category}
+                <span className="ml-2 text-xs font-normal normal-case">
+                  ({categoryEnabledCount}/{category.modules.length})
+                </span>
+              </h4>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleSaveCategory(category)}
+                disabled={!!savingCategory}
+                className="gap-1.5 h-7 text-xs"
+              >
+                {isSavingThis ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Save className="h-3 w-3" />
+                )}
+                Save
+              </Button>
+            </div>
+            <div className="grid gap-2">
+              {category.modules.map((mod) => {
+                const isEnabled = formData[mod.key] ?? mod.defaultOn
+                return (
+                  <div
+                    key={mod.key}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer",
+                      isEnabled
+                        ? "bg-secondary/30 border-border"
+                        : "bg-muted/20 border-dashed border-border opacity-60"
+                    )}
+                    onClick={() => toggleModule(mod.key)}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className={cn(
+                        "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                        isEnabled ? "bg-primary/10" : "bg-muted"
+                      )}>
+                        <Blocks className={cn("h-4 w-4", isEnabled ? "text-primary" : "text-muted-foreground")} />
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">{mod.description}</p>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{mod.label}</p>
+                          {isEnabled && (
+                            <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded-full">On</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{mod.description}</p>
+                      </div>
                     </div>
+                    <Switch
+                      checked={isEnabled}
+                      onCheckedChange={() => toggleModule(mod.key)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
                   </div>
-                  <Switch
-                    checked={isEnabled}
-                    onCheckedChange={() => toggleModule(mod.key)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       <div className="flex justify-end pt-4 border-t border-border">
-        <Button onClick={handleSave} disabled={saving} className="gap-2">
-          {saving ? (
+        <Button onClick={handleSaveAll} disabled={!!savingCategory} className="gap-2">
+          {savingCategory === "all" ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
               Saving...
@@ -1425,7 +1477,7 @@ function ModulesSection({ eventId }: { eventId: string }) {
           ) : (
             <>
               <Save className="h-4 w-4" />
-              Save Module Settings
+              Save All Modules
             </>
           )}
         </Button>
