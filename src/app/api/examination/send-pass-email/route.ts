@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
     if (type === "withheld") {
       let query = db
         .from("registrations")
-        .select("id, attendee_name, attendee_email, exam_result")
+        .select("id, attendee_name, attendee_email, exam_result, exam_marks")
         .eq("event_id", event_id)
         .eq("exam_result", "withheld")
 
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
       const { data: regs, error } = await query
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-      const eligible = (regs || []).filter((r: any) => r.attendee_email)
+      const eligible = (regs || []).filter((r: any) => r.attendee_email && !r.exam_marks?.email_sent_withheld)
       const skipped = (regs || []).length - eligible.length
       let sent = 0
       let failedCount = 0
@@ -177,31 +177,32 @@ export async function POST(request: NextRequest) {
           subject: "AMASI Membership Required - FMAS Examination Result",
           html,
         })
-        if (result.success) sent++
-        else { failedCount++; errors.push(`${r.attendee_name}: ${result.error}`) }
+        if (result.success) {
+          sent++
+          const marks = r.exam_marks || {}
+          marks.email_sent_withheld = new Date().toISOString()
+          await db.from("registrations").update({ exam_marks: marks }).eq("id", r.id)
+        } else { failedCount++; errors.push(`${r.attendee_name}: ${result.error}`) }
         await delay(250)
       }
 
-      return NextResponse.json({ sent, failed: failedCount, skipped, total: (regs || []).length, errors })
+      return NextResponse.json({ sent, failed: failedCount, skipped, alreadySent: (regs || []).length - eligible.length - skipped, total: (regs || []).length, errors })
     }
 
     if (type === "fail") {
-      // Send fail emails
       let query = db
         .from("registrations")
-        .select("id, attendee_name, attendee_email, exam_result")
+        .select("id, attendee_name, attendee_email, exam_result, exam_marks")
         .eq("event_id", event_id)
         .eq("exam_result", "fail")
 
-      if (registration_ids?.length) {
-        query = query.in("id", registration_ids)
-      }
+      if (registration_ids?.length) query = query.in("id", registration_ids)
 
       const { data: regs, error } = await query
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-      const eligible = (regs || []).filter((r: any) => r.attendee_email)
-      const skipped = (regs || []).length - eligible.length
+      const eligible = (regs || []).filter((r: any) => r.attendee_email && !r.exam_marks?.email_sent_fail)
+      const skipped = (regs || []).filter((r: any) => !r.attendee_email).length
       let sent = 0
       let failedCount = 0
       const errors: string[] = []
@@ -213,12 +214,16 @@ export async function POST(request: NextRequest) {
           subject: "FMAS Examination Result",
           html,
         })
-        if (result.success) sent++
-        else { failedCount++; errors.push(`${r.attendee_name}: ${result.error}`) }
+        if (result.success) {
+          sent++
+          const marks = r.exam_marks || {}
+          marks.email_sent_fail = new Date().toISOString()
+          await db.from("registrations").update({ exam_marks: marks }).eq("id", r.id)
+        } else { failedCount++; errors.push(`${r.attendee_name}: ${result.error}`) }
         await delay(250)
       }
 
-      return NextResponse.json({ sent, failed: failedCount, skipped, total: (regs || []).length, errors })
+      return NextResponse.json({ sent, failed: failedCount, skipped, alreadySent: (regs || []).length - eligible.length - skipped, total: (regs || []).length, errors })
     }
 
     // Send pass emails
@@ -229,19 +234,17 @@ export async function POST(request: NextRequest) {
       .eq("exam_result", "pass")
       .not("convocation_number", "is", null)
 
-    if (registration_ids?.length) {
-      query = query.in("id", registration_ids)
-    }
+    if (registration_ids?.length) query = query.in("id", registration_ids)
 
     const { data: regs, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Filter: must have convocation number AND fillout link
+    // Filter: must have convocation number AND fillout link AND not already sent
     const eligible = (regs || []).filter(
-      (r: any) => r.convocation_number && r.exam_marks?.fillout_link && r.attendee_email
+      (r: any) => r.convocation_number && r.exam_marks?.fillout_link && r.attendee_email && !r.exam_marks?.email_sent_pass
     )
 
-    const skipped = (regs || []).length - eligible.length
+    const skipped = (regs || []).filter((r: any) => !r.convocation_number || !r.exam_marks?.fillout_link || !r.attendee_email).length
     let sent = 0
     let failed = 0
     const errors: string[] = []
@@ -261,6 +264,9 @@ export async function POST(request: NextRequest) {
 
       if (result.success) {
         sent++
+        const marks = { ...r.exam_marks }
+        marks.email_sent_pass = new Date().toISOString()
+        await db.from("registrations").update({ exam_marks: marks }).eq("id", r.id)
       } else {
         failed++
         errors.push(`${r.attendee_name}: ${result.error}`)
@@ -268,7 +274,7 @@ export async function POST(request: NextRequest) {
       await delay(250)
     }
 
-    return NextResponse.json({ sent, failed, skipped, total: (regs || []).length, errors })
+    return NextResponse.json({ sent, failed, skipped, alreadySent: (regs || []).length - eligible.length - skipped, total: (regs || []).length, errors })
   } catch (error) {
     console.error("Error sending pass emails:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

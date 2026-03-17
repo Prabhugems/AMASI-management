@@ -119,7 +119,7 @@ export default function ResultsPage() {
       })
       const result = await res.json()
       if (!res.ok) throw new Error(result.error)
-      alert(`${type === "pass" ? "Pass" : "Fail"} emails sent!\n\nSent: ${result.sent}\nFailed: ${result.failed}\nSkipped: ${result.skipped}${result.errors?.length ? "\n\nErrors:\n" + result.errors.join("\n") : ""}`)
+      alert(`${type === "pass" ? "Pass" : type === "withheld" ? "Withheld" : "Fail"} emails!\n\nSent: ${result.sent}\nAlready sent: ${result.alreadySent || 0}\nFailed: ${result.failed}\nSkipped: ${result.skipped}${result.errors?.length ? "\n\nErrors:\n" + result.errors.join("\n") : ""}`)
     } catch (error: any) {
       alert("Failed: " + error.message)
     }
