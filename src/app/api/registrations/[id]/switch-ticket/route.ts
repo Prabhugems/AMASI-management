@@ -1,5 +1,6 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireEventAndPermission, getEventIdFromRegistration } from "@/lib/auth/api-auth"
 
 // POST - Switch ticket/course for a registration
 export async function POST(
@@ -8,7 +9,16 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    const supabase = await createServerSupabaseClient()
+
+    // Auth: require event access + registrations permission
+    const eventId = await getEventIdFromRegistration(id)
+    if (!eventId) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
+    if (authError) return authError
+
+    const supabase = await createAdminClient()
     const body = await request.json()
 
     const { new_ticket_type_id, notes } = body

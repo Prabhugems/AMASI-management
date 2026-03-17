@@ -19,6 +19,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Auth: require event access
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
+
     let query = (supabase as any)
       .from("ticket_types")
       .select("*")

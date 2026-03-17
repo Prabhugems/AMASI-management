@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { createRefund, RazorpayCredentials } from "@/lib/services/razorpay"
-import { logActivity } from "@/lib/activity-logger"
+import { logActivityFromRequest } from "@/lib/activity-logger"
+import { requireEventAndPermission, getEventIdFromRegistration } from "@/lib/auth/api-auth"
 
 // POST /api/registrations/[id]/cancel - Cancel registration with optional refund
 export async function POST(
@@ -10,6 +11,15 @@ export async function POST(
 ) {
   try {
     const { id } = await params
+
+    // Auth: require event access + registrations permission
+    const eventId = await getEventIdFromRegistration(id)
+    if (!eventId) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
+    if (authError) return authError
+
     const body = await request.json()
     const {
       subtract_tax,
@@ -187,7 +197,7 @@ export async function POST(
     }
 
     // 8. Log activity
-    logActivity({
+    logActivityFromRequest(request, {
       action: "cancel_registration",
       entityType: "registration",
       entityId: id,

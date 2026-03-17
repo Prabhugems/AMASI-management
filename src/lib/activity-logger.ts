@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { getClientIp } from "@/lib/rate-limit"
 
 export type ActivityAction =
   | "create"
@@ -21,6 +22,8 @@ export type ActivityAction =
   | "login"
   | "logout"
   | "bulk_action"
+  | "failed_login"
+  | "permission_denied"
 
 export type EntityType =
   | "registration"
@@ -49,6 +52,8 @@ export interface LogActivityParams {
   metadata?: Record<string, any>
   userEmail?: string
   userName?: string
+  ipAddress?: string
+  userAgent?: string
 }
 
 /**
@@ -69,20 +74,25 @@ export async function logActivity(params: LogActivityParams): Promise<string | n
       userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "System"
     }
 
+    const insertData: Record<string, any> = {
+      user_email: userEmail,
+      user_name: userName,
+      action: params.action,
+      entity_type: params.entityType,
+      entity_id: params.entityId,
+      entity_name: params.entityName,
+      event_id: params.eventId,
+      event_name: params.eventName,
+      description: params.description || generateDescription(params),
+      metadata: params.metadata || {},
+    }
+
+    if (params.ipAddress) insertData.ip_address = params.ipAddress
+    if (params.userAgent) insertData.user_agent = params.userAgent
+
     const { data, error } = await (supabase as any)
       .from("activity_logs")
-      .insert({
-        user_email: userEmail,
-        user_name: userName,
-        action: params.action,
-        entity_type: params.entityType,
-        entity_id: params.entityId,
-        entity_name: params.entityName,
-        event_id: params.eventId,
-        event_name: params.eventName,
-        description: params.description || generateDescription(params),
-        metadata: params.metadata || {},
-      })
+      .insert(insertData)
       .select("id")
       .single()
 
@@ -142,6 +152,20 @@ function formatAction(action: string): string {
     .split("_")
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
+}
+
+/**
+ * Log an activity with IP and user-agent auto-extracted from the request.
+ */
+export async function logActivityFromRequest(
+  request: Request,
+  params: LogActivityParams
+): Promise<string | null> {
+  return logActivity({
+    ...params,
+    ipAddress: params.ipAddress || getClientIp(request),
+    userAgent: params.userAgent || request.headers.get("user-agent") || undefined,
+  })
 }
 
 // For client-side logging, use: import { logActivityClient } from "@/lib/activity-logger-client"

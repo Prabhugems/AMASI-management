@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
-import { logActivity } from "@/lib/activity-logger"
+import { logActivityFromRequest } from "@/lib/activity-logger"
 
 // Generate registration number
 function generateRegistrationNumber(): string {
@@ -283,7 +283,7 @@ export async function POST(request: NextRequest) {
 
     // Log activity
     if (results.success > 0) {
-      logActivity({
+      logActivityFromRequest(request, {
         action: "import",
         entityType: "registration",
         eventId: event_id,

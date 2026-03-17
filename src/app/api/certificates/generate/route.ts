@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
-import { logActivity } from "@/lib/activity-logger"
+import { logActivityFromRequest } from "@/lib/activity-logger"
 
 export const dynamic = "force-dynamic"
 
@@ -334,7 +334,7 @@ export async function POST(request: NextRequest) {
     const pdfBytes = await pdfDoc.save()
 
     // Log activity
-    logActivity({
+    logActivityFromRequest(request, {
       action: registrations.length === 1 ? "generate_certificate" : "bulk_action",
       entityType: "certificate",
       eventId: event_id,

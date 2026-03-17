@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
-import { logActivity } from "@/lib/activity-logger"
+import { logActivityFromRequest } from "@/lib/activity-logger"
 import crypto from "crypto"
 
 export async function POST(
@@ -288,7 +288,7 @@ export async function POST(
     })
 
     // Log to activity_logs
-    await logActivity({
+    await logActivityFromRequest(request, {
       action: "update",
       entityType: "session",
       entityId: assignment_id,

@@ -260,14 +260,17 @@ export async function requireEventAccess(eventId: string): Promise<AuthResult> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: teamMember } = await (adminClient as any)
     .from('team_members')
-    .select('id')
-    .contains('event_ids', [eventId])
+    .select('id, event_ids')
     .eq('user_id', result.user.id)
     .eq('is_active', true)
     .maybeSingle()
 
   if (teamMember) {
-    return result
+    // Empty event_ids means access to all events
+    const eventIds = teamMember.event_ids as string[] | null
+    if (!eventIds || eventIds.length === 0 || eventIds.includes(eventId)) {
+      return result
+    }
   }
 
   return {
@@ -343,6 +346,112 @@ export async function requireFormAccess(formId: string): Promise<AuthResult> {
       { status: 403 }
     )
   }
+}
+
+export type Permission =
+  | 'flights' | 'hotels' | 'transfers' | 'trains'
+  | 'speakers' | 'program' | 'checkin' | 'badges'
+  | 'certificates' | 'registrations' | 'abstracts'
+
+/**
+ * Require both event access and a specific module permission.
+ * Super admins bypass all checks.
+ * Team members with empty permissions have full access.
+ */
+export async function requireEventAndPermission(
+  eventId: string,
+  permission: Permission
+): Promise<AuthResult> {
+  const result = await getApiUser()
+
+  if (result.error) {
+    return result
+  }
+
+  if (!result.user) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+  }
+
+  // Super admins bypass all checks
+  if (result.user.is_super_admin) {
+    return result
+  }
+
+  const adminClient = await createAdminClient()
+
+  // Check event ownership
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: event } = await (adminClient as any)
+    .from('events')
+    .select('id, created_by')
+    .eq('id', eventId)
+    .maybeSingle()
+
+  if (!event) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: 'Event not found' },
+        { status: 404 }
+      )
+    }
+  }
+
+  // Event creators have full access
+  if (event.created_by === result.user.id) {
+    return result
+  }
+
+  // Check team membership, event access, and permissions in a single query
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: teamMember } = await (adminClient as any)
+    .from('team_members')
+    .select('id, event_ids, permissions')
+    .eq('user_id', result.user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!teamMember) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: 'Forbidden - You do not have access to this event' },
+        { status: 403 }
+      )
+    }
+  }
+
+  // Check event access: empty event_ids = all events
+  const eventIds = teamMember.event_ids as string[] | null
+  if (eventIds && eventIds.length > 0 && !eventIds.includes(eventId)) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: 'Forbidden - You do not have access to this event' },
+        { status: 403 }
+      )
+    }
+  }
+
+  // Check module permission: empty permissions = full access
+  const permissions = teamMember.permissions as string[] | null
+  if (permissions && permissions.length > 0 && !permissions.includes(permission)) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: `Forbidden - You do not have '${permission}' permission` },
+        { status: 403 }
+      )
+    }
+  }
+
+  return result
 }
 
 /**

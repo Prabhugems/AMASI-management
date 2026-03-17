@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { sendEmail } from "@/lib/email"
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit"
+import { logActivityFromRequest } from "@/lib/activity-logger"
 
 function getMagicLinkEmailHtml(loginUrl: string): string {
   const year = new Date().getFullYear()
@@ -216,6 +217,12 @@ export async function POST(request: NextRequest) {
     )
 
     if (!rateLimitResult.success) {
+      logActivityFromRequest(request, {
+        action: "failed_login",
+        entityType: "user",
+        description: `Rate limit exceeded for magic link from IP: ${ip}`,
+        metadata: { reason: "rate_limit", ip },
+      })
       return NextResponse.json(
         { error: "Too many requests. Please try again later." },
         {
@@ -282,6 +289,14 @@ export async function POST(request: NextRequest) {
     if (!userResult.data && !teamResult.data) {
       // Return same generic message to avoid email enumeration
       console.warn(`[Magic Link] Blocked login attempt for unknown email: ${normalizedEmail}`)
+      logActivityFromRequest(request, {
+        action: "failed_login",
+        entityType: "user",
+        entityName: normalizedEmail,
+        description: `Blocked magic link request for unknown email: ${normalizedEmail}`,
+        metadata: { reason: "unknown_email", email: normalizedEmail },
+        userEmail: normalizedEmail,
+      })
       return NextResponse.json({ success: true })
     }
 

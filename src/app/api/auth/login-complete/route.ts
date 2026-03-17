@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { mapTeamRoleToPlatformRole } from "@/lib/auth/role-mapping"
+import { getClientIp } from "@/lib/rate-limit"
 
 // POST /api/auth/login-complete
 // Validates user, tracks login, returns redirect URL
@@ -91,6 +92,18 @@ export async function POST(request: NextRequest) {
       console.warn(
         `[Login Complete] Blocked login for unknown user: ${user.email}`
       )
+      // Log blocked login attempt with IP/UA
+      await adminClient.from("activity_logs").insert({
+        user_email: user.email || "",
+        user_name: user.email?.split("@")[0] || "",
+        action: "failed_login",
+        entity_type: "user",
+        entity_name: user.email || "",
+        description: `Blocked login completion for unknown user: ${user.email}`,
+        ip_address: getClientIp(request),
+        user_agent: request.headers.get("user-agent") || null,
+        metadata: { reason: "unknown_user" },
+      })
       return NextResponse.json({ error: "unauthorized" }, { status: 403 })
     }
 
@@ -103,7 +116,7 @@ export async function POST(request: NextRequest) {
         .is("user_id", null)
     }
 
-    // Log login event
+    // Log login event with IP and user-agent
     await adminClient.from("activity_logs").insert({
       user_id: user.id,
       user_email: user.email || "",
@@ -114,6 +127,8 @@ export async function POST(request: NextRequest) {
       entity_id: user.id,
       entity_name: user.email || "",
       description: "User logged in via magic link",
+      ip_address: getClientIp(request),
+      user_agent: request.headers.get("user-agent") || null,
       metadata: {
         login_count: (currentUser?.login_count || 0) + 1,
         method: "magic_link",

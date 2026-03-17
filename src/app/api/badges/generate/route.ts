@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
-import { logActivity } from "@/lib/activity-logger"
+import { logActivityFromRequest } from "@/lib/activity-logger"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
@@ -663,7 +663,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log activity
-    logActivity({
+    logActivityFromRequest(request, {
       action: registrations.length === 1 ? "generate_badge" : "bulk_action",
       entityType: "badge",
       eventId: event_id,
