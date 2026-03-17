@@ -3,6 +3,8 @@ import { getApiUser } from "@/lib/auth/api-auth"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { NextRequest, NextResponse } from "next/server"
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 function generatePassEmail(name: string, convocationNumber: string, formLink: string) {
   const cleanName = name.replace(/^(dr\.?\s*)/i, "").trim()
 
@@ -177,6 +179,7 @@ export async function POST(request: NextRequest) {
         })
         if (result.success) sent++
         else { failedCount++; errors.push(`${r.attendee_name}: ${result.error}`) }
+        await delay(250)
       }
 
       return NextResponse.json({ sent, failed: failedCount, skipped, total: (regs || []).length, errors })
@@ -212,6 +215,7 @@ export async function POST(request: NextRequest) {
         })
         if (result.success) sent++
         else { failedCount++; errors.push(`${r.attendee_name}: ${result.error}`) }
+        await delay(250)
       }
 
       return NextResponse.json({ sent, failed: failedCount, skipped, total: (regs || []).length, errors })
@@ -261,6 +265,7 @@ export async function POST(request: NextRequest) {
         failed++
         errors.push(`${r.attendee_name}: ${result.error}`)
       }
+      await delay(250)
     }
 
     return NextResponse.json({ sent, failed, skipped, total: (regs || []).length, errors })
