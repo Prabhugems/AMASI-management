@@ -665,6 +665,7 @@ export default function RegistrationsPage() {
   const openEditDialog = () => {
     if (selectedRegistration) {
       setEditData({
+        registration_number: selectedRegistration.registration_number,
         attendee_name: selectedRegistration.attendee_name,
         attendee_email: selectedRegistration.attendee_email,
         attendee_phone: selectedRegistration.attendee_phone || "",
@@ -2443,6 +2444,16 @@ export default function RegistrationsPage() {
             <DialogDescription className="sr-only">Edit attendee information</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="edit-reg-number">Registration Number</Label>
+              <Input
+                id="edit-reg-number"
+                value={editData.registration_number || ""}
+                onChange={(e) => setEditData({ ...editData, registration_number: e.target.value })}
+                className="font-mono"
+                placeholder="e.g., 122A1175"
+              />
+            </div>
             <div>
               <Label htmlFor="edit-name">Full Name</Label>
               <Input
