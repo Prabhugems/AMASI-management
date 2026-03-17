@@ -642,6 +642,7 @@ export default function RegistrationsPage() {
       const { error } = await (supabase as any)
         .from("registrations")
         .update({
+          registration_number: data.updates.registration_number,
           attendee_name: data.updates.attendee_name,
           attendee_email: data.updates.attendee_email,
           attendee_phone: data.updates.attendee_phone,
