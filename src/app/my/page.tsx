@@ -36,6 +36,8 @@ import {
   Lock,
   HelpCircle,
   Send,
+  GraduationCap,
+  Download,
 } from "lucide-react"
 import { toast } from "sonner"
 import { FormRenderer } from "@/components/forms/renderer/form-renderer"
@@ -90,6 +92,9 @@ interface Registration {
   badge_url?: string
   certificate_generated_at?: string
   certificate_url?: string
+  convocation_number?: string
+  exam_result?: string
+  exam_marks?: Record<string, any>
   checkin_token?: string
   ticket_type?: { id: string; name: string; price?: number }
   event?: {
@@ -1192,6 +1197,23 @@ export default function DelegatePortalPage() {
           </button>
           )}
 
+          {/* FMAS Result - Pass only */}
+          {registration.exam_result === "pass" && registration.convocation_number && (
+          <button
+            onClick={() => window.open(`/convocation?c=${registration.convocation_number}`, "_blank")}
+            className="bg-white rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all group"
+          >
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:bg-green-200 transition-colors">
+              <GraduationCap className="w-6 h-6 text-green-600" />
+            </div>
+            <h3 className="font-semibold text-gray-900 text-sm mb-1">FMAS Result</h3>
+            <p className="text-xs text-green-600 font-bold">PASS</p>
+            <p className="text-xs text-gray-500 font-mono mt-0.5">{registration.convocation_number}</p>
+          </button>
+          )}
+
+          {/* Certificate Dispatch form is shown as full-width banner below */}
+
           {/* Receipt Download */}
           {portalSettings.show_receipt && (
           <button
@@ -1211,6 +1233,30 @@ export default function DelegatePortalPage() {
           </button>
           )}
         </div>
+
+        {/* Certificate Dispatch - Full width prominent banner */}
+        {registration.exam_result === "pass" && registration.exam_marks?.fillout_link && (
+          <button
+            onClick={() => window.open(registration.exam_marks?.fillout_link, "_blank")}
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl shadow-xl p-6 hover:shadow-2xl hover:from-purple-700 hover:to-indigo-700 transition-all text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <FileText className="w-7 h-7 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-lg">FMAS Certificate Dispatch</h3>
+                <p className="text-white/80 text-sm mt-0.5">Fill your address details for certificate delivery</p>
+                <p className="text-white/60 text-xs mt-1">Mandatory - Please complete this form to receive your certificate</p>
+              </div>
+              <div className="flex-shrink-0">
+                <div className="bg-white/20 rounded-lg px-4 py-2 text-sm font-semibold">
+                  Fill Now &rarr;
+                </div>
+              </div>
+            </div>
+          </button>
+        )}
 
         {/* Pending Payments Section */}
         {pendingPayments.length > 0 && (

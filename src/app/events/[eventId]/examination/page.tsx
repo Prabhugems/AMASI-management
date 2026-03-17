@@ -290,7 +290,8 @@ export default function MarksheetPage() {
   const passed = filtered.filter(r => r.exam_result === "pass").length
   const failed = filtered.filter(r => r.exam_result === "fail").length
   const absent = filtered.filter(r => r.exam_result === "absent").length
-  const pending = total - passed - failed - absent
+  const withheld = filtered.filter(r => r.exam_result === "withheld").length
+  const pending = total - passed - failed - absent - withheld
   const totalMax = examSettings?.mark_columns.reduce((s, c) => s + c.max, 0) || 0
 
   if (settingsLoading || isLoading) {
@@ -331,7 +332,7 @@ export default function MarksheetPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <div className="bg-card border rounded-xl p-4">
           <p className="text-sm text-muted-foreground">Total</p>
           <p className="text-2xl font-bold">{total}</p>
@@ -343,6 +344,10 @@ export default function MarksheetPage() {
         <div className="bg-card border rounded-xl p-4">
           <p className="text-sm text-muted-foreground">Failed</p>
           <p className="text-2xl font-bold text-red-600">{failed}</p>
+        </div>
+        <div className="bg-card border rounded-xl p-4">
+          <p className="text-sm text-muted-foreground">Withheld</p>
+          <p className="text-2xl font-bold text-yellow-600">{withheld}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <p className="text-sm text-muted-foreground">Absent</p>
@@ -467,6 +472,9 @@ export default function MarksheetPage() {
                         )}
                         {reg.exam_result === "absent" && (
                           <span className="text-xs font-medium bg-orange-100 text-orange-700 px-2 py-1 rounded-full">Absent</span>
+                        )}
+                        {reg.exam_result === "withheld" && (
+                          <span className="text-xs font-medium bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Withheld</span>
                         )}
                         {!reg.exam_result && <span className="text-xs text-muted-foreground">Pending</span>}
                       </TableCell>

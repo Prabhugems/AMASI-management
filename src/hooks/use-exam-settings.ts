@@ -12,6 +12,7 @@ export type ExamSettings = {
   pass_marks: number
   mark_columns: MarkColumn[]
   convocation_prefix: string
+  exam_ticket_types?: string[]
 }
 
 const DEFAULT_SETTINGS: ExamSettings = {

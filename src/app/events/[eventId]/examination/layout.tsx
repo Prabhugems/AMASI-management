@@ -15,9 +15,11 @@ import {
   Upload,
   Download,
   Settings,
+  ClipboardList,
 } from "lucide-react"
 
 const sidebarItems = [
+  { title: "Attendance", href: "/attendance", icon: ClipboardList },
   { title: "Marksheet", href: "", icon: FileSpreadsheet },
   { title: "Results", href: "/results", icon: Trophy },
   { title: "Convocation", href: "/convocation", icon: GraduationCap },

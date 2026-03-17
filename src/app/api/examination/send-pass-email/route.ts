@@ -1,0 +1,271 @@
+import { createAdminClient } from "@/lib/supabase/server"
+import { getApiUser } from "@/lib/auth/api-auth"
+import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { NextRequest, NextResponse } from "next/server"
+
+function generatePassEmail(name: string, convocationNumber: string, formLink: string) {
+  const cleanName = name.replace(/^(dr\.?\s*)/i, "").trim()
+
+  const html = `
+<div style="font-family: 'Georgia', serif; max-width: 650px; margin: 0 auto; padding: 40px 30px; color: #1a1a1a; line-height: 1.8;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h2 style="color: #1a5276; margin: 0; font-size: 22px;">Association of Minimal Access Surgeons of India</h2>
+    <p style="color: #666; font-size: 13px; margin: 5px 0 0;">AMASI</p>
+  </div>
+
+  <p>Dear <strong>Dr. ${cleanName},</strong></p>
+
+  <p>Greetings from AMASI.</p>
+
+  <p>I am writing to inform you that you have <strong>successfully passed</strong> your FMAS examination. On behalf of the Association of Minimal Access Surgeons of India (AMASI), I extend my heartfelt congratulations to you on this impressive accomplishment.</p>
+
+  <p>As a mark of your hard work, dedication, and academic excellence, we would like to invite you to attend the upcoming convocation ceremony on <strong>27th August 2026 at Biswa Bangla Convention Centre, Kolkata, India.</strong></p>
+
+  <p>The convocation ceremony is a momentous occasion where we celebrate the achievements of our graduates and formally confer your degree.</p>
+
+  <p>We believe that your attendance at the convocation ceremony will be a memorable experience for you, your family, and the entire academic community. It is an opportunity for you to celebrate your accomplishments, reflect on your academic journey, and recognise the efforts of your mentors, professors, and peers.</p>
+
+  <p>Please note that you will receive a formal invitation with all the details, including the dress code, instructions for registering for the ceremony, and other relevant information. We kindly request that you keep an eye out for the invitation in your mailbox and ensure that you respond by the deadline mentioned.</p>
+
+  <p>Once again, congratulations on your outstanding achievement, and we look forward to seeing you at the convocation ceremony.</p>
+
+  <p style="margin-top: 25px;">
+    Sincerely,<br/>
+    <strong>Dr. Roshan Shetty A</strong><br/>
+    Secretary
+  </p>
+
+  <hr style="border: none; border-top: 2px solid #1a5276; margin: 30px 0;" />
+
+  <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="padding: 8px 0; font-weight: bold; width: 180px;">NAME</td>
+        <td style="padding: 8px 0;">Dr. ${cleanName}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; font-weight: bold;">Convocation Number</td>
+        <td style="padding: 8px 0; font-family: monospace; font-size: 16px; color: #1a5276;"><strong>${convocationNumber}</strong></td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="text-align: center; margin: 25px 0;">
+    <a href="${formLink}" style="display: inline-block; background: #1a5276; color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 6px; font-weight: bold; font-size: 15px;">Click to fill your Convocation Form</a>
+  </div>
+
+  <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-top: 20px;">
+    <p style="margin: 0; font-size: 14px;"><strong>AMASICON 2026 SPECIAL OFFER:</strong> Your registered email will grant a discount of ₹1,000 — valid for one registration only.</p>
+  </div>
+
+  <div style="text-align: center; margin-top: 20px;">
+    <a href="https://v0-faq-redraft.vercel.app/" style="color: #1a5276; font-size: 14px;">Frequently Asked Questions</a>
+  </div>
+</div>`
+
+  return html
+}
+
+function generateWithheldEmail(name: string) {
+  const cleanName = name.replace(/^(dr\.?\s*)/i, "").trim()
+
+  return `
+<div style="font-family: 'Georgia', serif; max-width: 650px; margin: 0 auto; padding: 40px 30px; color: #1a1a1a; line-height: 1.8;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h2 style="color: #1a5276; margin: 0; font-size: 22px;">Association of Minimal Access Surgeons of India</h2>
+    <p style="color: #666; font-size: 13px; margin: 5px 0 0;">AMASI</p>
+  </div>
+
+  <p>Dear <strong>Dr. ${cleanName},</strong></p>
+
+  <p>Greetings from AMASI.</p>
+
+  <p>For the FMAS Examination, <strong>AMASI Membership is mandatory</strong>.</p>
+
+  <p>To obtain your AMASI Membership Number, please click the link below and apply accordingly:</p>
+
+  <div style="text-align: center; margin: 25px 0;">
+    <a href="https://www.amasi.org" style="display: inline-block; background: #1a5276; color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 6px; font-weight: bold; font-size: 15px;">Apply for AMASI Membership</a>
+  </div>
+
+  <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 20px 0;">
+    <p style="margin: 0; font-size: 14px;"><strong>Note:</strong> Gynaecologists should apply as <strong>Associate Life Membership</strong>.</p>
+  </div>
+
+  <p><strong>Your result will be declared only after your AMASI Membership Number is confirmed.</strong></p>
+
+  <p style="margin-top: 25px;">
+    With regards,<br/>
+    <strong>AMASI Head Office</strong>
+  </p>
+</div>`
+}
+
+function generateFailEmail(name: string, venue: string) {
+  const cleanName = name.replace(/^(dr\.?\s*)/i, "").trim()
+
+  return `
+<div style="font-family: 'Georgia', serif; max-width: 650px; margin: 0 auto; padding: 40px 30px; color: #1a1a1a; line-height: 1.8;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h2 style="color: #1a5276; margin: 0; font-size: 22px;">Association of Minimal Access Surgeons of India</h2>
+    <p style="color: #666; font-size: 13px; margin: 5px 0 0;">AMASI</p>
+  </div>
+
+  <p>Dear <strong>Dr. ${cleanName},</strong></p>
+
+  <p>Greetings from AMASI.</p>
+
+  <p>We regret to inform you that you have not succeeded in the Fellowship examination held at <strong>${venue}</strong>.</p>
+
+  <p>Please use the course attendance certificate to get exemption from the Examination fee during your next appearance.</p>
+
+  <p>We encourage you to continue your preparation and wish you the very best for your future attempts.</p>
+
+  <p style="margin-top: 25px;">
+    Sincerely,<br/>
+    <strong>Dr. Roshan Shetty A</strong><br/>
+    Secretary
+  </p>
+</div>`
+}
+
+// POST /api/examination/send-pass-email
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getApiUser()
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (!isEmailEnabled()) {
+      return NextResponse.json({ error: "Email not configured" }, { status: 500 })
+    }
+
+    const { event_id, registration_ids, type = "pass", venue = "Vapi" } = await request.json()
+    if (!event_id) {
+      return NextResponse.json({ error: "event_id is required" }, { status: 400 })
+    }
+
+    const supabase = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabase as any
+
+    if (type === "withheld") {
+      let query = db
+        .from("registrations")
+        .select("id, attendee_name, attendee_email, exam_result")
+        .eq("event_id", event_id)
+        .eq("exam_result", "withheld")
+
+      if (registration_ids?.length) query = query.in("id", registration_ids)
+
+      const { data: regs, error } = await query
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+      const eligible = (regs || []).filter((r: any) => r.attendee_email)
+      const skipped = (regs || []).length - eligible.length
+      let sent = 0
+      let failedCount = 0
+      const errors: string[] = []
+
+      for (const r of eligible) {
+        const html = generateWithheldEmail(r.attendee_name)
+        const result = await sendEmail({
+          to: r.attendee_email,
+          subject: "AMASI Membership Required - FMAS Examination Result",
+          html,
+        })
+        if (result.success) sent++
+        else { failedCount++; errors.push(`${r.attendee_name}: ${result.error}`) }
+      }
+
+      return NextResponse.json({ sent, failed: failedCount, skipped, total: (regs || []).length, errors })
+    }
+
+    if (type === "fail") {
+      // Send fail emails
+      let query = db
+        .from("registrations")
+        .select("id, attendee_name, attendee_email, exam_result")
+        .eq("event_id", event_id)
+        .eq("exam_result", "fail")
+
+      if (registration_ids?.length) {
+        query = query.in("id", registration_ids)
+      }
+
+      const { data: regs, error } = await query
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+      const eligible = (regs || []).filter((r: any) => r.attendee_email)
+      const skipped = (regs || []).length - eligible.length
+      let sent = 0
+      let failedCount = 0
+      const errors: string[] = []
+
+      for (const r of eligible) {
+        const html = generateFailEmail(r.attendee_name, venue)
+        const result = await sendEmail({
+          to: r.attendee_email,
+          subject: "FMAS Examination Result",
+          html,
+        })
+        if (result.success) sent++
+        else { failedCount++; errors.push(`${r.attendee_name}: ${result.error}`) }
+      }
+
+      return NextResponse.json({ sent, failed: failedCount, skipped, total: (regs || []).length, errors })
+    }
+
+    // Send pass emails
+    let query = db
+      .from("registrations")
+      .select("id, attendee_name, attendee_email, convocation_number, exam_marks, exam_result")
+      .eq("event_id", event_id)
+      .eq("exam_result", "pass")
+      .not("convocation_number", "is", null)
+
+    if (registration_ids?.length) {
+      query = query.in("id", registration_ids)
+    }
+
+    const { data: regs, error } = await query
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Filter: must have convocation number AND fillout link
+    const eligible = (regs || []).filter(
+      (r: any) => r.convocation_number && r.exam_marks?.fillout_link && r.attendee_email
+    )
+
+    const skipped = (regs || []).length - eligible.length
+    let sent = 0
+    let failed = 0
+    const errors: string[] = []
+
+    for (const r of eligible) {
+      const html = generatePassEmail(
+        r.attendee_name,
+        r.convocation_number,
+        r.exam_marks.fillout_link
+      )
+
+      const result = await sendEmail({
+        to: r.attendee_email,
+        subject: "Congratulations! You have passed your FMAS Examination",
+        html,
+      })
+
+      if (result.success) {
+        sent++
+      } else {
+        failed++
+        errors.push(`${r.attendee_name}: ${result.error}`)
+      }
+    }
+
+    return NextResponse.json({ sent, failed, skipped, total: (regs || []).length, errors })
+  } catch (error) {
+    console.error("Error sending pass emails:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}

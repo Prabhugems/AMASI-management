@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/reviewer-reminders",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/examination/send-address-reminder",
+      "schedule": "0 9 */3 * *"
     }
   ]
 }

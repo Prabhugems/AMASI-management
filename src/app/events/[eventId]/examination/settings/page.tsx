@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Settings,
   Save,
@@ -25,6 +26,7 @@ export type ExamSettings = {
   pass_marks: number
   mark_columns: MarkColumn[]
   convocation_prefix: string
+  exam_ticket_types?: string[]
 }
 
 const FMAS_DEFAULTS: MarkColumn[] = [
@@ -54,6 +56,20 @@ export default function ExamSettingsPage() {
 
   const [formData, setFormData] = useState<ExamSettings>(defaultSettings)
   const [saving, setSaving] = useState(false)
+
+  // Fetch ticket types for this event
+  const { data: ticketTypes } = useQuery({
+    queryKey: ["event-ticket-types", eventId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("ticket_types")
+        .select("id, name")
+        .eq("event_id", eventId)
+        .order("name")
+      return (data || []) as { id: string; name: string }[]
+    },
+    enabled: !!eventId,
+  })
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["exam-settings", eventId],
@@ -213,6 +229,44 @@ export default function ExamSettingsPage() {
             className="mt-1.5 max-w-xs"
             placeholder="e.g. FMAS, MMAS"
           />
+        </div>
+
+        {/* Exam Ticket Types */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Exam Ticket Types</label>
+          <p className="text-xs text-muted-foreground mb-3">
+            Select which ticket types participate in the examination. Only these candidates will appear in exam pages.
+          </p>
+          {ticketTypes && ticketTypes.length > 0 ? (
+            <div className="space-y-2 p-3 bg-secondary/30 rounded-lg">
+              {ticketTypes.map((tt) => (
+                <label key={tt.id} className="flex items-center gap-3 cursor-pointer">
+                  <Checkbox
+                    checked={formData.exam_ticket_types?.includes(tt.id) || false}
+                    onCheckedChange={(checked) => {
+                      setFormData(prev => {
+                        const current = prev.exam_ticket_types || []
+                        return {
+                          ...prev,
+                          exam_ticket_types: checked
+                            ? [...current, tt.id]
+                            : current.filter(id => id !== tt.id),
+                        }
+                      })
+                    }}
+                  />
+                  <span className="text-sm">{tt.name}</span>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No ticket types found for this event.</p>
+          )}
+          {(!formData.exam_ticket_types || formData.exam_ticket_types.length === 0) && (
+            <p className="text-xs text-orange-600 mt-2">
+              No ticket types selected — all candidates will be shown in exam pages.
+            </p>
+          )}
         </div>
 
         {/* Mark Columns */}

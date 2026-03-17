@@ -21,17 +21,14 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
-    const { data, error } = await db
-      .from("registrations")
-      .select("*")
-      .eq("event_id", eventId)
-      .in("status", ["confirmed", "attended", "completed", "checked_in"])
-      .order("attendee_name")
+    // Check exam settings for ticket type filtering
+    const { data: eventData } = await db
+      .from("events")
+      .select("settings")
+      .eq("id", eventId)
+      .maybeSingle()
 
-    if (error) {
-      console.error("Error fetching exam registrations:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    const examTicketTypes = eventData?.settings?.examination?.exam_ticket_types as string[] | undefined
 
     // Fetch ticket types for this event
     const { data: ticketTypes } = await db
@@ -39,7 +36,47 @@ export async function GET(request: NextRequest) {
       .select("id, name")
       .eq("event_id", eventId)
 
+    // Determine which ticket type IDs to filter by
+    let filterTicketIds: string[] | null = null
+    if (examTicketTypes && examTicketTypes.length > 0) {
+      // Use explicitly configured exam ticket types
+      filterTicketIds = examTicketTypes
+    } else {
+      // Auto-filter: only ticket types with "exam" in the name
+      const examTypes = (ticketTypes || []).filter((t: any) =>
+        t.name?.toLowerCase().includes("exam")
+      )
+      if (examTypes.length > 0) {
+        filterTicketIds = examTypes.map((t: any) => t.id)
+      }
+    }
+
+    let query = db
+      .from("registrations")
+      .select("*")
+      .eq("event_id", eventId)
+      .in("status", ["confirmed", "attended", "completed", "checked_in"])
+      .order("attendee_name")
+
+    if (filterTicketIds && filterTicketIds.length > 0) {
+      query = query.in("ticket_type_id", filterTicketIds)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error("Error fetching exam registrations:", error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
     const ticketMap = new Map((ticketTypes || []).map((t: any) => [t.id, t.name]))
+
+    // Fetch AMASI member numbers by email
+    const emails = (data || []).map((r: any) => r.attendee_email?.toLowerCase()).filter(Boolean)
+    const { data: members } = emails.length > 0
+      ? await db.from("members").select("email, amasi_number").in("email", emails)
+      : { data: [] }
+    const memberMap = new Map((members || []).map((m: any) => [m.email?.toLowerCase(), m.amasi_number]))
 
     // Map to frontend-friendly field names
     const mapped = (data || []).map((r: any) => ({
@@ -49,6 +86,7 @@ export async function GET(request: NextRequest) {
       phone: r.attendee_phone,
       registration_id: r.registration_number,
       ticket_type_name: ticketMap.get(r.ticket_type_id) || null,
+      amasi_number: memberMap.get(r.attendee_email?.toLowerCase()) || null,
     }))
 
     return NextResponse.json(mapped)

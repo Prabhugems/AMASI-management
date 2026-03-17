@@ -3,8 +3,15 @@
 import { useState } from "react"
 import { useParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useExamSettings } from "@/hooks/use-exam-settings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import {
   Table,
   TableBody,
@@ -22,6 +29,7 @@ import {
   Hash,
   Users,
   Wand2,
+  RefreshCw,
 } from "lucide-react"
 
 type Registration = {
@@ -29,51 +37,71 @@ type Registration = {
   registration_id: string
   name: string
   email: string
+  phone: string | null
   exam_result: string | null
   exam_total_marks: number | null
+  exam_marks: Record<string, any> | null
   convocation_number: string | null
   ticket_type_name: string | null
+  amasi_number?: number | null
 }
 
 export default function ConvocationPage() {
   const params = useParams()
   const eventId = params.eventId as string
   const queryClient = useQueryClient()
+  const { data: examSettings } = useExamSettings(eventId)
 
   const [search, setSearch] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState("")
   const [savingId, setSavingId] = useState<string | null>(null)
-  const [autoPrefix, setAutoPrefix] = useState("FMAS")
-  const [autoStartNum, setAutoStartNum] = useState(1)
   const [autoAssigning, setAutoAssigning] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [activeTab, setActiveTab] = useState("exam")
 
-  // Fetch passed candidates via API
-  const { data: registrations, isLoading } = useQuery({
+  const { data: allRegistrations, isLoading } = useQuery({
     queryKey: ["exam-convocation", eventId],
     queryFn: async () => {
       const res = await fetch(`/api/examination/registrations?event_id=${eventId}`)
       if (!res.ok) throw new Error("Failed to fetch registrations")
       const data = await res.json()
-      return (data || [])
-        .filter((r: any) => r.exam_result === "pass")
-        .sort((a: any, b: any) => (b.exam_total_marks || 0) - (a.exam_total_marks || 0))
-        .map((r: any) => ({
-          ...r,
-          ticket_type_name: r.ticket_type_name || null,
-        })) as Registration[]
+      return (data || []).map((r: any) => ({
+        ...r,
+        amasi_number: r.exam_marks?.amasi_number || r.amasi_number || null,
+      })) as Registration[]
     },
     enabled: !!eventId,
   })
 
-  const filtered = (registrations || []).filter((r) => {
+  // Split into exam passed and without_exam
+  const examPassed = (allRegistrations || [])
+    .filter((r) => r.exam_result === "pass" && r.exam_marks?.remarks !== "WITHOUT EXAM")
+    .sort((a, b) => (a.registration_id || "").localeCompare(b.registration_id || ""))
+
+  const withoutExam = (allRegistrations || [])
+    .filter((r) => (r.exam_result === "pass" && r.exam_marks?.remarks === "WITHOUT EXAM") || r.exam_result === "without_exam")
+    .sort((a, b) => (a.registration_id || "").localeCompare(b.registration_id || ""))
+
+  const currentList = activeTab === "exam" ? examPassed : withoutExam
+
+  const filtered = currentList.filter((r) => {
     if (!search) return true
     const s = search.toLowerCase()
-    return r.name?.toLowerCase().includes(s) || r.email?.toLowerCase().includes(s) || r.convocation_number?.toLowerCase().includes(s)
+    return r.name?.toLowerCase().includes(s) || r.email?.toLowerCase().includes(s) || r.convocation_number?.toLowerCase().includes(s) || r.registration_id?.toLowerCase().includes(s)
   })
 
-  const assigned = registrations?.filter(r => r.convocation_number).length || 0
-  const unassigned = (registrations?.length || 0) - assigned
+  const assigned = currentList.filter(r => r.convocation_number).length
+  const unassigned = currentList.length - assigned
+
+  // Get prefix/start from settings
+  const examPrefix = (examSettings as any)?.convocation_prefix || "122AEC"
+  const examStart = (examSettings as any)?.convocation_start || 1001
+  const wecPrefix = (examSettings as any)?.without_exam_prefix || "122WEC"
+  const wecStart = (examSettings as any)?.without_exam_start || 1001
+
+  const currentPrefix = activeTab === "exam" ? examPrefix : wecPrefix
+  const currentStart = activeTab === "exam" ? examStart : wecStart
 
   const saveConvocationNumber = async (regId: string) => {
     setSavingId(regId)
@@ -93,13 +121,13 @@ export default function ConvocationPage() {
   }
 
   const autoAssignNumbers = async () => {
-    if (!registrations?.length) return
+    if (!currentList.length) return
     setAutoAssigning(true)
     try {
-      const unassignedRegs = registrations.filter(r => !r.convocation_number)
+      const unassignedRegs = currentList.filter(r => !r.convocation_number)
       for (let i = 0; i < unassignedRegs.length; i++) {
-        const num = autoStartNum + i + assigned // offset by already assigned
-        const convNum = `${autoPrefix}/${String(num).padStart(4, "0")}`
+        const num = currentStart + assigned + i
+        const convNum = `${currentPrefix}${num}`
         const res = await fetch("/api/examination/registrations", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -114,22 +142,49 @@ export default function ConvocationPage() {
     setAutoAssigning(false)
   }
 
+  const syncAmasiNumbers = async () => {
+    setSyncing(true)
+    try {
+      const res = await fetch("/api/examination/sync-amasi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error)
+      alert(`Synced!\n\nAMASI numbers matched: ${result.matched}\nPhone numbers filled: ${result.phoneFilled || 0}\nNot found: ${result.notFound}${result.notFound > 0 ? "\n\nNot found:\n" + result.notFoundEmails.join("\n") : ""}`)
+      await queryClient.invalidateQueries({ queryKey: ["exam-convocation", eventId] })
+    } catch (error) {
+      console.error("Sync failed:", error)
+    }
+    setSyncing(false)
+  }
+
   const downloadCSV = () => {
     if (!filtered.length) return
-    const headers = ["Convocation No.", "Name", "Email", "Total Marks", "Reg ID"]
-    const rows = filtered.map(r => [
+    const label = activeTab === "exam" ? "Exam Convocation" : "Without Exam Convocation"
+    const headers = ["#", "Convocation No.", "AMASI No.", "Registration No.", "Name", "Email", "Phone", "Ticket Type", "Practical", "VIVA", "Publication", "Total Marks", "Result"]
+    const rows = filtered.map((r, i) => [
+      i + 1,
       r.convocation_number || "",
+      r.amasi_number || "",
+      r.registration_id,
       r.name,
       r.email,
+      r.phone || "",
+      r.ticket_type_name || "",
+      r.exam_marks?.practical ?? "",
+      r.exam_marks?.viva ?? "",
+      r.exam_marks?.publication ?? "",
       r.exam_total_marks ?? "",
-      r.registration_id,
+      r.exam_result === "pass" ? "PASS" : r.exam_result === "without_exam" ? "WITHOUT EXAM" : r.exam_result?.toUpperCase() || "",
     ])
     const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${v}"`).join(","))].join("\n")
     const blob = new Blob([csv], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `convocation-list-${eventId}.csv`
+    a.download = `${label.toLowerCase().replace(/\s/g, "-")}-${eventId}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -146,154 +201,167 @@ export default function ConvocationPage() {
             Assign convocation numbers to passed candidates
           </p>
         </div>
-        <Button onClick={downloadCSV} variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />
-          Download List
-        </Button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-card border rounded-xl p-4 text-center">
-          <p className="text-sm text-muted-foreground">Total Passed</p>
-          <p className="text-2xl font-bold text-green-600">{registrations?.length || 0}</p>
-        </div>
-        <div className="bg-card border rounded-xl p-4 text-center">
-          <p className="text-sm text-muted-foreground">Number Assigned</p>
-          <p className="text-2xl font-bold text-blue-600">{assigned}</p>
-        </div>
-        <div className="bg-card border rounded-xl p-4 text-center">
-          <p className="text-sm text-muted-foreground">Pending</p>
-          <p className="text-2xl font-bold text-orange-600">{unassigned}</p>
+        <div className="flex items-center gap-2">
+          <Button onClick={syncAmasiNumbers} variant="outline" className="gap-2" disabled={syncing}>
+            {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Sync AMASI No.
+          </Button>
+          <Button onClick={downloadCSV} variant="outline" className="gap-2" disabled={!filtered.length}>
+            <Download className="h-4 w-4" />
+            Download List
+          </Button>
         </div>
       </div>
 
-      {/* Auto Assign */}
-      {unassigned > 0 && (
-        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl p-4">
-          <h3 className="font-medium text-sm mb-3 flex items-center gap-2">
-            <Wand2 className="h-4 w-4" />
-            Auto-assign convocation numbers ({unassigned} pending)
-          </h3>
-          <div className="flex items-end gap-3">
-            <div>
-              <label className="text-xs text-muted-foreground">Prefix</label>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="exam" className="gap-2">
+            Exam Passed ({examPassed.length})
+          </TabsTrigger>
+          <TabsTrigger value="without_exam" className="gap-2">
+            Without Exam ({withoutExam.length})
+          </TabsTrigger>
+        </TabsList>
+
+        {["exam", "without_exam"].map((tab) => (
+          <TabsContent key={tab} value={tab}>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-card border rounded-xl p-4 text-center">
+                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold text-green-600">{currentList.length}</p>
+              </div>
+              <div className="bg-card border rounded-xl p-4 text-center">
+                <p className="text-sm text-muted-foreground">Assigned</p>
+                <p className="text-2xl font-bold text-blue-600">{assigned}</p>
+              </div>
+              <div className="bg-card border rounded-xl p-4 text-center">
+                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-2xl font-bold text-orange-600">{unassigned}</p>
+              </div>
+            </div>
+
+            {/* Auto Assign */}
+            {unassigned > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl p-4 mb-6">
+                <h3 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  <Wand2 className="h-4 w-4" />
+                  Auto-assign convocation numbers ({unassigned} pending)
+                </h3>
+                <div className="flex items-center gap-3">
+                  <div className="text-sm">
+                    Series: <span className="font-mono font-bold">{currentPrefix}{currentStart}</span> to <span className="font-mono font-bold">{currentPrefix}{currentStart + unassigned - 1}</span>
+                  </div>
+                  <Button onClick={autoAssignNumbers} disabled={autoAssigning} size="sm" className="gap-2">
+                    {autoAssigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hash className="h-4 w-4" />}
+                    Assign to {unassigned} candidates
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Search */}
+            <div className="relative max-w-sm mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                value={autoPrefix}
-                onChange={(e) => setAutoPrefix(e.target.value)}
-                placeholder="FMAS"
-                className="w-28 h-9"
+                placeholder="Search by name, email, convocation no..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
               />
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Start Number</label>
-              <Input
-                type="number"
-                value={autoStartNum}
-                onChange={(e) => setAutoStartNum(Number(e.target.value))}
-                className="w-24 h-9"
-              />
-            </div>
-            <div className="text-xs text-muted-foreground pb-2">
-              Preview: {autoPrefix}/{String(autoStartNum).padStart(4, "0")}
-            </div>
-            <Button onClick={autoAssignNumbers} disabled={autoAssigning} size="sm" className="gap-2">
-              {autoAssigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hash className="h-4 w-4" />}
-              Assign to {unassigned} candidates
-            </Button>
-          </div>
-        </div>
-      )}
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search candidates..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {/* Table */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-32">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
-          <p>No passed candidates found</p>
-          <p className="text-sm mt-1">Enter marks and results in the Marksheet tab first.</p>
-        </div>
-      ) : (
-        <div className="border rounded-xl overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8">#</TableHead>
-                <TableHead>Candidate</TableHead>
-                <TableHead>Ticket</TableHead>
-                <TableHead className="text-center">Total Marks</TableHead>
-                <TableHead>Convocation Number</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((reg, i) => (
-                <TableRow key={reg.id}>
-                  <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
-                  <TableCell>
-                    <p className="font-medium text-sm">{reg.name}</p>
-                    <p className="text-xs text-muted-foreground">{reg.email}</p>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-xs bg-secondary px-2 py-1 rounded">{reg.ticket_type_name || "-"}</span>
-                  </TableCell>
-                  <TableCell className="text-center font-semibold text-green-600">
-                    {reg.exam_total_marks ?? "-"}
-                  </TableCell>
-                  <TableCell>
-                    {editingId === reg.id ? (
-                      <Input
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        placeholder="e.g. FMAS/0001"
-                        className="w-40 h-8 text-sm"
-                        autoFocus
-                      />
-                    ) : (
-                      <span className="text-sm font-mono">
-                        {reg.convocation_number || <span className="text-muted-foreground">Not assigned</span>}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingId === reg.id ? (
-                      <div className="flex items-center gap-1">
-                        <Button size="sm" onClick={() => saveConvocationNumber(reg.id)} disabled={savingId === reg.id} className="h-7 text-xs">
-                          {savingId === reg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Save className="h-3 w-3 mr-1" />Save</>}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-7 text-xs">Cancel</Button>
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={() => { setEditingId(reg.id); setEditValue(reg.convocation_number || "") }}
-                      >
-                        {reg.convocation_number ? "Edit" : "Assign"}
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+            {/* Table */}
+            {isLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                <p>No candidates found</p>
+              </div>
+            ) : (
+              <div className="border rounded-xl overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-8">#</TableHead>
+                      <TableHead>Reg No.</TableHead>
+                      <TableHead>AMASI No.</TableHead>
+                      <TableHead>Candidate</TableHead>
+                      <TableHead>Mobile</TableHead>
+                      <TableHead>Ticket</TableHead>
+                      <TableHead className="text-center">Marks</TableHead>
+                      <TableHead>Convocation No.</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((reg, i) => (
+                      <TableRow key={reg.id}>
+                        <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
+                        <TableCell className="font-mono text-sm">{reg.registration_id}</TableCell>
+                        <TableCell className="font-mono text-sm">{reg.amasi_number || <span className="text-xs text-red-500">N/A</span>}</TableCell>
+                        <TableCell>
+                          <p className="font-medium text-sm">{reg.name}</p>
+                          <p className="text-xs text-muted-foreground">{reg.email}</p>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{reg.phone || "-"}</TableCell>
+                        <TableCell>
+                          <span className="text-xs bg-secondary px-2 py-1 rounded">{reg.ticket_type_name || "-"}</span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {reg.exam_total_marks != null ? (
+                            <span className="font-semibold text-green-600">{reg.exam_total_marks}/25</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingId === reg.id ? (
+                            <Input
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              placeholder={`${currentPrefix}${currentStart}`}
+                              className="w-40 h-8 text-sm font-mono"
+                              autoFocus
+                            />
+                          ) : (
+                            <span className="text-sm font-mono font-semibold">
+                              {reg.convocation_number || <span className="text-muted-foreground font-normal">Not assigned</span>}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingId === reg.id ? (
+                            <div className="flex items-center gap-1">
+                              <Button size="sm" onClick={() => saveConvocationNumber(reg.id)} disabled={savingId === reg.id} className="h-7 text-xs">
+                                {savingId === reg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Save className="h-3 w-3 mr-1" />Save</>}
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-7 text-xs">Cancel</Button>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => { setEditingId(reg.id); setEditValue(reg.convocation_number || "") }}
+                            >
+                              {reg.convocation_number ? "Edit" : "Assign"}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   )
 }

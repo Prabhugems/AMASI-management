@@ -30,6 +30,7 @@ import {
   AlertCircle,
   Loader2,
   Users,
+  Mail,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -100,9 +101,35 @@ export default function ResultsPage() {
     URL.revokeObjectURL(url)
   }
 
+  const [sendingType, setSendingType] = useState<"pass" | "fail" | "withheld" | null>(null)
+
+  const sendEmails = async (type: "pass" | "fail" | "withheld") => {
+    const msg = type === "pass"
+      ? "Send congratulations email to ALL passed candidates with convocation number and form link?"
+      : type === "withheld"
+      ? "Send AMASI membership required email to ALL withheld candidates?"
+      : "Send fail notification email to ALL failed candidates?"
+    if (!confirm(msg)) return
+    setSendingType(type)
+    try {
+      const res = await fetch("/api/examination/send-pass-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId, type, venue: "Vapi" }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error)
+      alert(`${type === "pass" ? "Pass" : "Fail"} emails sent!\n\nSent: ${result.sent}\nFailed: ${result.failed}\nSkipped: ${result.skipped}${result.errors?.length ? "\n\nErrors:\n" + result.errors.join("\n") : ""}`)
+    } catch (error: any) {
+      alert("Failed: " + error.message)
+    }
+    setSendingType(null)
+  }
+
   const passed = registrations?.filter(r => r.exam_result === "pass").length || 0
   const failed = registrations?.filter(r => r.exam_result === "fail").length || 0
   const absent = registrations?.filter(r => r.exam_result === "absent").length || 0
+  const withheld = registrations?.filter(r => r.exam_result === "withheld").length || 0
 
   return (
     <div className="p-6 space-y-6">
@@ -114,9 +141,23 @@ export default function ResultsPage() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">View and download examination results</p>
         </div>
-        <Button onClick={downloadCSV} variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />Download CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => sendEmails("pass")} variant="default" className="gap-2" disabled={sendingType !== null}>
+            {sendingType === "pass" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+            Send Pass Emails
+          </Button>
+          <Button onClick={() => sendEmails("withheld")} variant="outline" className="gap-2 text-yellow-600 hover:text-yellow-700" disabled={sendingType !== null}>
+            {sendingType === "withheld" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+            Send Withheld Emails
+          </Button>
+          <Button onClick={() => sendEmails("fail")} variant="outline" className="gap-2 text-red-600 hover:text-red-700" disabled={sendingType !== null}>
+            {sendingType === "fail" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+            Send Fail Emails
+          </Button>
+          <Button onClick={downloadCSV} variant="outline" className="gap-2">
+            <Download className="h-4 w-4" />Download CSV
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -199,6 +240,7 @@ export default function ResultsPage() {
                       {reg.exam_result === "pass" && <span className="inline-flex items-center gap-1 text-xs font-medium bg-green-100 text-green-700 px-2 py-1 rounded-full"><CheckCircle2 className="h-3 w-3" />Pass</span>}
                       {reg.exam_result === "fail" && <span className="inline-flex items-center gap-1 text-xs font-medium bg-red-100 text-red-700 px-2 py-1 rounded-full"><AlertCircle className="h-3 w-3" />Fail</span>}
                       {reg.exam_result === "absent" && <span className="text-xs font-medium bg-orange-100 text-orange-700 px-2 py-1 rounded-full">Absent</span>}
+                      {reg.exam_result === "withheld" && <span className="text-xs font-medium bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Withheld</span>}
                     </TableCell>
                     <TableCell className="text-sm">{reg.convocation_number || "-"}</TableCell>
                   </TableRow>
