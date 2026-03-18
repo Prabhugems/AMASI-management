@@ -115,6 +115,17 @@ export async function PATCH(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
+    // Check if convocation_number is being assigned (for Airtable sync)
+    let oldConvNo: string | null = null
+    if (updates.convocation_number) {
+      const { data: existing } = await db
+        .from("registrations")
+        .select("convocation_number")
+        .eq("id", id)
+        .single()
+      oldConvNo = existing?.convocation_number
+    }
+
     const { data, error } = await db
       .from("registrations")
       .update(updates)
@@ -127,9 +138,62 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Auto-create Airtable record when convocation number is newly assigned
+    if (updates.convocation_number && !oldConvNo && data) {
+      try {
+        await syncToAirtable(data, db)
+      } catch (e) {
+        console.error("Airtable sync failed (non-blocking):", e)
+      }
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     console.error("Error in PATCH /api/examination/registrations:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+// Sync convocation record to Airtable and store fillout link back
+async function syncToAirtable(reg: any, db: any) {
+  const pat = process.env.AIRTABLE_PAT?.trim()
+  const baseId = process.env.AIRTABLE_CONVOCATION_BASE?.trim()
+  const tableId = process.env.AIRTABLE_CONVOCATION_TABLE?.trim()
+
+  if (!pat || !baseId || !tableId) return
+
+  const ticketName = reg.ticket_type_id
+    ? (await db.from("ticket_types").select("name").eq("id", reg.ticket_type_id).single())?.data?.name
+    : null
+
+  const res = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${pat}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      records: [{
+        fields: {
+          "CONVOCATION NUMBER": reg.convocation_number,
+          "Name": reg.attendee_name,
+          "AMASI Number": reg.exam_marks?.amasi_number || null,
+          "Category": ticketName || "",
+          "Email": reg.attendee_email || "",
+          "MOBILE": reg.attendee_phone || "",
+        },
+      }],
+    }),
+  })
+
+  const result = await res.json()
+  if (result.records?.[0]?.id) {
+    const recordId = result.records[0].id
+    const filloutLink = `https://forms.fillout.com/t/gz1eLocmB9us?id=${recordId}`
+
+    // Store fillout link back on registration
+    const marks = reg.exam_marks || {}
+    marks.fillout_link = filloutLink
+    await db.from("registrations").update({ exam_marks: marks }).eq("id", reg.id)
   }
 }
