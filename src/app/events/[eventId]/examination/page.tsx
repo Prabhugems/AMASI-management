@@ -73,6 +73,7 @@ export default function MarksheetPage() {
 
   const [search, setSearch] = useState("")
   const [ticketFilter, setTicketFilter] = useState<string>("all")
+  const [resultFilter, setResultFilter] = useState<string>("all")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editMarks, setEditMarks] = useState<Record<string, number | null>>({})
   const [editRemarks, setEditRemarks] = useState("")
@@ -109,6 +110,11 @@ export default function MarksheetPage() {
 
   const filtered = (registrations || []).filter((r) => {
     if (ticketFilter !== "all" && r.ticket_type_id !== ticketFilter) return false
+    if (resultFilter !== "all") {
+      if (resultFilter === "pending") {
+        if (r.exam_result) return false
+      } else if (r.exam_result !== resultFilter) return false
+    }
     if (!search) return true
     const s = search.toLowerCase()
     return r.name?.toLowerCase().includes(s) || r.email?.toLowerCase().includes(s) || r.registration_id?.toLowerCase().includes(s)
@@ -331,32 +337,28 @@ export default function MarksheetPage() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats - Clickable to filter */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <div className="bg-card border rounded-xl p-4">
-          <p className="text-sm text-muted-foreground">Total</p>
-          <p className="text-2xl font-bold">{total}</p>
-        </div>
-        <div className="bg-card border rounded-xl p-4">
-          <p className="text-sm text-muted-foreground">Passed</p>
-          <p className="text-2xl font-bold text-green-600">{passed}</p>
-        </div>
-        <div className="bg-card border rounded-xl p-4">
-          <p className="text-sm text-muted-foreground">Failed</p>
-          <p className="text-2xl font-bold text-red-600">{failed}</p>
-        </div>
-        <div className="bg-card border rounded-xl p-4">
-          <p className="text-sm text-muted-foreground">Withheld</p>
-          <p className="text-2xl font-bold text-yellow-600">{withheld}</p>
-        </div>
-        <div className="bg-card border rounded-xl p-4">
-          <p className="text-sm text-muted-foreground">Absent</p>
-          <p className="text-2xl font-bold text-orange-600">{absent}</p>
-        </div>
-        <div className="bg-card border rounded-xl p-4">
-          <p className="text-sm text-muted-foreground">Pending</p>
-          <p className="text-2xl font-bold text-blue-600">{pending}</p>
-        </div>
+        {[
+          { label: "Total", value: total, color: "", filter: "all" },
+          { label: "Passed", value: passed, color: "text-green-600", filter: "pass" },
+          { label: "Failed", value: failed, color: "text-red-600", filter: "fail" },
+          { label: "Withheld", value: withheld, color: "text-yellow-600", filter: "withheld" },
+          { label: "Absent", value: absent, color: "text-orange-600", filter: "absent" },
+          { label: "Pending", value: pending, color: "text-blue-600", filter: "pending" },
+        ].map((stat) => (
+          <button
+            key={stat.filter}
+            onClick={() => setResultFilter(resultFilter === stat.filter ? "all" : stat.filter)}
+            className={cn(
+              "bg-card border rounded-xl p-4 text-left transition-all hover:shadow-md",
+              resultFilter === stat.filter && stat.filter !== "all" && "ring-2 ring-primary border-primary"
+            )}
+          >
+            <p className="text-sm text-muted-foreground">{stat.label}</p>
+            <p className={cn("text-2xl font-bold", stat.color)}>{stat.value}</p>
+          </button>
+        ))}
       </div>
 
       {/* Filters */}
