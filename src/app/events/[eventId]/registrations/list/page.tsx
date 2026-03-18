@@ -981,6 +981,7 @@ export default function RegistrationsPage() {
       reg.attendee_name.toLowerCase().includes(query) ||
       reg.attendee_email.toLowerCase().includes(query) ||
       reg.registration_number.toLowerCase().includes(query) ||
+      reg.attendee_phone?.toLowerCase().includes(query) ||
       reg.attendee_institution?.toLowerCase().includes(query)
     )
   })
@@ -1480,7 +1481,7 @@ export default function RegistrationsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name, email, registration #..."
+            placeholder="Search by name, email, phone, registration #..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
