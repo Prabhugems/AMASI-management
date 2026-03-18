@@ -19,6 +19,7 @@ import {
   Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { usePermissions } from "@/hooks/use-permissions"
 
@@ -54,10 +55,10 @@ const mainNavItems: NavItem[] = [
     superAdminOnly: false, // All users can see Events
     children: [
       { name: "All Events", href: "/events" },
-      { name: "Create Event", href: "/events/new" },
+      ...(FEATURES.multipleEvents ? [{ name: "Create Event", href: "/events/new" }] : []),
     ],
   },
-  {
+  ...(FEATURES.membership ? [{
     name: "Members",
     icon: IdCard,
     superAdminOnly: true,
@@ -67,8 +68,8 @@ const mainNavItems: NavItem[] = [
       { name: "Add Member", href: "/members/new" },
       { name: "Import", href: "/members/import" },
     ],
-  },
-  {
+  }] : []) as NavItem[],
+  ...(FEATURES.faculty ? [{
     name: "Faculty",
     icon: GraduationCap,
     superAdminOnly: true,
@@ -78,8 +79,8 @@ const mainNavItems: NavItem[] = [
       { name: "Import", href: "/faculty/import" },
       { name: "Reviewers Pool", href: "/reviewers" },
     ],
-  },
-  {
+  }] : []) as NavItem[],
+  ...(FEATURES.attendees ? [{
     name: "Attendees",
     icon: UserCheck,
     superAdminOnly: true,
@@ -87,25 +88,25 @@ const mainNavItems: NavItem[] = [
       { name: "All Attendees", href: "/delegates" },
       { name: "By Event", href: "/delegates?view=by-event" },
     ],
-  },
-  {
+  }] : []) as NavItem[],
+  ...(FEATURES.forms ? [{
     name: "Forms",
     icon: FileText,
     superAdminOnly: true,
     children: [
       { name: "All Forms", href: "/forms" },
     ],
-  },
-  {
+  }] : []) as NavItem[],
+  ...(FEATURES.travel ? [{
     name: "Travel",
     icon: Plane,
-    superAdminOnly: false, // Travel users can see this
-    requiresPermission: "flights", // But only if they have travel permissions
+    superAdminOnly: false,
+    requiresPermission: "flights",
     children: [
       { name: "Dashboard", href: "/travel-dashboard" },
     ],
-  },
-  {
+  }] : []) as NavItem[],
+  ...(FEATURES.team ? [{
     name: "Team",
     icon: Users,
     superAdminOnly: true,
@@ -113,7 +114,7 @@ const mainNavItems: NavItem[] = [
       { name: "All Members", href: "/team" },
       { name: "Audit Log", href: "/audit" },
     ],
-  },
+  }] : []) as NavItem[],
 ]
 
 const quickNavItems = [
@@ -202,11 +203,11 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       <div className="flex h-16 items-center px-4 border-b border-sidebar-border">
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
-            <span className="text-lg font-bold text-white">A</span>
+            <span className="text-lg font-bold text-white">{COMPANY_CONFIG.name.charAt(0)}</span>
           </div>
           {!collapsed && (
             <span className="text-lg font-semibold text-sidebar-foreground">
-              AMASI
+              {COMPANY_CONFIG.name}
             </span>
           )}
         </Link>

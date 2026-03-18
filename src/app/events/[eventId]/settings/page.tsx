@@ -40,6 +40,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface EventSettings {
   id: string
@@ -304,7 +305,7 @@ export default function SettingsPage() {
                     <Input
                       value={formData.name || ""}
                       onChange={(e) => updateField("name", e.target.value)}
-                      placeholder="AMASI Annual Conference 2026"
+                      placeholder={`${COMPANY_CONFIG.name} Annual Conference 2026`}
                       className="mt-1.5"
                     />
                   </div>
@@ -315,7 +316,7 @@ export default function SettingsPage() {
                       <Input
                         value={formData.short_name || ""}
                         onChange={(e) => updateField("short_name", e.target.value)}
-                        placeholder="AMASI 2026"
+                        placeholder={`${COMPANY_CONFIG.name} 2026`}
                         className="mt-1.5"
                       />
                       <p className="text-xs text-muted-foreground mt-1">Used in navigation</p>
@@ -436,7 +437,7 @@ export default function SettingsPage() {
                     <Input
                       value={formData.organized_by || ""}
                       onChange={(e) => updateField("organized_by", e.target.value)}
-                      placeholder="AMASI, Department of Surgery, BJ Medical College"
+                      placeholder={`${COMPANY_CONFIG.name}, Department of Surgery, BJ Medical College`}
                       className="mt-1.5"
                     />
                     <p className="text-xs text-muted-foreground mt-1">Used in invitation letters as &quot;organized by ...&quot;</p>

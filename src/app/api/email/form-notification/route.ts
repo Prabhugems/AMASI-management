@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { escapeHtml } from "@/lib/string-utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface FormNotificationData {
   form_id: string
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
             <!-- Footer -->
             <div style="background-color: #f9fafb; padding: 16px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                This is an automated notification from AMASI Command Center.
+                This is an automated notification from ${COMPANY_CONFIG.name} Command Center.
               </p>
             </div>
           </div>

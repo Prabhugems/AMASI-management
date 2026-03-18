@@ -30,6 +30,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 function DetailRow({ label, value }: { label: string; value: any }) {
   if (!value || value === "N/A") return null
@@ -130,7 +131,7 @@ export default function MemberDetailPage() {
                 Member Details
               </h1>
               <p className="text-sm text-muted-foreground">
-                AMASI #{member.amasi_number}
+                {COMPANY_CONFIG.name} #{member.amasi_number}
               </p>
             </div>
           </div>
@@ -156,7 +157,7 @@ export default function MemberDetailPage() {
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <DetailRow label="Full Name" value={member.name} />
-              <DetailRow label="AMASI Number" value={member.amasi_number} />
+              <DetailRow label={`${COMPANY_CONFIG.name} Number`} value={member.amasi_number} />
               <DetailRow label="Father's Name" value={member.father_name} />
               <DetailRow label="Date of Birth" value={formatDate(member.date_of_birth)} />
               <DetailRow label="Gender" value={member.gender} />
@@ -301,7 +302,7 @@ export default function MemberDetailPage() {
                   <p className="font-medium">Voting Rights</p>
                   <p className="text-sm text-muted-foreground">
                     {member.voting_eligible
-                      ? "Eligible to vote in AMASI elections"
+                      ? `Eligible to vote in ${COMPANY_CONFIG.name} elections`
                       : "Not eligible for voting"}
                   </p>
                 </div>

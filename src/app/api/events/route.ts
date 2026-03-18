@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
 import { eventCreateSchema, formatZodError } from "@/lib/schemas"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { FEATURES } from "@/lib/config"
 
 /**
  * POST /api/events - Create a new event
@@ -23,6 +24,20 @@ export async function POST(request: NextRequest) {
         { error: "Forbidden - Admin access required" },
         { status: 403 }
       )
+    }
+
+    // Single event mode: check if an event already exists
+    if (!FEATURES.multipleEvents) {
+      const adminClient = await createAdminClient()
+      const { count } = await (adminClient as any)
+        .from("events")
+        .select("id", { count: "exact", head: true })
+      if (count && count > 0) {
+        return NextResponse.json(
+          { error: "Only one event is allowed in this deployment" },
+          { status: 403 }
+        )
+      }
     }
 
     // Parse and validate body

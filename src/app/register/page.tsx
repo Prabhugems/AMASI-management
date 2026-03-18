@@ -19,6 +19,7 @@ import {
   ChevronDown,
   SlidersHorizontal,
 } from "lucide-react"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface PublicEvent {
   id: string
@@ -505,7 +506,7 @@ export default function RegisterPage() {
         >
           Upcoming{" "}
           <span className="bg-gradient-primary bg-clip-text text-transparent">
-            AMASI Events
+            {COMPANY_CONFIG.name} Events
           </span>
         </h1>
         <p
@@ -515,7 +516,7 @@ export default function RegisterPage() {
           `}
         >
           Register for conferences, workshops, and courses organized by the
-          Association of Minimal Access Surgeons of India
+          {COMPANY_CONFIG.fullName}
         </p>
       </div>
 

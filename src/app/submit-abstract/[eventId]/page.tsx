@@ -36,6 +36,7 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 import {
   User,
   FileText,
@@ -723,15 +724,15 @@ export default function SubmitAbstractPage() {
                   </div>
 
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="membership">AMASI Membership Number (if applicable)</Label>
+                    <Label htmlFor="membership">{COMPANY_CONFIG.name} Membership Number (if applicable)</Label>
                     <Input
                       id="membership"
-                      placeholder="AMASI-XXXX"
+                      placeholder={`${COMPANY_CONFIG.name}-XXXX`}
                       value={formData.amasi_membership_number}
                       onChange={(e) => updateFormData("amasi_membership_number", e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      AMASI members may be eligible for reduced submission fees
+                      {COMPANY_CONFIG.name} members may be eligible for reduced submission fees
                     </p>
                   </div>
                 </div>

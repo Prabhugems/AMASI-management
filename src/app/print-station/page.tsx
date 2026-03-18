@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Download, Monitor, Apple, CheckCircle, Printer, ScanLine, Settings, HelpCircle } from "lucide-react"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 export default function PrintStationDownloadPage() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
@@ -49,7 +50,7 @@ export default function PrintStationDownloadPage() {
     },
     {
       question: "What is the Server URL?",
-      answer: "This is your AMASI event management website URL (e.g., https://amasi-events.vercel.app). This is where the app fetches registration data from."
+      answer: `This is your ${COMPANY_CONFIG.name} event management website URL (e.g., https://amasi-events.vercel.app). This is where the app fetches registration data from.`
     },
     {
       question: "Can I use a USB barcode scanner?",
@@ -71,7 +72,7 @@ export default function PrintStationDownloadPage() {
               <Printer className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">AMASI Print Station</h1>
+              <h1 className="text-2xl font-bold text-white">{COMPANY_CONFIG.name} Print Station</h1>
               <p className="text-slate-400">On-spot Badge Printing Application</p>
             </div>
           </div>
@@ -113,7 +114,7 @@ export default function PrintStationDownloadPage() {
               </div>
               <div>
                 <div className="text-white font-semibold text-lg">Mac App</div>
-                <div className="text-slate-400 text-sm">AMASI Print Station-1.0.0-arm64.dmg</div>
+                <div className="text-slate-400 text-sm">{COMPANY_CONFIG.name} Print Station-1.0.0-arm64.dmg</div>
                 <div className="text-emerald-400 text-xs mt-1">✓ Built and ready</div>
               </div>
             </div>
@@ -261,7 +262,7 @@ export default function PrintStationDownloadPage() {
 
         {/* Support */}
         <div className="mt-12 text-center text-slate-500 text-sm">
-          Need help? Contact support at <a href="mailto:support@amasi.org" className="text-indigo-400 hover:underline">support@amasi.org</a>
+          Need help? Contact support at <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-indigo-400 hover:underline">{COMPANY_CONFIG.supportEmail}</a>
         </div>
       </div>
     </div>

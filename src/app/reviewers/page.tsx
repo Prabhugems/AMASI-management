@@ -56,6 +56,7 @@ import {
   ExternalLink,
 } from "lucide-react"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 import { CSVImportDynamic } from "@/components/ui/csv-import-dynamic"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -421,7 +422,7 @@ export default function ReviewersPoolPage() {
   }
 
   const exportCSV = () => {
-    const headers = ["Name", "Email", "Phone", "Institution", "City", "Specialty", "Experience", "AMASI #", "Status", "Available"]
+    const headers = ["Name", "Email", "Phone", "Institution", "City", "Specialty", "Experience", `${COMPANY_CONFIG.name} #`, "Status", "Available"]
     const rows = reviewers.map(r => [
       r.name, r.email, r.phone || "", r.institution || "", r.city || "",
       r.specialty || "", r.years_of_experience || "", r.amasi_membership_number || "",
@@ -494,7 +495,7 @@ export default function ReviewersPoolPage() {
                 ) : (
                   <Sparkles className="h-4 w-4 mr-2" />
                 )}
-                Sync AMASI
+                Sync {COMPANY_CONFIG.name}
               </Button>
 
               <Button variant="outline" size="sm" onClick={exportCSV}>
@@ -543,7 +544,7 @@ export default function ReviewersPoolPage() {
             >
               <Award className="h-4 w-4" />
               <span>{stats.members}</span>
-              <span className="opacity-70">AMASI Members</span>
+              <span className="opacity-70">{COMPANY_CONFIG.name} Members</span>
             </button>
 
             <button
@@ -595,7 +596,7 @@ export default function ReviewersPoolPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Search name, email, AMASI #..."
+                placeholder={`Search name, email, ${COMPANY_CONFIG.name} #...`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 bg-white/80 border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
@@ -654,7 +655,7 @@ export default function ReviewersPoolPage() {
                         {reviewer.is_amasi_member && (
                           <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-violet-100 text-violet-700 rounded-full">
                             <Award className="h-2.5 w-2.5" />
-                            AMASI
+                            {COMPANY_CONFIG.name}
                           </span>
                         )}
                         {reviewer.is_amasi_faculty && (
@@ -755,7 +756,7 @@ export default function ReviewersPoolPage() {
                         {selectedReviewer.is_amasi_member && (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-semibold bg-violet-100 text-violet-700 rounded-full">
                             <Award className="h-4 w-4" />
-                            AMASI #{selectedReviewer.amasi_membership_number}
+                            {COMPANY_CONFIG.name} #{selectedReviewer.amasi_membership_number}
                           </span>
                         )}
                         {selectedReviewer.is_amasi_faculty && (

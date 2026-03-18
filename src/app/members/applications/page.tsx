@@ -40,6 +40,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 import {
   SlideOver,
   SlideOverSection,
@@ -110,7 +111,7 @@ export default function ApplicationsPage() {
 
   const approveMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedApp || !amasiNumber) throw new Error("AMASI number is required")
+      if (!selectedApp || !amasiNumber) throw new Error(`${COMPANY_CONFIG.name} number is required`)
       const res = await fetch(`/api/membership/applications/${selectedApp.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -290,7 +291,7 @@ export default function ApplicationsPage() {
                   </div>
                   {selectedApp.assigned_amasi_number && (
                     <Badge variant="outline" className="font-mono">
-                      AMASI #{selectedApp.assigned_amasi_number}
+                      {COMPANY_CONFIG.name} #{selectedApp.assigned_amasi_number}
                     </Badge>
                   )}
                 </div>
@@ -397,15 +398,15 @@ export default function ApplicationsPage() {
               Approve Application
             </DialogTitle>
             <DialogDescription>
-              Approve {selectedApp?.name}&apos;s membership application and assign an AMASI number.
+              Approve {selectedApp?.name}&apos;s membership application and assign a {COMPANY_CONFIG.name} number.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>AMASI Number *</Label>
+              <Label>{COMPANY_CONFIG.name} Number *</Label>
               <Input
                 type="number"
-                placeholder="Enter AMASI number to assign"
+                placeholder={`Enter ${COMPANY_CONFIG.name} number to assign`}
                 value={amasiNumber}
                 onChange={(e) => setAmasiNumber(e.target.value)}
               />

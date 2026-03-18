@@ -44,6 +44,7 @@ import {
   ArrowRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -283,7 +284,7 @@ export default function AddFacultyFromMemberPage() {
                 <div>
                   <h1 className="text-2xl font-bold text-foreground">Add Faculty from Members</h1>
                   <p className="text-sm text-muted-foreground">
-                    Select an AMASI member to add as faculty
+                    Select a {COMPANY_CONFIG.name} member to add as faculty
                   </p>
                 </div>
               </div>
@@ -317,7 +318,7 @@ export default function AddFacultyFromMemberPage() {
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, email, institution, or AMASI number..."
+                  placeholder={`Search by name, email, institution, or ${COMPANY_CONFIG.name} number...`}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10 h-9"
@@ -422,7 +423,7 @@ export default function AddFacultyFromMemberPage() {
           open={!!selectedMember}
           onClose={() => setSelectedMember(null)}
           title={selectedMember?.name || "Member Details"}
-          subtitle={selectedMember?.amasi_number ? `AMASI #${selectedMember.amasi_number}` : undefined}
+          subtitle={selectedMember?.amasi_number ? `${COMPANY_CONFIG.name} #${selectedMember.amasi_number}` : undefined}
           width="lg"
           showOverlay={false}
         >
@@ -456,7 +457,7 @@ export default function AddFacultyFromMemberPage() {
                     <p className="text-3xl font-bold text-primary font-mono">
                       #{selectedMember.amasi_number || "—"}
                     </p>
-                    <p className="text-sm text-muted-foreground">AMASI Membership Number</p>
+                    <p className="text-sm text-muted-foreground">{COMPANY_CONFIG.name} Membership Number</p>
                   </div>
                 </SlideOverSection>
 
@@ -561,7 +562,7 @@ export default function AddFacultyFromMemberPage() {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">AMASI Link</span>
+                      <span className="text-muted-foreground">{COMPANY_CONFIG.name} Link</span>
                       <span className="font-medium font-mono">#{selectedMember.amasi_number || "—"}</span>
                     </div>
                   </div>
@@ -656,7 +657,7 @@ export default function AddFacultyFromMemberPage() {
                   <li>• Name: {salutation ? `${salutation} ` : ""}{selectedMember.name}</li>
                   <li>• Email: {selectedMember.email}</li>
                   <li>• Institution: {selectedMember.institution || "Not set"}</li>
-                  <li>• AMASI Link: #{selectedMember.amasi_number}</li>
+                  <li>• {COMPANY_CONFIG.name} Link: #{selectedMember.amasi_number}</li>
                   {specialty && <li>• Specialty: {specialty}</li>}
                 </ul>
               </div>

@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface EventSettings {
   id?: string
@@ -370,7 +371,7 @@ export default function AttendeesBuyersSettingsPage() {
                       FMAS Skill Course: <code className="bg-background px-1 rounded">FMAS108-0001</code>
                     </div>
                     <div>
-                      AMASICON: <code className="bg-background px-1 rounded">AMASI26-1001</code>
+                      AMASICON: <code className="bg-background px-1 rounded">{COMPANY_CONFIG.name}26-1001</code>
                     </div>
                     <div>
                       Convocation: <code className="bg-background px-1 rounded">CONV25-001</code>

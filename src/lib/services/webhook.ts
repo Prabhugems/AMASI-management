@@ -4,6 +4,7 @@
  */
 
 import crypto from "crypto"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 export interface WebhookConfig {
   url: string
@@ -50,7 +51,7 @@ export async function sendWebhook(
   // Prepare headers
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "User-Agent": "AMASI-Communications/1.0",
+    "User-Agent": `${COMPANY_CONFIG.name}-Communications/1.0`,
     ...config.headers,
   }
 
@@ -182,7 +183,7 @@ export async function testWebhook(config: WebhookConfig): Promise<SendResult> {
     timestamp: new Date().toISOString(),
     metadata: {
       test: true,
-      message: "This is a test webhook from AMASI Communications Hub",
+      message: `This is a test webhook from ${COMPANY_CONFIG.name} Communications Hub`,
     },
   })
 }

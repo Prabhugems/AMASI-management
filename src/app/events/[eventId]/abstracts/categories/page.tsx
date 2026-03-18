@@ -39,23 +39,24 @@ import {
   FileDown,
   Sparkles,
 } from "lucide-react"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 // Category templates for different event types
 const CATEGORY_TEMPLATES = {
   amasicon2026: {
-    name: "AMASICON 2026 Awards",
+    name: `${COMPANY_CONFIG.name}CON 2026 Awards`,
     categories: [
       {
         name: "Best Paper Award",
-        description: "Best original research paper presentation. AMASI Medal for winner.",
+        description: `Best original research paper presentation. ${COMPANY_CONFIG.name} Medal for winner.`,
         submission_type: "paper",
         allowed_file_types: ["pdf"],
         required_file: true,
         is_award_category: true,
-        award_name: "AMASI Medal",
+        award_name: `${COMPANY_CONFIG.name} Medal`,
         eligibility_rules: {},
         declarations: [
-          { text: "This paper has not won any award previously at any AMASI conference", required: true },
+          { text: "This paper has not won any award previously at any ${COMPANY_CONFIG.name} conference", required: true },
           { text: "I am the primary author and will present this paper in person", required: true },
           { text: "No proxy presentation will be done", required: true },
           { text: "The abstract does not contain the name of my institution or co-authors", required: true },
@@ -71,15 +72,15 @@ const CATEGORY_TEMPLATES = {
       },
       {
         name: "Best Institutional Video",
-        description: "Best institutional surgical/procedure video. AMASI Medal for winner.",
+        description: `Best institutional surgical/procedure video. ${COMPANY_CONFIG.name} Medal for winner.`,
         submission_type: "video",
         allowed_file_types: ["mp4"],
         required_file: true,
         is_award_category: true,
-        award_name: "AMASI Medal",
+        award_name: `${COMPANY_CONFIG.name} Medal`,
         eligibility_rules: {},
         declarations: [
-          { text: "This video has not won any award previously at any AMASI conference", required: true },
+          { text: "This video has not won any award previously at any ${COMPANY_CONFIG.name} conference", required: true },
           { text: "I am the primary author and will present this video in person", required: true },
           { text: "No proxy presentation will be done", required: true },
           { text: "The video is original and produced by my institution", required: true },
@@ -103,7 +104,7 @@ const CATEGORY_TEMPLATES = {
         award_name: "Dr Palanivelu Medal",
         eligibility_rules: {},
         declarations: [
-          { text: "This video has not won any award previously at any AMASI conference", required: true },
+          { text: "This video has not won any award previously at any ${COMPANY_CONFIG.name} conference", required: true },
           { text: "I am the primary author and will present this video in person", required: true },
           { text: "No proxy presentation will be done", required: true },
           { text: "I understand that the decision of the judges is final", required: true },
@@ -118,17 +119,17 @@ const CATEGORY_TEMPLATES = {
       },
       {
         name: "Young Scholar Award",
-        description: "For PG residents, fellows, and senior residents under 40 years. AMASI Medal for winner.",
+        description: `For PG residents, fellows, and senior residents under 40 years. ${COMPANY_CONFIG.name} Medal for winner.`,
         submission_type: "paper",
         allowed_file_types: ["pdf"],
         required_file: true,
         is_award_category: true,
-        award_name: "AMASI Medal",
+        award_name: `${COMPANY_CONFIG.name} Medal`,
         eligibility_rules: { max_age: 40, require_dob: true, allowed_positions: ["PG Resident", "Fellow", "Senior Resident"] },
         declarations: [
           { text: "I am under 40 years of age as of the date of the conference", required: true },
           { text: "I am currently a PG Resident, Fellow, or Senior Resident", required: true },
-          { text: "This paper has not won any award previously at any AMASI conference", required: true },
+          { text: "This paper has not won any award previously at any ${COMPANY_CONFIG.name} conference", required: true },
           { text: "I am the primary author and will present this paper in person", required: true },
           { text: "No proxy presentation will be done", required: true },
           { text: "The abstract does not contain the name of my institution or co-authors", required: true },
@@ -144,15 +145,15 @@ const CATEGORY_TEMPLATES = {
       },
       {
         name: "Best Poster Award",
-        description: "Best poster/ePoster presentation. AMASI Medal for winner.",
+        description: `Best poster/ePoster presentation. ${COMPANY_CONFIG.name} Medal for winner.`,
         submission_type: "poster",
         allowed_file_types: ["pdf"],
         required_file: true,
         is_award_category: true,
-        award_name: "AMASI Medal",
+        award_name: `${COMPANY_CONFIG.name} Medal`,
         eligibility_rules: {},
         declarations: [
-          { text: "This poster has not won any award previously at any AMASI conference", required: true },
+          { text: "This poster has not won any award previously at any ${COMPANY_CONFIG.name} conference", required: true },
           { text: "I am the primary author and will present this poster in person", required: true },
           { text: "No proxy presentation will be done", required: true },
           { text: "The abstract does not contain the name of my institution or co-authors", required: true },
@@ -188,7 +189,7 @@ const CATEGORY_TEMPLATES = {
     ],
   },
   amasi: {
-    name: "AMASI Medical Conference (Basic)",
+    name: `${COMPANY_CONFIG.name} Medical Conference (Basic)`,
     categories: [
       { name: "Free Paper", description: "Original research presentations (7 min + 3 min discussion)", submission_type: "paper", allowed_file_types: ["pdf"], required_file: false, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
       { name: "Video", description: "Surgical/procedure videos (max 7 min)", submission_type: "video", allowed_file_types: ["mp4"], required_file: true, is_award_category: false, award_name: null, eligibility_rules: {}, declarations: [] },
@@ -694,7 +695,7 @@ export default function CategoriesPage() {
                 <Input
                   value={formData.award_name}
                   onChange={(e) => setFormData({ ...formData, award_name: e.target.value })}
-                  placeholder="e.g. AMASI Medal"
+                  placeholder={`e.g. ${COMPANY_CONFIG.name} Medal`}
                   className="mt-1"
                 />
               </div>

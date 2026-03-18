@@ -24,6 +24,7 @@ import {
   UserCheck,
 } from "lucide-react"
 import { useState } from "react"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface FormSettingsProps {
   form: Form
@@ -288,13 +289,13 @@ export function FormSettings({ form, onUpdate }: FormSettingsProps) {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="is_member_form" className="flex items-center gap-2">
-                AMASI Member Form
+                {COMPANY_CONFIG.name} Member Form
                 <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">
                   Membership
                 </span>
               </Label>
               <p className="text-xs text-muted-foreground">
-                Verify AMASI membership via email before proceeding
+                Verify {COMPANY_CONFIG.name} membership via email before proceeding
               </p>
             </div>
             <Switch

@@ -41,6 +41,7 @@ import {
   Medal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface Abstract {
   id: string
@@ -589,10 +590,10 @@ export default function AbstractDetailPage() {
             </div>
           )}
 
-          {/* AMASI Details */}
+          {/* Membership Details */}
           {(abstract.amasi_membership_number || abstract.submitter_metadata?.date_of_birth || (abstract.declarations_accepted && abstract.declarations_accepted.length > 0)) && (
             <div className="bg-card border rounded-xl p-6">
-              <h2 className="font-semibold mb-4">AMASI Details</h2>
+              <h2 className="font-semibold mb-4">{COMPANY_CONFIG.name} Details</h2>
               <div className="space-y-3 text-sm">
                 {abstract.amasi_membership_number && (
                   <div className="flex justify-between">

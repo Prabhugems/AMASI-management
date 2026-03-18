@@ -10,6 +10,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { FormField } from "@/lib/types"
 import { FieldPreview } from "./field-preview"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 import { GripVertical, Trash2, Copy, Plus, Sparkles, MousePointerClick } from "lucide-react"
 
 interface SortableFieldProps {
@@ -308,7 +309,7 @@ export function Canvas({
       {/* Footer */}
       <div className="text-center pb-6">
         <p className="text-sm text-gray-400 font-medium">
-          Powered by <span className="text-indigo-500 font-bold">AMASI Forms</span>
+          Powered by <span className="text-indigo-500 font-bold">{COMPANY_CONFIG.name} Forms</span>
         </p>
       </div>
     </div>

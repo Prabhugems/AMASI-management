@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 export type TemplateType =
   | "registration_confirmation"
@@ -230,8 +231,8 @@ export function buildRegistrationVariables(
     event_date: eventDate,
     venue_name: event.venue_name || "",
     venue_address: event.venue_address || event.city || "",
-    organizer_name: "AMASI",
-    organizer_email: organizerEmail || "support@amasi.org",
+    organizer_name: COMPANY_CONFIG.name,
+    organizer_email: organizerEmail || COMPANY_CONFIG.supportEmail,
     year: new Date().getFullYear().toString(),
   }
 }
@@ -294,8 +295,8 @@ export function buildSpeakerVariables(
     response_url: responseUrl,
     event_name: event.name,
     venue_name: event.venue_name || "",
-    organizer_name: "AMASI",
-    organizer_email: organizerEmail || "support@amasi.org",
+    organizer_name: COMPANY_CONFIG.name,
+    organizer_email: organizerEmail || COMPANY_CONFIG.supportEmail,
     year: new Date().getFullYear().toString(),
   }
 }
@@ -372,8 +373,8 @@ export function buildAbstractVariables(
     event_date: formatDate(event.start_date),
     venue_address: event.city || "",
     portal_url: portalUrl || "",
-    organizer_name: "AMASI",
-    organizer_email: organizerEmail || "support@amasi.org",
+    organizer_name: COMPANY_CONFIG.name,
+    organizer_email: organizerEmail || COMPANY_CONFIG.supportEmail,
     year: new Date().getFullYear().toString(),
   }
 }

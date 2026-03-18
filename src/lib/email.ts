@@ -3,6 +3,8 @@
  * Supports multiple providers: Resend, Blastable
  */
 
+import { COMPANY_CONFIG } from "@/lib/config"
+
 type EmailOptions = {
   to: string | string[]
   subject: string
@@ -83,7 +85,7 @@ async function sendViaResend(options: EmailOptions): Promise<SendResult> {
     return { success: false, error: "RESEND_API_KEY not configured" }
   }
 
-  const fromEmail = options.from || process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
+  const fromEmail = options.from || process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`
 
   try {
     console.log(`[Resend] Sending from "${fromEmail}" to "${options.to}" subject="${options.subject}"`)

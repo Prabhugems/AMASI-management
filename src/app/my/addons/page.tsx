@@ -15,6 +15,7 @@ import {
   Ticket,
   MapPin,
 } from "lucide-react"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface Addon {
   id: string
@@ -225,7 +226,7 @@ function PurchaseAddonsContent() {
         key: orderData.key,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: "AMASI",
+        name: COMPANY_CONFIG.name,
         description: `Add-ons for ${registration.registration_number}`,
         order_id: orderData.order_id,
         prefill: {

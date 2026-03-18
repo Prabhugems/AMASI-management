@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { getApiUser } from "@/lib/auth/api-auth"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { COMPANY_CONFIG } from "@/lib/config"
 import { NextRequest, NextResponse } from "next/server"
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -11,15 +12,15 @@ function generatePassEmail(name: string, convocationNumber: string, formLink: st
   const html = `
 <div style="font-family: 'Georgia', serif; max-width: 650px; margin: 0 auto; padding: 40px 30px; color: #1a1a1a; line-height: 1.8;">
   <div style="text-align: center; margin-bottom: 30px;">
-    <h2 style="color: #1a5276; margin: 0; font-size: 22px;">Association of Minimal Access Surgeons of India</h2>
-    <p style="color: #666; font-size: 13px; margin: 5px 0 0;">AMASI</p>
+    <h2 style="color: #1a5276; margin: 0; font-size: 22px;">${COMPANY_CONFIG.fullName}</h2>
+    <p style="color: #666; font-size: 13px; margin: 5px 0 0;">${COMPANY_CONFIG.name}</p>
   </div>
 
   <p>Dear <strong>Dr. ${cleanName},</strong></p>
 
-  <p>Greetings from AMASI.</p>
+  <p>Greetings from ${COMPANY_CONFIG.name}.</p>
 
-  <p>I am writing to inform you that you have <strong>successfully passed</strong> your FMAS examination. On behalf of the Association of Minimal Access Surgeons of India (AMASI), I extend my heartfelt congratulations to you on this impressive accomplishment.</p>
+  <p>I am writing to inform you that you have <strong>successfully passed</strong> your FMAS examination. On behalf of the ${COMPANY_CONFIG.fullName} (${COMPANY_CONFIG.name}), I extend my heartfelt congratulations to you on this impressive accomplishment.</p>
 
   <p>As a mark of your hard work, dedication, and academic excellence, we would like to invite you to attend the upcoming convocation ceremony on <strong>27th August 2026 at Biswa Bangla Convention Centre, Kolkata, India.</strong></p>
 
@@ -74,31 +75,31 @@ function generateWithheldEmail(name: string) {
   return `
 <div style="font-family: 'Georgia', serif; max-width: 650px; margin: 0 auto; padding: 40px 30px; color: #1a1a1a; line-height: 1.8;">
   <div style="text-align: center; margin-bottom: 30px;">
-    <h2 style="color: #1a5276; margin: 0; font-size: 22px;">Association of Minimal Access Surgeons of India</h2>
-    <p style="color: #666; font-size: 13px; margin: 5px 0 0;">AMASI</p>
+    <h2 style="color: #1a5276; margin: 0; font-size: 22px;">${COMPANY_CONFIG.fullName}</h2>
+    <p style="color: #666; font-size: 13px; margin: 5px 0 0;">${COMPANY_CONFIG.name}</p>
   </div>
 
   <p>Dear <strong>Dr. ${cleanName},</strong></p>
 
-  <p>Greetings from AMASI.</p>
+  <p>Greetings from ${COMPANY_CONFIG.name}.</p>
 
-  <p>For the FMAS Examination, <strong>AMASI Membership is mandatory</strong>.</p>
+  <p>For the FMAS Examination, <strong>${COMPANY_CONFIG.name} Membership is mandatory</strong>.</p>
 
-  <p>To obtain your AMASI Membership Number, please click the link below and apply accordingly:</p>
+  <p>To obtain your ${COMPANY_CONFIG.name} Membership Number, please click the link below and apply accordingly:</p>
 
   <div style="text-align: center; margin: 25px 0;">
-    <a href="https://www.amasi.org" style="display: inline-block; background: #1a5276; color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 6px; font-weight: bold; font-size: 15px;">Apply for AMASI Membership</a>
+    <a href="${COMPANY_CONFIG.website}" style="display: inline-block; background: #1a5276; color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 6px; font-weight: bold; font-size: 15px;">Apply for ${COMPANY_CONFIG.name} Membership</a>
   </div>
 
   <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 20px 0;">
     <p style="margin: 0; font-size: 14px;"><strong>Note:</strong> Gynaecologists should apply as <strong>Associate Life Membership</strong>.</p>
   </div>
 
-  <p><strong>Your result will be declared only after your AMASI Membership Number is confirmed.</strong></p>
+  <p><strong>Your result will be declared only after your ${COMPANY_CONFIG.name} Membership Number is confirmed.</strong></p>
 
   <p style="margin-top: 25px;">
     With regards,<br/>
-    <strong>AMASI Head Office</strong>
+    <strong>${COMPANY_CONFIG.name} Head Office</strong>
   </p>
 </div>`
 }
@@ -109,13 +110,13 @@ function generateFailEmail(name: string, venue: string) {
   return `
 <div style="font-family: 'Georgia', serif; max-width: 650px; margin: 0 auto; padding: 40px 30px; color: #1a1a1a; line-height: 1.8;">
   <div style="text-align: center; margin-bottom: 30px;">
-    <h2 style="color: #1a5276; margin: 0; font-size: 22px;">Association of Minimal Access Surgeons of India</h2>
-    <p style="color: #666; font-size: 13px; margin: 5px 0 0;">AMASI</p>
+    <h2 style="color: #1a5276; margin: 0; font-size: 22px;">${COMPANY_CONFIG.fullName}</h2>
+    <p style="color: #666; font-size: 13px; margin: 5px 0 0;">${COMPANY_CONFIG.name}</p>
   </div>
 
   <p>Dear <strong>Dr. ${cleanName},</strong></p>
 
-  <p>Greetings from AMASI.</p>
+  <p>Greetings from ${COMPANY_CONFIG.name}.</p>
 
   <p>We regret to inform you that you have not succeeded in the Fellowship examination held at <strong>${venue}</strong>.</p>
 
@@ -174,7 +175,7 @@ export async function POST(request: NextRequest) {
         const html = generateWithheldEmail(r.attendee_name)
         const result = await sendEmail({
           to: r.attendee_email,
-          subject: "AMASI Membership Required - FMAS Examination Result",
+          subject: `${COMPANY_CONFIG.name} Membership Required - FMAS Examination Result`,
           html,
         })
         if (result.success) {

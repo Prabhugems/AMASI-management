@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 export default function DriverPortalPage() {
   const router = useRouter()
@@ -135,7 +136,7 @@ export default function DriverPortalPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-slate-500 mt-6">
-          AMASI Event Management System
+          {COMPANY_CONFIG.name} Event Management System
         </p>
       </div>
     </div>

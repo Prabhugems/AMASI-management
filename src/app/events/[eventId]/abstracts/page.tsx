@@ -57,6 +57,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface Abstract {
   id: string
@@ -245,7 +246,7 @@ export default function AbstractsPage() {
       "Abstract #", "Title", "Author Name", "Author Email", "Affiliation",
       "Category", "Presentation Type", "Status", "Avg Score", "Reviews Count",
       "Submitted Date", "Decision Date", "Accepted As", "Keywords",
-      "AMASI Membership #", "Award Rank", "Award Type", "Podium Selected", "Redirected"
+      `${COMPANY_CONFIG.name} Membership #`, "Award Rank", "Award Type", "Podium Selected", "Redirected"
     ]
 
     const rows = abstracts.map(a => {

@@ -4,6 +4,7 @@ import { sendEmail, isEmailEnabled, getEmailProvider } from "@/lib/email"
 import { shortenSpeakerPortalUrl } from "@/lib/linkila"
 import { escapeHtml } from "@/lib/string-utils"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 const PRODUCTION_URL = "https://collegeofmas.org.in"
 
@@ -211,7 +212,7 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
                       This invitation was sent to ${escapeHtml(speaker_email || "")}
                     </p>
                     <p style="color: #6b7280; margin: 0; font-size: 12px;">
-                      &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
+                      &copy; ${new Date().getFullYear()} ${COMPANY_CONFIG.name}. All rights reserved.
                     </p>
                   </td>
                 </tr>
@@ -546,7 +547,7 @@ export async function PUT(request: NextRequest) {
     if (provider === "blastable") {
       effectiveFrom = process.env.BLASTABLE_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || "NOT SET"
     } else if (provider === "resend") {
-      effectiveFrom = process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
+      effectiveFrom = process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`
     }
 
     return NextResponse.json({

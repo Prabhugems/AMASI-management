@@ -22,6 +22,7 @@ import {
   Hash,
 } from "lucide-react"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 function SectionSaveButton({ onClick, isPending }: { onClick: () => void; isPending: boolean }) {
   return (
@@ -316,7 +317,7 @@ export default function RegistrationSettingsPage() {
                     Skill Course: <code className="bg-background px-1 rounded">122A1175</code>
                   </div>
                   <div>
-                    AMASICON: <code className="bg-background px-1 rounded">AMASI26-1001</code>
+                    AMASICON: <code className="bg-background px-1 rounded">{COMPANY_CONFIG.name}26-1001</code>
                   </div>
                 </div>
               </div>

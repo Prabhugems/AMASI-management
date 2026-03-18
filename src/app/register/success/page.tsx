@@ -20,6 +20,7 @@ import {
   Copy,
   Check,
 } from "lucide-react"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 function SuccessContent() {
   const { resolvedTheme } = useTheme()
@@ -79,7 +80,7 @@ function SuccessContent() {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement("a")
         a.href = url
-        a.download = `AMASI-Receipt-${registrationNumber}.pdf`
+        a.download = `${COMPANY_CONFIG.name}-Receipt-${registrationNumber}.pdf`
         document.body.appendChild(a)
         a.click()
         window.URL.revokeObjectURL(url)

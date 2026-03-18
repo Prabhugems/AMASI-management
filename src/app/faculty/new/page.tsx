@@ -40,6 +40,7 @@ import {
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 const SALUTATION_OPTIONS = [
   { value: "Dr.", label: "Dr." },
@@ -81,7 +82,7 @@ export default function NewFacultyPage() {
   // Search for AMASI member by email or AMASI number
   const searchMember = async () => {
     if (!searchQuery.trim()) {
-      toast.error("Please enter an email or AMASI number")
+      toast.error(`Please enter an email or ${COMPANY_CONFIG.name} number`)
       return
     }
 
@@ -134,7 +135,7 @@ export default function NewFacultyPage() {
       })
 
       setMemberFound(data)
-      toast.success(`Found: ${data.name} (AMASI #${data.amasi_number})`)
+      toast.success(`Found: ${data.name} (${COMPANY_CONFIG.name} #${data.amasi_number})`)
     } catch (err) {
       toast.error("Search failed")
     } finally {
@@ -224,16 +225,16 @@ export default function NewFacultyPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <UserCheck className="h-5 w-5 text-primary" />
-                Quick Add from AMASI Member
+                Quick Add from {COMPANY_CONFIG.name} Member
               </CardTitle>
               <CardDescription>
-                Enter email or AMASI number to auto-fill details
+                Enter email or {COMPANY_CONFIG.name} number to auto-fill details
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex gap-3">
                 <Input
-                  placeholder="Enter email or AMASI number (e.g., 1234)"
+                  placeholder={`Enter email or ${COMPANY_CONFIG.name} number (e.g., 1234)`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchMember())}
@@ -257,7 +258,7 @@ export default function NewFacultyPage() {
               </div>
               {memberFound && (
                 <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
-                  Found: <strong>{memberFound.name}</strong> (AMASI #{memberFound.amasi_number})
+                  Found: <strong>{memberFound.name}</strong> ({COMPANY_CONFIG.name} #{memberFound.amasi_number})
                   {memberFound.membership_type && ` - ${memberFound.membership_type}`}
                 </div>
               )}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/email"
+import { COMPANY_CONFIG } from "@/lib/config"
 import crypto from "crypto"
 
 function generateToken(): string {
@@ -12,9 +13,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://collegeofmas.org.i
 function getReviewerFormEmail(name: string, formUrl: string): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h2 style="color: #1a365d;">AMASI Reviewer Registration</h2>
+      <h2 style="color: #1a365d;">${COMPANY_CONFIG.name} Reviewer Registration</h2>
       <p>Dear ${name},</p>
-      <p>Thank you for agreeing to be part of the AMASI reviewer pool. We appreciate your expertise and willingness to contribute to the peer review process.</p>
+      <p>Thank you for agreeing to be part of the ${COMPANY_CONFIG.name} reviewer pool. We appreciate your expertise and willingness to contribute to the peer review process.</p>
       <p>Please complete your registration by providing your specialty and other details:</p>
       <p style="text-align: center; margin: 30px 0;">
         <a href="${formUrl}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
@@ -25,7 +26,7 @@ function getReviewerFormEmail(name: string, formUrl: string): string {
       <p>This information helps us match you with relevant abstracts for review.</p>
       <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
       <p style="color: #888; font-size: 12px;">
-        Association of Minimal Access Surgeons of India (AMASI)<br/>
+        ${COMPANY_CONFIG.fullName} (${COMPANY_CONFIG.name})<br/>
         This is an automated message. Please do not reply directly.
       </p>
     </div>
@@ -264,7 +265,7 @@ export async function POST(request: NextRequest) {
         try {
           await sendEmail({
             to: reviewer.email,
-            subject: "AMASI Reviewer Registration - Complete Your Details",
+            subject: `${COMPANY_CONFIG.name} Reviewer Registration - Complete Your Details`,
             html: getReviewerFormEmail(reviewer.name, formUrl),
           })
           console.log(`[Reviewer] Form email sent to ${reviewer.email}`)

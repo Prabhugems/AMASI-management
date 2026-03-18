@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, CheckCircle, AlertCircle, User } from "lucide-react"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 type ReviewerData = {
   id: string
@@ -139,8 +140,8 @@ export default function ReviewerFormPage() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">AMASI</h1>
-          <p className="text-sm text-gray-600">Association of Minimal Access Surgeons of India</p>
+          <h1 className="text-2xl font-bold text-gray-900">{COMPANY_CONFIG.name}</h1>
+          <p className="text-sm text-gray-600">{COMPANY_CONFIG.fullName}</p>
         </div>
 
         <Card>
@@ -237,7 +238,7 @@ export default function ReviewerFormPage() {
         </Card>
 
         <p className="text-center text-xs text-gray-500 mt-6">
-          If you have any questions, please contact the AMASI team.
+          If you have any questions, please contact the {COMPANY_CONFIG.name} team.
         </p>
       </div>
     </div>

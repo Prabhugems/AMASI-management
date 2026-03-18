@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sendEmail, isEmailEnabled, getEmailProvider } from "@/lib/email"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 /**
  * Email Diagnostic Endpoint
@@ -29,7 +30,7 @@ export async function GET() {
   if (provider === "blastable") {
     effectiveFrom = process.env.BLASTABLE_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || "NOT SET - emails will fail!"
   } else if (provider === "resend") {
-    effectiveFrom = process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
+    effectiveFrom = process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`
   }
 
   // Warnings
@@ -86,18 +87,18 @@ export async function POST(request: NextRequest) {
     if (provider === "blastable") {
       effectiveFrom = process.env.BLASTABLE_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || "NOT SET"
     } else if (provider === "resend") {
-      effectiveFrom = process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
+      effectiveFrom = process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`
     }
 
     console.log(`[Email Test] Sending test email via ${provider} from "${effectiveFrom}" to "${to}"`)
 
     const result = await sendEmail({
       to,
-      subject: "AMASI Email Test - Configuration Check",
+      subject: `${COMPANY_CONFIG.name} Email Test - Configuration Check`,
       html: `
         <div style="font-family: sans-serif; padding: 20px;">
           <h1 style="color: #7c3aed;">Email Working!</h1>
-          <p>This is a test email from your AMASI management system.</p>
+          <p>This is a test email from your ${COMPANY_CONFIG.name} management system.</p>
           <p><strong>Provider:</strong> ${provider}</p>
           <p><strong>From:</strong> ${effectiveFrom}</p>
           <p><strong>To:</strong> ${to}</p>

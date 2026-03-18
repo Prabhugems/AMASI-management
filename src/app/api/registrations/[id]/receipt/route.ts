@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 export async function GET(
   request: NextRequest,
@@ -107,7 +108,7 @@ export async function GET(
       }
     }
 
-    page.drawText("AMASI", {
+    page.drawText(COMPANY_CONFIG.name, {
       x: logoXOffset,
       y,
       size: 24,
@@ -115,7 +116,7 @@ export async function GET(
       color: primaryColor,
     })
 
-    page.drawText("Association of Minimal Access Surgeons of India", {
+    page.drawText(COMPANY_CONFIG.fullName, {
       x: logoXOffset,
       y: y - 20,
       size: 10,
@@ -351,7 +352,7 @@ export async function GET(
       color: mutedColor,
     })
 
-    page.drawText("Manage your registration at: amasi.org/my", {
+    page.drawText(`Manage your registration at: ${COMPANY_CONFIG.website.replace(/^https?:\/\//, "")}/my`, {
       x: 50,
       y: 35,
       size: 8,
@@ -365,7 +366,7 @@ export async function GET(
     return new NextResponse(Buffer.from(pdfBytes), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="AMASI-Receipt-${registration.registration_number}.pdf"`,
+        "Content-Disposition": `attachment; filename="${COMPANY_CONFIG.name}-Receipt-${registration.registration_number}.pdf"`,
       },
     })
   } catch (error: any) {

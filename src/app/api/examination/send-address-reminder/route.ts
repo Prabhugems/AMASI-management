@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { COMPANY_CONFIG } from "@/lib/config"
 import { NextRequest, NextResponse } from "next/server"
 
 function generateReminderEmail(name: string, convocationNumber: string, formLink: string) {
@@ -8,8 +9,8 @@ function generateReminderEmail(name: string, convocationNumber: string, formLink
   return `
 <div style="font-family: 'Georgia', serif; max-width: 650px; margin: 0 auto; padding: 40px 30px; color: #1a1a1a; line-height: 1.8;">
   <div style="text-align: center; margin-bottom: 30px;">
-    <h2 style="color: #1a5276; margin: 0; font-size: 22px;">Association of Minimal Access Surgeons of India</h2>
-    <p style="color: #666; font-size: 13px; margin: 5px 0 0;">AMASI</p>
+    <h2 style="color: #1a5276; margin: 0; font-size: 22px;">${COMPANY_CONFIG.fullName}</h2>
+    <p style="color: #666; font-size: 13px; margin: 5px 0 0;">${COMPANY_CONFIG.name}</p>
   </div>
 
   <div style="background: #dc2626; color: white; text-align: center; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; font-size: 15px;">
@@ -18,7 +19,7 @@ function generateReminderEmail(name: string, convocationNumber: string, formLink
 
   <p>Dear <strong>Dr. ${cleanName},</strong></p>
 
-  <p>Greetings from AMASI.</p>
+  <p>Greetings from ${COMPANY_CONFIG.name}.</p>
 
   <p>We have noticed that you have <strong>not yet updated your details</strong> in our system.</p>
 
@@ -30,7 +31,7 @@ function generateReminderEmail(name: string, convocationNumber: string, formLink
     <p style="margin: 0 0 8px; font-weight: bold; color: #dc2626;">Important:</p>
     <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
       <li style="margin-bottom: 6px;">Your certificate name cannot be corrected after the deadline. Any spelling errors will remain as-is.</li>
-      <li style="margin-bottom: 6px;">Your dispatch address is mandatory — without it, your FMAS certificate will <strong>NOT be dispatched</strong> and will remain at the AMASI Head Office.</li>
+      <li style="margin-bottom: 6px;">Your dispatch address is mandatory — without it, your FMAS certificate will <strong>NOT be dispatched</strong> and will remain at the ${COMPANY_CONFIG.name} Head Office.</li>
       <li>This is also required for your convocation registration.</li>
     </ul>
   </div>
@@ -45,7 +46,7 @@ function generateReminderEmail(name: string, convocationNumber: string, formLink
 
   <p style="margin-top: 25px;">
     Thank you &amp; regards,<br/>
-    <strong>AMASI Secretariat</strong>
+    <strong>${COMPANY_CONFIG.name} Secretariat</strong>
   </p>
 </div>`
 }

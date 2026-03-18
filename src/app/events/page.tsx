@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -41,6 +41,7 @@ import {
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { StatCard } from "@/components/dashboard/stat-card"
+import { FEATURES } from "@/lib/config"
 
 export default function EventsPage() {
   const [search, setSearch] = useState("")
@@ -96,6 +97,13 @@ export default function EventsPage() {
       return (data as Event[]) || []
     },
   })
+
+  // Single event mode: auto-redirect to the event
+  React.useEffect(() => {
+    if (!FEATURES.multipleEvents && events && events.length === 1) {
+      router.replace(`/events/${events[0].id}`)
+    }
+  }, [events, router])
 
   // Fetch stats
   const { data: stats } = useQuery({
@@ -182,12 +190,14 @@ export default function EventsPage() {
               Manage conferences, workshops, and courses
             </p>
           </div>
-          <Button size="sm" asChild>
-            <Link href="/events/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Event
-            </Link>
-          </Button>
+          {FEATURES.multipleEvents && (
+            <Button size="sm" asChild>
+              <Link href="/events/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Event
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -349,16 +359,18 @@ export default function EventsPage() {
                           View Page
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.preventDefault()
-                          duplicateEvent.mutate(event.id)
-                        }}
-                        disabled={duplicateEvent.isPending}
-                      >
-                        <CopyPlus className="h-4 w-4 mr-2" />
-                        Duplicate Event
-                      </DropdownMenuItem>
+                      {FEATURES.multipleEvents && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault()
+                            duplicateEvent.mutate(event.id)
+                          }}
+                          disabled={duplicateEvent.isPending}
+                        >
+                          <CopyPlus className="h-4 w-4 mr-2" />
+                          Duplicate Event
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={(e) => {

@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 declare global {
   interface Window {
@@ -257,7 +258,7 @@ export default function GroupRegistrationPage() {
           phone: m.phone || prev.phone,
           institution: m.institution || prev.institution,
         }))
-        toast.success("AMASI member found! Buyer details auto-filled.")
+        toast.success(`${COMPANY_CONFIG.name} member found! Buyer details auto-filled.`)
       }
     } catch (err) {
       console.error("Error looking up buyer member:", err)
@@ -285,7 +286,7 @@ export default function GroupRegistrationPage() {
           designation: m.designation || prev.designation,
           institution: m.institution || prev.institution,
         }))
-        toast.success("AMASI member found! Attendee details auto-filled.")
+        toast.success(`${COMPANY_CONFIG.name} member found! Attendee details auto-filled.`)
       }
     } catch (err) {
       console.error("Error looking up attendee member:", err)
@@ -434,7 +435,7 @@ export default function GroupRegistrationPage() {
         key: orderData.key,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: "AMASI",
+        name: COMPANY_CONFIG.name,
         description: `Group Registration for ${event.name}`,
         order_id: orderData.order_id,
         prefill: {

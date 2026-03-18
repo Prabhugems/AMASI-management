@@ -38,6 +38,7 @@ import {
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 const MEMBERSHIP_TYPES = [
   { value: "Life Member [LM]", label: "Life Member [LM]" },
@@ -266,7 +267,7 @@ export default function EditMemberPage() {
               Edit Member
             </h1>
             <p className="text-sm text-muted-foreground">
-              AMASI #{member?.amasi_number} - {member?.name}
+              {COMPANY_CONFIG.name} #{member?.amasi_number} - {member?.name}
             </p>
           </div>
         </div>
@@ -283,7 +284,7 @@ export default function EditMemberPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="amasi_number">AMASI Number</Label>
+                  <Label htmlFor="amasi_number">{COMPANY_CONFIG.name} Number</Label>
                   <Input
                     id="amasi_number"
                     type="number"

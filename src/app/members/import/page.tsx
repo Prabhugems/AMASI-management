@@ -1,5 +1,6 @@
 "use client"
 
+import { COMPANY_CONFIG } from "@/lib/config"
 import { CSVImport } from "@/components/ui/csv-import"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import Link from "next/link"
@@ -8,7 +9,7 @@ import { ArrowLeft } from "lucide-react"
 export default function ImportMembersPage() {
   const templateColumns = [
     { name: "Name", description: "Full name", required: true, example: "Dr. John Doe" },
-    { name: "Member ID", description: "AMASI number", required: true, example: "17681" },
+    { name: "Member ID", description: `${COMPANY_CONFIG.name} number`, required: true, example: "17681" },
     { name: "Email", description: "Email address", example: "john@example.com" },
     { name: "Mobile", description: "Mobile number", example: "9876543210" },
     { name: "Membership Type", description: "LM, ALM, ILM, ACM", example: "Life Member [LM]" },
@@ -115,7 +116,7 @@ export default function ImportMembersPage() {
         <div className="bg-card border border-border rounded-xl p-6">
           <CSVImport
             title="Import Members"
-            description="Import AMASI members from a CSV file. Existing AMASI numbers will be updated with new data."
+            description={`Import ${COMPANY_CONFIG.name} members from a CSV file. Existing ${COMPANY_CONFIG.name} numbers will be updated with new data.`}
             templateColumns={templateColumns}
             columnMappings={columnMappings}
             onImport={handleImport}

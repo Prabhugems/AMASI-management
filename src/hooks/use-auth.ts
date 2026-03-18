@@ -106,6 +106,16 @@ export function useAuth() {
     return { success: true }
   }
 
+  const signInWithPassword = async (email: string, password: string) => {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase is not configured.')
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+    return data
+  }
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
@@ -129,6 +139,7 @@ export function useAuth() {
     isAdmin: profile?.platform_role === 'super_admin' || profile?.platform_role === 'admin',
     isSuperAdmin: profile?.is_super_admin || profile?.platform_role === 'super_admin',
     signInWithMagicLink,
+    signInWithPassword,
     signOut,
     refreshProfile,
   }

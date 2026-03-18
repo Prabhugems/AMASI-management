@@ -30,6 +30,7 @@ import {
   AlertCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface Abstract {
   id: string
@@ -339,7 +340,7 @@ export default function AwardsPage() {
                     <TableHead className="min-w-[250px]">Title</TableHead>
                     <TableHead>Author</TableHead>
                     <TableHead className="text-center">Score</TableHead>
-                    <TableHead className="text-center">AMASI #</TableHead>
+                    <TableHead className="text-center">{COMPANY_CONFIG.name} #</TableHead>
                     <TableHead className="text-center">Award</TableHead>
                   </TableRow>
                 </TableHeader>

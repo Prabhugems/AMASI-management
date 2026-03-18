@@ -31,6 +31,7 @@ import {
   Wand2,
   RefreshCw,
 } from "lucide-react"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 type Registration = {
   id: string
@@ -152,7 +153,7 @@ export default function ConvocationPage() {
       })
       const result = await res.json()
       if (!res.ok) throw new Error(result.error)
-      alert(`Synced!\n\nAMASI numbers matched: ${result.matched}\nPhone numbers filled: ${result.phoneFilled || 0}\nNot found: ${result.notFound}${result.notFound > 0 ? "\n\nNot found:\n" + result.notFoundEmails.join("\n") : ""}`)
+      alert(`Synced!\n\n${COMPANY_CONFIG.name} numbers matched: ${result.matched}\nPhone numbers filled: ${result.phoneFilled || 0}\nNot found: ${result.notFound}${result.notFound > 0 ? "\n\nNot found:\n" + result.notFoundEmails.join("\n") : ""}`)
       await queryClient.invalidateQueries({ queryKey: ["exam-convocation", eventId] })
     } catch (error) {
       console.error("Sync failed:", error)
@@ -163,7 +164,7 @@ export default function ConvocationPage() {
   const downloadCSV = () => {
     if (!filtered.length) return
     const label = activeTab === "exam" ? "Exam Convocation" : "Without Exam Convocation"
-    const headers = ["#", "Convocation No.", "AMASI No.", "Registration No.", "Name", "Email", "Phone", "Ticket Type", "Practical", "VIVA", "Publication", "Total Marks", "Result"]
+    const headers = ["#", "Convocation No.", `${COMPANY_CONFIG.name} No.`, "Registration No.", "Name", "Email", "Phone", "Ticket Type", "Practical", "VIVA", "Publication", "Total Marks", "Result"]
     const rows = filtered.map((r, i) => [
       i + 1,
       r.convocation_number || "",
@@ -204,7 +205,7 @@ export default function ConvocationPage() {
         <div className="flex items-center gap-2">
           <Button onClick={syncAmasiNumbers} variant="outline" className="gap-2" disabled={syncing}>
             {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Sync AMASI No.
+            Sync {COMPANY_CONFIG.name} No.
           </Button>
           <Button onClick={downloadCSV} variant="outline" className="gap-2" disabled={!filtered.length}>
             <Download className="h-4 w-4" />
@@ -289,7 +290,7 @@ export default function ConvocationPage() {
                     <TableRow>
                       <TableHead className="w-8">#</TableHead>
                       <TableHead>Reg No.</TableHead>
-                      <TableHead>AMASI No.</TableHead>
+                      <TableHead>{COMPANY_CONFIG.name} No.</TableHead>
                       <TableHead>Candidate</TableHead>
                       <TableHead>Mobile</TableHead>
                       <TableHead>Ticket</TableHead>

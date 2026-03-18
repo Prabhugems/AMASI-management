@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
 import crypto from "crypto"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 // Initialize Resend (will be undefined if no API key)
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -114,13 +115,13 @@ export async function POST(request: NextRequest) {
     if (resend) {
       try {
         const result = await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || "AMASI Forms <noreply@resend.dev>",
+          from: process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Forms <noreply@resend.dev>`,
           to: email,
           subject: "Your Verification Code",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
               <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #10b981; margin: 0;">AMASI</h1>
+                <h1 style="color: #10b981; margin: 0;">${COMPANY_CONFIG.name}</h1>
               </div>
               <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 16px; padding: 30px; text-align: center;">
                 <p style="color: white; font-size: 16px; margin: 0 0 20px 0;">Your verification code is:</p>

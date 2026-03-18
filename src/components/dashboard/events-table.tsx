@@ -19,6 +19,7 @@ import {
 import Link from "next/link"
 import { useTheme } from "next-themes"
 import { useQuery } from "@tanstack/react-query"
+import { FEATURES } from "@/lib/config"
 
 
 // Animated Progress Bar
@@ -339,14 +340,16 @@ function EventRow({
       </td>
 
       {/* Faculty */}
-      <td className="py-4 px-4">
-        <FacultyAvatars
-          confirmed={event.confirmed_faculty || 0}
-          pending={event.pending_faculty || 0}
-          declined={event.declined_faculty || 0}
-          isDark={isDark}
-        />
-      </td>
+      {FEATURES.faculty && (
+        <td className="py-4 px-4">
+          <FacultyAvatars
+            confirmed={event.confirmed_faculty || 0}
+            pending={event.pending_faculty || 0}
+            declined={event.declined_faculty || 0}
+            isDark={isDark}
+          />
+        </td>
+      )}
 
       {/* Delegates */}
       <td className="py-4 px-4">
@@ -471,13 +474,15 @@ export function EventsTable() {
             <p className={`text-sm ${isDark ? "text-slate-400" : "text-gray-500"}`}>Your upcoming and ongoing events</p>
           </div>
         </div>
-        <Link
-          href="/events/new"
-          className="relative overflow-hidden flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold bg-gradient-primary text-white shadow-primary-glow transition-all duration-300 hover:scale-105 hover:shadow-primary-glow-lg"
-        >
-          <Plus className="w-5 h-5" />
-          <span>New Event</span>
-        </Link>
+        {(FEATURES.multipleEvents || !displayEvents || displayEvents.length === 0) && (
+          <Link
+            href="/events/new"
+            className="relative overflow-hidden flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold bg-gradient-primary text-white shadow-primary-glow transition-all duration-300 hover:scale-105 hover:shadow-primary-glow-lg"
+          >
+            <Plus className="w-5 h-5" />
+            <span>New Event</span>
+          </Link>
+        )}
       </div>
 
       {/* Table */}
@@ -491,9 +496,11 @@ export function EventsTable() {
               <th className={`py-4 px-4 text-left text-xs font-bold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-gray-500"}`}>
                 Date
               </th>
-              <th className={`py-4 px-4 text-left text-xs font-bold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-gray-500"}`}>
-                Faculty
-              </th>
+              {FEATURES.faculty && (
+                <th className={`py-4 px-4 text-left text-xs font-bold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-gray-500"}`}>
+                  Faculty
+                </th>
+              )}
               <th className={`py-4 px-4 text-left text-xs font-bold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-gray-500"}`}>
                 Attendees
               </th>
@@ -510,13 +517,13 @@ export function EventsTable() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className={`py-12 text-center ${isDark ? "text-slate-400" : "text-gray-500"}`}>
+                <td colSpan={FEATURES.faculty ? 7 : 6} className={`py-12 text-center ${isDark ? "text-slate-400" : "text-gray-500"}`}>
                   Loading events...
                 </td>
               </tr>
             ) : displayEvents.length === 0 ? (
               <tr>
-                <td colSpan={7} className={`py-12 text-center ${isDark ? "text-slate-400" : "text-gray-500"}`}>
+                <td colSpan={FEATURES.faculty ? 7 : 6} className={`py-12 text-center ${isDark ? "text-slate-400" : "text-gray-500"}`}>
                   <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="font-medium">No active events</p>
                   <p className="text-sm mt-1">Create a new event to get started</p>

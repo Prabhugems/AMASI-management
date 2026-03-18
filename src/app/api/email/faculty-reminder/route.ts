@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { logEmail } from "@/lib/email-tracking"
 import { escapeHtml } from "@/lib/string-utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 const PRODUCTION_URL = "https://collegeofmas.org.in"
 
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
     const roleLabel = assignment.role.charAt(0).toUpperCase() + assignment.role.slice(1)
     const reminderCount = (assignment.reminder_count || 0) + 1
     const emailSubject = `Reminder: Please Confirm Your Participation - ${event_name}`
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
+    const fromEmail = process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -207,7 +208,7 @@ export async function POST(request: NextRequest) {
                       Thank you for your time!
                     </p>
                     <p style="color: #6b7280; margin: 0; font-size: 12px;">
-                      &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
+                      &copy; ${new Date().getFullYear()} ${COMPANY_CONFIG.name}. All rights reserved.
                     </p>
                   </td>
                 </tr>

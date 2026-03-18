@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { logEmail } from "@/lib/email-tracking"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface RequestTravelDetailsData {
   registration_id?: string
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     } = body
 
     const emailSubject = `Action Required: Submit Your Travel Details for ${event_name}`
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
+    const fromEmail = process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`
 
     if (!speaker_email || !event_name || !portal_url) {
       return NextResponse.json(
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
                       We look forward to seeing you at ${event_name}!
                     </p>
                     <p style="color: #6b7280; margin: 0; font-size: 12px;">
-                      &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
+                      &copy; ${new Date().getFullYear()} ${COMPANY_CONFIG.name}. All rights reserved.
                     </p>
                   </td>
                 </tr>

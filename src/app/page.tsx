@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { getGreeting } from "@/lib/utils"
 import { usePermissions } from "@/hooks/use-permissions"
+import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 
 // Dashboard components
 import { AlertsPanel } from "@/components/dashboard/alerts-panel"
@@ -138,64 +139,31 @@ export default function Home() {
         <h4 className="text-lg text-muted-foreground font-normal">
           {getGreeting()}, {userName || quickName || (permissionsLoading ? <span className="inline-block w-24 h-5 rounded bg-gray-200 dark:bg-slate-700 animate-pulse align-middle" /> : "Admin")}
         </h4>
-        <p className="text-sm text-muted-foreground/70">Here&apos;s your AMASI dashboard overview</p>
+        <p className="text-sm text-muted-foreground/70">Here&apos;s your {COMPANY_CONFIG.name} dashboard overview</p>
       </div>
 
       {/* Animated Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        {statsLoading ? (
-          <>
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-          </>
-        ) : (
-          <>
-            <StatCard
-              icon={Users}
-              value={stats?.members || 0}
-              label="Total Members"
-              subtext="Live from database"
-              trend={12}
-              color="rose"
-              delay={0}
-            />
-            <StatCard
-              icon={GraduationCap}
-              value={stats?.faculty || 0}
-              label="Faculty Database"
-              subtext="Master database"
-              trend={8}
-              color="amber"
-              delay={100}
-            />
-            <StatCard
-              icon={Calendar}
-              value={stats?.activeEvents || 0}
-              label="Active Events"
-              subtext="Planning/Ongoing"
-              trend={null}
-              color="teal"
-              delay={200}
-            />
-            <StatCard
-              icon={Award}
-              value={stats?.delegates || 0}
-              label="Total Attendees"
-              subtext="All events"
-              trend={5}
-              color="violet"
-              delay={300}
-            />
-          </>
-        )}
-      </div>
-
-      {/* Alerts Panel */}
-      <div className="mb-6">
-        <AlertsPanel />
-      </div>
+      {(() => {
+        const cards = []
+        if (FEATURES.membership) cards.push(
+          <StatCard key="members" icon={Users} value={stats?.members || 0} label="Total Members" subtext="Live from database" trend={12} color="rose" delay={0} />
+        )
+        if (FEATURES.faculty) cards.push(
+          <StatCard key="faculty" icon={GraduationCap} value={stats?.faculty || 0} label="Faculty Database" subtext="Master database" trend={8} color="amber" delay={100} />
+        )
+        cards.push(
+          <StatCard key="events" icon={Calendar} value={stats?.activeEvents || 0} label="Active Events" subtext="Planning/Ongoing" trend={null} color="teal" delay={200} />
+        )
+        cards.push(
+          <StatCard key="attendees" icon={Award} value={stats?.delegates || 0} label="Total Attendees" subtext="All events" trend={null} color="violet" delay={300} />
+        )
+        const cols = cards.length <= 2 ? "lg:grid-cols-2" : cards.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4"
+        return (
+          <div className={`grid grid-cols-1 md:grid-cols-2 ${cols} gap-6 mb-6`}>
+            {statsLoading ? cards.map((_, i) => <StatCardSkeleton key={i} />) : cards}
+          </div>
+        )
+      })()}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -205,7 +173,7 @@ export default function Home() {
           <EventsTable />
 
           {/* Faculty Table */}
-          <RecentFacultyTable />
+          {FEATURES.faculty && <RecentFacultyTable />}
         </div>
 
         {/* Right Column - 1/3 width */}

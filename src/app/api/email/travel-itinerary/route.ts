@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { logEmail } from "@/lib/email-tracking"
 import { generateTravelItineraryICS } from "@/lib/ics-generator"
 import { escapeHtml } from "@/lib/string-utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 // Initialize Resend
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
     } = body
 
     const emailSubject = `Travel Itinerary - ${event_name}`
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
+    const fromEmail = process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`
 
     if (!speaker_email || !event_name) {
       return NextResponse.json(
@@ -371,7 +372,7 @@ export async function POST(request: NextRequest) {
                       This itinerary was sent to ${escapeHtml(speaker_email || "")}
                     </p>
                     <p style="color: #6b7280; margin: 0; font-size: 12px;">
-                      &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
+                      &copy; ${new Date().getFullYear()} ${COMPANY_CONFIG.name}. All rights reserved.
                     </p>
                   </td>
                 </tr>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { escapeHtml } from "@/lib/string-utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 // POST /api/abstracts/podium-checkin - Scan badge to mark presenter as presented
 export async function POST(request: NextRequest) {
@@ -281,7 +282,7 @@ export async function POST(request: NextRequest) {
                           Thank you for presenting at ${escapeHtml(eventName)}!
                         </p>
                         <p style="color: #6b7280; margin: 0; font-size: 12px;">
-                          &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
+                          &copy; ${new Date().getFullYear()} ${COMPANY_CONFIG.name}. All rights reserved.
                         </p>
                       </td>
                     </tr>

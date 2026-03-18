@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface FormDesignProps {
   form: Form
@@ -322,7 +323,7 @@ export function FormDesign({ form, onUpdate }: FormDesignProps) {
           {/* Footer */}
           <div className="text-center pb-4">
             <p className="text-xs text-muted-foreground">
-              Powered by AMASI Forms
+              Powered by {COMPANY_CONFIG.name} Forms
             </p>
           </div>
         </div>

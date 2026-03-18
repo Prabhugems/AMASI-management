@@ -50,6 +50,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatPhoneNumber } from "@/lib/formatters"
+import { COMPANY_CONFIG } from "@/lib/config"
 import Link from "next/link"
 import { toast } from "sonner"
 import {
@@ -311,7 +312,7 @@ export default function MembersPage() {
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Members</h1>
                 <p className="text-sm text-muted-foreground">
-                  Manage AMASI membership database
+                  Manage {COMPANY_CONFIG.name} membership database
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -372,7 +373,7 @@ export default function MembersPage() {
               <div className="relative flex-1 min-w-[200px] max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, email, or AMASI number..."
+                  placeholder={`Search by name, email, or ${COMPANY_CONFIG.name} number...`}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10 h-9"
@@ -505,7 +506,7 @@ export default function MembersPage() {
           open={!!selectedMember}
           onClose={() => setSelectedMember(null)}
           title={selectedMember?.name || "Member Details"}
-          subtitle={selectedMember?.amasi_number ? `AMASI #${selectedMember.amasi_number}` : undefined}
+          subtitle={selectedMember?.amasi_number ? `${COMPANY_CONFIG.name} #${selectedMember.amasi_number}` : undefined}
           width="lg"
           showOverlay={false}
         >
@@ -548,7 +549,7 @@ export default function MembersPage() {
                           <p className="text-2xl font-bold text-primary font-mono">
                             #{selectedMember.amasi_number || "—"}
                           </p>
-                          <p className="text-xs text-muted-foreground">AMASI Number</p>
+                          <p className="text-xs text-muted-foreground">{COMPANY_CONFIG.name} Number</p>
                         </div>
                         <div className="p-3 rounded-xl bg-secondary/50 text-center">
                           <p className="text-lg font-bold text-foreground">
@@ -859,7 +860,7 @@ export default function MembersPage() {
                   <li>Name: {salutation && salutation !== "none" ? `${salutation} ` : ""}{selectedMember.name}</li>
                   <li>Email: {selectedMember.email}</li>
                   <li>Institution: {selectedMember.institution || "Not set"}</li>
-                  <li>AMASI Link: #{selectedMember.amasi_number}</li>
+                  <li>{COMPANY_CONFIG.name} Link: #{selectedMember.amasi_number}</li>
                   {specialty && <li>Specialty: {specialty}</li>}
                 </ul>
               </div>

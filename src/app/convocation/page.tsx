@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react"
 import jsPDF from "jspdf"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 type ConvocationData = {
   name: string
@@ -83,9 +84,9 @@ function ConvocationPortalPage() {
 
     doc.setTextColor(255, 255, 255)
     doc.setFontSize(20)
-    doc.text("Association of Minimal Access Surgeons of India", w / 2, 18, { align: "center" })
+    doc.text(COMPANY_CONFIG.fullName, w / 2, 18, { align: "center" })
     doc.setFontSize(12)
-    doc.text("AMASI", w / 2, 26, { align: "center" })
+    doc.text(COMPANY_CONFIG.name, w / 2, 26, { align: "center" })
     doc.setFontSize(16)
     doc.text("CONVOCATION INVITATION", w / 2, 38, { align: "center" })
 
@@ -98,7 +99,7 @@ function ConvocationPortalPage() {
     y += 12
 
     doc.setFontSize(11)
-    const bodyText = "On behalf of the Association of Minimal Access Surgeons of India (AMASI), we are pleased to inform you that you have successfully passed the FMAS Examination. We extend our heartfelt congratulations on this impressive accomplishment."
+    const bodyText = `On behalf of the ${COMPANY_CONFIG.fullName} (${COMPANY_CONFIG.name}), we are pleased to inform you that you have successfully passed the FMAS Examination. We extend our heartfelt congratulations on this impressive accomplishment.`
     const lines = doc.splitTextToSize(bodyText, w - 40)
     doc.text(lines, 20, y)
     y += lines.length * 6 + 10
@@ -136,7 +137,7 @@ function ConvocationPortalPage() {
     const details = [
       ["Name", "Dr. " + data.name],
       ["Convocation Number", data.convocation_number],
-      ["AMASI Number", data.amasi_number ? String(data.amasi_number) : "-"],
+      [`${COMPANY_CONFIG.name} Number`, data.amasi_number ? String(data.amasi_number) : "-"],
     ]
 
     for (const [label, value] of details) {
@@ -175,7 +176,7 @@ function ConvocationPortalPage() {
     doc.text("Dr. Roshan Shetty A", 20, y)
     y += 6
     doc.setFont("helvetica", "normal")
-    doc.text("Secretary, AMASI", 20, y)
+    doc.text(`Secretary, ${COMPANY_CONFIG.name}`, 20, y)
 
     doc.save(`Convocation-Invitation-${data.convocation_number}.pdf`)
   }
@@ -186,7 +187,7 @@ function ConvocationPortalPage() {
       <div className="bg-[#1a5276] text-white py-8 px-4">
         <div className="max-w-2xl mx-auto text-center">
           <GraduationCap className="h-12 w-12 mx-auto mb-3 opacity-90" />
-          <h1 className="text-2xl font-bold">AMASI Convocation Portal</h1>
+          <h1 className="text-2xl font-bold">{COMPANY_CONFIG.name} Convocation Portal</h1>
           <p className="text-white/70 mt-1 text-sm">Fellowship in Minimal Access Surgery</p>
         </div>
       </div>
@@ -242,7 +243,7 @@ function ConvocationPortalPage() {
                     <p className="font-medium">Dr. {data.name}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">AMASI Number</p>
+                    <p className="text-xs text-muted-foreground">{COMPANY_CONFIG.name} Number</p>
                     <p className="font-medium">{data.amasi_number || "-"}</p>
                   </div>
                 </div>

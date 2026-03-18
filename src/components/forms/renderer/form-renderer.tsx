@@ -37,6 +37,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface FormRendererProps {
   form: Form
@@ -333,12 +334,12 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
         if (autoFilledCount > 0) {
           toast.success(`Member verified! ${autoFilledCount} field(s) auto-filled`, {
-            description: `Welcome, ${displayName} (AMASI #${member.amasi_number})`,
+            description: `Welcome, ${displayName} (${COMPANY_CONFIG.name} #${member.amasi_number})`,
             duration: 5000
           })
         } else {
           toast.success(`Member verified: ${displayName}`, {
-            description: `AMASI #${member.amasi_number} - ${member.membership_type} Member`,
+            description: `${COMPANY_CONFIG.name} #${member.amasi_number} - ${member.membership_type} Member`,
             duration: 5000
           })
         }
@@ -363,7 +364,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
         }
 
         toast.info("We couldn't automatically verify your membership", {
-          description: "If you're an AMASI member, please select 'Yes' and enter your details manually",
+          description: `If you're a ${COMPANY_CONFIG.name} member, please select 'Yes' and enter your details manually`,
           duration: 8000
         })
       }
@@ -1373,8 +1374,8 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
       {showOnlyEmailFirst && (
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Step 1:</strong> Please verify your email to confirm your AMASI membership.
-            Only AMASI members can register for this exam.
+            <strong>Step 1:</strong> Please verify your email to confirm your {COMPANY_CONFIG.name} membership.
+            Only {COMPANY_CONFIG.name} members can register for this exam.
           </p>
         </div>
       )}
@@ -1387,9 +1388,9 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
               <ShieldAlert className="w-6 h-6 text-amber-600" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-amber-800">AMASI Membership Required</h3>
+              <h3 className="text-lg font-bold text-amber-800">{COMPANY_CONFIG.name} Membership Required</h3>
               <p className="text-amber-700 mt-1">
-                AMASI membership is mandatory for FMAS Skill Course Exam registration.
+                {COMPANY_CONFIG.name} membership is mandatory for FMAS Skill Course Exam registration.
               </p>
             </div>
           </div>
@@ -1406,7 +1407,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
           <div className="bg-white rounded-lg p-4 space-y-3">
             <p className="text-sm text-gray-700">
-              To register for this exam, you need to be an active AMASI member. Please apply for membership first and then return to complete your registration.
+              To register for this exam, you need to be an active {COMPANY_CONFIG.name} member. Please apply for membership first and then return to complete your registration.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <a
@@ -1415,7 +1416,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition-colors shadow-lg"
               >
-                Apply for AMASI Membership
+                Apply for {COMPANY_CONFIG.name} Membership
                 <ExternalLink className="w-4 h-4" />
               </a>
               <a
@@ -1432,7 +1433,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-sm text-blue-800">
-              <strong>Already a member?</strong> Make sure you verify with the same email registered with your AMASI membership. If you need help, contact <a href="mailto:support@amasi.org" className="underline">support@amasi.org</a>
+              <strong>Already a member?</strong> Make sure you verify with the same email registered with your {COMPANY_CONFIG.name} membership. If you need help, contact <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="underline">{COMPANY_CONFIG.supportEmail}</a>
             </p>
           </div>
 
@@ -1456,9 +1457,9 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
               <Info className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-blue-800">Not an AMASI Member?</h3>
+              <h3 className="text-base font-semibold text-blue-800">Not a {COMPANY_CONFIG.name} Member?</h3>
               <p className="text-sm text-blue-700 mt-1">
-                You can still proceed with registration. However, AMASI members get special discounts on tickets!
+                You can still proceed with registration. However, {COMPANY_CONFIG.name} members get special discounts on tickets!
               </p>
             </div>
           </div>
@@ -1483,7 +1484,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
           >
-            Join AMASI to get member discounts
+            Join {COMPANY_CONFIG.name} to get member discounts
             <ExternalLink className="w-4 h-4" />
           </a>
         </div>
@@ -1498,7 +1499,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
                 <BadgeCheck className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-emerald-800">AMASI Member Verified</h3>
+                <h3 className="text-lg font-bold text-emerald-800">{COMPANY_CONFIG.name} Member Verified</h3>
                 <p className="text-sm text-emerald-600">Your membership has been confirmed</p>
               </div>
             </div>
@@ -1517,7 +1518,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
               <div className="flex items-center gap-3">
                 <Hash className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500">AMASI Number</p>
+                  <p className="text-xs text-gray-500">{COMPANY_CONFIG.name} Number</p>
                   <p className="font-mono font-bold text-emerald-700">{verifiedMember.amasi_number || "-"}</p>
                 </div>
               </div>

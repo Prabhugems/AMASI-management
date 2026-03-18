@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface HelpSection {
   id: string
@@ -634,7 +635,7 @@ export default function HelpPage() {
               </p>
               <div className="mt-4 flex items-center justify-center gap-4">
                 <a
-                  href="mailto:support@amasi.org"
+                  href={`mailto:${COMPANY_CONFIG.supportEmail}`}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
                 >
                   <Mail className="w-4 h-4" />

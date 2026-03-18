@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 // POST /api/communications/templates/seed?event_id=xxx
 // Seeds beautiful pre-built templates for an event
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
         email_subject: `🎉 Welcome to ${eventName}, {{name}}! Your Registration is Confirmed`,
         email_body: `Dear Dr. {{name}},
 
-Greetings from AMASI!
+Greetings from ${COMPANY_CONFIG.name}!
 
 We are thrilled to confirm your registration for ${eventName}.
 
@@ -90,7 +91,7 @@ Your registration is confirmed! ✅
 
 We look forward to seeing you!
 
-_Team AMASI_`,
+_Team ${COMPANY_CONFIG.name}_`,
         variables: ["name", "registration_id", "event_date", "venue"],
         is_system: false,
         is_active: true,
@@ -169,7 +170,7 @@ This is your final reminder! ${eventName} begins TOMORROW!
 See you tomorrow! 🎉
 
 Warm regards,
-AMASI Team`,
+${COMPANY_CONFIG.name} Team`,
         message_body: `🔔 *Tomorrow: ${eventName}!*
 
 Dear Dr. {{name}},
@@ -187,7 +188,7 @@ Final reminder! Event starts tomorrow.
 
 See you there! 🎯
 
-_Team AMASI_`,
+_Team ${COMPANY_CONFIG.name}_`,
         variables: ["name", "event_date", "venue"],
         is_system: false,
         is_active: true,
@@ -200,7 +201,7 @@ _Team AMASI_`,
         email_subject: `🎤 Invitation to Speak at ${eventName} - {{name}}`,
         email_body: `Dear Dr. {{name}},
 
-Warm Greetings from AMASI!
+Warm Greetings from ${COMPANY_CONFIG.name}!
 
 We are honored to invite you as a distinguished faculty member for ${eventName}.
 
@@ -237,7 +238,7 @@ Time: {{session_time}}
 Please confirm your participation through your Speaker Portal.
 
 With warm regards,
-AMASI Scientific Committee`,
+${COMPANY_CONFIG.name} Scientific Committee`,
         message_body: null,
         variables: ["name", "event_date", "venue", "session_name", "session_date", "session_time"],
         is_system: false,
@@ -267,7 +268,7 @@ Payment Deadline: {{deadline}}
 Secure your spot before seats fill up!
 
 Best regards,
-AMASI Registration Team`,
+${COMPANY_CONFIG.name} Registration Team`,
         message_body: `⚠️ *Payment Reminder*
 
 Dear Dr. {{name}},
@@ -280,7 +281,7 @@ Your ${eventName} payment is pending.
 
 Please complete payment to confirm your seat.
 
-_Team AMASI_`,
+_Team ${COMPANY_CONFIG.name}_`,
         variables: ["name", "registration_id", "amount", "deadline"],
         is_system: false,
         is_active: true,
@@ -311,7 +312,7 @@ Certificate Type: Participation
 Download your certificate from your portal.
 
 With best wishes,
-AMASI Team`,
+${COMPANY_CONFIG.name} Team`,
         message_body: `🎓 *Certificate Ready!*
 
 Dear Dr. {{name}},
@@ -322,7 +323,7 @@ Your ${eventName} certificate is ready.
 
 Thank you for joining us!
 
-_Team AMASI_`,
+_Team ${COMPANY_CONFIG.name}_`,
         variables: ["name", "event_date"],
         is_system: false,
         is_active: true,
@@ -357,7 +358,7 @@ Your participation certificate will be emailed within 7 days.
 Until we meet again!
 
 With gratitude,
-AMASI Organizing Committee`,
+${COMPANY_CONFIG.name} Organizing Committee`,
         message_body: null,
         variables: ["name"],
         is_system: false,
@@ -370,7 +371,7 @@ AMASI Organizing Committee`,
         channel: "sms",
         email_subject: null,
         email_body: null,
-        message_body: `AMASI: Dear Dr. {{name}}, Reminder: ${eventName} on {{event_date}} at {{venue}}. See you there! -AMASI`,
+        message_body: `${COMPANY_CONFIG.name}: Dear Dr. {{name}}, Reminder: ${eventName} on {{event_date}} at {{venue}}. See you there! -${COMPANY_CONFIG.name}`,
         variables: ["name", "event_date", "venue"],
         is_system: false,
         is_active: true,
@@ -394,17 +395,17 @@ We have an important update regarding ${eventName}.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-For queries, contact: info@amasi.org
+For queries, contact: ${COMPANY_CONFIG.supportEmail}
 
 Best regards,
-AMASI Team`,
+${COMPANY_CONFIG.name} Team`,
         message_body: `📢 *Update: ${eventName}*
 
 Dear Dr. {{name}},
 
 [Your announcement here]
 
-_Team AMASI_`,
+_Team ${COMPANY_CONFIG.name}_`,
         variables: ["name"],
         is_system: false,
         is_active: true,

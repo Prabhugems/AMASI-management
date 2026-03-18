@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server"
+import { COMPANY_CONFIG } from "@/lib/config"
 import { Metadata } from "next"
 import {
   CheckCircle,
@@ -314,7 +315,7 @@ export default async function VerifyAbstractPage({ params }: Props) {
                 })}
               </p>
               <p className="text-xs text-slate-400 mt-1">
-                Certificate verification powered by AMASI Management System
+                Certificate verification powered by {COMPANY_CONFIG.name} Management System
               </p>
             </div>
           </>

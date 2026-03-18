@@ -531,7 +531,7 @@ export function TasksWidget() {
   const [tasks, setTasks] = useState<Task[]>([
     {
       id: 1,
-      title: "Finalize AMASICON 2026 Venue Contract",
+      title: "Finalize Conference 2026 Venue Contract",
       description: "Review and sign the final contract with Marriott Jaipur",
       priority: "urgent",
       dueDate: "Jan 5, 2026",

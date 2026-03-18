@@ -29,6 +29,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 type ChannelsEnabled = {
   email: boolean
@@ -312,7 +313,7 @@ export default function CommunicationsSettingsPage() {
                 <div className="space-y-2">
                   <Label>From Name</Label>
                   <Input
-                    placeholder="AMASI Events"
+                    placeholder={`${COMPANY_CONFIG.name} Events`}
                     value={settings.email_from_name || ""}
                     onChange={(e) => setSettings({ ...settings, email_from_name: e.target.value })}
                   />
@@ -531,7 +532,7 @@ export default function CommunicationsSettingsPage() {
                   <div className="space-y-2">
                     <Label>Sender ID</Label>
                     <Input
-                      placeholder="AMASI"
+                      placeholder={COMPANY_CONFIG.name}
                       value={settings.sms_sender_id || ""}
                       onChange={(e) => setSettings({ ...settings, sms_sender_id: e.target.value })}
                     />

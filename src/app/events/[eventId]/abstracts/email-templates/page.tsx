@@ -43,6 +43,7 @@ import {
   Code,
 } from "lucide-react"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface EmailTemplate {
   id: string
@@ -228,10 +229,10 @@ export default function AbstractEmailTemplatesPage() {
       presentation_date: "March 15, 2024",
       presentation_time: "10:30 AM",
       presentation_location: "Hall A, Room 101",
-      event_name: "AMASI Annual Conference 2024",
+      event_name: `${COMPANY_CONFIG.name} Annual Conference 2024`,
       event_date: "March 15-17, 2024",
       portal_url: "https://example.com/my",
-      organizer_name: "AMASI",
+      organizer_name: COMPANY_CONFIG.name,
       year: "2024",
     }
 
@@ -511,7 +512,7 @@ export default function AbstractEmailTemplatesPage() {
               <p className="text-sm">
                 <strong>Subject:</strong> {form.subject.replace(/{{(\w+)}}/g, (_, key) => {
                   const samples: Record<string, string> = {
-                    event_name: "AMASI Annual Conference 2024",
+                    event_name: `${COMPANY_CONFIG.name} Annual Conference 2024`,
                     author_name: "Dr. John Smith",
                     abstract_number: "ABS-2024-001",
                   }

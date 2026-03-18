@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 // Generate iCal format date (YYYYMMDDTHHMMSS)
 function formatICalDate(dateStr: string, timeStr?: string): string {
@@ -116,7 +117,7 @@ export async function GET(
     const lines: string[] = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//AMASI//Event Calendar//EN",
+      `PRODID:-//${COMPANY_CONFIG.name}//Event Calendar//EN`,
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
       `X-WR-CALNAME:${escapeICalText(event.name)}`,
@@ -137,7 +138,7 @@ export async function GET(
 
     // Add each session as an event
     for (const session of filteredSessions) {
-      const uid = `session-${session.id}@amasi.org`
+      const uid = `session-${session.id}@${new URL(COMPANY_CONFIG.website).hostname}`
       const dtStart = formatICalDateLocal(session.session_date, session.start_time)
       const dtEnd = formatICalDateLocal(session.session_date, session.end_time)
 

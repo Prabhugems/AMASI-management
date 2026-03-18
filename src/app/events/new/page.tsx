@@ -22,6 +22,7 @@ import {
   Plus,
 } from "lucide-react"
 import Link from "next/link"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 export default function CreateEventPage() {
   const router = useRouter()
@@ -147,7 +148,7 @@ export default function CreateEventPage() {
             <Input
               value={formData.name}
               onChange={(e) => updateField("name", e.target.value)}
-              placeholder="e.g., 42nd Annual Conference of AMASI"
+              placeholder={`e.g., 42nd Annual Conference of ${COMPANY_CONFIG.name}`}
               className="mt-1.5"
             />
             {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
@@ -159,7 +160,7 @@ export default function CreateEventPage() {
               <Input
                 value={formData.short_name}
                 onChange={(e) => updateField("short_name", e.target.value)}
-                placeholder="e.g., AMASI 2026"
+                placeholder={`e.g., ${COMPANY_CONFIG.name} 2026`}
                 className="mt-1.5"
               />
               <p className="text-xs text-muted-foreground mt-1">Used in navigation and URLs</p>

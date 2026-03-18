@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 // GET /api/membership/applications/[id] - Get application detail
 export async function GET(
@@ -87,7 +88,7 @@ export async function PUT(
 
     if (action === "approve") {
       if (!amasi_number) {
-        return NextResponse.json({ error: "AMASI number is required for approval" }, { status: 400 })
+        return NextResponse.json({ error: `${COMPANY_CONFIG.name} number is required for approval` }, { status: 400 })
       }
 
       // Check if AMASI number already exists
@@ -98,7 +99,7 @@ export async function PUT(
         .maybeSingle()
 
       if (existingMember) {
-        return NextResponse.json({ error: "This AMASI number is already assigned" }, { status: 409 })
+        return NextResponse.json({ error: `This ${COMPANY_CONFIG.name} number is already assigned` }, { status: 409 })
       }
 
       // Determine voting eligibility
@@ -174,7 +175,7 @@ export async function PUT(
 
       return NextResponse.json({
         success: true,
-        message: `Application approved. Member created with AMASI #${amasi_number}`,
+        message: `Application approved. Member created with ${COMPANY_CONFIG.name} #${amasi_number}`,
         member_id: member.id,
       })
     }

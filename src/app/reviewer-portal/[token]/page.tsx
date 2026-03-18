@@ -73,6 +73,7 @@ import {
 } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 type Abstract = {
   id: string
@@ -623,7 +624,7 @@ export default function ReviewerPortalPage() {
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-2" />
             <CardTitle>Link Not Valid</CardTitle>
             <CardDescription>
-              {error?.message || "This link is invalid or has expired. Please contact AMASI for assistance."}
+              {error?.message || `This link is invalid or has expired. Please contact ${COMPANY_CONFIG.name} for assistance.`}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -656,7 +657,7 @@ export default function ReviewerPortalPage() {
               {reviewer.is_amasi_member && (
                 <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
                   <Award className="h-3 w-3 mr-1" />
-                  AMASI #{reviewer.amasi_membership_number}
+                  {COMPANY_CONFIG.name} #{reviewer.amasi_membership_number}
                 </Badge>
               )}
               <Badge variant="outline" className="gap-1">
@@ -1511,8 +1512,8 @@ export default function ReviewerPortalPage() {
 
       {/* Footer */}
       <div className="text-center py-8 text-sm text-gray-500">
-        <p>AMASI - Association of Minimal Access Surgeons of India</p>
-        <p className="text-xs mt-1">If you have questions, please contact the AMASI team.</p>
+        <p>{COMPANY_CONFIG.name} - {COMPANY_CONFIG.fullName}</p>
+        <p className="text-xs mt-1">If you have questions, please contact the {COMPANY_CONFIG.name} team.</p>
       </div>
     </div>
   )

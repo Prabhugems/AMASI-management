@@ -4,6 +4,8 @@
  * Generate .ics files for calendar integration
  */
 
+import { COMPANY_CONFIG } from "@/lib/config"
+
 interface CalendarEvent {
   id: string
   title: string
@@ -42,7 +44,7 @@ function formatIcalDate(date: Date): string {
 /**
  * Generate a unique UID for calendar events
  */
-function generateUID(id: string, domain = "amasi-events.com"): string {
+function generateUID(id: string, domain = `${COMPANY_CONFIG.name.toLowerCase()}-events.com`): string {
   return `${id}@${domain}`
 }
 
@@ -92,7 +94,7 @@ export function generateIcal(
   const header = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//AMASI Events//Event Manager//EN",
+    `PRODID:-//${COMPANY_CONFIG.name} Events//Event Manager//EN`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeIcal(calendarName)}`,

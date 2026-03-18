@@ -120,7 +120,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false)
 
   const notifications = [
-    { id: 1, type: "info", title: "New faculty registered", message: "Dr. Sharma joined AMASICON 2026", time: "2 min ago", unread: true },
+    { id: 1, type: "info", title: "New faculty registered", message: "Dr. Sharma joined the conference", time: "2 min ago", unread: true },
     { id: 2, type: "warning", title: "Pending approvals", message: "5 travel requests awaiting approval", time: "1 hour ago", unread: true },
     { id: 3, type: "success", title: "Import completed", message: "150 delegates imported successfully", time: "3 hours ago", unread: false },
     { id: 4, type: "error", title: "Payment failed", message: "Sponsor payment processing error", time: "5 hours ago", unread: false },
@@ -149,7 +149,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
             className="relative flex-1 flex items-center w-full h-10 pl-10 pr-4 rounded-xl bg-secondary/50 border border-transparent text-sm text-muted-foreground hover:bg-secondary transition-colors cursor-pointer text-left"
           >
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <span>Search events, faculty, members...</span>
+            <span>Search events, registrations...</span>
             <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
               <span className="text-xs">⌘</span>K
             </kbd>

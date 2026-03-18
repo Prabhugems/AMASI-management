@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import { sendEmail } from "@/lib/email"
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit"
 import { logActivityFromRequest } from "@/lib/activity-logger"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 function getMagicLinkEmailHtml(loginUrl: string): string {
   const year = new Date().getFullYear()
@@ -12,7 +13,7 @@ function getMagicLinkEmailHtml(loginUrl: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign in to AMASI</title>
+  <title>Sign in to ${COMPANY_CONFIG.name}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -29,7 +30,7 @@ function getMagicLinkEmailHtml(loginUrl: string): string {
                     <span style="color: white; font-size: 22px; font-weight: bold; line-height: 48px;">A</span>
                   </td>
                   <td style="padding-left: 12px;">
-                    <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">AMASI</h1>
+                    <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${COMPANY_CONFIG.name}</h1>
                     <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 13px;">Command Center</p>
                   </td>
                 </tr>
@@ -50,7 +51,7 @@ function getMagicLinkEmailHtml(loginUrl: string): string {
                 Sign in to your account
               </h2>
               <p style="color: #6b7280; margin: 0 0 32px 0; font-size: 15px; line-height: 1.5;">
-                Click the button below to securely sign in to your AMASI dashboard. No password needed.
+                Click the button below to securely sign in to your ${COMPANY_CONFIG.name} dashboard. No password needed.
               </p>
 
               <!-- Login Button -->
@@ -89,10 +90,10 @@ function getMagicLinkEmailHtml(loginUrl: string): string {
           <tr>
             <td style="background-color: #111827; padding: 24px 30px; border-radius: 0 0 16px 16px; text-align: center;">
               <p style="color: #9ca3af; margin: 0 0 8px 0; font-size: 13px;">
-                Association of Minimal Access Surgeons of India
+                ${COMPANY_CONFIG.fullName}
               </p>
               <p style="color: #4b5563; margin: 0; font-size: 12px;">
-                &copy; ${year} AMASI. All rights reserved.
+                &copy; ${year} ${COMPANY_CONFIG.name}. All rights reserved.
               </p>
             </td>
           </tr>
@@ -113,7 +114,7 @@ function getInviteEmailHtml(loginUrl: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You've been invited to AMASI</title>
+  <title>You've been invited to ${COMPANY_CONFIG.name}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -130,7 +131,7 @@ function getInviteEmailHtml(loginUrl: string): string {
                     <span style="color: white; font-size: 22px; font-weight: bold; line-height: 48px;">A</span>
                   </td>
                   <td style="padding-left: 12px;">
-                    <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">AMASI</h1>
+                    <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${COMPANY_CONFIG.name}</h1>
                     <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 13px;">Command Center</p>
                   </td>
                 </tr>
@@ -151,7 +152,7 @@ function getInviteEmailHtml(loginUrl: string): string {
                 You're invited!
               </h2>
               <p style="color: #6b7280; margin: 0 0 32px 0; font-size: 15px; line-height: 1.5;">
-                You've been invited to join the AMASI Command Center. Click the button below to accept your invitation and set up your account.
+                You've been invited to join the ${COMPANY_CONFIG.name} Command Center. Click the button below to accept your invitation and set up your account.
               </p>
 
               <!-- Accept Button -->
@@ -190,10 +191,10 @@ function getInviteEmailHtml(loginUrl: string): string {
           <tr>
             <td style="background-color: #111827; padding: 24px 30px; border-radius: 0 0 16px 16px; text-align: center;">
               <p style="color: #9ca3af; margin: 0 0 8px 0; font-size: 13px;">
-                Association of Minimal Access Surgeons of India
+                ${COMPANY_CONFIG.fullName}
               </p>
               <p style="color: #4b5563; margin: 0; font-size: 12px;">
-                &copy; ${year} AMASI. All rights reserved.
+                &copy; ${year} ${COMPANY_CONFIG.name}. All rights reserved.
               </p>
             </td>
           </tr>
@@ -328,11 +329,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Send custom designed email (invite variant or login variant)
-    const subject = isInvite ? "You've been invited to AMASI" : "Sign in to AMASI"
+    const subject = isInvite ? `You've been invited to ${COMPANY_CONFIG.name}` : `Sign in to ${COMPANY_CONFIG.name}`
     const html = isInvite ? getInviteEmailHtml(loginUrl) : getMagicLinkEmailHtml(loginUrl)
     const text = isInvite
-      ? `You've been invited to AMASI\n\nYou've been invited to join the AMASI Command Center. Click the link below to accept your invitation:\n${loginUrl}\n\nThis link expires in 24 hours and can only be used once.\n\nIf you didn't expect this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} AMASI - Association of Minimal Access Surgeons of India`
-      : `Sign in to AMASI\n\nClick the link below to sign in to your account:\n${loginUrl}\n\nThis link expires in 24 hours and can only be used once.\n\nIf you didn't request this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} AMASI - Association of Minimal Access Surgeons of India`
+      ? `You've been invited to ${COMPANY_CONFIG.name}\n\nYou've been invited to join the ${COMPANY_CONFIG.name} Command Center. Click the link below to accept your invitation:\n${loginUrl}\n\nThis link expires in 24 hours and can only be used once.\n\nIf you didn't expect this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} ${COMPANY_CONFIG.name} - ${COMPANY_CONFIG.fullName}`
+      : `Sign in to ${COMPANY_CONFIG.name}\n\nClick the link below to sign in to your account:\n${loginUrl}\n\nThis link expires in 24 hours and can only be used once.\n\nIf you didn't request this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} ${COMPANY_CONFIG.name} - ${COMPANY_CONFIG.fullName}`
     const emailResult = await sendEmail({
       to: normalizedEmail,
       subject,

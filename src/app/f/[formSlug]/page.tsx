@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 import { format } from "date-fns"
 
 interface EventRegistration {
@@ -362,7 +363,7 @@ export default function PublicFormPage() {
           <div className="text-center py-6">
             <p className="text-sm text-gray-500/80 font-medium flex items-center justify-center gap-2">
               <Sparkles className="w-4 h-4" style={{ color: form.primary_color || "#8B5CF6" }} />
-              Powered by AMASI Forms
+              Powered by {COMPANY_CONFIG.name} Forms
               <Sparkles className="w-4 h-4" style={{ color: form.primary_color || "#8B5CF6" }} />
             </p>
           </div>
@@ -556,7 +557,7 @@ export default function PublicFormPage() {
         <div className="text-center py-8">
           <p className="text-sm text-gray-500 font-medium flex items-center justify-center gap-2">
             <Sparkles className="w-4 h-4 text-violet-400" />
-            Powered by AMASI Forms
+            Powered by {COMPANY_CONFIG.name} Forms
             <Sparkles className="w-4 h-4 text-violet-400" />
           </p>
         </div>

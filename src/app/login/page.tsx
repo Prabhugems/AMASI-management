@@ -3,10 +3,11 @@
 import * as React from "react"
 import { Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Mail, Loader2, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Mail, Loader2, CheckCircle2, AlertTriangle, Calendar, Users, BarChart3, Shield, Lock, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 // Check if Supabase is properly configured
 const isSupabaseConfigured = () => {
@@ -20,12 +21,14 @@ function LoginForm() {
   const redirectTo = searchParams.get("redirectTo") || "/"
   const supabaseConfigured = isSupabaseConfigured()
 
-  const { signInWithMagicLink, isAuthenticated, loading: authLoading } = useAuth()
+  const { signInWithMagicLink, signInWithPassword, isAuthenticated, loading: authLoading } = useAuth()
 
   const [email, setEmail] = React.useState("")
+  const [password, setPassword] = React.useState("")
   const [loading, setLoading] = React.useState(false)
   const [sent, setSent] = React.useState(false)
   const [error, setError] = React.useState("")
+  const [loginMode, setLoginMode] = React.useState<"password" | "magic-link">("password")
 
   // If login page receives a code param, redirect to auth callback
   React.useEffect(() => {
@@ -49,10 +52,15 @@ function LoginForm() {
     setError("")
 
     try {
-      await signInWithMagicLink(email, redirectTo !== "/" ? redirectTo : undefined)
-      setSent(true)
+      if (loginMode === "password") {
+        await signInWithPassword(email, password)
+        router.push(redirectTo)
+      } else {
+        await signInWithMagicLink(email, redirectTo !== "/" ? redirectTo : undefined)
+        setSent(true)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send magic link")
+      setError(err instanceof Error ? err.message : "Login failed")
     } finally {
       setLoading(false)
     }
@@ -69,44 +77,52 @@ function LoginForm() {
   return (
     <div className="min-h-screen flex bg-background">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/90 to-primary items-center justify-center p-12">
-        <div className="max-w-md text-white">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="h-14 w-14 rounded-2xl bg-white/20 flex items-center justify-center">
-              <span className="text-2xl font-bold">A</span>
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary/90 to-primary/80 items-center justify-center p-12 relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 -left-10 w-72 h-72 rounded-full bg-white/20 blur-3xl" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute top-1/2 left-1/3 w-48 h-48 rounded-full bg-white/15 blur-2xl" />
+        </div>
+
+        <div className="max-w-md text-white relative z-10">
+          <div className="flex items-center gap-3 mb-10">
+            <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/10">
+              <span className="text-2xl font-bold">{COMPANY_CONFIG.name.charAt(0)}</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold">AMASI</h1>
-              <p className="text-white/70 text-sm">Command Center</p>
+              <h1 className="text-2xl font-bold tracking-tight">{COMPANY_CONFIG.name}</h1>
+              <p className="text-white/60 text-sm">Event Management Platform</p>
             </div>
           </div>
 
-          <h2 className="text-3xl font-bold mb-4">
-            Faculty Management System
+          <h2 className="text-4xl font-bold mb-4 leading-tight">
+            Your complete event<br />command center
           </h2>
-          <p className="text-white/80 text-lg mb-8">
-            Streamline your event management with powerful tools for faculty coordination,
-            delegate registration, and certificate generation.
+          <p className="text-white/70 text-lg mb-10">
+            Everything you need to plan, manage, and execute world-class conferences and events.
           </p>
 
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <span>Manage 17,000+ AMASI members</span>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+              <Calendar className="h-6 w-6 mb-3 text-white/80" />
+              <h3 className="font-semibold text-sm mb-1">Event Management</h3>
+              <p className="text-white/50 text-xs">Sessions, programs & schedules</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <span>Faculty invitations & tracking</span>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+              <Users className="h-6 w-6 mb-3 text-white/80" />
+              <h3 className="font-semibold text-sm mb-1">Registrations</h3>
+              <p className="text-white/50 text-xs">Delegates, badges & check-in</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <span>QR-based check-in system</span>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+              <BarChart3 className="h-6 w-6 mb-3 text-white/80" />
+              <h3 className="font-semibold text-sm mb-1">Analytics</h3>
+              <p className="text-white/50 text-xs">Real-time insights & reports</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+              <Shield className="h-6 w-6 mb-3 text-white/80" />
+              <h3 className="font-semibold text-sm mb-1">Certificates</h3>
+              <p className="text-white/50 text-xs">Auto-generate & verify</p>
             </div>
           </div>
         </div>
@@ -118,11 +134,11 @@ function LoginForm() {
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
             <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
-              <span className="text-xl font-bold text-white">A</span>
+              <span className="text-xl font-bold text-white">{COMPANY_CONFIG.name.charAt(0)}</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">AMASI</h1>
-              <p className="text-muted-foreground text-xs">Command Center</p>
+              <h1 className="text-xl font-bold text-foreground">{COMPANY_CONFIG.name}</h1>
+              <p className="text-muted-foreground text-xs">Event Management</p>
             </div>
           </div>
 
@@ -180,11 +196,11 @@ function LoginForm() {
                     Welcome back
                   </h2>
                   <p className="text-muted-foreground">
-                    Sign in with your email to continue
+                    Sign in to your account to continue
                   </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label
                       htmlFor="email"
@@ -210,39 +226,87 @@ function LoginForm() {
                         )}
                       />
                     </div>
-                    {error && (
-                      <p className="mt-2 text-sm text-destructive">{error}</p>
-                    )}
                   </div>
+
+                  {loginMode === "password" && (
+                    <div>
+                      <label
+                        htmlFor="password"
+                        className="block text-sm font-medium text-foreground mb-2"
+                      >
+                        Password
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <input
+                          id="password"
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Enter your password"
+                          required
+                          className={cn(
+                            "w-full h-12 pl-11 pr-4 rounded-xl bg-secondary/50 border text-foreground",
+                            "placeholder:text-muted-foreground",
+                            "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+                            "transition-all duration-200",
+                            error ? "border-destructive" : "border-transparent"
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {error && (
+                    <p className="text-sm text-destructive">{error}</p>
+                  )}
 
                   <Button
                     type="submit"
                     className="w-full h-12"
-                    disabled={loading || !email}
+                    disabled={loading || !email || (loginMode === "password" && !password)}
                   >
                     {loading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Sending magic link...
+                        {loginMode === "password" ? "Signing in..." : "Sending magic link..."}
                       </>
                     ) : (
                       <>
-                        <Mail className="h-4 w-4 mr-2" />
-                        Send magic link
+                        {loginMode === "password" ? (
+                          <>
+                            <ArrowRight className="h-4 w-4 mr-2" />
+                            Sign in
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Send magic link
+                          </>
+                        )}
                       </>
                     )}
                   </Button>
                 </form>
 
-                <p className="mt-6 text-center text-sm text-muted-foreground">
-                  No password required. We&apos;ll send you a secure link to sign in.
-                </p>
+                <div className="mt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginMode(loginMode === "password" ? "magic-link" : "password")
+                      setError("")
+                    }}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    {loginMode === "password" ? "Sign in with magic link instead" : "Sign in with password instead"}
+                  </button>
+                </div>
               </>
             )}
           </div>
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            Association of Minimal Access Surgeons of India
+            {COMPANY_CONFIG.fullName}
           </p>
         </div>
       </div>

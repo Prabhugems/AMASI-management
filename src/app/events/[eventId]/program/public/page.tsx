@@ -39,6 +39,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { exportSessionsToCalendar } from "@/lib/calendar-export"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 type Session = {
   id: string
@@ -1037,7 +1038,7 @@ export default function PublicProgramPage() {
       <footer className="bg-slate-900 text-white py-8">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <p className="text-gray-400 text-sm">
-            {publicSettings?.footer_text || `${event?.name || "Conference"} - Powered by AMASI`}
+            {publicSettings?.footer_text || `${event?.name || "Conference"} - Powered by ${COMPANY_CONFIG.name}`}
           </p>
         </div>
       </footer>

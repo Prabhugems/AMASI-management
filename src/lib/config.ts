@@ -11,6 +11,20 @@ export const COMPANY_CONFIG = {
   website: process.env.NEXT_PUBLIC_COMPANY_WEBSITE || "https://amasi.org",
 }
 
+// Feature flags for optional modules
+const multipleEvents = process.env.NEXT_PUBLIC_ENABLE_MULTIPLE_EVENTS !== "false"
+
+export const FEATURES = {
+  membership: process.env.NEXT_PUBLIC_ENABLE_MEMBERSHIP !== "false", // enabled by default for backward compat
+  examination: process.env.NEXT_PUBLIC_ENABLE_EXAMINATION !== "false",
+  faculty: process.env.NEXT_PUBLIC_ENABLE_FACULTY !== "false",
+  forms: process.env.NEXT_PUBLIC_ENABLE_FORMS !== "false",
+  travel: process.env.NEXT_PUBLIC_ENABLE_TRAVEL !== "false",
+  attendees: process.env.NEXT_PUBLIC_ENABLE_ATTENDEES === "true" || (process.env.NEXT_PUBLIC_ENABLE_ATTENDEES !== "false" && multipleEvents), // auto-hidden in single event mode
+  team: process.env.NEXT_PUBLIC_ENABLE_TEAM !== "false",
+  multipleEvents,
+}
+
 // Default values for data entry
 export const DEFAULTS = {
   country: process.env.NEXT_PUBLIC_DEFAULT_COUNTRY || "India",

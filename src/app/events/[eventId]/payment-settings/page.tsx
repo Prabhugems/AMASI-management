@@ -21,6 +21,7 @@ import {
   ChevronLeft,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 export default function PaymentSettingsPage() {
   const params = useParams()
@@ -329,7 +330,7 @@ export default function PaymentSettingsPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Account Holder Name</label>
                   <Input
-                    placeholder="AMASI Conference Fund"
+                    placeholder={`${COMPANY_CONFIG.name} Conference Fund`}
                     value={paymentSettings.bank_account_name}
                     onChange={(e) => setPaymentSettings({ ...paymentSettings, bank_account_name: e.target.value })}
                   />

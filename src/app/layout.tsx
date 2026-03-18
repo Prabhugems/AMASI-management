@@ -7,6 +7,7 @@ import { QueryProvider } from "@/components/providers/query-provider"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { ConfirmProvider } from "@/components/confirm-dialog"
 import { Toaster } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -20,8 +21,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "AMASI Command Center",
-  description: "Faculty Management System for Association of Minimal Access Surgeons of India",
+  title: `${COMPANY_CONFIG.name} - Event Management`,
+  description: `Event Management Platform for ${COMPANY_CONFIG.fullName}`,
 }
 
 export default function RootLayout({

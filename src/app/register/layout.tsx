@@ -1,5 +1,6 @@
 "use client"
 
+import { COMPANY_CONFIG } from "@/lib/config"
 import { useEffect } from "react"
 
 export default function RegisterLayout({
@@ -23,7 +24,7 @@ export default function RegisterLayout({
               A
             </div>
             <div>
-              <h1 className="font-bold text-gray-900">AMASI</h1>
+              <h1 className="font-bold text-gray-900">{COMPANY_CONFIG.name}</h1>
               <p className="text-xs text-gray-500">Events</p>
             </div>
           </div>
@@ -36,7 +37,7 @@ export default function RegisterLayout({
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 py-6">
         <div className="container mx-auto px-4 text-center text-sm text-gray-500">
-          <p>&copy; {new Date().getFullYear()} AMASI. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {COMPANY_CONFIG.name}. All rights reserved.</p>
           <div className="flex justify-center gap-4 mt-2">
             <a href="#" className="hover:text-gray-700">Terms of Service</a>
             <a href="#" className="hover:text-gray-700">Privacy Policy</a>

@@ -86,6 +86,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 type Speaker = {
   id: string
@@ -1986,7 +1987,7 @@ export default function SpeakersPage() {
                       const token = selectedSpeaker.custom_fields?.portal_token
                       if (token) {
                         const link = `${window.location.origin}/speaker/${token}`
-                        const subject = encodeURIComponent("Speaker Portal - AMASI Event")
+                        const subject = encodeURIComponent(`Speaker Portal - ${COMPANY_CONFIG.name} Event`)
                         const body = encodeURIComponent(`Dear ${selectedSpeaker.attendee_name},\n\nPlease use the following link to access your speaker portal:\n\n${link}\n\nBest regards`)
                         window.open(`mailto:${selectedSpeaker.attendee_email}?subject=${subject}&body=${body}`)
                       }

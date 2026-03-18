@@ -7,6 +7,7 @@ import Link from "next/link"
 import { ArrowLeft, Settings2, Trash2, AlertTriangle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface TicketType {
   id: string
@@ -373,7 +374,7 @@ export default function ImportRegistrationsPage() {
         </h4>
         <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
           <li>• <strong>Standard fields</strong> (Name, Email, Phone, Status) are stored in main columns</li>
-          <li>• <strong>Custom fields</strong> (AMASI Membership, Food Preference, etc.) are stored in form_responses</li>
+          <li>• <strong>Custom fields</strong> ({COMPANY_CONFIG.name} Membership, Food Preference, etc.) are stored in form_responses</li>
           <li>• <strong>Registration numbers</strong> can be imported from CSV, or auto-generated as {registrationPrefix || "PREFIX"}A1001, {registrationPrefix || "PREFIX"}A1002, ...</li>
           <li>• <strong>Duplicates</strong> are skipped (based on email)</li>
         </ul>

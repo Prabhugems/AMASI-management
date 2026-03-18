@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 // Sample data for preview/test
 const SAMPLE_DATA = {
@@ -12,7 +13,7 @@ const SAMPLE_DATA = {
   payment_id: "pay_ABC123XYZ",
 
   // Event
-  event_name: "AMASI Annual Conference 2025",
+  event_name: `${COMPANY_CONFIG.name} Annual Conference 2025`,
   event_date: "March 15-17, 2025",
   venue_name: "Convention Center",
   venue_address: "123 Main Street, Mumbai",
@@ -31,8 +32,8 @@ const SAMPLE_DATA = {
   certificate_url: "https://example.com/certificate/abc123.pdf",
 
   // Organizer
-  organizer_name: "AMASI",
-  organizer_email: "support@amasi.org",
+  organizer_name: COMPANY_CONFIG.name,
+  organizer_email: COMPANY_CONFIG.supportEmail,
   year: new Date().getFullYear().toString(),
 }
 
@@ -99,7 +100,7 @@ export async function POST(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: process.env.EMAIL_FROM || "noreply@amasi.org",
+          from: process.env.EMAIL_FROM || COMPANY_CONFIG.supportEmail,
           to: email,
           subject,
           html: htmlBody,
@@ -119,7 +120,7 @@ export async function POST(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: process.env.EMAIL_FROM || "AMASI <noreply@amasi.org>",
+          from: process.env.EMAIL_FROM || `${COMPANY_CONFIG.name} <${COMPANY_CONFIG.supportEmail}>`,
           to: [email],
           subject,
           html: htmlBody,

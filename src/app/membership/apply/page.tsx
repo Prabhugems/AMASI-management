@@ -30,6 +30,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 const MEMBERSHIP_TYPES = [
   { value: "Life Member [LM]", label: "Life Member [LM]" },
@@ -192,8 +193,8 @@ export default function MembershipApplyPage() {
               <span className="text-lg font-bold text-white">A</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">AMASI Membership Application</h1>
-              <p className="text-sm text-muted-foreground">Association of Minimal Access Surgeons of India</p>
+              <h1 className="text-xl font-bold text-foreground">{COMPANY_CONFIG.name} Membership Application</h1>
+              <p className="text-sm text-muted-foreground">{COMPANY_CONFIG.fullName}</p>
             </div>
           </div>
         </div>

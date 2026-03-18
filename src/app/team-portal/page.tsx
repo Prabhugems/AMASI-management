@@ -29,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 import Link from "next/link"
 
 type Event = {
@@ -189,7 +190,7 @@ export default function TeamPortalPage() {
               </div>
               <div>
                 <h1 className="text-xl font-bold">Team Portal</h1>
-                <p className="text-slate-400 text-sm">AMASI Event Management</p>
+                <p className="text-slate-400 text-sm">{COMPANY_CONFIG.name} Event Management</p>
               </div>
             </div>
             <Button

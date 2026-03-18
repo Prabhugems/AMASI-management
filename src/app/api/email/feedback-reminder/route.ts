@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { logEmail } from "@/lib/email-tracking"
 import { escapeHtml } from "@/lib/string-utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 // POST /api/email/feedback-reminder - Send feedback reminder email to attendee
 export async function POST(request: NextRequest) {
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     const delegatePortalUrl = `${baseUrl}/my`
 
     const emailSubject = `Share Your Feedback - ${eventName}`
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>"
+    const fromEmail = process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
                       Thank you for being part of ${escapeHtml(eventName)}!
                     </p>
                     <p style="color: #6b7280; margin: 0; font-size: 12px;">
-                      &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
+                      &copy; ${new Date().getFullYear()} ${COMPANY_CONFIG.name}. All rights reserved.
                     </p>
                   </td>
                 </tr>

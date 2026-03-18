@@ -39,6 +39,7 @@ import {
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 const MEMBERSHIP_TYPES = [
   { value: "Life Member [LM]", label: "Life Member [LM]" },
@@ -132,7 +133,7 @@ export default function NewMemberPage() {
           .maybeSingle()
 
         if (existingNumber) {
-          throw new Error(`AMASI number already assigned to: ${existingNumber.name}`)
+          throw new Error(`${COMPANY_CONFIG.name} number already assigned to: ${existingNumber.name}`)
         }
       }
 
@@ -210,7 +211,7 @@ export default function NewMemberPage() {
               Add New Member
             </h1>
             <p className="text-sm text-muted-foreground">
-              Create a new AMASI member record
+              Create a new {COMPANY_CONFIG.name} member record
             </p>
           </div>
         </div>
@@ -228,7 +229,7 @@ export default function NewMemberPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="amasi_number">AMASI Number</Label>
+                  <Label htmlFor="amasi_number">{COMPANY_CONFIG.name} Number</Label>
                   <Input
                     id="amasi_number"
                     type="number"

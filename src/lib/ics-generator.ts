@@ -1,5 +1,7 @@
 // ICS Calendar File Generator
 
+import { COMPANY_CONFIG } from "@/lib/config"
+
 interface CalendarEvent {
   title: string
   description?: string
@@ -17,7 +19,7 @@ function formatICSDate(date: Date): string {
 
 // Generate a unique ID for the event
 function generateUID(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}@amasi.in`
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}@${COMPANY_CONFIG.website.replace(/^https?:\/\//, "")}`
 }
 
 // Escape special characters in ICS text
@@ -34,7 +36,7 @@ export function generateICSEvent(event: CalendarEvent): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//AMASI Events//Travel Itinerary//EN",
+    `PRODID:-//${COMPANY_CONFIG.name} Events//Travel Itinerary//EN`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
@@ -194,7 +196,7 @@ export function generateTravelItineraryICS(itinerary: {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//AMASI Events//Travel Itinerary//EN",
+    `PRODID:-//${COMPANY_CONFIG.name} Events//Travel Itinerary//EN`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeICSText(`${itinerary.eventName} - Travel Itinerary`)}`,

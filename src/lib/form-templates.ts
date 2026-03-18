@@ -1,4 +1,5 @@
 import { FieldType, FieldWidth, FormType, FieldOption } from "@/lib/types"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 export interface TemplateField {
   field_type: FieldType
@@ -24,8 +25,8 @@ export interface FormTemplateDefinition {
 export const FORM_TEMPLATES: FormTemplateDefinition[] = [
   {
     id: "amasi-nextgen-feedback",
-    name: "AMASI NextGen Feedback",
-    description: "Official AMASI NextGen workshop feedback form with detailed session evaluation",
+    name: `${COMPANY_CONFIG.name} NextGen Feedback`,
+    description: `Official ${COMPANY_CONFIG.name} NextGen workshop feedback form with detailed session evaluation`,
     category: "feedback",
     form_type: "feedback",
     icon: "ClipboardCheck",
@@ -138,7 +139,7 @@ export const FORM_TEMPLATES: FormTemplateDefinition[] = [
       },
       {
         field_type: "radio",
-        label: "Would you recommend AMASI NextGen events to your colleagues?",
+        label: `Would you recommend ${COMPANY_CONFIG.name} NextGen events to your colleagues?`,
         is_required: true,
         width: "full",
         options: [
@@ -151,7 +152,7 @@ export const FORM_TEMPLATES: FormTemplateDefinition[] = [
       },
       {
         field_type: "radio",
-        label: "How likely are you to attend future AMASI NextGen events?",
+        label: `How likely are you to attend future ${COMPANY_CONFIG.name} NextGen events?`,
         is_required: true,
         width: "full",
         options: [

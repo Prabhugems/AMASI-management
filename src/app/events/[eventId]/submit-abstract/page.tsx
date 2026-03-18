@@ -29,6 +29,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface Declaration {
   text: string
@@ -855,14 +856,14 @@ export default function SubmitAbstractPage() {
             )}
           </div>
 
-          {/* AMASI Membership Number */}
+          {/* Membership Number */}
           {selectedCategory && (
             <div className="bg-white rounded-xl border p-6">
-              <label className="block text-sm font-medium mb-2">AMASI Membership Number</label>
+              <label className="block text-sm font-medium mb-2">{COMPANY_CONFIG.name} Membership Number</label>
               <Input
                 value={amasiMembershipNumber}
                 onChange={(e) => setAmasiMembershipNumber(e.target.value)}
-                placeholder="e.g. AMASI/2024/1234"
+                placeholder={`e.g. ${COMPANY_CONFIG.name}/2024/1234`}
               />
               <p className="text-xs text-muted-foreground mt-2">
                 Optional at the time of submission. Required before podium presentation.

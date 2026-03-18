@@ -30,6 +30,7 @@ import { FormRenderer } from "@/components/forms/renderer/form-renderer"
 import { Form, FormField } from "@/lib/types"
 import { usePageTracking } from "@/hooks/usePageTracking"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 declare global {
   interface Window {
@@ -335,7 +336,7 @@ export default function CheckoutPage() {
           amasi_number: m.amasi_number || null,
           membership_type: m.membership_type || null,
         })
-        toast.success("AMASI member found! Details auto-filled.")
+        toast.success(`${COMPANY_CONFIG.name} member found! Details auto-filled.`)
       }
     } catch (err) {
       console.error("Error looking up member:", err)
@@ -627,7 +628,7 @@ export default function CheckoutPage() {
         key: orderData.key,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: "AMASI",
+        name: COMPANY_CONFIG.name,
         description: `Registration for ${event.name}`,
         order_id: orderData.order_id,
         prefill: {

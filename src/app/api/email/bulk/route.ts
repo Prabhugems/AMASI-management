@@ -4,6 +4,7 @@ import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { requireEventAccess } from "@/lib/auth/api-auth"
 import { escapeHtml } from "@/lib/string-utils"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 interface BulkEmailData {
   event_id: string
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
                         This email was sent to ${reg.attendee_email}
                       </p>
                       <p style="color: #6b7280; margin: 0; font-size: 12px;">
-                        &copy; ${new Date().getFullYear()} AMASI. All rights reserved.
+                        &copy; ${new Date().getFullYear()} ${COMPANY_CONFIG.name}. All rights reserved.
                       </p>
                     </td>
                   </tr>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { Resend } from "resend"
 import { requireAdmin } from "@/lib/auth/api-auth"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
@@ -143,7 +144,7 @@ export async function PUT(request: NextRequest) {
 
       try {
         const result = await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>",
+          from: process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`,
           to: speakerEmail,
           subject: `Session Time Updated - ${session.session_name}`,
           html: emailHtml,
@@ -184,7 +185,7 @@ export async function PUT(request: NextRequest) {
       for (const email of committee_emails) {
         try {
           const result = await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>",
+            from: process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`,
             to: email,
             subject: `[Schedule Change] ${session.session_name} - ${speakerName}`,
             html: committeeEmailHtml,
@@ -342,7 +343,7 @@ function generateSpeakerEmailHtml(data: {
                     Thank you for your understanding.
                   </p>
                   <p style="color: #6b7280; margin: 0; font-size: 12px;">
-                    © ${new Date().getFullYear()} AMASI. All rights reserved.
+                    © ${new Date().getFullYear()} ${COMPANY_CONFIG.name}. All rights reserved.
                   </p>
                 </td>
               </tr>
@@ -462,7 +463,7 @@ function generateCommitteeEmailHtml(data: {
               <tr>
                 <td style="background-color: #1f2937; padding: 20px; border-radius: 0 0 16px 16px; text-align: center;">
                   <p style="color: #6b7280; margin: 0; font-size: 12px;">
-                    © ${new Date().getFullYear()} AMASI Event Management
+                    © ${new Date().getFullYear()} ${COMPANY_CONFIG.name} Event Management
                   </p>
                 </td>
               </tr>

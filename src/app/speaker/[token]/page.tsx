@@ -35,6 +35,7 @@ import {
 } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 import { InsertChat } from "@/components/insert-chat"
 import { TravelForm } from "@/components/travel-form"
 import { JourneyItinerary } from "@/components/journey-itinerary"
@@ -611,7 +612,7 @@ export default function SpeakerPortalPage() {
           {/* Footer */}
           <div className="text-center text-white/50 text-sm py-4 print:hidden">
             <p>Need help? Contact the organizing team</p>
-            <p className="mt-1">Powered by AMASI Event Management</p>
+            <p className="mt-1">Powered by {COMPANY_CONFIG.name} Event Management</p>
           </div>
         </div>
       </div>
@@ -1032,7 +1033,7 @@ export default function SpeakerPortalPage() {
         {/* Footer */}
         <div className="text-center text-white/50 text-sm py-4 print:hidden">
           <p>Need help? Contact the organizing team</p>
-          <p className="mt-1">Powered by AMASI Event Management</p>
+          <p className="mt-1">Powered by {COMPANY_CONFIG.name} Event Management</p>
         </div>
       </div>
     </div>

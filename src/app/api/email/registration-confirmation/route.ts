@@ -3,6 +3,7 @@ import { Resend } from "resend"
 import { renderEmailTemplate } from "@/lib/email-templates"
 import { escapeHtml } from "@/lib/string-utils"
 import { getApiUser } from "@/lib/auth/api-auth"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 // Initialize Resend
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -101,8 +102,8 @@ export async function POST(request: NextRequest) {
       venue_name: event_venue || "To be announced",
       venue_address: event_venue || "",
       payment_id: "",
-      organizer_name: "AMASI",
-      organizer_email: "support@amasi.org",
+      organizer_name: COMPANY_CONFIG.name,
+      organizer_email: COMPANY_CONFIG.supportEmail,
       year: new Date().getFullYear().toString(),
     }
 
@@ -213,7 +214,7 @@ export async function POST(request: NextRequest) {
                       If you have any questions, please contact us.
                     </p>
                     <p style="color: #6b7280; margin: 0; font-size: 12px;">
-                      © ${new Date().getFullYear()} AMASI. All rights reserved.
+                      © ${new Date().getFullYear()} ${COMPANY_CONFIG.name}. All rights reserved.
                     </p>
                   </td>
                 </tr>
@@ -231,7 +232,7 @@ export async function POST(request: NextRequest) {
     if (resend) {
       try {
         const result = await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || "AMASI Events <noreply@resend.dev>",
+          from: process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`,
           to: attendee_email,
           subject: emailSubject,
           html: emailHtml,

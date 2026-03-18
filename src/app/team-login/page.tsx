@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 function TeamLoginForm() {
   const router = useRouter()
@@ -106,7 +107,7 @@ function TeamLoginForm() {
               <Users className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">AMASI Team</h1>
+              <h1 className="text-2xl font-bold">{COMPANY_CONFIG.name} Team</h1>
               <p className="text-sidebar-muted text-sm">Management Portal</p>
             </div>
           </div>
@@ -156,7 +157,7 @@ function TeamLoginForm() {
               <Users className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">AMASI Team</h1>
+              <h1 className="text-xl font-bold text-foreground">{COMPANY_CONFIG.name} Team</h1>
               <p className="text-muted-foreground text-xs">Management Portal</p>
             </div>
           </div>
@@ -248,7 +249,7 @@ function TeamLoginForm() {
           </div>
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            Association of Minimal Access Surgeons of India
+            {COMPANY_CONFIG.fullName}
           </p>
         </div>
       </div>

@@ -16,6 +16,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, CheckCircle2, ClipboardCheck, Award } from "lucide-react"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 const SPECIALTIES = [
   "General & GI Surgery",
@@ -175,7 +176,7 @@ export default function BecomeReviewerPage() {
           </div>
           <h1 className="text-3xl font-bold mb-2">Become a Reviewer</h1>
           <p className="text-muted-foreground">
-            Register to review abstracts and videos for AMASI events
+            Register to review abstracts and videos for {COMPANY_CONFIG.name} events
           </p>
         </div>
 

@@ -33,6 +33,7 @@ import {
   ChevronLeft,
 } from "lucide-react"
 import { toast } from "sonner"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 type Track = {
   id: string
@@ -618,7 +619,7 @@ export default function PublicPageSettingsPage() {
         <Textarea
           value={settings.footer_text}
           onChange={(e) => setSettings({ ...settings, footer_text: e.target.value })}
-          placeholder="e.g., Organized by AMASI (Association of Minimal Access Surgeons of India)"
+          placeholder={`e.g., Organized by ${COMPANY_CONFIG.name} (${COMPANY_CONFIG.fullName})`}
           rows={2}
         />
         <p className="text-xs text-muted-foreground mt-1">
