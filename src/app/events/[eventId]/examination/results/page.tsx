@@ -33,6 +33,7 @@ import {
   Mail,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { COMPANY_CONFIG } from "@/lib/config"
 
 type Registration = {
   id: string
@@ -107,7 +108,7 @@ export default function ResultsPage() {
     const msg = type === "pass"
       ? "Send congratulations email to ALL passed candidates with convocation number and form link?"
       : type === "withheld"
-      ? "Send AMASI membership required email to ALL withheld candidates?"
+      ? `Send ${COMPANY_CONFIG.name} membership required email to ALL withheld candidates?`
       : "Send fail notification email to ALL failed candidates?"
     if (!confirm(msg)) return
     setSendingType(type)
@@ -160,20 +161,28 @@ export default function ResultsPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-xl p-4 text-center">
-          <p className="text-sm text-green-700 dark:text-green-400">Passed</p>
-          <p className="text-3xl font-bold text-green-700 dark:text-green-400">{passed}</p>
-        </div>
-        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl p-4 text-center">
-          <p className="text-sm text-red-700 dark:text-red-400">Failed</p>
-          <p className="text-3xl font-bold text-red-700 dark:text-red-400">{failed}</p>
-        </div>
-        <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900 rounded-xl p-4 text-center">
-          <p className="text-sm text-orange-700 dark:text-orange-400">Absent</p>
-          <p className="text-3xl font-bold text-orange-700 dark:text-orange-400">{absent}</p>
-        </div>
+      {/* Stats - Clickable */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {[
+          { label: "Passed", value: passed, color: "text-green-600", filter: "pass", bg: "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900" },
+          { label: "Failed", value: failed, color: "text-red-600", filter: "fail", bg: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900" },
+          { label: "Withheld", value: withheld, color: "text-yellow-600", filter: "withheld", bg: "bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900" },
+          { label: "Absent", value: absent, color: "text-orange-600", filter: "absent", bg: "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900" },
+          { label: "All", value: (registrations?.length || 0), color: "", filter: "all", bg: "bg-card" },
+        ].map((stat) => (
+          <button
+            key={stat.filter}
+            onClick={() => setFilterResult(filterResult === stat.filter ? "all" : stat.filter)}
+            className={cn(
+              "border rounded-xl p-4 text-center transition-all hover:shadow-md",
+              stat.bg,
+              filterResult === stat.filter && stat.filter !== "all" && "ring-2 ring-primary"
+            )}
+          >
+            <p className={cn("text-sm", stat.color || "text-muted-foreground")}>{stat.label}</p>
+            <p className={cn("text-3xl font-bold", stat.color)}>{stat.value}</p>
+          </button>
+        ))}
       </div>
 
       {/* Filters */}

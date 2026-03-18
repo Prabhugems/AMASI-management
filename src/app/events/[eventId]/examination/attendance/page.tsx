@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useExamSettings } from "@/hooks/use-exam-settings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import {
   Select,
   SelectContent,
@@ -175,20 +176,25 @@ export default function AttendancePage() {
         </Button>
       </div>
 
-      {/* Stats */}
+      {/* Stats - Clickable */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-card border rounded-xl p-4">
-          <p className="text-sm text-muted-foreground">Total</p>
-          <p className="text-2xl font-bold">{total}</p>
-        </div>
-        <div className="bg-card border rounded-xl p-4">
-          <p className="text-sm text-muted-foreground">Present (Checked In)</p>
-          <p className="text-2xl font-bold text-green-600">{presentCount}</p>
-        </div>
-        <div className="bg-card border rounded-xl p-4">
-          <p className="text-sm text-muted-foreground">Absent</p>
-          <p className="text-2xl font-bold text-orange-600">{absentCount}</p>
-        </div>
+        {[
+          { label: "Total", value: total, color: "", tab: "all" },
+          { label: "Present (Checked In)", value: presentCount, color: "text-green-600", tab: "present" },
+          { label: "Absent", value: absentCount, color: "text-orange-600", tab: "absent" },
+        ].map((stat) => (
+          <button
+            key={stat.tab}
+            onClick={() => setActiveTab(activeTab === stat.tab ? "all" : stat.tab)}
+            className={cn(
+              "bg-card border rounded-xl p-4 text-left transition-all hover:shadow-md",
+              activeTab === stat.tab && stat.tab !== "all" && "ring-2 ring-primary border-primary"
+            )}
+          >
+            <p className="text-sm text-muted-foreground">{stat.label}</p>
+            <p className={cn("text-2xl font-bold", stat.color)}>{stat.value}</p>
+          </button>
+        ))}
       </div>
 
       {/* Filters */}
