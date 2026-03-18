@@ -105,6 +105,8 @@ export async function middleware(request: NextRequest) {
     '/membership',          // Public membership application form
     '/api/membership/apply', // Public membership application API
     '/api/travel/flights-print', // Public flights print data API
+    '/examiner',            // Examiner portal (token-based)
+    '/api/examination/examiner', // Examiner portal API (token-based)
   ]
   const _isPublicRoute = publicRoutes.some(
     (route) =>

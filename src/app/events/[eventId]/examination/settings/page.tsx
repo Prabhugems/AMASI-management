@@ -13,6 +13,10 @@ import {
   Loader2,
   Plus,
   Trash2,
+  Link,
+  Copy,
+  Check,
+  ExternalLink,
 } from "lucide-react"
 
 export type MarkColumn = {
@@ -21,12 +25,19 @@ export type MarkColumn = {
   max: number
 }
 
+export type ExaminerToken = {
+  id: string
+  label: string
+  created_at: string
+}
+
 export type ExamSettings = {
   exam_type: string
   pass_marks: number
   mark_columns: MarkColumn[]
   convocation_prefix: string
   exam_ticket_types?: string[]
+  examiner_tokens?: ExaminerToken[]
 }
 
 const FMAS_DEFAULTS: MarkColumn[] = [
@@ -56,6 +67,8 @@ export default function ExamSettingsPage() {
 
   const [formData, setFormData] = useState<ExamSettings>(defaultSettings)
   const [saving, setSaving] = useState(false)
+  const [copiedTokenId, setCopiedTokenId] = useState<string | null>(null)
+  const [tokenLabel, setTokenLabel] = useState("")
 
   // Fetch ticket types for this event
   const { data: ticketTypes } = useQuery({
@@ -340,6 +353,156 @@ export default function ExamSettingsPage() {
             )}
           </Button>
         </div>
+      </div>
+
+      {/* Examiner Portal Section */}
+      <div className="bg-card border rounded-xl p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Link className="h-5 w-5" />
+            Examiner Portal
+          </h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Generate shareable links for examiners to enter marks from their phones.
+          </p>
+        </div>
+
+        {/* Generate new token */}
+        <div className="flex items-center gap-2">
+          <Input
+            value={tokenLabel}
+            onChange={(e) => setTokenLabel(e.target.value)}
+            placeholder="Label (e.g. Examiner 1, Dr. Smith)"
+            className="flex-1"
+          />
+          <Button
+            variant="outline"
+            className="gap-1 whitespace-nowrap"
+            onClick={async () => {
+              const newToken: ExaminerToken = {
+                id: crypto.randomUUID(),
+                label: tokenLabel.trim() || `Examiner ${(formData.examiner_tokens?.length || 0) + 1}`,
+                created_at: new Date().toISOString(),
+              }
+              const updatedTokens = [...(formData.examiner_tokens || []), newToken]
+              const updatedForm = { ...formData, examiner_tokens: updatedTokens }
+              setFormData(updatedForm)
+              setTokenLabel("")
+
+              // Auto-save to persist the token immediately
+              try {
+                const { data: event } = await (supabase as any)
+                  .from("events")
+                  .select("settings")
+                  .eq("id", eventId)
+                  .maybeSingle()
+
+                const currentSettings = ((event as any)?.settings as Record<string, any>) || {}
+                await (supabase as any)
+                  .from("events")
+                  .update({
+                    settings: { ...currentSettings, examination: updatedForm },
+                  })
+                  .eq("id", eventId)
+                await queryClient.invalidateQueries({ queryKey: ["exam-settings", eventId] })
+              } catch (error) {
+                console.error("Failed to save token:", error)
+              }
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Generate Examiner Link
+          </Button>
+        </div>
+
+        {/* Existing tokens */}
+        {formData.examiner_tokens && formData.examiner_tokens.length > 0 ? (
+          <div className="space-y-2">
+            {formData.examiner_tokens.map((t) => {
+              const url = typeof window !== "undefined"
+                ? `${window.location.origin}/examiner/${t.id}`
+                : `/examiner/${t.id}`
+              const isCopied = copiedTokenId === t.id
+
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center gap-2 p-3 bg-secondary/30 rounded-lg"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{t.label}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      <p className="text-xs text-muted-foreground truncate font-mono">
+                        {url}
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Created {new Date(t.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(url)
+                      setCopiedTokenId(t.id)
+                      setTimeout(() => setCopiedTokenId(null), 2000)
+                    }}
+                  >
+                    {isCopied ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                    onClick={async () => {
+                      const updatedTokens = (formData.examiner_tokens || []).filter(
+                        (tok) => tok.id !== t.id
+                      )
+                      const updatedForm = { ...formData, examiner_tokens: updatedTokens }
+                      setFormData(updatedForm)
+
+                      // Auto-save
+                      try {
+                        const { data: event } = await (supabase as any)
+                          .from("events")
+                          .select("settings")
+                          .eq("id", eventId)
+                          .maybeSingle()
+
+                        const currentSettings =
+                          ((event as any)?.settings as Record<string, any>) || {}
+                        await (supabase as any)
+                          .from("events")
+                          .update({
+                            settings: { ...currentSettings, examination: updatedForm },
+                          })
+                          .eq("id", eventId)
+                        await queryClient.invalidateQueries({
+                          queryKey: ["exam-settings", eventId],
+                        })
+                      } catch (error) {
+                        console.error("Failed to delete token:", error)
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-2">
+            No examiner links generated yet. Click the button above to create one.
+          </p>
+        )}
       </div>
     </div>
   )
