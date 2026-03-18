@@ -635,7 +635,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
         if (field.field_type === "email") {
           if (!isValidEmail(strValue)) {
             newErrors[field.id] = "Invalid email address"
-          } else if (requireEmailVerification && field.is_required) {
+          } else if ((requireEmailVerification && field.is_required) || field.settings?.require_email_otp) {
             const verificationState = emailVerificationState[field.id]
             if (!verificationState || verificationState.status !== 'verified') {
               newErrors[field.id] = "Please verify your email address"
@@ -811,7 +811,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
                   Didn&apos;t receive code? <span className="font-medium underline">Resend</span>
                 </button>
               </div>
-            ) : requireEmailVerification && field.is_required && emailValue ? (
+            ) : (requireEmailVerification || field.settings?.require_email_otp) && emailValue ? (
               <Button
                 type="button"
                 variant="outline"

@@ -48,6 +48,7 @@ import {
   AlignCenter,
   AlignRight,
   Minus,
+  Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -429,6 +430,35 @@ export function FieldEditor({
                         <div className="mt-3 p-3 bg-cyan-100 rounded-xl">
                           <p className="text-xs text-cyan-800 font-medium">
                             When email is verified, member details (name, phone, etc.) will be auto-filled from the membership database.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Email OTP Verification - Only for email fields */}
+                  {field.field_type === "email" && (
+                    <div className="space-y-4 p-5 bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl border-2 border-violet-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                            <Shield className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <Label className="text-base font-bold text-gray-800">Email OTP Verification</Label>
+                            <p className="text-sm text-gray-500">Require OTP to verify email</p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={field.settings?.require_email_otp || false}
+                          onCheckedChange={(checked) => onUpdate({ settings: { ...field.settings, require_email_otp: checked } })}
+                          className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-violet-500 data-[state=checked]:to-purple-600"
+                        />
+                      </div>
+                      {field.settings?.require_email_otp && (
+                        <div className="mt-3 p-3 bg-violet-100 rounded-xl">
+                          <p className="text-xs text-violet-800 font-medium">
+                            Users must verify their email with a 6-digit OTP code before submitting the form.
                           </p>
                         </div>
                       )}

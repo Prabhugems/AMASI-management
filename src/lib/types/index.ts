@@ -656,8 +656,9 @@ export interface FieldSettings {
   hide_label?: boolean
   help_position?: "below" | "tooltip"
 
-  // Email settings - Member lookup
+  // Email settings
   member_lookup?: boolean
+  require_email_otp?: boolean
 
   // Label formatting
   label_bold?: boolean
