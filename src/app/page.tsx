@@ -180,9 +180,6 @@ export default function Home() {
         <div className="space-y-6">
           {/* Who's Online Widget */}
           <WhosOnlineWidget />
-
-          {/* Tasks Widget */}
-          <TasksWidget />
         </div>
       </div>
 
