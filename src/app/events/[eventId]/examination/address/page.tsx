@@ -69,6 +69,25 @@ export default function AddressPage() {
   const [editingReg, setEditingReg] = useState<Registration | null>(null)
   const [editAddress, setEditAddress] = useState<ConvocationAddress>(emptyAddress)
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+
+  const syncAddresses = async () => {
+    setSyncing(true)
+    try {
+      const res = await fetch("/api/examination/sync-addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error)
+      alert(`Synced from Fillout!\n\nNew addresses: ${result.synced}\nAlready had: ${result.alreadyHas}\nNot filled: ${result.notFilled}`)
+      await queryClient.invalidateQueries({ queryKey: ["exam-address", eventId] })
+    } catch (error: any) {
+      alert("Sync failed: " + error.message)
+    }
+    setSyncing(false)
+  }
 
   const { data: registrations, isLoading } = useQuery({
     queryKey: ["exam-address", eventId],
@@ -156,10 +175,16 @@ export default function AddressPage() {
             Collect postal addresses for dispatching convocation certificates
           </p>
         </div>
-        <Button onClick={downloadCSV} variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />
-          Download Addresses
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={syncAddresses} variant="outline" className="gap-2" disabled={syncing}>
+            {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+            Sync from Fillout
+          </Button>
+          <Button onClick={downloadCSV} variant="outline" className="gap-2">
+            <Download className="h-4 w-4" />
+            Download Addresses
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
