@@ -29,6 +29,8 @@ import {
   Users,
   CheckCircle2,
   AlertCircle,
+  Mail,
+  Clock,
 } from "lucide-react"
 
 type ConvocationAddress = {
@@ -70,6 +72,23 @@ export default function AddressPage() {
   const [editAddress, setEditAddress] = useState<ConvocationAddress>(emptyAddress)
   const [saving, setSaving] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [sendingReminder, setSendingReminder] = useState(false)
+
+  const sendReminder = async () => {
+    if (!confirm(`Send urgent reminder email to ${withoutAddress} candidates who haven't filled the address form?`)) return
+    setSendingReminder(true)
+    try {
+      const res = await fetch("/api/examination/send-address-reminder", {
+        method: "POST",
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error)
+      alert(`Reminder sent!\n\nSent: ${result.sent}\nFailed: ${result.failed}\nTotal pending: ${result.total}`)
+    } catch (error: any) {
+      alert("Failed: " + error.message)
+    }
+    setSendingReminder(false)
+  }
 
   const syncAddresses = async () => {
     setSyncing(true)
@@ -176,6 +195,10 @@ export default function AddressPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button onClick={sendReminder} variant="default" className="gap-2" disabled={sendingReminder || withoutAddress === 0}>
+            {sendingReminder ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+            Send Reminder ({withoutAddress})
+          </Button>
           <Button onClick={syncAddresses} variant="outline" className="gap-2" disabled={syncing}>
             {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
             Sync from Fillout
@@ -202,6 +225,14 @@ export default function AddressPage() {
           <p className="text-2xl font-bold text-orange-600">{withoutAddress}</p>
         </div>
       </div>
+
+      {/* Auto-schedule info */}
+      {withoutAddress > 0 && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-2">
+          <Clock className="h-4 w-4" />
+          <span>Auto-reminder scheduled every 3 days to {withoutAddress} candidates who haven&apos;t filled the form.</span>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative max-w-sm">
