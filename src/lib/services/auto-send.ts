@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { sendEmail } from "@/lib/email"
 import { isGallaboxEnabled, sendGallaboxText } from "@/lib/gallabox"
+import { isQikchatEnabled, sendQikchatText } from "@/lib/qikchat"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim()
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
@@ -176,12 +177,10 @@ export async function triggerAutoSend(
       if (channel === "whatsapp" && context.recipient_phone && template.message_body) {
         const waMessage = replaceVariables(template.message_body, context)
 
-        if (isGallaboxEnabled()) {
-          const waResult = await sendGallaboxText(
-            context.recipient_phone,
-            context.recipient_name,
-            waMessage
-          )
+        if (isGallaboxEnabled() || isQikchatEnabled()) {
+          const waResult = isQikchatEnabled()
+            ? await sendQikchatText(context.recipient_phone, waMessage)
+            : await sendGallaboxText(context.recipient_phone, context.recipient_name, waMessage)
 
           await logMessage(
             context.event_id,

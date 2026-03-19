@@ -116,6 +116,8 @@ export function isFeatureEnabled(feature: 'razorpay' | 'email' | 'gallabox' | 'a
         process.env.GALLABOX_API_SECRET?.trim() &&
         process.env.GALLABOX_CHANNEL_ID?.trim()
       )
+    case 'qikchat':
+      return !!process.env.QIKCHAT_API_KEY?.trim()
     case 'ai':
       return !!process.env.ANTHROPIC_API_KEY?.trim()
     default:

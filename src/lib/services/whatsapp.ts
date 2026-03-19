@@ -3,7 +3,7 @@
  * Supports multiple providers: Meta Business API, Twilio, Interakt, Wati
  */
 
-export type WhatsAppProvider = "meta" | "twilio" | "interakt" | "wati" | "gallabox"
+export type WhatsAppProvider = "meta" | "twilio" | "interakt" | "wati" | "gallabox" | "qikchat"
 
 export interface WhatsAppConfig {
   provider: WhatsAppProvider
@@ -54,6 +54,8 @@ export async function sendWhatsAppMessage(
       return sendViaWati(config, message)
     case "gallabox":
       return sendViaGallabox(config, message)
+    case "qikchat":
+      return sendViaQikchat(config, message)
     default:
       return { success: false, error: "Unknown provider" }
   }
@@ -394,6 +396,85 @@ async function sendViaGallabox(
 }
 
 /**
+ * Send via Qikchat API
+ */
+async function sendViaQikchat(
+  config: WhatsAppConfig,
+  message: WhatsAppMessage
+): Promise<SendResult> {
+  if (!config.apiKey) {
+    return { success: false, error: "Missing Qikchat API key" }
+  }
+
+  const url = "https://api.qikchat.in/v1/messages"
+
+  // Format phone (strip non-digits, prepend 91 for 10-digit Indian numbers)
+  let formattedPhone = message.to.replace(/[^0-9]/g, "")
+  if (formattedPhone.length === 10) {
+    formattedPhone = "91" + formattedPhone
+  }
+
+  let body: any
+
+  if (message.templateName) {
+    body = {
+      to_contact: formattedPhone,
+      type: "template",
+      template: {
+        name: message.templateName,
+        language: {
+          code: message.language || "en",
+        },
+        components: message.templateParams && message.templateParams.length > 0
+          ? [
+              {
+                type: "body",
+                parameters: message.templateParams.map((value) => ({
+                  type: "text",
+                  text: value,
+                })),
+              },
+            ]
+          : [],
+      },
+    }
+  } else {
+    body = {
+      to_contact: formattedPhone,
+      type: "text",
+      text: {
+        body: message.message,
+      },
+    }
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "QIKCHAT-API-KEY": config.apiKey,
+      },
+      body: JSON.stringify(body),
+    })
+
+    const result = await response.json()
+
+    if (response.ok && result.status === true) {
+      const messageId = result.data?.[0]?.id || "sent"
+      return { success: true, messageId }
+    } else {
+      return {
+        success: false,
+        error: result.message || `Qikchat API error (${response.status})`,
+      }
+    }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+/**
  * Check if WhatsApp is configured
  */
 export function isWhatsAppConfigured(config: WhatsAppConfig): boolean {
@@ -404,6 +485,7 @@ export function isWhatsAppConfigured(config: WhatsAppConfig): boolean {
       return !!(config.accountSid && config.authToken && config.phoneNumber)
     case "interakt":
     case "wati":
+    case "qikchat":
       return !!config.apiKey
     case "gallabox":
       return !!(config.apiKey && config.apiSecret && config.channelId)
