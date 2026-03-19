@@ -100,7 +100,7 @@ export function getOptionalEnv(name: string, defaultValue: string = ''): string 
 /**
  * Check if a feature is enabled based on its required env vars being set
  */
-export function isFeatureEnabled(feature: 'razorpay' | 'email' | 'gallabox' | 'ai'): boolean {
+export function isFeatureEnabled(feature: 'razorpay' | 'email' | 'gallabox' | 'qikchat' | 'ai'): boolean {
   switch (feature) {
     case 'razorpay':
       return !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)
