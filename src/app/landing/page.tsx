@@ -643,25 +643,26 @@ export default function LandingPage() {
       <Marquee items={["AI Surgery", "Robotic Systems", "Fluorescence Imaging", "Live Procedures", "Hands-On Training", "Innovation", "da Vinci", "ICG Navigation"]} />
 
       {/* ── ABOUT ── */}
-      <section id="about" className="relative bg-[#fafafa] text-zinc-900 overflow-hidden">
+      <section id="about" className="relative text-white overflow-hidden">
         {/* About background video */}
         <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.03]">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover">
             <source src="/landing/about-video.mp4" type="video/mp4" />
           </video>
+          <div className="absolute inset-0 bg-black/50" />
         </div>
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
           <Reveal>
-            <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-600 mb-6">About the Conference</p>
+            <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400 mb-6">About the Conference</p>
           </Reveal>
           <Reveal delay={100}>
-            <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-light tracking-tighter leading-[1.05] max-w-3xl text-zinc-800">
+            <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-light tracking-tighter leading-[1.05] max-w-3xl text-white">
               Where surgical technology meets{" "}
-              <span className="text-cyan-600">clinical excellence.</span>
+              <span className="text-cyan-400">clinical excellence.</span>
             </h2>
           </Reveal>
           <Reveal delay={200}>
-            <p className="mt-8 text-lg font-light text-zinc-500 leading-relaxed max-w-[58ch]">
+            <p className="mt-8 text-lg font-light text-white/70 leading-relaxed max-w-[58ch]">
               India&apos;s most anticipated surgical technology summit bringing together 500+ surgeons,
               AI researchers, and medtech innovators for two transformative days of live robotic procedures,
               fluorescence-guided surgery, and hands-on workshops at the iconic ITC Grand Chola, Chennai.
@@ -677,13 +678,13 @@ export default function LandingPage() {
             ].map((stat, i) => (
               <Reveal key={stat.l} delay={i * 100}>
                 <FloatingOrb delay={i * 0.8}>
-                  <div className="relative bg-white/60 backdrop-blur-sm rounded-3xl p-8 border border-zinc-200/50 text-center group hover:bg-white/80 hover:border-cyan-200/50 transition-all duration-700">
+                  <div className="relative bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/10 text-center group hover:bg-white/15 hover:border-cyan-400/30 transition-all duration-700">
                     {/* Subtle glow */}
-                    <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-cyan-50/0 to-cyan-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                    <span className="relative text-5xl sm:text-6xl font-light text-zinc-900 tabular-nums block">
+                    <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-cyan-500/0 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                    <span className="relative text-5xl sm:text-6xl font-light text-white tabular-nums block">
                       <Counter value={stat.v} suffix={stat.s} go={statsGo} />
                     </span>
-                    <span className="relative block text-xs uppercase tracking-[0.2em] text-zinc-400 mt-4">{stat.l}</span>
+                    <span className="relative block text-xs uppercase tracking-[0.2em] text-white/40 mt-4">{stat.l}</span>
                   </div>
                 </FloatingOrb>
               </Reveal>
@@ -876,10 +877,10 @@ export default function LandingPage() {
       <section className="relative bg-[#050a14] text-white overflow-hidden">
         {/* Venue background video */}
         <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-25">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover">
             <source src="/landing/venue-video.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-r from-[#050a14] via-[#050a14]/80 to-transparent" />
+          <div className="absolute inset-0 bg-black/50" />
         </div>
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
           <Reveal>
