@@ -150,6 +150,7 @@ export default function ProgramPage() {
   const [viewMode, setViewMode] = useState<"list" | "grid" | "table">("list")
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isImportWizardOpen, setIsImportWizardOpen] = useState(false)
+  const [sendingProgram, setSendingProgram] = useState(false)
   const [editingSession, setEditingSession] = useState<Session | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [deletingSession, setDeletingSession] = useState<Session | null>(null)
@@ -598,6 +599,68 @@ export default function ProgramPage() {
               <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </Link>
+          <Button
+            variant="default"
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700"
+            disabled={sendingProgram}
+            onClick={async () => {
+              if (!confirm("Send program schedule link to all confirmed delegates?")) return
+              setSendingProgram(true)
+              try {
+                const programUrl = `${window.location.origin}/events/${eventId}/program/public`
+                const res = await fetch("/api/email/send", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_id: eventId,
+                    action: "send_program",
+                    program_url: programUrl,
+                  }),
+                })
+                // If the send endpoint doesn't support this yet, use a direct approach
+                if (!res.ok) {
+                  // Fetch all confirmed registrations and send individually
+                  const supabaseClient = (await import("@/lib/supabase/client")).createClient()
+                  const { data: regs } = await (supabaseClient as any)
+                    .from("registrations")
+                    .select("attendee_name, attendee_email")
+                    .eq("event_id", eventId)
+                    .eq("status", "confirmed")
+                    .not("attendee_email", "is", null)
+
+                  let sent = 0
+                  for (const r of (regs || []) as any[]) {
+                    const name = r.attendee_name?.replace(/^(dr\.?\s*)/i, "").trim()
+                    await fetch("/api/email/send", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        to: r.attendee_email,
+                        subject: "Program Schedule",
+                        html: `<div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:30px;line-height:1.8"><p>Dear Dr. ${name},</p><p>The program schedule for the event is now available.</p><div style="text-align:center;margin:20px 0"><a href="${programUrl}" style="display:inline-block;background:#1a5276;color:#fff;padding:12px 30px;border-radius:6px;font-weight:bold;text-decoration:none">View Program Schedule</a></div><p>Regards,<br/><strong>AMASI Secretariat</strong></p></div>`,
+                      }),
+                    })
+                    sent++
+                    await new Promise(r => setTimeout(r, 250))
+                  }
+                  alert(`Program link sent to ${sent} delegates!`)
+                } else {
+                  const result = await res.json()
+                  alert(`Sent: ${result.sent} | Failed: ${result.failed}`)
+                }
+              } catch (e: any) {
+                alert("Failed: " + e.message)
+              }
+              setSendingProgram(false)
+            }}
+          >
+            {sendingProgram ? (
+              <><span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent inline-block" /> Sending...</>
+            ) : (
+              <><Mail className="h-4 w-4 mr-2" /> Send Program</>
+            )}
+          </Button>
           <Link href={`/events/${eventId}/program/print`}>
             <Button variant="outline" size="sm">
               <Printer className="h-4 w-4 mr-2" />
