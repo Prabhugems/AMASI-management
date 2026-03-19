@@ -843,32 +843,39 @@ export default function LandingPage() {
       </section>
 
       {/* ── VENUE ── */}
-      <section className="bg-[#fafafa] text-zinc-900">
-        <div className="max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
+      <section className="relative bg-[#050a14] text-white overflow-hidden">
+        {/* Venue background video */}
+        <div className="absolute inset-0 z-0">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-25">
+            <source src="/landing/venue-video.mp4" type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-gradient-to-r from-[#050a14] via-[#050a14]/80 to-transparent" />
+        </div>
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
           <Reveal>
-            <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-600 mb-6">Venue</p>
+            <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400/60 mb-6">Venue</p>
           </Reveal>
           <Reveal delay={100}>
-            <h2 className="text-4xl sm:text-5xl font-extralight tracking-tighter">
+            <h2 className="text-4xl sm:text-5xl font-extralight tracking-tighter text-white">
               ITC Grand Chola
             </h2>
           </Reveal>
           <Reveal delay={150}>
-            <p className="text-lg text-zinc-500 font-light mt-2">Chennai, Tamil Nadu</p>
+            <p className="text-lg text-white/50 font-light mt-2">Chennai, Tamil Nadu</p>
           </Reveal>
           <Reveal delay={200}>
-            <p className="text-sm text-zinc-400 mt-4 max-w-md leading-relaxed">
+            <p className="text-sm text-white/30 mt-4 max-w-md leading-relaxed">
               63, Anna Salai, Guindy, Chennai 600032<br />
               15 minutes from Chennai International Airport
             </p>
           </Reveal>
           <Reveal delay={300}>
-            <div className="mt-14 rounded-2xl overflow-hidden h-72 sm:h-[450px] bg-zinc-200">
+            <div className="mt-14 rounded-2xl overflow-hidden h-72 sm:h-[450px] bg-zinc-900 border border-white/5">
               <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3887.3!2d80.22!3d13.01!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a5267f05de9c5e5%3A0xa9e89ec3e8e3e3e3!2sITC%20Grand%20Chola!5e0!3m2!1sen!2sin!4v1"
                 width="100%"
                 height="100%"
-                style={{ border: 0, filter: "grayscale(1) contrast(1.1) brightness(0.95)" }}
+                style={{ border: 0, filter: "invert(90%) hue-rotate(180deg) brightness(0.8) contrast(1.2)" }}
                 allowFullScreen
                 loading="lazy"
               />
