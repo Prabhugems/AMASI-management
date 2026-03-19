@@ -518,14 +518,26 @@ export default function LandingPage() {
 
       {/* ── HERO ── */}
       <section ref={heroRef} className="relative min-h-[100dvh] flex items-end overflow-hidden">
-        {/* Particle canvas */}
-        <ParticleField />
+        {/* Video background */}
+        <motion.div className="absolute inset-0 z-[1]" style={{ scale: heroScale }}>
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover"
+            poster="/landing/hero-poster.jpg"
+          >
+            <source src="/landing/hero-video.mp4" type="video/mp4" />
+          </video>
+          {/* Dark overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050a14] via-[#050a14]/70 to-[#050a14]/30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#050a14]/80 via-[#050a14]/30 to-transparent" />
+        </motion.div>
 
-        {/* Background gradient */}
-        <div className="absolute inset-0 z-[1]">
-          <div className="absolute inset-0 bg-[#050a14]" />
-          <div className="absolute top-0 right-0 w-[60%] h-full bg-gradient-to-l from-cyan-950/20 to-transparent" />
-          <div className="absolute bottom-0 left-0 w-[40%] h-[60%] bg-gradient-to-tr from-cyan-500/[0.03] to-transparent" />
+        {/* Particle overlay */}
+        <div className="absolute inset-0 z-[2]">
+          <ParticleField />
         </div>
 
         {/* Hero content */}
