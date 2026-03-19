@@ -325,6 +325,87 @@ function Countdown() {
 }
 
 /* ─────────────────────────────────────
+   ANTIGRAVITY FLOATING ELEMENTS
+   ───────────────────────────────────── */
+function FloatingElements() {
+  const shapes = [
+    { size: 60, x: "10%", delay: 0, duration: 18, type: "ring" },
+    { size: 40, x: "25%", delay: 2, duration: 22, type: "cross" },
+    { size: 80, x: "45%", delay: 5, duration: 25, type: "circle" },
+    { size: 35, x: "65%", delay: 1, duration: 20, type: "diamond" },
+    { size: 50, x: "80%", delay: 3, duration: 23, type: "ring" },
+    { size: 28, x: "90%", delay: 7, duration: 19, type: "dot" },
+    { size: 45, x: "15%", delay: 4, duration: 21, type: "diamond" },
+    { size: 55, x: "55%", delay: 6, duration: 24, type: "cross" },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+      {shapes.map((s, i) => (
+        <motion.div
+          key={i}
+          className="absolute"
+          style={{ left: s.x, bottom: "-10%" }}
+          animate={{
+            y: [0, -(typeof window !== "undefined" ? window.innerHeight + 200 : 1200)],
+            rotate: [0, s.type === "diamond" ? 360 : s.type === "cross" ? 180 : 0],
+            opacity: [0, 0.12, 0.12, 0],
+          }}
+          transition={{
+            duration: s.duration,
+            repeat: Infinity,
+            delay: s.delay,
+            ease: "linear",
+          }}
+        >
+          {s.type === "ring" && (
+            <div style={{ width: s.size, height: s.size }} className="rounded-full border border-cyan-500/20" />
+          )}
+          {s.type === "circle" && (
+            <div style={{ width: s.size, height: s.size }} className="rounded-full bg-cyan-500/5 backdrop-blur-sm" />
+          )}
+          {s.type === "cross" && (
+            <svg width={s.size} height={s.size} viewBox="0 0 40 40" fill="none" stroke="rgba(6,182,212,0.15)" strokeWidth="1">
+              <line x1="20" y1="0" x2="20" y2="40" />
+              <line x1="0" y1="20" x2="40" y2="20" />
+            </svg>
+          )}
+          {s.type === "diamond" && (
+            <div style={{ width: s.size * 0.7, height: s.size * 0.7 }} className="border border-cyan-500/15 rotate-45" />
+          )}
+          {s.type === "dot" && (
+            <div style={{ width: s.size * 0.4, height: s.size * 0.4 }} className="rounded-full bg-cyan-400/20" />
+          )}
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────
+   FLOATING STAT ORBS (antigravity feel)
+   ───────────────────────────────────── */
+function FloatingOrb({ children, className = "", delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
+  return (
+    <motion.div
+      className={className}
+      animate={{
+        y: [-8, 8, -8],
+        rotate: [-1, 1, -1],
+      }}
+      transition={{
+        duration: 6,
+        repeat: Infinity,
+        ease: "easeInOut",
+        delay,
+      }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+/* ─────────────────────────────────────
    HORIZONTAL SCROLL MARQUEE
    ───────────────────────────────────── */
 function Marquee({ items }: { items: string[] }) {
@@ -408,6 +489,9 @@ export default function LandingPage() {
 
   return (
     <div className="bg-[#050a14] text-white antialiased selection:bg-cyan-500/30 overflow-x-hidden">
+
+      {/* ── ANTIGRAVITY FLOATING SHAPES ── */}
+      <FloatingElements />
 
       {/* ── NAV ── */}
       <motion.nav
@@ -505,6 +589,29 @@ export default function LandingPage() {
           </div>
         </motion.div>
 
+        {/* Floating geometric accents in hero */}
+        <motion.div
+          className="absolute top-[20%] right-[10%] z-[2] hidden lg:block"
+          animate={{ y: [-15, 15, -15], rotate: [0, 5, 0] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <div className="w-24 h-24 rounded-full border border-cyan-500/10 backdrop-blur-sm" />
+        </motion.div>
+        <motion.div
+          className="absolute top-[35%] right-[25%] z-[2] hidden lg:block"
+          animate={{ y: [10, -10, 10], rotate: [0, -90, 0] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+        >
+          <div className="w-12 h-12 border border-cyan-400/15 rotate-45" />
+        </motion.div>
+        <motion.div
+          className="absolute bottom-[30%] right-[8%] z-[2] hidden lg:block"
+          animate={{ y: [-20, 20, -20], scale: [1, 1.1, 1] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        >
+          <div className="w-3 h-3 rounded-full bg-cyan-400/30" />
+        </motion.div>
+
         {/* Scroll indicator */}
         <motion.div
           className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10"
@@ -540,7 +647,7 @@ export default function LandingPage() {
             </p>
           </Reveal>
 
-          <div ref={statsRef} className="mt-24 grid grid-cols-2 sm:grid-cols-4 gap-0 border-t border-zinc-200">
+          <div ref={statsRef} className="mt-24 grid grid-cols-2 sm:grid-cols-4 gap-8">
             {[
               { v: 500, s: "+", l: "Delegates" },
               { v: 50, s: "+", l: "Expert Faculty" },
@@ -548,12 +655,16 @@ export default function LandingPage() {
               { v: 2, s: "", l: "Intensive Days" },
             ].map((stat, i) => (
               <Reveal key={stat.l} delay={i * 100}>
-                <div className={`pt-12 pb-8 ${i > 0 ? "sm:border-l border-zinc-200" : ""} ${i > 0 ? "sm:pl-8" : ""}`}>
-                  <span className="text-5xl sm:text-6xl font-extralight text-zinc-900 tabular-nums">
-                    <Counter value={stat.v} suffix={stat.s} go={statsGo} />
-                  </span>
-                  <span className="block text-xs uppercase tracking-[0.2em] text-zinc-400 mt-4">{stat.l}</span>
-                </div>
+                <FloatingOrb delay={i * 0.8}>
+                  <div className="relative bg-white rounded-3xl p-8 border border-zinc-100 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.06)] text-center group hover:shadow-[0_20px_60px_-15px_rgba(6,182,212,0.12)] hover:border-cyan-200/50 transition-all duration-700">
+                    {/* Subtle glow */}
+                    <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-cyan-50/0 to-cyan-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                    <span className="relative text-5xl sm:text-6xl font-extralight text-zinc-900 tabular-nums block">
+                      <Counter value={stat.v} suffix={stat.s} go={statsGo} />
+                    </span>
+                    <span className="relative block text-xs uppercase tracking-[0.2em] text-zinc-400 mt-4">{stat.l}</span>
+                  </div>
+                </FloatingOrb>
               </Reveal>
             ))}
           </div>
@@ -673,6 +784,24 @@ export default function LandingPage() {
 
       {/* ── REGISTER CTA ── */}
       <section id="register" className="relative bg-[#050a14] overflow-hidden">
+        {/* Pulsing rings */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+          <motion.div
+            className="absolute -inset-32 rounded-full border border-cyan-500/[0.06]"
+            animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0, 0.1] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute -inset-56 rounded-full border border-cyan-500/[0.04]"
+            animate={{ scale: [1, 1.2, 1], opacity: [0.08, 0, 0.08] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          />
+          <motion.div
+            className="absolute -inset-80 rounded-full border border-cyan-500/[0.03]"
+            animate={{ scale: [1, 1.15, 1], opacity: [0.05, 0, 0.05] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          />
+        </div>
         {/* Subtle radial glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-cyan-500/[0.04] blur-[100px] pointer-events-none" />
 
