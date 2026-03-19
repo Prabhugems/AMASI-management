@@ -41,26 +41,30 @@ export async function POST(
     const timestamp = Date.now().toString(36)
     const newSlug = `${baseSlug}-${timestamp}`
 
-    // 3. Create new event (excluding id, created_at, and resetting counts)
-    const newEventData = {
-      ...originalEvent,
-      id: undefined, // Let Supabase generate new ID
+    // 3. Create new event - only copy known safe fields
+    const newEventData: Record<string, any> = {
       name: name || `${originalEvent.name} (Copy)`,
       slug: newSlug,
       short_name: originalEvent.short_name ? `${originalEvent.short_name}-${timestamp.slice(-4).toUpperCase()}` : null,
       start_date: start_date || originalEvent.start_date,
       end_date: end_date || originalEvent.end_date,
       venue_name: venue || originalEvent.venue_name,
-      status: "draft", // Start as draft
+      city: originalEvent.city,
+      description: originalEvent.description,
+      logo_url: originalEvent.logo_url,
+      banner_url: originalEvent.banner_url,
+      timezone: originalEvent.timezone,
+      currency: originalEvent.currency,
+      settings: originalEvent.settings,
+      registration_fields: originalEvent.registration_fields,
+      status: "draft",
       total_registrations: 0,
       total_revenue: 0,
-      created_at: undefined,
-      updated_at: undefined,
     }
 
-    // Remove undefined fields
+    // Remove null/undefined fields
     Object.keys(newEventData).forEach(key => {
-      if (newEventData[key] === undefined) {
+      if (newEventData[key] === undefined || newEventData[key] === null) {
         delete newEventData[key]
       }
     })
@@ -74,7 +78,7 @@ export async function POST(
     if (createError || !newEvent) {
       console.error("Failed to create event:", createError)
       return NextResponse.json(
-        { error: "Failed to duplicate event" },
+        { error: `Failed to duplicate event: ${createError?.message || "Unknown error"}`, details: createError },
         { status: 500 }
       )
     }
