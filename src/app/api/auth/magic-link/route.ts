@@ -257,8 +257,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Build the callback URL
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get("origin") || ""
+    // Build the callback URL - must point to /auth/callback for token handling
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || request.headers.get("origin") || "").trim()
     const callbackUrl = redirectTo
       ? `${appUrl}/auth/callback?next=${encodeURIComponent(redirectTo)}`
       : `${appUrl}/auth/callback`
