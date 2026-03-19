@@ -21,7 +21,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: `${COMPANY_CONFIG.name} - Event Management`,
+  title: `${COMPANY_CONFIG.name} Command Center`,
   description: `Event Management Platform for ${COMPANY_CONFIG.fullName}`,
 }
 

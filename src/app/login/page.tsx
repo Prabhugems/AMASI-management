@@ -7,7 +7,7 @@ import { Mail, Loader2, CheckCircle2, AlertTriangle, Calendar, Users, BarChart3,
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { cn } from "@/lib/utils"
-import { COMPANY_CONFIG } from "@/lib/config"
+import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 
 // Check if Supabase is properly configured
 const isSupabaseConfigured = () => {
@@ -92,39 +92,72 @@ function LoginForm() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">{COMPANY_CONFIG.name}</h1>
-              <p className="text-white/60 text-sm">Event Management Platform</p>
+              <p className="text-white/60 text-sm">{FEATURES.membership ? "Command Center" : "Event Management Platform"}</p>
             </div>
           </div>
 
-          <h2 className="text-4xl font-bold mb-4 leading-tight">
-            Your complete event<br />command center
-          </h2>
-          <p className="text-white/70 text-lg mb-10">
-            Everything you need to plan, manage, and execute world-class conferences and events.
-          </p>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-              <Calendar className="h-6 w-6 mb-3 text-white/80" />
-              <h3 className="font-semibold text-sm mb-1">Event Management</h3>
-              <p className="text-white/50 text-xs">Sessions, programs & schedules</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-              <Users className="h-6 w-6 mb-3 text-white/80" />
-              <h3 className="font-semibold text-sm mb-1">Registrations</h3>
-              <p className="text-white/50 text-xs">Delegates, badges & check-in</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-              <BarChart3 className="h-6 w-6 mb-3 text-white/80" />
-              <h3 className="font-semibold text-sm mb-1">Analytics</h3>
-              <p className="text-white/50 text-xs">Real-time insights & reports</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-              <Shield className="h-6 w-6 mb-3 text-white/80" />
-              <h3 className="font-semibold text-sm mb-1">Certificates</h3>
-              <p className="text-white/50 text-xs">Auto-generate & verify</p>
-            </div>
-          </div>
+          {FEATURES.membership ? (
+            <>
+              <h2 className="text-3xl font-bold mb-4">
+                Faculty Management System
+              </h2>
+              <p className="text-white/80 text-lg mb-8">
+                Streamline your event management with powerful tools for faculty coordination,
+                delegate registration, and certificate generation.
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <span>Manage {COMPANY_CONFIG.name} members & faculty</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <span>Faculty invitations & tracking</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <span>QR-based check-in system</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-4xl font-bold mb-4 leading-tight">
+                Your complete event<br />command center
+              </h2>
+              <p className="text-white/70 text-lg mb-10">
+                Everything you need to plan, manage, and execute world-class conferences and events.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                  <Calendar className="h-6 w-6 mb-3 text-white/80" />
+                  <h3 className="font-semibold text-sm mb-1">Event Management</h3>
+                  <p className="text-white/50 text-xs">Sessions, programs & schedules</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                  <Users className="h-6 w-6 mb-3 text-white/80" />
+                  <h3 className="font-semibold text-sm mb-1">Registrations</h3>
+                  <p className="text-white/50 text-xs">Delegates, badges & check-in</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                  <BarChart3 className="h-6 w-6 mb-3 text-white/80" />
+                  <h3 className="font-semibold text-sm mb-1">Analytics</h3>
+                  <p className="text-white/50 text-xs">Real-time insights & reports</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                  <Shield className="h-6 w-6 mb-3 text-white/80" />
+                  <h3 className="font-semibold text-sm mb-1">Certificates</h3>
+                  <p className="text-white/50 text-xs">Auto-generate & verify</p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -138,7 +171,7 @@ function LoginForm() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">{COMPANY_CONFIG.name}</h1>
-              <p className="text-muted-foreground text-xs">Event Management</p>
+              <p className="text-muted-foreground text-xs">{FEATURES.membership ? "Command Center" : "Event Management"}</p>
             </div>
           </div>
 
