@@ -848,7 +848,7 @@ export default function LandingPage() {
           </Reveal>
           <Reveal delay={150}>
             <p className="mt-8 text-base sm:text-lg text-white/60 font-light">
-              Early Bird ₹5,000 + GST &ensp;&middot;&ensp; Regular ₹7,500 + GST &ensp;&middot;&ensp; On-Spot ₹10,000 + GST
+              Delegate ₹7,000 &ensp;&middot;&ensp; PG ₹5,000 &ensp;&middot;&ensp; (incl. GST)
             </p>
           </Reveal>
           <Reveal delay={300}>
