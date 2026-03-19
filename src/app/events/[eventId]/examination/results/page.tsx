@@ -219,6 +219,7 @@ export default function ResultsPage() {
                 <TableRow>
                   <TableHead className="w-12">Rank</TableHead>
                   <TableHead>Candidate</TableHead>
+                  <TableHead>Mobile</TableHead>
                   <TableHead>Ticket</TableHead>
                   {examSettings?.mark_columns.map(col => (
                     <TableHead key={col.key} className="text-center">{col.label}</TableHead>
@@ -236,6 +237,7 @@ export default function ResultsPage() {
                       <p className="font-medium text-sm">{reg.name}</p>
                       <p className="text-xs text-muted-foreground">{reg.email}</p>
                     </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{reg.phone || "-"}</TableCell>
                     <TableCell><span className="text-xs bg-secondary px-2 py-1 rounded">{reg.ticket_type_name || "-"}</span></TableCell>
                     {examSettings?.mark_columns.map(col => (
                       <TableCell key={col.key} className="text-center text-sm">{reg.exam_marks?.[col.key] ?? "-"}</TableCell>
