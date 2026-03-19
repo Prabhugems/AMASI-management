@@ -438,7 +438,7 @@ function Marquee({ items }: { items: string[] }) {
    ───────────────────────────────────── */
 const SPEAKERS = [
   { name: "Dr. C. Palanivelu", title: "Conference Chairman", org: "GEM Hospital" },
-  { name: "Dr. Ramesh Ardhanari", title: "Organizing Secretary", org: "GEM Hospital" },
+  { name: "To Be Announced", title: "Organizing Secretary", org: "GEM Hospital" },
   { name: "To Be Announced", title: "International Faculty", org: "Robotic Surgery" },
   { name: "To Be Announced", title: "International Faculty", org: "AI in Surgery" },
   { name: "To Be Announced", title: "National Faculty", org: "Fluorescence Surgery" },
