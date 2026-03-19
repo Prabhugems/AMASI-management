@@ -606,8 +606,14 @@ export default function LandingPage() {
       <Marquee items={["AI Surgery", "Robotic Systems", "Fluorescence Imaging", "Live Procedures", "Hands-On Training", "Innovation", "da Vinci", "ICG Navigation"]} />
 
       {/* ── ABOUT ── */}
-      <section id="about" className="bg-[#fafafa] text-zinc-900">
-        <div className="max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
+      <section id="about" className="relative bg-[#fafafa] text-zinc-900 overflow-hidden">
+        {/* About background video */}
+        <div className="absolute inset-0 z-0">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.06]">
+            <source src="/landing/about-video.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
           <Reveal>
             <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-600 mb-6">About the Conference</p>
           </Reveal>
