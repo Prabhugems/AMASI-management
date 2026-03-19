@@ -798,10 +798,10 @@ export default function LandingPage() {
       <section id="register" className="relative bg-[#050a14] overflow-hidden">
         {/* CTA background video */}
         <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.15]">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.08]">
             <source src="/landing/cta-video.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-[#050a14]/70" />
+          <div className="absolute inset-0 bg-[#050a14]/80" />
         </div>
         {/* Pulsing rings */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1]">
@@ -826,12 +826,12 @@ export default function LandingPage() {
 
         <div className="relative max-w-[1200px] mx-auto px-6 py-32 sm:py-44 text-center">
           <Reveal>
-            <h2 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tighter leading-[0.95]">
+            <h2 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tighter leading-[0.95] text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]">
               Secure your seat.
             </h2>
           </Reveal>
           <Reveal delay={150}>
-            <p className="mt-8 text-base sm:text-lg text-white/30 font-light">
+            <p className="mt-8 text-base sm:text-lg text-white/60 font-light">
               Early Bird ₹5,000 &ensp;&middot;&ensp; Regular ₹7,500 &ensp;&middot;&ensp; On-Spot ₹10,000
             </p>
           </Reveal>
@@ -852,7 +852,7 @@ export default function LandingPage() {
             </div>
           </Reveal>
           <Reveal delay={400}>
-            <p className="mt-8 text-sm text-white/15">Limited to 500 delegates</p>
+            <p className="mt-8 text-sm text-white/40">Limited to 500 delegates</p>
           </Reveal>
         </div>
       </section>
