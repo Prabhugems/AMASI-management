@@ -166,7 +166,8 @@ export async function POST(request: NextRequest) {
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
       const eligible = (regs || []).filter((r: any) => r.attendee_email && !r.exam_marks?.email_sent_withheld)
-      const skipped = (regs || []).length - eligible.length
+      const skipped = (regs || []).filter((r: any) => !r.attendee_email).length
+      const alreadySent = (regs || []).filter((r: any) => r.attendee_email && r.exam_marks?.email_sent_withheld).length
       let sent = 0
       let failedCount = 0
       const errors: string[] = []
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
         await delay(250)
       }
 
-      return NextResponse.json({ sent, failed: failedCount, skipped, alreadySent: (regs || []).length - eligible.length - skipped, total: (regs || []).length, errors })
+      return NextResponse.json({ sent, failed: failedCount, skipped, alreadySent, total: (regs || []).length, errors })
     }
 
     if (type === "fail") {
@@ -204,6 +205,7 @@ export async function POST(request: NextRequest) {
 
       const eligible = (regs || []).filter((r: any) => r.attendee_email && !r.exam_marks?.email_sent_fail)
       const skipped = (regs || []).filter((r: any) => !r.attendee_email).length
+      const alreadySentFail = (regs || []).filter((r: any) => r.attendee_email && r.exam_marks?.email_sent_fail).length
       let sent = 0
       let failedCount = 0
       const errors: string[] = []
@@ -224,7 +226,7 @@ export async function POST(request: NextRequest) {
         await delay(250)
       }
 
-      return NextResponse.json({ sent, failed: failedCount, skipped, alreadySent: (regs || []).length - eligible.length - skipped, total: (regs || []).length, errors })
+      return NextResponse.json({ sent, failed: failedCount, skipped, alreadySent: alreadySentFail, total: (regs || []).length, errors })
     }
 
     // Send pass emails

@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
         convocation_number,
         exam_result,
         exam_marks,
+        checkin_token,
         ticket_type_id,
         event_id,
         ticket_types (
@@ -73,8 +74,10 @@ export async function GET(request: NextRequest) {
         ),
         payments (
           id,
+          payment_number,
           amount,
           status,
+          razorpay_payment_id,
           completed_at
         )
       `)
@@ -173,6 +176,7 @@ export async function GET(request: NextRequest) {
       convocation_number: registration.convocation_number || null,
       exam_result: registration.exam_result || null,
       exam_marks: registration.exam_marks || null,
+      checkin_token: registration.checkin_token || null,
       ticket_type: registration.ticket_types,
       event: registration.events,
       payment: registration.payments?.[0] || null,

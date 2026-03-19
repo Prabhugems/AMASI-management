@@ -12,6 +12,9 @@ export type ExamSettings = {
   pass_marks: number
   mark_columns: MarkColumn[]
   convocation_prefix: string
+  convocation_start?: number
+  without_exam_prefix?: string
+  without_exam_start?: number
   exam_ticket_types?: string[]
 }
 

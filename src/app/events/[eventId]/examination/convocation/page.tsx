@@ -128,10 +128,10 @@ export default function ConvocationPage() {
   const unassigned = currentList.length - assigned
 
   // Get prefix/start from settings
-  const examPrefix = (examSettings as any)?.convocation_prefix || "122AEC"
-  const examStart = (examSettings as any)?.convocation_start || 1001
-  const wecPrefix = (examSettings as any)?.without_exam_prefix || "122WEC"
-  const wecStart = (examSettings as any)?.without_exam_start || 1001
+  const examPrefix = examSettings?.convocation_prefix || "122AEC"
+  const examStart = examSettings?.convocation_start || 1001
+  const wecPrefix = examSettings?.without_exam_prefix || "122WEC"
+  const wecStart = examSettings?.without_exam_start || 1001
 
   const currentPrefix = activeTab === "exam" ? examPrefix : wecPrefix
   const currentStart = activeTab === "exam" ? examStart : wecStart
@@ -196,7 +196,8 @@ export default function ConvocationPage() {
   const downloadCSV = () => {
     if (!filtered.length) return
     const label = activeTab === "exam" ? "Exam Convocation" : "Without Exam Convocation"
-    const headers = ["#", "Convocation No.", `${COMPANY_CONFIG.name} No.`, "Registration No.", "Name", "Email", "Phone", "Ticket Type", "Practical", "VIVA", "Publication", "Total Marks", "Result"]
+    const markCols = examSettings?.mark_columns || []
+    const headers = ["#", "Convocation No.", `${COMPANY_CONFIG.name} No.`, "Registration No.", "Name", "Email", "Phone", "Ticket Type", ...markCols.map(c => c.label), "Total Marks", "Result"]
     const rows = filtered.map((r, i) => [
       i + 1,
       r.convocation_number || "",
@@ -206,9 +207,7 @@ export default function ConvocationPage() {
       r.email,
       r.phone || "",
       r.ticket_type_name || "",
-      r.exam_marks?.practical ?? "",
-      r.exam_marks?.viva ?? "",
-      r.exam_marks?.publication ?? "",
+      ...markCols.map(c => r.exam_marks?.[c.key] ?? ""),
       r.exam_total_marks ?? "",
       r.exam_result === "pass" ? "PASS" : r.exam_result === "without_exam" ? "WITHOUT EXAM" : r.exam_result?.toUpperCase() || "",
     ])
@@ -374,7 +373,7 @@ export default function ConvocationPage() {
                         </TableCell>
                         <TableCell className="text-center">
                           {reg.exam_total_marks != null ? (
-                            <span className="font-semibold text-green-600">{reg.exam_total_marks}/25</span>
+                            <span className="font-semibold text-green-600">{reg.exam_total_marks}/{examSettings?.mark_columns.reduce((s, c) => s + c.max, 0) || "-"}</span>
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>
                           )}

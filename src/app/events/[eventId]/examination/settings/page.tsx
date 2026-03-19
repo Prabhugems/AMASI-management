@@ -36,6 +36,9 @@ export type ExamSettings = {
   pass_marks: number
   mark_columns: MarkColumn[]
   convocation_prefix: string
+  convocation_start?: number
+  without_exam_prefix?: string
+  without_exam_start?: number
   exam_ticket_types?: string[]
   examiner_tokens?: ExaminerToken[]
 }
@@ -233,15 +236,60 @@ export default function ExamSettingsPage() {
           </p>
         </div>
 
-        {/* Convocation Prefix */}
+        {/* Convocation Number Settings */}
         <div>
-          <label className="text-sm font-medium">Convocation Number Prefix</label>
-          <Input
-            value={formData.convocation_prefix}
-            onChange={(e) => setFormData(prev => ({ ...prev, convocation_prefix: e.target.value }))}
-            className="mt-1.5 max-w-xs"
-            placeholder="e.g. FMAS, MMAS"
-          />
+          <label className="text-sm font-medium mb-2 block">Exam Convocation Numbers</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Prefix</label>
+              <Input
+                value={formData.convocation_prefix}
+                onChange={(e) => setFormData(prev => ({ ...prev, convocation_prefix: e.target.value }))}
+                className="mt-1"
+                placeholder="e.g. 122AEC"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Start Number</label>
+              <Input
+                type="number"
+                value={formData.convocation_start || 1001}
+                onChange={(e) => setFormData(prev => ({ ...prev, convocation_start: Number(e.target.value) }))}
+                className="mt-1"
+                placeholder="e.g. 1001"
+                min={1}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium mb-2 block">Without Exam Convocation Numbers</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Prefix</label>
+              <Input
+                value={formData.without_exam_prefix || ""}
+                onChange={(e) => setFormData(prev => ({ ...prev, without_exam_prefix: e.target.value }))}
+                className="mt-1"
+                placeholder="e.g. 122WEC"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Start Number</label>
+              <Input
+                type="number"
+                value={formData.without_exam_start || 1001}
+                onChange={(e) => setFormData(prev => ({ ...prev, without_exam_start: Number(e.target.value) }))}
+                className="mt-1"
+                placeholder="e.g. 1001"
+                min={1}
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1.5">
+            Preview: <span className="font-mono">{formData.convocation_prefix || "FMAS"}{formData.convocation_start || 1001}</span> (exam) / <span className="font-mono">{formData.without_exam_prefix || "WEC"}{formData.without_exam_start || 1001}</span> (without exam)
+          </p>
         </div>
 
         {/* Exam Ticket Types */}

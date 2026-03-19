@@ -11,9 +11,6 @@ import {
   GraduationCap,
   MapPin,
   ChevronLeft,
-  Loader2,
-  Upload,
-  Download,
   Settings,
   ClipboardList,
 } from "lucide-react"
@@ -24,7 +21,6 @@ const sidebarItems = [
   { title: "Results", href: "/results", icon: Trophy },
   { title: "Convocation", href: "/convocation", icon: GraduationCap },
   { title: "Address Collection", href: "/address", icon: MapPin },
-  { title: "Import / Export", href: "/import-export", icon: Upload },
   { title: "Settings", href: "/settings", icon: Settings },
 ]
 

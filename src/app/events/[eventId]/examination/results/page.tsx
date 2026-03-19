@@ -25,7 +25,6 @@ import {
   Trophy,
   Search,
   Download,
-  Filter,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -193,12 +192,13 @@ export default function ResultsPage() {
         </div>
         <Select value={filterResult} onValueChange={setFilterResult}>
           <SelectTrigger className="w-40">
-            <Filter className="h-4 w-4 mr-2" /><SelectValue />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Results</SelectItem>
             <SelectItem value="pass">Passed</SelectItem>
             <SelectItem value="fail">Failed</SelectItem>
+            <SelectItem value="withheld">Withheld</SelectItem>
             <SelectItem value="absent">Absent</SelectItem>
           </SelectContent>
         </Select>

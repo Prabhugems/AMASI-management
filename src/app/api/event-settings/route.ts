@@ -48,7 +48,12 @@ export async function GET(request: NextRequest) {
         allow_buyers: false,
         buyer_form_id: null,
         require_approval: false,
+        allow_cancellation: true,
+        cancellation_deadline_hours: 24,
         send_confirmation_email: true,
+        send_reminder_email: true,
+        confirmation_email_subject: "Registration Confirmed",
+        confirmation_email_body: "Thank you for registering for our event!",
         // Automation settings
         auto_send_receipt: true,
         auto_generate_badge: false,
@@ -173,7 +178,12 @@ export async function POST(request: NextRequest) {
     if (body.allow_buyers !== undefined) payload.allow_buyers = body.allow_buyers
     if (body.buyer_form_id !== undefined) payload.buyer_form_id = body.buyer_form_id || null
     if (body.require_approval !== undefined) payload.require_approval = body.require_approval
+    if (body.allow_cancellation !== undefined) payload.allow_cancellation = body.allow_cancellation
+    if (body.cancellation_deadline_hours !== undefined) payload.cancellation_deadline_hours = body.cancellation_deadline_hours
     if (body.send_confirmation_email !== undefined) payload.send_confirmation_email = body.send_confirmation_email
+    if (body.send_reminder_email !== undefined) payload.send_reminder_email = body.send_reminder_email
+    if (body.confirmation_email_subject !== undefined) payload.confirmation_email_subject = body.confirmation_email_subject
+    if (body.confirmation_email_body !== undefined) payload.confirmation_email_body = body.confirmation_email_body
     // Automation settings
     if (body.auto_send_receipt !== undefined) payload.auto_send_receipt = body.auto_send_receipt
     if (body.auto_generate_badge !== undefined) payload.auto_generate_badge = body.auto_generate_badge

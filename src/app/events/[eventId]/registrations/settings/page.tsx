@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -45,7 +44,6 @@ export default function RegistrationSettingsPage() {
   const params = useParams()
   const router = useRouter()
   const eventId = params.eventId as string
-  const supabase = createClient()
   const queryClient = useQueryClient()
 
   const [approvalSettings, setApprovalSettings] = useState({
@@ -78,48 +76,32 @@ export default function RegistrationSettingsPage() {
     current_registration_number: 0,
   })
 
-  // Fetch event settings (from events table)
+  // Fetch all settings from the event_settings API
   const { isLoading } = useQuery({
-    queryKey: ["registration-settings", eventId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("events")
-        .select("registration_settings")
-        .eq("id", eventId)
-        .maybeSingle()
-
-      if (data?.registration_settings) {
-        const s = data.registration_settings
-        setApprovalSettings({
-          require_approval: s.require_approval ?? false,
-          allow_cancellation: s.allow_cancellation ?? true,
-          cancellation_deadline_hours: s.cancellation_deadline_hours ?? 24,
-        })
-        setDuplicateSettings({
-          allow_duplicate_email: s.allow_duplicate_email ?? true,
-          show_duplicate_warning: s.show_duplicate_warning ?? true,
-        })
-        setNotificationSettings({
-          send_confirmation_email: s.send_confirmation_email ?? true,
-          send_reminder_email: s.send_reminder_email ?? true,
-        })
-        setEmailTemplate({
-          confirmation_email_subject: s.confirmation_email_subject || "Registration Confirmed",
-          confirmation_email_body: s.confirmation_email_body || "Thank you for registering for our event!",
-        })
-      }
-      return data
-    },
-  })
-
-  // Fetch registration ID format settings (from event_settings table)
-  const { isLoading: loadingRegId } = useQuery({
-    queryKey: ["event-settings-regid", eventId],
+    queryKey: ["event-settings", eventId],
     queryFn: async () => {
       const response = await fetch(`/api/event-settings?event_id=${eventId}`)
-      if (!response.ok) return null
+      if (!response.ok) throw new Error("Failed to fetch settings")
       const data = await response.json()
+
       if (data) {
+        setApprovalSettings({
+          require_approval: data.require_approval ?? false,
+          allow_cancellation: data.allow_cancellation ?? true,
+          cancellation_deadline_hours: data.cancellation_deadline_hours ?? 24,
+        })
+        setDuplicateSettings({
+          allow_duplicate_email: data.allow_duplicate_email ?? true,
+          show_duplicate_warning: data.show_duplicate_warning ?? true,
+        })
+        setNotificationSettings({
+          send_confirmation_email: data.send_confirmation_email ?? true,
+          send_reminder_email: data.send_reminder_email ?? true,
+        })
+        setEmailTemplate({
+          confirmation_email_subject: data.confirmation_email_subject || "Registration Confirmed",
+          confirmation_email_body: data.confirmation_email_body || "Thank you for registering for our event!",
+        })
         setRegIdSettings({
           customize_registration_id: data.customize_registration_id ?? false,
           registration_prefix: data.registration_prefix || "",
@@ -133,28 +115,26 @@ export default function RegistrationSettingsPage() {
     enabled: !!eventId,
   })
 
-  // Helper to save a section to events.registration_settings (merges with existing)
+  // Helper to save a section via the event-settings API (merges automatically via upsert)
   const useSectionSave = (sectionName: string) => {
     return useMutation({
-      mutationFn: async (sectionData: Record<string, any>) => {
-        // First get existing settings to merge
-        const { data: existing } = await (supabase as any)
-          .from("events")
-          .select("registration_settings")
-          .eq("id", eventId)
-          .maybeSingle()
-
-        const merged = { ...(existing?.registration_settings || {}), ...sectionData }
-
-        const { error } = await (supabase as any)
-          .from("events")
-          .update({ registration_settings: merged })
-          .eq("id", eventId)
-
-        if (error) throw error
+      mutationFn: async (sectionData: Record<string, unknown>) => {
+        const response = await fetch("/api/event-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event_id: eventId,
+            ...sectionData,
+          }),
+        })
+        if (!response.ok) {
+          const err = await response.json()
+          throw new Error(err.error || "Failed to save")
+        }
+        return response.json()
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["registration-settings", eventId] })
+        queryClient.invalidateQueries({ queryKey: ["event-settings", eventId] })
         toast.success(`${sectionName} saved`)
       },
       onError: () => {
@@ -167,32 +147,7 @@ export default function RegistrationSettingsPage() {
   const saveDuplicate = useSectionSave("Duplicate email settings")
   const saveNotification = useSectionSave("Notification settings")
   const saveEmailTemplate = useSectionSave("Email template")
-
-  // Save registration ID format settings (to event_settings table)
-  const saveRegIdMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch("/api/event-settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event_id: eventId,
-          ...regIdSettings,
-        }),
-      })
-      if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.error || "Failed to save")
-      }
-      return response.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["event-settings-regid", eventId] })
-      toast.success("Registration ID settings saved")
-    },
-    onError: () => {
-      toast.error("Failed to save registration ID settings")
-    },
-  })
+  const saveRegId = useSectionSave("Registration ID settings")
 
   const registrationPreview = regIdSettings.customize_registration_id
     ? `${regIdSettings.registration_prefix || ""}${regIdSettings.current_registration_number > 0 ? regIdSettings.current_registration_number + 1 : regIdSettings.registration_start_number}${regIdSettings.registration_suffix || ""}`
@@ -230,8 +185,8 @@ export default function RegistrationSettingsPage() {
               <h3 className="font-semibold">Registration ID Format</h3>
             </div>
             <SectionSaveButton
-              onClick={() => saveRegIdMutation.mutate()}
-              isPending={saveRegIdMutation.isPending || loadingRegId}
+              onClick={() => saveRegId.mutate(regIdSettings)}
+              isPending={saveRegId.isPending}
             />
           </div>
           <div className="space-y-4">
@@ -244,7 +199,7 @@ export default function RegistrationSettingsPage() {
               </div>
               <Switch
                 checked={regIdSettings.customize_registration_id}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setRegIdSettings({ ...regIdSettings, customize_registration_id: checked })
                 }
               />
@@ -347,7 +302,7 @@ export default function RegistrationSettingsPage() {
               </div>
               <Switch
                 checked={approvalSettings.require_approval}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setApprovalSettings({ ...approvalSettings, require_approval: checked })
                 }
               />
@@ -361,7 +316,7 @@ export default function RegistrationSettingsPage() {
               </div>
               <Switch
                 checked={approvalSettings.allow_cancellation}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setApprovalSettings({ ...approvalSettings, allow_cancellation: checked })
                 }
               />
@@ -407,7 +362,7 @@ export default function RegistrationSettingsPage() {
               </div>
               <Switch
                 checked={duplicateSettings.allow_duplicate_email}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setDuplicateSettings({ ...duplicateSettings, allow_duplicate_email: checked })
                 }
               />
@@ -421,7 +376,7 @@ export default function RegistrationSettingsPage() {
               </div>
               <Switch
                 checked={duplicateSettings.show_duplicate_warning}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setDuplicateSettings({ ...duplicateSettings, show_duplicate_warning: checked })
                 }
               />
@@ -497,7 +452,7 @@ export default function RegistrationSettingsPage() {
               </div>
               <Switch
                 checked={notificationSettings.send_confirmation_email}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setNotificationSettings({ ...notificationSettings, send_confirmation_email: checked })
                 }
               />
@@ -511,7 +466,7 @@ export default function RegistrationSettingsPage() {
               </div>
               <Switch
                 checked={notificationSettings.send_reminder_email}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setNotificationSettings({ ...notificationSettings, send_reminder_email: checked })
                 }
               />
