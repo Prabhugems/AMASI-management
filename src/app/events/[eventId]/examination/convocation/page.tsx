@@ -30,8 +30,12 @@ import {
   Users,
   Wand2,
   RefreshCw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { cn } from "@/lib/utils"
 
 type Registration = {
   id: string
@@ -60,6 +64,9 @@ export default function ConvocationPage() {
   const [autoAssigning, setAutoAssigning] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [activeTab, setActiveTab] = useState("exam")
+  const [sortBy, setSortBy] = useState<"convocation" | "name" | "reg" | "marks" | "amasi">("convocation")
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
+  const [filterAssigned, setFilterAssigned] = useState<"all" | "assigned" | "unassigned">("all")
 
   const { data: allRegistrations, isLoading } = useQuery({
     queryKey: ["exam-convocation", eventId],
@@ -78,19 +85,44 @@ export default function ConvocationPage() {
   // Split into exam passed and without_exam
   const examPassed = (allRegistrations || [])
     .filter((r) => r.exam_result === "pass" && r.exam_marks?.remarks !== "WITHOUT EXAM")
-    .sort((a, b) => (a.registration_id || "").localeCompare(b.registration_id || ""))
 
   const withoutExam = (allRegistrations || [])
     .filter((r) => (r.exam_result === "pass" && r.exam_marks?.remarks === "WITHOUT EXAM") || r.exam_result === "without_exam")
-    .sort((a, b) => (a.registration_id || "").localeCompare(b.registration_id || ""))
 
   const currentList = activeTab === "exam" ? examPassed : withoutExam
 
-  const filtered = currentList.filter((r) => {
-    if (!search) return true
-    const s = search.toLowerCase()
-    return r.name?.toLowerCase().includes(s) || r.email?.toLowerCase().includes(s) || r.convocation_number?.toLowerCase().includes(s) || r.registration_id?.toLowerCase().includes(s)
-  })
+  const toggleSort = (col: typeof sortBy) => {
+    if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc")
+    else { setSortBy(col); setSortDir("asc") }
+  }
+
+  const filtered = currentList
+    .filter((r) => {
+      // Assignment filter
+      if (filterAssigned === "assigned" && !r.convocation_number) return false
+      if (filterAssigned === "unassigned" && r.convocation_number) return false
+      // Search
+      if (!search) return true
+      const s = search.toLowerCase()
+      return r.name?.toLowerCase().includes(s) || r.email?.toLowerCase().includes(s) || r.convocation_number?.toLowerCase().includes(s) || r.registration_id?.toLowerCase().includes(s) || r.phone?.includes(s) || String(r.amasi_number || "").includes(s)
+    })
+    .sort((a, b) => {
+      const dir = sortDir === "asc" ? 1 : -1
+      switch (sortBy) {
+        case "convocation":
+          return dir * (a.convocation_number || "zzz").localeCompare(b.convocation_number || "zzz")
+        case "name":
+          return dir * (a.name || "").localeCompare(b.name || "")
+        case "reg":
+          return dir * (a.registration_id || "").localeCompare(b.registration_id || "")
+        case "marks":
+          return dir * ((a.exam_total_marks || 0) - (b.exam_total_marks || 0))
+        case "amasi":
+          return dir * ((a.amasi_number || 0) - (b.amasi_number || 0))
+        default:
+          return 0
+      }
+    })
 
   const assigned = currentList.filter(r => r.convocation_number).length
   const unassigned = currentList.length - assigned
@@ -262,15 +294,32 @@ export default function ConvocationPage() {
               </div>
             )}
 
-            {/* Search */}
-            <div className="relative max-w-sm mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, email, convocation no..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
+            {/* Search + Filters */}
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search name, email, phone, AMASI no, convocation no..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                {(["all", "assigned", "unassigned"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilterAssigned(f)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                      filterAssigned === f ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {f === "all" ? `All (${currentList.length})` : f === "assigned" ? `Assigned (${assigned})` : `Pending (${unassigned})`}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Showing {filtered.length} of {currentList.length}</p>
             </div>
 
             {/* Table */}
@@ -289,13 +338,23 @@ export default function ConvocationPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-8">#</TableHead>
-                      <TableHead>Reg No.</TableHead>
-                      <TableHead>{COMPANY_CONFIG.name} No.</TableHead>
-                      <TableHead>Candidate</TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("reg")}>
+                        <span className="flex items-center gap-1">Reg No. {sortBy === "reg" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}</span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("amasi")}>
+                        <span className="flex items-center gap-1">{COMPANY_CONFIG.name} No. {sortBy === "amasi" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}</span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
+                        <span className="flex items-center gap-1">Candidate {sortBy === "name" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}</span>
+                      </TableHead>
                       <TableHead>Mobile</TableHead>
                       <TableHead>Ticket</TableHead>
-                      <TableHead className="text-center">Marks</TableHead>
-                      <TableHead>Convocation No.</TableHead>
+                      <TableHead className="text-center cursor-pointer select-none" onClick={() => toggleSort("marks")}>
+                        <span className="flex items-center justify-center gap-1">Marks {sortBy === "marks" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}</span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("convocation")}>
+                        <span className="flex items-center gap-1">Convocation No. {sortBy === "convocation" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}</span>
+                      </TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
