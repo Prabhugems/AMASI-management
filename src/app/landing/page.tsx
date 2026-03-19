@@ -447,20 +447,35 @@ const SPEAKERS = [
 
 const DAY1 = [
   { time: "09:00", title: "Inaugural Ceremony" },
-  { time: "09:30", title: "Live Surgery — Robotic Cholecystectomy", tag: "live" },
-  { time: "11:00", title: "AI-Assisted Surgical Planning — Keynote", tag: "keynote" },
-  { time: "12:00", title: "Panel: Fluorescence-Guided Navigation" },
-  { time: "14:00", title: "Live Surgery — ICG Hepatobiliary Procedure", tag: "live" },
-  { time: "15:30", title: "Hands-On Workshop — Robotic Console", tag: "workshop" },
+  { time: "09:30", title: "Principles of ICG Fluorescence Imaging in Surgery", tag: "keynote" },
+  { time: "10:00", title: "Evolution & Applications of Fluorescence-Guided Surgery" },
+  { time: "10:30", title: "ICG in Colorectal Surgery — Preventing Anastomotic Leaks" },
+  { time: "11:00", title: "ICG in Upper GI Surgery" },
+  { time: "11:30", title: "ICG in Liver Transplant & Segmental Liver Resections" },
+  { time: "12:00", title: "ICG-Guided Laparoscopic Cholecystectomy — Biliary Mapping & Safety" },
+  { time: "12:30", title: "ICG in Complex Ventral Hernias / AWR" },
+  { time: "14:00", title: "ICG-Guided Lymphatic Mapping in Malignancies / SLNB" },
+  { time: "14:30", title: "ICG in Bariatric Surgery" },
+  { time: "15:00", title: "AI in Endoscopy", tag: "keynote" },
+  { time: "15:30", title: "Debate: ICG — Mandatory vs Marketing Hype", tag: "debate" },
+  { time: "16:30", title: "Robotic Surgery — SSI, HUGO, da Vinci, MERIL/MISSO" },
+  { time: "17:00", title: "Debate: Robotic Surgery — Value vs Vanity", tag: "debate" },
+  { time: "17:30", title: "Panel: The Operating Room in 2035 — What Will Change" },
+  { time: "18:00", title: "Telesurgery — India's Next Leap" },
   { time: "19:00", title: "Conference Dinner" },
 ]
 
 const DAY2 = [
-  { time: "08:30", title: "Live Surgery — Complex Multi-organ Procedure", tag: "live" },
-  { time: "10:30", title: "Debate: Open vs Minimally Invasive Surgery" },
-  { time: "11:30", title: "AI & Computer Vision in the OR — Keynote", tag: "keynote" },
-  { time: "13:30", title: "Free Paper & Poster Awards" },
-  { time: "14:30", title: "Live Surgery — Fluorescence-Guided Colorectal", tag: "live" },
+  { time: "09:00", title: "Keynote: AI in Surgery", tag: "keynote" },
+  { time: "09:30", title: "AI in Preoperative Imaging — Detection & Triage" },
+  { time: "10:00", title: "AI in Surgical Planning — Radiomics & Prediction" },
+  { time: "10:30", title: "AI in Postoperative ICU — Decision Support" },
+  { time: "11:00", title: "AI in Ward Recovery — Remote Monitoring" },
+  { time: "11:30", title: "AI in Diagnostics — Lab & Pathology" },
+  { time: "12:00", title: "Autonomous Surgery — Reality or Risk?", tag: "keynote" },
+  { time: "14:00", title: "AR / VR in Surgery & Surgical Training", tag: "workshop" },
+  { time: "14:30", title: "HoloSuit — Immersive Surgical Simulation" },
+  { time: "15:00", title: "AI-Powered Radiology & Teleradiology" },
   { time: "16:00", title: "Valedictory Ceremony" },
 ]
 
@@ -662,7 +677,7 @@ export default function LandingPage() {
             ].map((stat, i) => (
               <Reveal key={stat.l} delay={i * 100}>
                 <FloatingOrb delay={i * 0.8}>
-                  <div className="relative bg-white rounded-3xl p-8 border border-zinc-100 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.06)] text-center group hover:shadow-[0_20px_60px_-15px_rgba(6,182,212,0.12)] hover:border-cyan-200/50 transition-all duration-700">
+                  <div className="relative bg-white/60 backdrop-blur-sm rounded-3xl p-8 border border-zinc-200/50 text-center group hover:bg-white/80 hover:border-cyan-200/50 transition-all duration-700">
                     {/* Subtle glow */}
                     <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-cyan-50/0 to-cyan-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
                     <span className="relative text-5xl sm:text-6xl font-light text-zinc-900 tabular-nums block">
@@ -690,7 +705,7 @@ export default function LandingPage() {
             <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-500/60 mb-6">Faculty</p>
           </Reveal>
           <Reveal delay={100}>
-            <h2 className="text-4xl sm:text-5xl font-light tracking-tighter mb-20">
+            <h2 className="text-4xl sm:text-5xl font-light tracking-tighter mb-20 text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]">
               Learn from the pioneers.
             </h2>
           </Reveal>
@@ -776,13 +791,13 @@ export default function LandingPage() {
                   <span className="text-sm font-mono text-zinc-300 w-14 shrink-0 tabular-nums">{s.time}</span>
                   {s.tag && (
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                      s.tag === "live" ? "bg-cyan-500" : s.tag === "keynote" ? "bg-zinc-400" : "bg-amber-500"
+                      s.tag === "live" ? "bg-cyan-500" : s.tag === "keynote" ? "bg-zinc-400" : s.tag === "debate" ? "bg-rose-500" : "bg-amber-500"
                     }`} />
                   )}
                   <span className="text-[15px] text-zinc-700 group-hover:text-zinc-950 transition-colors flex-1">{s.title}</span>
                   {s.tag && (
                     <span className={`text-[10px] uppercase tracking-[0.15em] font-medium shrink-0 hidden sm:block ${
-                      s.tag === "live" ? "text-cyan-600" : s.tag === "keynote" ? "text-zinc-400" : "text-amber-600"
+                      s.tag === "live" ? "text-cyan-600" : s.tag === "keynote" ? "text-zinc-400" : s.tag === "debate" ? "text-rose-600" : "text-amber-600"
                     }`}>
                       {s.tag}
                     </span>
@@ -883,18 +898,6 @@ export default function LandingPage() {
               63, Anna Salai, Guindy, Chennai 600032<br />
               15 minutes from Chennai International Airport
             </p>
-          </Reveal>
-          <Reveal delay={300}>
-            <div className="mt-14 rounded-2xl overflow-hidden h-72 sm:h-[450px] bg-zinc-900 border border-white/5">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3887.3!2d80.22!3d13.01!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a5267f05de9c5e5%3A0xa9e89ec3e8e3e3e3!2sITC%20Grand%20Chola!5e0!3m2!1sen!2sin!4v1"
-                width="100%"
-                height="100%"
-                style={{ border: 0, filter: "invert(90%) hue-rotate(180deg) brightness(0.8) contrast(1.2)" }}
-                allowFullScreen
-                loading="lazy"
-              />
-            </div>
           </Reveal>
         </div>
       </section>
