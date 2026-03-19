@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react"
 import { motion, useScroll, useTransform, useMotionValue, useSpring, AnimatePresence } from "framer-motion"
 
-const REGISTER_URL = "/register"
+const REGISTER_URL = "/register/technosurg2026-mmvs3874"
 
 /* ─────────────────────────────────────
    ANIMATED CANVAS PARTICLE BACKGROUND
