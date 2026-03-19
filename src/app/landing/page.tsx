@@ -409,6 +409,12 @@ function FloatingOrb({ children, className = "", delay = 0 }: { children: ReactN
    HORIZONTAL SCROLL MARQUEE
    ───────────────────────────────────── */
 function Marquee({ items }: { items: string[] }) {
+  const getItemStyle = (item: string) => {
+    if (item === "Fluorescence Imaging" || item === "ICG Navigation") return "text-green-400/40 drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]"
+    if (item === "AI Surgery") return "text-cyan-400/30"
+    if (item === "da Vinci") return "text-white/25"
+    return "text-white/20"
+  }
   return (
     <div className="overflow-hidden whitespace-nowrap py-6 border-y border-white/5">
       <motion.div
@@ -417,7 +423,7 @@ function Marquee({ items }: { items: string[] }) {
         transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
       >
         {[...items, ...items].map((item, i) => (
-          <span key={i} className="text-sm text-white/20 uppercase tracking-[0.3em]">
+          <span key={i} className={`text-sm uppercase tracking-[0.3em] ${getItemStyle(item)}`}>
             {item}
             <span className="mx-6 text-cyan-500/30">&middot;</span>
           </span>
@@ -609,9 +615,10 @@ export default function LandingPage() {
       <section id="about" className="relative bg-[#fafafa] text-zinc-900 overflow-hidden">
         {/* About background video */}
         <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.06]">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.15]">
             <source src="/landing/about-video.mp4" type="video/mp4" />
           </video>
+          <div className="absolute inset-0 bg-[#fafafa]/70" />
         </div>
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
           <Reveal>
@@ -659,7 +666,7 @@ export default function LandingPage() {
       <section id="faculty" className="bg-[#050a14] relative overflow-hidden">
         {/* Faculty background video */}
         <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.04]">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.08]">
             <source src="/landing/Section-video.mp4" type="video/mp4" />
           </video>
         </div>
