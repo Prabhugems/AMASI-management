@@ -58,8 +58,6 @@ export async function POST(
       settings: originalEvent.settings,
       registration_fields: originalEvent.registration_fields,
       status: "draft",
-      total_registrations: 0,
-      total_revenue: 0,
     }
 
     // Remove null/undefined fields
