@@ -1269,6 +1269,81 @@ export const FORM_TEMPLATES: FormTemplateDefinition[] = [
       },
     ],
   },
+  {
+    id: "fmas-exam-application",
+    name: "FMAS Skill Course Exam Application",
+    description: "Examination application form for FMAS Skill Course candidates with AMASI membership verification",
+    category: "event_registration",
+    form_type: "event_registration",
+    icon: "GraduationCap",
+    fields: [
+      {
+        field_type: "select",
+        label: `Are You Member of ${COMPANY_CONFIG.name}?`,
+        is_required: true,
+        width: "full",
+        options: [
+          { label: "Yes", value: "yes" },
+          { label: "No", value: "no" },
+        ],
+      },
+      {
+        field_type: "paragraph",
+        label: `⚠️ ${COMPANY_CONFIG.name} Membership is mandatory for FMAS Exam registration. Please apply for membership first and return after approval.`,
+        is_required: false,
+        width: "full",
+      },
+      {
+        field_type: "email",
+        label: "Email",
+        placeholder: "your.email@example.com",
+        is_required: true,
+        width: "full",
+        settings: { verify_email: true },
+      },
+      {
+        field_type: "text",
+        label: `${COMPANY_CONFIG.name} Membership Number`,
+        placeholder: "Enter your membership number",
+        is_required: true,
+        width: "full",
+      },
+      {
+        field_type: "text",
+        label: "Name",
+        placeholder: "Full name as per records",
+        is_required: true,
+        width: "full",
+      },
+      {
+        field_type: "phone",
+        label: "Phone Number",
+        placeholder: "Mobile number",
+        is_required: true,
+        width: "full",
+      },
+      {
+        field_type: "date",
+        label: "Year of Passing PG",
+        is_required: true,
+        width: "full",
+      },
+      {
+        field_type: "file",
+        label: "MD/MS/DGO/DNB Certificate",
+        help_text: "Upload your postgraduate degree certificate",
+        is_required: true,
+        width: "full",
+      },
+      {
+        field_type: "file",
+        label: "Publication",
+        help_text: "Upload your publication (if any)",
+        is_required: false,
+        width: "full",
+      },
+    ],
+  },
 ]
 
 export function getTemplateById(id: string): FormTemplateDefinition | undefined {
