@@ -1,604 +1,398 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { motion, useInView } from "framer-motion"
-import Image from "next/image"
-import Link from "next/link"
-import { COMPANY_CONFIG } from "@/lib/config"
+import { useState, useEffect, useRef, type ReactNode } from "react"
+import { motion, useScroll, useTransform } from "framer-motion"
 
-// ============================================
-// CONFERENCE DATA
-// ============================================
-const EVENT = {
-  name: "GEM TechnoSurg 2026",
-  tagline: "AI, Robotics & Fluorescence in Surgery",
-  dates: "June 19-20, 2026",
-  targetDate: "2026-06-19T09:00:00+05:30",
-  venue: "ITC Grand Chola",
-  city: "Chennai",
-  state: "Tamil Nadu",
-  fullAddress: "63, Anna Salai, Guindy, Chennai, Tamil Nadu 600032",
-  description:
-    "India's most anticipated surgical technology summit bringing together 500+ surgeons, AI researchers, and medtech pioneers for two transformative days of live robotic procedures, fluorescence-guided surgery, and hands-on workshops.",
-  registrationUrl: "/register",
-  posterImage: "/landing/hero-poster.jpg",
-  stats: [
-    { value: 500, suffix: "+", label: "Delegates" },
-    { value: 50, suffix: "+", label: "Speakers" },
-    { value: 30, suffix: "+", label: "Live Surgeries" },
-    { value: 2, suffix: "", label: "Days" },
-  ],
-  speakers: [
-    { name: "Dr. Pradeep Chowbey", role: "Keynote Speaker", institution: "Max Healthcare, New Delhi" },
-    { name: "Dr. C. Palanivelu", role: "Guest of Honour", institution: "GEM Hospital, Chennai" },
-    { name: "Dr. Tehemton Udwadia", role: "Oration Speaker", institution: "Breach Candy Hospital, Mumbai" },
-    { name: "Dr. Anil Heroor", role: "Faculty", institution: "Fortis Hospital, Mumbai" },
-    { name: "Dr. Sanjay Rajdev", role: "Faculty", institution: "Apollo Hospital, Ahmedabad" },
-    { name: "Dr. Vivek Bindal", role: "Faculty", institution: "Max Super Speciality, Delhi" },
-  ],
-  schedule: {
-    day1: {
-      date: "June 19, 2026",
-      sessions: [
-        { time: "08:00", title: "Registration & Breakfast", type: "general" },
-        { time: "09:00", title: "Inaugural Ceremony", type: "general" },
-        { time: "09:45", title: "Keynote: AI in Surgical Decision Making", type: "talk" },
-        { time: "10:30", title: "Live Robotic Cholecystectomy", type: "surgery" },
-        { time: "11:30", title: "Fluorescence-Guided Hepatectomy", type: "surgery" },
-        { time: "13:00", title: "Lunch & Industry Exhibition", type: "general" },
-        { time: "14:00", title: "Hands-on Workshop: ICG Navigation", type: "workshop" },
-        { time: "15:30", title: "Panel: Ethics of AI in Surgery", type: "panel" },
-        { time: "17:00", title: "Live: Robotic Hernia Repair", type: "surgery" },
-      ],
-    },
-    day2: {
-      date: "June 20, 2026",
-      sessions: [
-        { time: "08:30", title: "Morning Symposium: Surgical Robotics", type: "talk" },
-        { time: "09:30", title: "Live: AI-Assisted Bariatric Surgery", type: "surgery" },
-        { time: "10:30", title: "Workshop: Fluorescence Imaging Basics", type: "workshop" },
-        { time: "12:00", title: "Panel: Future of Minimally Invasive Surgery", type: "panel" },
-        { time: "13:00", title: "Lunch Break", type: "general" },
-        { time: "14:00", title: "Live: Robotic Whipple Procedure", type: "surgery" },
-        { time: "15:30", title: "Best Paper & Poster Awards", type: "general" },
-        { time: "16:30", title: "Valedictory & Closing Ceremony", type: "general" },
-      ],
-    },
-  },
-  pricing: {
-    earlyBird: "5,000",
-    regular: "7,500",
-    maxDelegates: 500,
-  },
-  mapEmbedUrl:
-    "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3887.023871835398!2d80.21228531482184!3d13.010769690826928!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a5267f1a22a3d51%3A0x4ee79a7b2d3c1fbf!2sITC%20Grand%20Chola!5e0!3m2!1sen!2sin!4v1690000000000!5m2!1sen!2sin",
-}
+/* ─────────────────────────────────────────────
+   DATA — change content here
+   ───────────────────────────────────────────── */
 
-// ============================================
-// ANIMATION VARIANTS
-// ============================================
-const sectionVariants = {
-  hidden: { opacity: 0, y: 40 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] as const },
-  },
-}
+const REGISTER_URL = "/register"
 
-const staggerContainer = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.03 },
-  },
-}
+const SPEAKERS = [
+  { name: "Dr. C. Palanivelu", title: "Conference Chairman", org: "GEM Hospital" },
+  { name: "Dr. Ramesh Ardhanari", title: "Organizing Secretary", org: "GEM Hospital" },
+  { name: "To Be Announced", title: "International Faculty", org: "Robotic Surgery" },
+  { name: "To Be Announced", title: "International Faculty", org: "AI in Surgery" },
+  { name: "To Be Announced", title: "National Faculty", org: "Fluorescence Surgery" },
+  { name: "To Be Announced", title: "National Faculty", org: "Bariatric Surgery" },
+]
 
-const wordReveal = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] as const },
-  },
-}
+const DAY1 = [
+  { time: "09:00", title: "Inaugural Ceremony" },
+  { time: "09:30", title: "Live Surgery — Robotic Cholecystectomy", tag: "live" },
+  { time: "11:00", title: "AI-Assisted Surgical Planning — Keynote", tag: "keynote" },
+  { time: "12:00", title: "Panel: Fluorescence-Guided Navigation" },
+  { time: "14:00", title: "Live Surgery — ICG Hepatobiliary Procedure", tag: "live" },
+  { time: "15:30", title: "Hands-On Workshop — Robotic Console", tag: "workshop" },
+  { time: "19:00", title: "Conference Dinner" },
+]
 
-// ============================================
-// HOOKS
-// ============================================
-function useCountdown(targetDate: string) {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+const DAY2 = [
+  { time: "08:30", title: "Live Surgery — Complex Multi-organ Procedure", tag: "live" },
+  { time: "10:30", title: "Debate: Open vs Minimally Invasive Surgery" },
+  { time: "11:30", title: "AI & Computer Vision in the OR — Keynote", tag: "keynote" },
+  { time: "13:30", title: "Free Paper & Poster Awards" },
+  { time: "14:30", title: "Live Surgery — Fluorescence-Guided Colorectal", tag: "live" },
+  { time: "16:00", title: "Valedictory Ceremony" },
+]
 
+/* ─────────────────────────────────────────────
+   UTILITIES
+   ───────────────────────────────────────────── */
+
+function useCountUp(target: number, duration = 2000, go = false) {
+  const [n, setN] = useState(0)
   useEffect(() => {
+    if (!go) return
+    let start: number
+    const step = (ts: number) => {
+      if (!start) start = ts
+      const p = Math.min((ts - start) / duration, 1)
+      setN(Math.floor(p * target))
+      if (p < 1) requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  }, [target, duration, go])
+  return n
+}
+
+function Countdown() {
+  const [d, setD] = useState({ d: 0, h: 0, m: 0, s: 0 })
+  useEffect(() => {
+    const t = new Date("2026-06-19T09:00:00+05:30").getTime()
     const tick = () => {
-      const diff = new Date(targetDate).getTime() - Date.now()
-      if (diff <= 0) {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 })
-        return
-      }
-      setTimeLeft({
-        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((diff / (1000 * 60)) % 60),
-        seconds: Math.floor((diff / 1000) % 60),
+      const diff = Math.max(0, t - Date.now())
+      setD({
+        d: Math.floor(diff / 864e5),
+        h: Math.floor((diff % 864e5) / 36e5),
+        m: Math.floor((diff % 36e5) / 6e4),
+        s: Math.floor((diff % 6e4) / 1e3),
       })
     }
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
-  }, [targetDate])
-
-  return timeLeft
-}
-
-function useCountUp(end: number, duration = 2000) {
-  const [count, setCount] = useState(0)
-  const ref = useRef<HTMLSpanElement>(null)
-  const inView = useInView(ref, { once: true, margin: "-100px" })
-
-  useEffect(() => {
-    if (!inView) return
-    let start = 0
-    const startTime = performance.now()
-    const step = (now: number) => {
-      const progress = Math.min((now - startTime) / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      start = Math.floor(eased * end)
-      setCount(start)
-      if (progress < 1) requestAnimationFrame(step)
-    }
-    requestAnimationFrame(step)
-  }, [inView, end, duration])
-
-  return { count, ref }
-}
-
-// ============================================
-// SESSION TYPE DOTS
-// ============================================
-function SessionDot({ type }: { type: string }) {
-  const colors: Record<string, string> = {
-    surgery: "bg-cyan-500",
-    workshop: "bg-amber-500",
-    panel: "bg-zinc-400",
-    talk: "bg-cyan-400",
-    general: "bg-zinc-600",
-  }
-  return <span className={`inline-block w-1.5 h-1.5 rounded-full ${colors[type] || colors.general} mt-2 shrink-0`} />
-}
-
-// ============================================
-// PAGE
-// ============================================
-export default function LandingPage() {
-  const countdown = useCountdown(EVENT.targetDate)
-
+  }, [])
   return (
-    <main className="bg-[#030712] text-white antialiased overflow-x-hidden">
-      {/* ====== HERO ====== */}
-      <Hero countdown={countdown} />
-
-      {/* ====== ABOUT ====== */}
-      <About />
-
-      {/* ====== SPEAKERS ====== */}
-      <Speakers />
-
-      {/* ====== SCHEDULE ====== */}
-      <Schedule />
-
-      {/* ====== REGISTRATION ====== */}
-      <Registration />
-
-      {/* ====== VENUE ====== */}
-      <Venue />
-
-      {/* ====== FOOTER ====== */}
-      <Footer />
-    </main>
-  )
-}
-
-// ============================================
-// HERO SECTION
-// ============================================
-function Hero({ countdown }: { countdown: { days: number; hours: number; minutes: number; seconds: number } }) {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true })
-
-  const heroWords = ["GEM", "TechnoSurg", "2026"]
-
-  return (
-    <section className="relative min-h-[100dvh] flex items-center overflow-hidden">
-      {/* Background dot grid */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-        }}
-      />
-
-      {/* Poster image — right side on desktop, behind on mobile */}
-      <div className="absolute inset-0 lg:left-[40%] lg:right-0">
-        <Image
-          src={EVENT.posterImage}
-          alt={EVENT.name}
-          fill
-          priority
-          className="object-cover object-center"
-        />
-        {/* Gradient fade — left edge on desktop */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#030712] via-[#030712]/80 to-transparent hidden lg:block" />
-        {/* Overlay on mobile */}
-        <div className="absolute inset-0 bg-[#030712]/75 lg:hidden" />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 max-w-[1400px] mx-auto w-full px-6 sm:px-10 lg:px-16 py-20" ref={ref}>
-        <div className="max-w-2xl">
-          {/* Date label */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={inView ? { opacity: 1 } : {}}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-xs tracking-[0.3em] uppercase text-cyan-500 mb-8"
-          >
-            June 19-20, 2026 &middot; Chennai
-          </motion.p>
-
-          {/* Title — staggered word reveal */}
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate={inView ? "visible" : "hidden"}
-            className="mb-6"
-          >
-            {heroWords.map((word, i) => (
-              <motion.span
-                key={i}
-                variants={wordReveal}
-                className="block text-6xl sm:text-7xl lg:text-8xl font-extralight tracking-tighter leading-none"
-              >
-                {word}
-              </motion.span>
-            ))}
-          </motion.div>
-
-          {/* Tagline */}
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="text-lg text-zinc-500 font-light mb-10 max-w-[55ch]"
-          >
-            {EVENT.tagline}
-          </motion.p>
-
-          {/* CTA */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.8, delay: 0.65 }}
-          >
-            <Link
-              href={EVENT.registrationUrl}
-              className="inline-block bg-cyan-500 text-white px-8 py-4 rounded-full text-sm tracking-wide uppercase hover:bg-cyan-400 transition-colors duration-300"
-            >
-              Register Now
-            </Link>
-          </motion.div>
-
-          {/* Countdown */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={inView ? { opacity: 1 } : {}}
-            transition={{ duration: 0.8, delay: 0.85 }}
-            className="mt-12 flex gap-8"
-          >
-            {[
-              { value: countdown.days, label: "Days" },
-              { value: countdown.hours, label: "Hours" },
-              { value: countdown.minutes, label: "Min" },
-              { value: countdown.seconds, label: "Sec" },
-            ].map((unit) => (
-              <div key={unit.label} className="text-center">
-                <span className="block text-2xl sm:text-3xl font-extralight tabular-nums">
-                  {String(unit.value).padStart(2, "0")}
-                </span>
-                <span className="block text-[10px] tracking-[0.2em] uppercase text-zinc-600 mt-1">
-                  {unit.label}
-                </span>
-              </div>
-            ))}
-          </motion.div>
+    <div className="flex gap-8 tabular-nums">
+      {(["d", "h", "m", "s"] as const).map((k) => (
+        <div key={k} className="text-center">
+          <span className="block text-3xl sm:text-4xl font-light text-white">
+            {String(d[k]).padStart(2, "0")}
+          </span>
+          <span className="text-[10px] uppercase tracking-[0.25em] text-white/30 mt-1 block">
+            {k === "d" ? "days" : k === "h" ? "hrs" : k === "m" ? "min" : "sec"}
+          </span>
         </div>
-      </div>
-    </section>
-  )
-}
-
-// ============================================
-// ABOUT SECTION
-// ============================================
-function About() {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: "-100px" })
-
-  return (
-    <section className="bg-[#fafafa] text-zinc-900" ref={ref}>
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-24 sm:py-32 lg:py-40">
-        <motion.div
-          variants={sectionVariants}
-          initial="hidden"
-          animate={inView ? "visible" : "hidden"}
-        >
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-light tracking-tighter leading-none mb-8">
-            Where Technology
-            <br />
-            Meets Surgery
-          </h2>
-
-          <p className="text-lg text-zinc-500 max-w-[55ch] mb-20 leading-relaxed">
-            {EVENT.description}
-          </p>
-        </motion.div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-          {EVENT.stats.map((stat) => (
-            <StatItem key={stat.label} value={stat.value} suffix={stat.suffix} label={stat.label} />
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function StatItem({ value, suffix, label }: { value: number; suffix: string; label: string }) {
-  const { count, ref } = useCountUp(value)
-  return (
-    <div className="py-6 border-t border-zinc-200">
-      <span ref={ref} className="block text-4xl sm:text-5xl font-extralight tracking-tight text-zinc-900 tabular-nums">
-        {count}
-        {suffix}
-      </span>
-      <span className="block text-sm text-zinc-500 mt-2 tracking-wide uppercase">{label}</span>
+      ))}
     </div>
   )
 }
 
-// ============================================
-// SPEAKERS SECTION
-// ============================================
-function Speakers() {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: "-100px" })
+function Reveal({ children, className = "", delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect() } }, { threshold: 0.15 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"} ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function Stat({ value, suffix, label, delay, go }: { value: number; suffix: string; label: string; delay: number; go: boolean }) {
+  const n = useCountUp(value, 2000, go)
+  return (
+    <Reveal delay={delay}>
+      <div className="text-center">
+        <span className="text-5xl sm:text-6xl font-extralight text-zinc-900 tabular-nums">{n}{suffix}</span>
+        <span className="block text-xs uppercase tracking-[0.2em] text-zinc-400 mt-3">{label}</span>
+      </div>
+    </Reveal>
+  )
+}
+
+/* ─────────────────────────────────────────────
+   PAGE
+   ───────────────────────────────────────────── */
+
+export default function LandingPage() {
+  const heroRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] })
+  const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"])
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0])
+
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 60)
+    window.addEventListener("scroll", fn, { passive: true })
+    return () => window.removeEventListener("scroll", fn)
+  }, [])
+
+  const [statsGo, setStatsGo] = useState(false)
+  const statsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = statsRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setStatsGo(true) }, { threshold: 0.3 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  const [day, setDay] = useState<1 | 2>(1)
 
   return (
-    <section className="bg-[#030712]" ref={ref}>
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-24 sm:py-32 lg:py-40">
-        <motion.div
-          variants={sectionVariants}
-          initial="hidden"
-          animate={inView ? "visible" : "hidden"}
-        >
-          <div className="flex items-center gap-6 mb-16">
-            <h2 className="text-4xl sm:text-5xl font-light tracking-tighter text-white">Faculty</h2>
-            <div className="flex-1 h-px bg-zinc-800" />
+    <div className="bg-black text-white antialiased selection:bg-cyan-500/30">
+
+      {/* ── NAV ── */}
+      <nav className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${scrolled ? "bg-black/70 backdrop-blur-2xl backdrop-saturate-150 border-b border-white/5" : ""}`}>
+        <div className="max-w-[1200px] mx-auto px-6 h-14 flex items-center justify-between">
+          <span className="text-sm font-medium tracking-tight">GEM TechnoSurg</span>
+          <div className="hidden md:flex items-center gap-8 text-[13px] text-white/60">
+            <a href="#about" className="hover:text-white transition-colors">About</a>
+            <a href="#speakers" className="hover:text-white transition-colors">Faculty</a>
+            <a href="#schedule" className="hover:text-white transition-colors">Schedule</a>
+            <a href="#register" className="hover:text-white transition-colors">Register</a>
           </div>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12">
-          {EVENT.speakers.map((speaker, i) => (
-            <motion.div
-              key={speaker.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.1 * i, ease: [0.25, 0.1, 0.25, 1] }}
-              className="group border-b border-zinc-800 py-8"
-            >
-              <span className="block text-5xl sm:text-6xl font-extralight text-cyan-500 leading-none mb-4 select-none">
-                {speaker.name.charAt(0)}
-              </span>
-              <p className="text-white text-lg font-light tracking-tight transition-transform duration-300 group-hover:translate-x-2">
-                {speaker.name}
-              </p>
-              <p className="text-zinc-500 text-sm mt-1">{speaker.role}</p>
-              <p className="text-zinc-600 text-sm mt-0.5">{speaker.institution}</p>
-            </motion.div>
-          ))}
+          <a href={REGISTER_URL} className="text-[13px] text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
+            Register&nbsp;&rarr;
+          </a>
         </div>
-      </div>
-    </section>
-  )
-}
+      </nav>
 
-// ============================================
-// SCHEDULE SECTION
-// ============================================
-function Schedule() {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: "-100px" })
-
-  return (
-    <section className="bg-[#fafafa] text-zinc-900" ref={ref}>
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-24 sm:py-32 lg:py-40">
-        <motion.div
-          variants={sectionVariants}
-          initial="hidden"
-          animate={inView ? "visible" : "hidden"}
-        >
-          <h2 className="text-4xl sm:text-5xl font-light tracking-tighter mb-16">Schedule</h2>
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24">
-          {/* Day 1 */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.7, delay: 0.2 }}
-          >
-            <h3 className="text-lg font-light text-zinc-400 mb-6 tracking-wide">
-              Day 1 &middot; {EVENT.schedule.day1.date}
-            </h3>
-            <div className="space-y-0">
-              {EVENT.schedule.day1.sessions.map((s) => (
-                <div key={s.time + s.title} className="flex gap-4 py-3 border-b border-zinc-200">
-                  <SessionDot type={s.type} />
-                  <span className="text-sm font-mono text-zinc-400 w-12 shrink-0">{s.time}</span>
-                  <span className="text-sm text-zinc-700">{s.title}</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Day 2 */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.7, delay: 0.35 }}
-          >
-            <h3 className="text-lg font-light text-zinc-400 mb-6 tracking-wide">
-              Day 2 &middot; {EVENT.schedule.day2.date}
-            </h3>
-            <div className="space-y-0">
-              {EVENT.schedule.day2.sessions.map((s) => (
-                <div key={s.time + s.title} className="flex gap-4 py-3 border-b border-zinc-200">
-                  <SessionDot type={s.type} />
-                  <span className="text-sm font-mono text-zinc-400 w-12 shrink-0">{s.time}</span>
-                  <span className="text-sm text-zinc-700">{s.title}</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Legend */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={inView ? { opacity: 1 } : {}}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="mt-12 flex flex-wrap gap-6 text-xs text-zinc-400"
-        >
-          {[
-            { type: "surgery", label: "Live Surgery" },
-            { type: "workshop", label: "Workshop" },
-            { type: "panel", label: "Panel" },
-            { type: "talk", label: "Talk" },
-          ].map((item) => (
-            <span key={item.type} className="flex items-center gap-2">
-              <SessionDot type={item.type} />
-              {item.label}
-            </span>
-          ))}
-        </motion.div>
-      </div>
-    </section>
-  )
-}
-
-// ============================================
-// REGISTRATION SECTION
-// ============================================
-function Registration() {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: "-100px" })
-
-  return (
-    <section className="bg-[#030712]" ref={ref}>
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-24 sm:py-32 lg:py-40 text-center">
-        <motion.div
-          variants={sectionVariants}
-          initial="hidden"
-          animate={inView ? "visible" : "hidden"}
-        >
-          <h2 className="text-5xl sm:text-6xl lg:text-7xl font-extralight tracking-tighter text-white mb-6">
-            Secure Your Seat
-          </h2>
-
-          <p className="text-lg text-zinc-400 font-light mb-12">
-            Early Bird: INR {EVENT.pricing.earlyBird} &middot; Regular: INR {EVENT.pricing.regular}
-          </p>
-
-          <Link
-            href={EVENT.registrationUrl}
-            className="inline-block bg-cyan-500 text-white px-10 py-4 rounded-full text-sm tracking-wide uppercase hover:bg-cyan-400 transition-colors duration-300"
-          >
-            Register Now
-          </Link>
-
-          <p className="text-sm text-zinc-600 mt-8">
-            Limited to {EVENT.pricing.maxDelegates} delegates
-          </p>
-        </motion.div>
-      </div>
-    </section>
-  )
-}
-
-// ============================================
-// VENUE SECTION
-// ============================================
-function Venue() {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: "-100px" })
-
-  return (
-    <section className="bg-[#fafafa] text-zinc-900" ref={ref}>
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-24 sm:py-32 lg:py-40">
-        <motion.div
-          variants={sectionVariants}
-          initial="hidden"
-          animate={inView ? "visible" : "hidden"}
-        >
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-light tracking-tighter mb-2">
-            ITC Grand Chola
-          </h2>
-          <p className="text-lg text-zinc-400 font-light mb-8">Chennai, Tamil Nadu</p>
-
-          <div className="max-w-[55ch] mb-12 space-y-3 text-zinc-500 text-base leading-relaxed">
-            <p>{EVENT.fullAddress}</p>
-            <p>
-              15 minutes from Chennai International Airport.
-              <br />
-              Adjacent to Guindy Metro Station.
-            </p>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          className="w-full aspect-[16/7] rounded-2xl overflow-hidden"
-        >
-          <iframe
-            src={EVENT.mapEmbedUrl}
-            width="100%"
-            height="100%"
-            style={{ border: 0, filter: "grayscale(0.8) contrast(1.1)" }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title="ITC Grand Chola location"
+      {/* ── HERO ── */}
+      <section ref={heroRef} className="relative min-h-[100dvh] flex items-end overflow-hidden">
+        {/* Poster background with parallax */}
+        <motion.div className="absolute inset-0" style={{ y: heroY }}>
+          <img
+            src="/landing/hero-poster.jpg"
+            alt="GEM TechnoSurg 2026"
+            className="w-full h-full object-cover object-top"
           />
+          {/* Bottom gradient fade to black */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
         </motion.div>
-      </div>
-    </section>
-  )
-}
 
-// ============================================
-// FOOTER
-// ============================================
-function Footer() {
-  return (
-    <footer className="bg-[#030712] border-t border-zinc-900">
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-8">
-        <p className="text-sm text-zinc-600 text-center">
-          {EVENT.name} &middot; {COMPANY_CONFIG.supportEmail} &middot; &copy; {new Date().getFullYear()} {COMPANY_CONFIG.name}
-        </p>
-      </div>
-    </footer>
+        {/* Content at bottom */}
+        <motion.div className="relative z-10 w-full" style={{ opacity: heroOpacity }}>
+          <div className="max-w-[1200px] mx-auto px-6 pb-16 sm:pb-24">
+            <Reveal>
+              <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400 mb-6">
+                June 19–20, 2026 &nbsp;·&nbsp; ITC Grand Chola, Chennai
+              </p>
+            </Reveal>
+            <Reveal delay={200}>
+              <h1 className="text-4xl sm:text-6xl lg:text-[5.5rem] font-extralight leading-[0.95] tracking-tighter max-w-3xl">
+                AI. Robotics.<br />Fluorescence<br />in Surgery.
+              </h1>
+            </Reveal>
+            <Reveal delay={400}>
+              <div className="mt-10 flex flex-col sm:flex-row sm:items-center gap-6">
+                <a
+                  href={REGISTER_URL}
+                  className="inline-flex items-center justify-center h-14 px-10 rounded-full bg-white text-black text-[15px] font-medium hover:bg-white/90 active:scale-[0.97] transition-all duration-200"
+                >
+                  Register Now
+                </a>
+                <Countdown />
+              </div>
+            </Reveal>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ── ABOUT ── */}
+      <section id="about" className="bg-[#fafafa] text-zinc-900">
+        <div className="max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
+          <Reveal>
+            <p className="text-[11px] uppercase tracking-[0.35em] text-zinc-400 mb-6">About</p>
+          </Reveal>
+          <Reveal delay={100}>
+            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extralight tracking-tighter leading-[1.05] max-w-2xl">
+              Where technology meets the operating room.
+            </h2>
+          </Reveal>
+          <Reveal delay={200}>
+            <p className="mt-8 text-lg sm:text-xl font-light text-zinc-500 leading-relaxed max-w-[55ch]">
+              India&apos;s most anticipated surgical technology summit bringing together 500+ surgeons,
+              AI researchers, and medtech innovators for two days of live robotic procedures,
+              fluorescence-guided surgery, and hands-on workshops at the iconic ITC Grand Chola, Chennai.
+            </p>
+          </Reveal>
+
+          {/* Stats */}
+          <div ref={statsRef} className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-8 border-t border-zinc-200 pt-16">
+            <Stat value={500} suffix="+" label="Delegates" delay={0} go={statsGo} />
+            <Stat value={50} suffix="+" label="Speakers" delay={100} go={statsGo} />
+            <Stat value={30} suffix="+" label="Live Surgeries" delay={200} go={statsGo} />
+            <Stat value={2} suffix="" label="Days" delay={300} go={statsGo} />
+          </div>
+        </div>
+      </section>
+
+      {/* ── SPEAKERS ── */}
+      <section id="speakers" className="bg-black">
+        <div className="max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
+          <Reveal>
+            <p className="text-[11px] uppercase tracking-[0.35em] text-zinc-500 mb-6">Faculty</p>
+          </Reveal>
+          <Reveal delay={100}>
+            <h2 className="text-3xl sm:text-5xl font-extralight tracking-tighter mb-20">
+              Learn from the pioneers.
+            </h2>
+          </Reveal>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-white/[0.06]">
+            {SPEAKERS.map((s, i) => (
+              <Reveal key={i} delay={i * 80}>
+                <div className="group bg-black p-8 sm:p-10 hover:bg-white/[0.03] transition-colors duration-500 cursor-default">
+                  <span className="text-6xl sm:text-7xl font-extralight text-white/10 group-hover:text-cyan-500/20 transition-colors duration-500 leading-none block mb-6">
+                    {s.name.charAt(0)}
+                  </span>
+                  <h3 className="text-lg font-normal text-white group-hover:translate-x-1 transition-transform duration-500">{s.name}</h3>
+                  <p className="text-sm text-cyan-500/80 mt-1">{s.title}</p>
+                  <p className="text-sm text-zinc-600 mt-0.5">{s.org}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SCHEDULE ── */}
+      <section id="schedule" className="bg-[#fafafa] text-zinc-900">
+        <div className="max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
+          <Reveal>
+            <p className="text-[11px] uppercase tracking-[0.35em] text-zinc-400 mb-6">Programme</p>
+          </Reveal>
+          <div className="flex items-end justify-between mb-16 flex-wrap gap-4">
+            <Reveal delay={100}>
+              <h2 className="text-3xl sm:text-5xl font-extralight tracking-tighter">
+                Two days.<br />Boundless learning.
+              </h2>
+            </Reveal>
+            <Reveal delay={200}>
+              <div className="flex gap-1 bg-zinc-200/60 rounded-full p-1">
+                <button
+                  onClick={() => setDay(1)}
+                  className={`px-5 py-2 rounded-full text-sm transition-all duration-300 ${day === 1 ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700"}`}
+                >
+                  Day 1 — Jun 19
+                </button>
+                <button
+                  onClick={() => setDay(2)}
+                  className={`px-5 py-2 rounded-full text-sm transition-all duration-300 ${day === 2 ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700"}`}
+                >
+                  Day 2 — Jun 20
+                </button>
+              </div>
+            </Reveal>
+          </div>
+
+          <div className="border-t border-zinc-200">
+            {(day === 1 ? DAY1 : DAY2).map((s, i) => (
+              <Reveal key={`${day}-${i}`} delay={i * 60}>
+                <div className="flex items-baseline gap-6 py-5 border-b border-zinc-200/80 group">
+                  <span className="text-sm font-mono text-zinc-400 w-14 shrink-0 tabular-nums">{s.time}</span>
+                  <span className="text-[15px] sm:text-base text-zinc-800 group-hover:text-zinc-950 transition-colors flex-1">{s.title}</span>
+                  {s.tag && (
+                    <span className={`text-[10px] uppercase tracking-[0.15em] font-medium shrink-0 ${
+                      s.tag === "live" ? "text-cyan-600" :
+                      s.tag === "keynote" ? "text-zinc-500" :
+                      "text-amber-600"
+                    }`}>
+                      {s.tag}
+                    </span>
+                  )}
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── REGISTER CTA ── */}
+      <section id="register" className="bg-black">
+        <div className="max-w-[1200px] mx-auto px-6 py-28 sm:py-40 text-center">
+          <Reveal>
+            <h2 className="text-4xl sm:text-6xl lg:text-7xl font-extralight tracking-tighter leading-[0.95]">
+              Secure your seat.
+            </h2>
+          </Reveal>
+          <Reveal delay={150}>
+            <p className="mt-6 text-lg text-zinc-500 font-light">
+              Early Bird ₹5,000&ensp;·&ensp;Regular ₹7,500&ensp;·&ensp;On-Spot ₹10,000
+            </p>
+          </Reveal>
+          <Reveal delay={300}>
+            <div className="mt-12">
+              <a
+                href={REGISTER_URL}
+                className="inline-flex items-center justify-center h-14 px-12 rounded-full bg-white text-black text-[15px] font-medium hover:bg-white/90 active:scale-[0.97] transition-all duration-200"
+              >
+                Register Now
+              </a>
+            </div>
+          </Reveal>
+          <Reveal delay={400}>
+            <p className="mt-6 text-sm text-zinc-600">Limited to 500 delegates</p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── VENUE ── */}
+      <section className="bg-[#fafafa] text-zinc-900">
+        <div className="max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
+          <Reveal>
+            <p className="text-[11px] uppercase tracking-[0.35em] text-zinc-400 mb-6">Venue</p>
+          </Reveal>
+          <Reveal delay={100}>
+            <h2 className="text-3xl sm:text-5xl font-extralight tracking-tighter">
+              ITC Grand Chola
+            </h2>
+          </Reveal>
+          <Reveal delay={150}>
+            <p className="text-lg text-zinc-500 font-light mt-2">Chennai, Tamil Nadu</p>
+          </Reveal>
+          <Reveal delay={200}>
+            <p className="text-sm text-zinc-400 mt-4 max-w-md">
+              63, Anna Salai, Guindy, Chennai 600032<br />
+              15 minutes from Chennai International Airport
+            </p>
+          </Reveal>
+          <Reveal delay={300}>
+            <div className="mt-12 rounded-2xl overflow-hidden h-72 sm:h-96 bg-zinc-200">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3887.3!2d80.22!3d13.01!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a5267f05de9c5e5%3A0xa9e89ec3e8e3e3e3!2sITC%20Grand%20Chola!5e0!3m2!1sen!2sin!4v1"
+                width="100%"
+                height="100%"
+                style={{ border: 0, filter: "grayscale(1) contrast(1.1)" }}
+                allowFullScreen
+                loading="lazy"
+              />
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer className="bg-black border-t border-white/5">
+        <div className="max-w-[1200px] mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[13px] text-zinc-600">
+          <span>GEM TechnoSurg 2026</span>
+          <span>&copy; {new Date().getFullYear()} GEM Hospital. All rights reserved.</span>
+        </div>
+      </footer>
+    </div>
   )
 }
