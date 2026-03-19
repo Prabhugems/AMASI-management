@@ -37,7 +37,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { COMPANY_CONFIG } from "@/lib/config"
+import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 
 interface FormRendererProps {
   form: Form
@@ -199,8 +199,10 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
       const emailField = fields.find(f => f.id === fieldId)
 
-      // Always run member lookup for email fields (if settings exist or not)
-      await lookupMember(email, fieldId)
+      // Run member lookup only if membership feature is enabled
+      if (FEATURES.membership) {
+        await lookupMember(email, fieldId)
+      }
     } catch {
       setEmailVerificationState((prev) => ({
         ...prev,
