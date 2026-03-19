@@ -79,6 +79,7 @@ export default function MarksheetPage() {
   const [editRemarks, setEditRemarks] = useState("")
   const [savingId, setSavingId] = useState<string | null>(null)
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
+  const [checkingMembership, setCheckingMembership] = useState(false)
   const [downloadType, setDownloadType] = useState<"scoring" | "attendance" | "csv">("scoring")
   const [selectedColumns, setSelectedColumns] = useState<string[]>([])
 
@@ -360,6 +361,45 @@ export default function MarksheetPage() {
           </button>
         ))}
       </div>
+
+      {/* Check Membership - shown when Withheld filter active */}
+      {resultFilter === "withheld" && withheld > 0 && (
+        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p className="font-medium text-yellow-800 dark:text-yellow-200 text-sm">
+              {withheld} candidates withheld — check if they got AMASI membership
+            </p>
+            <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5">
+              Checks live AMASI API and auto-declares result for those with membership
+            </p>
+          </div>
+          <Button
+            onClick={async () => {
+              setCheckingMembership(true)
+              try {
+                const res = await fetch("/api/examination/check-withheld", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ event_id: eventId }),
+                })
+                const result = await res.json()
+                if (!res.ok) throw new Error(result.error)
+                alert(`Membership check complete!\n\nDeclared PASS: ${result.declared}\nStill withheld: ${result.stillWithheld}${result.declaredList?.length ? "\n\nDeclared:\n" + result.declaredList.join("\n") : ""}${result.stillWithheldList?.length ? "\n\nStill no membership:\n" + result.stillWithheldList.join("\n") : ""}`)
+                await queryClient.invalidateQueries({ queryKey: ["exam-registrations", eventId] })
+              } catch (e: any) {
+                alert("Failed: " + e.message)
+              }
+              setCheckingMembership(false)
+            }}
+            disabled={checkingMembership}
+            variant="outline"
+            className="gap-2 border-yellow-300 text-yellow-800 hover:bg-yellow-100 whitespace-nowrap"
+          >
+            {checkingMembership ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+            Check Membership
+          </Button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-3">
