@@ -490,9 +490,6 @@ export default function LandingPage() {
   return (
     <div className="bg-[#050a14] text-white antialiased selection:bg-cyan-500/30 overflow-x-hidden">
 
-      {/* ── ANTIGRAVITY FLOATING SHAPES ── */}
-      <FloatingElements />
-
       {/* ── NAV ── */}
       <motion.nav
         className={`fixed inset-x-0 top-0 z-50 transition-all duration-700 ${scrolled ? "bg-[#050a14]/80 backdrop-blur-2xl backdrop-saturate-150" : ""}`}
@@ -524,20 +521,12 @@ export default function LandingPage() {
         {/* Particle canvas */}
         <ParticleField />
 
-        {/* Background poster with zoom on scroll */}
-        <motion.div className="absolute inset-0 z-[1]" style={{ scale: heroScale }}>
-          <img
-            src="/landing/hero-poster.jpg"
-            alt=""
-            className="w-full h-full object-cover object-top"
-          />
-          <motion.div
-            className="absolute inset-0"
-            style={{ backdropFilter: `blur(${heroBlur}px)` } as any}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050a14] via-[#050a14]/60 to-[#050a14]/20" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#050a14]/80 via-transparent to-transparent" />
-        </motion.div>
+        {/* Background gradient */}
+        <div className="absolute inset-0 z-[1]">
+          <div className="absolute inset-0 bg-[#050a14]" />
+          <div className="absolute top-0 right-0 w-[60%] h-full bg-gradient-to-l from-cyan-950/20 to-transparent" />
+          <div className="absolute bottom-0 left-0 w-[40%] h-[60%] bg-gradient-to-tr from-cyan-500/[0.03] to-transparent" />
+        </div>
 
         {/* Hero content */}
         <motion.div className="relative z-10 w-full" style={{ opacity: heroOpacity }}>
@@ -587,29 +576,6 @@ export default function LandingPage() {
             </motion.div>
 
           </div>
-        </motion.div>
-
-        {/* Floating geometric accents in hero */}
-        <motion.div
-          className="absolute top-[20%] right-[10%] z-[2] hidden lg:block"
-          animate={{ y: [-15, 15, -15], rotate: [0, 5, 0] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <div className="w-24 h-24 rounded-full border border-cyan-500/10 backdrop-blur-sm" />
-        </motion.div>
-        <motion.div
-          className="absolute top-[35%] right-[25%] z-[2] hidden lg:block"
-          animate={{ y: [10, -10, 10], rotate: [0, -90, 0] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-        >
-          <div className="w-12 h-12 border border-cyan-400/15 rotate-45" />
-        </motion.div>
-        <motion.div
-          className="absolute bottom-[30%] right-[8%] z-[2] hidden lg:block"
-          animate={{ y: [-20, 20, -20], scale: [1, 1.1, 1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        >
-          <div className="w-3 h-3 rounded-full bg-cyan-400/30" />
         </motion.div>
 
         {/* Scroll indicator */}
