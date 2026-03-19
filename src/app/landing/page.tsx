@@ -537,8 +537,8 @@ export default function LandingPage() {
             <source src="/landing/hero-video.mp4" type="video/mp4" />
           </video>
           {/* Dark overlay for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050a14] via-[#050a14]/70 to-[#050a14]/30" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#050a14]/80 via-[#050a14]/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050a14] via-[#050a14]/80 to-[#050a14]/40" />
+          <div className="absolute inset-0 bg-[#050a14]/30" />
         </motion.div>
 
         {/* Particle overlay */}
@@ -560,16 +560,32 @@ export default function LandingPage() {
             </motion.p>
 
             <div className="mb-8">
-              <motion.h1
-                className="text-5xl sm:text-7xl lg:text-[6.5rem] font-extralight leading-[0.9] tracking-tighter"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-              >
-                <ScrambleText text="AI. Robotics." className="block" delay={600} />
-                <ScrambleText text="Fluorescence" className="block text-cyan-400" delay={1200} />
-                <ScrambleText text="in Surgery." className="block" delay={1800} />
-              </motion.h1>
+              <h1 className="text-5xl sm:text-7xl lg:text-[6.5rem] font-light leading-[0.9] tracking-tighter">
+                <motion.span
+                  className="block text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  AI. Robotics.
+                </motion.span>
+                <motion.span
+                  className="block text-cyan-400 drop-shadow-[0_0_40px_rgba(6,182,212,0.5)]"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  Fluorescence
+                </motion.span>
+                <motion.span
+                  className="block text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 1.1, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  in Surgery.
+                </motion.span>
+              </h1>
             </div>
 
             <motion.div
@@ -615,17 +631,16 @@ export default function LandingPage() {
       <section id="about" className="relative bg-[#fafafa] text-zinc-900 overflow-hidden">
         {/* About background video */}
         <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.15]">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.03]">
             <source src="/landing/about-video.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-[#fafafa]/70" />
         </div>
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
           <Reveal>
             <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-600 mb-6">About the Conference</p>
           </Reveal>
           <Reveal delay={100}>
-            <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-extralight tracking-tighter leading-[1.05] max-w-3xl">
+            <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-light tracking-tighter leading-[1.05] max-w-3xl text-zinc-800">
               Where surgical technology meets{" "}
               <span className="text-cyan-600">clinical excellence.</span>
             </h2>
@@ -650,7 +665,7 @@ export default function LandingPage() {
                   <div className="relative bg-white rounded-3xl p-8 border border-zinc-100 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.06)] text-center group hover:shadow-[0_20px_60px_-15px_rgba(6,182,212,0.12)] hover:border-cyan-200/50 transition-all duration-700">
                     {/* Subtle glow */}
                     <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-cyan-50/0 to-cyan-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                    <span className="relative text-5xl sm:text-6xl font-extralight text-zinc-900 tabular-nums block">
+                    <span className="relative text-5xl sm:text-6xl font-light text-zinc-900 tabular-nums block">
                       <Counter value={stat.v} suffix={stat.s} go={statsGo} />
                     </span>
                     <span className="relative block text-xs uppercase tracking-[0.2em] text-zinc-400 mt-4">{stat.l}</span>
@@ -675,7 +690,7 @@ export default function LandingPage() {
             <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-500/60 mb-6">Faculty</p>
           </Reveal>
           <Reveal delay={100}>
-            <h2 className="text-4xl sm:text-5xl font-extralight tracking-tighter mb-20">
+            <h2 className="text-4xl sm:text-5xl font-light tracking-tighter mb-20">
               Learn from the pioneers.
             </h2>
           </Reveal>
@@ -688,7 +703,7 @@ export default function LandingPage() {
                   whileHover={{ x: 12 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 >
-                  <span className="text-5xl sm:text-6xl font-extralight text-white/[0.06] group-hover:text-cyan-500/20 transition-colors duration-700 w-16 sm:w-20 shrink-0 leading-none">
+                  <span className="text-5xl sm:text-6xl font-light text-white/[0.06] group-hover:text-cyan-500/20 transition-colors duration-700 w-16 sm:w-20 shrink-0 leading-none">
                     {s.name.split(" ").pop()?.charAt(0)}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -714,7 +729,7 @@ export default function LandingPage() {
                 <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-600 mb-6">Programme</p>
               </Reveal>
               <Reveal delay={100}>
-                <h2 className="text-4xl sm:text-5xl font-extralight tracking-tighter">
+                <h2 className="text-4xl sm:text-5xl font-light tracking-tighter">
                   Two days. Boundless learning.
                 </h2>
               </Reveal>
@@ -783,10 +798,10 @@ export default function LandingPage() {
       <section id="register" className="relative bg-[#050a14] overflow-hidden">
         {/* CTA background video */}
         <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-30">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.15]">
             <source src="/landing/cta-video.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-[#050a14]/60" />
+          <div className="absolute inset-0 bg-[#050a14]/70" />
         </div>
         {/* Pulsing rings */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1]">
@@ -811,7 +826,7 @@ export default function LandingPage() {
 
         <div className="relative max-w-[1200px] mx-auto px-6 py-32 sm:py-44 text-center">
           <Reveal>
-            <h2 className="text-4xl sm:text-6xl lg:text-7xl font-extralight tracking-tighter leading-[0.95]">
+            <h2 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tighter leading-[0.95]">
               Secure your seat.
             </h2>
           </Reveal>
@@ -856,7 +871,7 @@ export default function LandingPage() {
             <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400/60 mb-6">Venue</p>
           </Reveal>
           <Reveal delay={100}>
-            <h2 className="text-4xl sm:text-5xl font-extralight tracking-tighter text-white">
+            <h2 className="text-4xl sm:text-5xl font-light tracking-tighter text-white">
               ITC Grand Chola
             </h2>
           </Reveal>
