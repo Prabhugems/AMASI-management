@@ -656,8 +656,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── SPEAKERS ── */}
-      <section id="faculty" className="bg-[#050a14] relative">
-        <div className="max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
+      <section id="faculty" className="bg-[#050a14] relative overflow-hidden">
+        {/* Faculty background video */}
+        <div className="absolute inset-0 z-0">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.04]">
+            <source src="/landing/Section-video.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
           <Reveal>
             <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-500/60 mb-6">Faculty</p>
           </Reveal>
@@ -768,8 +774,15 @@ export default function LandingPage() {
 
       {/* ── REGISTER CTA ── */}
       <section id="register" className="relative bg-[#050a14] overflow-hidden">
+        {/* CTA background video */}
+        <div className="absolute inset-0 z-0">
+          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-30">
+            <source src="/landing/cta-video.mp4" type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-[#050a14]/60" />
+        </div>
         {/* Pulsing rings */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1]">
           <motion.div
             className="absolute -inset-32 rounded-full border border-cyan-500/[0.06]"
             animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0, 0.1] }}
