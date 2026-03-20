@@ -23,7 +23,7 @@ function ParticleField() {
     let animId: number
 
     const particles: { x: number; y: number; vx: number; vy: number; size: number; opacity: number; pulse: number }[] = []
-    const count = 80
+    const count = window.innerWidth > 1024 ? 80 : 30
 
     for (let i = 0; i < count; i++) {
       particles.push({
@@ -41,7 +41,11 @@ function ParticleField() {
       w = canvas.width = window.innerWidth
       h = canvas.height = window.innerHeight
     }
+    let lastMouseUpdate = 0
     const onMouse = (e: MouseEvent) => {
+      const now = performance.now()
+      if (now - lastMouseUpdate < 50) return
+      lastMouseUpdate = now
       mouse.current = { x: e.clientX, y: e.clientY }
     }
     window.addEventListener("resize", onResize)
@@ -87,11 +91,11 @@ function ParticleField() {
           const dx = particles[i].x - particles[j].x
           const dy = particles[i].y - particles[j].y
           const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 120) {
+          if (dist < 80) {
             ctx.beginPath()
             ctx.moveTo(particles[i].x, particles[i].y)
             ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.strokeStyle = `rgba(6, 182, 212, ${0.06 * (1 - dist / 120)})`
+            ctx.strokeStyle = `rgba(6, 182, 212, ${0.06 * (1 - dist / 80)})`
             ctx.lineWidth = 0.5
             ctx.stroke()
           }
@@ -110,6 +114,49 @@ function ParticleField() {
   }, [])
 
   return <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none" />
+}
+
+/* ─────────────────────────────────────
+   LAZY-LOADED VIDEO (plays on viewport entry)
+   ───────────────────────────────────── */
+function LazyVideo({ src, className = "" }: { src: string; className?: string }) {
+  const ref = useRef<HTMLVideoElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          obs.disconnect()
+        }
+      },
+      { threshold: 0.1 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (visible && ref.current) {
+      ref.current.play().catch(() => {})
+    }
+  }, [visible])
+
+  return (
+    <video
+      ref={ref}
+      muted
+      loop
+      playsInline
+      preload={visible ? "auto" : "none"}
+      className={className}
+    >
+      {visible && <source src={src} type="video/mp4" />}
+    </video>
+  )
 }
 
 /* ─────────────────────────────────────
@@ -710,9 +757,7 @@ export default function LandingPage() {
       <section id="about" className="relative text-white overflow-hidden">
         {/* About background video */}
         <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline className="w-full h-full object-cover">
-            <source src="/landing/about-video.mp4" type="video/mp4" />
-          </video>
+          <LazyVideo src="/landing/about-video.mp4" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/50" />
         </div>
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
@@ -761,9 +806,7 @@ export default function LandingPage() {
       <section id="faculty" className="bg-[#050a14] relative overflow-hidden">
         {/* Faculty background video */}
         <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.08]">
-            <source src="/landing/Section-video.mp4" type="video/mp4" />
-          </video>
+          <LazyVideo src="/landing/Section-video.mp4" className="w-full h-full object-cover opacity-[0.08]" />
         </div>
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
           <Reveal>
@@ -878,9 +921,7 @@ export default function LandingPage() {
       <section id="register" className="relative bg-[#050a14] overflow-hidden">
         {/* CTA background video */}
         <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-[0.08]">
-            <source src="/landing/cta-video.mp4" type="video/mp4" />
-          </video>
+          <LazyVideo src="/landing/cta-video.mp4" className="w-full h-full object-cover opacity-[0.08]" />
           <div className="absolute inset-0 bg-[#050a14]/80" />
         </div>
         {/* Pulsing rings */}
@@ -941,9 +982,7 @@ export default function LandingPage() {
       <section className="relative bg-[#050a14] text-white overflow-hidden">
         {/* Venue background video */}
         <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline className="w-full h-full object-cover">
-            <source src="/landing/venue-video.mp4" type="video/mp4" />
-          </video>
+          <LazyVideo src="/landing/venue-video.mp4" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/50" />
         </div>
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">

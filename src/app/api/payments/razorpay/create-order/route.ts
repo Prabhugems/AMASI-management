@@ -381,7 +381,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("Create order error:", error?.message || error)
-    console.error("Razorpay env check - KEY_ID exists:", !!process.env.RAZORPAY_KEY_ID, "KEY_SECRET exists:", !!process.env.RAZORPAY_KEY_SECRET)
     return NextResponse.json(
       { error: error?.message || "Failed to create order" },
       { status: 500 }
