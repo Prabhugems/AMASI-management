@@ -36,16 +36,16 @@ export function getRazorpayForEvent(credentials: RazorpayCredentials): Razorpay 
  * Used as fallback when event doesn't have specific credentials
  */
 function getRazorpay(): Razorpay {
-  if (!defaultInstance) {
-    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      throw new Error("Razorpay credentials not configured")
-    }
-    defaultInstance = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    })
+  // Always create fresh instance to pick up env var changes
+  const keyId = process.env.RAZORPAY_KEY_ID?.trim()
+  const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim()
+  if (!keyId || !keySecret) {
+    throw new Error("Razorpay credentials not configured")
   }
-  return defaultInstance
+  return new Razorpay({
+    key_id: keyId,
+    key_secret: keySecret,
+  })
 }
 
 export interface CreateOrderOptions {
