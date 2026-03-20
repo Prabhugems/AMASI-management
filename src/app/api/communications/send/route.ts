@@ -162,6 +162,14 @@ export async function POST(request: NextRequest) {
                 to: recipient,
                 message: personalizedMessage,
               })
+            } else if (process.env.QIKCHAT_API_KEY?.trim()) {
+              // Use Qikchat from env vars as fallback
+              const { sendQikchatText } = await import("@/lib/qikchat")
+              sendResult = await sendQikchatText(recipient, personalizedMessage)
+            } else if (process.env.GALLABOX_API_KEY?.trim()) {
+              // Use Gallabox from env vars as fallback
+              const { sendGallaboxText } = await import("@/lib/gallabox")
+              sendResult = await sendGallaboxText(recipient, reg.attendee_name || "Delegate", personalizedMessage)
             } else {
               // Dev mode
               sendResult = { success: true, messageId: `dev-wa-${Date.now()}` }
