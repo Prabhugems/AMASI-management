@@ -95,13 +95,18 @@ export async function POST(request: NextRequest) {
       attendee_name,
       attendee_email,
       registration_number,
+      registration_id: registration_number, // alias
       ticket_type: ticket_name,
+      ticket_name: ticket_name || "",
       amount: `₹${total_amount.toLocaleString("en-IN")}`,
+      total_amount: `₹${total_amount.toLocaleString("en-IN")}`,
       event_name,
       event_date: formattedDate,
+      venue: event_venue || "To be announced", // alias
       venue_name: event_venue || "To be announced",
       venue_address: event_venue || "",
       payment_id: "",
+      payment_status: paymentStatusText,
       organizer_name: COMPANY_CONFIG.name,
       organizer_email: COMPANY_CONFIG.supportEmail,
       year: new Date().getFullYear().toString(),
