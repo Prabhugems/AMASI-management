@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sendEmail, isEmailEnabled, getEmailProvider } from "@/lib/email"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { getApiUser } from "@/lib/auth/api-auth"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 /**
  * Email Diagnostic Endpoint
@@ -61,7 +63,18 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "strict")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
+    const user = await getApiUser()
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { to } = await request.json()
 
     if (!to) {

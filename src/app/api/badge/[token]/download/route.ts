@@ -35,9 +35,13 @@ function applyTextCase(text: string, textCase?: string): string {
 }
 
 function getBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000"
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  return "http://localhost:3000"
 }
 
 function replacePlaceholders(text: string, registration: any, event: any): string {
@@ -52,6 +56,13 @@ function replacePlaceholders(text: string, registration: any, event: any): strin
   result = result.replace(/\{\{institution\}\}/g, registration.attendee_institution || "")
   result = result.replace(/\{\{designation\}\}/g, registration.attendee_designation || "")
   result = result.replace(/\{\{event_name\}\}/g, event?.name || "")
+
+  // Addons - comma-separated list of purchased addon names
+  const addonNames = (registration.registration_addons || [])
+    .map((ra: any) => ra.addons?.name)
+    .filter(Boolean)
+    .join(", ")
+  result = result.replace(/\{\{addons\}\}/g, addonNames)
 
   const checkinToken = registration.checkin_token || registration.registration_number
   result = result.replace(/\{\{checkin_token\}\}/g, checkinToken)
@@ -105,7 +116,11 @@ export async function GET(
       status,
       event_id,
       ticket_type_id,
-      ticket_types (name)
+      ticket_types (name),
+      registration_addons (
+        addon_id,
+        addons (name)
+      )
     `)
 
   if (isSecureToken) {

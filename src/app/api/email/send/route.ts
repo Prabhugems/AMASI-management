@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getApiUser } from "@/lib/auth/api-auth"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 // POST /api/email/send - Send custom email (auth required)
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "bulk")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const user = await getApiUser()
     if (!user) {

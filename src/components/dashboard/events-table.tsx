@@ -451,6 +451,7 @@ export function EventsTable() {
       if (!res.ok) throw new Error("Failed to fetch active events")
       return await res.json()
     },
+    staleTime: 2 * 60 * 1000, // 2 minutes
   })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -42,6 +42,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate email format
+    const trimmedEmail = payer_email.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      return NextResponse.json(
+        { error: "Invalid email address format" },
+        { status: 400 }
+      )
+    }
+
     // SECURITY: Calculate amount server-side - never trust client amount
     let calculatedAmount = 0
     const ticketDetails: any[] = []
@@ -130,19 +139,37 @@ export async function POST(request: NextRequest) {
       }
 
       if (addons && Array.isArray(addons) && addons.length > 0) {
-        // Fetch addon prices from database to validate
+        // Fetch addon prices from database to validate (include variants for variant-specific pricing)
         const addonIds = addons.map((a: any) => a.addonId)
         const { data: addonData } = await supabase
           .from("addons")
           .select("id, price, name, is_active")
           .in("id", addonIds)
 
+        // Fetch variants if any addon selections have a variantId
+        const variantIds = addons.filter((a: any) => a.variantId).map((a: any) => a.variantId)
+        let variantData: any[] = []
+        if (variantIds.length > 0) {
+          const { data: variants } = await supabase
+            .from("addon_variants")
+            .select("id, addon_id, price")
+            .in("id", variantIds)
+          variantData = variants || []
+        }
+
         if (addonData) {
           for (const addonSelection of addons) {
             const addon = addonData.find((a: any) => a.id === addonSelection.addonId)
             if (addon && addon.is_active) {
-              // Use server-side price, not client-provided
-              const addonPrice = addon.price * (addonSelection.quantity || 1)
+              // Use variant price if a variant is selected, otherwise use base addon price
+              let unitPrice = addon.price
+              if (addonSelection.variantId) {
+                const variant = variantData.find((v: any) => v.id === addonSelection.variantId && v.addon_id === addon.id)
+                if (variant) {
+                  unitPrice = variant.price
+                }
+              }
+              const addonPrice = unitPrice * (addonSelection.quantity || 1)
               addonsSubtotal += addonPrice
             }
           }
@@ -197,13 +224,31 @@ export async function POST(request: NextRequest) {
         .select("id, price, name, is_active")
         .in("id", addonIds)
 
+      // Fetch variants if any addon selections have a variantId
+      const addonVariantIds = addons.filter((a: any) => a.variantId).map((a: any) => a.variantId)
+      let addonVariantData: any[] = []
+      if (addonVariantIds.length > 0) {
+        const { data: variants } = await supabase
+          .from("addon_variants")
+          .select("id, addon_id, price")
+          .in("id", addonVariantIds)
+        addonVariantData = variants || []
+      }
+
       if (addonData) {
         let addonsSubtotal = 0
         for (const addonSelection of addons) {
           const addon = addonData.find((a: any) => a.id === addonSelection.addonId)
           if (addon && addon.is_active) {
-            // Use server-side price, not client-provided
-            const addonPrice = addon.price * (addonSelection.quantity || 1)
+            // Use variant price if selected, otherwise base addon price
+            let unitPrice = addon.price
+            if (addonSelection.variantId) {
+              const variant = addonVariantData.find((v: any) => v.id === addonSelection.variantId && v.addon_id === addon.id)
+              if (variant) {
+                unitPrice = variant.price
+              }
+            }
+            const addonPrice = unitPrice * (addonSelection.quantity || 1)
             addonsSubtotal += addonPrice
           }
         }
@@ -226,7 +271,7 @@ export async function POST(request: NextRequest) {
     // DUPLICATE PAYMENT PREVENTION
     // Generate idempotency key from email + amount + tickets
     const ticketIds = tickets?.map((t: any) => t.id || t.ticket_type_id) || []
-    const idempotencyKey = clientIdempotencyKey || generateIdempotencyKey(payer_email, amount, ticketIds)
+    const idempotencyKey = clientIdempotencyKey || generateIdempotencyKey(trimmedEmail, amount, ticketIds)
 
     // Check for existing pending payment within duplicate window (5 minutes)
     const duplicateWindowStart = new Date(Date.now() - DUPLICATE_WINDOW_MS).toISOString()
@@ -234,7 +279,7 @@ export async function POST(request: NextRequest) {
     const { data: existingPayments } = await supabase
       .from("payments")
       .select("id, razorpay_order_id, payment_number, status, created_at, amount")
-      .eq("payer_email", payer_email.toLowerCase())
+      .eq("payer_email", trimmedEmail)
       .eq("amount", amount)
       .eq("status", "pending")
       .gte("created_at", duplicateWindowStart)
@@ -318,7 +363,7 @@ export async function POST(request: NextRequest) {
       notes: {
         payment_type: payment_type || "registration",
         event_id: event_id || "",
-        payer_email,
+        payer_email: trimmedEmail,
       },
       credentials,
     })
@@ -330,8 +375,8 @@ export async function POST(request: NextRequest) {
         payment_number: paymentNumber,
         payment_type: payment_type || "registration",
         payment_method: "razorpay",
-        payer_name,
-        payer_email,
+        payer_name: payer_name.trim(),
+        payer_email: trimmedEmail,
         payer_phone,
         amount,
         currency,

@@ -22,6 +22,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Sanitize code to prevent injection via .or() filter
+    const sanitizedCode = code.replace(/[^a-zA-Z0-9\-_]/g, "")
+
     // Try to find registration by QR code, registration ID, or registration number (exact match only)
     const { data: registration, error } = await supabase
       .from("registrations")
@@ -33,7 +36,7 @@ export async function GET(request: NextRequest) {
           slug
         )
       `)
-      .or(`qr_code.eq.${code},id.eq.${code},registration_number.eq.${code}`)
+      .or(`qr_code.eq.${sanitizedCode},id.eq.${sanitizedCode},registration_number.eq.${sanitizedCode}`)
       .maybeSingle()
 
     if (error || !registration) {

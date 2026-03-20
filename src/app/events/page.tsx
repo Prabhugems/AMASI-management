@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useDebounce } from "@/hooks/use-debounce"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -45,6 +46,7 @@ import { FEATURES } from "@/lib/config"
 
 export default function EventsPage() {
   const [search, setSearch] = useState("")
+  const debouncedSearch = useDebounce(search, 300)
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
   const [duplicatingEventId, setDuplicatingEventId] = useState<string | null>(null)
@@ -72,15 +74,15 @@ export default function EventsPage() {
 
   // Fetch events with filters
   const { data: events, isLoading, refetch } = useQuery({
-    queryKey: ["events", search, statusFilter, typeFilter],
+    queryKey: ["events", debouncedSearch, statusFilter, typeFilter],
     queryFn: async () => {
       let query = supabase
         .from("events")
         .select("*, registrations(count), faculty_assignments(count)")
         .order("start_date", { ascending: false })
 
-      if (search) {
-        query = query.or(`name.ilike.%${search}%,short_name.ilike.%${search}%,city.ilike.%${search}%`)
+      if (debouncedSearch) {
+        query = query.or(`name.ilike.%${debouncedSearch}%,short_name.ilike.%${debouncedSearch}%,city.ilike.%${debouncedSearch}%`)
       }
       if (statusFilter === "all") {
         // Hide archived events by default
@@ -105,27 +107,22 @@ export default function EventsPage() {
     }
   }, [events, router])
 
-  // Fetch stats
+  // Fetch stats (parallel queries)
   const { data: stats } = useQuery({
     queryKey: ["events-stats"],
     queryFn: async () => {
-      const { count: total } = await supabase
-        .from("events")
-        .select("*", { count: "exact", head: true })
-      const { count: active } = await supabase
-        .from("events")
-        .select("*", { count: "exact", head: true })
-        .in("status", ["setup", "draft", "active", "ongoing"])
-      const { count: completed } = await supabase
-        .from("events")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "completed")
+      const [totalResult, activeResult, completedResult] = await Promise.all([
+        supabase.from("events").select("*", { count: "exact", head: true }),
+        supabase.from("events").select("*", { count: "exact", head: true }).in("status", ["setup", "draft", "active", "ongoing"]),
+        supabase.from("events").select("*", { count: "exact", head: true }).eq("status", "completed"),
+      ])
       return {
-        total: total || 0,
-        active: active || 0,
-        completed: completed || 0,
+        total: totalResult.count || 0,
+        active: activeResult.count || 0,
+        completed: completedResult.count || 0,
       }
     },
+    staleTime: 2 * 60 * 1000, // 2 minutes
   })
 
   // Duplicate event mutation
@@ -217,7 +214,7 @@ export default function EventsPage() {
           value={stats?.active || 0}
           label="Active Events"
           subtext="Planning/Ongoing"
-          trend={15}
+          trend={null}
           color="teal"
           delay={100}
         />

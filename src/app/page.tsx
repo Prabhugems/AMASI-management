@@ -105,6 +105,7 @@ export default function Home() {
         delegates: delegatesResult.count ?? 0,
       }
     },
+    staleTime: 2 * 60 * 1000, // 2 minutes
   })
 
   // Redirect event-scoped users to their event dashboard
@@ -146,10 +147,10 @@ export default function Home() {
       {(() => {
         const cards = []
         if (FEATURES.membership) cards.push(
-          <StatCard key="members" icon={Users} value={stats?.members || 0} label="Total Members" subtext="Live from database" trend={12} color="rose" delay={0} />
+          <StatCard key="members" icon={Users} value={stats?.members || 0} label="Total Members" subtext="Live from database" trend={null} color="rose" delay={0} />
         )
         if (FEATURES.faculty) cards.push(
-          <StatCard key="faculty" icon={GraduationCap} value={stats?.faculty || 0} label="Faculty Database" subtext="Master database" trend={8} color="amber" delay={100} />
+          <StatCard key="faculty" icon={GraduationCap} value={stats?.faculty || 0} label="Faculty Database" subtext="Master database" trend={null} color="amber" delay={100} />
         )
         cards.push(
           <StatCard key="events" icon={Calendar} value={stats?.activeEvents || 0} label="Active Events" subtext="Planning/Ongoing" trend={null} color="teal" delay={200} />

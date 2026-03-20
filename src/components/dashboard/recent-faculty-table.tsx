@@ -706,13 +706,14 @@ export function RecentFacultyTable() {
   const isDark = mounted ? resolvedTheme === "dark" : false
 
   // Fetch faculty stats and recent faculty from API
-  const { data: dashboardData } = useQuery({
+  const { data: dashboardData, isLoading: isFacultyLoading } = useQuery({
     queryKey: ["dashboard-faculty-stats"],
     queryFn: async () => {
       const res = await fetch("/api/dashboard/faculty-stats")
       if (!res.ok) throw new Error("Failed to fetch faculty stats")
       return await res.json()
     },
+    staleTime: 2 * 60 * 1000, // 2 minutes
   })
 
   const facultyData = (dashboardData?.recent as FacultyMember[]) || []
@@ -745,8 +746,7 @@ export function RecentFacultyTable() {
     },
     onSuccess: () => {
       toast.success("Faculty added successfully!")
-      queryClient.invalidateQueries({ queryKey: ["recent-faculty-table"] })
-      queryClient.invalidateQueries({ queryKey: ["faculty-total-count"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard-faculty-stats"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
       setIsAddModalOpen(false)
       setNewFaculty({
@@ -765,53 +765,7 @@ export function RecentFacultyTable() {
     },
   })
 
-  // Fallback data for display
-  const fallbackFaculty: FacultyMember[] = [
-    {
-      id: "1",
-      name: "Dr. Kalpesh Jani",
-      email: "kalpesh@hospital.com",
-      designation: "Laparoscopic Surgery",
-      institution: "Apollo Hospital",
-      status: "active",
-      isNew: true,
-    },
-    {
-      id: "2",
-      name: "Dr. Priya Sharma",
-      email: "priya@medical.org",
-      designation: "General Surgery",
-      institution: "AIIMS Delhi",
-      status: "pending",
-      isNew: true,
-    },
-    {
-      id: "3",
-      name: "Dr. Arvind Kumar",
-      email: "arvind@clinic.in",
-      designation: "Bariatric Surgery",
-      institution: "Max Healthcare",
-      status: "active",
-    },
-    {
-      id: "4",
-      name: "Dr. Meena Patel",
-      email: "meena@aiims.edu",
-      designation: "Robotic Surgery",
-      institution: "AIIMS Ahmedabad",
-      status: "inactive",
-    },
-    {
-      id: "5",
-      name: "Dr. Suresh Reddy",
-      email: "suresh@apollo.com",
-      designation: "Hernia Surgery",
-      institution: "Apollo Hospital",
-      status: "active",
-    },
-  ]
-
-  const faculty = facultyData && facultyData.length > 0 ? facultyData : fallbackFaculty
+  const faculty = facultyData || []
   const totalCount = dashboardData?.total || 0
   const facultyCounts = {
     active: dashboardData?.active || 0,
@@ -840,9 +794,26 @@ export function RecentFacultyTable() {
         <table className="w-full">
           <TableHeader isDark={isDark} />
           <tbody>
-            {faculty.map((f, index) => (
-              <FacultyRow key={f.id} faculty={f} index={index} isDark={isDark} isLast={index === faculty.length - 1} />
-            ))}
+            {isFacultyLoading ? (
+              <tr>
+                <td colSpan={5} className="py-12 text-center">
+                  <Loader2 className={`w-6 h-6 mx-auto mb-2 animate-spin ${isDark ? "text-slate-400" : "text-gray-400"}`} />
+                  <p className={`text-sm ${isDark ? "text-slate-400" : "text-gray-500"}`}>Loading faculty...</p>
+                </td>
+              </tr>
+            ) : faculty.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-12 text-center">
+                  <GraduationCap className={`w-8 h-8 mx-auto mb-2 opacity-50 ${isDark ? "text-slate-400" : "text-gray-400"}`} />
+                  <p className={`font-medium ${isDark ? "text-slate-300" : "text-gray-700"}`}>No faculty added yet</p>
+                  <p className={`text-sm mt-1 ${isDark ? "text-slate-500" : "text-gray-500"}`}>Add faculty members to see them here</p>
+                </td>
+              </tr>
+            ) : (
+              faculty.map((f, index) => (
+                <FacultyRow key={f.id} faculty={f} index={index} isDark={isDark} isLast={index === faculty.length - 1} />
+              ))
+            )}
           </tbody>
         </table>
       </div>

@@ -62,17 +62,24 @@ export async function GET(
     )
   }
 
-  // Get stats for this checkin list
-  const { count: totalCount } = await (supabase as any)
+  // Get stats for this checkin list (respecting ticket type restrictions)
+  let totalQuery = (supabase as any)
     .from("registrations")
     .select("*", { count: "exact", head: true })
     .eq("event_id", checkinList.event_id)
     .eq("status", "confirmed")
 
+  if (checkinList.ticket_type_ids?.length > 0) {
+    totalQuery = totalQuery.in("ticket_type_id", checkinList.ticket_type_ids)
+  }
+
+  const { count: totalCount } = await totalQuery
+
   const { count: checkedInCount } = await (supabase as any)
     .from("checkin_records")
     .select("*", { count: "exact", head: true })
     .eq("checkin_list_id", checkinList.id)
+    .is("checked_out_at", null)
 
   return NextResponse.json({
     checkinList: {

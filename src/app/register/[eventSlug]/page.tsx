@@ -472,11 +472,21 @@ function EventDetailsPage() {
             {/* Share Button */}
             <button
               className="absolute top-4 right-4 p-2 rounded-full backdrop-blur-sm bg-white/20 text-white hover:bg-white/30 transition-colors"
-              onClick={() => {
-                navigator.share?.({
-                  title: event.name,
-                  url: window.location.href,
-                })
+              onClick={async () => {
+                try {
+                  if (navigator.share) {
+                    await navigator.share({
+                      title: event.name,
+                      url: window.location.href,
+                    })
+                  } else {
+                    await navigator.clipboard.writeText(window.location.href)
+                    // Brief visual feedback via tooltip would be ideal;
+                    // for now the button click is enough
+                  }
+                } catch (_err) {
+                  // User cancelled share dialog -- ignore
+                }
               }}
             >
               <Share2 className="w-5 h-5" />

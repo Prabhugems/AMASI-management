@@ -19,6 +19,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing printer_ip" }, { status: 400 })
     }
 
+    // Sanitize code to prevent injection via .or() filter
+    const sanitizedCode = code.replace(/[^a-zA-Z0-9\-_]/g, "")
+
     // 1. Find registration
     const { data: registration, error: regError } = await supabase
       .from("registrations")
@@ -34,28 +37,31 @@ export async function POST(request: NextRequest) {
           name
         )
       `)
-      .or(`qr_code.eq.${code},id.eq.${code},registration_number.eq.${code}`)
+      .or(`qr_code.eq.${sanitizedCode},id.eq.${sanitizedCode},registration_number.eq.${sanitizedCode}`)
       .single()
 
+    let reg = registration
     if (regError || !registration) {
-      // Try partial match
-      const { data: partialMatch } = await supabase
+      // Try exact match on registration_number as fallback
+      const { data: exactMatch } = await supabase
         .from("registrations")
         .select(`
           *,
           events (id, name, slug),
           ticket_types (id, name)
         `)
-        .ilike("registration_number", `%${code}%`)
-        .limit(1)
-        .single()
+        .eq("registration_number", code)
+        .maybeSingle()
 
-      if (!partialMatch) {
+      if (!exactMatch) {
         return NextResponse.json({ success: false, error: "Registration not found" }, { status: 404 })
       }
+      reg = exactMatch
     }
 
-    const reg = registration || {}
+    if (!reg) {
+      return NextResponse.json({ success: false, error: "Registration not found" }, { status: 404 })
+    }
 
     // Block badge printing for online-only participants
     if (reg.participation_mode === "online") {

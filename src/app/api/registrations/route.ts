@@ -45,12 +45,12 @@ async function generateRegistrationNumber(supabase: Awaited<ReturnType<typeof cr
     return `${prefix}${regNumber}${suffix}`
   }
 
-  // Default format: REG-YYYYMMDD-XXXX
+  // Default format: REG-YYYYMMDD-XXXXXXX (7-char random for collision resistance)
   const date = new Date()
   const dateStr = date.getFullYear().toString() +
     (date.getMonth() + 1).toString().padStart(2, "0") +
     date.getDate().toString().padStart(2, "0")
-  const random = Math.floor(1000 + Math.random() * 9000)
+  const random = Math.random().toString(36).substring(2, 9).toUpperCase()
   return `REG-${dateStr}-${random}`
 }
 
@@ -208,6 +208,31 @@ export async function POST(request: NextRequest) {
     if (!event_id || !ticket_type_id || !attendee_name || !attendee_email) {
       return NextResponse.json(
         { error: "Missing required fields" },
+        { status: 400 }
+      )
+    }
+
+    // Validate email format
+    const trimmedEmail = attendee_email.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      return NextResponse.json(
+        { error: "Invalid email address format" },
+        { status: 400 }
+      )
+    }
+
+    // Validate event_id format
+    if (!isValidUUID(event_id)) {
+      return NextResponse.json(
+        { error: "Invalid event_id format" },
+        { status: 400 }
+      )
+    }
+
+    // Validate ticket_type_id format
+    if (!isValidUUID(ticket_type_id)) {
+      return NextResponse.json(
+        { error: "Invalid ticket_type_id format" },
         { status: 400 }
       )
     }
@@ -457,8 +482,8 @@ export async function POST(request: NextRequest) {
         event_id,
         ticket_type_id,
         registration_number: registrationNumber,
-        attendee_name,
-        attendee_email,
+        attendee_name: attendee_name.trim(),
+        attendee_email: trimmedEmail,
         attendee_phone,
         attendee_institution,
         attendee_designation,
@@ -559,8 +584,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         registration_id: registration.id,
         registration_number: registrationNumber,
-        attendee_name,
-        attendee_email,
+        attendee_name: attendee_name.trim(),
+        attendee_email: trimmedEmail,
         event_name: event?.name || "Event",
         event_date: event?.start_date || "",
         event_venue: event?.venue_name || "",
@@ -607,9 +632,9 @@ export async function POST(request: NextRequest) {
     onRegistration({
       event_id,
       registration_id: registration.id,
-      recipient_email: attendee_email,
+      recipient_email: trimmedEmail,
       recipient_phone: attendee_phone,
-      recipient_name: attendee_name,
+      recipient_name: attendee_name.trim(),
       registration_number: registrationNumber,
       ticket_type: ticket.name,
       event_name: event?.name || "Event",

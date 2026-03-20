@@ -136,13 +136,24 @@ export default function CheckoutPage() {
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
 
   useEffect(() => {
-    const stored = sessionStorage.getItem(`checkout_${eventSlug}`)
-    if (!stored) {
+    try {
+      const stored = sessionStorage.getItem(`checkout_${eventSlug}`)
+      if (!stored) {
+        router.push(`/register/${eventSlug}`)
+        return
+      }
+      const data = JSON.parse(stored)
+      if (!data?.selection || !Array.isArray(data.selection) || data.selection.length === 0) {
+        sessionStorage.removeItem(`checkout_${eventSlug}`)
+        router.push(`/register/${eventSlug}`)
+        return
+      }
+      setCheckoutData(data)
+    } catch (_err) {
+      // Corrupted session data -- redirect back to ticket selection
+      sessionStorage.removeItem(`checkout_${eventSlug}`)
       router.push(`/register/${eventSlug}`)
-      return
     }
-    const data = JSON.parse(stored)
-    setCheckoutData(data)
   }, [eventSlug, router])
 
   // Fetch event details via public API (bypasses RLS on ticket_types)
@@ -463,12 +474,15 @@ export default function CheckoutPage() {
       setError("Last name is required")
       return false
     }
-    if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    const trimmedEmail = formData.email.trim()
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setError("Valid email is required")
       return false
     }
-    if (!formData.phone.trim() || formData.phone.length < 10) {
-      setError("Valid phone number is required")
+    // Strip non-digit chars (except leading +) for phone validation
+    const phoneDigits = formData.phone.trim().replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "")
+    if (!phoneDigits || phoneDigits.replace(/\+/, "").length < 10) {
+      setError("Valid phone number is required (minimum 10 digits)")
       return false
     }
     // Check duplicate email restriction
@@ -555,10 +569,15 @@ export default function CheckoutPage() {
   }
 
   const handlePayment = async () => {
-    if (!validateForm()) return
+    if (!validateForm()) {
+      // Scroll to error message at top of form
+      document.querySelector('[data-error-banner]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
     if (!event) return
     if (!selectedPaymentMethod) {
       setError("Please select a payment method")
+      document.querySelector('[data-error-banner]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
 
@@ -591,6 +610,13 @@ export default function CheckoutPage() {
       }
 
       // Handle RAZORPAY
+      // Ensure Razorpay SDK is loaded before proceeding
+      if (typeof window.Razorpay === "undefined") {
+        setError("Payment gateway is still loading. Please wait a moment and try again.")
+        setIsSubmitting(false)
+        return
+      }
+
       const orderResponse = await fetch("/api/payments/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -748,7 +774,7 @@ export default function CheckoutPage() {
     <>
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="lazyOnload"
+        strategy="afterInteractive"
       />
 
       <div className="container mx-auto px-4 py-8">
@@ -770,8 +796,8 @@ export default function CheckoutPage() {
               </h1>
 
               {error && (
-                <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4" />
+                <div data-error-banner className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
                   {error}
                 </div>
               )}

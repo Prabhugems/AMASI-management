@@ -86,7 +86,9 @@ export function renderTemplate(
   // Replace all {{variable}} patterns with actual values
   for (const [key, value] of Object.entries(variables)) {
     if (value !== undefined) {
-      result = result.replace(new RegExp(`{{${key}}}`, "g"), value)
+      // Escape regex special characters in the key to prevent injection
+      const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      result = result.replace(new RegExp(`\\{\\{${escapedKey}\\}\\}`, "g"), value)
     }
   }
 

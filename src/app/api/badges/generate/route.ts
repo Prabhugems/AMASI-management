@@ -4,6 +4,7 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import { logActivityFromRequest } from "@/lib/activity-logger"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -134,6 +135,9 @@ const A4_HEIGHT = 842
 
 // POST /api/badges/generate - Generate PDF badges
 export async function POST(request: NextRequest) {
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
+
   // Rate limit: bulk tier for badge generation (resource intensive)
   const ip = getClientIp(request)
   const rateLimit = checkRateLimit(ip, "bulk")

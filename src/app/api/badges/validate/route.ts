@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -27,6 +28,9 @@ interface ValidationResult {
 
 // POST /api/badges/validate - Validate badge template and registrations
 export async function POST(request: NextRequest) {
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
+
   try {
     const body = await request.json()
     const { event_id, template_id, registration_ids } = body

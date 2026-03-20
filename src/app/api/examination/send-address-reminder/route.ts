@@ -51,9 +51,24 @@ function generateReminderEmail(name: string, convocationNumber: string, formLink
 </div>`
 }
 
-// GET /api/examination/send-address-reminder - Cron endpoint (no auth needed for cron)
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+// GET /api/examination/send-address-reminder - Cron endpoint (requires CRON_SECRET)
 // POST /api/examination/send-address-reminder - Manual trigger (auth required)
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Vercel cron sends authorization header with CRON_SECRET
+  const authHeader = request.headers.get("authorization")
+  const cronSecret = process.env.CRON_SECRET
+
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    // Cron trigger - OK
+  } else if (!cronSecret) {
+    // No CRON_SECRET configured - allow for backwards compatibility but log warning
+    console.warn("[send-address-reminder] CRON_SECRET not configured - GET endpoint is unprotected")
+  } else {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   return handleReminder()
 }
 
@@ -94,12 +109,22 @@ async function handleReminder() {
       .not("convocation_number", "is", null)
       .is("convocation_address", null)
 
-    const eligible = (regs || []).filter(
-      (r: any) => r.exam_marks?.fillout_link && r.attendee_email
-    )
+    // Filter: must have fillout_link, email, and not sent a reminder in the last 3 days
+    const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000
+    const now = Date.now()
 
+    const eligible = (regs || []).filter((r: any) => {
+      if (!r.exam_marks?.fillout_link || !r.attendee_email) return false
+      // Skip if a reminder was sent within the last 3 days
+      const lastReminder = r.exam_marks?.last_reminder_sent
+      if (lastReminder && (now - new Date(lastReminder).getTime()) < THREE_DAYS_MS) return false
+      return true
+    })
+
+    const skipped = (regs || []).length - eligible.length
     let sent = 0
     let failed = 0
+    const errors: string[] = []
 
     for (const r of eligible) {
       const cleanName = r.attendee_name?.replace(/^(dr\.?\s*)/i, "").trim()
@@ -111,14 +136,26 @@ async function handleReminder() {
         html,
       })
 
-      if (result.success) sent++
-      else failed++
+      if (result.success) {
+        sent++
+        // Track when the last reminder was sent to prevent spam
+        const marks = { ...r.exam_marks }
+        marks.last_reminder_sent = new Date().toISOString()
+        marks.reminder_count = (marks.reminder_count || 0) + 1
+        await db.from("registrations").update({ exam_marks: marks }).eq("id", r.id)
+      } else {
+        failed++
+        errors.push(`${r.attendee_name}: ${result.error}`)
+      }
+      await delay(250)
     }
 
     return NextResponse.json({
       sent,
       failed,
+      skipped,
       total: eligible.length,
+      errors: errors.length > 0 ? errors : undefined,
       message: `Sent ${sent} reminders to candidates who haven't filled the address form`,
     })
   } catch (error) {

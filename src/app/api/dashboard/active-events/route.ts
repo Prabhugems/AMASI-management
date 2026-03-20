@@ -9,10 +9,10 @@ export async function GET() {
   const supabase = await createAdminClient()
   const today = new Date().toISOString().split("T")[0]
 
-  // Fetch active events
+  // Fetch active events with registration counts via Supabase's built-in count
   const { data: events, error } = await supabase
     .from("events")
-    .select("id, name, short_name, event_type, city, state, start_date, status")
+    .select("id, name, short_name, event_type, city, state, start_date, status, registrations(count)")
     .not("status", "in", '("completed","archived")')
     .or(`start_date.gte.${today},status.eq.ongoing`)
     .order("start_date", { ascending: true })
@@ -30,18 +30,13 @@ export async function GET() {
   const eventIds = events.map((e: any) => e.id)
 
   // Fetch faculty assignment counts per event grouped by status
+  // Only select the two columns we need for aggregation (not full rows)
   const { data: assignments } = await supabase
     .from("faculty_assignments")
     .select("event_id, status")
     .in("event_id", eventIds)
 
-  // Fetch registration counts per event
-  const { data: registrations } = await supabase
-    .from("registrations")
-    .select("event_id")
-    .in("event_id", eventIds)
-
-  // Aggregate counts
+  // Aggregate faculty counts
   const facultyCounts: Record<string, { confirmed: number; pending: number; declined: number }> = {}
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const a of (assignments || []) as any[]) {
@@ -51,21 +46,18 @@ export async function GET() {
     else if (a.status === "declined") facultyCounts[a.event_id].declined++
   }
 
-  const regCounts: Record<string, number> = {}
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const r of (registrations || []) as any[]) {
-    regCounts[r.event_id] = (regCounts[r.event_id] || 0) + 1
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = events.map((event: any) => {
     const fc = facultyCounts[event.id] || { confirmed: 0, pending: 0, declined: 0 }
     const totalFaculty = fc.confirmed + fc.pending + fc.declined
-    const totalDelegates = regCounts[event.id] || 0
+    const totalDelegates = event.registrations?.[0]?.count || 0
     const progress = totalFaculty > 0 ? Math.min(100, Math.round((fc.confirmed / totalFaculty) * 100)) : 0
 
+    // Remove the registrations subquery from the response
+    const { registrations: _registrations, ...eventData } = event
+
     return {
-      ...event,
+      ...eventData,
       confirmed_faculty: fc.confirmed,
       pending_faculty: fc.pending,
       declined_faculty: fc.declined,

@@ -3,6 +3,7 @@ import { getApiUser } from "@/lib/auth/api-auth"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { COMPANY_CONFIG } from "@/lib/config"
 import { NextRequest, NextResponse } from "next/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -134,6 +135,12 @@ function generateFailEmail(name: string, venue: string) {
 
 // POST /api/examination/send-pass-email
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "bulk")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const user = await getApiUser()
     if (!user) {
