@@ -319,6 +319,12 @@ export default function DelegatePortalPage() {
     }
   }, [searchQuery, selectedRegistration])
 
+  // Countdown to event (must be called unconditionally before any early returns)
+  const countdown = useCountdown(selectedRegistration?.event?.start_date)
+
+  // Help section scroll ref (must be called unconditionally before any early returns)
+  const helpRef = useRef<HTMLDivElement>(null)
+
   // Payment verification
   const [showVerifyForm, setShowVerifyForm] = useState(false)
   const [verifyRpId, setVerifyRpId] = useState("")
@@ -991,11 +997,6 @@ export default function DelegatePortalPage() {
     ]
   }
 
-  // Countdown to event
-  const countdown = useCountdown(event?.start_date)
-
-  // Help section scroll ref
-  const helpRef = useRef<HTMLDivElement>(null)
   const scrollToHelp = () => {
     helpRef.current?.scrollIntoView({ behavior: "smooth" })
     // Also expand help form
