@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useExamSettings } from "@/hooks/use-exam-settings"
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -26,8 +27,6 @@ import {
   Search,
   Save,
   Loader2,
-  CheckCircle2,
-  AlertCircle,
   Users,
   Download,
   FileDown,
@@ -43,6 +42,14 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import {
+  AnimatedStatCard,
+  HighlightText,
+  EmptyState,
+  ResultBadge,
+  KbdHint,
+  useExportProgress,
+} from "@/components/examination/exam-ui"
 
 type Registration = {
   id: string
@@ -82,6 +89,19 @@ export default function MarksheetPage() {
   const [checkingMembership, setCheckingMembership] = useState(false)
   const [downloadType, setDownloadType] = useState<"scoring" | "attendance" | "csv">("scoring")
   const [selectedColumns, setSelectedColumns] = useState<string[]>([])
+
+  const markInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const { startExport, endExport, ExportOverlay } = useExportProgress()
+
+  // Keyboard shortcuts
+  useKeyboardShortcut("Escape", () => {
+    if (editingId) cancelEdit()
+  }, { enabled: !!editingId })
+
+  useKeyboardShortcut("k", () => {
+    searchInputRef.current?.focus()
+  }, { meta: true })
 
   // Fetch registrations via API (admin client bypasses RLS)
   const { data: registrations, isLoading } = useQuery({
@@ -134,6 +154,12 @@ export default function MarksheetPage() {
     })
     setEditMarks(marks)
     setEditRemarks(String(reg.exam_marks?.remarks || ""))
+
+    // Focus first input after render
+    setTimeout(() => {
+      const firstKey = examSettings?.mark_columns[0]?.key
+      if (firstKey) markInputRefs.current[firstKey]?.focus()
+    }, 50)
   }
 
   const cancelEdit = () => {
@@ -189,6 +215,37 @@ export default function MarksheetPage() {
     setSavingId(null)
   }
 
+  // Handle mark input change with auto-tab
+  const handleMarkChange = (colKey: string, value: string, maxMark: number) => {
+    if (value === "") {
+      setEditMarks(prev => ({ ...prev, [colKey]: null }))
+      return
+    }
+    const num = Math.min(Number(value), maxMark)
+    setEditMarks(prev => ({ ...prev, [colKey]: num }))
+
+    // Auto-tab to next field when max value is entered
+    if (num === maxMark && examSettings) {
+      const colIndex = examSettings.mark_columns.findIndex(c => c.key === colKey)
+      if (colIndex >= 0 && colIndex < examSettings.mark_columns.length - 1) {
+        const nextKey = examSettings.mark_columns[colIndex + 1].key
+        setTimeout(() => markInputRefs.current[nextKey]?.focus(), 50)
+      }
+    }
+  }
+
+  // Handle Enter key on mark inputs to save
+  const handleMarkKeyDown = (e: React.KeyboardEvent, regId: string) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      saveMarks(regId)
+    }
+    if (e.key === "Escape") {
+      e.preventDefault()
+      cancelEdit()
+    }
+  }
+
   // Open download dialog
   const openDownloadDialog = (type: "scoring" | "attendance" | "csv") => {
     if (!examSettings) return
@@ -221,56 +278,66 @@ export default function MarksheetPage() {
     const cols = getSelectedMarkColumns()
     if (!cols.length) { alert("Please select at least one column"); return }
 
-    const doc = new jsPDF({ orientation: "landscape" })
-    const ticketLabel = getTicketLabel()
-    const selectedTotal = cols.reduce((s, c) => s + c.max, 0)
+    startExport("Generating Scoring Sheet PDF...")
 
-    doc.setFontSize(16)
-    doc.text(`Scoring Sheet - ${ticketLabel}`, 14, 15)
-    doc.setFontSize(10)
-    doc.text(`${examSettings.exam_type.toUpperCase()} Examination | Columns: ${cols.map(c => `${c.label}(${c.max})`).join(" + ")} = ${selectedTotal} marks`, 14, 22)
+    setTimeout(() => {
+      const doc = new jsPDF({ orientation: "landscape" })
+      const ticketLabel = getTicketLabel()
+      const selectedTotal = cols.reduce((s, c) => s + c.max, 0)
 
-    const headers = ["#", "Registration No.", "Name", ...cols.map(col => `${col.label} [${col.max}]`), "Total", "Remarks"]
-    const rows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ...cols.map(() => ""), "", ""])
+      doc.setFontSize(16)
+      doc.text(`Scoring Sheet - ${ticketLabel}`, 14, 15)
+      doc.setFontSize(10)
+      doc.text(`${examSettings.exam_type.toUpperCase()} Examination | Columns: ${cols.map(c => `${c.label}(${c.max})`).join(" + ")} = ${selectedTotal} marks`, 14, 22)
 
-    autoTable(doc, {
-      head: [headers],
-      body: rows,
-      startY: 28,
-      styles: { fontSize: 9, cellPadding: 4 },
-      headStyles: { fillColor: [41, 37, 36], fontSize: 8 },
-      columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 30 }, 2: { cellWidth: 45 } },
-    })
+      const headers = ["#", "Registration No.", "Name", ...cols.map(col => `${col.label} [${col.max}]`), "Total", "Remarks"]
+      const rows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ...cols.map(() => ""), "", ""])
 
-    doc.save(`scoring-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
-    setDownloadDialogOpen(false)
+      autoTable(doc, {
+        head: [headers],
+        body: rows,
+        startY: 28,
+        styles: { fontSize: 9, cellPadding: 4 },
+        headStyles: { fillColor: [41, 37, 36], fontSize: 8 },
+        columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 30 }, 2: { cellWidth: 45 } },
+      })
+
+      doc.save(`scoring-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
+      setDownloadDialogOpen(false)
+      endExport()
+    }, 100)
   }
 
   // PDF Generation - Attendance Sheet
   const downloadAttendanceSheet = () => {
     if (!filtered.length) return
-    const doc = new jsPDF()
-    const ticketLabel = getTicketLabel()
+    startExport("Generating Attendance Sheet PDF...")
 
-    doc.setFontSize(16)
-    doc.text(`Attendance Sheet - ${ticketLabel}`, 14, 15)
-    doc.setFontSize(10)
-    doc.text(`${(examSettings?.exam_type || "FMAS").toUpperCase()} Examination`, 14, 22)
+    setTimeout(() => {
+      const doc = new jsPDF()
+      const ticketLabel = getTicketLabel()
 
-    const headers = ["#", "Registration No.", "Name", "Signature"]
-    const rows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ""])
+      doc.setFontSize(16)
+      doc.text(`Attendance Sheet - ${ticketLabel}`, 14, 15)
+      doc.setFontSize(10)
+      doc.text(`${(examSettings?.exam_type || "FMAS").toUpperCase()} Examination`, 14, 22)
 
-    autoTable(doc, {
-      head: [headers],
-      body: rows,
-      startY: 28,
-      styles: { fontSize: 10, cellPadding: 6 },
-      headStyles: { fillColor: [41, 37, 36] },
-      columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 35 }, 2: { cellWidth: 60 }, 3: { cellWidth: 60 } },
-    })
+      const headers = ["#", "Registration No.", "Name", "Signature"]
+      const rows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ""])
 
-    doc.save(`attendance-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
-    setDownloadDialogOpen(false)
+      autoTable(doc, {
+        head: [headers],
+        body: rows,
+        startY: 28,
+        styles: { fontSize: 10, cellPadding: 6 },
+        headStyles: { fillColor: [41, 37, 36] },
+        columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 35 }, 2: { cellWidth: 60 }, 3: { cellWidth: 60 } },
+      })
+
+      doc.save(`attendance-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
+      setDownloadDialogOpen(false)
+      endExport()
+    }, 100)
   }
 
   // CSV Template download
@@ -279,17 +346,22 @@ export default function MarksheetPage() {
     const cols = getSelectedMarkColumns()
     if (!cols.length) { alert("Please select at least one column"); return }
 
-    const headers = ["registration_id", "name", "email", ...cols.map(c => `${c.label.toLowerCase().replace(/\s/g, "_")}_${c.max}`), "remarks"]
-    const rows = filtered.map((reg) => [reg.registration_id, reg.name, reg.email, ...cols.map(c => reg.exam_marks?.[c.key] ?? ""), String(reg.exam_marks?.remarks || "")])
-    const csv = [headers.join(","), ...rows.map((r: any[]) => r.map((v: any) => `"${v}"`).join(","))].join("\n")
-    const blob = new Blob([csv], { type: "text/csv" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `marks-template-${getTicketLabel().toLowerCase().replace(/\s/g, "-")}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-    setDownloadDialogOpen(false)
+    startExport("Generating CSV...")
+
+    setTimeout(() => {
+      const headers = ["registration_id", "name", "email", ...cols.map(c => `${c.label.toLowerCase().replace(/\s/g, "_")}_${c.max}`), "remarks"]
+      const rows = filtered.map((reg) => [reg.registration_id, reg.name, reg.email, ...cols.map(c => reg.exam_marks?.[c.key] ?? ""), String(reg.exam_marks?.remarks || "")])
+      const csv = [headers.join(","), ...rows.map((r: any[]) => r.map((v: any) => `"${v}"`).join(","))].join("\n")
+      const blob = new Blob([csv], { type: "text/csv" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `marks-template-${getTicketLabel().toLowerCase().replace(/\s/g, "-")}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      setDownloadDialogOpen(false)
+      endExport()
+    }, 100)
   }
 
   // Stats
@@ -311,6 +383,8 @@ export default function MarksheetPage() {
 
   return (
     <div className="p-6 space-y-6">
+      <ExportOverlay />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -322,7 +396,7 @@ export default function MarksheetPage() {
             {examSettings?.exam_type.toUpperCase()} Examination - {examSettings?.mark_columns.map(c => `${c.label}(${c.max})`).join(" + ")} = {totalMax} marks
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 no-print">
           <Button onClick={() => openDownloadDialog("attendance")} variant="outline" size="sm" className="gap-2">
             <ClipboardList className="h-4 w-4" />
             Attendance PDF
@@ -338,7 +412,7 @@ export default function MarksheetPage() {
         </div>
       </div>
 
-      {/* Stats - Clickable to filter */}
+      {/* Stats - Animated & Clickable */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         {[
           { label: "Total", value: total, color: "", filter: "all" },
@@ -348,23 +422,20 @@ export default function MarksheetPage() {
           { label: "Absent", value: absent, color: "text-orange-600", filter: "absent" },
           { label: "Pending", value: pending, color: "text-blue-600", filter: "pending" },
         ].map((stat) => (
-          <button
+          <AnimatedStatCard
             key={stat.filter}
+            label={stat.label}
+            value={stat.value}
+            color={stat.color}
+            active={resultFilter === stat.filter && stat.filter !== "all"}
             onClick={() => setResultFilter(resultFilter === stat.filter ? "all" : stat.filter)}
-            className={cn(
-              "bg-card border rounded-xl p-4 text-left transition-all hover:shadow-md",
-              resultFilter === stat.filter && stat.filter !== "all" && "ring-2 ring-primary border-primary"
-            )}
-          >
-            <p className="text-sm text-muted-foreground">{stat.label}</p>
-            <p className={cn("text-2xl font-bold", stat.color)}>{stat.value}</p>
-          </button>
+          />
         ))}
       </div>
 
       {/* Check Membership - shown when Withheld filter active */}
       {resultFilter === "withheld" && withheld > 0 && (
-        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-xl p-4 flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
           <div>
             <p className="font-medium text-yellow-800 dark:text-yellow-200 text-sm">
               {withheld} candidates withheld — check if they got AMASI membership
@@ -402,15 +473,19 @@ export default function MarksheetPage() {
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 no-print">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             placeholder="Search by name, email or reg ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            className="pl-10 pr-16"
           />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2">
+            <KbdHint>Cmd+K</KbdHint>
+          </span>
         </div>
         <Select value={ticketFilter} onValueChange={setTicketFilter}>
           <SelectTrigger className="w-48">
@@ -427,10 +502,11 @@ export default function MarksheetPage() {
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
-          <p>No candidates found</p>
-        </div>
+        <EmptyState
+          icon={<Users className="h-12 w-12 mx-auto" />}
+          title="No candidates found"
+          description={search ? `No results for "${search}". Try a different search term.` : resultFilter !== "all" ? `No candidates with "${resultFilter}" status in current filter.` : "No registrations found for this event."}
+        />
       ) : (
         <div className="border rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
@@ -448,7 +524,7 @@ export default function MarksheetPage() {
                   <TableHead className="text-center">Total<br/><span className="text-xs font-normal">({totalMax})</span></TableHead>
                   <TableHead className="text-center">Result</TableHead>
                   <TableHead>Remarks</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="no-print">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -457,11 +533,22 @@ export default function MarksheetPage() {
                   const regTotal = isEditing ? calculateTotal(editMarks) : reg.exam_total_marks
 
                   return (
-                    <TableRow key={reg.id} className={cn(isEditing && "bg-blue-50 dark:bg-blue-950/20")}>
+                    <TableRow
+                      key={reg.id}
+                      className={cn(
+                        "transition-colors duration-150",
+                        isEditing && "bg-blue-50 dark:bg-blue-950/20 shadow-inner",
+                        !isEditing && "hover:bg-muted/50"
+                      )}
+                    >
                       <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
                       <TableCell>
-                        <p className="font-medium text-sm">{reg.name}</p>
-                        <p className="text-xs text-muted-foreground">{reg.registration_id}</p>
+                        <p className="font-medium text-sm">
+                          <HighlightText text={reg.name} search={search} />
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          <HighlightText text={reg.registration_id} search={search} />
+                        </p>
                       </TableCell>
                       <TableCell>
                         <span className="text-xs bg-secondary px-2 py-1 rounded">{reg.ticket_type_name || "-"}</span>
@@ -472,15 +559,15 @@ export default function MarksheetPage() {
                         <TableCell key={col.key} className="text-center">
                           {isEditing ? (
                             <Input
+                              ref={(el) => { markInputRefs.current[col.key] = el }}
                               type="number"
+                              inputMode="numeric"
                               min={0}
                               max={col.max}
                               value={editMarks[col.key] ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value === "" ? null : Math.min(Number(e.target.value), col.max)
-                                setEditMarks(prev => ({ ...prev, [col.key]: val }))
-                              }}
-                              className="w-16 text-center h-8 text-sm"
+                              onChange={(e) => handleMarkChange(col.key, e.target.value, col.max)}
+                              onKeyDown={(e) => handleMarkKeyDown(e, reg.id)}
+                              className="w-16 text-center h-8 text-sm font-semibold"
                             />
                           ) : (
                             <span className="text-sm">{reg.exam_marks?.[col.key] ?? "-"}</span>
@@ -502,23 +589,7 @@ export default function MarksheetPage() {
 
                       {/* Result */}
                       <TableCell className="text-center">
-                        {reg.exam_result === "pass" && (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                            <CheckCircle2 className="h-3 w-3" />Pass
-                          </span>
-                        )}
-                        {reg.exam_result === "fail" && (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium bg-red-100 text-red-700 px-2 py-1 rounded-full">
-                            <AlertCircle className="h-3 w-3" />Fail
-                          </span>
-                        )}
-                        {reg.exam_result === "absent" && (
-                          <span className="text-xs font-medium bg-orange-100 text-orange-700 px-2 py-1 rounded-full">Absent</span>
-                        )}
-                        {reg.exam_result === "withheld" && (
-                          <span className="text-xs font-medium bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Withheld</span>
-                        )}
-                        {!reg.exam_result && <span className="text-xs text-muted-foreground">Pending</span>}
+                        <ResultBadge result={reg.exam_result} />
                       </TableCell>
 
                       {/* Remarks */}
@@ -527,6 +598,7 @@ export default function MarksheetPage() {
                           <Input
                             value={editRemarks}
                             onChange={(e) => setEditRemarks(e.target.value)}
+                            onKeyDown={(e) => handleMarkKeyDown(e, reg.id)}
                             placeholder="Remarks"
                             className="w-28 h-8 text-sm"
                           />
@@ -536,13 +608,15 @@ export default function MarksheetPage() {
                       </TableCell>
 
                       {/* Actions */}
-                      <TableCell>
+                      <TableCell className="no-print">
                         {isEditing ? (
                           <div className="flex items-center gap-1">
-                            <Button size="sm" onClick={() => saveMarks(reg.id)} disabled={savingId === reg.id} className="h-7 text-xs">
-                              {savingId === reg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Save className="h-3 w-3 mr-1" />Save</>}
+                            <Button size="sm" onClick={() => saveMarks(reg.id)} disabled={savingId === reg.id} className="h-7 text-xs gap-1">
+                              {savingId === reg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Save className="h-3 w-3" />Save</>}
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-7 text-xs">Cancel</Button>
+                            <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-7 text-xs">
+                              Cancel <KbdHint>Esc</KbdHint>
+                            </Button>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1">

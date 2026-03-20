@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, Suspense } from "react"
+import { useState, useEffect, useMemo, Suspense, useRef, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { useTheme } from "next-themes"
@@ -23,6 +23,9 @@ import {
   Loader2,
   ExternalLink,
   Download,
+  Ticket,
+  ClipboardList,
+  CreditCard,
 } from "lucide-react"
 import { TicketSelector } from "@/components/registration/ticket-selector"
 import { RegistrationTypeSelector } from "@/components/registration/registration-type-selector"
@@ -34,6 +37,72 @@ interface EventSettings {
   allow_buyers: boolean
   allow_multiple_ticket_types: boolean
   allow_multiple_addons: boolean
+}
+
+// Progress Step Indicator
+function ProgressIndicator({ currentStep }: { currentStep: number }) {
+  const steps = [
+    { num: 1, label: "Select Ticket", icon: Ticket },
+    { num: 2, label: "Your Details", icon: ClipboardList },
+    { num: 3, label: "Payment", icon: CreditCard },
+  ]
+
+  return (
+    <div className="w-full mb-8">
+      <div className="flex items-center justify-between max-w-md mx-auto">
+        {steps.map((step, idx) => {
+          const StepIcon = step.icon
+          const isActive = currentStep === step.num
+          const isCompleted = currentStep > step.num
+          return (
+            <div key={step.num} className="flex items-center flex-1">
+              <div className="flex flex-col items-center relative">
+                <div
+                  className={`
+                    w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center
+                    transition-all duration-500 min-w-[44px] min-h-[44px]
+                    ${isCompleted
+                      ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30"
+                      : isActive
+                        ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 scale-110"
+                        : "bg-gray-200 text-gray-400"
+                    }
+                  `}
+                >
+                  {isCompleted ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : (
+                    <StepIcon className="w-5 h-5" />
+                  )}
+                </div>
+                <span
+                  className={`
+                    text-xs mt-2 font-medium text-center whitespace-nowrap
+                    transition-colors duration-300
+                    ${isActive ? "text-emerald-600" : isCompleted ? "text-emerald-500" : "text-gray-400"}
+                  `}
+                >
+                  {step.label}
+                </span>
+              </div>
+              {idx < steps.length - 1 && (
+                <div className="flex-1 mx-2 sm:mx-3 mt-[-20px]">
+                  <div className="h-0.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`
+                        h-full bg-emerald-500 rounded-full transition-all duration-700 ease-out
+                        ${isCompleted ? "w-full" : "w-0"}
+                      `}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 // Early Email Check Component
@@ -92,36 +161,41 @@ function EmailCheckWidget({ eventId }: { eventId: string }) {
             setError(null)
           }}
           placeholder="Enter your email"
-          className="flex-1 px-3 py-2 text-sm rounded-lg border border-blue-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+          className="flex-1 px-3 py-2.5 text-sm rounded-lg border border-blue-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 min-h-[44px] transition-all duration-200"
           onKeyDown={(e) => e.key === "Enter" && handleCheck()}
         />
         <button
           onClick={handleCheck}
           disabled={isChecking || !email}
-          className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 min-h-[44px] min-w-[44px] transition-colors active:scale-95"
         >
           {isChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Check"}
         </button>
       </div>
 
       {error && (
-        <p className="mt-2 text-sm text-red-600">{error}</p>
+        <div className="mt-2 animate-slide-up-fade">
+          <p className="text-sm text-red-600 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            {error}
+          </p>
+        </div>
       )}
 
       {result && (
-        <div className="mt-3">
+        <div className="mt-3 animate-slide-up-fade">
           {result.hasRegistrations ? (
             <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                 <div className="text-sm">
-                  <p className="font-medium text-amber-800">You're already registered!</p>
+                  <p className="font-medium text-amber-800">You&apos;re already registered!</p>
                   <p className="text-amber-700 mt-1">
                     Registration: {result.registrations?.[0]?.registration_number}
                   </p>
                   <a
                     href={`/my?q=${encodeURIComponent(email)}`}
-                    className="inline-flex items-center gap-1 mt-2 text-amber-700 hover:text-amber-900 font-medium"
+                    className="inline-flex items-center gap-1 mt-2 text-amber-700 hover:text-amber-900 font-medium min-h-[44px] sm:min-h-0"
                   >
                     View My Registrations <ExternalLink className="w-3 h-3" />
                   </a>
@@ -187,10 +261,12 @@ function EventDetailsPage() {
   const [selectedAddons, setSelectedAddons] = useState<Map<string, SelectedAddon>>(new Map())
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [registrationType, setRegistrationType] = useState<"individual" | "group" | null>(null)
+  const [shareTooltip, setShareTooltip] = useState(false)
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
   const eventSlug = params.eventSlug as string
+  const ticketSectionRef = useRef<HTMLDivElement>(null)
 
   // Get ticket ID from URL for hidden ticket direct access
   const directTicketId = searchParams.get("ticket")
@@ -333,6 +409,19 @@ function EventDetailsPage() {
     }
   }, [selectedTickets, selectedAddons, event?.ticket_types])
 
+  // Determine current step for progress indicator
+  const currentStep = useMemo(() => {
+    if (totals.count === 0) return 1
+    return 1 // Still on step 1 (ticket selection page); step 2 and 3 are on checkout page
+  }, [totals.count])
+
+  // Smooth scroll to tickets when registration type is selected
+  const scrollToTickets = useCallback(() => {
+    setTimeout(() => {
+      ticketSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 150)
+  }, [])
+
   const handleProceedToCheckout = () => {
     // Store selection in sessionStorage (use eventSlug to match checkout page)
     const selection: { ticketId: string; quantity: number }[] = []
@@ -366,8 +455,24 @@ function EventDetailsPage() {
 
   const handleRegistrationTypeSelect = (type: "individual" | "group") => {
     setRegistrationType(type)
-    // If individual, auto-proceed to ticket selection
-    // If group, they'll continue with ticket selection as well
+    scrollToTickets()
+  }
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: event?.name,
+          url: window.location.href,
+        })
+      } else {
+        await navigator.clipboard.writeText(window.location.href)
+        setShareTooltip(true)
+        setTimeout(() => setShareTooltip(false), 2000)
+      }
+    } catch (_err) {
+      // User cancelled share dialog -- ignore
+    }
   }
 
   if (isLoading) {
@@ -388,16 +493,19 @@ function EventDetailsPage() {
   if (error || !event) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <div className="bg-white rounded-xl shadow-sm max-w-xl mx-auto text-center py-16 px-6">
+        <div className="bg-white rounded-xl shadow-sm max-w-xl mx-auto text-center py-16 px-6 animate-fade-in-up">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-gray-400" />
+          </div>
           <h2 className="text-2xl font-bold mb-4 text-gray-900">
             Event Not Found
           </h2>
           <p className="mb-6 text-gray-600">
-            The event you're looking for doesn't exist or registration is not open.
+            The event you&apos;re looking for doesn&apos;t exist or registration is not open. Please check the URL and try again.
           </p>
           <Link
             href="/register"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors min-h-[44px]"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Events
@@ -412,7 +520,7 @@ function EventDetailsPage() {
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-lg mx-auto text-center">
-          <div className="bg-white rounded-2xl shadow-lg p-8">
+          <div className="bg-white rounded-2xl shadow-lg p-8 animate-fade-in-up">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-red-500" />
             </div>
@@ -428,7 +536,7 @@ function EventDetailsPage() {
             )}
             <Link
               href="/register"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium transition-colors min-h-[44px]"
             >
               <ArrowLeft className="w-4 h-4" />
               Browse Other Events
@@ -441,11 +549,14 @@ function EventDetailsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Progress Indicator */}
+      <ProgressIndicator currentStep={currentStep} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
           {/* Hero Banner */}
-          <div className="relative overflow-hidden rounded-2xl">
+          <div className="relative overflow-hidden rounded-2xl animate-fade-in">
             {event.banner_url ? (
               <img
                 src={event.banner_url}
@@ -470,27 +581,19 @@ function EventDetailsPage() {
             </div>
 
             {/* Share Button */}
-            <button
-              className="absolute top-4 right-4 p-2 rounded-full backdrop-blur-sm bg-white/20 text-white hover:bg-white/30 transition-colors"
-              onClick={async () => {
-                try {
-                  if (navigator.share) {
-                    await navigator.share({
-                      title: event.name,
-                      url: window.location.href,
-                    })
-                  } else {
-                    await navigator.clipboard.writeText(window.location.href)
-                    // Brief visual feedback via tooltip would be ideal;
-                    // for now the button click is enough
-                  }
-                } catch (_err) {
-                  // User cancelled share dialog -- ignore
-                }
-              }}
-            >
-              <Share2 className="w-5 h-5" />
-            </button>
+            <div className="absolute top-4 right-4 relative">
+              <button
+                className="p-2.5 rounded-full backdrop-blur-sm bg-white/20 text-white hover:bg-white/30 transition-all min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95"
+                onClick={handleShare}
+              >
+                <Share2 className="w-5 h-5" />
+              </button>
+              {shareTooltip && (
+                <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap animate-fade-in">
+                  Link copied!
+                </div>
+              )}
+            </div>
 
             {/* Event Logo */}
             {event.logo_url && (
@@ -505,7 +608,7 @@ function EventDetailsPage() {
           </div>
 
           {/* Event Title & Info */}
-          <div>
+          <div className="animate-fade-in-up">
             <h1 className="text-3xl md:text-4xl font-black mb-4 text-gray-900">
               {event.name}
             </h1>
@@ -518,7 +621,7 @@ function EventDetailsPage() {
 
             {/* Quick Info */}
             <div className="bg-white rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-h-[44px]">
                 <div className="p-2 rounded-lg bg-emerald-50">
                   <Calendar className="w-5 h-5 text-emerald-600" />
                 </div>
@@ -535,7 +638,7 @@ function EventDetailsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-h-[44px]">
                 <div className="p-2 rounded-lg bg-emerald-50">
                   <MapPin className="w-5 h-5 text-emerald-600" />
                 </div>
@@ -554,7 +657,7 @@ function EventDetailsPage() {
                 href={`/api/events/${event.id}/invitation-pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium mt-1"
+                className="flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium mt-1 min-h-[44px]"
               >
                 <Download className="w-4 h-4" />
                 Download Invitation
@@ -564,13 +667,13 @@ function EventDetailsPage() {
 
           {/* Description */}
           {(event.description || event.welcome_message) && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white rounded-xl shadow-sm p-6 animate-fade-in-up">
               <h2 className="text-lg font-bold mb-4 text-gray-900">
                 About This Event
               </h2>
               <div
                 className={`
-                  prose prose-sm max-w-none
+                  prose prose-sm max-w-none transition-all duration-500
                   ${!showFullDescription && (event.description?.length || 0) > 500 ? "line-clamp-4" : ""}
                 `}
               >
@@ -581,10 +684,10 @@ function EventDetailsPage() {
               {(event.description?.length || 0) > 500 && (
                 <button
                   onClick={() => setShowFullDescription(!showFullDescription)}
-                  className="mt-4 text-emerald-600 text-sm font-medium flex items-center gap-1"
+                  className="mt-4 text-emerald-600 text-sm font-medium flex items-center gap-1 min-h-[44px]"
                 >
                   {showFullDescription ? "Show less" : "Read more"}
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showFullDescription ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showFullDescription ? "rotate-180" : ""}`} />
                 </button>
               )}
             </div>
@@ -592,7 +695,7 @@ function EventDetailsPage() {
 
           {/* Contact Info */}
           {(event.contact_email || event.contact_phone || event.website_url) && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white rounded-xl shadow-sm p-6 animate-fade-in-up">
               <h2 className="text-lg font-bold mb-4 text-gray-900">
                 Contact Information
               </h2>
@@ -600,10 +703,10 @@ function EventDetailsPage() {
                 {event.contact_email && (
                   <a
                     href={`mailto:${event.contact_email}`}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors min-h-[44px]"
                   >
                     <Mail className="w-5 h-5 text-emerald-600" />
-                    <span className="text-sm text-gray-900">
+                    <span className="text-sm text-gray-900 break-all">
                       {event.contact_email}
                     </span>
                   </a>
@@ -611,7 +714,7 @@ function EventDetailsPage() {
                 {event.contact_phone && (
                   <a
                     href={`tel:${event.contact_phone}`}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors min-h-[44px]"
                   >
                     <Phone className="w-5 h-5 text-emerald-600" />
                     <span className="text-sm text-gray-900">
@@ -624,7 +727,7 @@ function EventDetailsPage() {
                     href={event.website_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors min-h-[44px]"
                   >
                     <Globe className="w-5 h-5 text-emerald-600" />
                     <span className="text-sm text-gray-900">
@@ -638,7 +741,7 @@ function EventDetailsPage() {
 
           {/* Registration Type Selector (only shown when buyers are allowed) */}
           {allowBuyers && !registrationType && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white rounded-xl shadow-sm p-6 animate-fade-in-up">
               <RegistrationTypeSelector
                 allowBuyers={allowBuyers}
                 onSelect={handleRegistrationTypeSelect}
@@ -649,12 +752,12 @@ function EventDetailsPage() {
 
           {/* Ticket Selection - shown after registration type is selected (or immediately if buyers not allowed) */}
           {event.ticket_types && event.ticket_types.length > 0 && (!allowBuyers || registrationType) && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div ref={ticketSectionRef} className="bg-white rounded-xl shadow-sm p-6 animate-fade-in-up">
               {/* Show selected registration type badge */}
               {allowBuyers && registrationType && (
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                    <span className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
                       registrationType === "individual"
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-amber-100 text-amber-700"
@@ -664,7 +767,7 @@ function EventDetailsPage() {
                   </div>
                   <button
                     onClick={() => setRegistrationType(null)}
-                    className="text-sm text-gray-500 hover:text-gray-700"
+                    className="text-sm text-gray-500 hover:text-gray-700 min-h-[44px] px-2"
                   >
                     Change
                   </button>
@@ -683,7 +786,7 @@ function EventDetailsPage() {
 
           {/* Addons Selection - shown after tickets are selected */}
           {addons && addons.length > 0 && totals.count > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white rounded-xl shadow-sm p-6 animate-fade-in-up">
               <AddonsSelector
                 addons={addons}
                 selectedAddons={selectedAddons}
@@ -697,7 +800,7 @@ function EventDetailsPage() {
 
         {/* Sticky Order Summary */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl shadow-sm sticky top-24 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm sticky top-24 overflow-hidden transition-shadow duration-300 hover:shadow-md">
             {/* Header */}
             <div className="p-5 border-b border-gray-200">
               <h3 className="text-lg font-bold text-gray-900">
@@ -711,11 +814,16 @@ function EventDetailsPage() {
               <EmailCheckWidget eventId={event.id} />
 
               {totals.count === 0 ? (
-                <p className="text-center py-6 text-gray-500">
-                  Select tickets to continue
-                </p>
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Ticket className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-sm">
+                    Select tickets to continue
+                  </p>
+                </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 animate-slide-up-fade">
                   {/* Selected Tickets */}
                   {Array.from(selectedTickets.entries()).map(([ticketId, quantity]) => {
                     const ticket = event.ticket_types.find((t) => t.id === ticketId)
@@ -723,10 +831,10 @@ function EventDetailsPage() {
                     return (
                       <div key={ticketId} className="flex justify-between text-sm">
                         <span className="text-gray-500">
-                          {ticket.name} × {quantity}
+                          {ticket.name} x {quantity}
                         </span>
                         <span className="font-medium text-gray-900">
-                          ₹{(ticket.price * quantity).toLocaleString()}
+                          {"\u20B9"}{(ticket.price * quantity).toLocaleString()}
                         </span>
                       </div>
                     )
@@ -746,10 +854,10 @@ function EventDetailsPage() {
                             <span className="text-gray-500">
                               {addonData?.name}
                               {variant && ` (${variant.name})`}
-                              {addon.quantity > 1 && ` × ${addon.quantity}`}
+                              {addon.quantity > 1 && ` x ${addon.quantity}`}
                             </span>
                             <span className="font-medium text-gray-900">
-                              ₹{addon.totalPrice.toLocaleString()}
+                              {"\u20B9"}{addon.totalPrice.toLocaleString()}
                             </span>
                           </div>
                         )
@@ -761,13 +869,13 @@ function EventDetailsPage() {
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-gray-500">Tickets Subtotal</span>
                       <span className="text-gray-900">
-                        ₹{totals.subtotal.toLocaleString()}
+                        {"\u20B9"}{totals.subtotal.toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-gray-500">Tickets GST</span>
                       <span className="text-gray-900">
-                        ₹{totals.tax.toLocaleString()}
+                        {"\u20B9"}{totals.tax.toLocaleString()}
                       </span>
                     </div>
                     {totals.addonsTotal > 0 && (
@@ -775,20 +883,20 @@ function EventDetailsPage() {
                         <div className="flex justify-between text-sm mb-2">
                           <span className="text-gray-500">Add-ons Subtotal</span>
                           <span className="text-gray-900">
-                            ₹{totals.addonsTotal.toLocaleString()}
+                            {"\u20B9"}{totals.addonsTotal.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm mb-2">
                           <span className="text-gray-500">Add-ons GST</span>
                           <span className="text-gray-900">
-                            ₹{totals.addonsTax.toLocaleString()}
+                            {"\u20B9"}{totals.addonsTax.toLocaleString()}
                           </span>
                         </div>
                       </>
                     )}
                     <div className="flex justify-between text-lg font-bold pt-4 border-t border-gray-200">
                       <span className="text-gray-900">Total</span>
-                      <span className="text-emerald-600">₹{totals.total.toLocaleString()}</span>
+                      <span className="text-emerald-600">{"\u20B9"}{totals.total.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -801,12 +909,12 @@ function EventDetailsPage() {
                 onClick={handleProceedToCheckout}
                 disabled={totals.count === 0}
                 className={`
-                  w-full py-4 rounded-xl font-bold text-white
+                  w-full py-4 rounded-xl font-bold text-white min-h-[52px]
                   flex items-center justify-center gap-2
                   transition-all duration-300
                   ${totals.count === 0
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    ? "bg-gray-300 cursor-not-allowed text-gray-500"
+                    : "bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md"
                   }
                 `}
               >

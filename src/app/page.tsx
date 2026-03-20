@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -15,6 +15,8 @@ import {
   Download,
   Mail,
   Loader2,
+  Clock,
+  RefreshCw,
 } from "lucide-react"
 import { getGreeting } from "@/lib/utils"
 import { usePermissions } from "@/hooks/use-permissions"
@@ -65,10 +67,54 @@ function WidgetSkeleton({ title }: { title: string }) {
   )
 }
 
+// Last Updated Timestamp
+function LastUpdatedBadge({ lastUpdated, onRefresh }: { lastUpdated: Date | null; onRefresh: () => void }) {
+  const [timeAgo, setTimeAgo] = useState("")
+
+  useEffect(() => {
+    if (!lastUpdated) return
+
+    const update = () => {
+      const now = new Date()
+      const diff = Math.floor((now.getTime() - lastUpdated.getTime()) / 1000)
+      if (diff < 10) setTimeAgo("Just now")
+      else if (diff < 60) setTimeAgo(`${diff}s ago`)
+      else if (diff < 3600) setTimeAgo(`${Math.floor(diff / 60)}m ago`)
+      else setTimeAgo(`${Math.floor(diff / 3600)}h ago`)
+    }
+
+    update()
+    const interval = setInterval(update, 10000)
+    return () => clearInterval(interval)
+  }, [lastUpdated])
+
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+      <Clock className="h-3 w-3" />
+      <span>Updated {timeAgo || "..."}</span>
+      <button
+        onClick={onRefresh}
+        className="p-1 rounded-md hover:bg-secondary transition-colors"
+        title="Refresh dashboard"
+      >
+        <RefreshCw className="h-3 w-3" />
+      </button>
+    </div>
+  )
+}
+
 export default function Home() {
   const supabase = createClient()
   const router = useRouter()
   const { isEventScoped, eventIds, isLoading: permissionsLoading, userName } = usePermissions()
+  const [pageReady, setPageReady] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  // Page transition
+  useEffect(() => {
+    const timer = setTimeout(() => setPageReady(true), 50)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Get session info immediately for quick display while permissions load
   const { data: sessionData } = useQuery({
@@ -82,7 +128,7 @@ export default function Home() {
   const quickName = sessionData?.user?.user_metadata?.name || sessionData?.user?.email?.split("@")[0] || ""
 
   // Fetch live stats immediately (don't wait for permissions)
-  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       const [membersResult, facultyResult, activeEventsResult, delegatesResult] = await Promise.all([
@@ -98,6 +144,7 @@ export default function Home() {
       if (activeEventsResult.error?.message) console.error("Active events error:", activeEventsResult.error.message)
       if (delegatesResult.error?.message) console.error("Delegates error:", delegatesResult.error.message)
 
+      setLastUpdated(new Date())
       return {
         members: membersResult.count ?? 0,
         faculty: facultyResult.count ?? 0,
@@ -107,6 +154,10 @@ export default function Home() {
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
+
+  const handleRefresh = () => {
+    refetchStats()
+  }
 
   // Redirect event-scoped users to their event dashboard
   useEffect(() => {
@@ -135,12 +186,18 @@ export default function Home() {
 
   return (
     <DashboardLayout>
+      <div className={`transition-all duration-500 ease-out ${pageReady ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
       {/* Welcome Header - Paper Dashboard Style */}
       <div className="mb-6">
-        <h4 className="text-lg text-muted-foreground font-normal">
-          {getGreeting()}, {userName || quickName || (permissionsLoading ? <span className="inline-block w-24 h-5 rounded bg-gray-200 dark:bg-slate-700 animate-pulse align-middle" /> : "Admin")}
-        </h4>
-        <p className="text-sm text-muted-foreground/70">Here&apos;s your {COMPANY_CONFIG.name} dashboard overview</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h4 className="text-lg text-muted-foreground font-normal">
+              {getGreeting()}, {userName || quickName || (permissionsLoading ? <span className="inline-block w-24 h-5 rounded bg-gray-200 dark:bg-slate-700 animate-pulse align-middle" /> : "Admin")}
+            </h4>
+            <p className="text-sm text-muted-foreground/70">Here&apos;s your {COMPANY_CONFIG.name} dashboard overview</p>
+          </div>
+          <LastUpdatedBadge lastUpdated={lastUpdated} onRefresh={handleRefresh} />
+        </div>
       </div>
 
       {/* Animated Stats Cards */}
@@ -160,7 +217,7 @@ export default function Home() {
         )
         const cols = cards.length <= 2 ? "lg:grid-cols-2" : cards.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4"
         return (
-          <div className={`grid grid-cols-1 md:grid-cols-2 ${cols} gap-6 mb-6`}>
+          <div className={`grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 ${cols} gap-3 sm:gap-4 md:gap-6 mb-6`}>
             {statsLoading ? cards.map((_, i) => <StatCardSkeleton key={i} />) : cards}
           </div>
         )
@@ -222,6 +279,7 @@ export default function Home() {
           <Activity className="h-4 w-4 inline-block mr-1 text-muted-foreground" />
           <span>Last activity 2 min ago</span>
         </div>
+      </div>
       </div>
     </DashboardLayout>
   )

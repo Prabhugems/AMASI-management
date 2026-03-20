@@ -247,10 +247,10 @@ function FacultyRow({
   return (
     <tr
       className={`
-        group
+        group relative
         transition-all duration-500 ease-out
         ${isVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-8"}
-        ${isHovered ? (isDark ? "bg-slate-800/80" : "bg-gray-50") : ""}
+        ${isHovered ? (isDark ? "bg-slate-800/80" : "bg-primary/[0.03]") : ""}
         ${!isLast ? (isDark ? "border-b border-slate-700/50" : "border-b border-gray-100") : ""}
       `}
       style={{ transitionDelay: `${index * 100}ms` }}
@@ -795,18 +795,50 @@ export function RecentFacultyTable() {
           <TableHeader isDark={isDark} />
           <tbody>
             {isFacultyLoading ? (
-              <tr>
-                <td colSpan={5} className="py-12 text-center">
-                  <Loader2 className={`w-6 h-6 mx-auto mb-2 animate-spin ${isDark ? "text-slate-400" : "text-gray-400"}`} />
-                  <p className={`text-sm ${isDark ? "text-slate-400" : "text-gray-500"}`}>Loading faculty...</p>
-                </td>
-              </tr>
+              <>
+                {[1, 2, 3, 4].map((i) => (
+                  <tr key={i} className={`animate-pulse ${isDark ? "border-b border-slate-700/50" : "border-b border-gray-100"}`}>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-xl ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                        <div className="space-y-2">
+                          <div className={`w-32 h-4 rounded ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                          <div className={`w-24 h-3 rounded ${isDark ? "bg-slate-700/70" : "bg-gray-200/70"}`} />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className={`w-36 h-4 rounded ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className={`w-28 h-4 rounded ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className={`w-20 h-6 rounded-full ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className={`w-16 h-8 rounded-lg ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                    </td>
+                  </tr>
+                ))}
+              </>
             ) : faculty.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-12 text-center">
-                  <GraduationCap className={`w-8 h-8 mx-auto mb-2 opacity-50 ${isDark ? "text-slate-400" : "text-gray-400"}`} />
-                  <p className={`font-medium ${isDark ? "text-slate-300" : "text-gray-700"}`}>No faculty added yet</p>
-                  <p className={`text-sm mt-1 ${isDark ? "text-slate-500" : "text-gray-500"}`}>Add faculty members to see them here</p>
+                <td colSpan={5} className="py-16 text-center">
+                  <div className={`inline-flex p-5 rounded-full mb-4 ${isDark ? "bg-slate-800" : "bg-gray-100"}`}>
+                    <GraduationCap className={`w-10 h-10 ${isDark ? "text-slate-500" : "text-gray-400"}`} />
+                  </div>
+                  <p className={`font-semibold text-lg ${isDark ? "text-slate-300" : "text-gray-700"}`}>No faculty added yet</p>
+                  <p className={`text-sm mt-1 max-w-xs mx-auto ${isDark ? "text-slate-500" : "text-gray-500"}`}>
+                    Add faculty members to your database to manage them across events
+                  </p>
+                  <button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 transition-all duration-300 hover:scale-105"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Add First Faculty
+                  </button>
                 </td>
               </tr>
             ) : (

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -32,6 +32,8 @@ import {
   CopyPlus,
   Loader2,
   ExternalLink,
+  UserCheck,
+  ScanLine,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -44,16 +46,70 @@ import Link from "next/link"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { FEATURES } from "@/lib/config"
 
+// Skeleton card for loading state
+function EventCardSkeleton() {
+  return (
+    <div className="paper-card animate-pulse">
+      <div className="p-5">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="w-16 h-5 rounded-full bg-gray-200 dark:bg-slate-700 mb-2" />
+            <div className="w-40 h-5 rounded bg-gray-200 dark:bg-slate-700 mb-1" />
+            <div className="w-56 h-4 rounded bg-gray-200 dark:bg-slate-700" />
+          </div>
+          <div className="w-8 h-8 rounded bg-gray-200 dark:bg-slate-700" />
+        </div>
+        <div className="space-y-2">
+          <div className="w-32 h-4 rounded bg-gray-200 dark:bg-slate-700" />
+          <div className="w-28 h-4 rounded bg-gray-200 dark:bg-slate-700" />
+        </div>
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+          <div className="flex gap-4">
+            <div className="w-12 h-4 rounded bg-gray-200 dark:bg-slate-700" />
+            <div className="w-12 h-4 rounded bg-gray-200 dark:bg-slate-700" />
+          </div>
+          <div className="w-4 h-4 rounded bg-gray-200 dark:bg-slate-700" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function EventsPage() {
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebounce(search, 300)
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
   const [duplicatingEventId, setDuplicatingEventId] = useState<string | null>(null)
+  const [pageReady, setPageReady] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const router = useRouter()
   const queryClient = useQueryClient()
   const supabase = createClient()
+
+  // Page transition
+  useEffect(() => {
+    const timer = setTimeout(() => setPageReady(true), 50)
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Keyboard shortcut: Cmd+K to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+      // Escape to clear search
+      if (e.key === "Escape" && document.activeElement === searchInputRef.current) {
+        setSearch("")
+        searchInputRef.current?.blur()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
 
   type Event = {
     id: string
@@ -178,6 +234,7 @@ export default function EventsPage() {
 
   return (
     <DashboardLayout>
+      <div className={`transition-all duration-500 ease-out ${pageReady ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
@@ -236,11 +293,17 @@ export default function EventsPage() {
             <div className="relative flex-1 sm:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                ref={searchInputRef}
                 placeholder="Search events..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-16"
               />
+              {!search && (
+                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  <span className="text-xs">&#8984;</span>K
+                </kbd>
+              )}
             </div>
             <div className="flex gap-3">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -280,32 +343,55 @@ export default function EventsPage() {
 
       {/* Events Grid */}
       {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Loading events...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <EventCardSkeleton key={i} />
+          ))}
         </div>
       ) : events?.length === 0 ? (
         <div className="paper-card card-animated">
-          <div className="p-12 text-center">
-            <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-            <h3 className="text-lg font-semibold mb-2">No events found</h3>
-            <p className="text-muted-foreground mb-4">
-              Get started by creating your first event
+          <div className="p-16 text-center">
+            <div className="inline-flex p-6 rounded-full bg-secondary/50 mb-6">
+              <Calendar className="h-12 w-12 text-muted-foreground/40" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">
+              {debouncedSearch ? "No events match your search" : "No events found"}
+            </h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              {debouncedSearch
+                ? `No events matching "${debouncedSearch}". Try a different search term or clear filters.`
+                : "Get started by creating your first event to manage conferences, workshops, and courses."}
             </p>
-            <Button asChild>
-              <Link href="/events/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Event
-              </Link>
-            </Button>
+            <div className="flex items-center justify-center gap-3">
+              {debouncedSearch && (
+                <Button variant="outline" onClick={() => { setSearch(""); setStatusFilter("all"); setTypeFilter("all"); }}>
+                  Clear Filters
+                </Button>
+              )}
+              <Button asChild>
+                <Link href="/events/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Event
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events?.map((event) => (
-            <Link
+          {events?.map((event, eventIndex) => (
+            <div
               key={event.id}
+              className={`relative group rounded-xl transition-all duration-500 ease-out ${
+                pageReady ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
+              style={{ transitionDelay: `${eventIndex * 60}ms` }}
+            >
+            {/* Gradient border on hover */}
+            <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-primary/0 via-primary/0 to-primary/0 group-hover:from-primary/50 group-hover:via-primary/30 group-hover:to-violet-500/50 transition-all duration-500 opacity-0 group-hover:opacity-100 blur-[1px]" />
+            <Link
               href={`/events/${event.id}`}
-              className="paper-card card-animated hover-lift group"
+              className="relative block paper-card card-animated hover-lift bg-background"
             >
               <div className="p-5">
                 <div className="flex items-start justify-between mb-4">
@@ -421,13 +507,13 @@ export default function EventsPage() {
 
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
                   <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1" title="Faculty assigned">
                       <GraduationCap className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">
                         {event.faculty_assignments?.[0]?.count || 0}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1" title="Registrations">
                       <Users className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">
                         {event.registrations?.[0]?.count || 0}
@@ -436,11 +522,41 @@ export default function EventsPage() {
                   </div>
                   <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                 </div>
+
+                {/* Quick Action Buttons - visible on hover */}
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-1 group-hover:translate-y-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-8 text-xs"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      router.push(`/events/${event.id}/registrations`)
+                    }}
+                  >
+                    <UserCheck className="h-3 w-3 mr-1" />
+                    Registrations
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-8 text-xs"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      router.push(`/events/${event.id}/check-in`)
+                    }}
+                  >
+                    <ScanLine className="h-3 w-3 mr-1" />
+                    Check-in
+                  </Button>
+                </div>
               </div>
             </Link>
+            </div>
           ))}
         </div>
       )}
+      </div>
     </DashboardLayout>
   )
 }

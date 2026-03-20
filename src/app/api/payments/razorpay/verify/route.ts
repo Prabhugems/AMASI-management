@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { verifyPaymentSignature, fetchPayment, RazorpayCredentials } from "@/lib/services/razorpay"
 import { createAdminClient } from "@/lib/supabase/server"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
+import { isQikchatEnabled, sendQikchatText } from "@/lib/qikchat"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let supabase: any
@@ -318,24 +319,40 @@ export async function POST(request: NextRequest) {
         triggerAutoActions(finalRegistration.id, paymentData.event_id).catch(console.error)
       }
 
-      // Send delegate_login WhatsApp via Gallabox (non-blocking)
-      if (isGallaboxEnabled() && finalRegistration.attendee_phone) {
+      // Send WhatsApp confirmation (non-blocking)
+      if ((isGallaboxEnabled() || isQikchatEnabled()) && finalRegistration.attendee_phone) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || ""
         const portalUrl = `${baseUrl}/my`
-        sendGallaboxTemplate(
-          finalRegistration.attendee_phone,
-          finalRegistration.attendee_name || "Delegate",
-          "delegate_login",
-          { "1": finalRegistration.attendee_name || "Delegate", "2": existingMetadata.event_name || "Event", "3": portalUrl }
-        ).then(waResult => {
-          if (waResult.success) {
-            console.log(`[WhatsApp] delegate_login sent to ${finalRegistration.attendee_phone} - ID: ${waResult.messageId}`)
-          } else {
-            console.warn(`[WhatsApp] delegate_login failed for ${finalRegistration.attendee_phone}: ${waResult.error}`)
-          }
-        }).catch(err => {
-          console.warn("[WhatsApp] delegate_login error:", err.message)
-        })
+        const attendeeName = finalRegistration.attendee_name || "Delegate"
+        const eventName = existingMetadata.event_name || "Event"
+
+        if (isQikchatEnabled()) {
+          const message = `Hello ${attendeeName}! 🎉\n\nYour payment for *${eventName}* is confirmed!\n\n📋 Registration: ${finalRegistration.registration_number}\n\nManage your registration: ${portalUrl}\n\n- Team TechnoSurg`
+          sendQikchatText(finalRegistration.attendee_phone, message).then(waResult => {
+            if (waResult.success) {
+              console.log(`[WhatsApp/Qikchat] Confirmation sent to ${finalRegistration.attendee_phone} - ID: ${waResult.messageId}`)
+            } else {
+              console.warn(`[WhatsApp/Qikchat] Failed for ${finalRegistration.attendee_phone}: ${waResult.error}`)
+            }
+          }).catch(err => {
+            console.warn("[WhatsApp/Qikchat] error:", err.message)
+          })
+        } else {
+          sendGallaboxTemplate(
+            finalRegistration.attendee_phone,
+            attendeeName,
+            "delegate_login",
+            { "1": attendeeName, "2": eventName, "3": portalUrl }
+          ).then(waResult => {
+            if (waResult.success) {
+              console.log(`[WhatsApp/Gallabox] delegate_login sent to ${finalRegistration.attendee_phone} - ID: ${waResult.messageId}`)
+            } else {
+              console.warn(`[WhatsApp/Gallabox] delegate_login failed for ${finalRegistration.attendee_phone}: ${waResult.error}`)
+            }
+          }).catch(err => {
+            console.warn("[WhatsApp/Gallabox] delegate_login error:", err.message)
+          })
+        }
       }
     }
 

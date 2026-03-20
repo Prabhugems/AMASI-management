@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useExamSettings } from "@/hooks/use-exam-settings"
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -36,6 +37,13 @@ import {
 } from "lucide-react"
 import { COMPANY_CONFIG } from "@/lib/config"
 import { cn } from "@/lib/utils"
+import {
+  AnimatedStatCard,
+  HighlightText,
+  EmptyState,
+  KbdHint,
+  useExportProgress,
+} from "@/components/examination/exam-ui"
 
 type Registration = {
   id: string
@@ -67,6 +75,17 @@ export default function ConvocationPage() {
   const [sortBy, setSortBy] = useState<"convocation" | "name" | "reg" | "marks" | "amasi">("convocation")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
   const [filterAssigned, setFilterAssigned] = useState<"all" | "assigned" | "unassigned">("all")
+
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const { startExport, endExport, ExportOverlay } = useExportProgress()
+
+  useKeyboardShortcut("k", () => {
+    searchInputRef.current?.focus()
+  }, { meta: true })
+
+  useKeyboardShortcut("Escape", () => {
+    if (editingId) setEditingId(null)
+  }, { enabled: !!editingId })
 
   const { data: allRegistrations, isLoading } = useQuery({
     queryKey: ["exam-convocation", eventId],
@@ -153,6 +172,17 @@ export default function ConvocationPage() {
     setSavingId(null)
   }
 
+  const handleConvocationKeyDown = (e: React.KeyboardEvent, regId: string) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      saveConvocationNumber(regId)
+    }
+    if (e.key === "Escape") {
+      e.preventDefault()
+      setEditingId(null)
+    }
+  }
+
   const autoAssignNumbers = async () => {
     if (!currentList.length) return
     setAutoAssigning(true)
@@ -195,34 +225,46 @@ export default function ConvocationPage() {
 
   const downloadCSV = () => {
     if (!filtered.length) return
-    const label = activeTab === "exam" ? "Exam Convocation" : "Without Exam Convocation"
-    const markCols = examSettings?.mark_columns || []
-    const headers = ["#", "Convocation No.", `${COMPANY_CONFIG.name} No.`, "Registration No.", "Name", "Email", "Phone", "Ticket Type", ...markCols.map(c => c.label), "Total Marks", "Result"]
-    const rows = filtered.map((r, i) => [
-      i + 1,
-      r.convocation_number || "",
-      r.amasi_number || "",
-      r.registration_id,
-      r.name,
-      r.email,
-      r.phone || "",
-      r.ticket_type_name || "",
-      ...markCols.map(c => r.exam_marks?.[c.key] ?? ""),
-      r.exam_total_marks ?? "",
-      r.exam_result === "pass" ? "PASS" : r.exam_result === "without_exam" ? "WITHOUT EXAM" : r.exam_result?.toUpperCase() || "",
-    ])
-    const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${v}"`).join(","))].join("\n")
-    const blob = new Blob([csv], { type: "text/csv" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${label.toLowerCase().replace(/\s/g, "-")}-${eventId}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    startExport("Generating CSV...")
+
+    setTimeout(() => {
+      const label = activeTab === "exam" ? "Exam Convocation" : "Without Exam Convocation"
+      const markCols = examSettings?.mark_columns || []
+      const headers = ["#", "Convocation No.", `${COMPANY_CONFIG.name} No.`, "Registration No.", "Name", "Email", "Phone", "Ticket Type", ...markCols.map(c => c.label), "Total Marks", "Result"]
+      const rows = filtered.map((r, i) => [
+        i + 1,
+        r.convocation_number || "",
+        r.amasi_number || "",
+        r.registration_id,
+        r.name,
+        r.email,
+        r.phone || "",
+        r.ticket_type_name || "",
+        ...markCols.map(c => r.exam_marks?.[c.key] ?? ""),
+        r.exam_total_marks ?? "",
+        r.exam_result === "pass" ? "PASS" : r.exam_result === "without_exam" ? "WITHOUT EXAM" : r.exam_result?.toUpperCase() || "",
+      ])
+      const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${v}"`).join(","))].join("\n")
+      const blob = new Blob([csv], { type: "text/csv" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${label.toLowerCase().replace(/\s/g, "-")}-${eventId}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      endExport()
+    }, 100)
+  }
+
+  const SortIcon = ({ col }: { col: typeof sortBy }) => {
+    if (sortBy === col) return sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+    return <ArrowUpDown className="h-3 w-3 opacity-30" />
   }
 
   return (
     <div className="p-6 space-y-6">
+      <ExportOverlay />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -258,25 +300,28 @@ export default function ConvocationPage() {
 
         {["exam", "without_exam"].map((tab) => (
           <TabsContent key={tab} value={tab}>
-            {/* Stats */}
+            {/* Stats - Animated */}
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-card border rounded-xl p-4 text-center">
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold text-green-600">{currentList.length}</p>
-              </div>
-              <div className="bg-card border rounded-xl p-4 text-center">
-                <p className="text-sm text-muted-foreground">Assigned</p>
-                <p className="text-2xl font-bold text-blue-600">{assigned}</p>
-              </div>
-              <div className="bg-card border rounded-xl p-4 text-center">
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold text-orange-600">{unassigned}</p>
-              </div>
+              <AnimatedStatCard
+                label="Total"
+                value={currentList.length}
+                color="text-green-600"
+              />
+              <AnimatedStatCard
+                label="Assigned"
+                value={assigned}
+                color="text-blue-600"
+              />
+              <AnimatedStatCard
+                label="Pending"
+                value={unassigned}
+                color="text-orange-600"
+              />
             </div>
 
             {/* Auto Assign */}
             {unassigned > 0 && (
-              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl p-4 mb-6">
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl p-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-300">
                 <h3 className="font-medium text-sm mb-3 flex items-center gap-2">
                   <Wand2 className="h-4 w-4" />
                   Auto-assign convocation numbers ({unassigned} pending)
@@ -298,11 +343,15 @@ export default function ConvocationPage() {
               <div className="relative flex-1 min-w-[200px] max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
+                  ref={searchInputRef}
                   placeholder="Search name, email, phone, AMASI no, convocation no..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-16"
                 />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <KbdHint>Cmd+K</KbdHint>
+                </span>
               </div>
               <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
                 {(["all", "assigned", "unassigned"] as const).map((f) => (
@@ -327,10 +376,11 @@ export default function ConvocationPage() {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : filtered.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                <p>No candidates found</p>
-              </div>
+              <EmptyState
+                icon={<Users className="h-12 w-12 mx-auto" />}
+                title="No candidates found"
+                description={search ? `No results for "${search}".` : filterAssigned === "unassigned" ? "All candidates have been assigned convocation numbers." : filterAssigned === "assigned" ? "No convocation numbers assigned yet." : "No passed candidates found for this tab."}
+              />
             ) : (
               <div className="border rounded-xl overflow-hidden">
                 <Table>
@@ -338,34 +388,52 @@ export default function ConvocationPage() {
                     <TableRow>
                       <TableHead className="w-8">#</TableHead>
                       <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("reg")}>
-                        <span className="flex items-center gap-1">Reg No. {sortBy === "reg" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}</span>
+                        <span className="flex items-center gap-1">Reg No. <SortIcon col="reg" /></span>
                       </TableHead>
                       <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("amasi")}>
-                        <span className="flex items-center gap-1">{COMPANY_CONFIG.name} No. {sortBy === "amasi" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}</span>
+                        <span className="flex items-center gap-1">{COMPANY_CONFIG.name} No. <SortIcon col="amasi" /></span>
                       </TableHead>
                       <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
-                        <span className="flex items-center gap-1">Candidate {sortBy === "name" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}</span>
+                        <span className="flex items-center gap-1">Candidate <SortIcon col="name" /></span>
                       </TableHead>
                       <TableHead>Mobile</TableHead>
                       <TableHead>Ticket</TableHead>
                       <TableHead className="text-center cursor-pointer select-none" onClick={() => toggleSort("marks")}>
-                        <span className="flex items-center justify-center gap-1">Marks {sortBy === "marks" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}</span>
+                        <span className="flex items-center justify-center gap-1">Marks <SortIcon col="marks" /></span>
                       </TableHead>
                       <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("convocation")}>
-                        <span className="flex items-center gap-1">Convocation No. {sortBy === "convocation" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}</span>
+                        <span className="flex items-center gap-1">Convocation No. <SortIcon col="convocation" /></span>
                       </TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filtered.map((reg, i) => (
-                      <TableRow key={reg.id}>
+                      <TableRow
+                        key={reg.id}
+                        className={cn(
+                          "transition-colors duration-150 hover:bg-muted/50",
+                          editingId === reg.id && "bg-blue-50 dark:bg-blue-950/20"
+                        )}
+                      >
                         <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
-                        <TableCell className="font-mono text-sm">{reg.registration_id}</TableCell>
-                        <TableCell className="font-mono text-sm">{reg.amasi_number || <span className="text-xs text-red-500">N/A</span>}</TableCell>
+                        <TableCell className="font-mono text-sm">
+                          <HighlightText text={reg.registration_id} search={search} />
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {reg.amasi_number ? (
+                            <HighlightText text={String(reg.amasi_number)} search={search} />
+                          ) : (
+                            <span className="text-xs text-red-500">N/A</span>
+                          )}
+                        </TableCell>
                         <TableCell>
-                          <p className="font-medium text-sm">{reg.name}</p>
-                          <p className="text-xs text-muted-foreground">{reg.email}</p>
+                          <p className="font-medium text-sm">
+                            <HighlightText text={reg.name} search={search} />
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            <HighlightText text={reg.email} search={search} />
+                          </p>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{reg.phone || "-"}</TableCell>
                         <TableCell>
@@ -373,7 +441,7 @@ export default function ConvocationPage() {
                         </TableCell>
                         <TableCell className="text-center">
                           {reg.exam_total_marks != null ? (
-                            <span className="font-semibold text-green-600">{reg.exam_total_marks}/{examSettings?.mark_columns.reduce((s, c) => s + c.max, 0) || "-"}</span>
+                            <span className="font-semibold text-green-600 tabular-nums">{reg.exam_total_marks}/{examSettings?.mark_columns.reduce((s, c) => s + c.max, 0) || "-"}</span>
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>
                           )}
@@ -383,13 +451,18 @@ export default function ConvocationPage() {
                             <Input
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={(e) => handleConvocationKeyDown(e, reg.id)}
                               placeholder={`${currentPrefix}${currentStart}`}
                               className="w-40 h-8 text-sm font-mono"
                               autoFocus
                             />
                           ) : (
                             <span className="text-sm font-mono font-semibold">
-                              {reg.convocation_number || <span className="text-muted-foreground font-normal">Not assigned</span>}
+                              {reg.convocation_number ? (
+                                <HighlightText text={reg.convocation_number} search={search} />
+                              ) : (
+                                <span className="text-muted-foreground font-normal">Not assigned</span>
+                              )}
                             </span>
                           )}
                         </TableCell>
@@ -399,7 +472,9 @@ export default function ConvocationPage() {
                               <Button size="sm" onClick={() => saveConvocationNumber(reg.id)} disabled={savingId === reg.id} className="h-7 text-xs">
                                 {savingId === reg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Save className="h-3 w-3 mr-1" />Save</>}
                               </Button>
-                              <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-7 text-xs">Cancel</Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-7 text-xs">
+                                Cancel <KbdHint>Esc</KbdHint>
+                              </Button>
                             </div>
                           ) : (
                             <Button

@@ -87,6 +87,7 @@ export function AlertsPanel() {
       <div
         className={`
         relative overflow-hidden rounded-3xl p-16 text-center
+        transition-all duration-700 ease-out
         ${isDark ? "bg-slate-800/50 border border-slate-700/50" : "bg-white border border-gray-200"}
       `}
       >
@@ -95,8 +96,13 @@ export function AlertsPanel() {
             isDark ? "bg-gradient-to-br from-emerald-900/30 to-teal-900/30" : "bg-gradient-to-br from-emerald-50 to-teal-50"
           }`}
         />
+        {/* Subtle animated background circles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className={`absolute w-64 h-64 rounded-full -top-20 -right-20 blur-3xl animate-pulse ${isDark ? "bg-emerald-500/10" : "bg-emerald-200/30"}`} />
+          <div className={`absolute w-48 h-48 rounded-full -bottom-16 -left-16 blur-3xl animate-pulse delay-1000 ${isDark ? "bg-teal-500/10" : "bg-teal-200/30"}`} />
+        </div>
         <div className="relative z-10">
-          <div className="inline-flex p-8 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-500 mb-6 shadow-2xl shadow-emerald-500/40">
+          <div className="inline-flex p-8 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-500 mb-6 shadow-2xl shadow-emerald-500/40 animate-bounce-slow">
             <AlertTriangle className="w-16 h-16 text-white" />
           </div>
           <h3 className={`text-3xl font-black mb-3 ${isDark ? "text-white" : "text-gray-900"}`}>All Caught Up!</h3>

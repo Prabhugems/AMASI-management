@@ -5,6 +5,7 @@ import { validatePagination, sanitizeSearchInput, isValidUUID } from "@/lib/vali
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { DEFAULTS } from "@/lib/config"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
+import { isQikchatEnabled, sendQikchatText } from "@/lib/qikchat"
 
 type EventSettings = {
   customize_registration_id: boolean
@@ -644,23 +645,38 @@ export async function POST(request: NextRequest) {
       console.error("Auto-send failed:", err)
     })
 
-    // Send delegate_login WhatsApp via Gallabox (non-blocking, only for confirmed registrations)
-    if (isGallaboxEnabled() && attendee_phone && initialStatus === "confirmed") {
+    // Send delegate_login WhatsApp (non-blocking, only for confirmed registrations)
+    if ((isGallaboxEnabled() || isQikchatEnabled()) && attendee_phone && initialStatus === "confirmed") {
       const portalUrl = `${baseUrl}/my`
-      sendGallaboxTemplate(
-        attendee_phone,
-        attendee_name,
-        "delegate_login",
-        { "1": attendee_name, "2": event?.name || "Event", "3": portalUrl }
-      ).then(waResult => {
-        if (waResult.success) {
-          console.log(`[WhatsApp] delegate_login sent to ${attendee_phone} - ID: ${waResult.messageId}`)
-        } else {
-          console.warn(`[WhatsApp] delegate_login failed for ${attendee_phone}: ${waResult.error}`)
-        }
-      }).catch(err => {
-        console.warn("[WhatsApp] delegate_login error:", err.message)
-      })
+      const eventName = event?.name || "Event"
+
+      if (isQikchatEnabled()) {
+        const message = `Hello ${attendee_name}! 🎉\n\nYour registration for *${eventName}* is confirmed!\n\n📋 Registration: ${registrationNumber}\n🎫 Ticket: ${ticket.name}\n\n📅 Date: June 19-20, 2026\n📍 Venue: ITC Grand Chola, Chennai\n\nManage your registration: ${portalUrl}\n\n- Team TechnoSurg`
+        sendQikchatText(attendee_phone, message).then(waResult => {
+          if (waResult.success) {
+            console.log(`[WhatsApp/Qikchat] Registration confirmation sent to ${attendee_phone} - ID: ${waResult.messageId}`)
+          } else {
+            console.warn(`[WhatsApp/Qikchat] Failed for ${attendee_phone}: ${waResult.error}`)
+          }
+        }).catch(err => {
+          console.warn("[WhatsApp/Qikchat] error:", err.message)
+        })
+      } else {
+        sendGallaboxTemplate(
+          attendee_phone,
+          attendee_name,
+          "delegate_login",
+          { "1": attendee_name, "2": eventName, "3": portalUrl }
+        ).then(waResult => {
+          if (waResult.success) {
+            console.log(`[WhatsApp/Gallabox] delegate_login sent to ${attendee_phone} - ID: ${waResult.messageId}`)
+          } else {
+            console.warn(`[WhatsApp/Gallabox] delegate_login failed for ${attendee_phone}: ${waResult.error}`)
+          }
+        }).catch(err => {
+          console.warn("[WhatsApp/Gallabox] delegate_login error:", err.message)
+        })
+      }
     }
 
     return NextResponse.json({

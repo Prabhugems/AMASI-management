@@ -272,7 +272,7 @@ function EventRow({
         group
         transition-all duration-500 ease-out
         ${isVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"}
-        ${isHovered ? (isDark ? "bg-slate-800/50" : "bg-gray-50/80") : ""}
+        ${isHovered ? (isDark ? "bg-slate-800/50" : "bg-primary/[0.03]") : ""}
         ${!isLast ? (isDark ? "border-b border-slate-700/50" : "border-b border-gray-100") : ""}
       `}
       style={{ transitionDelay: `${index * 100}ms` }}
@@ -517,17 +517,58 @@ export function EventsTable() {
           </thead>
           <tbody>
             {isLoading ? (
-              <tr>
-                <td colSpan={FEATURES.faculty ? 7 : 6} className={`py-12 text-center ${isDark ? "text-slate-400" : "text-gray-500"}`}>
-                  Loading events...
-                </td>
-              </tr>
+              <>
+                {[1, 2, 3].map((i) => (
+                  <tr key={i} className={`animate-pulse ${isDark ? "border-b border-slate-700/50" : "border-b border-gray-100"}`}>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-11 h-11 rounded-xl ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                        <div className="space-y-2">
+                          <div className={`w-36 h-4 rounded ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                          <div className={`w-24 h-3 rounded ${isDark ? "bg-slate-700/70" : "bg-gray-200/70"}`} />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="space-y-2">
+                        <div className={`w-24 h-4 rounded ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                        <div className={`w-16 h-3 rounded ${isDark ? "bg-slate-700/70" : "bg-gray-200/70"}`} />
+                      </div>
+                    </td>
+                    {FEATURES.faculty && (
+                      <td className="py-4 px-4">
+                        <div className="flex -space-x-2">
+                          {[1, 2, 3].map((j) => (
+                            <div key={j} className={`w-8 h-8 rounded-full border-2 ${isDark ? "bg-slate-700 border-slate-800" : "bg-gray-200 border-white"}`} />
+                          ))}
+                        </div>
+                      </td>
+                    )}
+                    <td className="py-4 px-4">
+                      <div className={`w-12 h-5 rounded ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                    </td>
+                    <td className="py-4 px-4 min-w-[180px]">
+                      <div className={`w-full h-2 rounded-full ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className={`w-20 h-6 rounded-full ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className={`w-8 h-8 rounded-lg ${isDark ? "bg-slate-700" : "bg-gray-200"}`} />
+                    </td>
+                  </tr>
+                ))}
+              </>
             ) : displayEvents.length === 0 ? (
               <tr>
-                <td colSpan={FEATURES.faculty ? 7 : 6} className={`py-12 text-center ${isDark ? "text-slate-400" : "text-gray-500"}`}>
-                  <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="font-medium">No active events</p>
-                  <p className="text-sm mt-1">Create a new event to get started</p>
+                <td colSpan={FEATURES.faculty ? 7 : 6} className="py-16 text-center">
+                  <div className={`inline-flex p-5 rounded-full mb-4 ${isDark ? "bg-slate-800" : "bg-gray-100"}`}>
+                    <Calendar className={`w-10 h-10 ${isDark ? "text-slate-500" : "text-gray-400"}`} />
+                  </div>
+                  <p className={`font-semibold text-lg ${isDark ? "text-slate-300" : "text-gray-700"}`}>No active events</p>
+                  <p className={`text-sm mt-1 max-w-xs mx-auto ${isDark ? "text-slate-500" : "text-gray-500"}`}>
+                    Create a new event to start managing conferences, workshops, and courses
+                  </p>
                 </td>
               </tr>
             ) : (

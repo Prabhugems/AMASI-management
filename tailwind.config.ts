@@ -203,6 +203,27 @@ const config: Config = {
           "0%": { transform: "scale(1)", opacity: "0.4" },
           "100%": { transform: "scale(2.5)", opacity: "0" },
         },
+        "confetti-fall": {
+          "0%": { transform: "translateY(-100vh) rotate(0deg)", opacity: "1" },
+          "100%": { transform: "translateY(100vh) rotate(720deg)", opacity: "0" },
+        },
+        "ticket-select": {
+          "0%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.02)" },
+          "100%": { transform: "scale(1)" },
+        },
+        "slide-up-fade": {
+          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "progress-fill": {
+          "0%": { width: "0%" },
+          "100%": { width: "100%" },
+        },
+        "bounce-slow": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -232,6 +253,11 @@ const config: Config = {
         "fade-in-scale": "fade-in-scale 0.3s ease-out forwards",
         "ping-slow": "ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite",
         "ping-slower": "ping-slower 3s cubic-bezier(0, 0, 0.2, 1) infinite",
+        "confetti-fall": "confetti-fall 3s ease-in forwards",
+        "ticket-select": "ticket-select 0.3s ease-out",
+        "slide-up-fade": "slide-up-fade 0.4s ease-out forwards",
+        "progress-fill": "progress-fill 0.5s ease-out forwards",
+        "bounce-slow": "bounce-slow 3s ease-in-out infinite",
       },
       transitionTimingFunction: {
         "bounce": "cubic-bezier(0.68, -0.55, 0.265, 1.55)",

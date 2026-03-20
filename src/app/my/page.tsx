@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import {
   Search,
   Loader2,
@@ -38,10 +38,153 @@ import {
   Send,
   GraduationCap,
   Download,
+  Sparkles,
+  Timer,
+  PartyPopper,
+  Truck,
 } from "lucide-react"
 import { toast } from "sonner"
+import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion"
+import QRCode from "qrcode"
 import { FormRenderer } from "@/components/forms/renderer/form-renderer"
 import { Form as FormType, FormField } from "@/lib/types"
+
+// -- Haptic feedback utility --
+function haptic(style: "light" | "medium" | "heavy" = "light") {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    const ms = style === "light" ? 10 : style === "medium" ? 20 : 40
+    navigator.vibrate(ms)
+  }
+}
+
+// -- Stagger animation variants --
+const containerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07 } },
+} as const
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 18, scale: 0.97 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring" as const, stiffness: 300, damping: 24 } },
+}
+
+// -- Countdown hook --
+function useCountdown(targetDate: string | undefined) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!targetDate) return
+    const id = setInterval(() => setNow(Date.now()), 60_000) // update every minute
+    return () => clearInterval(id)
+  }, [targetDate])
+
+  if (!targetDate) return null
+  const target = new Date(targetDate).getTime()
+  const diff = target - now
+  if (diff <= 0) return null
+  const days = Math.floor(diff / 86400000)
+  const hours = Math.floor((diff % 86400000) / 3600000)
+  const minutes = Math.floor((diff % 3600000) / 60000)
+  return { days, hours, minutes, total: diff }
+}
+
+// -- QR Code component --
+function CheckinQRCode({ token, size = 180 }: { token: string; size?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    if (!canvasRef.current || !token) return
+    QRCode.toCanvas(canvasRef.current, token, {
+      width: size,
+      margin: 2,
+      color: { dark: "#1e1b4b", light: "#ffffff" },
+    }).catch(() => {})
+  }, [token, size])
+  return <canvas ref={canvasRef} className="mx-auto rounded-xl" />
+}
+
+// -- Pull-to-refresh wrapper --
+function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promise<void>; children: React.ReactNode }) {
+  const y = useMotionValue(0)
+  const pullProgress = useTransform(y, [0, 80], [0, 1])
+  const spinnerOpacity = useTransform(y, [0, 40, 80], [0, 0.5, 1])
+  const spinnerRotate = useTransform(y, [0, 80], [0, 360])
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const handleDragEnd = async () => {
+    if (y.get() >= 70 && !isRefreshing) {
+      setIsRefreshing(true)
+      haptic("medium")
+      await onRefresh()
+      setIsRefreshing(false)
+    }
+  }
+
+  return (
+    <div ref={containerRef} className="relative overflow-hidden">
+      {/* Pull indicator */}
+      <motion.div
+        className="absolute top-0 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center"
+        style={{ opacity: spinnerOpacity, y: useTransform(y, [0, 80], [-30, 10]) }}
+      >
+        <motion.div style={{ rotate: isRefreshing ? undefined : spinnerRotate }}>
+          <RefreshCw className={`w-6 h-6 text-white/80 ${isRefreshing ? "animate-spin" : ""}`} />
+        </motion.div>
+      </motion.div>
+
+      <motion.div
+        drag="y"
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 0.4 }}
+        style={{ y }}
+        onDragEnd={handleDragEnd}
+        className="touch-pan-x"
+      >
+        {children}
+      </motion.div>
+    </div>
+  )
+}
+
+// -- Enhanced loading skeleton --
+function DelegatePortalSkeleton() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-4">
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-white/10 rounded-2xl mx-auto mb-4 animate-pulse" />
+          <div className="h-8 w-48 bg-white/10 rounded-lg mx-auto mb-2 animate-pulse" />
+          <div className="h-4 w-64 bg-white/10 rounded-lg mx-auto animate-pulse" />
+        </div>
+        <div className="bg-white rounded-2xl p-6 space-y-4">
+          <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+          <div className="h-14 w-full bg-gray-100 rounded-xl animate-pulse" />
+          <div className="h-14 w-full bg-gradient-to-r from-indigo-200 to-purple-200 rounded-xl animate-pulse" />
+          <div className="h-4 w-52 bg-gray-100 rounded mx-auto animate-pulse" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// -- Floating Help Button --
+function FloatingHelpButton({ onClick }: { onClick: () => void }) {
+  return (
+    <motion.button
+      onClick={() => { haptic("light"); onClick() }}
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ delay: 1, type: "spring", stiffness: 260, damping: 20 }}
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+      className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center group"
+    >
+      <HelpCircle className="w-6 h-6 group-hover:hidden" />
+      <MessageSquare className="w-6 h-6 hidden group-hover:block" />
+      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
+      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
+    </motion.button>
+  )
+}
 
 interface RegistrationAddon {
   id: string
@@ -506,19 +649,39 @@ export default function DelegatePortalPage() {
   // Search/Entry View
   if (registrations.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Ambient background orbs */}
+        <div className="absolute top-20 -left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse-slow pointer-events-none" />
+        <div className="absolute bottom-20 -right-20 w-72 h-72 bg-indigo-500/20 rounded-full blur-3xl animate-pulse-slower pointer-events-none" />
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="w-full max-w-md relative z-10"
+        >
           {/* Logo/Header */}
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-white/10 backdrop-blur rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.15, duration: 0.4 }}
+            className="text-center mb-8"
+          >
+            <div className="w-20 h-20 bg-white/10 backdrop-blur-lg rounded-2xl flex items-center justify-center mx-auto mb-4 ring-1 ring-white/20 shadow-lg shadow-indigo-500/10">
               <User className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">Delegate Portal</h1>
             <p className="text-white/70">Access your badge, certificate & event details</p>
-          </div>
+          </motion.div>
 
           {/* Search Form */}
-          <form onSubmit={handleSearch} className="bg-white rounded-2xl shadow-2xl p-6">
+          <motion.form
+            onSubmit={handleSearch}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="bg-white rounded-2xl shadow-2xl p-6 ring-1 ring-black/5"
+          >
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Enter your Email, Phone, or Registration Number
             </label>
@@ -682,8 +845,8 @@ export default function DelegatePortalPage() {
             <p className="text-center text-sm text-gray-500 mt-4">
               Use the email or phone you registered with
             </p>
-          </form>
-        </div>
+          </motion.form>
+        </motion.div>
       </div>
     )
   }
@@ -691,38 +854,49 @@ export default function DelegatePortalPage() {
   // Multiple Events Selection View
   if (registrations.length > 1 && !selectedRegistration) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4 py-8">
-        <div className="max-w-lg mx-auto space-y-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4 py-8 relative overflow-hidden">
+        <div className="absolute top-10 -right-20 w-60 h-60 bg-purple-500/15 rounded-full blur-3xl animate-pulse-slow pointer-events-none" />
+        <motion.div
+          initial="hidden"
+          animate="show"
+          variants={containerVariants}
+          className="max-w-lg mx-auto space-y-4 relative z-10"
+        >
           {/* Back Button */}
-          <button
+          <motion.button
+            variants={itemVariants}
             onClick={() => {
+              haptic("light")
               setRegistrations([])
               setSearchQuery("")
             }}
-            className="text-white/70 hover:text-white flex items-center gap-2 text-sm mb-4"
+            className="text-white/70 hover:text-white flex items-center gap-2 text-sm mb-4 transition-colors"
           >
             <ArrowRight className="w-4 h-4 rotate-180" />
             Search again
-          </button>
+          </motion.button>
 
           {/* Header */}
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-white/10 backdrop-blur rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <motion.div variants={itemVariants} className="text-center mb-6">
+            <div className="w-16 h-16 bg-white/10 backdrop-blur-lg rounded-2xl flex items-center justify-center mx-auto mb-4 ring-1 ring-white/20">
               <Calendar className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">
               Welcome, {registrations[0].attendee_name}!
             </h1>
             <p className="text-white/70">You have {registrations.length} event registrations</p>
-          </div>
+          </motion.div>
 
           {/* Event List */}
           <div className="space-y-3">
-            {registrations.map((reg) => (
-              <button
+            {registrations.map((reg, index) => (
+              <motion.button
                 key={reg.id}
-                onClick={() => setSelectedRegistration(reg)}
-                className="w-full bg-white rounded-xl p-4 text-left hover:shadow-xl transition-all group"
+                variants={itemVariants}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => { haptic("light"); setSelectedRegistration(reg) }}
+                className="w-full bg-white rounded-xl p-4 text-left shadow-lg hover:shadow-xl transition-shadow group"
               >
                 <div className="flex items-center gap-4">
                   {reg.event?.logo_url ? (
@@ -756,13 +930,13 @@ export default function DelegatePortalPage() {
                   </div>
                   <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
                 </div>
-              </button>
+              </motion.button>
             ))}
           </div>
 
           {/* Pending Payments */}
           {pendingPayments.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-4">
+            <motion.div variants={itemVariants} className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-4">
               <div className="flex items-center gap-2 text-amber-700 font-medium mb-2">
                 <Clock className="w-4 h-4" />
                 {pendingPayments.length} Pending Payment{pendingPayments.length > 1 ? "s" : ""}
@@ -786,9 +960,9 @@ export default function DelegatePortalPage() {
                   </div>
                 </div>
               ))}
-            </div>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
       </div>
     )
   }
@@ -817,13 +991,38 @@ export default function DelegatePortalPage() {
     ]
   }
 
+  // Countdown to event
+  const countdown = useCountdown(event?.start_date)
+
+  // Help section scroll ref
+  const helpRef = useRef<HTMLDivElement>(null)
+  const scrollToHelp = () => {
+    helpRef.current?.scrollIntoView({ behavior: "smooth" })
+    // Also expand help form
+    setTimeout(() => {
+      const btn = helpRef.current?.querySelector("button")
+      btn?.click()
+    }, 400)
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4 py-8">
-      <div className="max-w-lg mx-auto space-y-4">
+    <PullToRefresh onRefresh={refreshRegistration}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4 py-8 relative overflow-hidden">
+      {/* Ambient background */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse-slow pointer-events-none" />
+      <div className="absolute bottom-20 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl animate-pulse-slower pointer-events-none" />
+
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={containerVariants}
+        className="max-w-lg mx-auto space-y-4 relative z-10"
+      >
         {/* Back + Refresh Buttons */}
-        <div className="flex items-center justify-between mb-4">
+        <motion.div variants={itemVariants} className="flex items-center justify-between mb-4">
         <button
           onClick={() => {
+            haptic("light")
             if (registrations.length > 1) {
               setSelectedRegistration(null)
             } else {
@@ -832,32 +1031,64 @@ export default function DelegatePortalPage() {
               setSearchQuery("")
             }
           }}
-          className="text-white/70 hover:text-white flex items-center gap-2 text-sm"
+          className="text-white/70 hover:text-white flex items-center gap-2 text-sm transition-colors"
         >
           <ArrowRight className="w-4 h-4 rotate-180" />
           {registrations.length > 1 ? "Back to my events" : "Search another registration"}
         </button>
         <button
-          onClick={refreshRegistration}
+          onClick={() => { haptic("light"); refreshRegistration() }}
           disabled={refreshing}
-          className="text-white/70 hover:text-white flex items-center gap-2 text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+          className="text-white/70 hover:text-white flex items-center gap-2 text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 backdrop-blur-sm"
         >
           <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           {refreshing ? "Refreshing..." : "Refresh"}
         </button>
-        </div>
+        </motion.div>
+
+        {/* Event Countdown */}
+        {countdown && (
+          <motion.div
+            variants={itemVariants}
+            className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 backdrop-blur-sm rounded-2xl p-4 border border-white/10"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-white/80">
+                <Timer className="w-4 h-4" />
+                <span className="text-sm font-medium">Event starts in</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-4 mt-3">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white tabular-nums">{countdown.days}</div>
+                <div className="text-xs text-white/60 uppercase tracking-wider">days</div>
+              </div>
+              <div className="text-xl text-white/40 font-light">:</div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white tabular-nums">{countdown.hours}</div>
+                <div className="text-xs text-white/60 uppercase tracking-wider">hours</div>
+              </div>
+              <div className="text-xl text-white/40 font-light">:</div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white tabular-nums">{countdown.minutes}</div>
+                <div className="text-xs text-white/60 uppercase tracking-wider">mins</div>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Event Banner */}
         {event && (
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-xl overflow-hidden">
             {event.banner_url ? (
               <div
                 className="h-28 bg-cover bg-center"
                 style={{ backgroundImage: `url(${event.banner_url})` }}
               />
             ) : (
-              <div className="h-28 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 flex items-center justify-center">
-                <h2 className="text-white/20 text-5xl font-black tracking-widest select-none">
+              <div className="h-28 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 flex items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGMzLjg2NyAwIDcuNDQ3LTEuMjIgMTAuMzgyLTMuMjk0IiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiIHN0cm9rZS13aWR0aD0iMiIvPjwvZz48L3N2Zz4=')] opacity-30" />
+                <h2 className="text-white/20 text-5xl font-black tracking-widest select-none relative z-10">
                   {(event.short_name || event.name).toUpperCase()}
                 </h2>
               </div>
@@ -892,15 +1123,20 @@ export default function DelegatePortalPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Delegate Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-6">
+        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-xl p-6">
           <div className="text-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-3xl font-bold">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.2 }}
+              className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-3xl font-bold shadow-lg shadow-indigo-500/30"
+            >
               {registration.attendee_name.charAt(0).toUpperCase()}
-            </div>
+            </motion.div>
             <h1 className="text-2xl font-bold text-gray-900">{registration.attendee_name}</h1>
             {registration.attendee_designation && (
               <p className="text-gray-600">{registration.attendee_designation}</p>
@@ -920,6 +1156,20 @@ export default function DelegatePortalPage() {
               {registration.registration_number}
             </p>
           </div>
+
+          {/* QR Code for Check-in */}
+          {registration.checkin_token && !registration.checked_in && (
+            <div className="mb-6 text-center">
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
+                <p className="text-xs text-indigo-600 font-medium mb-3 flex items-center justify-center gap-1">
+                  <QrCode className="w-3.5 h-3.5" />
+                  SHOW THIS FOR QUICK CHECK-IN
+                </p>
+                <CheckinQRCode token={registration.checkin_token} size={160} />
+                <p className="text-xs text-gray-400 mt-2 font-mono">{registration.checkin_token}</p>
+              </div>
+            </div>
+          )}
 
           {/* Status & Details */}
           <div className="space-y-3 mb-6">
@@ -1008,9 +1258,10 @@ export default function DelegatePortalPage() {
                 Check-in
               </span>
               {registration.checked_in ? (
-                <span className="inline-flex items-center gap-1.5 font-medium text-sm px-2.5 py-1 rounded-full bg-green-100 text-green-700">
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  {registration.checked_in_at ? formatDateTime(registration.checked_in_at) : "Checked In"}
+                <span className="relative inline-flex items-center gap-1.5 font-medium text-sm px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+                  <span className="absolute inset-0 rounded-full bg-green-400/30 animate-ping-slow" />
+                  <CheckCircle className="w-3.5 h-3.5 relative z-10" />
+                  <span className="relative z-10">{registration.checked_in_at ? formatDateTime(registration.checked_in_at) : "Checked In"}</span>
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 font-medium text-sm px-2.5 py-1 rounded-full bg-red-100 text-red-600">
@@ -1103,7 +1354,7 @@ export default function DelegatePortalPage() {
             )}
           </div>
           )}
-        </div>
+        </motion.div>
 
         {/* Abstract Submissions Section */}
         <AbstractSubmissions
@@ -1122,7 +1373,7 @@ export default function DelegatePortalPage() {
         />
 
         {/* Download Buttons */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* Invitation Download */}
           {portalSettings.show_invitation && (
           <button
@@ -1199,17 +1450,24 @@ export default function DelegatePortalPage() {
 
           {/* FMAS Result - Pass only */}
           {registration.exam_result === "pass" && registration.convocation_number && (
-          <button
-            onClick={() => window.open(`/convocation?c=${registration.convocation_number}`, "_blank")}
-            className="bg-white rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all group"
+          <motion.button
+            whileHover={{ scale: 1.05, y: -4 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => { haptic("medium"); window.open(`/convocation?c=${registration.convocation_number}`, "_blank") }}
+            className="relative bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 rounded-2xl shadow-xl shadow-green-500/20 p-5 text-center hover:shadow-2xl transition-all group overflow-hidden"
           >
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:bg-green-200 transition-colors">
-              <GraduationCap className="w-6 h-6 text-green-600" />
+            {/* Celebration sparkle effect */}
+            <div className="absolute inset-0 pointer-events-none">
+              <Sparkles className="absolute top-1 right-2 w-4 h-4 text-yellow-200/60 animate-float" />
+              <Sparkles className="absolute bottom-2 left-3 w-3 h-3 text-yellow-200/40 animate-float" style={{ animationDelay: "1s" }} />
             </div>
-            <h3 className="font-semibold text-gray-900 text-sm mb-1">FMAS Result</h3>
-            <p className="text-xs text-green-600 font-bold">PASS</p>
-            <p className="text-xs text-gray-500 font-mono mt-0.5">{registration.convocation_number}</p>
-          </button>
+            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mx-auto mb-2">
+              <GraduationCap className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="font-semibold text-white text-sm mb-1">FMAS Result</h3>
+            <p className="text-sm text-white font-extrabold tracking-wide">PASS</p>
+            <p className="text-xs text-white/70 font-mono mt-0.5">{registration.convocation_number}</p>
+          </motion.button>
           )}
 
           {/* Certificate Dispatch form is shown as full-width banner below */}
@@ -1232,17 +1490,28 @@ export default function DelegatePortalPage() {
             <p className="text-xs text-green-600">Download</p>
           </button>
           )}
-        </div>
+        </motion.div>
 
         {/* Certificate Dispatch - Full width prominent banner */}
         {registration.exam_result === "pass" && registration.exam_marks?.fillout_link && (
-          <button
-            onClick={() => window.open(registration.exam_marks?.fillout_link, "_blank")}
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl shadow-xl p-6 hover:shadow-2xl hover:from-purple-700 hover:to-indigo-700 transition-all text-left"
+          <motion.button
+            variants={itemVariants}
+            whileHover={{ scale: 1.01, y: -2 }}
+            whileTap={{ scale: 0.99 }}
+            onClick={() => { haptic("medium"); window.open(registration.exam_marks?.fillout_link, "_blank") }}
+            className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 bg-[length:200%_auto] animate-gradient text-white rounded-2xl shadow-xl shadow-purple-500/20 p-6 hover:shadow-2xl transition-shadow text-left relative overflow-hidden"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <FileText className="w-7 h-7 text-white" />
+            {/* Urgency pulse */}
+            <div className="absolute top-3 right-3 flex items-center gap-1.5">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+              </span>
+              <span className="text-xs font-bold text-red-200 uppercase tracking-wider">Action Required</span>
+            </div>
+            <div className="flex items-center gap-4 mt-2">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
+                <Truck className="w-7 h-7 text-white" />
               </div>
               <div className="flex-1">
                 <h3 className="font-bold text-lg">FMAS Certificate Dispatch</h3>
@@ -1250,12 +1519,12 @@ export default function DelegatePortalPage() {
                 <p className="text-white/60 text-xs mt-1">Mandatory - Please complete this form to receive your certificate</p>
               </div>
               <div className="flex-shrink-0">
-                <div className="bg-white/20 rounded-lg px-4 py-2 text-sm font-semibold">
+                <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 text-sm font-semibold">
                   Fill Now &rarr;
                 </div>
               </div>
             </div>
-          </button>
+          </motion.button>
         )}
 
         {/* Pending Payments Section */}
@@ -1454,20 +1723,26 @@ export default function DelegatePortalPage() {
         ))}
 
         {/* Need Help Section */}
-        <DelegateHelpForm
-          eventId={event?.id}
-          name={registration.attendee_name}
-          email={registration.attendee_email}
-          registrationNumber={registration.registration_number}
-        />
+        <motion.div variants={itemVariants} ref={helpRef}>
+          <DelegateHelpForm
+            eventId={event?.id}
+            name={registration.attendee_name}
+            email={registration.attendee_email}
+            registrationNumber={registration.registration_number}
+          />
+        </motion.div>
 
         {/* Footer Note */}
-        <div className="text-center text-white/60 text-sm py-4">
+        <motion.div variants={itemVariants} className="text-center text-white/60 text-sm py-4">
           <p>Print your badge and bring it to the event venue.</p>
           <p className="mt-1">Certificates are available after event completion.</p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Floating Help Button */}
+      <FloatingHelpButton onClick={scrollToHelp} />
     </div>
+    </PullToRefresh>
   )
 }
 

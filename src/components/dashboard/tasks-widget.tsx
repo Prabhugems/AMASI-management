@@ -667,13 +667,43 @@ export function TasksWidget() {
         ))}
       </div>
 
+      {/* Completion Progress Bar */}
+      {total > 0 && (
+        <div className="px-4 pb-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-gray-500"}`}>Progress</span>
+            <span className={`text-xs font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+              {completed}/{total} completed
+            </span>
+          </div>
+          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? "bg-slate-700" : "bg-gray-200"}`}>
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-1000 ease-out"
+              style={{ width: `${(completed / total) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Tasks List */}
       <div className="px-4 pb-4 space-y-3 max-h-[400px] overflow-y-auto">
-        {tasks
-          .filter((t) => !t.completed)
-          .map((task, index) => (
-            <TaskCard key={task.id} task={task} index={index} isDark={isDark} onToggle={handleToggleTask} />
-          ))}
+        {tasks.filter((t) => !t.completed).length === 0 ? (
+          <div className="py-8 text-center">
+            <div className={`inline-flex p-4 rounded-full mb-3 ${isDark ? "bg-emerald-500/10" : "bg-emerald-50"}`}>
+              <CheckCheck className={`w-8 h-8 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
+            </div>
+            <p className={`font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>All tasks completed!</p>
+            <p className={`text-sm mt-1 ${isDark ? "text-slate-400" : "text-gray-500"}`}>
+              Great work - everything is done
+            </p>
+          </div>
+        ) : (
+          tasks
+            .filter((t) => !t.completed)
+            .map((task, index) => (
+              <TaskCard key={task.id} task={task} index={index} isDark={isDark} onToggle={handleToggleTask} />
+            ))
+        )}
       </div>
 
       {/* Footer */}
