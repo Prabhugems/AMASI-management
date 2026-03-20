@@ -379,10 +379,11 @@ export async function POST(request: NextRequest) {
       payment_id: payment?.id,
       payment_number: paymentNumber,
     })
-  } catch (error) {
-    console.error("Create order error:", error)
+  } catch (error: any) {
+    console.error("Create order error:", error?.message || error)
+    console.error("Razorpay env check - KEY_ID exists:", !!process.env.RAZORPAY_KEY_ID, "KEY_SECRET exists:", !!process.env.RAZORPAY_KEY_SECRET)
     return NextResponse.json(
-      { error: "Failed to create order" },
+      { error: error?.message || "Failed to create order" },
       { status: 500 }
     )
   }
