@@ -507,6 +507,9 @@ export default function LandingPage() {
   }, [])
 
   const [day, setDay] = useState<1 | 2>(1)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const navLinks = ["About", "Faculty", "Schedule", "Register"] as const
 
   return (
     <div className="bg-[#050a14] text-white antialiased selection:bg-cyan-500/30 overflow-x-hidden">
@@ -521,21 +524,82 @@ export default function LandingPage() {
         <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
           <span className="text-sm font-medium tracking-tight text-white/80">GEM TechnoSurg</span>
           <div className="hidden md:flex items-center gap-8 text-[13px] text-white/40">
-            {["About", "Faculty", "Schedule", "Register"].map((l) => (
+            {navLinks.map((l) => (
               <a key={l} href={`#${l.toLowerCase()}`} className="hover:text-white transition-colors duration-300 relative group">
                 {l}
                 <span className="absolute -bottom-1 left-0 w-0 h-px bg-cyan-400 group-hover:w-full transition-all duration-300" />
               </a>
             ))}
           </div>
+          {/* Mobile hamburger button */}
+          <button
+            className="md:hidden relative z-50 w-8 h-8 flex flex-col items-center justify-center gap-1.5"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+          >
+            <motion.span
+              className="block w-5 h-px bg-white/80 origin-center"
+              animate={mobileMenuOpen ? { rotate: 45, y: 4 } : { rotate: 0, y: 0 }}
+              transition={{ duration: 0.3 }}
+            />
+            <motion.span
+              className="block w-5 h-px bg-white/80 origin-center"
+              animate={mobileMenuOpen ? { opacity: 0 } : { opacity: 1 }}
+              transition={{ duration: 0.2 }}
+            />
+            <motion.span
+              className="block w-5 h-px bg-white/80 origin-center"
+              animate={mobileMenuOpen ? { rotate: -45, y: -4 } : { rotate: 0, y: 0 }}
+              transition={{ duration: 0.3 }}
+            />
+          </button>
           <MagneticButton
             href={REGISTER_URL}
-            className="text-[13px] text-cyan-400 hover:text-cyan-300 transition-colors font-medium"
+            className="hidden md:inline-flex text-[13px] text-cyan-400 hover:text-cyan-300 transition-colors font-medium"
           >
             Register &rarr;
           </MagneticButton>
         </div>
       </motion.nav>
+
+      {/* ── MOBILE MENU ── */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            className="fixed inset-0 z-40 md:hidden bg-[#050a14]/95 backdrop-blur-2xl flex flex-col items-center justify-center gap-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {navLinks.map((l, i) => (
+              <motion.a
+                key={l}
+                href={`#${l.toLowerCase()}`}
+                className="text-2xl font-light text-white/70 hover:text-white transition-colors duration-300"
+                onClick={() => setMobileMenuOpen(false)}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ delay: i * 0.06, duration: 0.3 }}
+              >
+                {l}
+              </motion.a>
+            ))}
+            <motion.a
+              href={REGISTER_URL}
+              className="mt-4 text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors border border-cyan-400/30 rounded-full px-6 py-2"
+              onClick={() => setMobileMenuOpen(false)}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ delay: navLinks.length * 0.06, duration: 0.3 }}
+            >
+              Register &rarr;
+            </motion.a>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── HERO ── */}
       <section ref={heroRef} className="relative min-h-[100dvh] flex items-end overflow-hidden">
