@@ -778,4 +778,64 @@
   body:has(#journey-itinerary) {
     background: white !important;
   }
+
+  /* ================================
+     EXAMINATION RESULTS PRINT STYLES
+     ================================ */
+  /* When printing the results page */
+  #results-page {
+    padding: 0 !important;
+  }
+
+  #results-page .no-print {
+    display: none !important;
+  }
+
+  /* Make result badges print-friendly */
+  #results-page .bg-green-100 {
+    background-color: #dcfce7 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #results-page .bg-red-100 {
+    background-color: #fee2e2 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #results-page .bg-orange-100 {
+    background-color: #ffedd5 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #results-page .bg-yellow-100 {
+    background-color: #fef9c3 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #results-page table {
+    font-size: 11px !important;
+  }
+
+  #results-page th {
+    background-color: #f3f4f6 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-weight: 700 !important;
+  }
+
+  #results-page .text-green-600 {
+    color: #16a34a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #results-page .text-red-600 {
+    color: #dc2626 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }

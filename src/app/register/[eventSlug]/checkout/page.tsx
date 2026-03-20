@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { useTheme } from "next-themes"
@@ -25,6 +25,9 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
+  Ticket,
+  ClipboardList,
+  CreditCard,
 } from "lucide-react"
 import { FormRenderer } from "@/components/forms/renderer/form-renderer"
 import { Form, FormField } from "@/lib/types"
@@ -70,6 +73,104 @@ interface TicketType {
   form_id?: string
 }
 
+// Confetti Component
+function ConfettiEffect() {
+  const colors = ["#10b981", "#f59e0b", "#3b82f6", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"]
+  const particles = Array.from({ length: 50 }, (_, i) => ({
+    id: i,
+    color: colors[i % colors.length],
+    left: `${Math.random() * 100}%`,
+    delay: `${Math.random() * 2}s`,
+    size: Math.random() * 8 + 4,
+    duration: `${Math.random() * 2 + 2}s`,
+  }))
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="absolute top-0"
+          style={{
+            left: p.left,
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            backgroundColor: p.color,
+            borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+            animation: `confetti-fall ${p.duration} ease-in ${p.delay} forwards`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// Progress Step Indicator
+function ProgressIndicator({ currentStep }: { currentStep: number }) {
+  const steps = [
+    { num: 1, label: "Select Ticket", icon: Ticket },
+    { num: 2, label: "Your Details", icon: ClipboardList },
+    { num: 3, label: "Payment", icon: CreditCard },
+  ]
+
+  return (
+    <div className="w-full mb-8">
+      <div className="flex items-center justify-between max-w-md mx-auto">
+        {steps.map((step, idx) => {
+          const StepIcon = step.icon
+          const isActive = currentStep === step.num
+          const isCompleted = currentStep > step.num
+          return (
+            <div key={step.num} className="flex items-center flex-1">
+              <div className="flex flex-col items-center relative">
+                <div
+                  className={`
+                    w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center
+                    transition-all duration-500 min-w-[44px] min-h-[44px]
+                    ${isCompleted
+                      ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30"
+                      : isActive
+                        ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 scale-110"
+                        : "bg-gray-200 text-gray-400"
+                    }
+                  `}
+                >
+                  {isCompleted ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : (
+                    <StepIcon className="w-5 h-5" />
+                  )}
+                </div>
+                <span
+                  className={`
+                    text-xs mt-2 font-medium text-center whitespace-nowrap
+                    transition-colors duration-300
+                    ${isActive ? "text-emerald-600" : isCompleted ? "text-emerald-500" : "text-gray-400"}
+                  `}
+                >
+                  {step.label}
+                </span>
+              </div>
+              {idx < steps.length - 1 && (
+                <div className="flex-1 mx-2 sm:mx-3 mt-[-20px]">
+                  <div className="h-0.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`
+                        h-full bg-emerald-500 rounded-full transition-all duration-700 ease-out
+                        ${isCompleted ? "w-full" : "w-0"}
+                      `}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function CheckoutPage() {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -85,6 +186,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState("")
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null)
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [showConfetti, setShowConfetti] = useState(false)
   // Duplicate email state
   const [duplicateEmailInfo, setDuplicateEmailInfo] = useState<{
     hasExisting: boolean
@@ -99,6 +201,9 @@ export default function CheckoutPage() {
     membership_type: string | null
   } | null>(null)
   const [isLookingUpMember, setIsLookingUpMember] = useState(false)
+  // Track current checkout step (2 = details, 3 = payment)
+  const [checkoutStep, setCheckoutStep] = useState(2)
+  const paymentSectionRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const params = useParams()
   const eventSlug = params.eventSlug as string
@@ -398,6 +503,21 @@ export default function CheckoutPage() {
     }
   }, [availablePaymentMethods, selectedPaymentMethod])
 
+  // Update checkout step based on form completeness
+  const updateStepBasedOnForm = useCallback(() => {
+    const isFormComplete = hasCustomForm
+      ? isCustomFormValid
+      : !!(formData.email && formData.first_name && formData.last_name && formData.phone)
+
+    if (isFormComplete && checkoutStep === 2) {
+      setCheckoutStep(3)
+      // Smooth scroll to payment section
+      setTimeout(() => {
+        paymentSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+      }, 200)
+    }
+  }, [formData, hasCustomForm, isCustomFormValid, checkoutStep])
+
   // Validate discount code
   const validateDiscountCode = async () => {
     if (!discountCode.trim()) return
@@ -588,24 +708,33 @@ export default function CheckoutPage() {
       // Handle FREE registration
       if (selectedPaymentMethod === "free" || totals.total === 0) {
         const registration = await createRegistration("free")
+        setShowConfetti(true)
         sessionStorage.removeItem(`checkout_${eventSlug}`)
-        router.push(getSuccessUrl(registration.registration_number, formData.email))
+        setTimeout(() => {
+          router.push(getSuccessUrl(registration.registration_number, formData.email))
+        }, 1500)
         return
       }
 
       // Handle CASH (Pay at Venue)
       if (selectedPaymentMethod === "cash") {
         const registration = await createRegistration("cash")
+        setShowConfetti(true)
         sessionStorage.removeItem(`checkout_${eventSlug}`)
-        router.push(getSuccessUrl(registration.registration_number, formData.email, "cash"))
+        setTimeout(() => {
+          router.push(getSuccessUrl(registration.registration_number, formData.email, "cash"))
+        }, 1500)
         return
       }
 
       // Handle BANK TRANSFER
       if (selectedPaymentMethod === "bank_transfer") {
         const registration = await createRegistration("bank_transfer")
+        setShowConfetti(true)
         sessionStorage.removeItem(`checkout_${eventSlug}`)
-        router.push(getSuccessUrl(registration.registration_number, formData.email, "bank_transfer"))
+        setTimeout(() => {
+          router.push(getSuccessUrl(registration.registration_number, formData.email, "bank_transfer"))
+        }, 1500)
         return
       }
 
@@ -695,8 +824,11 @@ export default function CheckoutPage() {
                 }),
               })
 
+              setShowConfetti(true)
               sessionStorage.removeItem(`checkout_${eventSlug}`)
-              router.push(getSuccessUrl(registration.registration_number, formData.email))
+              setTimeout(() => {
+                router.push(getSuccessUrl(registration.registration_number, formData.email))
+              }, 1500)
             } else {
               setError("Payment verification failed. Please contact support.")
               setIsSubmitting(false)
@@ -741,7 +873,7 @@ export default function CheckoutPage() {
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-lg mx-auto text-center">
-          <div className="bg-white rounded-2xl shadow-lg p-8">
+          <div className="bg-white rounded-2xl shadow-lg p-8 animate-fade-in-up">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-red-500" />
             </div>
@@ -751,7 +883,7 @@ export default function CheckoutPage() {
             </p>
             <Link
               href={`/register/${eventSlug}`}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium transition-colors min-h-[44px]"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Event
@@ -763,9 +895,10 @@ export default function CheckoutPage() {
   }
 
   const inputClassName = `
-    w-full px-4 py-3 rounded-lg border transition-all duration-300
-    bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-emerald-500
-    focus:outline-none focus:ring-2 focus:ring-emerald-100
+    w-full px-4 py-3 rounded-lg border transition-all duration-200 min-h-[44px]
+    bg-white border-gray-200 text-gray-900 placeholder:text-gray-400
+    focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20
+    focus:shadow-sm hover:border-gray-300
   `
 
   const labelClassName = "block text-sm font-medium mb-2 text-gray-700"
@@ -777,11 +910,16 @@ export default function CheckoutPage() {
         strategy="afterInteractive"
       />
 
+      {showConfetti && <ConfettiEffect />}
+
       <div className="container mx-auto px-4 py-8">
+        {/* Progress Indicator */}
+        <ProgressIndicator currentStep={checkoutStep} />
+
         {/* Back Button */}
         <Link
           href={`/register/${eventSlug}`}
-          className="inline-flex items-center gap-2 mb-6 text-sm font-medium text-gray-600 transition-colors hover:text-primary"
+          className="inline-flex items-center gap-2 mb-6 text-sm font-medium text-gray-600 transition-colors hover:text-primary min-h-[44px]"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to event
@@ -790,15 +928,23 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Form Section */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h1 className="text-2xl font-bold mb-6 text-gray-900">
+            <div className="bg-white rounded-xl shadow-sm p-6 animate-fade-in-up">
+              <h1 className="text-2xl font-bold mb-2 text-gray-900">
                 Complete Registration
               </h1>
+              <p className="text-sm text-gray-500 mb-6">
+                Fill in your details to complete the registration
+              </p>
 
               {error && (
-                <div data-error-banner className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  {error}
+                <div data-error-banner className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3 animate-slide-up-fade">
+                  <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Please fix the following</p>
+                    <p className="mt-0.5">{error}</p>
+                  </div>
                 </div>
               )}
 
@@ -845,24 +991,27 @@ export default function CheckoutPage() {
                       if (phoneField && responses[phoneField.id]) {
                         setFormData(prev => ({ ...prev, phone: String(responses[phoneField.id]) }))
                       }
+                      setCheckoutStep(3)
                     }}
                     isSubmitting={false}
                     requireEmailVerification={true}
                   />
 
                   {isCustomFormValid && (
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700">
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 animate-slide-up-fade">
                       <CheckCircle2 className="w-5 h-5" />
                       <span className="font-medium">Form completed! Proceed to payment below.</span>
                     </div>
                   )}
                 </div>
               ) : !isLoadingForm && (
-                <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                <form onSubmit={(e) => e.preventDefault()} className="space-y-8">
                 {/* Personal Information */}
-                <div>
+                <div className="animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
                   <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-                    <User className="w-5 h-5 text-emerald-600" />
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <User className="w-4 h-4 text-emerald-600" />
+                    </div>
                     Personal Information
                   </h2>
 
@@ -884,7 +1033,7 @@ export default function CheckoutPage() {
                       </select>
                     </div>
                     <div>
-                      <label className={labelClassName}>First Name *</label>
+                      <label className={labelClassName}>First Name <span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         name="first_name"
@@ -896,7 +1045,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div>
-                      <label className={labelClassName}>Last Name *</label>
+                      <label className={labelClassName}>Last Name <span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         name="last_name"
@@ -911,15 +1060,17 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Contact Information */}
-                <div>
+                <div className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
                   <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-                    <Mail className="w-5 h-5 text-emerald-600" />
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <Mail className="w-4 h-4 text-emerald-600" />
+                    </div>
                     Contact Information
                   </h2>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className={labelClassName}>Email *</label>
+                      <label className={labelClassName}>Email <span className="text-red-500">*</span></label>
                       <input
                         type="email"
                         name="email"
@@ -928,19 +1079,20 @@ export default function CheckoutPage() {
                         onBlur={(e) => {
                           checkDuplicateEmail(e.target.value)
                           lookupMember(e.target.value)
+                          updateStepBasedOnForm()
                         }}
                         placeholder="john@example.com"
                         className={inputClassName}
                         required
                       />
                       {(isCheckingEmail || isLookingUpMember) && (
-                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           {isLookingUpMember ? "Looking up member details..." : "Checking..."}
                         </p>
                       )}
                       {duplicateEmailInfo?.hasExisting && duplicateEmailInfo.showWarning && (
-                        <div className="mt-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                        <div className="mt-2 p-3 rounded-lg bg-amber-50 border border-amber-200 animate-slide-up-fade">
                           <p className="text-sm text-amber-800 font-medium mb-1">
                             You already have {duplicateEmailInfo.registrations.length} registration(s) for this event
                           </p>
@@ -957,7 +1109,7 @@ export default function CheckoutPage() {
                               </p>
                               <a
                                 href="/my"
-                                className="inline-flex items-center gap-1 text-xs font-medium text-amber-800 underline"
+                                className="inline-flex items-center gap-1 text-xs font-medium text-amber-800 underline min-h-[44px] sm:min-h-0"
                               >
                                 Go to your account to manage your registration
                               </a>
@@ -967,12 +1119,13 @@ export default function CheckoutPage() {
                       )}
                     </div>
                     <div>
-                      <label className={labelClassName}>Phone *</label>
+                      <label className={labelClassName}>Phone <span className="text-red-500">*</span></label>
                       <input
                         type="tel"
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
+                        onBlur={updateStepBasedOnForm}
                         placeholder="+91 98765 43210"
                         className={inputClassName}
                         required
@@ -982,9 +1135,11 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Professional Information */}
-                <div>
+                <div className="animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
                   <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-                    <Building className="w-5 h-5 text-emerald-600" />
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <Building className="w-4 h-4 text-emerald-600" />
+                    </div>
                     Professional Information
                   </h2>
 
@@ -1015,9 +1170,11 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Location */}
-                <div>
+                <div className="animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
                   <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-                    <MapPin className="w-5 h-5 text-emerald-600" />
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <MapPin className="w-4 h-4 text-emerald-600" />
+                    </div>
                     Location
                   </h2>
 
@@ -1059,7 +1216,7 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Additional Information */}
-                <div>
+                <div className="animate-fade-in-up" style={{ animationDelay: "0.5s" }}>
                   <h2 className="text-lg font-semibold mb-4 text-gray-900">
                     Additional Information
                   </h2>
@@ -1116,8 +1273,8 @@ export default function CheckoutPage() {
           </div>
 
           {/* Order Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm sticky top-24 overflow-hidden">
+          <div className="lg:col-span-1" ref={paymentSectionRef}>
+            <div className="bg-white rounded-xl shadow-sm sticky top-24 overflow-hidden transition-shadow duration-300 hover:shadow-md">
               <div className="p-5 border-b border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900">
                   Order Summary
@@ -1136,11 +1293,11 @@ export default function CheckoutPage() {
                         {ticket.name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        ₹{ticket.price.toLocaleString()} × {ticket.quantity}
+                        {"\u20B9"}{ticket.price.toLocaleString()} x {ticket.quantity}
                       </p>
                     </div>
                     <span className="font-medium text-gray-900">
-                      ₹{ticket.subtotal.toLocaleString()}
+                      {"\u20B9"}{ticket.subtotal.toLocaleString()}
                     </span>
                   </div>
                 ))}
@@ -1162,11 +1319,11 @@ export default function CheckoutPage() {
                               {variant && ` (${variant.name})`}
                             </p>
                             <p className="text-xs text-gray-500">
-                              ₹{addon.unitPrice.toLocaleString()} × {addon.quantity}
+                              {"\u20B9"}{addon.unitPrice.toLocaleString()} x {addon.quantity}
                             </p>
                           </div>
                           <span className="font-medium text-gray-900">
-                            ₹{addon.totalPrice.toLocaleString()}
+                            {"\u20B9"}{addon.totalPrice.toLocaleString()}
                           </span>
                         </div>
                       )
@@ -1185,13 +1342,13 @@ export default function CheckoutPage() {
                           placeholder="Discount code"
                           value={discountCode}
                           onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                          className="w-full pl-10 pr-4 py-2 rounded-lg text-sm bg-white border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500"
+                          className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm bg-white border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 min-h-[44px] transition-all duration-200"
                         />
                       </div>
                       <button
                         onClick={validateDiscountCode}
                         disabled={isValidatingDiscount || !discountCode.trim()}
-                        className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:bg-gray-300"
+                        className="px-4 py-2.5 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:bg-gray-300 min-h-[44px] min-w-[44px] transition-colors active:scale-95"
                       >
                         {isValidatingDiscount ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -1201,13 +1358,13 @@ export default function CheckoutPage() {
                       </button>
                     </div>
                     {discountApplied && (
-                      <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
+                      <p className="text-sm text-green-600 mt-2 flex items-center gap-1 animate-slide-up-fade">
                         <CheckCircle className="w-4 h-4" />
-                        Discount applied: -₹{discountApplied.amount.toLocaleString()}
+                        Discount applied: -{"\u20B9"}{discountApplied.amount.toLocaleString()}
                       </p>
                     )}
                     {discountError && (
-                      <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
+                      <p className="text-sm text-red-600 mt-2 flex items-center gap-1 animate-slide-up-fade">
                         <AlertCircle className="w-4 h-4" />
                         {discountError}
                       </p>
@@ -1220,13 +1377,13 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Tickets Subtotal</span>
                     <span className="text-gray-900">
-                      ₹{totals.subtotal.toLocaleString()}
+                      {"\u20B9"}{totals.subtotal.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Tickets GST</span>
                     <span className="text-gray-900">
-                      ₹{totals.tax.toLocaleString()}
+                      {"\u20B9"}{totals.tax.toLocaleString()}
                     </span>
                   </div>
                   {totals.addonsTotal > 0 && (
@@ -1234,13 +1391,13 @@ export default function CheckoutPage() {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Add-ons Subtotal</span>
                         <span className="text-gray-900">
-                          ₹{totals.addonsTotal.toLocaleString()}
+                          {"\u20B9"}{totals.addonsTotal.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Add-ons GST</span>
                         <span className="text-gray-900">
-                          ₹{totals.addonsTax.toLocaleString()}
+                          {"\u20B9"}{totals.addonsTax.toLocaleString()}
                         </span>
                       </div>
                     </>
@@ -1248,12 +1405,12 @@ export default function CheckoutPage() {
                   {totals.discount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-green-600">Discount</span>
-                      <span className="text-green-600">-₹{totals.discount.toLocaleString()}</span>
+                      <span className="text-green-600">-{"\u20B9"}{totals.discount.toLocaleString()}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-bold pt-4 border-t border-gray-200">
                     <span className="text-gray-900">Total</span>
-                    <span className="text-emerald-600">₹{totals.total.toLocaleString()}</span>
+                    <span className="text-emerald-600">{"\u20B9"}{totals.total.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -1271,16 +1428,17 @@ export default function CheckoutPage() {
                         type="button"
                         onClick={() => setSelectedPaymentMethod(method.key)}
                         className={`
-                          w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all
+                          w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all duration-200 min-h-[56px]
+                          active:scale-[0.98]
                           ${selectedPaymentMethod === method.key
-                            ? "border-emerald-500 bg-emerald-50"
-                            : "border-gray-200 hover:border-gray-300"
+                            ? "border-emerald-500 bg-emerald-50 shadow-sm"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                           }
                         `}
                       >
-                        <method.icon className={`w-5 h-5 ${selectedPaymentMethod === method.key ? "text-emerald-600" : "text-gray-400"}`} />
+                        <method.icon className={`w-5 h-5 transition-colors ${selectedPaymentMethod === method.key ? "text-emerald-600" : "text-gray-400"}`} />
                         <div className="text-left flex-1">
-                          <p className={`text-sm font-medium ${selectedPaymentMethod === method.key ? "text-emerald-700" : "text-gray-900"}`}>
+                          <p className={`text-sm font-medium transition-colors ${selectedPaymentMethod === method.key ? "text-emerald-700" : "text-gray-900"}`}>
                             {method.label}
                           </p>
                           <p className="text-xs text-gray-500">
@@ -1288,7 +1446,7 @@ export default function CheckoutPage() {
                           </p>
                         </div>
                         {selectedPaymentMethod === method.key && (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600 animate-scale-in" />
                         )}
                       </button>
                     ))}
@@ -1298,7 +1456,7 @@ export default function CheckoutPage() {
 
               {/* Bank Transfer Details */}
               {selectedPaymentMethod === "bank_transfer" && event?.bank_account_number && (
-                <div className="p-5 border-t border-gray-200 bg-gray-50">
+                <div className="p-5 border-t border-gray-200 bg-gray-50 animate-slide-up-fade">
                   <h4 className="text-sm font-medium mb-3 flex items-center gap-2 text-gray-900">
                     <Building2 className="w-4 h-4" />
                     Bank Transfer Details
@@ -1309,7 +1467,7 @@ export default function CheckoutPage() {
                         <span className="text-gray-500">Account Name</span>
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-gray-900">{event.bank_account_name}</span>
-                          <button onClick={() => copyToClipboard(event.bank_account_name, "name")} className="text-emerald-600 hover:text-emerald-700">
+                          <button onClick={() => copyToClipboard(event.bank_account_name, "name")} className="text-emerald-600 hover:text-emerald-700 min-w-[44px] min-h-[44px] flex items-center justify-center">
                             {copiedField === "name" ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                           </button>
                         </div>
@@ -1319,7 +1477,7 @@ export default function CheckoutPage() {
                       <span className="text-gray-500">Account No.</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-medium text-gray-900">{event.bank_account_number}</span>
-                        <button onClick={() => copyToClipboard(event.bank_account_number, "account")} className="text-emerald-600 hover:text-emerald-700">
+                        <button onClick={() => copyToClipboard(event.bank_account_number, "account")} className="text-emerald-600 hover:text-emerald-700 min-w-[44px] min-h-[44px] flex items-center justify-center">
                           {copiedField === "account" ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                         </button>
                       </div>
@@ -1329,7 +1487,7 @@ export default function CheckoutPage() {
                         <span className="text-gray-500">IFSC Code</span>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-medium text-gray-900">{event.bank_ifsc_code}</span>
-                          <button onClick={() => copyToClipboard(event.bank_ifsc_code, "ifsc")} className="text-emerald-600 hover:text-emerald-700">
+                          <button onClick={() => copyToClipboard(event.bank_ifsc_code, "ifsc")} className="text-emerald-600 hover:text-emerald-700 min-w-[44px] min-h-[44px] flex items-center justify-center">
                             {copiedField === "ifsc" ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                           </button>
                         </div>
@@ -1346,7 +1504,7 @@ export default function CheckoutPage() {
                         <span className="text-gray-500">UPI ID</span>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-medium text-gray-900">{event.bank_upi_id}</span>
-                          <button onClick={() => copyToClipboard(event.bank_upi_id, "upi")} className="text-emerald-600 hover:text-emerald-700">
+                          <button onClick={() => copyToClipboard(event.bank_upi_id, "upi")} className="text-emerald-600 hover:text-emerald-700 min-w-[44px] min-h-[44px] flex items-center justify-center">
                             {copiedField === "upi" ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                           </button>
                         </div>
@@ -1361,7 +1519,6 @@ export default function CheckoutPage() {
 
               {/* Pay Button */}
               <div className="p-5 pt-0">
-                {/* Button only active after form is complete */}
                 {(() => {
                   const isFormComplete = hasCustomForm ? isCustomFormValid : (formData.email && formData.first_name && formData.last_name)
                   const isButtonDisabled = isSubmitting || !selectedPaymentMethod || !isFormComplete
@@ -1370,12 +1527,12 @@ export default function CheckoutPage() {
                   onClick={handlePayment}
                   disabled={isButtonDisabled}
                   className={`
-                    w-full py-4 rounded-xl font-bold text-white
+                    w-full py-4 rounded-xl font-bold text-white min-h-[52px]
                     flex items-center justify-center gap-2
                     transition-all duration-300
                     ${isButtonDisabled
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                      ? "bg-gray-300 cursor-not-allowed text-gray-500"
+                      : "bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md"
                     }
                   `}
                 >
@@ -1402,7 +1559,7 @@ export default function CheckoutPage() {
                   ) : (
                     <>
                       <Shield className="w-5 h-5" />
-                      Pay ₹{totals.total.toLocaleString()}
+                      Pay {"\u20B9"}{totals.total.toLocaleString()}
                     </>
                   )}
                 </button>
