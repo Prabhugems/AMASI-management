@@ -7,6 +7,11 @@ import {
   sendGallaboxTemplate,
   sendGallaboxText,
 } from "@/lib/gallabox"
+import {
+  isQikchatEnabled,
+  sendQikchatText,
+  sendQikchatTemplate,
+} from "@/lib/qikchat"
 
 interface SendRequest {
   phone: string
@@ -30,9 +35,12 @@ export async function POST(request: NextRequest) {
   const { error: authError } = await requireAdmin()
   if (authError) return authError
 
-  if (!isGallaboxEnabled()) {
+  const useQikchat = isQikchatEnabled()
+  const useGallabox = isGallaboxEnabled()
+
+  if (!useQikchat && !useGallabox) {
     return NextResponse.json(
-      { error: "WhatsApp (Gallabox) is not configured. Set GALLABOX_API_KEY, GALLABOX_API_SECRET, and GALLABOX_CHANNEL_ID environment variables." },
+      { error: "WhatsApp is not configured. Set QIKCHAT_API_KEY or GALLABOX_API_KEY environment variables." },
       { status: 503 }
     )
   }
@@ -46,17 +54,27 @@ export async function POST(request: NextRequest) {
     }
 
     let result: { success: boolean; messageId?: string; error?: string }
+    const provider = useQikchat ? "qikchat" : "gallabox"
 
     if (type === "template") {
       if (!template_name) {
         return NextResponse.json({ error: "template_name is required for template messages" }, { status: 400 })
       }
-      result = await sendGallaboxTemplate(phone, recipient_name, template_name, body_values || {})
+      if (useQikchat) {
+        const params = body_values ? Object.values(body_values) : []
+        result = await sendQikchatTemplate(phone, template_name, params)
+      } else {
+        result = await sendGallaboxTemplate(phone, recipient_name, template_name, body_values || {})
+      }
     } else {
       if (!text) {
         return NextResponse.json({ error: "text is required for text messages" }, { status: 400 })
       }
-      result = await sendGallaboxText(phone, recipient_name, text)
+      if (useQikchat) {
+        result = await sendQikchatText(phone, text)
+      } else {
+        result = await sendGallaboxText(phone, recipient_name, text)
+      }
     }
 
     // Log to message_logs
@@ -66,7 +84,7 @@ export async function POST(request: NextRequest) {
         event_id: event_id || null,
         registration_id: registration_id || null,
         channel: "whatsapp",
-        provider: "gallabox",
+        provider,
         recipient: phone,
         recipient_name,
         subject: null,
