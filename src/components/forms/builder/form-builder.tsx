@@ -171,7 +171,7 @@ export function FormBuilder({
       form_id: form.id,
       field_type: fieldType,
       label: fieldInfo?.label || "New Field",
-      is_required: false,
+      is_required: fieldType === "email" || fieldType === "phone" ? true : false,
       sort_order: fields.length,
       width: "full",
       options: ["select", "multiselect", "checkboxes", "radio"].includes(fieldType)
