@@ -51,7 +51,7 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
 }
 
 function getBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+  return process.env.NEXT_PUBLIC_APP_URL || ""
 }
 
 // Replace placeholders for abstracts

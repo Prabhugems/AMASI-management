@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       : ""
     const venue = event?.venue_name ? `${event.venue_name}${event.city ? `, ${event.city}` : ""}` : ""
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ""
     const delegatePortalUrl = `${baseUrl}/my`
 
     const emailSubject = `Your Certificate of Participation - ${eventName}`

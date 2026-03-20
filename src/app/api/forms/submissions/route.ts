@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
 
     // Send notification emails if enabled (async, don't block response)
     if (form.notify_on_submission && form.notification_emails?.length > 0) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ""
       const notificationEmails = Array.isArray(form.notification_emails)
         ? form.notification_emails
         : [form.notification_emails]
@@ -308,7 +308,7 @@ export async function POST(request: NextRequest) {
 
           // Auto-email certificate if enabled
           if (form.auto_email_certificate && registration.id) {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ""
             fetch(`${baseUrl}/api/certificates/email`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },

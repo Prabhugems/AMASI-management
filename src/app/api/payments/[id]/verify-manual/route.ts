@@ -183,7 +183,7 @@ export async function POST(
       }
 
       // Trigger auto actions (receipt email, badge, etc.)
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ""
       try {
         const { data: event } = await (supabase as any)
           .from("events")

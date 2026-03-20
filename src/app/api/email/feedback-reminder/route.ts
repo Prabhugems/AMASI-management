@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const eventName = event?.short_name || event?.name || "Event"
     const feedbackFormName = form_name || "Feedback Form"
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ""
     const delegatePortalUrl = `${baseUrl}/my`
 
     const emailSubject = `Share Your Feedback - ${eventName}`

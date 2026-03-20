@@ -70,7 +70,7 @@ function UTMLinkGenerator({ eventSlug, eventShortName }: { eventSlug: string; ev
   const [customLinks, setCustomLinks] = useState<{ name: string; source: string; medium: string }[]>([])
 
   const campaign = (eventShortName || "event").toLowerCase().replace(/[^a-z0-9]+/g, "-")
-  const baseUrl = `https://collegeofmas.org.in/register/${eventSlug}`
+  const baseUrl = `${process.env.NEXT_PUBLIC_APP_URL || ""}/register/${eventSlug}`
 
   const buildUrl = (source: string, medium: string) =>
     `${baseUrl}?utm_source=${source}&utm_medium=${medium}&utm_campaign=${campaign}`

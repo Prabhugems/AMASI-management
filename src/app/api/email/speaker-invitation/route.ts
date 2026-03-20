@@ -6,7 +6,7 @@ import { escapeHtml } from "@/lib/string-utils"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 import { COMPANY_CONFIG } from "@/lib/config"
 
-const PRODUCTION_URL = "https://collegeofmas.org.in"
+const PRODUCTION_URL = process.env.NEXT_PUBLIC_APP_URL || ""
 
 function getBaseUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : PRODUCTION_URL)
@@ -378,7 +378,7 @@ export async function PUT(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
     if (baseUrl === "http://localhost:3000" || baseUrl.includes("your-") || baseUrl.includes("example")) {
       return NextResponse.json(
-        { error: "NEXT_PUBLIC_APP_URL is not set. Add it in Vercel Environment Variables (e.g. https://collegeofmas.org.in) and redeploy." },
+        { error: "NEXT_PUBLIC_APP_URL is not set. Add it in Vercel Environment Variables and redeploy." },
         { status: 503 }
       )
     }

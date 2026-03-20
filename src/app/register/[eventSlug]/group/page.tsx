@@ -28,7 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { COMPANY_CONFIG } from "@/lib/config"
+import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 
 declare global {
   interface Window {
@@ -447,38 +447,45 @@ export default function GroupRegistrationPage() {
           color: "#8B5CF6",
         },
         handler: async (response: any) => {
-          // Verify payment
-          const verifyResponse = await fetch("/api/payments/razorpay/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            }),
-          })
-
-          const verifyData = await verifyResponse.json()
-
-          if (verifyData.success) {
-            // Create group registration after successful payment
-            const regResponse = await fetch("/api/registrations/group", {
+          try {
+            // Verify payment
+            const verifyResponse = await fetch("/api/payments/razorpay/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                ...payload,
-                payment_method: "razorpay",
-                payment_id: verifyData.payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
               }),
             })
 
-            const regData = await regResponse.json()
-            if (!regResponse.ok) throw new Error(regData.error)
+            const verifyData = await verifyResponse.json()
 
-            sessionStorage.removeItem(`checkout_${eventSlug}`)
-            router.push(`/register/success?order=${regData.order_number}&email=${buyerData.email}&type=group`)
-          } else {
-            setError("Payment verification failed. Please contact support.")
+            if (verifyData.success) {
+              // Create group registration after successful payment
+              const regResponse = await fetch("/api/registrations/group", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  ...payload,
+                  payment_method: "razorpay",
+                  payment_id: verifyData.payment_id,
+                }),
+              })
+
+              const regData = await regResponse.json()
+              if (!regResponse.ok) throw new Error(regData.error)
+
+              sessionStorage.removeItem(`checkout_${eventSlug}`)
+              router.push(`/register/success?order=${regData.order_number}&email=${buyerData.email}&type=group`)
+            } else {
+              setError("Payment verification failed. Please contact support.")
+              setIsSubmitting(false)
+            }
+          } catch (err: any) {
+            console.error("Razorpay handler error:", err)
+            setError(err.message || "Payment processing failed. Please try again.")
+            setIsSubmitting(false)
           }
         },
         modal: {
@@ -615,7 +622,7 @@ export default function GroupRegistrationPage() {
                     type="email"
                     value={buyerData.email}
                     onChange={(e) => setBuyerData({ ...buyerData, email: e.target.value })}
-                    onBlur={(e) => lookupBuyerMember(e.target.value)}
+                    onBlur={(e) => FEATURES.membership && lookupBuyerMember(e.target.value)}
                     placeholder="priya@aiims.edu"
                     className={inputClassName}
                   />
@@ -886,7 +893,7 @@ export default function GroupRegistrationPage() {
                   type="email"
                   value={newAttendee.email}
                   onChange={(e) => setNewAttendee({ ...newAttendee, email: e.target.value })}
-                  onBlur={(e) => lookupAttendeeMember(e.target.value)}
+                  onBlur={(e) => FEATURES.membership && lookupAttendeeMember(e.target.value)}
                   placeholder="amit@hospital.com"
                 />
                 {isLookingUpAttendee && (

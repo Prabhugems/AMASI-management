@@ -9,6 +9,9 @@ export const COMPANY_CONFIG = {
   fullName: process.env.NEXT_PUBLIC_COMPANY_FULL_NAME || "Association of Minimal Access Surgeons of India",
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@amasi.org",
   website: process.env.NEXT_PUBLIC_COMPANY_WEBSITE || "https://amasi.org",
+  membershipApplicationUrl: process.env.NEXT_PUBLIC_MEMBERSHIP_APPLICATION_URL || "https://application.amasi.org/application/user-member-application-list",
+  membershipLookupUrl: process.env.NEXT_PUBLIC_MEMBERSHIP_LOOKUP_URL || "https://application.amasi.org/application/user-member-application-not-found",
+  skillCourseUrl: process.env.NEXT_PUBLIC_SKILL_COURSE_URL || "https://amasi.org/skill-course/",
 }
 
 // Feature flags for optional modules

@@ -319,7 +319,7 @@ export async function POST(request: NextRequest) {
 
       // Send delegate_login WhatsApp via Gallabox (non-blocking)
       if (isGallaboxEnabled() && finalRegistration.attendee_phone) {
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://collegeofmas.org.in"
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || ""
         const portalUrl = `${baseUrl}/my`
         sendGallaboxTemplate(
           finalRegistration.attendee_phone,

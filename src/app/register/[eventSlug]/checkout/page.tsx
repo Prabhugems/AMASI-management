@@ -30,7 +30,7 @@ import { FormRenderer } from "@/components/forms/renderer/form-renderer"
 import { Form, FormField } from "@/lib/types"
 import { usePageTracking } from "@/hooks/usePageTracking"
 import { toast } from "sonner"
-import { COMPANY_CONFIG } from "@/lib/config"
+import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 
 declare global {
   interface Window {
@@ -309,8 +309,9 @@ export default function CheckoutPage() {
     }
   }
 
-  // Lookup AMASI member by email and auto-fill form
+  // Lookup member by email and auto-fill form (only when membership feature is enabled)
   const lookupMember = async (email: string) => {
+    if (!FEATURES.membership) return
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
 
     setIsLookingUpMember(true)
@@ -446,7 +447,7 @@ export default function CheckoutPage() {
       }
       // Check duplicate email restriction
       if (duplicateEmailInfo?.hasExisting && !duplicateEmailInfo.allowDuplicate) {
-        setError("This email already has a registration. Please use the Delegate Portal to manage your existing registration or purchase add-ons.")
+        setError("This email already has a registration. Please use your account to manage your existing registration or purchase add-ons.")
         return false
       }
       setError("")
@@ -472,7 +473,7 @@ export default function CheckoutPage() {
     }
     // Check duplicate email restriction
     if (duplicateEmailInfo?.hasExisting && !duplicateEmailInfo.allowDuplicate) {
-      setError("This email already has a registration. Please use the Delegate Portal to manage your existing registration or purchase add-ons.")
+      setError("This email already has a registration. Please use your account to manage your existing registration or purchase add-ons.")
       return false
     }
     setError("")
@@ -640,37 +641,44 @@ export default function CheckoutPage() {
           color: "#8B5CF6",
         },
         handler: async (response: any) => {
-          // Verify payment
-          const verifyResponse = await fetch("/api/payments/razorpay/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            }),
-          })
-
-          const verifyData = await verifyResponse.json()
-
-          if (verifyData.success) {
-            // Create registration after successful payment
-            const registration = await createRegistration("razorpay", verifyData.payment_id)
-
-            // Update registration with confirmed status
-            await fetch(`/api/registrations/${registration.id}`, {
-              method: "PATCH",
+          try {
+            // Verify payment
+            const verifyResponse = await fetch("/api/payments/razorpay/verify", {
+              method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                status: "confirmed",
-                payment_status: "completed",
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
               }),
             })
 
-            sessionStorage.removeItem(`checkout_${eventSlug}`)
-            router.push(getSuccessUrl(registration.registration_number, formData.email))
-          } else {
-            setError("Payment verification failed. Please contact support.")
+            const verifyData = await verifyResponse.json()
+
+            if (verifyData.success) {
+              // Create registration after successful payment
+              const registration = await createRegistration("razorpay", verifyData.payment_id)
+
+              // Update registration with confirmed status
+              await fetch(`/api/registrations/${registration.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  status: "confirmed",
+                  payment_status: "completed",
+                }),
+              })
+
+              sessionStorage.removeItem(`checkout_${eventSlug}`)
+              router.push(getSuccessUrl(registration.registration_number, formData.email))
+            } else {
+              setError("Payment verification failed. Please contact support.")
+              setIsSubmitting(false)
+            }
+          } catch (err: any) {
+            console.error("Razorpay handler error:", err)
+            setError(err.message || "Payment processing failed. Please try again.")
+            setIsSubmitting(false)
           }
         },
         modal: {
@@ -913,7 +921,7 @@ export default function CheckoutPage() {
                           {duplicateEmailInfo.allowDuplicate ? (
                             <p className="text-xs text-amber-700">
                               You can still register again, or{" "}
-                              <a href="/my" className="underline font-medium">visit the Delegate Portal</a>{" "}
+                              <a href="/my" className="underline font-medium">visit your account</a>{" "}
                               to manage your existing registration or purchase add-ons.
                             </p>
                           ) : (
@@ -925,7 +933,7 @@ export default function CheckoutPage() {
                                 href="/my"
                                 className="inline-flex items-center gap-1 text-xs font-medium text-amber-800 underline"
                               >
-                                Go to Delegate Portal to manage your registration
+                                Go to your account to manage your registration
                               </a>
                             </div>
                           )}

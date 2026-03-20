@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
     if (abstract.presenting_author_email && isEmailEnabled()) {
       try {
         const eventName = abstract.events?.short_name || abstract.events?.name || "Conference"
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in"
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ""
         const verifyUrl = `${baseUrl}/verify/abstract/${abstract.abstract_number}`
         const portalUrl = `${baseUrl}/my`
 

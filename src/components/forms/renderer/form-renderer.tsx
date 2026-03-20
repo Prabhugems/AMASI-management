@@ -465,11 +465,11 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
   // Check if strict membership mode is enabled (default true for backwards compat)
   const isStrictMembershipRequired = form.membership_required_strict !== false
 
-  // Show membership required blocker only in strict mode
-  const showMembershipBlocker = isMembershipRequired && isStrictMembershipRequired && membershipStatus.isNonMember
+  // Show membership required blocker only in strict mode (and only when membership feature is enabled)
+  const showMembershipBlocker = FEATURES.membership && isMembershipRequired && isStrictMembershipRequired && membershipStatus.isNonMember
 
-  // Show non-member notice (for non-strict mode like AMASICON where members get discounts)
-  const showNonMemberNotice = isMembershipRequired && !isStrictMembershipRequired && membershipStatus.isNonMember
+  // Show non-member notice (for non-strict mode like events where members get discounts)
+  const showNonMemberNotice = FEATURES.membership && isMembershipRequired && !isStrictMembershipRequired && membershipStatus.isNonMember
 
   // Check if email has been verified (for membership-required forms)
   const isEmailVerified = useMemo(() => {
@@ -477,7 +477,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
   }, [emailVerificationState])
 
   // For membership-required forms, only show email field until verified
-  const showOnlyEmailFirst = isMembershipRequired && !isEmailVerified && !showMembershipBlocker
+  const showOnlyEmailFirst = FEATURES.membership && isMembershipRequired && !isEmailVerified && !showMembershipBlocker
 
   // Get the verified email for display in blocker
   const verifiedEmail = useMemo(() => {
@@ -1383,7 +1383,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
       )}
 
       {/* Membership Required Blocker - Shows when non-member tries to register for exam */}
-      {showMembershipBlocker && (
+      {FEATURES.membership && showMembershipBlocker && (
         <div className="p-6 bg-amber-50 border-2 border-amber-200 rounded-xl space-y-4">
           <div className="flex items-start gap-3">
             <div className="p-2 bg-amber-100 rounded-lg">
@@ -1392,7 +1392,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
             <div>
               <h3 className="text-lg font-bold text-amber-800">{COMPANY_CONFIG.name} Membership Required</h3>
               <p className="text-amber-700 mt-1">
-                {COMPANY_CONFIG.name} membership is mandatory for FMAS Skill Course Exam registration.
+                {COMPANY_CONFIG.name} membership is mandatory for registration.
               </p>
             </div>
           </div>
@@ -1413,7 +1413,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <a
-                href="https://application.amasi.org/application/user-member-application-list"
+                href={COMPANY_CONFIG.membershipApplicationUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition-colors shadow-lg"
@@ -1421,15 +1421,17 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
                 Apply for {COMPANY_CONFIG.name} Membership
                 <ExternalLink className="w-4 h-4" />
               </a>
-              <a
-                href="https://amasi.org/skill-course/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                View Course Details
-                <ExternalLink className="w-4 h-4" />
-              </a>
+              {COMPANY_CONFIG.skillCourseUrl && (
+                <a
+                  href={COMPANY_CONFIG.skillCourseUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  View Course Details
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
             </div>
           </div>
 
@@ -1440,7 +1442,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
           </div>
 
           <a
-            href="https://application.amasi.org/application/user-member-application-not-found"
+            href={COMPANY_CONFIG.membershipLookupUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-800 underline"
@@ -1451,8 +1453,8 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
         </div>
       )}
 
-      {/* Non-Member Notice - Shows for non-strict mode (e.g., AMASICON where members get discounts) */}
-      {showNonMemberNotice && (
+      {/* Non-Member Notice - Shows for non-strict mode (e.g., events where members get discounts) */}
+      {FEATURES.membership && showNonMemberNotice && (
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-3">
           <div className="flex items-start gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -1471,7 +1473,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
               Already a member? Verify with your registered email to get member pricing.
             </p>
             <a
-              href="https://application.amasi.org/application/user-member-application-not-found"
+              href={COMPANY_CONFIG.membershipLookupUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-blue-600 hover:text-blue-700 underline whitespace-nowrap"
@@ -1481,7 +1483,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
           </div>
 
           <a
-            href="https://application.amasi.org/application/user-member-application-list"
+            href={COMPANY_CONFIG.membershipApplicationUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
@@ -1571,7 +1573,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
               Details from your membership record
             </p>
             <a
-              href="https://application.amasi.org/application/user-member-application-not-found"
+              href={COMPANY_CONFIG.membershipLookupUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-emerald-700 hover:text-emerald-800 underline"

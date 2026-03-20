@@ -93,7 +93,7 @@ export async function POST(
 
     const assignments = assignmentsData as FacultyAssignment[]
 
-    const PRODUCTION_URL = "https://collegeofmas.org.in"
+    const PRODUCTION_URL = process.env.NEXT_PUBLIC_APP_URL || ""
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : PRODUCTION_URL)
 
     let sent = 0

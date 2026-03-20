@@ -318,7 +318,7 @@ export default function SpeakerInvitationsPage() {
           continue
         }
 
-        const portalUrl = `https://collegeofmas.org.in/speaker/${portalToken}`
+        const portalUrl = `${window.location.origin}/speaker/${portalToken}`
 
         try {
           const response = await fetch("/api/whatsapp/send", {
@@ -380,7 +380,7 @@ export default function SpeakerInvitationsPage() {
 
     setResendingWhatsApp(true)
     try {
-      const portalUrl = `https://collegeofmas.org.in/speaker/${portalToken}`
+      const portalUrl = `${window.location.origin}/speaker/${portalToken}`
       const response = await fetch("/api/whatsapp/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -413,7 +413,7 @@ export default function SpeakerInvitationsPage() {
   }
 
   const copyPortalLink = (token: string) => {
-    const url = `https://collegeofmas.org.in/speaker/${token}`
+    const url = `${window.location.origin}/speaker/${token}`
     navigator.clipboard.writeText(url)
     toast.success("Portal link copied to clipboard")
   }
@@ -450,7 +450,7 @@ export default function SpeakerInvitationsPage() {
       s.attendee_phone!,
       s.attendee_name,
       eventName,
-      `https://collegeofmas.org.in/speaker/${s.custom_fields!.portal_token}`,
+      `${window.location.origin}/speaker/${s.custom_fields!.portal_token}`,
     ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
 
     const csv = [headers.join(","), ...rows].join("\n")
@@ -851,7 +851,7 @@ export default function SpeakerInvitationsPage() {
                       asChild
                     >
                       <a
-                        href={`https://collegeofmas.org.in/speaker/${selectedSpeaker.custom_fields.portal_token}`}
+                        href={`${window.location.origin}/speaker/${selectedSpeaker.custom_fields.portal_token}`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >

@@ -5,7 +5,7 @@ import { logEmail } from "@/lib/email-tracking"
 import { escapeHtml } from "@/lib/string-utils"
 import { COMPANY_CONFIG } from "@/lib/config"
 
-const PRODUCTION_URL = "https://collegeofmas.org.in"
+const PRODUCTION_URL = process.env.NEXT_PUBLIC_APP_URL || ""
 
 function getBaseUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : PRODUCTION_URL)

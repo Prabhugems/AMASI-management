@@ -1328,7 +1328,7 @@ export default function BadgeDesignerPage() {
     // Check-in token and URL (used for QR codes)
     const checkinToken = registration?.checkin_token || registration?.registration_number || "TOKEN"
     result = result.replace(/\{\{checkin_token\}\}/g, checkinToken)
-    const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://collegeofmas.org.in"
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "")
     result = result.replace(/\{\{checkin_url\}\}/g, `${baseUrl}/v/${checkinToken}`)
     result = result.replace(/\{\{verify_url\}\}/g, `${baseUrl}/v/${checkinToken}`)
 

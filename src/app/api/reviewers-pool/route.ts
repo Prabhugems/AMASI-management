@@ -8,7 +8,7 @@ function generateToken(): string {
   return crypto.randomBytes(16).toString("hex")
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://collegeofmas.org.in"
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || ""
 
 function getReviewerFormEmail(name: string, formUrl: string): string {
   return `
