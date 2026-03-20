@@ -83,6 +83,10 @@ type Session = {
   description: string | null
   topics: string | null
   specialty_track: string | null
+  speakers: string | null
+  speakers_text: string | null
+  chairpersons: string | null
+  moderators: string | null
   status: string
 }
 
@@ -1081,6 +1085,9 @@ export default function ProgramPage() {
                     <td className="p-2">
                       <div>
                         <p className="font-medium text-sm">{session.session_name}</p>
+                        {session.speakers && (
+                          <p className="text-xs text-primary">{session.speakers}</p>
+                        )}
                         {!selectedDate && (
                           <p className="text-xs text-muted-foreground">{formatDate(session.session_date)}</p>
                         )}
@@ -1178,7 +1185,10 @@ export default function ProgramPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm text-gray-900">{session.session_name}</div>
-                          {session.description && (
+                          {session.speakers && (
+                            <div className="text-xs text-blue-600 mt-0.5">{session.speakers}</div>
+                          )}
+                          {session.description && !session.speakers && (
                             <div className="text-xs text-gray-600 mt-0.5">{session.description.split(" | ")[0]}</div>
                           )}
                         </div>
@@ -1275,7 +1285,10 @@ export default function ProgramPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm text-gray-900">{session.session_name}</div>
-                          {session.description && (
+                          {session.speakers && (
+                            <div className="text-xs text-blue-600 mt-0.5">{session.speakers}</div>
+                          )}
+                          {session.description && !session.speakers && (
                             <div className="text-xs text-gray-600 mt-0.5">{session.description.split(" | ")[0]}</div>
                           )}
                         </div>
