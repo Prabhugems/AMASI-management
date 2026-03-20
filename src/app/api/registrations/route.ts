@@ -349,6 +349,58 @@ export async function POST(request: NextRequest) {
       payment = existingPayment
       finalPaymentId = payment_id
 
+      // DUPLICATE PREVENTION: Check if a registration already exists for this payment
+      // (Could have been auto-created by webhook or a previous verify call)
+      const { data: existingReg } = await (supabase as any)
+        .from("registrations")
+        .select("id, registration_number, status, attendee_name, attendee_email")
+        .eq("payment_id", payment_id)
+        .maybeSingle()
+
+      if (existingReg) {
+        console.log(`[REGISTRATIONS] Registration already exists for payment ${payment_id}: ${existingReg.registration_number}`)
+        // Update the existing registration with the richer data from the frontend
+        await (supabase as any)
+          .from("registrations")
+          .update({
+            attendee_name: attendee_name || existingReg.attendee_name,
+            attendee_email: attendee_email || existingReg.attendee_email,
+            attendee_phone: attendee_phone || undefined,
+            attendee_institution: attendee_institution || undefined,
+            attendee_designation: attendee_designation || undefined,
+            attendee_city: attendee_city || undefined,
+            attendee_state: attendee_state || undefined,
+            attendee_country: attendee_country || undefined,
+            custom_fields: custom_fields || existingReg.custom_fields,
+            ticket_type_id: ticket_type_id,
+            participation_mode,
+          })
+          .eq("id", existingReg.id)
+
+        // Still save addons if needed
+        const addonsForExisting = addons || existingPayment?.metadata?.addons_selection
+        if (addonsForExisting && Array.isArray(addonsForExisting) && addonsForExisting.length > 0) {
+          // Check if addons already exist
+          const { data: existingAddons } = await (supabase as any)
+            .from("registration_addons")
+            .select("id")
+            .eq("registration_id", existingReg.id)
+            .limit(1)
+
+          if (!existingAddons || existingAddons.length === 0) {
+            const addonRecords = addonsForExisting.map((addon: any) => ({
+              registration_id: existingReg.id,
+              addon_id: addon.addonId,
+              quantity: addon.quantity,
+              price: addon.totalPrice,
+            }))
+            await (supabase as any).from("registration_addons").insert(addonRecords)
+          }
+        }
+
+        return NextResponse.json({ data: existingReg })
+      }
+
       // If addons not provided in request, try to get from payment metadata
       if ((!addonsToSave || addonsToSave.length === 0) && existingPayment?.metadata?.addons_selection) {
         addonsToSave = existingPayment.metadata.addons_selection

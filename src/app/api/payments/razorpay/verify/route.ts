@@ -288,10 +288,11 @@ export async function POST(request: NextRequest) {
         console.log(`[VERIFY] Updated registration from frontend: ${regData?.registration_number}`)
       }
     } else {
-      // NO REGISTRATION EXISTS - Create from payment metadata!
-      // This is the safety net - payment succeeded but no registration
-      console.log(`[VERIFY] Creating registration from payment metadata`)
-      finalRegistration = await createRegistrationFromPayment(paymentData, existingMetadata)
+      // NO REGISTRATION EXISTS YET
+      // Don't auto-create here - the frontend will create the registration
+      // with full attendee details after verify returns success.
+      // The webhook serves as the async safety net if the frontend fails.
+      console.log(`[VERIFY] No registration yet - frontend will create after verify returns`)
     }
 
     // ============================================================

@@ -244,12 +244,31 @@ async function handlePaymentCaptured(razorpayPayment: any) {
       .from("registrations")
       .select("id")
       .eq("payment_id", paymentData.id)
-      .single()
+      .maybeSingle()
 
     if (!existingReg) {
-      // Payment completed but no registration - create one!
-      console.log(`[WEBHOOK] Payment completed but no registration - creating one`)
-      await createRegistrationFromPayment(paymentData, paymentData.metadata || {})
+      // Also check by email + event (frontend might have created registration
+      // but linked it differently, or registration creation is in progress)
+      const { data: emailReg } = await supabase
+        .from("registrations")
+        .select("id")
+        .eq("attendee_email", paymentData.payer_email)
+        .eq("event_id", paymentData.event_id)
+        .in("status", ["confirmed", "pending"])
+        .maybeSingle()
+
+      if (!emailReg) {
+        // Payment completed but no registration found - create one as safety net
+        console.log(`[WEBHOOK] Payment completed but no registration found - creating one`)
+        await createRegistrationFromPayment(paymentData, paymentData.metadata || {})
+      } else {
+        console.log(`[WEBHOOK] Registration found by email for payment ${paymentData.id}: ${emailReg.id}`)
+        // Link registration to payment if not already linked
+        await supabase
+          .from("registrations")
+          .update({ payment_id: paymentData.id, payment_status: "completed" })
+          .eq("id", emailReg.id)
+      }
     }
 
     return
@@ -517,10 +536,50 @@ async function createOrphanPaymentRecord(razorpayPayment: any) {
 // HELPER: Create registration from payment metadata
 // ============================================================
 async function createRegistrationFromPayment(paymentData: any, metadata: any) {
+  // Double-check: a registration might have been created by the frontend in the meantime
+  const { data: existingReg } = await supabase
+    .from("registrations")
+    .select("id, registration_number")
+    .eq("payment_id", paymentData.id)
+    .maybeSingle()
+
+  if (existingReg) {
+    console.log(`[WEBHOOK] Registration already exists for payment ${paymentData.id}: ${existingReg.registration_number}`)
+    return existingReg
+  }
+
+  // Also check by email + event to catch registrations linked differently
+  if (paymentData.payer_email && paymentData.event_id) {
+    const { data: emailReg } = await supabase
+      .from("registrations")
+      .select("id, registration_number, payment_id")
+      .eq("attendee_email", paymentData.payer_email)
+      .eq("event_id", paymentData.event_id)
+      .eq("status", "confirmed")
+      .maybeSingle()
+
+    if (emailReg) {
+      console.log(`[WEBHOOK] Registration found by email for payment ${paymentData.id}: ${emailReg.registration_number}`)
+      // Link the payment if not already linked
+      if (!emailReg.payment_id) {
+        await supabase
+          .from("registrations")
+          .update({ payment_id: paymentData.id })
+          .eq("id", emailReg.id)
+      }
+      return emailReg
+    }
+  }
+
   const ticketDetails = metadata.validated_tickets?.[0]
 
   if (!ticketDetails && !paymentData.event_id) {
-    console.error("[WEBHOOK] Cannot create registration - no ticket details or event_id")
+    console.error("[WEBHOOK] Cannot create registration - no ticket details or event_id in payment metadata", {
+      payment_id: paymentData.id,
+      has_validated_tickets: !!metadata.validated_tickets,
+      has_event_id: !!paymentData.event_id,
+      metadata_keys: Object.keys(metadata),
+    })
     return null
   }
 
@@ -533,12 +592,20 @@ async function createRegistrationFromPayment(paymentData: any, metadata: any) {
       .eq("status", "active")
       .order("sort_order", { ascending: true })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     ticketTypeId = defaultTicket?.id
   }
 
+  if (!ticketTypeId) {
+    console.error(`[WEBHOOK] Cannot create registration - no ticket_type_id found for event ${paymentData.event_id}`)
+    return null
+  }
+
   const registrationNumber = await getNextRegistrationNumber(paymentData.event_id)
+
+  // Pull registration data from payment metadata if available
+  const regData = metadata.registration_data || {}
 
   const registrationData = {
     registration_number: registrationNumber,
@@ -547,6 +614,11 @@ async function createRegistrationFromPayment(paymentData: any, metadata: any) {
     attendee_name: paymentData.payer_name || "Pending Verification",
     attendee_email: paymentData.payer_email,
     attendee_phone: paymentData.payer_phone,
+    attendee_institution: regData.attendee_institution || null,
+    attendee_designation: regData.attendee_designation || null,
+    attendee_city: regData.attendee_city || null,
+    attendee_state: regData.attendee_state || null,
+    attendee_country: regData.attendee_country || null,
     quantity: ticketDetails?.quantity || 1,
     unit_price: ticketDetails?.price || paymentData.amount,
     total_amount: paymentData.amount,
@@ -555,6 +627,7 @@ async function createRegistrationFromPayment(paymentData: any, metadata: any) {
     payment_id: paymentData.id,
     confirmed_at: new Date().toISOString(),
     custom_fields: {
+      ...regData.custom_fields,
       auto_created_from_webhook: true,
       needs_admin_review: true,
       created_at: new Date().toISOString(),
@@ -568,7 +641,11 @@ async function createRegistrationFromPayment(paymentData: any, metadata: any) {
     .single()
 
   if (error) {
-    console.error("[WEBHOOK] Failed to create registration from payment:", error)
+    console.error("[WEBHOOK] Failed to create registration from payment:", error, {
+      payment_id: paymentData.id,
+      event_id: paymentData.event_id,
+      ticket_type_id: ticketTypeId,
+    })
     return null
   }
 

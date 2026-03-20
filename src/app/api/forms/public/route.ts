@@ -22,12 +22,15 @@ export async function GET(request: NextRequest) {
     const supabase = await createAdminClient()
 
     // Fetch published public forms for this event
+    // Exclude registration forms (event_registration, application) - they should not appear
+    // in the delegate portal's feedback section after registration is complete
     const { data: forms, error } = await (supabase as any)
       .from("forms")
       .select("id, name, slug, description, form_type, status, release_certificate_on_submission, require_check_in_for_submission")
       .eq("event_id", eventId)
       .eq("status", "published")
       .eq("is_public", true)
+      .not("form_type", "in", '("event_registration","application")')
       .order("created_at", { ascending: false })
 
     if (error) {
