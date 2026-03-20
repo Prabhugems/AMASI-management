@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   Settings,
   ClipboardList,
+  BarChart3,
 } from "lucide-react"
 
 const sidebarItems = [
@@ -20,6 +21,7 @@ const sidebarItems = [
   { title: "Marksheet", href: "", icon: FileSpreadsheet },
   { title: "Results", href: "/results", icon: Trophy },
   { title: "Convocation", href: "/convocation", icon: GraduationCap },
+  { title: "Convocation Portal", href: "/convocation-portal", icon: BarChart3 },
   { title: "Address Collection", href: "/address", icon: MapPin },
   { title: "Settings", href: "/settings", icon: Settings },
 ]

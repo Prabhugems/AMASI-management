@@ -42,11 +42,15 @@ export async function GET(
     // Get event details
     const { data: event } = await db
       .from("events")
-      .select("title, settings")
+      .select("title, settings, start_date, venue_name, city")
       .eq("id", reg.event_id)
       .single()
 
     const cleanName = reg.attendee_name?.replace(/^(dr\.?\s*)/i, "").trim()
+
+    // Build venue string from venue_name and city
+    const venueParts = [event?.venue_name, event?.city].filter(Boolean)
+    const eventVenue = venueParts.length > 0 ? venueParts.join(", ") : null
 
     return NextResponse.json({
       name: cleanName,
@@ -59,6 +63,8 @@ export async function GET(
       fillout_link: reg.exam_marks?.fillout_link || null,
       category: ticket?.name || null,
       event_title: event?.title || null,
+      event_date: event?.start_date || null,
+      event_venue: eventVenue,
     })
   } catch (error) {
     console.error("Error in convocation lookup:", error)
