@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -920,7 +920,15 @@ interface BadgeTemplate {
   elements: BadgeElement[]
 }
 
-export default function BadgeDesignerPage() {
+export default function BadgeDesignerPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+      <BadgeDesignerPage />
+    </Suspense>
+  )
+}
+
+function BadgeDesignerPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const templateIdFromUrl = searchParams.get("template")

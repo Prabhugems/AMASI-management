@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, Suspense } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { useTheme } from "next-themes"
@@ -172,7 +172,15 @@ interface EventDetails {
   ticket_types: TicketType[]
 }
 
-export default function EventDetailsPage() {
+export default function EventDetailsPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+      <EventDetailsPage />
+    </Suspense>
+  )
+}
+
+function EventDetailsPage() {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [selectedTickets, setSelectedTickets] = useState<Map<string, number>>(new Map())

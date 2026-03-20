@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { useParams, useSearchParams, useRouter } from "next/navigation"
 import {
   Upload,
@@ -19,7 +19,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 
-export default function UploadPresentationPage() {
+export default function UploadPresentationPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+      <UploadPresentationPage />
+    </Suspense>
+  )
+}
+
+function UploadPresentationPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()

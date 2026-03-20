@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -274,7 +274,15 @@ interface CertificateTemplate {
   elements: CertificateElement[]
 }
 
-export default function CertificateDesignerPage() {
+export default function CertificateDesignerPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+      <CertificateDesignerPage />
+    </Suspense>
+  )
+}
+
+function CertificateDesignerPage() {
   const params = useParams()
   const eventId = params.eventId as string
   const searchParams = useSearchParams()

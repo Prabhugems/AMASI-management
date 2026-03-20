@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, Suspense } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Html5Qrcode } from "html5-qrcode"
@@ -97,7 +97,15 @@ interface PrintJob {
 
 type ScanMode = "camera" | "manual"
 
-export default function PrintStationKioskPage() {
+export default function PrintStationKioskPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+      <PrintStationKioskPage />
+    </Suspense>
+  )
+}
+
+function PrintStationKioskPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const token = params.token as string
