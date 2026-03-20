@@ -70,6 +70,8 @@ import {
   CheckSquare,
   FileText,
   Wifi,
+  Copy,
+  Check,
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { SlideOver, SlideOverSection, SlideOverFooter } from "@/components/ui/slide-over"
@@ -135,6 +137,14 @@ export default function RegistrationsPage() {
   const [modeFilter, setModeFilter] = useState<string>("all")
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [copiedField, setCopiedField] = useState<string | null>(null)
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedField(field)
+    toast.success(`${field} copied!`)
+    setTimeout(() => setCopiedField(null), 2000)
+  }
   const [_activeTab, _setActiveTab] = useState("details")
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [editData, setEditData] = useState<Partial<Registration>>({})
@@ -1774,7 +1784,24 @@ export default function RegistrationsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-base truncate">{selectedRegistration.attendee_name}</p>
-                  <p className="text-sm text-muted-foreground truncate">{selectedRegistration.attendee_email}</p>
+                  <button
+                    onClick={() => copyToClipboard(selectedRegistration.registration_number, "Reg No")}
+                    className="text-xs text-muted-foreground font-mono flex items-center gap-1 hover:text-foreground transition-colors group/reg"
+                    title="Copy registration number"
+                  >
+                    {selectedRegistration.registration_number}
+                    {copiedField === "Reg No" ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 opacity-0 group-hover/reg:opacity-100 transition-opacity" />}
+                  </button>
+                  <p className="text-sm text-muted-foreground truncate flex items-center gap-1.5 group/email">
+                    {selectedRegistration.attendee_email}
+                    <button
+                      onClick={() => copyToClipboard(selectedRegistration.attendee_email, "Email")}
+                      className="opacity-0 group-hover/email:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+                      title="Copy email"
+                    >
+                      {copiedField === "Email" ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </button>
+                  </p>
                   <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
                     <Badge
                       className={cn(
@@ -1810,12 +1837,21 @@ export default function RegistrationsPage() {
               {/* Contact & Info Row */}
               <div className="grid grid-cols-1 gap-2 text-sm">
                 {selectedRegistration.attendee_phone && (
-                  <a href={`tel:${selectedRegistration.attendee_phone}`} className="flex items-center gap-2.5 hover:text-foreground transition-colors group">
-                    <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 group-hover:bg-blue-200 transition-colors">
-                      <Phone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <span className="text-muted-foreground group-hover:text-foreground">{selectedRegistration.attendee_phone}</span>
-                  </a>
+                  <div className="flex items-center gap-2.5 group/phone">
+                    <a href={`tel:${selectedRegistration.attendee_phone}`} className="flex items-center gap-2.5 hover:text-foreground transition-colors flex-1">
+                      <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 group-hover/phone:bg-blue-200 transition-colors">
+                        <Phone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <span className="text-muted-foreground group-hover/phone:text-foreground">{selectedRegistration.attendee_phone}</span>
+                    </a>
+                    <button
+                      onClick={() => copyToClipboard(selectedRegistration.attendee_phone!, "Phone")}
+                      className="opacity-0 group-hover/phone:opacity-100 transition-opacity p-1 rounded hover:bg-muted"
+                      title="Copy phone"
+                    >
+                      {copiedField === "Phone" ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </button>
+                  </div>
                 )}
                 {selectedRegistration.attendee_institution && (
                   <div className="flex items-center gap-2.5">
