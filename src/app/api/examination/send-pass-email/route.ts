@@ -285,7 +285,7 @@ export async function POST(request: NextRequest) {
       .from("registrations")
       .select("id, attendee_name, attendee_email, attendee_phone, convocation_number, exam_marks, exam_result, ticket_type_id")
       .eq("event_id", event_id)
-      .eq("exam_result", "pass")
+      .in("exam_result", ["pass", "without_exam"])
       .not("convocation_number", "is", null)
 
     if (registration_ids?.length) query = query.in("id", registration_ids)
