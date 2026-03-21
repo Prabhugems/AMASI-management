@@ -119,14 +119,9 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
 
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false)
 
-  const notifications = [
-    { id: 1, type: "info", title: "New faculty registered", message: "Dr. Sharma joined the conference", time: "2 min ago", unread: true },
-    { id: 2, type: "warning", title: "Pending approvals", message: "5 travel requests awaiting approval", time: "1 hour ago", unread: true },
-    { id: 3, type: "success", title: "Import completed", message: "150 delegates imported successfully", time: "3 hours ago", unread: false },
-    { id: 4, type: "error", title: "Payment failed", message: "Sponsor payment processing error", time: "5 hours ago", unread: false },
-  ]
+  const notifications: { id: number; type: string; title: string; message: string; time: string; unread: boolean }[] = []
 
-  const unreadCount = notifications.filter((n) => n.unread).length
+  const unreadCount = 0
 
   return (
     <header
