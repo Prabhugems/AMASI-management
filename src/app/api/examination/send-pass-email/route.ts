@@ -7,6 +7,50 @@ import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/ra
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
+// Sync convocation record to Airtable and store fillout link back
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function syncToAirtable(reg: any, db: any) {
+  const pat = process.env.AIRTABLE_PAT?.trim()
+  const baseId = process.env.AIRTABLE_CONVOCATION_BASE?.trim()
+  const tableId = process.env.AIRTABLE_CONVOCATION_TABLE?.trim()
+
+  if (!pat || !baseId || !tableId) return
+
+  const ticketName = reg.ticket_type_id
+    ? (await db.from("ticket_types").select("name").eq("id", reg.ticket_type_id).single())?.data?.name
+    : null
+
+  const res = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${pat}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      records: [{
+        fields: {
+          "CONVOCATION NUMBER": reg.convocation_number,
+          "Name": reg.attendee_name,
+          "AMASI Number": reg.exam_marks?.amasi_number || null,
+          "Category": ticketName || "",
+          "Email": reg.attendee_email || "",
+          "MOBILE": reg.attendee_phone || "",
+        },
+      }],
+    }),
+  })
+
+  const result = await res.json()
+  if (result.records?.[0]?.id) {
+    const recordId = result.records[0].id
+    const filloutLink = `https://forms.fillout.com/t/gz1eLocmB9us?id=${recordId}`
+
+    const marks = reg.exam_marks || {}
+    marks.fillout_link = filloutLink
+    await db.from("registrations").update({ exam_marks: marks }).eq("id", reg.id)
+  }
+}
+
 function generatePassEmail(name: string, convocationNumber: string, formLink: string) {
   const cleanName = name.replace(/^(dr\.?\s*)/i, "").trim()
 
@@ -239,7 +283,7 @@ export async function POST(request: NextRequest) {
     // Send pass emails
     let query = db
       .from("registrations")
-      .select("id, attendee_name, attendee_email, convocation_number, exam_marks, exam_result")
+      .select("id, attendee_name, attendee_email, attendee_phone, convocation_number, exam_marks, exam_result, ticket_type_id")
       .eq("event_id", event_id)
       .eq("exam_result", "pass")
       .not("convocation_number", "is", null)
@@ -248,6 +292,30 @@ export async function POST(request: NextRequest) {
 
     const { data: regs, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Retry Airtable sync for registrations missing fillout_link
+    const missingLink = (regs || []).filter(
+      (r: any) => r.convocation_number && r.attendee_email && !r.exam_marks?.fillout_link && !r.exam_marks?.email_sent_pass
+    )
+    let synced = 0
+    for (const r of missingLink) {
+      try {
+        await syncToAirtable(r, db)
+        // Re-fetch updated exam_marks after sync
+        const { data: updated } = await db
+          .from("registrations")
+          .select("exam_marks")
+          .eq("id", r.id)
+          .single()
+        if (updated?.exam_marks) {
+          r.exam_marks = updated.exam_marks
+          if (r.exam_marks?.fillout_link) synced++
+        }
+      } catch (e) {
+        console.error(`Airtable retry sync failed for ${r.attendee_name}:`, e)
+      }
+      await delay(250)
+    }
 
     // Filter: must have convocation number AND fillout link AND not already sent
     const eligible = (regs || []).filter(
@@ -284,7 +352,7 @@ export async function POST(request: NextRequest) {
       await delay(250)
     }
 
-    return NextResponse.json({ sent, failed, skipped, alreadySent: (regs || []).length - eligible.length - skipped, total: (regs || []).length, errors })
+    return NextResponse.json({ sent, failed, skipped, synced, alreadySent: (regs || []).length - eligible.length - skipped, total: (regs || []).length, errors })
   } catch (error) {
     console.error("Error sending pass emails:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
