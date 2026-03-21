@@ -1089,13 +1089,13 @@ export default function DelegatePortalPage() {
             ) : (
               <div className="h-28 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 flex items-center justify-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGMzLjg2NyAwIDcuNDQ3LTEuMjIgMTAuMzgyLTMuMjk0IiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiIHN0cm9rZS13aWR0aD0iMiIvPjwvZz48L3N2Zz4=')] opacity-30" />
-                <h2 className="text-white/20 text-5xl font-black tracking-widest select-none relative z-10">
+                <h2 className="text-white/10 text-4xl font-black tracking-widest select-none relative">
                   {(event.short_name || event.name).toUpperCase()}
                 </h2>
               </div>
             )}
             <div className="px-5 py-4">
-              <div className="flex items-center gap-4 -mt-12">
+              <div className="flex items-center gap-4 -mt-12 relative z-20">
                 {event.logo_url ? (
                   <img
                     src={event.logo_url}
