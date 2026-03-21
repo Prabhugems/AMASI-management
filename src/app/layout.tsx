@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Poppins, Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/providers/theme-provider"
@@ -25,6 +25,12 @@ export const metadata: Metadata = {
   description: `Event Management Platform for ${COMPANY_CONFIG.fullName}`,
 }
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -41,7 +47,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="theme-color" content="#7c3aed" />
       </head>
-      <body className="font-poppins antialiased">
+      <body className="font-poppins antialiased overflow-x-hidden">
         <QueryProvider>
           <ThemeProvider
             attribute="class"

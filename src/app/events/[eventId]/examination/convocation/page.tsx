@@ -99,6 +99,7 @@ export default function ConvocationPage() {
       })) as Registration[]
     },
     enabled: !!eventId,
+    staleTime: 30_000,
   })
 
   // Split into exam passed and without_exam

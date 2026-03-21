@@ -2,7 +2,7 @@
 
 import { useCountUp } from "@/hooks/use-count-up"
 import { cn } from "@/lib/utils"
-import { type ReactNode, useState, useCallback, useEffect } from "react"
+import { type ReactNode, useState, useCallback, useEffect, memo } from "react"
 import { Loader2 } from "lucide-react"
 
 /* ========================================
@@ -18,7 +18,7 @@ interface StatCardProps {
   onClick?: () => void
 }
 
-export function AnimatedStatCard({ label, value, color, bgColor, icon, active, onClick }: StatCardProps) {
+export const AnimatedStatCard = memo(function AnimatedStatCard({ label, value, color, bgColor, icon, active, onClick }: StatCardProps) {
   const animatedValue = useCountUp(value)
 
   return (
@@ -41,12 +41,12 @@ export function AnimatedStatCard({ label, value, color, bgColor, icon, active, o
       </p>
     </button>
   )
-}
+})
 
 /* ========================================
    Search Highlight
    ======================================== */
-export function HighlightText({ text, search }: { text: string; search: string }) {
+export const HighlightText = memo(function HighlightText({ text, search }: { text: string; search: string }) {
   if (!search || !text) return <>{text}</>
   const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi")
   const parts = text.split(regex)
@@ -63,7 +63,7 @@ export function HighlightText({ text, search }: { text: string; search: string }
       )}
     </>
   )
-}
+})
 
 /* ========================================
    Export Progress Indicator
@@ -120,7 +120,7 @@ export function EmptyState({ icon, title, description }: EmptyStateProps) {
 /* ========================================
    Result Badge with pulse effect
    ======================================== */
-export function ResultBadge({ result }: { result: string | null }) {
+export const ResultBadge = memo(function ResultBadge({ result }: { result: string | null }) {
   if (result === "pass") {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-full animate-in fade-in duration-300">
@@ -153,7 +153,7 @@ export function ResultBadge({ result }: { result: string | null }) {
     )
   }
   return <span className="text-xs text-muted-foreground">Pending</span>
-}
+})
 
 /* ========================================
    Keyboard Shortcut Hint Badge

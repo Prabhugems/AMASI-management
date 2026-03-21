@@ -60,7 +60,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
+      className="inline-flex items-center justify-center h-9 w-9 min-h-[44px] min-w-[44px] rounded-md hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
       title="Copy to clipboard"
     >
       {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
@@ -256,10 +256,10 @@ function ConvocationPortalPage() {
       <div className="max-w-2xl mx-auto px-4 py-10">
         {/* Lookup Section */}
         {!data && (
-          <div className="bg-white border rounded-2xl shadow-sm p-8">
+          <div className="bg-white border rounded-2xl shadow-sm p-5 sm:p-8">
             <h2 className="text-lg font-semibold mb-1">Enter your Convocation Number</h2>
             <p className="text-sm text-muted-foreground mb-6">Your convocation number was shared via email (e.g., 122AEC1001)</p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Input
                 value={convNo}
                 onChange={(e) => setConvNo(e.target.value.toUpperCase())}
@@ -496,14 +496,14 @@ function ConvocationPortalPage() {
               <div className="space-y-3">
                 <a
                   href={`mailto:${COMPANY_CONFIG.supportEmail}`}
-                  className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
                 >
                   <Mail className="h-4 w-4 shrink-0" />
                   {COMPANY_CONFIG.supportEmail}
                 </a>
                 <a
                   href="tel:+919876543210"
-                  className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
                 >
                   <Phone className="h-4 w-4 shrink-0" />
                   Contact us for assistance
@@ -514,7 +514,7 @@ function ConvocationPortalPage() {
             {/* Back / Look up another */}
             <button
               onClick={() => { setData(null); setConvNo(""); }}
-              className="text-sm text-muted-foreground hover:text-foreground mx-auto block"
+              className="text-sm text-muted-foreground hover:text-foreground mx-auto block min-h-[44px] py-2"
             >
               &larr; Look up another number
             </button>

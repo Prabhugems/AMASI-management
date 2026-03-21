@@ -144,6 +144,7 @@ export default function AddressPage() {
         })) as Registration[]
     },
     enabled: !!eventId,
+    staleTime: 30_000,
   })
 
   const filtered = (registrations || []).filter((r) => {

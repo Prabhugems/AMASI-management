@@ -1374,7 +1374,7 @@ export default function DelegatePortalPage() {
         />
 
         {/* Download Buttons */}
-        <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {/* Invitation Download */}
           {portalSettings.show_invitation && (
           <button
@@ -1510,17 +1510,19 @@ export default function DelegatePortalPage() {
               </span>
               <span className="text-xs font-bold text-red-200 uppercase tracking-wider">Action Required</span>
             </div>
-            <div className="flex items-center gap-4 mt-2">
-              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
-                <Truck className="w-7 h-7 text-white" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mt-2">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Truck className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-base sm:text-lg">FMAS Certificate Dispatch</h3>
+                  <p className="text-white/80 text-sm mt-0.5">Fill your address details for certificate delivery</p>
+                  <p className="text-white/60 text-xs mt-1">Mandatory - Please complete this form to receive your certificate</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-lg">FMAS Certificate Dispatch</h3>
-                <p className="text-white/80 text-sm mt-0.5">Fill your address details for certificate delivery</p>
-                <p className="text-white/60 text-xs mt-1">Mandatory - Please complete this form to receive your certificate</p>
-              </div>
-              <div className="flex-shrink-0">
-                <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 text-sm font-semibold">
+              <div className="flex-shrink-0 w-full sm:w-auto">
+                <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2.5 text-sm font-semibold text-center min-h-[44px] flex items-center justify-center">
                   Fill Now &rarr;
                 </div>
               </div>

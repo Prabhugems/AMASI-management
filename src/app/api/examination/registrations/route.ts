@@ -21,20 +21,13 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
-    // Check exam settings for ticket type filtering
-    const { data: eventData } = await db
-      .from("events")
-      .select("settings")
-      .eq("id", eventId)
-      .maybeSingle()
+    // Fetch event settings and ticket types in parallel
+    const [{ data: eventData }, { data: ticketTypes }] = await Promise.all([
+      db.from("events").select("settings").eq("id", eventId).maybeSingle(),
+      db.from("ticket_types").select("id, name").eq("event_id", eventId),
+    ])
 
     const examTicketTypes = eventData?.settings?.examination?.exam_ticket_types as string[] | undefined
-
-    // Fetch ticket types for this event
-    const { data: ticketTypes } = await db
-      .from("ticket_types")
-      .select("id, name")
-      .eq("event_id", eventId)
 
     // Determine which ticket type IDs to filter by
     let filterTicketIds: string[] | null = null
@@ -53,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     let query = db
       .from("registrations")
-      .select("*")
+      .select("id, registration_number, attendee_name, attendee_email, attendee_phone, ticket_type_id, exam_marks, exam_result, exam_total_marks, convocation_number, convocation_address, checked_in, status")
       .eq("event_id", eventId)
       .in("status", ["confirmed", "attended", "completed", "checked_in"])
       .order("attendee_name")
@@ -71,13 +64,6 @@ export async function GET(request: NextRequest) {
 
     const ticketMap = new Map((ticketTypes || []).map((t: any) => [t.id, t.name]))
 
-    // Fetch AMASI member numbers by email
-    const emails = (data || []).map((r: any) => r.attendee_email?.toLowerCase()).filter(Boolean)
-    const { data: members } = emails.length > 0
-      ? await db.from("members").select("email, amasi_number").in("email", emails)
-      : { data: [] }
-    const memberMap = new Map((members || []).map((m: any) => [m.email?.toLowerCase(), m.amasi_number]))
-
     // Map to frontend-friendly field names
     const mapped = (data || []).map((r: any) => ({
       ...r,
@@ -86,7 +72,7 @@ export async function GET(request: NextRequest) {
       phone: r.attendee_phone,
       registration_id: r.registration_number,
       ticket_type_name: ticketMap.get(r.ticket_type_id) || null,
-      amasi_number: memberMap.get(r.attendee_email?.toLowerCase()) || null,
+      amasi_number: r.exam_marks?.amasi_number || null,
     }))
 
     return NextResponse.json(mapped)

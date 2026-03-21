@@ -147,11 +147,11 @@ function EmailCheckWidget({ eventId }: { eventId: string }) {
   }
 
   return (
-    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+    <div className="p-3 sm:p-4 bg-blue-50 rounded-xl border border-blue-100">
       <p className="text-sm font-medium text-blue-900 mb-3">
         Already registered? Check your email
       </p>
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="email"
           value={email}
@@ -552,9 +552,9 @@ function EventDetailsPage() {
       {/* Progress Indicator */}
       <ProgressIndicator currentStep={currentStep} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-8">
           {/* Hero Banner */}
           <div className="relative overflow-hidden rounded-2xl animate-fade-in">
             {event.banner_url ? (
@@ -620,7 +620,7 @@ function EventDetailsPage() {
             )}
 
             {/* Quick Info */}
-            <div className="bg-white rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+            <div className="bg-white rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4">
               <div className="flex items-center gap-3 min-h-[44px]">
                 <div className="p-2 rounded-lg bg-emerald-50">
                   <Calendar className="w-5 h-5 text-emerald-600" />
@@ -667,7 +667,7 @@ function EventDetailsPage() {
 
           {/* Description */}
           {(event.description || event.welcome_message) && (
-            <div className="bg-white rounded-xl shadow-sm p-6 animate-fade-in-up">
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 animate-fade-in-up">
               <h2 className="text-lg font-bold mb-4 text-gray-900">
                 About This Event
               </h2>
@@ -695,11 +695,11 @@ function EventDetailsPage() {
 
           {/* Contact Info */}
           {(event.contact_email || event.contact_phone || event.website_url) && (
-            <div className="bg-white rounded-xl shadow-sm p-6 animate-fade-in-up">
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 animate-fade-in-up">
               <h2 className="text-lg font-bold mb-4 text-gray-900">
                 Contact Information
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 {event.contact_email && (
                   <a
                     href={`mailto:${event.contact_email}`}
@@ -741,7 +741,7 @@ function EventDetailsPage() {
 
           {/* Registration Type Selector (only shown when buyers are allowed) */}
           {allowBuyers && !registrationType && (
-            <div className="bg-white rounded-xl shadow-sm p-6 animate-fade-in-up">
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 animate-fade-in-up">
               <RegistrationTypeSelector
                 allowBuyers={allowBuyers}
                 onSelect={handleRegistrationTypeSelect}
@@ -752,7 +752,7 @@ function EventDetailsPage() {
 
           {/* Ticket Selection - shown after registration type is selected (or immediately if buyers not allowed) */}
           {event.ticket_types && event.ticket_types.length > 0 && (!allowBuyers || registrationType) && (
-            <div ref={ticketSectionRef} className="bg-white rounded-xl shadow-sm p-6 animate-fade-in-up">
+            <div ref={ticketSectionRef} className="bg-white rounded-xl shadow-sm p-4 sm:p-6 animate-fade-in-up">
               {/* Show selected registration type badge */}
               {allowBuyers && registrationType && (
                 <div className="mb-4 flex items-center justify-between">
@@ -786,7 +786,7 @@ function EventDetailsPage() {
 
           {/* Addons Selection - shown after tickets are selected */}
           {addons && addons.length > 0 && totals.count > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-6 animate-fade-in-up">
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 animate-fade-in-up">
               <AddonsSelector
                 addons={addons}
                 selectedAddons={selectedAddons}
@@ -800,7 +800,7 @@ function EventDetailsPage() {
 
         {/* Sticky Order Summary */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl shadow-sm sticky top-24 overflow-hidden transition-shadow duration-300 hover:shadow-md">
+          <div className="bg-white rounded-xl shadow-sm lg:sticky lg:top-24 overflow-hidden transition-shadow duration-300 hover:shadow-md">
             {/* Header */}
             <div className="p-5 border-b border-gray-200">
               <h3 className="text-lg font-bold text-gray-900">
@@ -928,6 +928,28 @@ function EventDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Fixed Bottom Checkout Bar */}
+      {totals.count > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.1)] p-4 z-40 lg:hidden">
+          <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
+            <div>
+              <p className="text-sm text-gray-500">{totals.count} ticket{totals.count > 1 ? "s" : ""}</p>
+              <p className="text-lg font-bold text-gray-900">{"\u20B9"}{totals.total.toLocaleString()}</p>
+            </div>
+            <button
+              onClick={handleProceedToCheckout}
+              className="flex-1 max-w-[200px] py-3.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 flex items-center justify-center gap-2 active:scale-95 transition-all min-h-[48px]"
+            >
+              Checkout
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom padding to prevent mobile checkout bar from overlapping content */}
+      {totals.count > 0 && <div className="h-24 lg:hidden" />}
     </div>
   )
 }

@@ -40,8 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
+// jsPDF and autoTable are dynamically imported when needed (PDF generation)
 import {
   AnimatedStatCard,
   HighlightText,
@@ -116,6 +115,7 @@ export default function MarksheetPage() {
       })) as Registration[]
     },
     enabled: !!eventId,
+    staleTime: 30_000,
   })
 
   // Derive ticket types from registrations
@@ -273,12 +273,15 @@ export default function MarksheetPage() {
   }
 
   // PDF Generation - Scoring Sheet
-  const downloadScoringSheet = () => {
+  const downloadScoringSheet = async () => {
     if (!examSettings || !filtered.length) return
     const cols = getSelectedMarkColumns()
     if (!cols.length) { alert("Please select at least one column"); return }
 
     startExport("Generating Scoring Sheet PDF...")
+
+    const jsPDF = (await import("jspdf")).default
+    const autoTable = (await import("jspdf-autotable")).default
 
     setTimeout(() => {
       const doc = new jsPDF({ orientation: "landscape" })
@@ -309,9 +312,12 @@ export default function MarksheetPage() {
   }
 
   // PDF Generation - Attendance Sheet
-  const downloadAttendanceSheet = () => {
+  const downloadAttendanceSheet = async () => {
     if (!filtered.length) return
     startExport("Generating Attendance Sheet PDF...")
+
+    const jsPDF = (await import("jspdf")).default
+    const autoTable = (await import("jspdf-autotable")).default
 
     setTimeout(() => {
       const doc = new jsPDF()

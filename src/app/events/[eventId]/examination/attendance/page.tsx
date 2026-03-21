@@ -38,8 +38,7 @@ import {
   Download,
   ClipboardList,
 } from "lucide-react"
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
+// jsPDF and autoTable are dynamically imported when needed (PDF generation)
 import {
   AnimatedStatCard,
   HighlightText,
@@ -93,6 +92,7 @@ export default function AttendancePage() {
       return data as Registration[]
     },
     enabled: !!eventId,
+    staleTime: 30_000,
   })
 
   // Derive ticket types
@@ -133,9 +133,12 @@ export default function AttendancePage() {
   }
 
   // PDF download
-  const downloadAttendancePDF = () => {
+  const downloadAttendancePDF = async () => {
     if (!displayList.length) return
     startExport("Generating Attendance PDF...")
+
+    const jsPDF = (await import("jspdf")).default
+    const autoTable = (await import("jspdf-autotable")).default
 
     setTimeout(() => {
       const doc = new jsPDF()

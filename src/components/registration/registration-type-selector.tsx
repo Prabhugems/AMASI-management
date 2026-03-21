@@ -38,7 +38,7 @@ export function RegistrationTypeSelector({
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
         {/* Individual Option */}
         <button
           type="button"

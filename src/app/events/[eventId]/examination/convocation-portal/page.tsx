@@ -36,6 +36,7 @@ export default function ConvocationPortalPage() {
       return (await res.json()) as Registration[]
     },
     enabled: !!eventId,
+    staleTime: 30_000,
     refetchInterval: 30000,
   })
 
