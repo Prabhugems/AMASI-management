@@ -102,12 +102,16 @@ export default function ConvocationPage() {
     staleTime: 30_000,
   })
 
-  // Split into exam passed and without_exam
+  // Split into exam passed and without_exam (only those with AMASI number)
   const examPassed = (allRegistrations || [])
-    .filter((r) => r.exam_result === "pass" && r.exam_marks?.remarks !== "WITHOUT EXAM")
+    .filter((r) => r.exam_result === "pass" && r.exam_marks?.remarks !== "WITHOUT EXAM" && r.amasi_number)
 
   const withoutExam = (allRegistrations || [])
-    .filter((r) => (r.exam_result === "pass" && r.exam_marks?.remarks === "WITHOUT EXAM") || r.exam_result === "without_exam")
+    .filter((r) => ((r.exam_result === "pass" && r.exam_marks?.remarks === "WITHOUT EXAM") || r.exam_result === "without_exam") && r.amasi_number)
+
+  // Candidates without AMASI should not appear in convocation
+  const noAmasi = (allRegistrations || [])
+    .filter((r) => (r.exam_result === "pass" || r.exam_result === "without_exam") && !r.amasi_number)
 
   const currentList = activeTab === "exam" ? examPassed : withoutExam
 
@@ -319,6 +323,15 @@ export default function ConvocationPage() {
                 color="text-orange-600"
               />
             </div>
+
+            {/* Warning: candidates without AMASI */}
+            {noAmasi.length > 0 && (
+              <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-xl p-4 mb-6">
+                <p className="font-medium text-yellow-800 dark:text-yellow-200 text-sm">
+                  {noAmasi.length} candidate(s) have no AMASI membership — cannot assign convocation numbers until membership is confirmed.
+                </p>
+              </div>
+            )}
 
             {/* Auto Assign */}
             {unassigned > 0 && (
