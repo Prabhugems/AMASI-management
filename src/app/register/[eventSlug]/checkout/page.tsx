@@ -143,7 +143,7 @@ function ProgressIndicator({ currentStep }: { currentStep: number }) {
                 </div>
                 <span
                   className={`
-                    text-xs mt-2 font-medium text-center whitespace-nowrap
+                    text-xs mt-2 font-medium text-center
                     transition-colors duration-300
                     ${isActive ? "text-emerald-600" : isCompleted ? "text-emerald-500" : "text-gray-400"}
                   `}

@@ -154,7 +154,7 @@ function EventCard({ event, isDark: _isDark, index }: { event: PublicEvent; isDa
               className={`
                 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
                 text-xs font-semibold backdrop-blur-sm
-                bg-white/20 text-white
+                bg-black/60 text-white
               `}
             >
               <Sparkles className="w-3 h-3" />
@@ -168,7 +168,7 @@ function EventCard({ event, isDark: _isDark, index }: { event: PublicEvent; isDa
               className={`
                 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
                 text-xs font-bold backdrop-blur-sm
-                bg-black/40 text-white
+                bg-black/70 text-white
               `}
             >
               <Ticket className="w-3 h-3" />
@@ -182,7 +182,7 @@ function EventCard({ event, isDark: _isDark, index }: { event: PublicEvent; isDa
               <img
                 src={event.logo_url}
                 alt={event.name}
-                className="h-10 w-10 rounded-lg bg-white object-contain shadow-md border border-white"
+                className="h-12 w-12 rounded-lg bg-white object-contain shadow-md border border-white"
               />
             </div>
           )}
@@ -193,7 +193,7 @@ function EventCard({ event, isDark: _isDark, index }: { event: PublicEvent; isDa
           {/* Title */}
           <h3
             className={`
-              text-xl font-bold mb-2 line-clamp-2 text-foreground
+              text-xl font-bold mb-2 line-clamp-3 text-foreground
               transition-colors duration-300
               ${isHovered ? "text-primary" : ""}
             `}

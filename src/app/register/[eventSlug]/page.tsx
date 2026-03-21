@@ -620,7 +620,7 @@ function EventDetailsPage() {
             )}
 
             {/* Quick Info */}
-            <div className="bg-white rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4">
+            <div className="bg-white rounded-xl shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 p-3 sm:p-4">
               <div className="flex items-center gap-3 min-h-[44px]">
                 <div className="p-2 rounded-lg bg-emerald-50">
                   <Calendar className="w-5 h-5 text-emerald-600" />
@@ -706,7 +706,7 @@ function EventDetailsPage() {
                     className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors min-h-[44px]"
                   >
                     <Mail className="w-5 h-5 text-emerald-600" />
-                    <span className="text-sm text-gray-900 break-all">
+                    <span className="text-sm text-gray-900 truncate">
                       {event.contact_email}
                     </span>
                   </a>

@@ -134,7 +134,7 @@ function SuccessContent() {
                   <img
                     src={qrCodeUrl}
                     alt="Registration QR Code"
-                    className="w-32 h-32"
+                    className="w-40 h-40"
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-2">Scan for quick check-in</p>

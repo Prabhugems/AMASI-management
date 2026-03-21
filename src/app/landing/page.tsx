@@ -703,7 +703,7 @@ export default function LandingPage() {
             </motion.p>
 
             <div className="mb-8">
-              <h1 className="text-5xl sm:text-7xl lg:text-[6.5rem] font-light leading-[0.9] tracking-tighter">
+              <h1 className="text-4xl sm:text-6xl lg:text-[6.5rem] font-light leading-[0.9] tracking-tighter">
                 <motion.span
                   className="block text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]"
                   initial={{ opacity: 0, y: 30 }}
@@ -843,7 +843,7 @@ export default function LandingPage() {
                   whileHover={{ x: 12 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 >
-                  <span className="text-5xl sm:text-6xl font-light text-white/[0.06] group-hover:text-cyan-500/20 transition-colors duration-700 w-16 sm:w-20 shrink-0 leading-none">
+                  <span className="text-3xl sm:text-4xl font-light text-white/[0.06] group-hover:text-cyan-500/20 transition-colors duration-700 w-16 sm:w-20 shrink-0 leading-none">
                     {s.name.split(" ").pop()?.charAt(0)}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -913,7 +913,7 @@ export default function LandingPage() {
                   transition={{ duration: 0.4, delay: i * 0.05 }}
                   className="flex items-center gap-4 sm:gap-6 py-5 border-b border-zinc-200/80 group"
                 >
-                  <span className="text-sm font-mono text-zinc-300 w-14 shrink-0 tabular-nums">{s.time}</span>
+                  <span className="text-sm font-mono text-zinc-300 w-16 shrink-0 tabular-nums">{s.time}</span>
                   {s.tag && (
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                       s.tag === "live" ? "bg-cyan-500" : s.tag === "keynote" ? "bg-zinc-400" : s.tag === "debate" ? "bg-rose-500" : "bg-amber-500"
