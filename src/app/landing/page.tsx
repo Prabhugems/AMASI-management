@@ -11,8 +11,15 @@ const REGISTER_URL = "/register/technosurg2026-mmvs3874"
 function ParticleField() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouse = useRef({ x: 0, y: 0 })
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
+    // Disable on mobile or when user prefers reduced motion
+    if (window.innerWidth < 768 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setIsMobile(true)
+      return
+    }
+
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext("2d")
@@ -23,7 +30,7 @@ function ParticleField() {
     let animId: number
 
     const particles: { x: number; y: number; vx: number; vy: number; size: number; opacity: number; pulse: number }[] = []
-    const count = window.innerWidth > 1024 ? 80 : 30
+    const count = window.innerWidth > 1024 ? 60 : 25
 
     for (let i = 0; i < count; i++) {
       particles.push({
@@ -113,6 +120,7 @@ function ParticleField() {
     }
   }, [])
 
+  if (isMobile) return null
   return <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none" />
 }
 
@@ -302,7 +310,7 @@ function Reveal({ children, className = "", delay = 0 }: { children: ReactNode; 
   return (
     <div
       ref={ref}
-      className={`transition-all duration-[1400ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${vis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-16"} ${className}`}
+      className={`transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${vis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-16"} ${className}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
@@ -375,6 +383,14 @@ function Countdown() {
    ANTIGRAVITY FLOATING ELEMENTS
    ───────────────────────────────────── */
 function FloatingElements() {
+  const [enabled, setEnabled] = useState(false)
+  useEffect(() => {
+    // Disable on mobile and when user prefers reduced motion
+    if (window.innerWidth >= 768 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setEnabled(true)
+    }
+  }, [])
+
   const shapes = [
     { size: 60, x: "10%", delay: 0, duration: 18, type: "ring" },
     { size: 40, x: "25%", delay: 2, duration: 22, type: "cross" },
@@ -385,6 +401,8 @@ function FloatingElements() {
     { size: 45, x: "15%", delay: 4, duration: 21, type: "diamond" },
     { size: 55, x: "55%", delay: 6, duration: 24, type: "cross" },
   ]
+
+  if (!enabled) return null
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
@@ -534,7 +552,6 @@ export default function LandingPage() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] })
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 1.15])
   const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0])
-  const heroBlur = useTransform(scrollYProgress, [0, 1], [0, 10])
 
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
