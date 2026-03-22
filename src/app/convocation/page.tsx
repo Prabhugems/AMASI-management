@@ -50,6 +50,14 @@ export default function ConvocationPortalWrapper() {
 
 // Copy-to-clipboard button
 function CopyButton({ text }: { text: string }) {
+  
+  // Force light mode for public pages
+  useEffect(() => {
+    document.documentElement.classList.remove("dark")
+    document.documentElement.style.colorScheme = "light"
+    return () => { document.documentElement.style.colorScheme = "" }
+  }, [])
+
   const [copied, setCopied] = useState(false)
   const handleCopy = () => {
     navigator.clipboard.writeText(text).then(() => {

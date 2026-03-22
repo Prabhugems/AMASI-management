@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -183,6 +183,13 @@ export default function PublicProgramPage() {
   const params = useParams()
   const eventId = params.eventId as string
   const supabase = createClient()
+
+  // Force light mode for public pages
+  useEffect(() => {
+    document.documentElement.classList.remove("dark")
+    document.documentElement.style.colorScheme = "light"
+    return () => { document.documentElement.style.colorScheme = "" }
+  }, [])
 
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [selectedHalls, setSelectedHalls] = useState<string[]>([])

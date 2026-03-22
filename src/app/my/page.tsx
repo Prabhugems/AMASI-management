@@ -70,6 +70,14 @@ const itemVariants = {
 
 // -- Countdown hook --
 function useCountdown(targetDate: string | undefined) {
+  
+  // Force light mode for public pages
+  useEffect(() => {
+    document.documentElement.classList.remove("dark")
+    document.documentElement.style.colorScheme = "light"
+    return () => { document.documentElement.style.colorScheme = "" }
+  }, [])
+
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!targetDate) return

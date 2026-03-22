@@ -57,6 +57,14 @@ export default function ExaminerPortalPage() {
   const params = useParams()
   const token = params.token as string
 
+  
+  // Force light mode for public pages
+  useEffect(() => {
+    document.documentElement.classList.remove("dark")
+    document.documentElement.style.colorScheme = "light"
+    return () => { document.documentElement.style.colorScheme = "" }
+  }, [])
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [eventInfo, setEventInfo] = useState<EventInfo | null>(null)
