@@ -36,9 +36,7 @@ import {
   Users,
   MessageSquare,
   ClipboardCheck,
-  BarChart3,
   Sparkles,
-  Award,
   Trophy,
   ChevronRight,
   Zap,
@@ -48,6 +46,11 @@ import {
   RefreshCw,
   Ban,
   AlertOctagon,
+  Shield,
+  Plus,
+  X,
+  Building2,
+  ChevronDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -166,6 +169,76 @@ export default function AbstractReviewerPortal() {
   const [declineReason, setDeclineReason] = useState("")
   const [declineNotes, setDeclineNotes] = useState("")
   const [decliningAbstract, setDecliningAbstract] = useState<AbstractData | null>(null)
+
+  // COI declaration state
+  const [showCoiSection, setShowCoiSection] = useState(false)
+  const [newCoiType, setNewCoiType] = useState<"institution" | "co_author" | "personal" | "other">("institution")
+  const [newCoiValue, setNewCoiValue] = useState("")
+  const [newCoiReason, setNewCoiReason] = useState("")
+  const [addingCoi, setAddingCoi] = useState(false)
+
+  // Fetch COI conflicts for this reviewer
+  const { data: coiConflicts = [], refetch: refetchCoi } = useQuery({
+    queryKey: ["reviewer-coi", eventId, reviewerEmail],
+    queryFn: async () => {
+      const res = await fetch(`/api/abstracts/reviewer-conflicts?event_id=${eventId}&email=${encodeURIComponent(reviewerEmail.trim())}`)
+      if (!res.ok) return []
+      const data = await res.json()
+      return data.conflicts || []
+    },
+    enabled: hasEntered && !!reviewerEmail,
+  })
+
+  // Add COI mutation
+  const addCoiMutation = useMutation({
+    mutationFn: async (conflict: { conflict_type: string; conflict_value: string; conflict_reason?: string }) => {
+      const res = await fetch("/api/abstracts/reviewer-conflicts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          email: reviewerEmail.trim(),
+          ...conflict,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Failed to add conflict")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success("Conflict of interest declared")
+      refetchCoi()
+      setNewCoiValue("")
+      setNewCoiReason("")
+      setAddingCoi(false)
+    },
+    onError: (error: Error) => {
+      toast.error(error.message)
+    },
+  })
+
+  // Remove COI mutation
+  const removeCoiMutation = useMutation({
+    mutationFn: async (conflictId: string) => {
+      const res = await fetch(`/api/abstracts/reviewer-conflicts?id=${conflictId}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Failed to remove conflict")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success("Conflict removed")
+      refetchCoi()
+    },
+    onError: (error: Error) => {
+      toast.error(error.message)
+    },
+  })
 
   // Fetch data — only after entry, pass email for server-side filtering
   const { data: portalData, isLoading, error } = useQuery({
@@ -643,6 +716,184 @@ export default function AbstractReviewerPortal() {
             )}
           </div>
         )}
+
+        {/* COI Declaration Section */}
+        <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-purple-100 overflow-hidden">
+          <button
+            onClick={() => setShowCoiSection(!showCoiSection)}
+            className="w-full p-4 flex items-center justify-between hover:bg-purple-50/50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                <Shield className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-semibold">Conflict of Interest Declaration</h3>
+                <p className="text-sm text-muted-foreground">
+                  {coiConflicts.length > 0
+                    ? `${coiConflicts.length} conflict${coiConflicts.length !== 1 ? "s" : ""} declared`
+                    : "Declare any conflicts of interest"}
+                </p>
+              </div>
+            </div>
+            <ChevronDown className={cn(
+              "h-5 w-5 text-muted-foreground transition-transform",
+              showCoiSection && "rotate-180"
+            )} />
+          </button>
+
+          {showCoiSection && (
+            <div className="p-4 border-t border-purple-100 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Declare any conflicts of interest (e.g., co-authors, same institution, personal relationships).
+                Abstracts from declared conflicts will be flagged for reassignment.
+              </p>
+
+              {/* Existing conflicts */}
+              {coiConflicts.length > 0 && (
+                <div className="space-y-2">
+                  {coiConflicts.map((conflict: { id: string; conflict_type: string; conflict_value: string; conflict_reason?: string }) => (
+                    <div
+                      key={conflict.id}
+                      className="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-200"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold",
+                          conflict.conflict_type === "institution" ? "bg-blue-100 text-blue-700" :
+                          conflict.conflict_type === "co_author" ? "bg-purple-100 text-purple-700" :
+                          conflict.conflict_type === "personal" ? "bg-pink-100 text-pink-700" :
+                          "bg-gray-100 text-gray-700"
+                        )}>
+                          {conflict.conflict_type === "institution" ? <Building2 className="h-4 w-4" /> :
+                           conflict.conflict_type === "co_author" ? <Users className="h-4 w-4" /> :
+                           conflict.conflict_type === "personal" ? <User className="h-4 w-4" /> :
+                           <AlertCircle className="h-4 w-4" />}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{conflict.conflict_value}</p>
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {conflict.conflict_type.replace("_", " ")}
+                            {conflict.conflict_reason && ` • ${conflict.conflict_reason}`}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeCoiMutation.mutate(conflict.id)}
+                        disabled={removeCoiMutation.isPending}
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add new conflict form */}
+              {addingCoi ? (
+                <div className="p-4 bg-purple-50 rounded-xl border border-purple-200 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Conflict Type</label>
+                      <Select value={newCoiType} onValueChange={(v: "institution" | "co_author" | "personal" | "other") => setNewCoiType(v)}>
+                        <SelectTrigger className="bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="institution">
+                            <span className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4" /> Same Institution
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="co_author">
+                            <span className="flex items-center gap-2">
+                              <Users className="h-4 w-4" /> Co-author
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="personal">
+                            <span className="flex items-center gap-2">
+                              <User className="h-4 w-4" /> Personal Relationship
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="other">
+                            <span className="flex items-center gap-2">
+                              <AlertCircle className="h-4 w-4" /> Other
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">
+                        {newCoiType === "institution" ? "Institution Name" :
+                         newCoiType === "co_author" ? "Author Name/Email" :
+                         newCoiType === "personal" ? "Person Name" : "Conflict Details"}
+                      </label>
+                      <Input
+                        value={newCoiValue}
+                        onChange={(e) => setNewCoiValue(e.target.value)}
+                        placeholder={
+                          newCoiType === "institution" ? "e.g., ABC Medical College" :
+                          newCoiType === "co_author" ? "e.g., Dr. John Doe" :
+                          newCoiType === "personal" ? "e.g., Spouse, Family member" :
+                          "Describe the conflict"
+                        }
+                        className="bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Reason (optional)</label>
+                    <Input
+                      value={newCoiReason}
+                      onChange={(e) => setNewCoiReason(e.target.value)}
+                      placeholder="Additional context about this conflict..."
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setAddingCoi(false)
+                        setNewCoiValue("")
+                        setNewCoiReason("")
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => addCoiMutation.mutate({
+                        conflict_type: newCoiType,
+                        conflict_value: newCoiValue,
+                        conflict_reason: newCoiReason || undefined,
+                      })}
+                      disabled={!newCoiValue.trim() || addCoiMutation.isPending}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                    >
+                      {addCoiMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Declare Conflict
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setAddingCoi(true)}
+                  className="w-full border-dashed border-purple-300 text-purple-600 hover:bg-purple-50"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Conflict of Interest
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Search & Filters */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-purple-100">

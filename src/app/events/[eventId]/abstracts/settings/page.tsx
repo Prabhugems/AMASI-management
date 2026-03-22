@@ -23,6 +23,10 @@ import {
   Image,
   File,
   HardDrive,
+  Shield,
+  Sparkles,
+  Clock,
+  UserCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -51,6 +55,13 @@ interface AbstractSettings {
   // Video URL settings
   allow_video_url: boolean
   allowed_video_platforms: string[]
+  // Advanced review settings
+  enable_blind_review: boolean
+  auto_reminders_enabled: boolean
+  reminder_days_before: number[]
+  enable_reviewer_matching: boolean
+  require_coi_declaration: boolean
+  review_deadline: string | null
 }
 
 const presentationTypeOptions = [
@@ -591,6 +602,142 @@ export default function AbstractSettingsPage() {
             )}
           </div>
         </div>
+
+        {/* Advanced Review Settings Section */}
+        {formData.review_enabled && (
+          <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+            <div className="flex items-center gap-3 pb-4 border-b border-border">
+              <div className="h-10 w-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-indigo-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Advanced Review Settings</h3>
+                <p className="text-sm text-muted-foreground">Enhanced review workflow features</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Review Deadline */}
+              <div className="p-4 bg-secondary/30 rounded-xl border border-border">
+                <div className="flex items-center gap-3 mb-3">
+                  <Clock className="h-5 w-5 text-indigo-500" />
+                  <label className="font-medium">Review Deadline</label>
+                </div>
+                <Input
+                  type="datetime-local"
+                  value={formData.review_deadline ? new Date(formData.review_deadline).toISOString().slice(0, 16) : ""}
+                  onChange={(e) => updateField("review_deadline", e.target.value ? new Date(e.target.value).toISOString() : null)}
+                  className="w-64"
+                />
+                <p className="text-xs text-muted-foreground mt-2">Deadline for reviewers to complete their reviews</p>
+              </div>
+
+              {/* Enable Blind Review */}
+              <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border">
+                <div className="flex items-center gap-3">
+                  <Eye className="h-5 w-5 text-indigo-500" />
+                  <div>
+                    <p className="font-medium">Double-Blind Review</p>
+                    <p className="text-sm text-muted-foreground">
+                      Hide author names and affiliations from reviewers
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={formData.enable_blind_review ?? false}
+                  onCheckedChange={(checked) => updateField("enable_blind_review", checked)}
+                />
+              </div>
+
+              {/* Require COI Declaration */}
+              <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border">
+                <div className="flex items-center gap-3">
+                  <Shield className="h-5 w-5 text-indigo-500" />
+                  <div>
+                    <p className="font-medium">Require COI Declaration</p>
+                    <p className="text-sm text-muted-foreground">
+                      Reviewers must declare conflicts of interest before reviewing
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={formData.require_coi_declaration ?? false}
+                  onCheckedChange={(checked) => updateField("require_coi_declaration", checked)}
+                />
+              </div>
+
+              {/* Smart Reviewer Matching */}
+              <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border">
+                <div className="flex items-center gap-3">
+                  <UserCheck className="h-5 w-5 text-indigo-500" />
+                  <div>
+                    <p className="font-medium">Smart Reviewer Matching</p>
+                    <p className="text-sm text-muted-foreground">
+                      Auto-assign reviewers based on specialty and keywords
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={formData.enable_reviewer_matching ?? false}
+                  onCheckedChange={(checked) => updateField("enable_reviewer_matching", checked)}
+                />
+              </div>
+
+              {/* Auto Reminders */}
+              <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border">
+                <div className="flex items-center gap-3">
+                  <Bell className="h-5 w-5 text-indigo-500" />
+                  <div>
+                    <p className="font-medium">Auto Deadline Reminders</p>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically send reminders before review deadline
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={formData.auto_reminders_enabled ?? false}
+                  onCheckedChange={(checked) => updateField("auto_reminders_enabled", checked)}
+                />
+              </div>
+
+              {formData.auto_reminders_enabled && (
+                <div className="ml-8 p-4 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                  <label className="text-sm font-medium mb-2 block">Send reminders X days before deadline</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 3, 5, 7, 14].map((days) => {
+                      const current = formData.reminder_days_before || [7, 3, 1]
+                      const isSelected = current.includes(days)
+                      return (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              updateField("reminder_days_before", current.filter(d => d !== days))
+                            } else {
+                              updateField("reminder_days_before", [...current, days].sort((a, b) => b - a))
+                            }
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all",
+                            isSelected
+                              ? "border-indigo-500 bg-indigo-500 text-white"
+                              : "border-gray-300 hover:border-indigo-300"
+                          )}
+                        >
+                          {days} day{days > 1 ? "s" : ""}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Reminders will be sent via email to reviewers with pending reviews
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Notifications Section */}
         <div className="bg-card border border-border rounded-xl p-6 space-y-6">

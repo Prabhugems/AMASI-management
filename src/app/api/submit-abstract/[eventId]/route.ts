@@ -41,6 +41,10 @@ interface SubmissionData {
 
   // Optional registration link
   registration_id?: string
+
+  // Revision mode
+  is_revision?: boolean
+  revision_of?: string // Original abstract ID being revised
 }
 
 // POST /api/submit-abstract/[eventId] - Submit a new abstract
@@ -175,6 +179,121 @@ export async function POST(
 
     if (!category) {
       return NextResponse.json({ error: "Invalid category" }, { status: 400 })
+    }
+
+    // Handle revision submissions
+    if (body.is_revision && body.revision_of) {
+      // Get the original abstract
+      const { data: originalAbstract, error: origError } = await (supabase as any)
+        .from("abstracts")
+        .select("id, abstract_number, status, presenting_author_email")
+        .eq("id", body.revision_of)
+        .eq("event_id", eventId)
+        .single()
+
+      if (origError || !originalAbstract) {
+        return NextResponse.json({ error: "Original abstract not found" }, { status: 404 })
+      }
+
+      // Verify author owns this abstract
+      if (originalAbstract.presenting_author_email.toLowerCase() !== body.presenting_author_email.toLowerCase()) {
+        return NextResponse.json({ error: "You are not authorized to revise this abstract" }, { status: 403 })
+      }
+
+      // Verify abstract is in revision_requested status
+      if (originalAbstract.status !== "revision_requested") {
+        return NextResponse.json({ error: "This abstract is not awaiting revision" }, { status: 400 })
+      }
+
+      // Update the existing abstract
+      const { data: updatedAbstract, error: updateError } = await (supabase as any)
+        .from("abstracts")
+        .update({
+          title: body.title.trim(),
+          abstract_text: body.abstract_text.trim(),
+          keywords: body.keywords || [],
+          category_id: body.category_id,
+          presentation_type: body.presentation_type,
+          award_type: body.competition_type || 'free',
+          presenting_author_name: body.presenting_author_name.trim(),
+          presenting_author_phone: body.presenting_author_phone,
+          presenting_author_affiliation: body.presenting_author_affiliation,
+          file_url: body.file_url || originalAbstract.file_url,
+          file_name: body.file_name || originalAbstract.file_name,
+          video_url: body.video_url || originalAbstract.video_url,
+          video_platform: body.video_platform || originalAbstract.video_platform,
+          status: "submitted", // Reset to submitted for re-review
+          revision_count: (originalAbstract.revision_count || 0) + 1,
+          last_revised_at: new Date().toISOString(),
+        })
+        .eq("id", body.revision_of)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error("Error updating abstract:", updateError)
+        return NextResponse.json({ error: "Failed to submit revision" }, { status: 500 })
+      }
+
+      // Update co-authors: delete old ones and insert new ones
+      await (supabase as any)
+        .from("abstract_authors")
+        .delete()
+        .eq("abstract_id", body.revision_of)
+
+      if (body.authors && body.authors.length > 0) {
+        const authorInserts = body.authors.map((author, index) => ({
+          abstract_id: body.revision_of,
+          author_order: index + 2,
+          name: author.name.trim(),
+          email: author.email?.toLowerCase().trim() || null,
+          affiliation: author.affiliation || null,
+          is_presenting: author.is_presenting || false,
+        }))
+
+        authorInserts.unshift({
+          abstract_id: body.revision_of,
+          author_order: 1,
+          name: body.presenting_author_name.trim(),
+          email: body.presenting_author_email.toLowerCase().trim(),
+          affiliation: body.presenting_author_affiliation || null,
+          is_presenting: true,
+        })
+
+        await (supabase as any)
+          .from("abstract_authors")
+          .insert(authorInserts)
+      }
+
+      // Log revision notification
+      if (settings.notify_on_submission) {
+        await (supabase as any)
+          .from("abstract_notifications")
+          .insert({
+            abstract_id: body.revision_of,
+            notification_type: "revision_submitted",
+            recipient_email: body.presenting_author_email,
+            recipient_name: body.presenting_author_name,
+            subject: `Revision Submitted: ${originalAbstract.abstract_number}`,
+            metadata: {
+              abstract_number: originalAbstract.abstract_number,
+              title: body.title,
+              category: category.name,
+              event_name: event.name,
+            },
+          })
+      }
+
+      return NextResponse.json({
+        success: true,
+        abstract: {
+          id: updatedAbstract.id,
+          abstract_number: originalAbstract.abstract_number,
+          title: updatedAbstract.title,
+          status: updatedAbstract.status,
+        },
+        message: "Revision submitted successfully",
+      })
     }
 
     // Check if registration is required

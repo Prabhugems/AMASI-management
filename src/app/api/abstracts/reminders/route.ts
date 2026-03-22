@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         .from("abstract_review_assignments")
         .select(`
           id,
-          reviewer:abstract_reviewers(id, name, email),
+          reviewer:abstract_reviewers(id, name, email, phone),
           abstract:abstracts(id, abstract_number, title)
         `)
         .eq("event_id", event_id)
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Group by reviewer
-      const reviewerAssignments: Record<string, { name: string; email: string; abstracts: any[] }> = {}
+      const reviewerAssignments: Record<string, { name: string; email: string; phone: string | null; abstracts: any[] }> = {}
       for (const assignment of assignments) {
         if (!assignment.reviewer?.email) continue
         const email = assignment.reviewer.email.toLowerCase()
@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
           reviewerAssignments[email] = {
             name: assignment.reviewer.name,
             email,
+            phone: assignment.reviewer.phone,
             abstracts: [],
           }
         }
@@ -122,29 +123,52 @@ export async function POST(request: NextRequest) {
             sent++
           }
 
-          if (channel === "whatsapp" && isGallaboxEnabled()) {
-            // Send WhatsApp template message (would need phone number instead of email)
-            // For now, skip WhatsApp if no phone number available
-            // await sendGallaboxTemplate(
-            //   phoneNumber,
-            //   data.name,
-            //   "review_reminder",
-            //   { name: data.name, count: String(data.abstracts.length), event: eventName }
-            // )
-            // sent++
+          if (channel === "whatsapp" && isGallaboxEnabled() && data.phone) {
+            // Send WhatsApp template message
+            const deadline = settings?.review_deadline
+              ? new Date(settings.review_deadline).toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })
+              : "soon"
+
+            const result = await sendGallaboxTemplate(
+              data.phone,
+              data.name,
+              "abstract_review_reminder",
+              {
+                reviewer_name: data.name,
+                abstract_count: String(data.abstracts.length),
+                event_name: eventName,
+                deadline: deadline,
+              }
+            )
+
+            if (result.success) {
+              sent++
+            } else {
+              errors.push(`WhatsApp to ${data.phone}: ${result.error}`)
+            }
           }
 
           // Log the reminder
           await (supabase as any)
-            .from("abstract_reminders")
+            .from("abstract_notifications")
             .insert({
-              event_id,
-              reminder_type,
-              recipient_type: "reviewer",
+              notification_type: `${reminder_type}_reminder`,
               recipient_email: email,
               recipient_name: data.name,
-              channel,
-              delivery_status: "sent",
+              subject: `Review Reminder - ${eventName}`,
+              body_preview: `Reminder to complete review of ${data.abstracts.length} abstract(s)`,
+              metadata: {
+                event_id,
+                channel,
+                reminder_type,
+                recipient_type: "reviewer",
+                recipient_phone: data.phone,
+                abstract_count: data.abstracts.length,
+              },
             })
         } catch (err: any) {
           errors.push(`Failed to send to ${email}: ${err.message}`)
@@ -156,7 +180,7 @@ export async function POST(request: NextRequest) {
       // Remind authors with pending revisions
       const { data: abstracts } = await (supabase as any)
         .from("abstracts")
-        .select("id, abstract_number, title, presenting_author_name, presenting_author_email")
+        .select("id, abstract_number, title, presenting_author_name, presenting_author_email, presenting_author_phone")
         .eq("event_id", event_id)
         .eq("status", "revision_requested")
 
@@ -188,18 +212,46 @@ export async function POST(request: NextRequest) {
             sent++
           }
 
+          if (channel === "whatsapp" && isGallaboxEnabled() && abstract.presenting_author_phone) {
+            const revisionUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "https://collegeofmas.org.in"}/submit-abstract/${event_id}?revision=${abstract.id}&email=${encodeURIComponent(abstract.presenting_author_email)}`
+
+            const result = await sendGallaboxTemplate(
+              abstract.presenting_author_phone,
+              abstract.presenting_author_name,
+              "abstract_revision_reminder",
+              {
+                author_name: abstract.presenting_author_name,
+                abstract_number: abstract.abstract_number,
+                event_name: eventName,
+                revision_url: revisionUrl,
+              }
+            )
+
+            if (result.success) {
+              sent++
+            } else {
+              errors.push(`WhatsApp to ${abstract.presenting_author_phone}: ${result.error}`)
+            }
+          }
+
           // Log the reminder
           await (supabase as any)
-            .from("abstract_reminders")
+            .from("abstract_notifications")
             .insert({
-              event_id,
-              reminder_type,
-              recipient_type: "author",
+              abstract_id: abstract.id,
+              notification_type: `${reminder_type}_reminder`,
               recipient_email: abstract.presenting_author_email,
               recipient_name: abstract.presenting_author_name,
-              abstract_id: abstract.id,
-              channel,
-              delivery_status: "sent",
+              subject: `Revision Reminder - ${abstract.abstract_number}`,
+              body_preview: `Reminder to submit revision for abstract ${abstract.abstract_number}`,
+              metadata: {
+                event_id,
+                channel,
+                reminder_type,
+                recipient_type: "author",
+                recipient_phone: abstract.presenting_author_phone,
+                abstract_number: abstract.abstract_number,
+              },
             })
         } catch (err: any) {
           errors.push(`Failed to send to ${abstract.presenting_author_email}: ${err.message}`)

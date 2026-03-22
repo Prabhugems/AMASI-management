@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -149,13 +149,31 @@ const steps = [
 export default function SubmitAbstractPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const eventId = params.eventId as string
+
+  // Revision mode - check for ?revision=abstractId&email=author@email.com
+  const revisionAbstractId = searchParams.get("revision")
+  const revisionEmail = searchParams.get("email")
+  const isRevisionMode = !!revisionAbstractId && !!revisionEmail
 
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false)
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    duplicates: { abstract_number: string; title: string; author: string; overall_similarity: number; match_type: string }[]
+    has_exact_match: boolean
+  } | null>(null)
+
+  // Revision mode state
+  const [originalAbstract, setOriginalAbstract] = useState<{
+    abstract_number: string
+    title: string
+    reviewer_comments?: string
+  } | null>(null)
 
   const [event, setEvent] = useState<{ name: string; dates: string; venue: string; city: string } | null>(null)
   const [settings, setSettings] = useState<{
@@ -187,6 +205,76 @@ export default function SubmitAbstractPage() {
   useEffect(() => {
     fetchSettings()
   }, [eventId])
+
+  // Fetch existing abstract for revision mode
+  useEffect(() => {
+    if (isRevisionMode && revisionAbstractId && revisionEmail) {
+      fetchRevisionData()
+    }
+  }, [isRevisionMode, revisionAbstractId, revisionEmail])
+
+  const fetchRevisionData = async () => {
+    try {
+      const res = await fetch(
+        `/api/abstracts/${revisionAbstractId}?email=${encodeURIComponent(revisionEmail!)}`
+      )
+      if (!res.ok) {
+        const error = await res.json()
+        toast.error(error.error || "Failed to load abstract for revision")
+        return
+      }
+
+      const data = await res.json()
+
+      // Check if abstract is in revision_requested status
+      if (data.status !== "revision_requested") {
+        toast.error("This abstract is not awaiting revision")
+        return
+      }
+
+      // Store original abstract info
+      setOriginalAbstract({
+        abstract_number: data.abstract_number,
+        title: data.title,
+        reviewer_comments: data.reviews?.find((r: { comments_to_author?: string }) => r.comments_to_author)?.comments_to_author,
+      })
+
+      // Pre-fill form with existing data
+      setFormData({
+        presenting_author_name: data.presenting_author_name || "",
+        presenting_author_email: data.presenting_author_email || "",
+        presenting_author_phone: data.presenting_author_phone || "",
+        presenting_author_affiliation: data.presenting_author_affiliation || "",
+        amasi_membership_number: data.amasi_membership_number || "",
+        title: data.title || "",
+        abstract_text: data.abstract_text || "",
+        keywords: data.keywords || [],
+        authors: data.authors?.filter((a: Author & { is_presenting?: boolean }) => !a.is_presenting)?.map((a: Author) => ({
+          name: a.name,
+          email: a.email || "",
+          affiliation: a.affiliation || "",
+          is_presenting: false,
+        })) || [],
+        category_id: data.category_id || "",
+        presentation_type: data.presentation_type || "paper",
+        competition_type: data.competition_type || "free",
+        file_url: data.file_url || "",
+        file_name: data.file_name || "",
+        file_size: 0,
+        video_url: data.video_url || "",
+        video_platform: data.video_platform || "",
+        declarations_accepted: false,
+        ethics_confirmed: false,
+        originality_confirmed: false,
+        consent_confirmed: false,
+      })
+
+      toast.info("Loaded abstract for revision")
+    } catch (error) {
+      console.error("Error loading revision data:", error)
+      toast.error("Failed to load abstract for revision")
+    }
+  }
 
   // Auto-save draft every 30 seconds
   useEffect(() => {
@@ -380,6 +468,44 @@ export default function SubmitAbstractPage() {
     }
   }
 
+  // Check for duplicate/similar abstracts
+  const checkDuplicates = async (): Promise<boolean> => {
+    if (isRevisionMode) return true // Skip for revisions
+
+    try {
+      setCheckingDuplicates(true)
+      const res = await fetch("/api/abstracts/check-duplicates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          title: formData.title,
+          abstract_text: formData.abstract_text,
+        }),
+      })
+
+      if (!res.ok) return true // Allow to proceed if check fails
+
+      const data = await res.json()
+
+      if (data.duplicates && data.duplicates.length > 0) {
+        setDuplicateWarning({
+          duplicates: data.duplicates,
+          has_exact_match: data.has_exact_match,
+        })
+        return false // Block navigation to show warning
+      }
+
+      setDuplicateWarning(null)
+      return true
+    } catch (error) {
+      console.error("Error checking duplicates:", error)
+      return true // Allow to proceed if check fails
+    } finally {
+      setCheckingDuplicates(false)
+    }
+  }
+
   const goToStep = (step: number) => {
     if (step < currentStep || validateStep(currentStep)) {
       setCurrentStep(step)
@@ -387,8 +513,14 @@ export default function SubmitAbstractPage() {
     }
   }
 
-  const nextStep = () => {
+  const nextStep = async () => {
     if (validateStep(currentStep)) {
+      // Check for duplicates when leaving step 2 (Abstract)
+      if (currentStep === 2) {
+        const canProceed = await checkDuplicates()
+        if (!canProceed) return // Will show duplicate warning dialog
+      }
+
       if (currentStep < 6) {
         setCurrentStep(currentStep + 1)
         window.scrollTo({ top: 0, behavior: "smooth" })
@@ -409,10 +541,19 @@ export default function SubmitAbstractPage() {
     try {
       setSubmitting(true)
 
+      const payload = {
+        ...formData,
+        // Include revision info if in revision mode
+        ...(isRevisionMode && revisionAbstractId && {
+          is_revision: true,
+          revision_of: revisionAbstractId,
+        }),
+      }
+
       const res = await fetch(`/api/submit-abstract/${eventId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
@@ -423,7 +564,7 @@ export default function SubmitAbstractPage() {
       const result = await res.json()
       setSubmittedAbstract(result.abstract)
       setSubmitted(true)
-      toast.success("Abstract submitted successfully!")
+      toast.success(isRevisionMode ? "Revision submitted successfully!" : "Abstract submitted successfully!")
     } catch (error) {
       console.error("Submission error:", error)
       toast.error(error instanceof Error ? error.message : "Failed to submit")
@@ -596,6 +737,30 @@ export default function SubmitAbstractPage() {
             </div>
           )}
         </div>
+
+        {/* Revision Mode Banner */}
+        {isRevisionMode && originalAbstract && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-orange-800">Revision Mode</h3>
+                <p className="text-sm text-orange-700 mt-1">
+                  You are submitting a revision for abstract{" "}
+                  <span className="font-mono font-bold">{originalAbstract.abstract_number}</span>
+                </p>
+                {originalAbstract.reviewer_comments && (
+                  <div className="mt-3 p-3 bg-white/50 rounded-lg border border-orange-200">
+                    <p className="text-xs font-medium text-orange-800 mb-1">Reviewer Comments:</p>
+                    <p className="text-sm text-orange-700 italic">
+                      &ldquo;{originalAbstract.reviewer_comments}&rdquo;
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Deadline Banner */}
         {settings?.submission_deadline && (
@@ -1488,14 +1653,14 @@ export default function SubmitAbstractPage() {
                 <Button
                   onClick={handleSubmit}
                   disabled={submitting || !formData.declarations_accepted}
-                  className="bg-green-600 hover:bg-green-700"
+                  className={isRevisionMode ? "bg-orange-600 hover:bg-orange-700" : "bg-green-600 hover:bg-green-700"}
                 >
                   {submitting ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
                     <Send className="h-4 w-4 mr-2" />
                   )}
-                  Submit Abstract
+                  {isRevisionMode ? "Submit Revision" : "Submit Abstract"}
                 </Button>
               )}
             </div>
@@ -1523,6 +1688,56 @@ export default function SubmitAbstractPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction>Close</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Duplicate Warning Dialog */}
+      <AlertDialog open={!!duplicateWarning} onOpenChange={(open) => !open && setDuplicateWarning(null)}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              {duplicateWarning?.has_exact_match ? "Duplicate Title Found" : "Similar Abstract(s) Found"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>
+                  {duplicateWarning?.has_exact_match
+                    ? "An abstract with the exact same title already exists. Please modify your title or verify this isn't a duplicate submission."
+                    : "We found abstracts similar to yours. Please review to ensure you're not submitting a duplicate."}
+                </p>
+                <div className="space-y-3">
+                  {duplicateWarning?.duplicates.map((dup, idx) => (
+                    <div key={idx} className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-mono text-sm font-semibold text-amber-700">
+                          {dup.abstract_number}
+                        </span>
+                        <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">
+                          {dup.overall_similarity}% similar
+                        </Badge>
+                      </div>
+                      <p className="text-sm font-medium text-gray-900 line-clamp-2">{dup.title}</p>
+                      <p className="text-xs text-gray-500 mt-1">by {dup.author}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back & Edit</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setDuplicateWarning(null)
+                setCurrentStep(3)
+                window.scrollTo({ top: 0, behavior: "smooth" })
+              }}
+              className={duplicateWarning?.has_exact_match ? "bg-amber-600 hover:bg-amber-700" : ""}
+            >
+              {duplicateWarning?.has_exact_match ? "Proceed Anyway" : "Continue"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
