@@ -273,10 +273,11 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                 <button
                   onClick={() => !collapsed && toggleMenu(item.name)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 nav-item-hover",
                     isActive
-                      ? "bg-sidebar-accent text-sidebar-foreground"
-                      : "text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                      ? "bg-sidebar-accent text-sidebar-foreground nav-item-active"
+                      : "text-sidebar-muted hover:text-sidebar-foreground",
+                    collapsed && "sidebar-tooltip"
                   )}
                 >
                   <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -285,16 +286,19 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                       <span className="flex-1 text-left">{item.name}</span>
                       <ChevronDown
                         className={cn(
-                          "h-4 w-4 transition-transform",
+                          "h-4 w-4 transition-transform duration-200",
                           isOpen && "rotate-180"
                         )}
                       />
                     </>
                   )}
+                  {collapsed && (
+                    <span className="sidebar-tooltip-text">{item.name}</span>
+                  )}
                 </button>
                 {/* Submenu */}
                 {!collapsed && isOpen && item.children && (
-                  <ul className="mt-1 space-y-1 pl-4">
+                  <ul className="mt-1 space-y-1 pl-4 submenu-enter">
                     {item.children.map((child) => {
                       const childActive = pathname === child.href
                       return (
@@ -303,10 +307,10 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                             href={child.href}
                             onClick={onMobileClose}
                             className={cn(
-                              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
+                              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 nav-item-hover",
                               childActive
-                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                                : "text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground nav-item-active pl-4"
+                                : "text-sidebar-muted hover:text-sidebar-foreground"
                             )}
                           >
                             <span className="w-5 text-center text-xs font-medium">
@@ -335,14 +339,18 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                     href={item.href}
                     onClick={onMobileClose}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 nav-item-hover",
                       isActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground nav-item-active"
+                        : "text-sidebar-muted hover:text-sidebar-foreground",
+                      collapsed && "sidebar-tooltip"
                     )}
                   >
                     <item.icon className="h-5 w-5 flex-shrink-0" />
                     {!collapsed && <span>{item.name}</span>}
+                    {collapsed && (
+                      <span className="sidebar-tooltip-text">{item.name}</span>
+                    )}
                   </Link>
                 </li>
               )

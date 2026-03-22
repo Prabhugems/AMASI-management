@@ -70,48 +70,60 @@ const colorConfig = {
   rose: {
     gradient: 'from-rose-500 to-orange-500',
     lightBg: 'from-rose-50 to-orange-50',
+    cardBg: 'bg-gradient-to-br from-white to-rose-50/30 dark:from-slate-800/50 dark:to-rose-950/10',
     iconBg: 'bg-gradient-to-br from-rose-500 to-orange-500',
     shadow: 'hover:shadow-rose-200/50 dark:hover:shadow-rose-500/20',
+    borderAccent: 'border-l-rose-500',
     glow: 'bg-rose-500',
     ring: 'ring-rose-500/30',
   },
   amber: {
     gradient: 'from-amber-500 to-yellow-500',
     lightBg: 'from-amber-50 to-yellow-50',
+    cardBg: 'bg-gradient-to-br from-white to-amber-50/30 dark:from-slate-800/50 dark:to-amber-950/10',
     iconBg: 'bg-gradient-to-br from-amber-500 to-yellow-500',
     shadow: 'hover:shadow-amber-200/50 dark:hover:shadow-amber-500/20',
+    borderAccent: 'border-l-amber-500',
     glow: 'bg-amber-500',
     ring: 'ring-amber-500/30',
   },
   teal: {
     gradient: 'from-teal-500 to-cyan-500',
     lightBg: 'from-teal-50 to-cyan-50',
+    cardBg: 'bg-gradient-to-br from-white to-teal-50/30 dark:from-slate-800/50 dark:to-teal-950/10',
     iconBg: 'bg-gradient-to-br from-teal-500 to-cyan-500',
     shadow: 'hover:shadow-teal-200/50 dark:hover:shadow-teal-500/20',
+    borderAccent: 'border-l-teal-500',
     glow: 'bg-teal-500',
     ring: 'ring-teal-500/30',
   },
   violet: {
     gradient: 'from-violet-500 to-purple-500',
     lightBg: 'from-violet-50 to-purple-50',
+    cardBg: 'bg-gradient-to-br from-white to-violet-50/30 dark:from-slate-800/50 dark:to-violet-950/10',
     iconBg: 'bg-gradient-to-br from-violet-500 to-purple-500',
     shadow: 'hover:shadow-violet-200/50 dark:hover:shadow-violet-500/20',
+    borderAccent: 'border-l-violet-500',
     glow: 'bg-violet-500',
     ring: 'ring-violet-500/30',
   },
   indigo: {
     gradient: 'from-indigo-500 to-blue-500',
     lightBg: 'from-indigo-50 to-blue-50',
+    cardBg: 'bg-gradient-to-br from-white to-indigo-50/30 dark:from-slate-800/50 dark:to-indigo-950/10',
     iconBg: 'bg-gradient-to-br from-indigo-500 to-blue-500',
     shadow: 'hover:shadow-indigo-200/50 dark:hover:shadow-indigo-500/20',
+    borderAccent: 'border-l-indigo-500',
     glow: 'bg-indigo-500',
     ring: 'ring-indigo-500/30',
   },
   emerald: {
     gradient: 'from-emerald-500 to-green-500',
     lightBg: 'from-emerald-50 to-green-50',
+    cardBg: 'bg-gradient-to-br from-white to-emerald-50/30 dark:from-slate-800/50 dark:to-emerald-950/10',
     iconBg: 'bg-gradient-to-br from-emerald-500 to-green-500',
     shadow: 'hover:shadow-emerald-200/50 dark:hover:shadow-emerald-500/20',
+    borderAccent: 'border-l-emerald-500',
     glow: 'bg-emerald-500',
     ring: 'ring-emerald-500/30',
   },
@@ -151,10 +163,13 @@ export function StatCard({
       className={cn(
         // Base styles
         'group relative overflow-hidden rounded-2xl p-6 cursor-pointer',
-        // Light theme styles
-        'bg-white border border-gray-200/80',
-        // Dark theme styles
-        'dark:bg-slate-800/50 dark:backdrop-blur-sm dark:border-slate-700/50',
+        // Gradient background
+        colors.cardBg,
+        // Left border accent
+        'border border-gray-200/80 border-l-[3px]',
+        colors.borderAccent,
+        // Dark theme border
+        'dark:border-slate-700/50 dark:border-l-[3px]',
         // Transitions
         'transition-all duration-500 ease-out',
         // Entry animation
@@ -217,7 +232,7 @@ export function StatCard({
                 'relative p-3.5 rounded-xl text-white',
                 colors.iconBg,
                 'transition-all duration-500 ease-out',
-                isHovered && 'scale-110 rotate-6 shadow-lg'
+                isHovered && 'scale-110 rotate-6 shadow-lg animate-pulse'
               )}
             >
               <Icon className="w-6 h-6" strokeWidth={2} />

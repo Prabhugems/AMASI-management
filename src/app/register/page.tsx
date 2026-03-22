@@ -105,10 +105,9 @@ function EventCard({ event, isDark: _isDark, index }: { event: PublicEvent; isDa
     <Link href={`/register/${event.slug || event.id}`}>
       <div
         className={`
-          paper-card card-animated group relative overflow-hidden cursor-pointer
-          transition-all duration-500 ease-out
+          paper-card card-hover-shine group relative overflow-hidden cursor-pointer
+          transition-all duration-500 ease-out event-card-hover border border-transparent
           ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}
-          ${isHovered ? "scale-[1.02]" : ""}
         `}
         style={{ transitionDelay: `${index * 100}ms` }}
         onMouseEnter={() => setIsHovered(true)}
@@ -129,7 +128,7 @@ function EventCard({ event, isDark: _isDark, index }: { event: PublicEvent; isDa
           ) : (
             <div
               className={`
-                w-full h-full bg-gradient-primary
+                w-full h-full bg-gradient-primary animate-gradient-shift
                 flex items-center justify-center
               `}
             >
@@ -248,15 +247,7 @@ function EventCard({ event, isDark: _isDark, index }: { event: PublicEvent; isDa
           </div>
         </div>
 
-        {/* Shine effect */}
-        <div
-          className={`
-            absolute inset-0 -translate-x-full pointer-events-none
-            bg-gradient-to-r from-transparent via-white/10 to-transparent
-            transition-transform duration-700 skew-x-12
-            ${isHovered ? "translate-x-full" : ""}
-          `}
-        />
+        {/* Shine effect handled by card-hover-shine CSS class */}
       </div>
     </Link>
   )

@@ -107,13 +107,13 @@ export function HealthWidget() {
       </div>
 
       {/* Services List */}
-      <div className="p-5 space-y-3">
+      <div className="p-5 space-y-3 animate-stagger">
         {data?.services.map((service) => {
           const config = STATUS_CONFIG[service.status]
           const Icon = SERVICE_ICONS[service.name] || Activity
 
           return (
-            <div key={service.name} className="flex items-center gap-3">
+            <div key={service.name} className="flex items-center gap-3 transition-all duration-300 hover:bg-muted/30 -mx-2 px-2 py-1 rounded-lg">
               <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
@@ -123,7 +123,7 @@ export function HealthWidget() {
                       {service.status === "healthy" && (
                         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${config.dotClass} opacity-75`} />
                       )}
-                      <span className={`relative inline-flex rounded-full h-2 w-2 ${config.dotClass}`} />
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${config.dotClass} ${service.status === 'healthy' ? 'status-pulse' : ''}`} />
                     </span>
                     <span className={`text-xs font-medium ${config.color}`}>
                       {config.label}

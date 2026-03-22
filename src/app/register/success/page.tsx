@@ -97,13 +97,43 @@ function SuccessContent() {
 
   return (
     <div className="container mx-auto px-4 py-12">
+      {/* CSS Confetti Celebration */}
+      <div className="confetti-celebration" aria-hidden="true">
+        {Array.from({ length: 40 }, (_, i) => {
+          const colors = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4']
+          const color = colors[i % colors.length]
+          const left = `${(i * 2.5) + Math.random() * 2}%`
+          const delay = `${Math.random() * 1.5}s`
+          const duration = `${2.5 + Math.random() * 2}s`
+          const size = 6 + Math.random() * 6
+          const drift = `${(Math.random() - 0.5) * 80}px`
+          const isCircle = i % 3 === 0
+          return (
+            <div
+              key={i}
+              className="confetti-piece"
+              style={{
+                left,
+                width: `${size}px`,
+                height: `${isCircle ? size : size * 0.6}px`,
+                backgroundColor: color,
+                borderRadius: isCircle ? '50%' : '2px',
+                '--delay': delay,
+                '--duration': duration,
+                '--drift': drift,
+              } as React.CSSProperties}
+            />
+          )
+        })}
+      </div>
+
       <div className="max-w-2xl mx-auto text-center">
         {/* Success Animation */}
         <div className="relative mb-8">
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-32 h-32 bg-emerald-500/20 rounded-full animate-ping" />
           </div>
-          <div className="relative inline-flex p-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 shadow-2xl shadow-emerald-500/40">
+          <div className="relative inline-flex p-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 shadow-2xl shadow-emerald-500/40 animate-bounce-in">
             <CheckCircle className="w-16 h-16 text-white" />
           </div>
         </div>
@@ -129,7 +159,7 @@ function SuccessContent() {
           <div className="flex flex-col md:flex-row gap-6">
             {/* QR Code */}
             {qrCodeUrl && (
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center qr-fade-in">
                 <div className="p-3 bg-white border-2 border-gray-100 rounded-xl">
                   <img
                     src={qrCodeUrl}
@@ -158,7 +188,7 @@ function SuccessContent() {
                         <p className="text-xs text-emerald-600 font-medium">
                           Registration Number
                         </p>
-                        <p className="font-mono font-bold text-emerald-900 text-lg">
+                        <p className="font-mono font-bold text-emerald-900 text-lg count-up-reveal">
                           {registrationNumber}
                         </p>
                       </div>
@@ -248,7 +278,7 @@ function SuccessContent() {
             What's Next?
           </h2>
 
-          <ul className="space-y-3">
+          <ul className="space-y-3 stagger-in">
             <li className="flex items-start gap-3">
               <div className="p-1 rounded-full bg-emerald-100 text-emerald-600 mt-0.5">
                 <CheckCircle className="w-4 h-4" />

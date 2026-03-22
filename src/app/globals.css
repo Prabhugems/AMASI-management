@@ -287,10 +287,12 @@
   .paper-card {
     @apply bg-card rounded-xl border-0 shadow-sm;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .paper-card:hover {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.08);
   }
 
   /* Icon Big - Paper Dashboard Style */
@@ -596,6 +598,60 @@
   .ease-slide {
     transition-timing-function: cubic-bezier(0.28, -0.03, 0, 0.99);
   }
+
+  /* Stagger children entrance */
+  .animate-stagger > * {
+    animation: fadeSlideUp 0.5s ease-out both;
+  }
+  .animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .animate-stagger > *:nth-child(2) { animation-delay: 60ms; }
+  .animate-stagger > *:nth-child(3) { animation-delay: 120ms; }
+  .animate-stagger > *:nth-child(4) { animation-delay: 180ms; }
+  .animate-stagger > *:nth-child(5) { animation-delay: 240ms; }
+  .animate-stagger > *:nth-child(6) { animation-delay: 300ms; }
+  .animate-stagger > *:nth-child(7) { animation-delay: 360ms; }
+  .animate-stagger > *:nth-child(8) { animation-delay: 420ms; }
+
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Smooth number counter pulse */
+  @keyframes countPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
+  /* Card shine sweep */
+  .card-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .card-shine::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+    transform: rotate(30deg) translateX(-100%);
+    transition: transform 0.6s ease;
+    pointer-events: none;
+  }
+  .card-shine:hover::after {
+    transform: rotate(30deg) translateX(100%);
+  }
+
+  /* Status dot pulse for health widget */
+  .status-pulse {
+    animation: statusPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  @keyframes statusPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
 }
 
 /* ================================
@@ -840,6 +896,296 @@
   }
 }
 
+/* ================================
+   REGISTRATION FLOW ANIMATIONS
+   ================================ */
+
+/* Gradient banner slow shift animation */
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradientShift 6s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Card hover shine sweep */
+.card-hover-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-hover-shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 100%
+  );
+  transition: left 0.7s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-hover-shine:hover::before {
+  left: 100%;
+}
+
+/* Event card enhanced hover */
+.event-card-hover {
+  transition: transform 0.3s cubic-bezier(0.34, 1.61, 0.7, 1),
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
+}
+
+.event-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.15), 0 4px 10px -4px rgba(0, 0, 0, 0.08);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+/* Order summary slide-in from right */
+.animate-slide-in-right {
+  animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Smooth number transition */
+.price-transition {
+  display: inline-block;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.price-transition.changing {
+  animation: priceChange 0.4s ease;
+}
+
+@keyframes priceChange {
+  0% { transform: translateY(0); opacity: 1; }
+  30% { transform: translateY(-8px); opacity: 0; }
+  60% { transform: translateY(8px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Checkout button gradient animation */
+.btn-gradient-animate {
+  background: linear-gradient(135deg, #059669, #10b981, #059669);
+  background-size: 200% 200%;
+  animation: btnGradient 3s ease infinite;
+}
+
+@keyframes btnGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Button pulse glow when enabled */
+.btn-pulse-glow {
+  animation: btnPulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes btnPulseGlow {
+  0%, 100% { box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3); }
+  50% { box-shadow: 0 4px 25px rgba(5, 150, 105, 0.5); }
+}
+
+/* Payment button shine sweep */
+.btn-shine-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shine-sweep::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: shineSweep 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shineSweep {
+  0% { left: -100%; }
+  50%, 100% { left: 200%; }
+}
+
+/* Form field focus glow */
+.input-focus-glow {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.input-focus-glow:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Error shake animation */
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+/* Progress connector animated fill */
+.progress-connector-fill {
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* CSS-only confetti celebration */
+.confetti-celebration {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -20px;
+  animation: confettiDrop var(--duration, 3s) ease-in var(--delay, 0s) forwards;
+}
+
+@keyframes confettiDrop {
+  0% {
+    transform: translateY(-20px) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(25vh) rotate(180deg) translateX(var(--drift, 30px)) scale(0.9);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(50vh) rotate(360deg) translateX(calc(var(--drift, 30px) * -0.5)) scale(0.8);
+    opacity: 0.9;
+  }
+  75% {
+    transform: translateY(75vh) rotate(540deg) translateX(var(--drift, 30px)) scale(0.7);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg) translateX(0) scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* Registration number count-up reveal */
+.count-up-reveal {
+  animation: countUpReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.5s;
+  opacity: 0;
+}
+
+@keyframes countUpReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+    filter: blur(4px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.02);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* QR code fade-in scale */
+.qr-fade-in {
+  animation: qrFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.8s;
+  opacity: 0;
+}
+
+@keyframes qrFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Stagger entrance for What's Next items */
+.stagger-in > *:nth-child(1) { animation-delay: 0.3s; }
+.stagger-in > *:nth-child(2) { animation-delay: 0.45s; }
+.stagger-in > *:nth-child(3) { animation-delay: 0.6s; }
+.stagger-in > *:nth-child(4) { animation-delay: 0.75s; }
+.stagger-in > *:nth-child(5) { animation-delay: 0.9s; }
+
+.stagger-in > * {
+  animation: staggerFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes staggerFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Ticket selection bounce */
+.ticket-bounce-select {
+  animation: ticketBounce 0.35s cubic-bezier(0.34, 1.61, 0.7, 1);
+}
+
+@keyframes ticketBounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+/* Hero banner parallax-like scale on scroll (applied via JS) */
+.hero-parallax {
+  transition: transform 0.1s linear;
+  will-change: transform;
+}
+
 /* Mobile safe area for bottom fixed bars (iPhone notch/home indicator) */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -849,4 +1195,171 @@
 html, body {
   overflow-x: hidden;
   max-width: 100vw;
+}
+
+/* ================================
+   SIDEBAR & HEADER ANIMATIONS
+   ================================ */
+
+/* Sidebar active indicator - colored left border */
+.nav-item-active {
+  position: relative;
+}
+.nav-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 4px 4px 0;
+  background: hsl(var(--primary));
+  animation: indicatorSlideIn 0.2s ease-out;
+}
+
+@keyframes indicatorSlideIn {
+  from { height: 0; opacity: 0; }
+  to { height: 60%; opacity: 1; }
+}
+
+/* Sidebar hover slide-in background effect */
+.nav-item-hover {
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+.nav-item-hover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--sidebar-accent));
+  border-radius: inherit;
+  transform: translateX(-100%);
+  opacity: 0;
+  transition: transform 0.25s ease-out, opacity 0.25s ease-out;
+  z-index: -1;
+}
+.nav-item-hover:hover::after {
+  transform: translateX(0);
+  opacity: 0.5;
+}
+
+/* Collapsible section expand/collapse animation */
+.submenu-enter {
+  animation: submenuExpand 0.25s ease-out;
+  overflow: hidden;
+}
+
+@keyframes submenuExpand {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    transform: translateY(0);
+  }
+}
+
+/* Dropdown animation for header menus */
+.dropdown-animated {
+  animation: dropdownIn 0.2s ease-out;
+}
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Header bottom border gradient */
+.header-border-gradient {
+  position: relative;
+}
+.header-border-gradient::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--primary) / 0.4) 20%,
+    hsl(var(--primary) / 0.6) 50%,
+    hsl(var(--primary) / 0.4) 80%,
+    transparent 100%
+  );
+}
+
+/* Keyboard shortcut hint fade on search hover */
+.search-btn:hover .kbd-hint {
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+.search-btn .kbd-hint {
+  transition: opacity 0.2s ease-out;
+}
+
+/* Event sidebar section separator */
+.sidebar-section-separator {
+  position: relative;
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+}
+.sidebar-section-separator::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--sidebar-border)) 30%,
+    hsl(var(--sidebar-border)) 70%,
+    transparent 100%
+  );
+}
+
+/* Badge pulse animation for count changes */
+@keyframes badgePulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.badge-pulse {
+  animation: badgePulse 0.3s ease-in-out;
+}
+
+/* Sidebar tooltip for collapsed state */
+.sidebar-tooltip {
+  position: relative;
+}
+.sidebar-tooltip .sidebar-tooltip-text {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid hsl(var(--border));
+  z-index: 100;
+  pointer-events: none;
+  transition: opacity 0.15s ease-out, visibility 0.15s ease-out;
+}
+.sidebar-tooltip:hover .sidebar-tooltip-text {
+  visibility: visible;
+  opacity: 1;
 }

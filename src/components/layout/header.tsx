@@ -183,7 +183,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
   return (
     <header
       className={cn(
-        "fixed top-0 right-0 z-30 h-16 bg-background/80 backdrop-blur-xl border-b border-border transition-all duration-300 print:hidden left-0",
+        "fixed top-0 right-0 z-30 h-16 bg-background/80 backdrop-blur-xl border-b border-border transition-all duration-300 print:hidden left-0 header-border-gradient",
         sidebarCollapsed ? "lg:left-20" : "lg:left-64"
       )}
     >
@@ -198,11 +198,11 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
           </button>
           <button
             onClick={() => setCommandPaletteOpen(true)}
-            className="relative flex-1 flex items-center w-full h-10 pl-10 pr-4 rounded-xl bg-secondary/50 border border-transparent text-sm text-muted-foreground hover:bg-secondary transition-colors cursor-pointer text-left"
+            className="search-btn relative flex-1 flex items-center w-full h-10 pl-10 pr-4 rounded-xl bg-secondary/50 border border-transparent text-sm text-muted-foreground hover:bg-secondary transition-colors cursor-pointer text-left"
           >
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <span>Search events, registrations...</span>
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+            <kbd className="kbd-hint absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
               <span className="text-xs">⌘</span>K
             </kbd>
           </button>
@@ -226,7 +226,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
             {showThemeMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowThemeMenu(false)} />
-                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border bg-popover p-4 shadow-xl z-50 animate-in slide-in-from-top-2">
+                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border bg-popover p-4 shadow-xl z-50 dropdown-animated">
                   <div className="mb-4">
                     <p className="text-xs font-semibold text-muted-foreground mb-3">Appearance</p>
                     <div className="grid grid-cols-3 gap-2">
@@ -302,7 +302,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                <span key={unreadCount} className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground badge-pulse">
                   {unreadCount}
                 </span>
               )}
@@ -310,7 +310,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
             {showNotifications && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border bg-popover shadow-xl z-50 animate-in slide-in-from-top-2">
+                <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border bg-popover shadow-xl z-50 dropdown-animated">
                   <div className="flex items-center justify-between p-4 border-b border-border">
                     <h3 className="font-semibold text-foreground">Notifications</h3>
                     {unreadCount > 0 && (
@@ -415,7 +415,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
             {showUserMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border bg-popover shadow-xl z-50 animate-in slide-in-from-top-2">
+                <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border bg-popover shadow-xl z-50 dropdown-animated">
                   {/* User Info Section */}
                   <div className="p-4 border-b border-border">
                     <div className="flex items-center gap-3">

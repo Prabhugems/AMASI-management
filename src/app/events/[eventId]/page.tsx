@@ -705,19 +705,19 @@ export default function EventDashboardPage() {
             <h3 className="font-semibold text-foreground">Event Setup Progress</h3>
             <span className="text-sm text-muted-foreground">{completedSteps}/{setupSteps.length} completed</span>
           </div>
-          <div className="flex items-center justify-between overflow-x-auto pb-2">
+          <div className="flex items-center justify-between overflow-x-auto pb-2 animate-stagger">
             {setupSteps.map((step, index) => (
               <div key={step.id} className="flex items-center flex-shrink-0">
                 <button
                   onClick={() => router.push(step.link)}
-                  className="flex flex-col items-center group"
+                  className="flex flex-col items-center group transition-all duration-300 hover:-translate-y-1"
                 >
                   <div
                     className={cn(
-                      "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all",
+                      "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all duration-300",
                       step.completed
-                        ? "bg-emerald-500 text-white"
-                        : "bg-red-100 text-red-600 group-hover:bg-red-200"
+                        ? "bg-emerald-500 text-white shadow-emerald-500/25 shadow-md"
+                        : "bg-red-100 text-red-600 group-hover:bg-red-200 group-hover:shadow-md"
                     )}
                   >
                     {step.completed ? (
@@ -741,7 +741,7 @@ export default function EventDashboardPage() {
                 </button>
                 {index < setupSteps.length - 1 && (
                   <div className={cn(
-                    "w-6 sm:w-16 h-0.5 mx-1 sm:mx-2 flex-shrink-0",
+                    "w-6 sm:w-16 h-0.5 mx-1 sm:mx-2 flex-shrink-0 transition-colors duration-500",
                     step.completed ? "bg-emerald-500" : "bg-gray-200"
                   )} />
                 )}
@@ -765,7 +765,7 @@ export default function EventDashboardPage() {
       )}
 
       {/* Animated Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 animate-stagger">
         <StatCard
           icon={GraduationCap}
           value={facultyStats?.total || 0}
@@ -841,7 +841,7 @@ export default function EventDashboardPage() {
             </p>
           </div>
           <div className="p-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-stagger">
               {contextActions.map((action) => {
                 const ActionIcon = action.icon
                 return (
@@ -855,7 +855,7 @@ export default function EventDashboardPage() {
                         router.push(action.href)
                       }
                     }}
-                    className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group"
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group hover:-translate-y-1 hover:shadow-md card-shine"
                   >
                     <div className={cn(
                       "h-12 w-12 rounded-full flex items-center justify-center transition-all",

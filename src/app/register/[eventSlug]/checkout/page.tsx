@@ -898,7 +898,7 @@ export default function CheckoutPage() {
     w-full px-4 py-3 rounded-lg border transition-all duration-200 min-h-[44px]
     bg-white border-gray-200 text-gray-900 placeholder:text-gray-400
     focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20
-    focus:shadow-sm hover:border-gray-300
+    focus:shadow-sm hover:border-gray-300 input-focus-glow
   `
 
   const labelClassName = "block text-sm font-medium mb-2 text-gray-700"
@@ -937,7 +937,7 @@ export default function CheckoutPage() {
               </p>
 
               {error && (
-                <div data-error-banner className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3 animate-slide-up-fade">
+                <div data-error-banner className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3 animate-slide-up-fade animate-shake">
                   <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <AlertCircle className="w-3.5 h-3.5 text-red-600" />
                   </div>
@@ -1273,7 +1273,7 @@ export default function CheckoutPage() {
           </div>
 
           {/* Order Summary */}
-          <div className="lg:col-span-1" ref={paymentSectionRef}>
+          <div className="lg:col-span-1 animate-slide-in-right" ref={paymentSectionRef}>
             <div className="bg-white rounded-xl shadow-sm lg:sticky lg:top-24 overflow-hidden transition-shadow duration-300 hover:shadow-md">
               <div className="p-5 border-b border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900">
@@ -1532,7 +1532,7 @@ export default function CheckoutPage() {
                     transition-all duration-300
                     ${isButtonDisabled
                       ? "bg-gray-300 cursor-not-allowed text-gray-500"
-                      : "bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md"
+                      : "btn-gradient-animate btn-shine-sweep btn-pulse-glow hover:-translate-y-0.5 active:translate-y-0 active:shadow-md"
                     }
                   `}
                 >

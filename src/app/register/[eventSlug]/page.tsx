@@ -267,6 +267,28 @@ function EventDetailsPage() {
   const searchParams = useSearchParams()
   const eventSlug = params.eventSlug as string
   const ticketSectionRef = useRef<HTMLDivElement>(null)
+  const heroRef = useRef<HTMLDivElement>(null)
+  const [priceAnimKey, setPriceAnimKey] = useState(0)
+
+  // Parallax effect for hero banner
+  useEffect(() => {
+    if (!mounted) return
+    const heroEl = heroRef.current
+    if (!heroEl) return
+
+    const handleScroll = () => {
+      const rect = heroEl.getBoundingClientRect()
+      const scrollProgress = Math.max(0, Math.min(1, -rect.top / (rect.height * 2)))
+      const scale = 1 + scrollProgress * 0.08
+      const img = heroEl.querySelector('.hero-parallax') as HTMLElement
+      if (img) {
+        img.style.transform = `scale(${scale})`
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [mounted])
 
   // Get ticket ID from URL for hidden ticket direct access
   const directTicketId = searchParams.get("ticket")
@@ -408,6 +430,13 @@ function EventDetailsPage() {
       addonsTax
     }
   }, [selectedTickets, selectedAddons, event?.ticket_types])
+
+  // Trigger price animation when total changes
+  useEffect(() => {
+    if (totals.total > 0) {
+      setPriceAnimKey(prev => prev + 1)
+    }
+  }, [totals.total])
 
   // Determine current step for progress indicator
   const currentStep = useMemo(() => {
@@ -556,15 +585,15 @@ function EventDetailsPage() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-8">
           {/* Hero Banner */}
-          <div className="relative overflow-hidden rounded-2xl animate-fade-in">
+          <div ref={heroRef} className="relative overflow-hidden rounded-2xl animate-fade-in">
             {event.banner_url ? (
               <img
                 src={event.banner_url}
                 alt={event.name}
-                className="w-full h-64 md:h-80 object-cover"
+                className="w-full h-64 md:h-80 object-cover hero-parallax"
               />
             ) : (
-              <div className="w-full h-64 md:h-80 bg-gradient-primary flex items-center justify-center">
+              <div className="w-full h-64 md:h-80 bg-gradient-primary animate-gradient-shift flex items-center justify-center hero-parallax">
                 <span className="text-8xl font-black text-white/20">
                   {event.short_name?.[0] || event.name[0]}
                 </span>
@@ -799,7 +828,7 @@ function EventDetailsPage() {
         </div>
 
         {/* Sticky Order Summary */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 animate-slide-in-right">
           <div className="bg-white rounded-xl shadow-sm lg:sticky lg:top-24 overflow-hidden transition-shadow duration-300 hover:shadow-md">
             {/* Header */}
             <div className="p-5 border-b border-gray-200">
@@ -896,7 +925,7 @@ function EventDetailsPage() {
                     )}
                     <div className="flex justify-between text-lg font-bold pt-4 border-t border-gray-200">
                       <span className="text-gray-900">Total</span>
-                      <span className="text-emerald-600">{"\u20B9"}{totals.total.toLocaleString()}</span>
+                      <span key={priceAnimKey} className="text-emerald-600 price-transition changing">{"\u20B9"}{totals.total.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -914,7 +943,7 @@ function EventDetailsPage() {
                   transition-all duration-300
                   ${totals.count === 0
                     ? "bg-gray-300 cursor-not-allowed text-gray-500"
-                    : "bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md"
+                    : "btn-gradient-animate btn-pulse-glow hover:-translate-y-0.5 active:translate-y-0 active:shadow-md"
                   }
                 `}
               >

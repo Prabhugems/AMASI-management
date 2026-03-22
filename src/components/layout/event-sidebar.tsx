@@ -53,6 +53,7 @@ type NavItem = {
   icon: LucideIcon
   statusKey?: string // Key to check in setupStatus
   moduleKey?: string // Key to check in moduleSettings for conditional display
+  sectionStart?: string // If set, renders a section separator/header before this item
 }
 
 type EventData = {
@@ -100,29 +101,29 @@ type ModuleSettings = {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "", icon: LayoutDashboard },
-  { label: "Tickets", href: "/tickets", icon: Ticket, statusKey: "tickets" },
+  { label: "Tickets", href: "/tickets", icon: Ticket, statusKey: "tickets", sectionStart: "Registration" },
   { label: "Addons", href: "/addons", icon: Package, moduleKey: "enable_addons" },
   { label: "Orders", href: "/orders", icon: ShoppingCart },
   { label: "Attendees", href: "/registrations", icon: UserCheck },
   { label: "Waitlist", href: "/waitlist", icon: ListOrdered, moduleKey: "enable_waitlist" },
   { label: "Forms", href: "/forms", icon: FileText, moduleKey: "enable_forms" },
-  { label: "Abstracts", href: "/abstracts", icon: BookOpen, statusKey: "abstracts", moduleKey: "enable_abstracts" },
+  { label: "Abstracts", href: "/abstracts", icon: BookOpen, statusKey: "abstracts", moduleKey: "enable_abstracts", sectionStart: "Content" },
   { label: "Examination", href: "/examination", icon: GraduationCap, moduleKey: "enable_examination" },
   { label: "Speakers", href: "/speakers", icon: Mic, moduleKey: "enable_speakers" },
   { label: "Program", href: "/program", icon: Calendar, moduleKey: "enable_program" },
-  { label: "Checkin Hub", href: "/checkin", icon: QrCode, moduleKey: "enable_checkin" },
+  { label: "Checkin Hub", href: "/checkin", icon: QrCode, moduleKey: "enable_checkin", sectionStart: "On-site" },
   { label: "Print Station", href: "/print-stations", icon: Printer, moduleKey: "enable_print_station" },
   { label: "Badges", href: "/badges", icon: BadgeCheck, statusKey: "badges", moduleKey: "enable_badges" },
   { label: "Certificates", href: "/certificates", icon: Award, statusKey: "certificates", moduleKey: "enable_certificates" },
   { label: "Delegate Portal", href: "/delegate-portal", icon: BarChart3, moduleKey: "enable_delegate_portal" },
   { label: "Surveys", href: "/surveys", icon: ClipboardList, moduleKey: "enable_surveys" },
-  { label: "Travel", href: "/travel", icon: Plane, moduleKey: "enable_travel" },
+  { label: "Travel", href: "/travel", icon: Plane, moduleKey: "enable_travel", sectionStart: "Logistics" },
   { label: "Accommodation", href: "/accommodation", icon: Hotel, moduleKey: "enable_accommodation" },
   { label: "Meals", href: "/meals", icon: UtensilsCrossed, moduleKey: "enable_meals" },
   { label: "Visa Letters", href: "/visa", icon: Stamp, moduleKey: "enable_visa" },
   { label: "Sponsors", href: "/sponsors", icon: Building2, moduleKey: "enable_sponsors" },
   { label: "Budget", href: "/budget", icon: IndianRupee, moduleKey: "enable_budget" },
-  { label: "Team", href: "/team", icon: Users },
+  { label: "Team", href: "/team", icon: Users, sectionStart: "Admin" },
   { label: "Communications", href: "/communications", icon: MessageSquare, statusKey: "communications" },
   { label: "Email Templates", href: "/emails", icon: Mail },
   { label: "Analytics", href: "/analytics", icon: TrendingUp },
@@ -421,24 +422,37 @@ export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
         "flex-1 py-3 space-y-0.5 overflow-y-auto scrollbar-thin transition-all duration-300",
         isExpanded ? "px-3" : "px-2"
       )}>
-        {visibleNavItems.map((item) => {
+        {visibleNavItems.map((item, index) => {
           const isActive = isItemActive(item)
           const href = `${basePath}${item.href}`
           // Check if this item needs attention (has statusKey and status is false)
           const needsAttention = item.statusKey && setupStatus && !setupStatus[item.statusKey as keyof SetupStatus]
 
           return (
+            <div key={item.href || "dashboard"}>
+              {/* Section separator with label */}
+              {item.sectionStart && index > 0 && (
+                <div className={cn(
+                  "sidebar-section-separator",
+                  isExpanded ? "px-3" : "px-1"
+                )}>
+                  {isExpanded && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted/60">
+                      {item.sectionStart}
+                    </span>
+                  )}
+                </div>
+              )}
             <Link
-              key={item.href || "dashboard"}
               href={href}
               onClick={onNavigate}
               title={!isExpanded ? (needsAttention ? `${item.label} - Needs setup` : item.label) : undefined}
               className={cn(
-                "flex items-center rounded-lg transition-all duration-200 group relative",
+                "flex items-center rounded-lg transition-all duration-200 group relative nav-item-hover",
                 isExpanded ? "gap-3 px-3 py-2.5" : "justify-center p-2.5",
                 isActive
-                  ? "bg-primary text-white"
-                  : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  ? "bg-primary text-white nav-item-active"
+                  : "text-sidebar-muted hover:text-sidebar-foreground"
               )}
             >
               <div className="relative flex-shrink-0">
@@ -473,6 +487,7 @@ export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-white rounded-r" />
               )}
             </Link>
+            </div>
           )
         })}
       </nav>
