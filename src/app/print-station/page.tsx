@@ -50,7 +50,7 @@ export default function PrintStationDownloadPage() {
     },
     {
       question: "What is the Server URL?",
-      answer: `This is your ${COMPANY_CONFIG.name} event management website URL (e.g., https://amasi-events.vercel.app). This is where the app fetches registration data from.`
+      answer: `This is your ${COMPANY_CONFIG.name} event management website URL (e.g., ${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}). This is where the app fetches registration data from.`
     },
     {
       question: "Can I use a USB barcode scanner?",
@@ -217,7 +217,7 @@ export default function PrintStationDownloadPage() {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-slate-800/50 rounded-lg p-4">
               <div className="text-slate-400 text-sm mb-1">Server URL</div>
-              <div className="text-white font-mono text-sm">https://amasi-events.vercel.app</div>
+              <div className="text-white font-mono text-sm">{typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}</div>
               <div className="text-slate-500 text-xs mt-1">Your event management website</div>
             </div>
             <div className="bg-slate-800/50 rounded-lg p-4">

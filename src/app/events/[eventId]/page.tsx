@@ -188,6 +188,22 @@ export default function EventDashboardPage() {
     enabled: !!eventId,
   })
 
+  // Fetch module settings for conditional UI
+  const { data: moduleSettings } = useQuery({
+    queryKey: ["event-module-settings", eventId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("event_settings")
+        .select("enable_speakers")
+        .eq("event_id", eventId)
+        .maybeSingle()
+      return {
+        enable_speakers: (data as any)?.enable_speakers ?? true,
+      }
+    },
+    enabled: !!eventId,
+  })
+
   // Fetch recent activity logs
   type ActivityLog = {
     id: string
@@ -346,11 +362,11 @@ export default function EventDashboardPage() {
               <Download className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Invitation</span>
             </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => router.push(`/events/${eventId}/registrations/export`)}>
             <Download className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Export</span>
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => router.push(`/events/${eventId}/communications/compose`)}>
             <Mail className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Send Updates</span>
           </Button>
@@ -490,17 +506,19 @@ export default function EventDashboardPage() {
         </div>
         <div className="p-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <button
-              onClick={() => router.push(`/events/${eventId}/speakers`)}
-              className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group"
-            >
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-all">
-                <GraduationCap className="h-5 w-5 text-primary" />
-              </div>
-              <span className="text-sm font-medium text-foreground">
-                Invite Faculty
-              </span>
-            </button>
+            {moduleSettings?.enable_speakers !== false && (
+              <button
+                onClick={() => router.push(`/events/${eventId}/speakers`)}
+                className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group"
+              >
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-all">
+                  <GraduationCap className="h-5 w-5 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-foreground">
+                  Invite Faculty
+                </span>
+              </button>
+            )}
             <button
               onClick={() => router.push(`/events/${eventId}/registrations/import`)}
               className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group"
