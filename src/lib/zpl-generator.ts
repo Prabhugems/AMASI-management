@@ -191,13 +191,18 @@ function generateZPLFromTemplate(
 
   return [
     "^XA",
-    "^CI28",
-    "^MNM",
+    "~SD30",           // Set Darkness (max = 30)
+    "^CI28",           // UTF-8 encoding
+    "^MNM",            // Mark sensing (black mark media)
+    "^MMT",            // Media mode: Tear-off
+    "^LT0",            // Label top offset (adjust if needed)
+    "^LS0",            // Label shift left/right (adjust if needed)
     rotationCmd,
-    "^LH0,0",
-    `^LL${dimensions.height}`,
-    `^PW${dimensions.width}`,
+    "^LH0,0",          // Label home position
+    `^LL${dimensions.height}`,  // Label length
+    `^PW${dimensions.width}`,   // Print width
     zplElements,
+    "^PQ1,0,1,Y",      // Print quantity: 1 label, pause, cut
     "^XZ",
   ].join("\n")
 }

@@ -244,13 +244,18 @@ function generateZPLFromTemplate(
 
   return `
 ^XA
+~SD30
 ^CI28
 ^MNM
+^MMT
+^LT0
+^LS0
 ${rotationCmd}
 ^LH0,0
 ^LL${dimensions.height}
 ^PW${dimensions.width}
 ${zplElements}
+^PQ1,0,1,Y
 ^XZ
 `.trim()
 }

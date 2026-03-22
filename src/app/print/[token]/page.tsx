@@ -240,7 +240,7 @@ function PrintStationKioskPage() {
 
       return data
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setScannedRegistration(data.registration)
       setReprintInfo({ is_reprint: data.is_reprint, print_number: data.print_number })
       queryClient.invalidateQueries({ queryKey: ["print-history", station?.id] })
@@ -277,7 +277,7 @@ function PrintStationKioskPage() {
         return
       }
 
-      // Browser print path (no Zebra configured)
+      // Local USB print or browser print path (no network Zebra)
       if (!hasDirectPrinter && (station?.auto_print || isPrinting)) {
         const printData = {
           registration: data.registration,
@@ -289,6 +289,34 @@ function PrintStationKioskPage() {
             events: station?.events
           },
           badge_template: station?.badge_templates
+        }
+        // Try local USB printing first (for Zebra connected via USB)
+        try {
+          const { generateZPL } = await import("@/lib/zpl-generator")
+          const zpl = generateZPL(
+            data.registration,
+            {
+              id: station?.id,
+              name: station?.name,
+              print_settings: station?.print_settings,
+              events: station?.events,
+            },
+            station?.badge_templates,
+            station?.print_mode
+          )
+          const localRes = await fetch("/api/local-print", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ zpl })
+          })
+          if (localRes.ok) {
+            setZplStatus({ success: true, message: "Printed to USB Zebra!" })
+            setTimeout(() => resetScan(), 1500)
+            return
+          }
+        } catch (e) {
+          // Local print not available, fall back to browser print
+          console.log("Local print unavailable, using browser print")
         }
         triggerPrint(printData)
       }
