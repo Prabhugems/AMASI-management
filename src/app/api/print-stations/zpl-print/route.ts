@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
       registration,
       station,
       badge_template,
+      print_mode,
       test_print = false,
       generate_only = false
     } = body
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
       zpl = generateTestZPL()
     } else if (badge_template?.template_data) {
       // Generate ZPL from badge template
-      zpl = generateZPLFromTemplate(badge_template.template_data, registration, station)
+      zpl = generateZPLFromTemplate(badge_template.template_data, registration, station, print_mode)
     } else {
       // Default badge ZPL
       zpl = generateDefaultZPL(registration, station)
@@ -100,6 +101,9 @@ async function sendToPrinter(ip: string, port: number, zpl: string): Promise<{ s
 function generateTestZPL(): string {
   return `
 ^XA
+^CI28
+^MNM
+^POI
 ^FO50,50^A0N,40,40^FDZebra Test Print^FS
 ^FO50,100^A0N,30,30^FDConnection Successful!^FS
 ^FO50,150^A0N,25,25^FD${new Date().toLocaleString()}^FS
@@ -128,10 +132,13 @@ function generateDefaultZPL(registration: any, station: any): string {
   const eventName = station?.events?.name || "Event"
 
   // Rotation command: ^PON (normal), ^POI (inverted/180°)
-  const rotationCmd = rotation === 180 ? "^POI" : "^PON"
+  // Default to 180° for thermal printers (labels feed bottom-first)
+  const rotationCmd = rotation === 0 ? "^PON" : "^POI"
 
   return `
 ^XA
+^CI28
+^MNM
 ${rotationCmd}
 ^LH0,0
 ^LL${dimensions.height}
@@ -157,23 +164,36 @@ ${institution ? `^FO${centerX - 200},${startY + 250}^A0N,30,30^FB400,1,0,C^FD${i
 }
 
 // Generate ZPL from badge template
-function generateZPLFromTemplate(templateData: any, registration: any, station: any): string {
-  const elements = templateData.elements || []
-  const bgColor = templateData.backgroundColor || "#ffffff"
+function generateZPLFromTemplate(
+  templateData: any,
+  registration: any,
+  station: any,
+  printMode?: "label" | "overlay" | "full_badge"
+): string {
+  let elements = templateData.elements || []
   const settings = station?.print_settings || {}
   const paperSize = settings.paper_size || "4x6"
-  const rotation = settings.rotation || 0
+  const isOverlayMode = printMode === "overlay"
+
+  // Overlay mode: NO rotation (pre-printed stock orientation is fixed)
+  // Full badge/label: Use settings or default 180° for thermal printers
+  const rotation = isOverlayMode ? 0 : (settings.rotation ?? 180)
 
   const dimensions = getLabelDimensions(paperSize)
-  const rotationCmd = rotation === 180 ? "^POI" : "^PON"
+  const rotationCmd = rotation === 0 ? "^PON" : "^POI"
 
-  // Scale factor: template uses pixels at 96 DPI, Zebra uses 203 DPI
-  // Template badge sizes are in pixels (e.g., 384x576 for 4x6)
-  // We need to scale to dots (203 DPI)
+  // Scale factor: template uses pixels, Zebra uses 203 DPI dots
   const templateWidth = getTemplateDimensions(paperSize).width
   const templateHeight = getTemplateDimensions(paperSize).height
   const scaleX = dimensions.width / templateWidth
   const scaleY = dimensions.height / templateHeight
+
+  // For overlay mode: only print variable data (text, QR, barcode)
+  if (isOverlayMode) {
+    elements = elements.filter((el: any) =>
+      el.type === "text" || el.type === "qr_code" || el.type === "barcode"
+    )
+  }
 
   let zplElements = ""
 
@@ -188,8 +208,9 @@ function generateZPLFromTemplate(templateData: any, registration: any, station: 
 
     if (element.type === "text") {
       const content = replacePlaceholders(element.content || "", registration, station)
-      const fontSize = Math.floor((element.fontSize || 14) * scaleX * 0.8) // Approximate font scaling
-      const fontHeight = Math.max(20, Math.min(fontSize, 100))
+      // Scale font properly to match design
+      const scaledFontSize = Math.floor((element.fontSize || 14) * scaleY)
+      const fontHeight = Math.max(20, Math.min(scaledFontSize, 150))
       const fontWidth = fontHeight
 
       // Text alignment
@@ -198,26 +219,33 @@ function generateZPLFromTemplate(templateData: any, registration: any, station: 
       zplElements += `^FO${x},${y}^A0N,${fontHeight},${fontWidth}^FB${width},1,0,${align}^FD${content}^FS\n`
     }
     else if (element.type === "shape" && element.shapeType === "rectangle") {
-      const borderWidth = element.borderWidth || 1
+      const borderWidth = Math.max(1, Math.floor((element.borderWidth || 1) * scaleX))
       zplElements += `^FO${x},${y}^GB${width},${height},${borderWidth}^FS\n`
     }
     else if (element.type === "line") {
-      zplElements += `^FO${x},${y}^GB${width},${Math.max(1, height)},${Math.max(1, height)}^FS\n`
+      const lineThickness = Math.max(1, Math.floor(height))
+      zplElements += `^FO${x},${y}^GB${width},${lineThickness},${lineThickness}^FS\n`
     }
     else if (element.type === "qr_code") {
       const qrContent = replacePlaceholders(element.content || "", registration, station)
-      const qrSize = Math.floor(Math.min(width, height) / 25) // Approximate QR module size
-      zplElements += `^FO${x},${y}^BQN,2,${Math.max(2, Math.min(qrSize, 10))}^FDQA,${qrContent}^FS\n`
+      // QR magnification: use max (10) for best quality, ~25 modules typical
+      const magnification = 10
+      const actualQrSize = 25 * magnification // Approximate QR size in dots
+      // Center QR within its designed area
+      const qrX = x + Math.floor((width - actualQrSize) / 2)
+      const qrY = y + Math.floor((height - actualQrSize) / 2)
+      zplElements += `^FO${Math.max(0, qrX)},${Math.max(0, qrY)}^BQN,2,${magnification}^FDQA,${qrContent}^FS\n`
     }
     else if (element.type === "barcode") {
       const barcodeContent = replacePlaceholders(element.content || "", registration, station)
       zplElements += `^FO${x},${y}^BCN,${height},Y,N,N^FD${barcodeContent}^FS\n`
     }
-    // Images would need to be converted to ZPL graphics format (GRF) - complex, skipping for now
   }
 
   return `
 ^XA
+^CI28
+^MNM
 ${rotationCmd}
 ^LH0,0
 ^LL${dimensions.height}

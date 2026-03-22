@@ -215,7 +215,8 @@ function PrintStationKioskPage() {
             print_settings: station?.print_settings,
             events: station?.events,
           },
-          station?.badge_templates
+          station?.badge_templates,
+          station?.print_mode
         )
 
         const printResult = await sendZPLToZebra(station!.print_settings!.printer_ip!, zpl)
@@ -707,7 +708,8 @@ function PrintStationKioskPage() {
           print_settings: station?.print_settings,
           events: station?.events,
         },
-        station?.badge_templates
+        station?.badge_templates,
+        station?.print_mode
       )
 
       const result = await sendZPLToZebra(station!.print_settings!.printer_ip!, zpl)
@@ -860,15 +862,31 @@ function PrintStationKioskPage() {
     const { registration, station: stationInfo, badge_template } = data
     const settings = stationInfo.print_settings || {}
     const dimensions = getPaperDimensions(settings.paper_size, settings.orientation)
-    // Default to 180° rotation for thermal/label printers (labels feed bottom-first)
-    // Use explicit rotation if set to a non-zero value, otherwise default to 180
-    const rotation = settings.rotation || 180
+    const isOverlayMode = stationInfo.print_mode === "overlay"
+    // Overlay mode: NO rotation (pre-printed stock orientation is fixed)
+    // Full badge/label: 180° rotation for thermal printers (labels feed bottom-first)
+    const rotation = isOverlayMode ? 0 : (settings.rotation ?? 180)
 
     // If we have a badge template, render it
     if (badge_template?.template_data) {
       const templateData = badge_template.template_data
-      const elements = templateData.elements || []
-      const bgColor = templateData.backgroundColor || "#ffffff"
+      let elements = templateData.elements || []
+      // For overlay mode: transparent background, skip background images (keep only variable data)
+      const bgColor = isOverlayMode ? "transparent" : (templateData.backgroundColor || "#ffffff")
+
+      if (isOverlayMode) {
+        // Overlay mode: Only print variable data on pre-printed stock
+        // Skip images, shapes, lines - all design elements are pre-printed
+        // Keep ONLY: text, QR codes, barcodes (variable content)
+        elements = elements.filter((el: any) => {
+          // Keep only variable content elements
+          if (el.type === "text" || el.type === "qr_code" || el.type === "barcode") {
+            return true
+          }
+          // Skip everything else: image, photo, shape, line
+          return false
+        })
+      }
 
       // Get Google Fonts used in the template
       const googleFonts = new Set<string>()
