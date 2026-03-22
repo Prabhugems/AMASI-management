@@ -24,11 +24,38 @@ import {
   Briefcase,
   Clock,
   Menu,
+  Loader2,
 } from "lucide-react"
 import { AppCommandPalette } from "@/components/ui/command-palette"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { toast } from "sonner"
+
+// Read dismissed notification IDs from localStorage
+function getDismissedNotifications(): string[] {
+  if (typeof window === "undefined") return []
+  try {
+    const stored = localStorage.getItem("dismissed-notifications")
+    if (!stored) return []
+    const parsed = JSON.parse(stored)
+    // Expire after 24 hours
+    if (parsed.expiry && Date.now() > parsed.expiry) {
+      localStorage.removeItem("dismissed-notifications")
+      return []
+    }
+    return parsed.ids || []
+  } catch {
+    return []
+  }
+}
+
+function setDismissedNotifications(ids: string[]) {
+  if (typeof window === "undefined") return
+  localStorage.setItem(
+    "dismissed-notifications",
+    JSON.stringify({ ids, expiry: Date.now() + 24 * 60 * 60 * 1000 })
+  )
+}
 
 interface HeaderProps {
   sidebarCollapsed: boolean
@@ -118,10 +145,40 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
   }
 
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false)
+  const [dismissedIds, setDismissedIds] = React.useState<string[]>(() => getDismissedNotifications())
 
-  const notifications: { id: number; type: string; title: string; message: string; time: string; unread: boolean }[] = []
+  // Fetch real notifications from API
+  const { data: notificationData, isLoading: notificationsLoading } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const res = await fetch("/api/notifications")
+      if (!res.ok) return { notifications: [], unread_count: 0 }
+      return res.json()
+    },
+    refetchInterval: 60000, // Refresh every minute
+    staleTime: 30000,
+  })
 
-  const unreadCount = 0
+  const allNotifications: { id: string; type: string; title: string; message: string; count: number; link: string | null; created_at: string }[] =
+    notificationData?.notifications || []
+
+  // Filter out dismissed notifications
+  const notifications = allNotifications.filter((n) => !dismissedIds.includes(n.id))
+  const unreadCount = notifications.length
+
+  const handleMarkAllRead = () => {
+    const allIds = allNotifications.map((n) => n.id)
+    const newDismissed = [...new Set([...dismissedIds, ...allIds])]
+    setDismissedIds(newDismissed)
+    setDismissedNotifications(newDismissed)
+  }
+
+  const handleNotificationClick = (notification: { id: string; link: string | null }) => {
+    if (notification.link) {
+      setShowNotifications(false)
+      router.push(notification.link)
+    }
+  }
 
   return (
     <header
@@ -256,39 +313,63 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
                 <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border bg-popover shadow-xl z-50 animate-in slide-in-from-top-2">
                   <div className="flex items-center justify-between p-4 border-b border-border">
                     <h3 className="font-semibold text-foreground">Notifications</h3>
-                    <button className="text-xs text-primary hover:text-primary/80">Mark all read</button>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-xs text-primary hover:text-primary/80"
+                      >
+                        Mark all read
+                      </button>
+                    )}
                   </div>
                   <div className="max-h-80 overflow-y-auto">
-                    {notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={cn(
-                          "flex gap-3 p-4 border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer",
-                          notification.unread && "bg-primary/5"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "h-2 w-2 rounded-full mt-2 flex-shrink-0",
-                            notification.type === "info" && "bg-blue-500",
-                            notification.type === "warning" && "bg-amber-500",
-                            notification.type === "success" && "bg-emerald-500",
-                            notification.type === "error" && "bg-rose-500"
-                          )}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground">{notification.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">{notification.message}</p>
-                          <p className="text-[10px] text-muted-foreground/60 mt-1">{notification.time}</p>
-                        </div>
+                    {notificationsLoading ? (
+                      <div className="flex items-center justify-center p-8 text-muted-foreground">
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        <span className="text-sm">Loading...</span>
                       </div>
-                    ))}
+                    ) : notifications.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
+                        <Bell className="h-8 w-8 mb-2 opacity-50" />
+                        <p className="text-sm">No new notifications</p>
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          onClick={() => handleNotificationClick(notification)}
+                          className={cn(
+                            "flex gap-3 p-4 border-b border-border last:border-0 hover:bg-secondary/50 transition-colors",
+                            notification.link && "cursor-pointer"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "h-2 w-2 rounded-full mt-2 flex-shrink-0",
+                              notification.type === "info" && "bg-blue-500",
+                              notification.type === "warning" && "bg-amber-500",
+                              notification.type === "success" && "bg-emerald-500",
+                              notification.type === "error" && "bg-rose-500"
+                            )}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground">{notification.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{notification.message}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
-                  <div className="p-3 border-t border-border">
-                    <button className="w-full text-center text-sm text-primary hover:text-primary/80 py-2">
-                      View all notifications
-                    </button>
-                  </div>
+                  {notifications.length > 0 && (
+                    <div className="p-3 border-t border-border">
+                      <button
+                        onClick={() => setShowNotifications(false)}
+                        className="w-full text-center text-sm text-muted-foreground hover:text-foreground py-1"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}

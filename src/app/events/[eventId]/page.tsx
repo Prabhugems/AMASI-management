@@ -26,8 +26,16 @@ import {
   Edit,
   Trash2,
   Send,
+  Bell,
+  BarChart3,
+  Share2,
+  Settings,
+  FileText,
+  Palette,
+  Zap,
+  type LucideIcon,
 } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow, differenceInDays, isToday, isBefore } from "date-fns"
 import { cn } from "@/lib/utils"
 
 export default function EventDashboardPage() {
@@ -188,6 +196,32 @@ export default function EventDashboardPage() {
     enabled: !!eventId,
   })
 
+  // Fetch 7-day registration trend for sparkline
+  const { data: registrationTrend } = useQuery({
+    queryKey: ["event-registration-trend", eventId],
+    queryFn: async () => {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      const { data } = await supabase
+        .from("registrations")
+        .select("created_at")
+        .eq("event_id", eventId)
+        .gte("created_at", sevenDaysAgo)
+
+      const rows = (data || []) as { created_at: string }[]
+      const now = new Date()
+      const counts = Array(7).fill(0)
+      for (const row of rows) {
+        const d = new Date(row.created_at)
+        const daysAgo = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24))
+        if (daysAgo >= 0 && daysAgo < 7) {
+          counts[6 - daysAgo]++
+        }
+      }
+      return counts
+    },
+    enabled: !!eventId,
+  })
+
   // Fetch module settings for conditional UI
   const { data: moduleSettings } = useQuery({
     queryKey: ["event-module-settings", eventId],
@@ -200,6 +234,32 @@ export default function EventDashboardPage() {
       return {
         enable_speakers: (data as any)?.enable_speakers ?? true,
       }
+    },
+    enabled: !!eventId,
+  })
+
+  // Fetch badge templates count for context-aware actions
+  const { data: badgeTemplatesCount } = useQuery({
+    queryKey: ["event-badge-templates-count", eventId],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("badge_templates")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", eventId)
+      return count || 0
+    },
+    enabled: !!eventId,
+  })
+
+  // Fetch forms count for context-aware actions
+  const { data: formsCount } = useQuery({
+    queryKey: ["event-forms-count", eventId],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("forms")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", eventId)
+      return count || 0
     },
     enabled: !!eventId,
   })
@@ -241,7 +301,7 @@ export default function EventDashboardPage() {
     return <Circle className="h-4 w-4 text-gray-400" />
   }
 
-  // Calculate setup progress
+  // Calculate setup progress (moved before context actions so setupProgress is available)
   const setupSteps = event ? [
     {
       id: 1,
@@ -264,7 +324,7 @@ export default function EventDashboardPage() {
     {
       id: 4,
       label: "Tickets",
-      completed: (ticketsAndAddonsStats?.activeTickets || 0) > 0, // Only complete when tickets are active (on sale)
+      completed: (ticketsAndAddonsStats?.activeTickets || 0) > 0,
       link: `/events/${eventId}/tickets`,
     },
     {
@@ -283,6 +343,271 @@ export default function EventDashboardPage() {
 
   const completedSteps = setupSteps.filter(s => s.completed).length
   const setupProgress = setupSteps.length > 0 ? Math.round((completedSteps / setupSteps.length) * 100) : 0
+
+  // Context-aware quick actions
+  type ContextAction = {
+    icon: LucideIcon
+    label: string
+    description: string
+    href: string
+    iconColor: string
+    iconBg: string
+    priority: number
+  }
+
+  const getContextActions = (): ContextAction[] => {
+    if (!event) return []
+
+    const actions: ContextAction[] = []
+    const now = new Date()
+    const startDate = event.start_date ? new Date(event.start_date) : null
+    const daysUntilEvent = startDate ? differenceInDays(startDate, now) : null
+    const eventIsToday = startDate ? isToday(startDate) : false
+    const eventIsPast = startDate ? isBefore(startDate, now) && !eventIsToday : false
+    const totalRegistrations = (attendeeStats?.total || 0) + (facultyStats?.total || 0)
+    const hasTickets = (ticketsAndAddonsStats?.tickets || 0) > 0
+    const hasActiveTickets = (ticketsAndAddonsStats?.activeTickets || 0) > 0
+    const hasBadgeTemplate = (badgeTemplatesCount || 0) > 0
+    const hasForms = (formsCount || 0) > 0
+    const hasEmailTemplates = (messageTemplatesCount || 0) > 0
+
+    // Event is today - show day-of actions
+    if (eventIsToday) {
+      actions.push({
+        icon: LogIn,
+        label: "Start Check-in",
+        description: "Open the check-in station",
+        href: `/events/${eventId}/checkin`,
+        iconColor: "text-emerald-600",
+        iconBg: "bg-emerald-500/10 group-hover:bg-emerald-500/20",
+        priority: 100,
+      })
+      actions.push({
+        icon: BarChart3,
+        label: "View Live Stats",
+        description: "Real-time event analytics",
+        href: `/events/${eventId}/analytics`,
+        iconColor: "text-blue-600",
+        iconBg: "bg-blue-500/10 group-hover:bg-blue-500/20",
+        priority: 95,
+      })
+      if (hasBadgeTemplate) {
+        actions.push({
+          icon: BadgeCheck,
+          label: "Print Badges",
+          description: "Print attendee badges",
+          href: `/events/${eventId}/badges`,
+          iconColor: "text-purple-600",
+          iconBg: "bg-purple-500/10 group-hover:bg-purple-500/20",
+          priority: 90,
+        })
+      }
+      actions.push({
+        icon: Users,
+        label: "View Registrations",
+        description: "See all registered attendees",
+        href: `/events/${eventId}/registrations`,
+        iconColor: "text-teal-600",
+        iconBg: "bg-teal-500/10 group-hover:bg-teal-500/20",
+        priority: 85,
+      })
+    }
+    // Event starting soon (within 7 days)
+    else if (daysUntilEvent !== null && daysUntilEvent > 0 && daysUntilEvent <= 7) {
+      actions.push({
+        icon: Bell,
+        label: "Send Final Reminder",
+        description: "Notify all registered attendees",
+        href: `/events/${eventId}/communications/compose`,
+        iconColor: "text-orange-600",
+        iconBg: "bg-orange-500/10 group-hover:bg-orange-500/20",
+        priority: 100,
+      })
+      actions.push({
+        icon: Download,
+        label: "Download Check-in List",
+        description: "Export registrations for check-in",
+        href: `/events/${eventId}/registrations/export`,
+        iconColor: "text-blue-600",
+        iconBg: "bg-blue-500/10 group-hover:bg-blue-500/20",
+        priority: 95,
+      })
+      if (hasBadgeTemplate) {
+        actions.push({
+          icon: BadgeCheck,
+          label: "Print Badges",
+          description: "Generate and print badges",
+          href: `/events/${eventId}/badges`,
+          iconColor: "text-purple-600",
+          iconBg: "bg-purple-500/10 group-hover:bg-purple-500/20",
+          priority: 90,
+        })
+      }
+      actions.push({
+        icon: Calendar,
+        label: "Review Program",
+        description: "Finalize the event schedule",
+        href: `/events/${eventId}/program`,
+        iconColor: "text-amber-600",
+        iconBg: "bg-amber-500/10 group-hover:bg-amber-500/20",
+        priority: 85,
+      })
+    }
+    // Event is past
+    else if (eventIsPast) {
+      actions.push({
+        icon: Award,
+        label: "Issue Certificates",
+        description: "Generate attendance certificates",
+        href: `/events/${eventId}/certificates`,
+        iconColor: "text-amber-600",
+        iconBg: "bg-amber-500/10 group-hover:bg-amber-500/20",
+        priority: 100,
+      })
+      actions.push({
+        icon: BarChart3,
+        label: "View Analytics",
+        description: "Post-event statistics",
+        href: `/events/${eventId}/analytics`,
+        iconColor: "text-blue-600",
+        iconBg: "bg-blue-500/10 group-hover:bg-blue-500/20",
+        priority: 95,
+      })
+      actions.push({
+        icon: Download,
+        label: "Export Data",
+        description: "Download all event data",
+        href: `/events/${eventId}/registrations/export`,
+        iconColor: "text-teal-600",
+        iconBg: "bg-teal-500/10 group-hover:bg-teal-500/20",
+        priority: 90,
+      })
+      actions.push({
+        icon: Mail,
+        label: "Send Thank You",
+        description: "Thank attendees and speakers",
+        href: `/events/${eventId}/communications/compose`,
+        iconColor: "text-indigo-600",
+        iconBg: "bg-indigo-500/10 group-hover:bg-indigo-500/20",
+        priority: 85,
+      })
+    }
+    // Default: Setup phase or event far away
+    else {
+      // Setup-related actions based on what's incomplete
+      if (!hasTickets) {
+        actions.push({
+          icon: Ticket,
+          label: "Create Tickets",
+          description: "Set up ticket types and pricing",
+          href: `/events/${eventId}/tickets`,
+          iconColor: "text-indigo-600",
+          iconBg: "bg-indigo-500/10 group-hover:bg-indigo-500/20",
+          priority: 100,
+        })
+      }
+
+      if (!hasBadgeTemplate) {
+        actions.push({
+          icon: Palette,
+          label: "Design Badge",
+          description: "Create a badge template",
+          href: `/events/${eventId}/badges`,
+          iconColor: "text-purple-600",
+          iconBg: "bg-purple-500/10 group-hover:bg-purple-500/20",
+          priority: 95,
+        })
+      }
+
+      if (!hasForms) {
+        actions.push({
+          icon: FileText,
+          label: "Configure Form",
+          description: "Build your registration form",
+          href: `/events/${eventId}/forms`,
+          iconColor: "text-cyan-600",
+          iconBg: "bg-cyan-500/10 group-hover:bg-cyan-500/20",
+          priority: 90,
+        })
+      }
+
+      if (!hasEmailTemplates) {
+        actions.push({
+          icon: Mail,
+          label: "Set Up Emails",
+          description: "Create email templates",
+          href: `/events/${eventId}/communications/templates`,
+          iconColor: "text-rose-600",
+          iconBg: "bg-rose-500/10 group-hover:bg-rose-500/20",
+          priority: 88,
+        })
+      }
+
+      if (setupProgress < 100) {
+        actions.push({
+          icon: Settings,
+          label: "Complete Setup",
+          description: "Finish configuring your event",
+          href: `/events/${eventId}/settings`,
+          iconColor: "text-gray-600",
+          iconBg: "bg-gray-500/10 group-hover:bg-gray-500/20",
+          priority: 85,
+        })
+      }
+
+      // Registration & promotion actions
+      if (totalRegistrations < 10 && hasActiveTickets && event.slug) {
+        actions.push({
+          icon: Share2,
+          label: "Share Registration Link",
+          description: "Copy and share the registration page",
+          href: `/register/${event.slug}`,
+          iconColor: "text-green-600",
+          iconBg: "bg-green-500/10 group-hover:bg-green-500/20",
+          priority: 92,
+        })
+      }
+
+      if (hasActiveTickets) {
+        actions.push({
+          icon: Mail,
+          label: "Send Invitations",
+          description: "Invite attendees to register",
+          href: `/events/${eventId}/communications/compose`,
+          iconColor: "text-blue-600",
+          iconBg: "bg-blue-500/10 group-hover:bg-blue-500/20",
+          priority: 80,
+        })
+      }
+
+      if (moduleSettings?.enable_speakers !== false) {
+        actions.push({
+          icon: GraduationCap,
+          label: "Invite Faculty",
+          description: "Add speakers and faculty",
+          href: `/events/${eventId}/speakers`,
+          iconColor: "text-rose-600",
+          iconBg: "bg-rose-500/10 group-hover:bg-rose-500/20",
+          priority: 78,
+        })
+      }
+
+      actions.push({
+        icon: Calendar,
+        label: "Build Program",
+        description: "Create the event schedule",
+        href: `/events/${eventId}/program`,
+        iconColor: "text-amber-600",
+        iconBg: "bg-amber-500/10 group-hover:bg-amber-500/20",
+        priority: 75,
+      })
+    }
+
+    // Sort by priority and return top 4
+    return actions.sort((a, b) => b.priority - a.priority).slice(0, 4)
+  }
+
+  const contextActions = getContextActions()
 
   // Combined loading state for all queries
   const isLoadingAny = isLoading || isLoadingFaculty || isLoadingAttendees || isLoadingSessions || isLoadingTicketsAddons
@@ -458,6 +783,7 @@ export default function EventDashboardPage() {
           trend={attendeeStats?.total ? Math.round((attendeeStats.checkedIn || 0) / attendeeStats.total * 100) : null}
           color="teal"
           delay={100}
+          sparklineData={registrationTrend}
         />
         <StatCard
           icon={Calendar}
@@ -494,67 +820,64 @@ export default function EventDashboardPage() {
         />
       </div>
 
-      {/* Quick Actions */}
-      <div className="paper-card card-animated">
-        <div className="p-5 border-b border-border">
-          <h5 className="text-base font-semibold text-foreground mb-1">
-            Quick Actions
-          </h5>
-          <p className="text-sm text-muted-foreground">
-            Common tasks for this event
-          </p>
-        </div>
-        <div className="p-5">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {moduleSettings?.enable_speakers !== false && (
-              <button
-                onClick={() => router.push(`/events/${eventId}/speakers`)}
-                className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group"
-              >
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-all">
-                  <GraduationCap className="h-5 w-5 text-primary" />
-                </div>
-                <span className="text-sm font-medium text-foreground">
-                  Invite Faculty
-                </span>
-              </button>
-            )}
-            <button
-              onClick={() => router.push(`/events/${eventId}/registrations/import`)}
-              className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group"
-            >
-              <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center group-hover:bg-success/20 transition-all">
-                <Users className="h-5 w-5 text-success" />
-              </div>
-              <span className="text-sm font-medium text-foreground">
-                Import Attendees
-              </span>
-            </button>
-            <button
-              onClick={() => router.push(`/events/${eventId}/program`)}
-              className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group"
-            >
-              <div className="h-12 w-12 rounded-full bg-info/10 flex items-center justify-center group-hover:bg-info/20 transition-all">
-                <Calendar className="h-5 w-5 text-info" />
-              </div>
-              <span className="text-sm font-medium text-foreground">
-                Build Program
-              </span>
-            </button>
-            <button
-              onClick={() => router.push(`/events/${eventId}/registrations/communications`)}
-              className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group"
-            >
-              <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 transition-all">
-                <Mail className="h-5 w-5 text-warning" />
-              </div>
-              <span className="text-sm font-medium text-foreground">
-                Send Invites
-              </span>
-            </button>
+      {/* Context-Aware Priority Actions */}
+      {contextActions.length > 0 && (
+        <div className="paper-card card-animated">
+          <div className="p-5 border-b border-border">
+            <div className="flex items-center gap-2 mb-1">
+              <Zap className="h-4 w-4 text-amber-500" />
+              <h5 className="text-base font-semibold text-foreground">
+                Suggested Actions
+              </h5>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {event.start_date && isToday(new Date(event.start_date))
+                ? "Your event is happening now"
+                : event.start_date && differenceInDays(new Date(event.start_date), new Date()) > 0 && differenceInDays(new Date(event.start_date), new Date()) <= 7
+                ? `${differenceInDays(new Date(event.start_date), new Date())} days until your event`
+                : event.start_date && isBefore(new Date(event.start_date), new Date())
+                ? "Post-event tasks"
+                : "Priority tasks to get your event ready"}
+            </p>
+          </div>
+          <div className="p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {contextActions.map((action) => {
+                const ActionIcon = action.icon
+                return (
+                  <button
+                    key={action.label}
+                    onClick={() => {
+                      if (action.label === "Share Registration Link") {
+                        navigator.clipboard.writeText(`${window.location.origin}${action.href}`)
+                        // Could add a toast here
+                      } else {
+                        router.push(action.href)
+                      }
+                    }}
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group"
+                  >
+                    <div className={cn(
+                      "h-12 w-12 rounded-full flex items-center justify-center transition-all",
+                      action.iconBg
+                    )}>
+                      <ActionIcon className={cn("h-5 w-5", action.iconColor)} />
+                    </div>
+                    <div className="text-center">
+                      <span className="text-sm font-medium text-foreground block">
+                        {action.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground mt-0.5 block">
+                        {action.description}
+                      </span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Public Links */}
       <div className="paper-card card-animated">

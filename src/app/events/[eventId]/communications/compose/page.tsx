@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { useParams } from "next/navigation"
+import { useState, useMemo, useEffect } from "react"
+import { useParams, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -36,6 +36,7 @@ type Channel = "email" | "whatsapp" | "sms"
 
 export default function ComposeMessagePage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const eventId = params.eventId as string
   const supabase = createClient()
 
@@ -48,6 +49,23 @@ export default function ComposeMessagePage() {
   const [designationFilter, setDesignationFilter] = useState<string>("all")
   const [sending, setSending] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [bulkRecipientIds, setBulkRecipientIds] = useState<Set<string> | null>(null)
+
+  // Load pre-selected recipients from bulk registration flow
+  useEffect(() => {
+    if (searchParams.get("source") === "bulk_registrations") {
+      try {
+        const stored = sessionStorage.getItem("bulk_email_recipients")
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          setBulkRecipientIds(new Set(parsed.map((r: any) => r.id)))
+          sessionStorage.removeItem("bulk_email_recipients")
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+  }, [searchParams])
 
   // Fetch communication settings
   const defaultSettings = {
@@ -115,6 +133,16 @@ export default function ComposeMessagePage() {
   // Filter recipients
   const recipients = useMemo(() => {
     if (!registrations) return []
+
+    // If bulk recipient IDs are set, use those exclusively
+    if (bulkRecipientIds && bulkRecipientIds.size > 0) {
+      return registrations.filter((r: any) => {
+        if (!bulkRecipientIds.has(r.id)) return false
+        if (channel !== "email" && !r.attendee_phone) return false
+        return true
+      })
+    }
+
     return registrations.filter((r: any) => {
       const matchesStatus = statusFilter === "all" || r.status === statusFilter
       const matchesTicket = ticketFilter === "all" || r.ticket_type?.name === ticketFilter
@@ -127,7 +155,7 @@ export default function ComposeMessagePage() {
 
       return matchesStatus && matchesTicket && matchesDesignation
     })
-  }, [registrations, statusFilter, ticketFilter, designationFilter, channel])
+  }, [registrations, statusFilter, ticketFilter, designationFilter, channel, bulkRecipientIds])
 
   // Available channels
   const channels = [
@@ -357,6 +385,23 @@ export default function ComposeMessagePage() {
         <div className="space-y-4">
           <div className="bg-card rounded-lg border p-5 space-y-4">
             <h3 className="font-semibold">Recipients</h3>
+
+            {/* Bulk selection banner */}
+            {bulkRecipientIds && bulkRecipientIds.size > 0 && (
+              <div className="flex items-center justify-between p-2 rounded-lg bg-primary/10 border border-primary/20">
+                <span className="text-sm text-primary font-medium">
+                  {bulkRecipientIds.size} pre-selected from registrations
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-6"
+                  onClick={() => setBulkRecipientIds(null)}
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
 
             {/* Filters */}
             <div className="space-y-3">

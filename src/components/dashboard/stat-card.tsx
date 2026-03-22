@@ -32,6 +32,29 @@ function useCountUp(end: number, duration: number = 2000) {
   return count
 }
 
+// Lightweight SVG sparkline for 7-day trends
+function Sparkline({ data, color = "currentColor", height = 24, width = 80 }: { data: number[]; color?: string; height?: number; width?: number }) {
+  if (!data || data.length < 2) return null
+  const max = Math.max(...data)
+  const min = Math.min(...data)
+  const range = max - min || 1
+  const points = data
+    .map((v, i) => `${(i / (data.length - 1)) * width},${height - ((v - min) / range) * (height - 2) - 1}`)
+    .join(" ")
+  return (
+    <svg width={width} height={height} className="mt-1 opacity-70 group-hover:opacity-100 transition-opacity duration-300">
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 interface StatCardProps {
   icon: React.ElementType
   value: number
@@ -40,6 +63,7 @@ interface StatCardProps {
   trend?: number | null
   color: 'rose' | 'amber' | 'teal' | 'violet' | 'indigo' | 'emerald'
   delay?: number
+  sparklineData?: number[]
 }
 
 const colorConfig = {
@@ -93,6 +117,15 @@ const colorConfig = {
   },
 }
 
+const sparklineColors: Record<string, string> = {
+  rose: '#f43f5e',
+  amber: '#f59e0b',
+  teal: '#14b8a6',
+  violet: '#8b5cf6',
+  indigo: '#6366f1',
+  emerald: '#10b981',
+}
+
 export function StatCard({
   icon: Icon,
   value,
@@ -100,7 +133,8 @@ export function StatCard({
   subtext,
   trend = null,
   color,
-  delay = 0
+  delay = 0,
+  sparklineData,
 }: StatCardProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
@@ -218,15 +252,22 @@ export function StatCard({
         </p>
 
         {/* Value with counter animation */}
-        <p
-          className={cn(
-            'text-4xl font-black text-gray-900 dark:text-white tabular-nums tracking-tight mb-4',
-            'transition-transform duration-300',
-            isHovered && 'scale-105'
+        <div className="flex items-end justify-between mb-4">
+          <p
+            className={cn(
+              'text-4xl font-black text-gray-900 dark:text-white tabular-nums tracking-tight',
+              'transition-transform duration-300',
+              isHovered && 'scale-105'
+            )}
+          >
+            {count.toLocaleString()}
+          </p>
+
+          {/* Sparkline mini-chart */}
+          {sparklineData && sparklineData.length >= 2 && (
+            <Sparkline data={sparklineData} color={sparklineColors[color]} />
           )}
-        >
-          {count.toLocaleString()}
-        </p>
+        </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-4 border-t border-gray-200/80 dark:border-slate-700/50">

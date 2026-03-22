@@ -1205,10 +1205,19 @@ export default function RegistrationsPage() {
           }
           break
 
-        case "send_email":
-          // This would need a custom email dialog, for now just show a message
-          toast.info("Use the Email Templates page to send bulk emails")
+        case "send_email": {
+          // Store selected registration IDs and emails in sessionStorage for the compose page
+          const selectedRegsForEmail = registrations?.filter(r => selectedIds.has(r.id)) || []
+          const emailRecipients = selectedRegsForEmail.map(r => ({
+            id: r.id,
+            name: r.attendee_name,
+            email: r.attendee_email,
+            registration_number: r.registration_number,
+          }))
+          sessionStorage.setItem("bulk_email_recipients", JSON.stringify(emailRecipients))
+          window.location.href = `/events/${eventId}/communications/compose?source=bulk_registrations`
           break
+        }
 
         case "export":
           const exportRegs = registrations?.filter(r => selectedIds.has(r.id)) || []
@@ -1318,7 +1327,7 @@ export default function RegistrationsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={cn("space-y-6", selectedIds.size > 0 && "pb-20")}>
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -1397,25 +1406,42 @@ export default function RegistrationsPage() {
         </div>
       </div>
 
-      {/* Bulk Actions Toolbar */}
+      {/* Sticky Bulk Actions Toolbar */}
       {selectedIds.size > 0 && (
-        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-40 px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <CheckSquare className="h-5 w-5 text-primary" />
-              <span className="font-medium text-primary">{selectedIds.size} selected</span>
+              <span className="text-sm font-medium">{selectedIds.size} selected</span>
             </div>
-            <Button variant="ghost" size="sm" onClick={clearSelection}>
-              <X className="h-4 w-4 mr-1" />
+            <Button variant="ghost" size="sm" onClick={clearSelection} className="text-xs text-muted-foreground">
               Clear
             </Button>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => executeBulkAction("send_email")}
+            >
+              <Mail className="w-4 h-4 mr-1" />
+              Send Email
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => executeBulkAction("export")}
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Export
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Status
+                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                  Change Status
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -1433,7 +1459,7 @@ export default function RegistrationsPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  <Wifi className="h-4 w-4 mr-2" />
+                  <Wifi className="w-4 h-4 mr-1" />
                   Mode
                 </Button>
               </DropdownMenuTrigger>
@@ -1456,26 +1482,16 @@ export default function RegistrationsPage() {
               onClick={() => executeBulkAction("generate_badges")}
               disabled={bulkActionLoading}
             >
-              <BadgeCheck className="h-4 w-4 mr-2" />
+              <BadgeCheck className="w-4 h-4 mr-1" />
               Generate Badges
             </Button>
 
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
-              onClick={() => executeBulkAction("export")}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive hover:text-destructive"
               onClick={() => executeBulkAction("delete")}
             >
-              <Trash2 className="h-4 w-4 mr-2" />
+              <Trash2 className="w-4 h-4 mr-1" />
               Delete
             </Button>
 

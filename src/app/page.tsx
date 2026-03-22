@@ -29,6 +29,7 @@ import { EventsTable } from "@/components/dashboard/events-table"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { RecentFacultyTable } from "@/components/dashboard/recent-faculty-table"
 import { TasksWidget } from "@/components/dashboard/tasks-widget"
+import { HealthWidget } from "@/components/dashboard/health-widget"
 
 function StatCardSkeleton() {
   return (
@@ -127,15 +128,35 @@ export default function Home() {
   })
   const quickName = sessionData?.user?.user_metadata?.name || sessionData?.user?.email?.split("@")[0] || ""
 
+  // Helper: compute 7-day trend from rows with created_at
+  function computeWeeklyTrend(rows: { created_at: string }[]): number[] {
+    const now = new Date()
+    const counts = Array(7).fill(0)
+    for (const row of rows) {
+      const d = new Date(row.created_at)
+      const daysAgo = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysAgo >= 0 && daysAgo < 7) {
+        counts[6 - daysAgo]++
+      }
+    }
+    return counts
+  }
+
   // Fetch live stats immediately (don't wait for permissions)
   const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
-      const [membersResult, facultyResult, activeEventsResult, delegatesResult] = await Promise.all([
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+      const [membersResult, facultyResult, activeEventsResult, delegatesResult, recentMembers, recentFaculty, recentDelegates] = await Promise.all([
         supabase.from("members").select("*", { count: "exact", head: true }),
         supabase.from("faculty").select("*", { count: "exact", head: true }),
         supabase.from("events").select("*", { count: "exact", head: true }).not("status", "in", '("completed","archived")'),
         supabase.from("registrations").select("*", { count: "exact", head: true }),
+        // Fetch recent records for sparkline trends
+        supabase.from("members").select("created_at").gte("created_at", sevenDaysAgo),
+        supabase.from("faculty").select("created_at").gte("created_at", sevenDaysAgo),
+        supabase.from("registrations").select("created_at").gte("created_at", sevenDaysAgo),
       ])
 
       // Log any errors for debugging (only if error has message)
@@ -150,6 +171,9 @@ export default function Home() {
         faculty: facultyResult.count ?? 0,
         activeEvents: activeEventsResult.count ?? 0,
         delegates: delegatesResult.count ?? 0,
+        membersTrend: computeWeeklyTrend((recentMembers.data as any[]) || []),
+        facultyTrend: computeWeeklyTrend((recentFaculty.data as any[]) || []),
+        delegatesTrend: computeWeeklyTrend((recentDelegates.data as any[]) || []),
       }
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -204,16 +228,16 @@ export default function Home() {
       {(() => {
         const cards = []
         if (FEATURES.membership) cards.push(
-          <StatCard key="members" icon={Users} value={stats?.members || 0} label="Total Members" subtext="Live from database" trend={null} color="rose" delay={0} />
+          <StatCard key="members" icon={Users} value={stats?.members || 0} label="Total Members" subtext="Live from database" trend={null} color="rose" delay={0} sparklineData={stats?.membersTrend} />
         )
         if (FEATURES.faculty) cards.push(
-          <StatCard key="faculty" icon={GraduationCap} value={stats?.faculty || 0} label="Faculty Database" subtext="Master database" trend={null} color="amber" delay={100} />
+          <StatCard key="faculty" icon={GraduationCap} value={stats?.faculty || 0} label="Faculty Database" subtext="Master database" trend={null} color="amber" delay={100} sparklineData={stats?.facultyTrend} />
         )
         cards.push(
           <StatCard key="events" icon={Calendar} value={stats?.activeEvents || 0} label="Active Events" subtext="Planning/Ongoing" trend={null} color="teal" delay={200} />
         )
         cards.push(
-          <StatCard key="attendees" icon={Award} value={stats?.delegates || 0} label="Total Attendees" subtext="All events" trend={null} color="violet" delay={300} />
+          <StatCard key="attendees" icon={Award} value={stats?.delegates || 0} label="Total Attendees" subtext="All events" trend={null} color="violet" delay={300} sparklineData={stats?.delegatesTrend} />
         )
         const cols = cards.length <= 2 ? "lg:grid-cols-2" : cards.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4"
         return (
@@ -236,6 +260,9 @@ export default function Home() {
 
         {/* Right Column - 1/3 width */}
         <div className="space-y-6">
+          {/* System Health Widget */}
+          <HealthWidget />
+
           {/* Who's Online Widget */}
           <WhosOnlineWidget />
         </div>
