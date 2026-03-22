@@ -1201,29 +1201,56 @@ html, body {
    SIDEBAR & HEADER ANIMATIONS
    ================================ */
 
-/* Sidebar active indicator - colored left border */
+/* --- Sidebar Glass Effect --- */
+.sidebar-glass {
+  background: hsl(var(--sidebar-background) / 0.92);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+/* --- Sidebar gradient border (fades to transparent at bottom) --- */
+.sidebar-border-gradient {
+  border-right: 1px solid transparent;
+  border-image: linear-gradient(
+    to bottom,
+    hsl(var(--sidebar-border)) 0%,
+    hsl(var(--sidebar-border) / 0.5) 60%,
+    transparent 100%
+  ) 1;
+}
+
+/* Subtle inner shadow on right edge */
+.sidebar-inner-shadow {
+  box-shadow: inset -1px 0 0 0 hsl(var(--sidebar-border) / 0.3),
+              inset -4px 0 12px -4px hsl(0 0% 0% / 0.08);
+}
+
+/* --- Brand accent gradient line --- */
+.brand-accent-line {
+  position: relative;
+}
+.brand-accent-line::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--sidebar-primary)) 0%,
+    hsl(var(--sidebar-primary) / 0.6) 50%,
+    hsl(var(--sidebar-primary) / 0.2) 100%
+  );
+  border-radius: 1px;
+}
+
+/* --- Navigation Item Active (premium style) --- */
 .nav-item-active {
   position: relative;
 }
-.nav-item-active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 60%;
-  border-radius: 0 4px 4px 0;
-  background: hsl(var(--primary));
-  animation: indicatorSlideIn 0.2s ease-out;
-}
 
-@keyframes indicatorSlideIn {
-  from { height: 0; opacity: 0; }
-  to { height: 60%; opacity: 1; }
-}
-
-/* Sidebar hover slide-in background effect */
+/* --- Nav hover slide-in background effect --- */
 .nav-item-hover {
   position: relative;
   overflow: hidden;
@@ -1235,19 +1262,68 @@ html, body {
   inset: 0;
   background: hsl(var(--sidebar-accent));
   border-radius: inherit;
-  transform: translateX(-100%);
+  transform: scaleX(0);
+  transform-origin: left center;
   opacity: 0;
-  transition: transform 0.25s ease-out, opacity 0.25s ease-out;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-out;
   z-index: -1;
 }
 .nav-item-hover:hover::after {
-  transform: translateX(0);
-  opacity: 0.5;
+  transform: scaleX(1);
+  opacity: 0.6;
+}
+/* Prevent hover effect on active items */
+.nav-item-active.nav-item-hover:hover::after {
+  opacity: 0;
 }
 
-/* Collapsible section expand/collapse animation */
+/* --- Sidebar icon hover spring animation --- */
+.sidebar-icon-hover {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sidebar-icon-hover:hover {
+  transform: scale(1.15);
+}
+
+/* --- Active item pop animation --- */
+.nav-pop {
+  animation: navPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes navPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+/* --- Chevron rotation --- */
+.chevron-rotate {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.chevron-rotate.open {
+  transform: rotate(180deg);
+}
+
+/* --- Submenu connector line --- */
+.submenu-connector {
+  position: relative;
+}
+.submenu-connector::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: 0;
+  bottom: 8px;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--sidebar-border) / 0.8),
+    hsl(var(--sidebar-border) / 0.2)
+  );
+}
+
+/* --- Submenu expand/collapse animation --- */
 .submenu-enter {
-  animation: submenuExpand 0.25s ease-out;
+  animation: submenuExpand 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 
@@ -1255,13 +1331,90 @@ html, body {
   from {
     opacity: 0;
     max-height: 0;
-    transform: translateY(-4px);
+    transform: translateY(-6px);
   }
   to {
     opacity: 1;
     max-height: 500px;
     transform: translateY(0);
   }
+}
+
+/* --- User avatar hover ring --- */
+.avatar-hover-ring {
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s ease;
+}
+.avatar-hover-ring:hover {
+  box-shadow: 0 0 0 3px hsl(var(--sidebar-primary) / 0.3),
+              0 0 12px hsl(var(--sidebar-primary) / 0.15);
+  transform: scale(1.05);
+}
+
+/* --- Gradient separator for sidebar footer --- */
+.sidebar-gradient-separator {
+  position: relative;
+}
+.sidebar-gradient-separator::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--sidebar-primary) / 0.3) 30%,
+    hsl(var(--sidebar-primary) / 0.5) 50%,
+    hsl(var(--sidebar-primary) / 0.3) 70%,
+    transparent 100%
+  );
+}
+
+/* --- Collapse button transition --- */
+.collapse-btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.collapse-btn:hover {
+  background: hsl(var(--sidebar-accent));
+  transform: scale(1.02);
+}
+.collapse-btn:active {
+  transform: scale(0.98);
+}
+
+/* --- Notification dot pulse --- */
+.notification-pulse {
+  position: relative;
+}
+.notification-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: inherit;
+  animation: notifPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes notifPulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.8); opacity: 0; }
+}
+
+/* --- Icon glow on hover --- */
+.icon-glow-hover {
+  position: relative;
+}
+.icon-glow-hover::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 8px;
+  background: hsl(var(--sidebar-primary) / 0);
+  transition: background 0.3s ease;
+  z-index: -1;
+}
+.icon-glow-hover:hover::before {
+  background: hsl(var(--sidebar-primary) / 0.1);
 }
 
 /* Dropdown animation for header menus */

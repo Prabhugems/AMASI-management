@@ -8,15 +8,14 @@ import {
   Calendar,
   GraduationCap,
   UserCheck,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   IdCard,
   FileText,
   Plane,
   Users,
   HelpCircle,
-  Shield,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
@@ -125,9 +124,21 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const pathname = usePathname()
   const [openMenus, setOpenMenus] = React.useState<string[]>(["Dashboard"])
   const [userMenuOpen, setUserMenuOpen] = React.useState(false)
+  const [activePopItem, setActivePopItem] = React.useState<string | null>(null)
 
   // Get user permissions and info
   const { userName, userEmail, role, isAdmin, isEventScoped, hasFullAccess, isLoading, permissions } = usePermissions()
+
+  // Track pathname changes for pop animation
+  const prevPathname = React.useRef(pathname)
+  React.useEffect(() => {
+    if (prevPathname.current !== pathname) {
+      setActivePopItem(pathname)
+      prevPathname.current = pathname
+      const timer = setTimeout(() => setActivePopItem(null), 300)
+      return () => clearTimeout(timer)
+    }
+  }, [pathname])
 
   // Filter nav items based on user access
   const filteredNavItems = React.useMemo((): NavItem[] => {
@@ -187,107 +198,133 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity duration-300"
           onClick={onMobileClose}
         />
       )}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen bg-sidebar transition-all duration-300 ease-in-out flex flex-col",
-          collapsed ? "lg:w-20" : "lg:w-64",
+          "fixed left-0 top-0 z-50 h-screen bg-sidebar flex flex-col sidebar-glass sidebar-border-gradient sidebar-inner-shadow",
+          "transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+          collapsed ? "lg:w-[72px]" : "lg:w-64",
           // Mobile: hidden by default, slide in when open
           mobileOpen ? "w-64 translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-      {/* Logo */}
-      <div className="flex h-16 items-center px-4 border-b border-sidebar-border">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
+      {/* Logo / Brand Area */}
+      <div className="flex h-16 items-center px-4 brand-accent-line">
+        <Link
+          href="/"
+          className={cn(
+            "flex items-center gap-3 group transition-all duration-200",
+            collapsed && "justify-center w-full"
+          )}
+        >
+          <div className={cn(
+            "flex items-center justify-center rounded-xl bg-gradient-to-br from-white/15 to-white/5 transition-all duration-300",
+            "group-hover:from-white/20 group-hover:to-white/10 group-hover:shadow-lg group-hover:shadow-white/5",
+            collapsed ? "h-10 w-10" : "h-10 w-10"
+          )}>
             <span className="text-lg font-bold text-white">{COMPANY_CONFIG.name.charAt(0)}</span>
           </div>
-          {!collapsed && (
-            <span className="text-lg font-semibold text-sidebar-foreground">
-              {COMPANY_CONFIG.name}
-            </span>
-          )}
+          <span className={cn(
+            "text-lg font-semibold text-sidebar-foreground transition-all duration-300 whitespace-nowrap overflow-hidden",
+            collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[180px]"
+          )}>
+            {COMPANY_CONFIG.name}
+          </span>
         </Link>
       </div>
 
       {/* User Profile */}
-      <div className={cn("p-4 border-b border-sidebar-border", collapsed && "px-2")}>
+      <div className={cn(
+        "p-4 border-b border-sidebar-border/50 transition-all duration-300",
+        collapsed && "px-3 py-3"
+      )}>
         <div
           className={cn(
-            "flex items-center gap-3 cursor-pointer",
-            collapsed && "justify-center"
+            "flex items-center gap-3 cursor-pointer rounded-xl p-2 -m-2 transition-all duration-200",
+            "hover:bg-white/5",
+            collapsed && "justify-center p-1 -m-1"
           )}
           onClick={() => !collapsed && setUserMenuOpen(!userMenuOpen)}
         >
-          <Avatar className="h-11 w-11 border-2 border-white/20">
-            <AvatarFallback className="bg-sidebar-primary text-white text-sm">
+          <Avatar className={cn(
+            "h-10 w-10 border-2 border-white/10 avatar-hover-ring flex-shrink-0",
+            collapsed && "h-9 w-9"
+          )}>
+            <AvatarFallback className="bg-gradient-to-br from-sidebar-primary to-sidebar-primary/70 text-white text-sm font-medium">
               {isLoading ? "..." : getInitials(userName || userEmail || "U")}
             </AvatarFallback>
           </Avatar>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              {isLoading ? (
-                <div className="space-y-1.5">
-                  <div className="h-4 w-24 bg-white/10 rounded animate-pulse" />
-                  <div className="h-3 w-16 bg-white/10 rounded animate-pulse" />
+          <div className={cn(
+            "flex-1 min-w-0 transition-all duration-300 overflow-hidden",
+            collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-full"
+          )}>
+            {isLoading ? (
+              <div className="space-y-1.5">
+                <div className="h-4 w-24 bg-white/10 rounded animate-pulse" />
+                <div className="h-3 w-16 bg-white/10 rounded animate-pulse" />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-sidebar-foreground truncate">
+                    {userName || userEmail?.split("@")[0] || "User"}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 text-sidebar-muted chevron-rotate flex-shrink-0",
+                      userMenuOpen && "open"
+                    )}
+                  />
                 </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-sidebar-foreground truncate">
-                      {userName || userEmail?.split("@")[0] || "User"}
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        "h-4 w-4 text-sidebar-muted transition-transform flex-shrink-0",
-                        userMenuOpen && "rotate-180"
-                      )}
-                    />
-                  </div>
-                  <span className="text-xs text-sidebar-muted truncate block">{getRoleLabel()}</span>
-                </>
-              )}
-            </div>
-          )}
+                <span className="text-xs text-sidebar-muted/70 truncate block mt-0.5">{getRoleLabel()}</span>
+              </>
+            )}
+          </div>
         </div>
         {/* User submenu */}
         {!collapsed && userMenuOpen && (
-          <div className="mt-3 space-y-1 pl-14">
-            <p className="text-xs text-sidebar-muted/60 truncate mb-2">{userEmail}</p>
+          <div className="mt-3 space-y-1 pl-14 submenu-enter">
+            <p className="text-xs text-sidebar-muted/50 truncate mb-2">{userEmail}</p>
           </div>
         )}
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-thin">
-        <ul className="space-y-1">
+        <div className="space-y-1">
           {filteredNavItems.map((item) => {
             const isOpen = openMenus.includes(item.name)
             const isActive = item.children?.some((child) => pathname === child.href)
 
             return (
-              <li key={item.name}>
+              <div key={item.name}>
+                {/* Section parent button */}
                 <button
                   onClick={() => !collapsed && toggleMenu(item.name)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 nav-item-hover",
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 nav-item-hover",
                     isActive
-                      ? "bg-sidebar-accent text-sidebar-foreground nav-item-active"
+                      ? "bg-sidebar-primary/15 text-sidebar-foreground font-semibold"
                       : "text-sidebar-muted hover:text-sidebar-foreground",
-                    collapsed && "sidebar-tooltip"
+                    collapsed && "sidebar-tooltip justify-center px-2"
                   )}
                 >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  <div className="icon-glow-hover flex-shrink-0">
+                    <item.icon className={cn(
+                      "h-[18px] w-[18px] sidebar-icon-hover",
+                      isActive && "text-sidebar-primary"
+                    )} />
+                  </div>
                   {!collapsed && (
                     <>
                       <span className="flex-1 text-left">{item.name}</span>
                       <ChevronDown
                         className={cn(
-                          "h-4 w-4 transition-transform duration-200",
-                          isOpen && "rotate-180"
+                          "h-3.5 w-3.5 text-sidebar-muted/60 chevron-rotate",
+                          isOpen && "open"
                         )}
                       />
                     </>
@@ -298,79 +335,99 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                 </button>
                 {/* Submenu */}
                 {!collapsed && isOpen && item.children && (
-                  <ul className="mt-1 space-y-1 pl-4 submenu-enter">
-                    {item.children.map((child) => {
-                      const childActive = pathname === child.href
-                      return (
-                        <li key={child.href}>
+                  <div className="mt-1 ml-3 submenu-enter submenu-connector">
+                    <div className="space-y-0.5 pl-4">
+                      {item.children.map((child) => {
+                        const childActive = pathname === child.href
+                        const shouldPop = activePopItem === child.href
+                        return (
                           <Link
+                            key={child.href}
                             href={child.href}
                             onClick={onMobileClose}
                             className={cn(
-                              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 nav-item-hover",
+                              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
                               childActive
-                                ? "bg-sidebar-primary text-sidebar-primary-foreground nav-item-active pl-4"
-                                : "text-sidebar-muted hover:text-sidebar-foreground"
+                                ? "bg-sidebar-primary text-white font-medium shadow-md shadow-sidebar-primary/20"
+                                : "text-sidebar-muted hover:text-sidebar-foreground hover:bg-white/5",
+                              shouldPop && "nav-pop"
                             )}
                           >
-                            <span className="w-5 text-center text-xs font-medium">
+                            <span className={cn(
+                              "flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold transition-all duration-200",
+                              childActive
+                                ? "bg-white/20 text-white"
+                                : "bg-sidebar-accent/50 text-sidebar-muted"
+                            )}>
                               {child.name.charAt(0)}
                             </span>
                             <span>{child.name}</span>
                           </Link>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                        )
+                      })}
+                    </div>
+                  </div>
                 )}
-              </li>
+              </div>
             )
           })}
-        </ul>
+        </div>
 
         {/* Quick Links */}
-        <div className="mt-6 pt-4 border-t border-sidebar-border">
-          <ul className="space-y-1">
+        <div className="mt-6 pt-4 sidebar-gradient-separator">
+          <p className={cn(
+            "text-[10px] font-semibold uppercase tracking-[0.08em] text-sidebar-muted/40 mb-2 transition-all duration-300",
+            collapsed ? "text-center" : "px-3"
+          )}>
+            {collapsed ? "..." : "Quick Links"}
+          </p>
+          <div className="space-y-0.5">
             {quickNavItems.map((item) => {
               const isActive = pathname === item.href
               return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={onMobileClose}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 nav-item-hover",
-                      isActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground nav-item-active"
-                        : "text-sidebar-muted hover:text-sidebar-foreground",
-                      collapsed && "sidebar-tooltip"
-                    )}
-                  >
-                    <item.icon className="h-5 w-5 flex-shrink-0" />
-                    {!collapsed && <span>{item.name}</span>}
-                    {collapsed && (
-                      <span className="sidebar-tooltip-text">{item.name}</span>
-                    )}
-                  </Link>
-                </li>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onMobileClose}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 nav-item-hover",
+                    isActive
+                      ? "bg-sidebar-primary text-white font-medium shadow-md shadow-sidebar-primary/20"
+                      : "text-sidebar-muted hover:text-sidebar-foreground",
+                    collapsed && "sidebar-tooltip justify-center px-2"
+                  )}
+                >
+                  <div className="icon-glow-hover flex-shrink-0">
+                    <item.icon className="h-[18px] w-[18px] sidebar-icon-hover" />
+                  </div>
+                  {!collapsed && <span>{item.name}</span>}
+                  {collapsed && (
+                    <span className="sidebar-tooltip-text">{item.name}</span>
+                  )}
+                </Link>
               )
             })}
-          </ul>
+          </div>
         </div>
       </nav>
 
-      {/* Toggle Button */}
-      <div className="p-3 border-t border-sidebar-border">
+      {/* Collapse Toggle Footer */}
+      <div className="p-3 sidebar-gradient-separator">
         <button
           onClick={onToggle}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-sidebar-accent/50 px-3 py-2 text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all"
+          className={cn(
+            "flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm collapse-btn",
+            "text-sidebar-muted hover:text-sidebar-foreground",
+            "bg-white/[0.03] hover:bg-white/[0.06]",
+            "border border-white/[0.04]"
+          )}
         >
           {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
+            <PanelLeft className="h-4 w-4" />
           ) : (
             <>
-              <ChevronLeft className="h-4 w-4" />
-              <span>Collapse</span>
+              <PanelLeftClose className="h-4 w-4" />
+              <span className="text-xs font-medium">Collapse</span>
             </>
           )}
         </button>

@@ -184,7 +184,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
     <header
       className={cn(
         "fixed top-0 right-0 z-30 h-16 bg-background/80 backdrop-blur-xl border-b border-border transition-all duration-300 print:hidden left-0 header-border-gradient",
-        sidebarCollapsed ? "lg:left-20" : "lg:left-64"
+        sidebarCollapsed ? "lg:left-[72px]" : "lg:left-64"
       )}
     >
       <div className="flex h-full items-center justify-between px-3 sm:px-6">
