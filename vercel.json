@@ -15,6 +15,10 @@
     {
       "path": "/api/examination/send-address-reminder",
       "schedule": "0 9 */3 * *"
+    },
+    {
+      "path": "/api/cron/exam-daily-sync",
+      "schedule": "0 7 * * *"
     }
   ]
 }
