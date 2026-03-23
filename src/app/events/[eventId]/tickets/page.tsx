@@ -221,6 +221,7 @@ export default function TicketsPage() {
         .from("registrations")
         .select("ticket_type_id, total_amount")
         .eq("event_id", eventId)
+        .neq("status", "cancelled")
 
       // Calculate actual sold count and revenue per ticket
       const salesByTicket: Record<string, { count: number; revenue: number }> = {}
