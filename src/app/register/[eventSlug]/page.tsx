@@ -37,6 +37,7 @@ interface EventSettings {
   allow_buyers: boolean
   allow_multiple_ticket_types: boolean
   allow_multiple_addons: boolean
+  enable_waitlist?: boolean
 }
 
 // Progress Step Indicator
@@ -809,6 +810,7 @@ function EventDetailsPage() {
                 onSelectionChange={setSelectedTickets}
                 allowMultipleTicketTypes={eventSettings?.allow_multiple_ticket_types ?? false}
                 eventId={event.id}
+                waitlistEnabled={eventSettings?.enable_waitlist ?? true}
               />
             </div>
           )}

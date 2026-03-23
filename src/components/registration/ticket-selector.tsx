@@ -13,6 +13,7 @@ interface TicketSelectorProps {
   onSelectionChange: (tickets: Map<string, number>) => void
   allowMultipleTicketTypes?: boolean // When false, only one ticket type can be selected (radio behavior)
   eventId?: string // Event ID for waitlist functionality
+  waitlistEnabled?: boolean // When false, hide waitlist button even when sold out
 }
 
 function CountdownBadge({ endDate, isDark }: { endDate: string; isDark: boolean }) {
@@ -69,6 +70,7 @@ function TicketCard({
   index,
   disabledByTicket,
   eventId,
+  waitlistEnabled = true,
 }: {
   ticket: TicketType
   quantity: number
@@ -77,6 +79,7 @@ function TicketCard({
   index: number
   disabledByTicket: string | null
   eventId?: string
+  waitlistEnabled?: boolean
 }) {
   const [showWaitlist, setShowWaitlist] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
@@ -348,7 +351,7 @@ function TicketCard({
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
-            ) : isSoldOut && eventId ? (
+            ) : isSoldOut && eventId && waitlistEnabled ? (
               <button
                 onClick={() => setShowWaitlist(true)}
                 className={`
@@ -424,6 +427,7 @@ export function TicketSelector({
   onSelectionChange,
   allowMultipleTicketTypes = true, // Default to true for backward compatibility
   eventId,
+  waitlistEnabled = true,
 }: TicketSelectorProps) {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -519,6 +523,7 @@ export function TicketSelector({
             index={index}
             disabledByTicket={isDisabledByExclusivity(ticket.id)}
             eventId={eventId}
+            waitlistEnabled={waitlistEnabled}
           />
         ))}
       </div>
