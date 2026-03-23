@@ -34,6 +34,7 @@ import {
   ExternalLink,
   UserCheck,
   ScanLine,
+  Eye,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -549,6 +550,20 @@ export default function EventsPage() {
                     <ScanLine className="h-3 w-3 mr-1" />
                     Check-in
                   </Button>
+                  {event.slug && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 h-8 text-xs"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        window.open(`/register/${event.slug}`, '_blank')
+                      }}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      Delegate View
+                    </Button>
+                  )}
                 </div>
               </div>
             </Link>
