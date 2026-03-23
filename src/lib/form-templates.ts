@@ -1270,6 +1270,58 @@ export const FORM_TEMPLATES: FormTemplateDefinition[] = [
     ],
   },
   {
+    id: "skill-course-only",
+    name: "Skill Course Registration",
+    description: "Simple registration form for Skill Course Only and PG candidates (no AMASI membership required)",
+    category: "event_registration",
+    form_type: "event_registration",
+    icon: "BookOpen",
+    fields: [
+      {
+        field_type: "email",
+        label: "Email Address",
+        placeholder: "your.email@example.com",
+        is_required: true,
+        width: "full",
+        settings: { verify_email: true },
+      },
+      {
+        field_type: "text",
+        label: "Your Name",
+        placeholder: "Full name",
+        is_required: true,
+        width: "full",
+      },
+      {
+        field_type: "phone",
+        label: "Mobile Number",
+        placeholder: "Mobile number",
+        is_required: true,
+        width: "full",
+      },
+      {
+        field_type: "select",
+        label: "Are You?",
+        is_required: true,
+        width: "full",
+        options: [
+          { label: "Surgeon", value: "surgeon" },
+          { label: "Gynaecologist", value: "gynaecologist" },
+        ],
+      },
+      {
+        field_type: "select",
+        label: "Preferred Food",
+        is_required: true,
+        width: "full",
+        options: [
+          { label: "Veg", value: "veg" },
+          { label: "Non Veg", value: "non_veg" },
+        ],
+      },
+    ],
+  },
+  {
     id: "fmas-exam-application",
     name: "FMAS Skill Course Exam Application",
     description: "Examination application form for FMAS Skill Course candidates with AMASI membership verification",
