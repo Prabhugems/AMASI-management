@@ -44,9 +44,75 @@ export async function GET(request: Request) {
   const names = pastEvents.map((e: { short_name?: string; id: string }) => e.short_name || e.id)
   console.log(`Auto-completed ${eventIds.length} events:`, names)
 
+  // Auto-sync speakers to master faculty for completed events
+  const facultySyncResults: { event: string; added: number; updated: number }[] = []
+  for (const event of pastEvents) {
+    try {
+      // Get speaker ticket types
+      const { data: speakerTickets } = await supabase
+        .from("ticket_types")
+        .select("id")
+        .eq("event_id", event.id)
+        .ilike("name", "%speaker%")
+
+      if (!speakerTickets?.length) continue
+
+      const ticketIds = speakerTickets.map((t: { id: string }) => t.id)
+      const { data: speakers } = await supabase
+        .from("registrations")
+        .select("attendee_name, attendee_email, attendee_phone, attendee_designation")
+        .eq("event_id", event.id)
+        .in("ticket_type_id", ticketIds)
+        .eq("status", "confirmed")
+
+      if (!speakers?.length) continue
+
+      const eventLabel = event.short_name || event.id
+      let added = 0, updated = 0
+
+      for (const speaker of speakers) {
+        if (!speaker.attendee_email) continue
+
+        const { data: existing } = await supabase
+          .from("faculty")
+          .select("id, notes")
+          .eq("email", speaker.attendee_email.toLowerCase())
+          .maybeSingle()
+
+        if (existing) {
+          const currentNotes = (existing as { notes?: string }).notes || ""
+          if (!currentNotes.includes(eventLabel)) {
+            await supabase.from("faculty").update({
+              notes: currentNotes ? `${currentNotes}\n${eventLabel}` : eventLabel,
+            }).eq("id", (existing as { id: string }).id)
+            updated++
+          }
+        } else {
+          await supabase.from("faculty").insert({
+            name: speaker.attendee_name,
+            email: speaker.attendee_email,
+            phone: speaker.attendee_phone || null,
+            designation: speaker.attendee_designation || null,
+            status: "active",
+            notes: eventLabel,
+          } as Record<string, unknown>)
+          added++
+        }
+      }
+
+      if (added > 0 || updated > 0) {
+        facultySyncResults.push({ event: eventLabel, added, updated })
+        console.log(`Faculty sync for ${eventLabel}: ${added} added, ${updated} updated`)
+      }
+    } catch (e) {
+      console.error(`Faculty sync error for event ${event.id}:`, e)
+    }
+  }
+
   return NextResponse.json({
     message: `Auto-completed ${eventIds.length} events`,
     updated: eventIds.length,
     events: names,
+    facultySync: facultySyncResults,
   })
 }

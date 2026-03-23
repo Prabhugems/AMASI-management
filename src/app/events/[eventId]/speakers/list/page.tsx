@@ -206,6 +206,7 @@ export default function SpeakersPage() {
 
   // Sync assignments state
   const [syncing, setSyncing] = useState(false)
+  const [syncingFaculty, setSyncingFaculty] = useState(false)
 
   // Edit session time state
   const [editingSession, setEditingSession] = useState<Session | null>(null)
@@ -636,6 +637,30 @@ export default function SpeakersPage() {
       toast.error("Error syncing assignments")
     } finally {
       setSyncing(false)
+    }
+  }
+
+  // Sync speakers to master faculty table
+  const syncToFaculty = async () => {
+    setSyncingFaculty(true)
+    try {
+      const response = await fetch(`/api/events/${eventId}/speakers/sync-faculty`, {
+        method: 'POST',
+      })
+      if (response.ok) {
+        const result = await response.json()
+        if (result.added > 0 || result.updated > 0) {
+          toast.success(`Faculty sync: ${result.added} added, ${result.updated} updated`)
+        } else {
+          toast.info("All speakers already in master faculty")
+        }
+      } else {
+        toast.error("Failed to sync to faculty")
+      }
+    } catch {
+      toast.error("Error syncing to faculty")
+    } finally {
+      setSyncingFaculty(false)
     }
   }
 
@@ -1141,6 +1166,18 @@ export default function SpeakersPage() {
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
             Sync Sessions
+          </Button>
+          <Button
+            variant="outline"
+            onClick={syncToFaculty}
+            disabled={syncingFaculty}
+          >
+            {syncingFaculty ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <GraduationCap className="h-4 w-4 mr-2" />
+            )}
+            Sync to Faculty
           </Button>
           <Button onClick={() => setIsInviteModalOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
