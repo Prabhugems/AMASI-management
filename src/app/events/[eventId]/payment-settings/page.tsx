@@ -31,7 +31,8 @@ export default function PaymentSettingsPage() {
   const queryClient = useQueryClient()
 
   // Payment settings state
-  const [showSecrets, setShowSecrets] = useState(false)
+  const [showKeySecret, setShowKeySecret] = useState(false)
+  const [showWebhookSecret, setShowWebhookSecret] = useState(false)
   const [showBankDetails, setShowBankDetails] = useState(false)
   const [paymentSettings, setPaymentSettings] = useState({
     // Razorpay credentials
@@ -165,17 +166,6 @@ export default function PaymentSettingsPage() {
               </p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowSecrets(!showSecrets)}
-          >
-            {showSecrets ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
-          </Button>
         </div>
         <div className="p-5 space-y-6">
           {/* Payment Methods Toggle */}
@@ -399,22 +389,42 @@ export default function PaymentSettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Key Secret</label>
-                  <Input
-                    type={showSecrets ? "text" : "password"}
-                    placeholder="••••••••••••••••"
-                    value={paymentSettings.razorpay_key_secret}
-                    onChange={(e) => setPaymentSettings({ ...paymentSettings, razorpay_key_secret: e.target.value })}
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showKeySecret ? "text" : "password"}
+                      placeholder="••••••••••••••••"
+                      value={paymentSettings.razorpay_key_secret}
+                      onChange={(e) => setPaymentSettings({ ...paymentSettings, razorpay_key_secret: e.target.value })}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowKeySecret(!showKeySecret)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showKeySecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Webhook Secret</label>
-                <Input
-                  type={showSecrets ? "text" : "password"}
-                  placeholder="••••••••••••••••"
-                  value={paymentSettings.razorpay_webhook_secret}
-                  onChange={(e) => setPaymentSettings({ ...paymentSettings, razorpay_webhook_secret: e.target.value })}
-                />
+                <div className="relative">
+                  <Input
+                    type={showWebhookSecret ? "text" : "password"}
+                    placeholder="••••••••••••••••"
+                    value={paymentSettings.razorpay_webhook_secret}
+                    onChange={(e) => setPaymentSettings({ ...paymentSettings, razorpay_webhook_secret: e.target.value })}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowWebhookSecret(!showWebhookSecret)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
           )}
