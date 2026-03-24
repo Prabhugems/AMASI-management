@@ -76,15 +76,82 @@ export async function POST(request: NextRequest) {
       .eq("razorpay_order_id", razorpay_order_id)
       .maybeSingle()
 
-    if (fetchError || !pendingPayment) {
-      console.error(`[VERIFY] Payment not found for order: ${razorpay_order_id}`)
-      return NextResponse.json(
-        { error: "Payment record not found" },
-        { status: 404 }
-      )
-    }
+    let paymentData: any = pendingPayment
 
-    const paymentData = pendingPayment as any
+    if (fetchError || !pendingPayment) {
+      // Payment record not in DB — create-order may have failed during deployment.
+      // Recover by fetching payment details from Razorpay and creating the record.
+      console.warn(`[VERIFY] Payment not found for order: ${razorpay_order_id}. Attempting recovery...`)
+
+      try {
+        const rpPayment = await fetchPayment(razorpay_payment_id)
+        const eventId = rpPayment?.notes?.event_id || null
+        const payerEmail = rpPayment?.email || rpPayment?.notes?.payer_email || body.payer_email || "unknown@unknown.com"
+        const payerName = rpPayment?.notes?.payer_name || body.payer_name || "Unknown"
+        const payerPhone = rpPayment?.contact?.replace("+", "") || body.payer_phone || null
+        const amount = (rpPayment?.amount || 0) / 100
+
+        // Try to get event-specific credentials for signature verification
+        let recoveryKeySecret: string | undefined
+        if (eventId) {
+          const { data: evt } = await supabase
+            .from("events")
+            .select("razorpay_key_secret")
+            .eq("id", eventId)
+            .maybeSingle()
+          if (evt?.razorpay_key_secret) recoveryKeySecret = evt.razorpay_key_secret
+        }
+
+        // Verify signature before creating record
+        const sigValid = verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, recoveryKeySecret)
+        if (!sigValid) {
+          return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 })
+        }
+
+        // Determine ticket info from Razorpay notes or body
+        const ticketInfo = body.tickets || body.metadata?.tickets || null
+
+        const paymentNumber = `RCV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`
+        const { data: newPayment, error: insertError } = await supabase
+          .from("payments")
+          .insert({
+            payment_number: paymentNumber,
+            payment_type: "registration",
+            payment_method: "razorpay",
+            payer_name: payerName,
+            payer_email: payerEmail,
+            payer_phone: payerPhone,
+            amount,
+            currency: rpPayment?.currency || "INR",
+            net_amount: amount,
+            razorpay_order_id,
+            razorpay_payment_id,
+            status: "completed",
+            completed_at: new Date().toISOString(),
+            event_id: eventId,
+            metadata: {
+              recovered_from_verify: true,
+              original_create_order_failed: true,
+              razorpay_notes: rpPayment?.notes || {},
+              ticket_info: ticketInfo,
+              registration_data: body.registration_data || null,
+            },
+          } as any)
+          .select()
+          .single()
+
+        if (insertError || !newPayment) {
+          console.error(`[VERIFY] Failed to recover payment record:`, insertError)
+          return NextResponse.json({ error: "Payment recovery failed" }, { status: 500 })
+        }
+
+        console.log(`[VERIFY] Recovered payment record: ${paymentNumber} for ${payerEmail}`)
+        paymentData = newPayment as any
+      } catch (recoveryError) {
+        console.error(`[VERIFY] Recovery failed:`, recoveryError)
+        return NextResponse.json({ error: "Payment record not found and recovery failed" }, { status: 404 })
+      }
+    }
 
     // ============================================================
     // STEP 2: IDEMPOTENCY CHECK - Already completed?

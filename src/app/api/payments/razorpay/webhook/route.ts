@@ -501,34 +501,100 @@ async function handleGroupRegistrationWebhook(paymentData: any, metadata: any) {
 // ============================================================
 async function createOrphanPaymentRecord(razorpayPayment: any) {
   const paymentNumber = `ORPHAN-${Date.now().toString(36).toUpperCase()}`
+  const eventId = razorpayPayment.notes?.event_id || null
+  const payerEmail = razorpayPayment.email || razorpayPayment.notes?.payer_email || "unknown@unknown.com"
+  const payerName = razorpayPayment.notes?.payer_name || razorpayPayment.notes?.name || "Unknown"
+  const payerPhone = razorpayPayment.contact?.replace("+", "").replace(/^91/, "") || null
+  const amount = razorpayPayment.amount / 100
 
-  const { error } = await supabase.from("payments").insert({
+  const { data: payment, error } = await supabase.from("payments").insert({
     payment_number: paymentNumber,
     payment_type: "registration",
     payment_method: "razorpay",
-    payer_name: razorpayPayment.notes?.payer_name || "Unknown",
-    payer_email: razorpayPayment.email || razorpayPayment.notes?.payer_email || "unknown@unknown.com",
-    payer_phone: razorpayPayment.contact,
-    amount: razorpayPayment.amount / 100,
+    payer_name: payerName,
+    payer_email: payerEmail,
+    payer_phone: payerPhone,
+    amount,
     currency: razorpayPayment.currency,
-    net_amount: razorpayPayment.amount / 100,
+    net_amount: amount,
     razorpay_order_id: razorpayPayment.order_id,
     razorpay_payment_id: razorpayPayment.id,
     status: "completed",
     completed_at: new Date().toISOString(),
-    event_id: razorpayPayment.notes?.event_id || null,
+    event_id: eventId,
     metadata: {
       is_orphan: true,
       needs_reconciliation: true,
       created_from_webhook: true,
       razorpay_response: razorpayPayment,
     },
-  } as any)
+  } as any).select().single()
 
   if (error) {
     console.error("[WEBHOOK] Failed to create orphan payment:", error)
-  } else {
-    console.log(`[WEBHOOK] Created orphan payment record: ${paymentNumber}`)
+    return
+  }
+
+  console.log(`[WEBHOOK] Created orphan payment record: ${paymentNumber}`)
+
+  // Also create registration if we have event_id
+  if (eventId && payerEmail !== "unknown@unknown.com") {
+    try {
+      // Check if registration already exists
+      const { data: existingReg } = await supabase
+        .from("registrations")
+        .select("id")
+        .eq("attendee_email", payerEmail)
+        .eq("event_id", eventId)
+        .in("status", ["confirmed", "pending"])
+        .maybeSingle()
+
+      if (existingReg) {
+        console.log(`[WEBHOOK] Registration already exists for ${payerEmail}, linking payment`)
+        await supabase.from("registrations")
+          .update({ payment_id: (payment as any).id, payment_status: "completed", status: "confirmed" })
+          .eq("id", existingReg.id)
+        return
+      }
+
+      // Find a suitable ticket type for this event
+      const { data: tickets } = await supabase
+        .from("ticket_types")
+        .select("id, name, price")
+        .eq("event_id", eventId)
+        .eq("status", "active")
+        .order("price", { ascending: false })
+
+      // Match ticket by price
+      const matchedTicket = tickets?.find((t: any) => Math.abs(t.price - amount) < 200) || tickets?.[0]
+
+      if (matchedTicket) {
+        const regNumber = await getNextRegistrationNumber(eventId)
+
+        await supabase.from("registrations").insert({
+          event_id: eventId,
+          ticket_type_id: matchedTicket.id,
+          registration_number: regNumber,
+          attendee_name: payerName,
+          attendee_email: payerEmail,
+          attendee_phone: payerPhone,
+          unit_price: amount,
+          total_amount: amount,
+          status: "confirmed",
+          payment_status: "completed",
+          payment_id: (payment as any).id,
+        } as any)
+
+        // Increment ticket sold
+        await supabase.from("ticket_types")
+          .update({ quantity_sold: (matchedTicket as any).quantity_sold + 1 })
+          .eq("id", matchedTicket.id)
+
+        console.log(`[WEBHOOK] Auto-created registration ${regNumber} for orphan payment ${payerEmail}`)
+      }
+    } catch (regError) {
+      console.error("[WEBHOOK] Failed to auto-create registration for orphan:", regError)
+    }
   }
 }
 
