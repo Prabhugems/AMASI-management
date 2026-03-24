@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { onRegistration } from "@/lib/services/auto-send"
 import { validatePagination, sanitizeSearchInput, isValidUUID } from "@/lib/validation"
@@ -182,7 +182,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase = await createServerSupabaseClient()
+    // Use admin client to bypass RLS - registration is a public action
+    const supabase = await createAdminClient()
     const body = await request.json()
 
     const {
