@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createAdminClient, createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 
 // POST /api/analytics/leads - Capture a lead
 export async function POST(request: NextRequest) {
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
 // GET /api/analytics/leads - Get leads for an event
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient()
+    const supabase = await createAdminClient()
     const { searchParams } = new URL(request.url)
 
     const eventId = searchParams.get("event_id")
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
 // PATCH /api/analytics/leads - Update lead status
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient()
+    const supabase = await createAdminClient()
     const body = await request.json()
     const { lead_id, status, notes, registration_id } = body
 
