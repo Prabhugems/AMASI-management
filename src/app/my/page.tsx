@@ -296,7 +296,7 @@ export default function DelegatePortalPage() {
   const [downloadingReceipt, setDownloadingReceipt] = useState(false)
   const [downloadingInvitation, setDownloadingInvitation] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
-  const [certGatedByFeedback, setCertGatedByFeedback] = useState(false)
+  const [certGatedByFeedback, setCertGatedByFeedback] = useState(true) // Default to locked until feedback check completes
   const [refreshing, setRefreshing] = useState(false)
 
   // Refresh registration data (re-fetch without clearing UI)
