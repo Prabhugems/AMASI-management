@@ -10,8 +10,6 @@ import {
   Clock,
   Eye,
   Edit,
-  Copy,
-  Trash2,
   Settings,
   ArrowUpRight,
   ChevronRight,
@@ -401,10 +399,8 @@ function EventRow({
             >
               {[
                 { icon: Eye, label: "View Details", href: `/events/${event.id}` },
-                { icon: Edit, label: "Edit Event", href: `/events/${event.id}/edit` },
-                { icon: Copy, label: "Duplicate", href: "#" },
+                { icon: Edit, label: "Edit Event", href: `/events/${event.id}/settings` },
                 { icon: Settings, label: "Settings", href: `/events/${event.id}/settings` },
-                { icon: Trash2, label: "Delete", href: "#", danger: true },
               ].map((item, i) => (
                 <Link
                   key={i}
@@ -413,11 +409,7 @@ function EventRow({
                     w-full flex items-center gap-3 px-4 py-3 text-sm font-medium
                     transition-colors duration-200
                     ${isDark ? "text-slate-300 hover:bg-slate-700 hover:text-white" : "text-gray-700 hover:bg-gray-50"}
-                    ${item.danger ? (isDark ? "hover:text-rose-400" : "hover:text-rose-600") : ""}
                   `}
-                  onClick={(e) => {
-                    if (item.href === "#") e.preventDefault()
-                  }}
                 >
                   <item.icon className="w-4 h-4" />
                   {item.label}

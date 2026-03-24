@@ -399,7 +399,39 @@ export default function OrdersPage() {
             <RefreshCw className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => {
+            if (!orders || orders.length === 0) {
+              toast.info("No orders to export")
+              return
+            }
+            const headers = ["Order #", "Payer Name", "Payer Email", "Payer Phone", "Amount", "Tax", "Discount", "Net Amount", "Currency", "Status", "Payment Method", "Razorpay Payment ID", "Completed At", "Created At", "Registrations"]
+            const rows = orders.map((o) => [
+              o.payment_number,
+              o.payer_name,
+              o.payer_email,
+              o.payer_phone || "",
+              o.amount,
+              o.tax_amount,
+              o.discount_amount,
+              o.net_amount,
+              o.currency,
+              o.status,
+              o.payment_method,
+              o.razorpay_payment_id || "",
+              o.completed_at || "",
+              o.created_at,
+              o.registrations?.map((r) => `${r.first_name} ${r.last_name} (${r.email})`).join("; ") || ""
+            ])
+            const csvContent = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n")
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement("a")
+            link.href = url
+            link.download = `orders-export-${new Date().toISOString().split("T")[0]}.csv`
+            link.click()
+            URL.revokeObjectURL(url)
+            toast.success("Orders exported successfully")
+          }}>
             <Download className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Export</span>
           </Button>
@@ -551,11 +583,11 @@ export default function OrdersPage() {
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.info("Coming soon")}>
                           <Send className="w-4 h-4 mr-2" />
                           Send Receipt
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.info("Coming soon")}>
                           <Download className="w-4 h-4 mr-2" />
                           Download Invoice
                         </DropdownMenuItem>

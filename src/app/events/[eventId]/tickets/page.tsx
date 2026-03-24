@@ -386,6 +386,9 @@ export default function TicketsPage() {
       }
       toast.success(editingTicket ? "Ticket updated" : "Ticket created")
     },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to save ticket")
+    },
   })
 
   const deleteTicket = useMutation({
@@ -402,6 +405,9 @@ export default function TicketsPage() {
       setSelectedTicket(null)
       toast.success("Ticket deleted")
     },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete ticket")
+    },
   })
 
   const toggleStatus = useMutation({
@@ -416,6 +422,9 @@ export default function TicketsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["event-tickets", eventId] })
     },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to toggle status")
+    },
   })
 
   const toggleVisibility = useMutation({
@@ -428,6 +437,9 @@ export default function TicketsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["event-tickets", eventId] })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to toggle visibility")
     },
   })
 
@@ -464,6 +476,9 @@ export default function TicketsPage() {
       queryClient.invalidateQueries({ queryKey: ["event-tickets", eventId] })
       setSelectedTicket(null)
       toast.success("Ticket duplicated! Edit it to customize.")
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to duplicate ticket")
     },
   })
 

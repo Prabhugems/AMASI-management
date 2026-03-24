@@ -544,7 +544,7 @@ export default function EventsPage() {
                     className="flex-1 h-8 text-xs"
                     onClick={(e) => {
                       e.preventDefault()
-                      router.push(`/events/${event.id}/check-in`)
+                      router.push(`/events/${event.id}/checkin`)
                     }}
                   >
                     <ScanLine className="h-3 w-3 mr-1" />

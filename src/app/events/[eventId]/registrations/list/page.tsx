@@ -666,6 +666,10 @@ function RegistrationsContent() {
       queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] })
       setDeleteConfirm(null)
     },
+    onError: (error: Error) => {
+      setDeleteConfirm(null)
+      toast.error(error.message || "Failed to delete registration")
+    },
   })
 
   // Edit registration mutation
@@ -692,6 +696,9 @@ function RegistrationsContent() {
       setIsEditOpen(false)
       setSelectedRegistration(null)
       toast.success("Attendee updated successfully")
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update registration")
     },
   })
 
@@ -1722,7 +1729,12 @@ function RegistrationsContent() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              window.open(`mailto:${reg.attendee_email}`)
+                            }}
+                          >
                             <Mail className="h-4 w-4 mr-2" />
                             Send Email
                           </DropdownMenuItem>
@@ -1767,9 +1779,11 @@ function RegistrationsContent() {
                           {reg.status !== "cancelled" && (
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() =>
-                                updateStatus.mutate({ id: reg.id, status: "cancelled" })
-                              }
+                              onClick={() => {
+                                if (confirm("Are you sure you want to cancel this registration?")) {
+                                  updateStatus.mutate({ id: reg.id, status: "cancelled" })
+                                }
+                              }}
                             >
                               <XCircle className="h-4 w-4 mr-2" />
                               Cancel

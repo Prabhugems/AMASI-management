@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
@@ -276,35 +277,35 @@ export default function Home() {
         </div>
         <div className="p-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <button className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
+            <Link href="/faculty" className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
                 <Download className="h-5 w-5 text-primary" />
               </div>
               <span className="text-sm font-medium text-foreground">Import CSV</span>
-            </button>
-            <button className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
+            </Link>
+            <Link href="/events" className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
               <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center group-hover:bg-success/20 group-hover:scale-110 transition-all duration-300">
                 <Mail className="h-5 w-5 text-success" />
               </div>
               <span className="text-sm font-medium text-foreground">Bulk Email</span>
-            </button>
-            <button className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
+            </Link>
+            <Link href="/events" className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
               <div className="h-12 w-12 rounded-full bg-info/10 flex items-center justify-center group-hover:bg-info/20 group-hover:scale-110 transition-all duration-300">
                 <BarChart3 className="h-5 w-5 text-info" />
               </div>
               <span className="text-sm font-medium text-foreground">Reports</span>
-            </button>
-            <button className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
+            </Link>
+            <Link href="/events" className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
               <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 group-hover:scale-110 transition-all duration-300">
                 <Award className="h-5 w-5 text-warning" />
               </div>
               <span className="text-sm font-medium text-foreground">Certificates</span>
-            </button>
+            </Link>
           </div>
         </div>
         <div className="card-stats-footer px-5 pb-4">
           <Activity className="h-4 w-4 inline-block mr-1 text-muted-foreground" />
-          <span>Last activity 2 min ago</span>
+          <span>Quick links to common tasks</span>
         </div>
       </div>
       </div>
