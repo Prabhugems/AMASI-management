@@ -287,34 +287,32 @@ export default function MarksheetPage() {
       const doc = new jsPDF()
       const ticketLabel = getTicketLabel()
       const selectedTotal = cols.reduce((s, c) => s + c.max, 0)
-      const ROWS_PER_PAGE = 25
-      const headers = ["#", "Registration No.", "Name", ...cols.map(col => `${col.label} [${col.max}]`), "Remarks"]
+      const ROWS_PER_PAGE = 20
+      const headers = ["#", "Reg No.", "Name", ...cols.map(col => `${col.label} [${col.max}]`), "Remarks"]
       const allRows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ...cols.map(() => ""), ""])
       const totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE)
       const pageWidth = doc.internal.pageSize.getWidth()
       const pageHeight = doc.internal.pageSize.getHeight()
+      const isLastPage = (page: number) => page === totalPages - 1
 
       for (let page = 0; page < totalPages; page++) {
         if (page > 0) doc.addPage()
 
-        doc.setFontSize(16)
+        doc.setFontSize(14)
         doc.text(`Scoring Sheet - ${ticketLabel}`, 14, 15)
-        doc.setFontSize(10)
-        doc.text(`${examSettings.exam_type.toUpperCase()} Examination | ${cols.map(c => `${c.label}(${c.max})`).join(" + ")} = ${selectedTotal} marks | Page ${page + 1} of ${totalPages}`, 14, 22)
+        doc.setFontSize(9)
+        doc.text(`${examSettings.exam_type.toUpperCase()} Examination | ${cols.map(c => `${c.label}(${c.max})`).join(" + ")} = ${selectedTotal} marks | Page ${page + 1} of ${totalPages}`, 14, 21)
 
         const pageRows = allRows.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE)
 
         autoTable(doc, {
           head: [headers],
           body: pageRows,
-          startY: 28,
-          styles: { fontSize: 8, cellPadding: 3, lineWidth: 0.3, lineColor: [0, 0, 0], overflow: "linebreak" },
+          startY: 26,
+          styles: { fontSize: 8, cellPadding: 2.5, lineWidth: 0.3, lineColor: [0, 0, 0] },
           headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0], fontStyle: "bold", fontSize: 8 },
-          columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 25 }, 2: { cellWidth: 40 } },
-          tableWidth: "auto",
-          showHead: "firstPage",
-          pageBreak: "avoid",
-          margin: { left: 14, right: 14 },
+          columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 22 }, 2: { cellWidth: 38 } },
+          margin: { left: 14, right: 14, bottom: 40 },
         })
 
         const from = page * ROWS_PER_PAGE + 1
@@ -324,14 +322,18 @@ export default function MarksheetPage() {
 
         doc.setFontSize(8)
         doc.setTextColor(100)
-        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 6)
+        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 5)
         doc.setTextColor(0)
 
-        // Examiner signature block
-        const sigY = pageHeight - 25
-        doc.setFontSize(9)
-        doc.text("Examiner's Name: ___________________________", 14, sigY)
-        doc.text("Signature: ___________________________", pageWidth / 2 + 10, sigY)
+        // Examiner signature block - only on last page
+        if (isLastPage(page)) {
+          const sigY = pageHeight - 22
+          doc.setFontSize(9)
+          doc.text("Examiner's Name: ___________________________", 14, sigY)
+          doc.text("Signature: ___________________________", pageWidth / 2 + 10, sigY)
+          doc.text("Date: _______________", 14, sigY + 8)
+          doc.text("Remarks: ___________________________", pageWidth / 2 + 10, sigY + 8)
+        }
       }
 
       doc.save(`scoring-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
@@ -351,34 +353,32 @@ export default function MarksheetPage() {
     setTimeout(() => {
       const doc = new jsPDF()
       const ticketLabel = getTicketLabel()
-      const ROWS_PER_PAGE = 25
-      const headers = ["#", "Registration No.", "Name", "Signature"]
+      const ROWS_PER_PAGE = 20
+      const headers = ["#", "Reg No.", "Name", "Signature"]
       const allRows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ""])
       const totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE)
       const pageWidth = doc.internal.pageSize.getWidth()
       const pageHeight = doc.internal.pageSize.getHeight()
+      const isLastPage = (page: number) => page === totalPages - 1
 
       for (let page = 0; page < totalPages; page++) {
         if (page > 0) doc.addPage()
 
-        doc.setFontSize(16)
+        doc.setFontSize(14)
         doc.text(`Attendance Sheet - ${ticketLabel}`, 14, 15)
-        doc.setFontSize(10)
-        doc.text(`${(examSettings?.exam_type || "FMAS").toUpperCase()} Examination | Page ${page + 1} of ${totalPages} | Total Candidates: ${allRows.length}`, 14, 22)
+        doc.setFontSize(9)
+        doc.text(`${(examSettings?.exam_type || "FMAS").toUpperCase()} Examination | Page ${page + 1} of ${totalPages} | Total Candidates: ${allRows.length}`, 14, 21)
 
         const pageRows = allRows.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE)
 
         autoTable(doc, {
           head: [headers],
           body: pageRows,
-          startY: 28,
-          styles: { fontSize: 9, cellPadding: 3, lineWidth: 0.3, lineColor: [0, 0, 0], overflow: "linebreak" },
+          startY: 26,
+          styles: { fontSize: 9, cellPadding: 3, lineWidth: 0.3, lineColor: [0, 0, 0] },
           headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0], fontStyle: "bold", fontSize: 9 },
-          columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 30 }, 2: { cellWidth: 55 }, 3: { cellWidth: 55 } },
-          tableWidth: "auto",
-          showHead: "firstPage",
-          pageBreak: "avoid",
-          margin: { left: 14, right: 14 },
+          columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 28 }, 2: { cellWidth: 55 }, 3: { cellWidth: 55 } },
+          margin: { left: 14, right: 14, bottom: 40 },
         })
 
         const from = page * ROWS_PER_PAGE + 1
@@ -388,16 +388,18 @@ export default function MarksheetPage() {
 
         doc.setFontSize(8)
         doc.setTextColor(100)
-        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 6)
+        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 5)
         doc.setTextColor(0)
 
-        // Invigilator signature block
-        const sigY = pageHeight - 25
-        doc.setFontSize(9)
-        doc.text("Invigilator's Name: ___________________________", 14, sigY)
-        doc.text("Signature: ___________________________", pageWidth / 2 + 10, sigY)
-        doc.text("Date: _______________", 14, sigY + 8)
-        doc.text("Remarks: ___________________________", pageWidth / 2 + 10, sigY + 8)
+        // Invigilator signature block - only on last page
+        if (isLastPage(page)) {
+          const sigY = pageHeight - 22
+          doc.setFontSize(9)
+          doc.text("Invigilator's Name: ___________________________", 14, sigY)
+          doc.text("Date: _______________", pageWidth / 2 + 10, sigY)
+          doc.text("Signature: ___________________________", 14, sigY + 8)
+          doc.text("Remarks: ___________________________", pageWidth / 2 + 10, sigY + 8)
+        }
       }
 
       doc.save(`attendance-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
