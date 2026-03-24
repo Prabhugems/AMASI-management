@@ -308,25 +308,28 @@ export default function MarksheetPage() {
           head: [headers],
           body: pageRows,
           startY: 28,
-          styles: { fontSize: 9, cellPadding: 4, lineWidth: 0.3, lineColor: [0, 0, 0] },
+          styles: { fontSize: 8, cellPadding: 3, lineWidth: 0.3, lineColor: [0, 0, 0], overflow: "linebreak" },
           headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0], fontStyle: "bold", fontSize: 8 },
-          columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 30 }, 2: { cellWidth: 45 } },
+          columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 25 }, 2: { cellWidth: 40 } },
+          tableWidth: "auto",
+          showHead: "firstPage",
+          pageBreak: "avoid",
+          margin: { left: 14, right: 14 },
         })
 
-        // Per-page count
         const from = page * ROWS_PER_PAGE + 1
         const to = Math.min((page + 1) * ROWS_PER_PAGE, allRows.length)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const finalY = (doc as any).lastAutoTable?.finalY || 180
+        const finalY = (doc as any).lastAutoTable?.finalY || 240
 
-        doc.setFontSize(9)
+        doc.setFontSize(8)
         doc.setTextColor(100)
-        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 8)
+        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 6)
         doc.setTextColor(0)
 
         // Examiner signature block
-        const sigY = pageHeight - 20
-        doc.setFontSize(10)
+        const sigY = pageHeight - 25
+        doc.setFontSize(9)
         doc.text("Examiner's Name: ___________________________", 14, sigY)
         doc.text("Signature: ___________________________", pageWidth / 2 + 10, sigY)
       }
@@ -369,29 +372,32 @@ export default function MarksheetPage() {
           head: [headers],
           body: pageRows,
           startY: 28,
-          styles: { fontSize: 10, cellPadding: 5, lineWidth: 0.3, lineColor: [0, 0, 0] },
-          headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0], fontStyle: "bold" },
-          columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 35 }, 2: { cellWidth: 60 }, 3: { cellWidth: 60 } },
+          styles: { fontSize: 9, cellPadding: 3, lineWidth: 0.3, lineColor: [0, 0, 0], overflow: "linebreak" },
+          headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0], fontStyle: "bold", fontSize: 9 },
+          columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 30 }, 2: { cellWidth: 55 }, 3: { cellWidth: 55 } },
+          tableWidth: "auto",
+          showHead: "firstPage",
+          pageBreak: "avoid",
+          margin: { left: 14, right: 14 },
         })
 
-        // Per-page count and signature below table
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const finalY = (doc as any).lastAutoTable?.finalY || 240
         const from = page * ROWS_PER_PAGE + 1
         const to = Math.min((page + 1) * ROWS_PER_PAGE, allRows.length)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const finalY = (doc as any).lastAutoTable?.finalY || 240
 
-        doc.setFontSize(9)
+        doc.setFontSize(8)
         doc.setTextColor(100)
-        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 8)
+        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 6)
         doc.setTextColor(0)
 
-        // Invigilator signature block - always at bottom with enough spacing
-        const sigY = Math.max(finalY + 20, pageHeight - 30)
-        doc.setFontSize(10)
+        // Invigilator signature block
+        const sigY = pageHeight - 25
+        doc.setFontSize(9)
         doc.text("Invigilator's Name: ___________________________", 14, sigY)
         doc.text("Signature: ___________________________", pageWidth / 2 + 10, sigY)
-        doc.text("Date: _______________", 14, sigY + 10)
-        doc.text("Remarks: ___________________________", pageWidth / 2 + 10, sigY + 10)
+        doc.text("Date: _______________", 14, sigY + 8)
+        doc.text("Remarks: ___________________________", pageWidth / 2 + 10, sigY + 8)
       }
 
       doc.save(`attendance-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
