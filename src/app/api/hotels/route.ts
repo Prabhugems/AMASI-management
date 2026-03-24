@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 // GET /api/hotels - Get hotels for an event
 export async function GET(request: NextRequest) {
+  const user = await getApiUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   try {
     const supabase = await createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
@@ -51,6 +55,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/hotels - Create a new hotel
 export async function POST(request: NextRequest) {
+  const user = await getApiUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   try {
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
@@ -72,6 +79,9 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/hotels - Update a hotel
 export async function PUT(request: NextRequest) {
+  const user = await getApiUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   try {
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
@@ -99,6 +109,9 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/hotels - Delete a hotel (soft delete)
 export async function DELETE(request: NextRequest) {
+  const user = await getApiUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   try {
     const supabase = await createServerSupabaseClient()
     const { searchParams } = new URL(request.url)

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 // GET - List email templates
 export async function GET(request: NextRequest) {
+  const user = await getApiUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   const supabase = await createServerSupabaseClient()
   const { searchParams } = new URL(request.url)
   const eventId = searchParams.get("event_id")
@@ -37,6 +41,9 @@ export async function GET(request: NextRequest) {
 
 // POST - Create new email template
 export async function POST(request: NextRequest) {
+  const user = await getApiUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   const ip = getClientIp(request)
   const rateLimit = checkRateLimit(ip, "authenticated")
   if (!rateLimit.success) {
