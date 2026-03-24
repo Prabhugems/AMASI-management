@@ -54,13 +54,24 @@ export default function ExportRegistrationsPage() {
   const [format, setFormat] = useState<"csv" | "json">("csv")
   const [exporting, setExporting] = useState(false)
 
-  // Fetch registrations count
+  // Fetch registrations and ticket types
   const { data: registrations } = useQuery({
     queryKey: ["export-registrations", eventId, statusFilter],
     queryFn: async () => {
+      // Fetch ticket types first (separate query to avoid RLS join issues)
+      const { data: tickets } = await (supabase as any)
+        .from("ticket_types")
+        .select("id, name")
+        .eq("event_id", eventId)
+
+      const ticketMap: Record<string, string> = {}
+      for (const t of tickets || []) {
+        ticketMap[t.id] = t.name
+      }
+
       let query = (supabase as any)
         .from("registrations")
-        .select("*, ticket_types(name)")
+        .select("*")
         .eq("event_id", eventId)
 
       if (statusFilter !== "all") {
@@ -68,10 +79,10 @@ export default function ExportRegistrationsPage() {
       }
 
       const { data } = await query
-      // Flatten ticket_type for export
+      // Map ticket_type_id to ticket name
       return (data || []).map((r: any) => ({
         ...r,
-        ticket_type: r.ticket_types?.name || "",
+        ticket_type: ticketMap[r.ticket_type_id] || "",
       }))
     },
   })
