@@ -60,6 +60,7 @@ export default function GenerateBadgesPage() {
   const [selectedRegistrations, setSelectedRegistrations] = useState<string[]>([])
   const [badgesPerPage, setBadgesPerPage] = useState<number>(1)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   const [isEmailing, setIsEmailing] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [previewRegistration, setPreviewRegistration] = useState<Registration | null>(null)
@@ -241,6 +242,57 @@ export default function GenerateBadgesPage() {
         throw new Error("Failed to generate badges")
       }
 
+      // Consume the response but don't download
+      await res.blob()
+
+      toast.success(`Generated ${selectedRegistrations.length} badges!`)
+
+      // Refetch registrations to update badge status
+      await refetchRegistrations()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate badges")
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleDownloadPdf = async () => {
+    if (!selectedTemplate) {
+      toast.error("Please select a badge template")
+      return
+    }
+    if (selectedRegistrations.length === 0) {
+      toast.error("Please select at least one attendee")
+      return
+    }
+
+    // Only download for those with badges already generated
+    const regsWithBadges = registrations?.filter(
+      (r) => selectedRegistrations.includes(r.id) && r.badge_generated_at
+    ) || []
+
+    if (regsWithBadges.length === 0) {
+      toast.error("Selected attendees don't have badges generated yet. Generate badges first.")
+      return
+    }
+
+    setIsDownloading(true)
+    try {
+      const res = await fetch("/api/badges/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          template_id: selectedTemplate,
+          registration_ids: regsWithBadges.map((r) => r.id),
+          badges_per_page: badgesPerPage,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to download badges")
+      }
+
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
@@ -249,17 +301,11 @@ export default function GenerateBadgesPage() {
       a.click()
       window.URL.revokeObjectURL(url)
 
-      toast.success(`Generated ${selectedRegistrations.length} badges!`)
-
-      // Refetch registrations to update badge status
-      await refetchRegistrations()
-
-      // Clear selection after successful generation
-      setSelectedRegistrations([])
+      toast.success(`Downloaded ${regsWithBadges.length} badges as PDF!`)
     } catch (error: any) {
-      toast.error(error.message || "Failed to generate badges")
+      toast.error(error.message || "Failed to download badges")
     } finally {
-      setIsGenerating(false)
+      setIsDownloading(false)
     }
   }
 
@@ -402,6 +448,26 @@ export default function GenerateBadgesPage() {
                 Email
               </button>
               <button
+                onClick={handleDownloadPdf}
+                disabled={
+                  isDownloading ||
+                  selectedRegistrations.length === 0 ||
+                  !selectedTemplate ||
+                  !(registrations?.some(
+                    (r) => selectedRegistrations.includes(r.id) && r.badge_generated_at
+                  ))
+                }
+                className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Download badges as PDF"
+              >
+                {isDownloading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                Download PDF
+              </button>
+              <button
                 onClick={handleGenerate}
                 disabled={isGenerating || selectedRegistrations.length === 0 || !selectedTemplate}
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -409,7 +475,7 @@ export default function GenerateBadgesPage() {
                 {isGenerating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Download className="w-4 h-4" />
+                  <FileImage className="w-4 h-4" />
                 )}
                 Generate {selectedRegistrations.length > 0 && `(${selectedRegistrations.length})`}
               </button>
