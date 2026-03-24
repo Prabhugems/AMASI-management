@@ -609,16 +609,28 @@ function RegistrationsContent() {
   // Update registration status mutation
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await (supabase as any)
-        .from("registrations")
-        .update({ status })
-        .eq("id", id)
-
-      if (error) throw error
+      if (status === "cancelled") {
+        // Use the cancel API to properly decrement ticket quantity_sold
+        const res = await fetch(`/api/registrations/${id}/cancel`, { method: "POST" })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || "Failed to cancel")
+        }
+      } else {
+        const { error } = await (supabase as any)
+          .from("registrations")
+          .update({ status })
+          .eq("id", id)
+        if (error) throw error
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] })
       setSelectedRegistration(null)
+      toast.success(status === "cancelled" ? "Registration cancelled" : "Status updated")
+    },
+    onError: (error: Error) => {
+      toast.error(error.message)
     },
   })
 
