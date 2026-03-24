@@ -4,6 +4,7 @@ import { renderEmailTemplate } from "@/lib/email-templates"
 import { escapeHtml } from "@/lib/string-utils"
 import { getApiUser } from "@/lib/auth/api-auth"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { createAdminClient } from "@/lib/supabase/server"
 
 // Initialize Resend
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -87,6 +88,22 @@ export async function POST(request: NextRequest) {
     // Payment status color
     const paymentStatusColor = payment_status === "completed" ? "#10b981" : "#f59e0b"
 
+    // Fetch WhatsApp group link from event settings
+    let whatsappGroupUrl = ""
+    if (event_id) {
+      try {
+        const supabase = await createAdminClient()
+        const { data: eventData } = await (supabase as any)
+          .from("events")
+          .select("settings")
+          .eq("id", event_id)
+          .single()
+        whatsappGroupUrl = eventData?.settings?.delegate_portal?.whatsapp_group_url
+          || eventData?.settings?.whatsapp_group_url
+          || ""
+      } catch { /* ignore */ }
+    }
+
     // Try to use email template system first
     let emailSubject: string
     let emailHtml: string
@@ -110,6 +127,7 @@ export async function POST(request: NextRequest) {
       organizer_name: COMPANY_CONFIG.name,
       organizer_email: COMPANY_CONFIG.supportEmail,
       year: new Date().getFullYear().toString(),
+      whatsapp_group_url: whatsappGroupUrl,
     }
 
     // Try to get custom template
@@ -208,6 +226,14 @@ export async function POST(request: NextRequest) {
                         ${payment_status !== "completed" ? `<li style="margin-bottom: 8px; color: #f59e0b;">Complete your payment ${payment_method === "cash" ? "at the venue" : "via bank transfer"}</li>` : ""}
                       </ul>
                     </div>
+
+                    ${whatsappGroupUrl ? `
+                    <!-- WhatsApp Group -->
+                    <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 20px; text-align: center;">
+                      <p style="color: #166534; margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">Join our WhatsApp Group for Updates</p>
+                      <a href="${whatsappGroupUrl}" style="display: inline-block; background-color: #25D366; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px;">Join WhatsApp Group</a>
+                    </div>
+                    ` : ""}
 
                   </td>
                 </tr>
