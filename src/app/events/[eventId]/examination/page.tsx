@@ -287,7 +287,7 @@ export default function MarksheetPage() {
       const doc = new jsPDF()
       const ticketLabel = getTicketLabel()
       const selectedTotal = cols.reduce((s, c) => s + c.max, 0)
-      const ROWS_PER_PAGE = 20
+      const ROWS_PER_PAGE = 25
       const headers = ["#", "Reg No.", "Name", ...cols.map(col => `${col.label} [${col.max}]`), "Remarks"]
       const allRows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ...cols.map(() => ""), ""])
       const totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE)
