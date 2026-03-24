@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         const payerEmail = rpPayment?.email || rpPayment?.notes?.payer_email || body.payer_email || "unknown@unknown.com"
         const payerName = rpPayment?.notes?.payer_name || body.payer_name || "Unknown"
         const payerPhone = String(rpPayment?.contact || "").replace("+", "") || body.payer_phone || null
-        const amount = (rpPayment?.amount || 0) / 100
+        const amount = (Number(rpPayment?.amount) || 0) / 100
 
         // Try to get event-specific credentials for signature verification
         let recoveryKeySecret: string | undefined
