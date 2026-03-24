@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { requireEventAccess, getEventIdFromRegistration } from "@/lib/auth/api-auth"
 
@@ -67,10 +67,10 @@ export async function PATCH(
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
 
-    // First, get the current registration to check status change
+    // First, get the current registration to check status change and name
     const { data: currentReg, error: fetchError } = await (supabase as any)
       .from("registrations")
-      .select("status, ticket_type_id, quantity")
+      .select("status, ticket_type_id, quantity, attendee_name, attendee_email, event_id")
       .eq("id", id)
       .maybeSingle()
 
@@ -152,6 +152,79 @@ export async function PATCH(
           .from("ticket_types")
           .update({ quantity_sold: Math.max(0, (ticket.quantity_sold || 0) - (currentReg.quantity || 1)) })
           .eq("id", currentReg.ticket_type_id)
+      }
+    }
+
+    // If attendee_name changed, sync to related tables
+    if (
+      body.attendee_name &&
+      currentReg.attendee_name &&
+      body.attendee_name !== currentReg.attendee_name
+    ) {
+      try {
+        const adminClient = await createAdminClient()
+        const oldName = currentReg.attendee_name
+        const newName = body.attendee_name
+        const email = data.attendee_email || currentReg.attendee_email
+
+        // 1. Update sessions: replace old name in speakers, chairpersons, moderators
+        if (currentReg.event_id) {
+          const { data: sessions } = await (adminClient as any)
+            .from("sessions")
+            .select("id, speakers, chairpersons, moderators")
+            .eq("event_id", currentReg.event_id)
+
+          if (sessions && sessions.length > 0) {
+            const nameRegex = new RegExp(oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+
+            for (const session of sessions) {
+              const updates: any = {}
+              let hasChange = false
+
+              if (session.speakers && nameRegex.test(session.speakers)) {
+                updates.speakers = session.speakers.replace(nameRegex, newName)
+                hasChange = true
+              }
+              nameRegex.lastIndex = 0
+
+              if (session.chairpersons && nameRegex.test(session.chairpersons)) {
+                updates.chairpersons = session.chairpersons.replace(nameRegex, newName)
+                hasChange = true
+              }
+              nameRegex.lastIndex = 0
+
+              if (session.moderators && nameRegex.test(session.moderators)) {
+                updates.moderators = session.moderators.replace(nameRegex, newName)
+                hasChange = true
+              }
+              nameRegex.lastIndex = 0
+
+              if (hasChange) {
+                await (adminClient as any)
+                  .from("sessions")
+                  .update(updates)
+                  .eq("id", session.id)
+              }
+            }
+          }
+        }
+
+        // 2. Update faculty name where email matches
+        if (email) {
+          await (adminClient as any)
+            .from("faculty")
+            .update({ name: newName })
+            .ilike("email", email)
+
+          // 3. Update faculty_assignments where faculty_email matches
+          await (adminClient as any)
+            .from("faculty_assignments")
+            .update({ faculty_name: newName })
+            .ilike("faculty_email", email)
+        }
+      } catch (syncError) {
+        // Log but don't fail the main update
+        console.error("Failed to sync name change to related tables:", syncError)
       }
     }
 
