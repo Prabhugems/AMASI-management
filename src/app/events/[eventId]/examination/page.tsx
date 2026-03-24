@@ -325,15 +325,13 @@ export default function MarksheetPage() {
         doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 5)
         doc.setTextColor(0)
 
-        // Examiner signature block - only on last page
-        if (isLastPage(page)) {
-          const sigY = pageHeight - 22
-          doc.setFontSize(9)
-          doc.text("Examiner's Name: ___________________________", 14, sigY)
-          doc.text("Signature: ___________________________", pageWidth / 2 + 10, sigY)
-          doc.text("Date: _______________", 14, sigY + 8)
-          doc.text("Remarks: ___________________________", pageWidth / 2 + 10, sigY + 8)
-        }
+        // Examiner signature block - every page
+        const sigY = pageHeight - 22
+        doc.setFontSize(9)
+        doc.text("Examiner's Name: ___________________________", 14, sigY)
+        doc.text("Signature: ___________________________", pageWidth / 2 + 10, sigY)
+        doc.text("Date: _______________", 14, sigY + 8)
+        doc.text("Remarks: ___________________________", pageWidth / 2 + 10, sigY + 8)
       }
 
       doc.save(`scoring-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
@@ -391,15 +389,13 @@ export default function MarksheetPage() {
         doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 5)
         doc.setTextColor(0)
 
-        // Invigilator signature block - only on last page
-        if (isLastPage(page)) {
-          const sigY = pageHeight - 22
-          doc.setFontSize(9)
-          doc.text("Invigilator's Name: ___________________________", 14, sigY)
-          doc.text("Date: _______________", pageWidth / 2 + 10, sigY)
-          doc.text("Signature: ___________________________", 14, sigY + 8)
-          doc.text("Remarks: ___________________________", pageWidth / 2 + 10, sigY + 8)
-        }
+        // Invigilator signature block - every page
+        const sigY = pageHeight - 22
+        doc.setFontSize(9)
+        doc.text("Invigilator's Name: ___________________________", 14, sigY)
+        doc.text("Date: _______________", pageWidth / 2 + 10, sigY)
+        doc.text("Signature: ___________________________", 14, sigY + 8)
+        doc.text("Remarks: ___________________________", pageWidth / 2 + 10, sigY + 8)
       }
 
       doc.save(`attendance-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
