@@ -308,7 +308,7 @@ export default function MarksheetPage() {
           head: [headers],
           body: pageRows,
           startY: 28,
-          styles: { fontSize: 9, cellPadding: 4 },
+          styles: { fontSize: 9, cellPadding: 4, lineWidth: 0.3, lineColor: [0, 0, 0] },
           headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0], fontStyle: "bold", fontSize: 8 },
           columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 30 }, 2: { cellWidth: 45 } },
         })
@@ -369,7 +369,7 @@ export default function MarksheetPage() {
           head: [headers],
           body: pageRows,
           startY: 28,
-          styles: { fontSize: 10, cellPadding: 5 },
+          styles: { fontSize: 10, cellPadding: 5, lineWidth: 0.3, lineColor: [0, 0, 0] },
           headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0], fontStyle: "bold" },
           columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 35 }, 2: { cellWidth: 60 }, 3: { cellWidth: 60 } },
         })

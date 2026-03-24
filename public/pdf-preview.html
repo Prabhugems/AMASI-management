@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Preview - Attendance & Scoring Sheets</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #e5e7eb; color: #1a1a1a; }
+
+  .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: #1a5276; color: #fff; display: flex; align-items: center; gap: 24px; padding: 12px 32px; font-size: 14px; }
+  .nav-title { font-weight: 700; font-size: 16px; margin-right: 12px; }
+  .nav a { color: #d4d4d4; text-decoration: none; padding: 6px 14px; border-radius: 6px; }
+  .nav a:hover, .nav a.active { background: rgba(255,255,255,0.15); color: #fff; }
+
+  .page-wrapper { padding: 72px 0 40px; display: flex; flex-direction: column; align-items: center; gap: 40px; }
+  .section-label { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: #78716c; margin-bottom: -28px; margin-top: 20px; }
+
+  .page { background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,0.12); position: relative; width: 210mm; min-height: 297mm; padding: 14mm 14mm 25mm; }
+
+  .sheet-header { font-size: 18px; font-weight: 700; color: #1c1917; margin-bottom: 4px; }
+  .sheet-subheader { font-size: 11px; color: #57534e; margin-bottom: 14px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  thead th { background: #fff; color: #000; font-weight: 700; font-size: 10px; text-align: left; padding: 7px 8px; border: 1px solid #000; }
+  thead th.center { text-align: center; }
+  tbody td { padding: 7px 8px; border: 1px solid #000; vertical-align: middle; }
+
+  .attendance-table tbody td { padding: 8px; height: 28px; }
+  .attendance-table .col-num { width: 12mm; text-align: center; }
+  .attendance-table .col-reg { width: 35mm; }
+  .attendance-table .col-name { width: 60mm; }
+  .attendance-table .col-sig { width: 60mm; }
+
+  .scoring-table .col-num { width: 10mm; text-align: center; }
+  .scoring-table .col-reg { width: 28mm; }
+  .scoring-table .col-name { width: 42mm; }
+  .scoring-table .col-mark { text-align: center; width: 22mm; }
+  .scoring-table .col-remarks { }
+
+  .page-count { font-size: 9px; color: #646464; margin-top: 8px; }
+
+  .sig-block { position: absolute; bottom: 18mm; left: 14mm; right: 14mm; font-size: 11px; color: #1c1917; }
+  .sig-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+
+  .page-break-marker { display: flex; align-items: center; gap: 12px; color: #a8a29e; font-size: 11px; font-weight: 500; width: 210mm; }
+  .page-break-marker::before, .page-break-marker::after { content: ''; flex: 1; border-top: 2px dashed #d6d3d1; }
+
+  @media print { .nav { display: none; } .page-wrapper { padding: 0; gap: 0; background: #fff; } .page { box-shadow: none; page-break-after: always; } .page-break-marker, .section-label { display: none; } }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-title">PDF Preview</span>
+  <a href="#attendance-sheet">Attendance Sheet</a>
+  <a href="#scoring-sheet">Scoring Sheet</a>
+</nav>
+
+<div class="page-wrapper">
+
+  <!-- ===================== ATTENDANCE SHEET ===================== -->
+  <div class="section-label" id="attendance-sheet">Attendance Sheet (Portrait A4 - 25 per page)</div>
+
+  <!-- Attendance Page 1 -->
+  <div class="page">
+    <div class="sheet-header">Attendance Sheet - Skill Course with FMAS Exam - Gynaecology</div>
+    <div class="sheet-subheader">FMAS Examination | Page 1 of 4 | Total Candidates: 83</div>
+    <table class="attendance-table">
+      <thead><tr><th class="col-num">#</th><th class="col-reg">Registration No.</th><th class="col-name">Name</th><th class="col-sig">Signature</th></tr></thead>
+      <tbody id="attendance-page1"></tbody>
+    </table>
+    <div class="page-count">Showing 1 - 25 of 83 candidates</div>
+    <div class="sig-block">
+      <div class="sig-row"><span>Invigilator's Name: ___________________________</span><span>Signature: ___________________________</span></div>
+      <div class="sig-row"><span>Date: _______________</span><span>Remarks: ___________________________</span></div>
+    </div>
+  </div>
+
+  <div class="page-break-marker">PAGE BREAK</div>
+
+  <!-- Attendance Page 2 -->
+  <div class="page">
+    <div class="sheet-header">Attendance Sheet - Skill Course with FMAS Exam - Gynaecology</div>
+    <div class="sheet-subheader">FMAS Examination | Page 2 of 4 | Total Candidates: 83</div>
+    <table class="attendance-table">
+      <thead><tr><th class="col-num">#</th><th class="col-reg">Registration No.</th><th class="col-name">Name</th><th class="col-sig">Signature</th></tr></thead>
+      <tbody id="attendance-page2"></tbody>
+    </table>
+    <div class="page-count">Showing 26 - 50 of 83 candidates</div>
+    <div class="sig-block">
+      <div class="sig-row"><span>Invigilator's Name: ___________________________</span><span>Signature: ___________________________</span></div>
+      <div class="sig-row"><span>Date: _______________</span><span>Remarks: ___________________________</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== SCORING SHEET ===================== -->
+  <div class="section-label" id="scoring-sheet">Scoring Sheet (Portrait A4 - 25 per page)</div>
+
+  <!-- Scoring Page 1 -->
+  <div class="page">
+    <div class="sheet-header">Scoring Sheet - Skill Course with FMAS Exam - Gynaecology</div>
+    <div class="sheet-subheader">FMAS Examination | Practical(10) + VIVA(10) + Publication(5) = 25 marks | Page 1 of 4</div>
+    <table class="scoring-table">
+      <thead><tr><th class="col-num">#</th><th class="col-reg">Registration No.</th><th class="col-name">Name</th><th class="col-mark center">Practical [10]</th><th class="col-mark center">VIVA [10]</th><th class="col-mark center">Publication [5]</th><th class="col-remarks">Remarks</th></tr></thead>
+      <tbody id="scoring-page1"></tbody>
+    </table>
+    <div class="page-count">Showing 1 - 25 of 83 candidates</div>
+    <div class="sig-block">
+      <div class="sig-row"><span>Examiner's Name: ___________________________</span><span>Signature: ___________________________</span></div>
+    </div>
+  </div>
+
+  <div class="page-break-marker">PAGE BREAK</div>
+
+  <!-- Scoring Page 2 -->
+  <div class="page">
+    <div class="sheet-header">Scoring Sheet - Skill Course with FMAS Exam - Gynaecology</div>
+    <div class="sheet-subheader">FMAS Examination | Practical(10) + VIVA(10) + Publication(5) = 25 marks | Page 2 of 4</div>
+    <table class="scoring-table">
+      <thead><tr><th class="col-num">#</th><th class="col-reg">Registration No.</th><th class="col-name">Name</th><th class="col-mark center">Practical [10]</th><th class="col-mark center">VIVA [10]</th><th class="col-mark center">Publication [5]</th><th class="col-remarks">Remarks</th></tr></thead>
+      <tbody id="scoring-page2"></tbody>
+    </table>
+    <div class="page-count">Showing 26 - 50 of 83 candidates</div>
+    <div class="sig-block">
+      <div class="sig-row"><span>Examiner's Name: ___________________________</span><span>Signature: ___________________________</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const candidates = [
+  "Aanal Damani", "Aarti Aundhekar", "Abhilasha Mehta", "Aditi Kulkarni",
+  "Akanksha Sharma", "Alka Pandey", "Amita Joshi", "Amruta Patil",
+  "Anagha Deshpande", "Anita Krishnamurthy", "Anjali Bhosale", "Ankita Saxena",
+  "Anupama Reddy", "Archana Srinivasan", "Asha Nair", "Bhagyashree Desai",
+  "Bharati Gupta", "Bhumika Thakur", "Chaitali Mukherjee", "Chandrika Iyer",
+  "Deepa Menon", "Deepika Rawat", "Devika Pillai", "Dhanya Varghese",
+  "Divya Raghavan", "Durga Prasad", "Esha Banerjee", "Falguni Patel",
+  "Garima Tiwari", "Gauri Hegde", "Geeta Chaudhary", "Hema Subramaniam",
+  "Hemalata Verma", "Indira Ghosh", "Ishita Dasgupta", "Jayashree Kamath",
+  "Jyoti Mishra", "Jyotsna Rane", "Kalpana Sundaram", "Kamala Swaminathan",
+  "Kavita Bhandari", "Keerthi Ramanathan", "Komal Agarwal", "Lakshmi Venkatesh",
+  "Latika Singh", "Madhavi Bhatt", "Madhu Srivastava", "Malini Gopalakrishnan",
+  "Mamta Choudhury", "Manisha Kapoor", "Meena Chakraborty", "Megha Dixit",
+  "Mohini Jha", "Nalini Seshadri", "Namrata Bose", "Nandini Shetty",
+  "Neelam Arora", "Neha Gaikwad", "Nirmala Rajan", "Pallavi Khandekar",
+  "Parvathi Kurup", "Pooja Malhotra", "Prachi Doshi", "Pragati Naik",
+  "Pranita Wagh", "Preethi Ramachandran", "Prerana Kulkarni", "Priya Natarajan",
+  "Puja Chatterjee", "Pushpa Iyengar", "Rachana Jog", "Radha Padmanabhan",
+  "Rajeshwari Murthy", "Rashmi Kher", "Rekha Anand", "Renuka Apte",
+  "Ritu Mittal", "Rohini Chakravarthy", "Rupa Shinde", "Sandhya Balachandran",
+  "Sarita Tripathi", "Seema Karandikar", "Shilpa Marathe"
+];
+
+function generateRegId(i) { return '123A' + String(1001 + i); }
+
+function populateAttendance(tbodyId, start, end) {
+  const tbody = document.getElementById(tbodyId);
+  for (let i = start; i < end && i < candidates.length; i++) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="col-num">' + (i + 1) + '</td><td class="col-reg">' + generateRegId(i) + '</td><td class="col-name">' + candidates[i] + '</td><td class="col-sig"></td>';
+    tbody.appendChild(tr);
+  }
+}
+
+function populateScoring(tbodyId, start, end) {
+  const tbody = document.getElementById(tbodyId);
+  for (let i = start; i < end && i < candidates.length; i++) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="col-num">' + (i + 1) + '</td><td class="col-reg">' + generateRegId(i) + '</td><td class="col-name">' + candidates[i] + '</td><td class="col-mark"></td><td class="col-mark"></td><td class="col-mark"></td><td class="col-remarks"></td>';
+    tbody.appendChild(tr);
+  }
+}
+
+populateAttendance('attendance-page1', 0, 25);
+populateAttendance('attendance-page2', 25, 50);
+populateScoring('scoring-page1', 0, 25);
+populateScoring('scoring-page2', 25, 50);
+</script>
+</body>
+</html>
