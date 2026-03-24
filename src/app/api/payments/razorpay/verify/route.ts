@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         const eventId = rpPayment?.notes?.event_id || null
         const payerEmail = rpPayment?.email || rpPayment?.notes?.payer_email || body.payer_email || "unknown@unknown.com"
         const payerName = rpPayment?.notes?.payer_name || body.payer_name || "Unknown"
-        const payerPhone = rpPayment?.contact?.replace("+", "") || body.payer_phone || null
+        const payerPhone = String(rpPayment?.contact || "").replace("+", "") || body.payer_phone || null
         const amount = (rpPayment?.amount || 0) / 100
 
         // Try to get event-specific credentials for signature verification
