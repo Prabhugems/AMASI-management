@@ -284,10 +284,10 @@ export default function MarksheetPage() {
     const autoTable = (await import("jspdf-autotable")).default
 
     setTimeout(() => {
-      const doc = new jsPDF({ orientation: "landscape" })
+      const doc = new jsPDF()
       const ticketLabel = getTicketLabel()
       const selectedTotal = cols.reduce((s, c) => s + c.max, 0)
-      const ROWS_PER_PAGE = 30
+      const ROWS_PER_PAGE = 25
       const headers = ["#", "Registration No.", "Name", ...cols.map(col => `${col.label} [${col.max}]`), "Remarks"]
       const allRows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ...cols.map(() => ""), ""])
       const totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE)
@@ -295,7 +295,7 @@ export default function MarksheetPage() {
       const pageHeight = doc.internal.pageSize.getHeight()
 
       for (let page = 0; page < totalPages; page++) {
-        if (page > 0) doc.addPage("landscape")
+        if (page > 0) doc.addPage()
 
         doc.setFontSize(16)
         doc.text(`Scoring Sheet - ${ticketLabel}`, 14, 15)
@@ -309,7 +309,7 @@ export default function MarksheetPage() {
           body: pageRows,
           startY: 28,
           styles: { fontSize: 9, cellPadding: 4 },
-          headStyles: { fillColor: [41, 37, 36], fontSize: 8 },
+          headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0], fontStyle: "bold", fontSize: 8 },
           columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 30 }, 2: { cellWidth: 45 } },
         })
 
@@ -348,14 +348,13 @@ export default function MarksheetPage() {
     setTimeout(() => {
       const doc = new jsPDF()
       const ticketLabel = getTicketLabel()
-      const ROWS_PER_PAGE = 30
+      const ROWS_PER_PAGE = 25
       const headers = ["#", "Registration No.", "Name", "Signature"]
       const allRows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ""])
       const totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE)
       const pageWidth = doc.internal.pageSize.getWidth()
       const pageHeight = doc.internal.pageSize.getHeight()
 
-      // Split into chunks of 30 per page
       for (let page = 0; page < totalPages; page++) {
         if (page > 0) doc.addPage()
 
@@ -370,24 +369,24 @@ export default function MarksheetPage() {
           head: [headers],
           body: pageRows,
           startY: 28,
-          styles: { fontSize: 10, cellPadding: 6 },
-          headStyles: { fillColor: [41, 37, 36] },
+          styles: { fontSize: 10, cellPadding: 5 },
+          headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0], fontStyle: "bold" },
           columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 35 }, 2: { cellWidth: 60 }, 3: { cellWidth: 60 } },
         })
 
-        // Per-page count
+        // Per-page count and signature below table
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const finalY = (doc as any).lastAutoTable?.finalY || 240
         const from = page * ROWS_PER_PAGE + 1
         const to = Math.min((page + 1) * ROWS_PER_PAGE, allRows.length)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const finalY = (doc as any).lastAutoTable?.finalY || 250
 
         doc.setFontSize(9)
         doc.setTextColor(100)
-        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 10)
+        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 8)
         doc.setTextColor(0)
 
-        // Invigilator signature block at bottom
-        const sigY = pageHeight - 30
+        // Invigilator signature block - always at bottom with enough spacing
+        const sigY = Math.max(finalY + 20, pageHeight - 30)
         doc.setFontSize(10)
         doc.text("Invigilator's Name: ___________________________", 14, sigY)
         doc.text("Signature: ___________________________", pageWidth / 2 + 10, sigY)
