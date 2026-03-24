@@ -658,6 +658,22 @@ export default function MarksheetPage() {
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Ticket Type Selector */}
+            <div>
+              <label className="text-sm font-medium mb-1 block">Select Ticket Type</label>
+              <Select value={ticketFilter} onValueChange={setTicketFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Ticket Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Candidates</SelectItem>
+                  {ticketTypes?.map(tt => (
+                    <SelectItem key={tt.id} value={tt.id}>{tt.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Info */}
             <div className="text-sm text-muted-foreground">
               <p><strong>Ticket:</strong> {getTicketLabel()}</p>
