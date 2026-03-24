@@ -52,9 +52,9 @@ export default function RegistrationsOverviewPage() {
       .filter((r: any) => r.status === "confirmed")
       .reduce((sum: number, r: any) => sum + (r.total_amount || 0), 0)
 
-    // By ticket type
+    // By ticket type (exclude cancelled)
     const byTicket: Record<string, number> = {}
-    registrations.forEach((r: any) => {
+    registrations.filter((r: any) => r.status !== "cancelled").forEach((r: any) => {
       const ticketName = r.ticket_type?.name || "Unknown"
       byTicket[ticketName] = (byTicket[ticketName] || 0) + 1
     })
@@ -97,39 +97,39 @@ export default function RegistrationsOverviewPage() {
 
       {/* Main Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-card rounded-lg border p-4">
+        <Link href={`${basePath}/list`} className="bg-card rounded-lg border p-4 hover:border-primary/50 transition-colors cursor-pointer">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Users className="h-4 w-4" />
             <span className="text-sm">Total</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold mt-2">{stats?.total || 0}</p>
-        </div>
+        </Link>
 
-        <div className="bg-card rounded-lg border p-4">
+        <Link href={`${basePath}/list?status=confirmed`} className="bg-card rounded-lg border p-4 hover:border-green-500/50 transition-colors cursor-pointer">
           <div className="flex items-center gap-2 text-green-600">
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm">Confirmed</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold mt-2 text-green-600">{stats?.confirmed || 0}</p>
-        </div>
+        </Link>
 
-        <div className="bg-card rounded-lg border p-4">
+        <Link href={`${basePath}/list?status=pending`} className="bg-card rounded-lg border p-4 hover:border-amber-500/50 transition-colors cursor-pointer">
           <div className="flex items-center gap-2 text-amber-500">
             <Clock className="h-4 w-4" />
             <span className="text-sm">Pending</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold mt-2 text-amber-500">{stats?.pending || 0}</p>
-        </div>
+        </Link>
 
-        <div className="bg-card rounded-lg border p-4">
+        <Link href={`${basePath}/list?status=cancelled`} className="bg-card rounded-lg border p-4 hover:border-red-500/50 transition-colors cursor-pointer">
           <div className="flex items-center gap-2 text-red-500">
             <XCircle className="h-4 w-4" />
             <span className="text-sm">Cancelled</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold mt-2 text-red-500">{stats?.cancelled || 0}</p>
-        </div>
+        </Link>
 
-        <div className="bg-card rounded-lg border p-4">
+        <Link href={`${basePath}/reports`} className="bg-card rounded-lg border p-4 hover:border-purple-500/50 transition-colors cursor-pointer">
           <div className="flex items-center gap-2 text-purple-600">
             <IndianRupee className="h-4 w-4" />
             <span className="text-sm">Revenue</span>
@@ -137,7 +137,7 @@ export default function RegistrationsOverviewPage() {
           <p className="text-xl sm:text-2xl font-bold mt-2 text-purple-600">
             ₹{(stats?.revenue || 0).toLocaleString()}
           </p>
-        </div>
+        </Link>
       </div>
 
       {/* Quick Actions */}

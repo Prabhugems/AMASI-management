@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useParams } from "next/navigation"
+import { useState, Suspense } from "react"
+import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -126,13 +126,23 @@ interface TicketType {
 }
 
 export default function RegistrationsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading...</div>}>
+      <RegistrationsContent />
+    </Suspense>
+  )
+}
+
+function RegistrationsContent() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const eventId = params.eventId as string
   const supabase = createClient()
   const queryClient = useQueryClient()
 
+  const initialStatus = searchParams.get("status") || "all"
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus)
   const [ticketFilter, setTicketFilter] = useState<string>("all")
   const [modeFilter, setModeFilter] = useState<string>("all")
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
