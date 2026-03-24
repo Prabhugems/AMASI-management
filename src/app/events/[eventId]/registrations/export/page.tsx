@@ -60,7 +60,7 @@ export default function ExportRegistrationsPage() {
     queryFn: async () => {
       let query = (supabase as any)
         .from("registrations")
-        .select("*")
+        .select("*, ticket_types(name)")
         .eq("event_id", eventId)
 
       if (statusFilter !== "all") {
@@ -68,7 +68,11 @@ export default function ExportRegistrationsPage() {
       }
 
       const { data } = await query
-      return data || []
+      // Flatten ticket_type for export
+      return (data || []).map((r: any) => ({
+        ...r,
+        ticket_type: r.ticket_types?.name || "",
+      }))
     },
   })
 
