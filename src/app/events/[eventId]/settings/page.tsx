@@ -1113,8 +1113,12 @@ function AutomationSection({ eventId }: { eventId: string }) {
           </div>
           <Switch
             checked={formData.auto_generate_badge}
-            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, auto_generate_badge: checked }))}
-            disabled={!hasDefaultBadgeTemplate}
+            onCheckedChange={(checked) => {
+              if (checked && !hasDefaultBadgeTemplate) {
+                toast.warning("Create a default badge template first: Badges → Templates → mark as Default")
+              }
+              setFormData(prev => ({ ...prev, auto_generate_badge: checked }))
+            }}
           />
         </div>
 
@@ -1168,8 +1172,12 @@ function AutomationSection({ eventId }: { eventId: string }) {
           </div>
           <Switch
             checked={formData.auto_generate_certificate}
-            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, auto_generate_certificate: checked }))}
-            disabled={!hasDefaultCertTemplate}
+            onCheckedChange={(checked) => {
+              if (checked && !hasDefaultCertTemplate) {
+                toast.warning("Create a default certificate template first: Certificates → Templates → mark as Default")
+              }
+              setFormData(prev => ({ ...prev, auto_generate_certificate: checked }))
+            }}
           />
         </div>
 
