@@ -287,23 +287,49 @@ export default function MarksheetPage() {
       const doc = new jsPDF({ orientation: "landscape" })
       const ticketLabel = getTicketLabel()
       const selectedTotal = cols.reduce((s, c) => s + c.max, 0)
+      const ROWS_PER_PAGE = 30
+      const headers = ["#", "Registration No.", "Name", ...cols.map(col => `${col.label} [${col.max}]`), "Remarks"]
+      const allRows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ...cols.map(() => ""), ""])
+      const totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE)
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
 
-      doc.setFontSize(16)
-      doc.text(`Scoring Sheet - ${ticketLabel}`, 14, 15)
-      doc.setFontSize(10)
-      doc.text(`${examSettings.exam_type.toUpperCase()} Examination | Columns: ${cols.map(c => `${c.label}(${c.max})`).join(" + ")} = ${selectedTotal} marks`, 14, 22)
+      for (let page = 0; page < totalPages; page++) {
+        if (page > 0) doc.addPage("landscape")
 
-      const headers = ["#", "Registration No.", "Name", ...cols.map(col => `${col.label} [${col.max}]`), "Total", "Remarks"]
-      const rows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ...cols.map(() => ""), "", ""])
+        doc.setFontSize(16)
+        doc.text(`Scoring Sheet - ${ticketLabel}`, 14, 15)
+        doc.setFontSize(10)
+        doc.text(`${examSettings.exam_type.toUpperCase()} Examination | ${cols.map(c => `${c.label}(${c.max})`).join(" + ")} = ${selectedTotal} marks | Page ${page + 1} of ${totalPages}`, 14, 22)
 
-      autoTable(doc, {
-        head: [headers],
-        body: rows,
-        startY: 28,
-        styles: { fontSize: 9, cellPadding: 4 },
-        headStyles: { fillColor: [41, 37, 36], fontSize: 8 },
-        columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 30 }, 2: { cellWidth: 45 } },
-      })
+        const pageRows = allRows.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE)
+
+        autoTable(doc, {
+          head: [headers],
+          body: pageRows,
+          startY: 28,
+          styles: { fontSize: 9, cellPadding: 4 },
+          headStyles: { fillColor: [41, 37, 36], fontSize: 8 },
+          columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 30 }, 2: { cellWidth: 45 } },
+        })
+
+        // Per-page count
+        const from = page * ROWS_PER_PAGE + 1
+        const to = Math.min((page + 1) * ROWS_PER_PAGE, allRows.length)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const finalY = (doc as any).lastAutoTable?.finalY || 180
+
+        doc.setFontSize(9)
+        doc.setTextColor(100)
+        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 8)
+        doc.setTextColor(0)
+
+        // Examiner signature block
+        const sigY = pageHeight - 20
+        doc.setFontSize(10)
+        doc.text("Examiner's Name: ___________________________", 14, sigY)
+        doc.text("Signature: ___________________________", pageWidth / 2 + 10, sigY)
+      }
 
       doc.save(`scoring-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
       setDownloadDialogOpen(false)
