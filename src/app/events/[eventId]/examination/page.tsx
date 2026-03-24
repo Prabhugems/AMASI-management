@@ -322,23 +322,30 @@ export default function MarksheetPage() {
     setTimeout(() => {
       const doc = new jsPDF()
       const ticketLabel = getTicketLabel()
-
-      doc.setFontSize(16)
-      doc.text(`Attendance Sheet - ${ticketLabel}`, 14, 15)
-      doc.setFontSize(10)
-      doc.text(`${(examSettings?.exam_type || "FMAS").toUpperCase()} Examination`, 14, 22)
-
+      const ROWS_PER_PAGE = 30
       const headers = ["#", "Registration No.", "Name", "Signature"]
-      const rows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ""])
+      const allRows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ""])
 
-      autoTable(doc, {
-        head: [headers],
-        body: rows,
-        startY: 28,
-        styles: { fontSize: 10, cellPadding: 6 },
-        headStyles: { fillColor: [41, 37, 36] },
-        columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 35 }, 2: { cellWidth: 60 }, 3: { cellWidth: 60 } },
-      })
+      // Split into chunks of 30 per page
+      for (let page = 0; page < Math.ceil(allRows.length / ROWS_PER_PAGE); page++) {
+        if (page > 0) doc.addPage()
+
+        doc.setFontSize(16)
+        doc.text(`Attendance Sheet - ${ticketLabel}`, 14, 15)
+        doc.setFontSize(10)
+        doc.text(`${(examSettings?.exam_type || "FMAS").toUpperCase()} Examination | Page ${page + 1} of ${Math.ceil(allRows.length / ROWS_PER_PAGE)}`, 14, 22)
+
+        const pageRows = allRows.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE)
+
+        autoTable(doc, {
+          head: [headers],
+          body: pageRows,
+          startY: 28,
+          styles: { fontSize: 10, cellPadding: 6 },
+          headStyles: { fillColor: [41, 37, 36] },
+          columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 35 }, 2: { cellWidth: 60 }, 3: { cellWidth: 60 } },
+        })
+      }
 
       doc.save(`attendance-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
       setDownloadDialogOpen(false)
