@@ -325,15 +325,18 @@ export default function MarksheetPage() {
       const ROWS_PER_PAGE = 30
       const headers = ["#", "Registration No.", "Name", "Signature"]
       const allRows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ""])
+      const totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE)
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
 
       // Split into chunks of 30 per page
-      for (let page = 0; page < Math.ceil(allRows.length / ROWS_PER_PAGE); page++) {
+      for (let page = 0; page < totalPages; page++) {
         if (page > 0) doc.addPage()
 
         doc.setFontSize(16)
         doc.text(`Attendance Sheet - ${ticketLabel}`, 14, 15)
         doc.setFontSize(10)
-        doc.text(`${(examSettings?.exam_type || "FMAS").toUpperCase()} Examination | Page ${page + 1} of ${Math.ceil(allRows.length / ROWS_PER_PAGE)}`, 14, 22)
+        doc.text(`${(examSettings?.exam_type || "FMAS").toUpperCase()} Examination | Page ${page + 1} of ${totalPages} | Total Candidates: ${allRows.length}`, 14, 22)
 
         const pageRows = allRows.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE)
 
@@ -345,6 +348,25 @@ export default function MarksheetPage() {
           headStyles: { fillColor: [41, 37, 36] },
           columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 35 }, 2: { cellWidth: 60 }, 3: { cellWidth: 60 } },
         })
+
+        // Per-page count
+        const from = page * ROWS_PER_PAGE + 1
+        const to = Math.min((page + 1) * ROWS_PER_PAGE, allRows.length)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const finalY = (doc as any).lastAutoTable?.finalY || 250
+
+        doc.setFontSize(9)
+        doc.setTextColor(100)
+        doc.text(`Showing ${from} - ${to} of ${allRows.length} candidates`, 14, finalY + 10)
+        doc.setTextColor(0)
+
+        // Invigilator signature block at bottom
+        const sigY = pageHeight - 30
+        doc.setFontSize(10)
+        doc.text("Invigilator's Name: ___________________________", 14, sigY)
+        doc.text("Signature: ___________________________", pageWidth / 2 + 10, sigY)
+        doc.text("Date: _______________", 14, sigY + 10)
+        doc.text("Remarks: ___________________________", pageWidth / 2 + 10, sigY + 10)
       }
 
       doc.save(`attendance-sheet-${ticketLabel.toLowerCase().replace(/\s/g, "-")}.pdf`)
