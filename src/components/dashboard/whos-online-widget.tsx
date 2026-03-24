@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns"
 import { useTheme } from "next-themes"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
+import { PERMISSIONS } from "@/lib/team-constants"
 
 // Status Indicator
 function StatusIndicator({ status, size = "md" }: { status: string; size?: "sm" | "md" | "lg" }) {
@@ -128,6 +129,8 @@ function TeamMemberRow({
     status: string
     color: string
     time: string
+    permissions?: string[] | null
+    event_ids?: string[] | null
   }
   index: number
   isDark: boolean
@@ -157,6 +160,33 @@ function TeamMemberRow({
       <div className="flex-1 min-w-0">
         <p className={`font-semibold text-sm truncate ${isDark ? "text-white" : "text-gray-900"}`}>{member.name}</p>
         <p className={`text-xs truncate ${isDark ? "text-slate-500" : "text-gray-500"}`}>{member.role}</p>
+        {/* Permission badges */}
+        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+          {(!member.permissions || member.permissions.length === 0) ? (
+            <span className={`inline-flex items-center px-1.5 py-0 rounded-full text-[10px] font-medium leading-4 ${isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700"}`}>
+              Full Access
+            </span>
+          ) : (
+            <>
+              {member.permissions.slice(0, 3).map((permId) => {
+                const permDef = PERMISSIONS.find((p) => p.value === permId)
+                return (
+                  <span
+                    key={permId}
+                    className={`inline-flex items-center px-1.5 py-0 rounded-full text-[10px] font-medium leading-4 ${isDark ? "bg-slate-700 text-slate-300" : "bg-gray-100 text-gray-600"}`}
+                  >
+                    {permDef?.label ?? permId}
+                  </span>
+                )
+              })}
+              {member.permissions.length > 3 && (
+                <span className={`text-[10px] font-medium ${isDark ? "text-slate-500" : "text-gray-400"}`}>
+                  +{member.permissions.length - 3}
+                </span>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Quick Action */}
@@ -209,6 +239,8 @@ type TeamMemberWidget = {
   status: string
   color: string
   time: string
+  permissions?: string[] | null
+  event_ids?: string[] | null
 }
 
 // Online Avatars Row
@@ -305,7 +337,7 @@ export function WhosOnlineWidget() {
   type TeamMemberType = {
     id: string; name: string; email: string; role: string; is_active: boolean
     has_logged_in: boolean; last_sign_in_at: string | null; last_active_at: string | null
-    logged_out_at: string | null
+    logged_out_at: string | null; permissions?: string[] | null; event_ids?: string[] | null
   }
   const { data: teamMembersData, isLoading } = useQuery({
     queryKey: ["team-members-online"],
@@ -361,6 +393,8 @@ export function WhosOnlineWidget() {
     status: getLoginStatus(member),
     color: ROLE_COLORS[member.role] || MEMBER_COLORS[index % MEMBER_COLORS.length],
     time: getTimeLabel(member),
+    permissions: member.permissions,
+    event_ids: member.event_ids,
     _lastActivity: member.last_active_at || member.logged_out_at || member.last_sign_in_at || null,
   })).sort((a, b) => {
     const orderA = STATUS_SORT_ORDER[a.status] ?? 3

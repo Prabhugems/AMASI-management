@@ -67,11 +67,25 @@ import {
   Settings,
   MapPin,
   BookOpen,
+  FileText,
+  Clock,
+  LogOut,
+  Wifi,
+  WifiOff,
+  CircleDot,
+  UserX,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
 import { SkeletonTable } from "@/components/ui/skeleton"
+import {
+  PERMISSIONS as SHARED_PERMISSIONS,
+  ROLE_PRESETS as SHARED_ROLE_PRESETS,
+  ROLE_CONFIG as SHARED_ROLE_CONFIG,
+  detectPreset as sharedDetectPreset,
+} from "@/lib/team-constants"
 
 // Type definitions
 type TeamMember = {
@@ -85,6 +99,10 @@ type TeamMember = {
   permissions: string[] | null
   is_active: boolean
   created_at: string
+  last_login_at?: string | null
+  last_active_at?: string | null
+  logged_out_at?: string | null
+  login_count?: number
 }
 
 type EventType = {
@@ -93,163 +111,54 @@ type EventType = {
   short_name: string | null
 }
 
-const PERMISSIONS = [
-  { value: "speakers", label: "Speakers", icon: Users, color: "text-purple-500", description: "Manage speakers" },
-  { value: "program", label: "Program", icon: Calendar, color: "text-blue-500", description: "Manage schedule" },
-  { value: "checkin", label: "Check-in", icon: QrCode, color: "text-green-500", description: "Manage check-in" },
-  { value: "badges", label: "Badges", icon: Palette, color: "text-pink-500", description: "Design badges" },
-  { value: "certificates", label: "Certificates", icon: Award, color: "text-indigo-500", description: "Manage certificates" },
-  { value: "registrations", label: "Registrations", icon: ClipboardList, color: "text-cyan-500", description: "Manage attendees" },
-  { value: "abstracts", label: "Abstracts", icon: BookOpen, color: "text-teal-500", description: "Manage abstracts" },
-  { value: "flights", label: "Flights", icon: Plane, color: "text-sky-500", description: "Manage flight bookings" },
-  { value: "hotels", label: "Hotels", icon: Hotel, color: "text-amber-500", description: "Manage hotel bookings" },
-  { value: "transfers", label: "Transfers", icon: Car, color: "text-emerald-500", description: "Manage pickups/drops" },
-  { value: "trains", label: "Trains", icon: Train, color: "text-orange-500", description: "Manage train bookings" },
-]
-
-const ROLE_PRESETS = [
-  {
-    value: "administrator",
-    label: "Administrator",
-    icon: Shield,
-    description: "Full access to all modules",
-    role: "admin",
-    permissions: [] as string[],
-    allPermissions: true,
-    gradient: "from-purple-500 to-pink-500",
-    borderColor: "border-purple-300",
-    bgLight: "bg-purple-50",
-  },
-  {
-    value: "event-manager",
-    label: "Event Manager",
-    icon: UserCog,
-    description: "All event modules",
-    role: "coordinator",
-    permissions: ["speakers", "program", "checkin", "badges", "certificates", "registrations", "abstracts"],
-    allPermissions: false,
-    gradient: "from-blue-500 to-indigo-500",
-    borderColor: "border-blue-300",
-    bgLight: "bg-blue-50",
-  },
-  {
-    value: "registration-manager",
-    label: "Registration Mgr",
-    icon: ClipboardList,
-    description: "Registrations only",
-    role: "coordinator",
-    permissions: ["registrations"],
-    allPermissions: false,
-    gradient: "from-teal-500 to-emerald-500",
-    borderColor: "border-teal-300",
-    bgLight: "bg-teal-50",
-  },
-  {
-    value: "program-coordinator",
-    label: "Program Coord.",
-    icon: Calendar,
-    description: "Speakers & program",
-    role: "coordinator",
-    permissions: ["speakers", "program"],
-    allPermissions: false,
-    gradient: "from-indigo-500 to-violet-500",
-    borderColor: "border-indigo-300",
-    bgLight: "bg-indigo-50",
-  },
-  {
-    value: "checkin-staff",
-    label: "Check-in Staff",
-    icon: CheckCircle,
-    description: "Check-in & badges",
-    role: "coordinator",
-    permissions: ["checkin", "badges"],
-    allPermissions: false,
-    gradient: "from-green-500 to-emerald-500",
-    borderColor: "border-green-300",
-    bgLight: "bg-green-50",
-  },
-  {
-    value: "badge-certificate",
-    label: "Badge & Cert",
-    icon: Award,
-    description: "Badges & certificates",
-    role: "coordinator",
-    permissions: ["badges", "certificates"],
-    allPermissions: false,
-    gradient: "from-pink-500 to-rose-500",
-    borderColor: "border-pink-300",
-    bgLight: "bg-pink-50",
-  },
-  {
-    value: "travel-manager",
-    label: "Travel Manager",
-    icon: MapPin,
-    description: "All travel modules",
-    role: "travel",
-    permissions: ["flights", "hotels", "transfers", "trains"],
-    allPermissions: false,
-    gradient: "from-cyan-500 to-blue-500",
-    borderColor: "border-cyan-300",
-    bgLight: "bg-cyan-50",
-  },
-  {
-    value: "hotel-coordinator",
-    label: "Hotel Coord.",
-    icon: Hotel,
-    description: "Hotels only",
-    role: "travel",
-    permissions: ["hotels"],
-    allPermissions: false,
-    gradient: "from-amber-500 to-orange-500",
-    borderColor: "border-amber-300",
-    bgLight: "bg-amber-50",
-  },
-  {
-    value: "flight-coordinator",
-    label: "Flight Coord.",
-    icon: Plane,
-    description: "Flights only",
-    role: "travel",
-    permissions: ["flights"],
-    allPermissions: false,
-    gradient: "from-sky-500 to-blue-500",
-    borderColor: "border-sky-300",
-    bgLight: "bg-sky-50",
-  },
-  {
-    value: "custom",
-    label: "Custom",
-    icon: Settings,
-    description: "Configure manually",
-    role: "",
-    permissions: [] as string[],
-    allPermissions: false,
-    gradient: "from-slate-400 to-slate-500",
-    borderColor: "border-slate-300",
-    bgLight: "bg-slate-50",
-  },
-]
-
-const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  admin: { label: "Administrator", color: "text-rose-700", bg: "bg-rose-100" },
-  travel: { label: "Travel Coordinator", color: "text-sky-700", bg: "bg-sky-100" },
-  coordinator: { label: "Coordinator", color: "text-emerald-700", bg: "bg-emerald-100" },
+// Map string icon names from shared constants to actual icon components
+const ICON_MAP: Record<string, any> = {
+  Users, Calendar, QrCode, Award, ClipboardList, BookOpen, Plane, Hotel, Car, Train,
+  Shield, UserCog, CheckCircle, Settings, MapPin, Palette, FileText,
 }
 
+// Build local PERMISSIONS with React icon components from shared constants
+const PERMISSIONS = SHARED_PERMISSIONS.map(p => ({
+  ...p,
+  icon: ICON_MAP[p.icon] || Users,
+}))
+
+// Build local ROLE_PRESETS with React icon components from shared constants
+const ROLE_PRESETS = SHARED_ROLE_PRESETS.map(p => ({
+  ...p,
+  icon: ICON_MAP[p.icon] || Settings,
+  // Keep allPermissions from shared, map allEvents -> not used here
+}))
+
+// Build local ROLE_CONFIG from shared constants (only need label, color, bg)
+const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string }> = Object.fromEntries(
+  Object.entries(SHARED_ROLE_CONFIG).map(([key, val]) => [key, { label: val.label, color: val.color, bg: val.bg }])
+)
+
 function detectPreset(role: string, permissions: string[], allPermissions: boolean) {
-  const sortedPerms = [...permissions].sort()
-  for (const preset of ROLE_PRESETS) {
-    if (preset.value === "custom") continue
-    if (preset.role !== role) continue
-    if (preset.allPermissions !== allPermissions) continue
-    if (!preset.allPermissions) {
-      const presetPerms = [...preset.permissions].sort()
-      if (presetPerms.length !== sortedPerms.length) continue
-      if (presetPerms.some((p, i) => p !== sortedPerms[i])) continue
-    }
-    return preset.value
+  return sharedDetectPreset(permissions, role, { allPermissions })
+}
+
+// Login status helpers
+function getLoginStatus(member: TeamMember): "online" | "away" | "logged_out" | "offline" | "pending" | "deactivated" {
+  if (!member.is_active) return "deactivated"
+  if (!member.last_login_at) return "pending"
+  if (member.last_active_at) {
+    const diff = Date.now() - new Date(member.last_active_at).getTime()
+    if (diff < 15 * 60 * 1000) return "online"
+    if (diff < 60 * 60 * 1000) return "away"
   }
-  return "custom"
+  if (member.logged_out_at) return "logged_out"
+  return "offline"
+}
+
+const LOGIN_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: any; pulse?: boolean }> = {
+  online: { label: "Online", color: "text-green-700", bgColor: "bg-green-100", icon: Wifi, pulse: true },
+  away: { label: "Away", color: "text-amber-700", bgColor: "bg-amber-100", icon: Clock },
+  logged_out: { label: "Logged out", color: "text-orange-700", bgColor: "bg-orange-100", icon: LogOut },
+  offline: { label: "Offline", color: "text-slate-600", bgColor: "bg-slate-100", icon: WifiOff },
+  pending: { label: "Pending", color: "text-blue-700", bgColor: "bg-blue-100", icon: CircleDot },
+  deactivated: { label: "Deactivated", color: "text-red-700", bgColor: "bg-red-100", icon: UserX },
 }
 
 export default function EventTeamPage() {
@@ -316,7 +225,30 @@ export default function EventTeamPage() {
       if (error) throw error
 
       const members = (data as TeamMember[] | null) || []
-      return members.filter(m => m.event_ids?.includes(eventId))
+      const filtered = members.filter(m => m.event_ids?.includes(eventId))
+
+      // Fetch login activity from users table by matching emails
+      const emails = filtered.map(m => (m.email || "").toLowerCase())
+      if (emails.length > 0) {
+        const { data: users } = await (supabase as any)
+          .from("users")
+          .select("email, last_login_at, last_active_at, logged_out_at, login_count")
+          .in("email", emails)
+        if (users) {
+          const userMap = new Map<string, any>(users.map((u: any) => [u.email?.toLowerCase(), u]))
+          for (const member of filtered) {
+            const user = userMap.get((member.email || "").toLowerCase())
+            if (user) {
+              member.last_login_at = user.last_login_at
+              member.last_active_at = user.last_active_at
+              member.logged_out_at = user.logged_out_at
+              member.login_count = user.login_count ?? 0
+            }
+          }
+        }
+      }
+
+      return filtered
     },
   })
 
@@ -646,6 +578,7 @@ export default function EventTeamPage() {
                   <TableHead>Role</TableHead>
                   <TableHead>Permissions</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Last Active</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -654,6 +587,9 @@ export default function EventTeamPage() {
                   const roleConfig = getRoleConfig(member.role)
                   const presetValue = getPresetForMember(member)
                   const preset = ROLE_PRESETS.find(p => p.value === presetValue)
+                  const loginStatus = getLoginStatus(member)
+                  const statusConfig = LOGIN_STATUS_CONFIG[loginStatus]
+                  const StatusIcon = statusConfig.icon
                   return (
                     <TableRow key={member.id}>
                       <TableCell>
@@ -697,41 +633,35 @@ export default function EventTeamPage() {
                           </Badge>
                         ) : (
                           <div className="flex flex-wrap gap-1">
-                            {member.permissions.slice(0, 3).map((perm) => {
+                            {member.permissions.map((perm) => {
                               const config = PERMISSIONS.find(p => p.value === perm)
                               if (!config) return null
                               const Icon = config.icon
                               return (
-                                <Badge key={perm} variant="outline" className="text-xs gap-1">
+                                <Badge key={perm} variant="outline" className={cn("text-[11px] gap-1 py-0 px-1.5")}>
                                   <Icon className={cn("h-3 w-3", config.color)} />
                                   {config.label}
                                 </Badge>
                               )
                             })}
-                            {member.permissions.length > 3 && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <Badge variant="outline" className="text-xs">
-                                      +{member.permissions.length - 3}
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>{member.permissions.slice(3).map(p => {
-                                      const config = PERMISSIONS.find(c => c.value === p)
-                                      return config?.label || p
-                                    }).join(", ")}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
                           </div>
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={member.is_active ? "default" : "secondary"} className="text-xs">
-                          {member.is_active ? "Active" : "Inactive"}
+                        <Badge variant="secondary" className={cn("text-xs gap-1", statusConfig.bgColor, statusConfig.color)}>
+                          <StatusIcon className={cn("h-3 w-3", statusConfig.pulse && "animate-pulse")} />
+                          {statusConfig.label}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">
+                          {member.last_active_at
+                            ? formatDistanceToNow(new Date(member.last_active_at), { addSuffix: true })
+                            : member.last_login_at
+                              ? formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true })
+                              : "Never"
+                          }
+                        </span>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>

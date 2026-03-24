@@ -21,7 +21,7 @@ export async function GET() {
     const [teamResult, authResult] = await Promise.all([
       adminClient
         .from('team_members')
-        .select('id, name, email, role, is_active, created_at')
+        .select('id, name, email, role, is_active, permissions, event_ids, created_at')
         .order('created_at', { ascending: false }),
       adminClient.auth.admin.listUsers(),
     ])
@@ -76,6 +76,8 @@ export async function GET() {
         email: member.email,
         role: member.role,
         is_active: member.is_active,
+        permissions: member.permissions ?? null,
+        event_ids: member.event_ids ?? null,
         has_logged_in: !!auth?.last_sign_in_at,
         last_sign_in_at: auth?.last_sign_in_at ?? null,
         last_active_at: activity?.last_active_at ?? null,
