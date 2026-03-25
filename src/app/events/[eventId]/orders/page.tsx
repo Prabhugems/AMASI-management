@@ -90,6 +90,7 @@ interface Order {
     first_name: string
     last_name: string
     email: string
+    status?: string
     ticket_type?: {
       name: string
       price: number
@@ -103,6 +104,9 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
   pending: { label: "Pending", color: "bg-warning/10 text-warning", icon: Clock },
   failed: { label: "Failed", color: "bg-destructive/10 text-destructive", icon: XCircle },
   refunded: { label: "Refunded", color: "bg-info/10 text-info", icon: RefreshCw },
+  partially_refunded: { label: "Partial Refund", color: "bg-info/10 text-info", icon: RefreshCw },
+  refund_pending: { label: "Refund Pending", color: "bg-warning/10 text-warning", icon: Clock },
+  cancelled: { label: "Cancelled", color: "bg-destructive/10 text-destructive", icon: XCircle },
 }
 
 export default function OrdersPage() {
@@ -114,6 +118,8 @@ export default function OrdersPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null)
+
+  const [refundingOrderId, setRefundingOrderId] = useState<string | null>(null)
 
   // Payment verification
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false)
@@ -152,6 +158,44 @@ export default function OrdersPage() {
       toast.error(error.message || "Failed to delete order")
     } finally {
       setDeletingOrderId(null)
+    }
+  }
+
+  // Refund handler
+  const handleRefund = async (order: Order, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+
+    const cancelledReg = order.registrations?.find((r) => r.status === "cancelled")
+    if (!cancelledReg) {
+      toast.error("No cancelled registration found for this order")
+      return
+    }
+
+    if (!confirm(`Refund ₹${order.net_amount.toLocaleString()} for ${order.payer_name}? This will process a refund via Razorpay.`)) {
+      return
+    }
+
+    setRefundingOrderId(order.id)
+    try {
+      const response = await fetch(`/api/registrations/${cancelledReg.id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refund_now: true }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || "Failed to process refund")
+      }
+
+      toast.success(data.message || "Refund processed successfully")
+      refetch()
+    } catch (error: any) {
+      console.error("Error processing refund:", error)
+      toast.error(error.message || "Failed to process refund")
+    } finally {
+      setRefundingOrderId(null)
     }
   }
 
@@ -231,6 +275,15 @@ export default function OrdersPage() {
 
       // Fetch associated registrations for these payments
       const paymentIds = paymentsData.map((p: any) => p.id)
+
+      // Also collect registration IDs from payment metadata (for payments where payment_id wasn't set on registration)
+      const metadataRegIds: string[] = []
+      paymentsData.forEach((p: any) => {
+        if (p.metadata?.registration_id) {
+          metadataRegIds.push(p.metadata.registration_id)
+        }
+      })
+
       const { data: regsData } = await supabase
         .from("registrations")
         .select(`
@@ -239,6 +292,7 @@ export default function OrdersPage() {
           registration_number,
           attendee_name,
           attendee_email,
+          status,
           ticket_type:ticket_types (
             name,
             price
@@ -246,8 +300,34 @@ export default function OrdersPage() {
         `)
         .in("payment_id", paymentIds)
 
+      // Also fetch registrations linked via metadata (that weren't already found)
+      const foundRegIds = new Set(regsData?.map((r: any) => r.id) || [])
+      const missingMetadataRegIds = metadataRegIds.filter((id) => !foundRegIds.has(id))
+      let metadataRegsData: any[] = []
+      if (missingMetadataRegIds.length > 0) {
+        const { data } = await supabase
+          .from("registrations")
+          .select(`
+            id,
+            payment_id,
+            registration_number,
+            attendee_name,
+            attendee_email,
+            status,
+            ticket_type:ticket_types (
+              name,
+              price
+            )
+          `)
+          .in("id", missingMetadataRegIds)
+        metadataRegsData = data || []
+      }
+
+      // Combine all registration data
+      const allRegsData = [...(regsData || []), ...metadataRegsData]
+
       // Get registration IDs to fetch addons
-      const registrationIds = regsData?.map((r: any) => r.id) || []
+      const registrationIds = allRegsData.map((r: any) => r.id)
 
       // For addon purchases, get registration IDs from payment metadata
       const addonPurchaseRegIds: string[] = []
@@ -305,6 +385,7 @@ export default function OrdersPage() {
             registration_number,
             attendee_name,
             attendee_email,
+            status,
             ticket_type:ticket_types (name, price)
           `)
           .in("id", addonPurchaseRegIds)
@@ -313,7 +394,12 @@ export default function OrdersPage() {
 
       // Merge registrations and addons with payments
       const ordersWithRegs = paymentsData.map((payment: any) => {
-        let regs: any[] = regsData?.filter((r: any) => r.payment_id === payment.id) || []
+        let regs: any[] = allRegsData.filter((r: any) => r.payment_id === payment.id)
+        // Also include registrations linked via metadata if not already found
+        if (regs.length === 0 && payment.metadata?.registration_id) {
+          const metaReg = allRegsData.find((r: any) => r.id === payment.metadata.registration_id)
+          if (metaReg) regs = [metaReg]
+        }
         let allAddons: OrderAddon[] = []
 
         // For addon purchases, link to the existing registration
@@ -349,6 +435,7 @@ export default function OrdersPage() {
             first_name: r.attendee_name?.split(" ")[0] || "",
             last_name: r.attendee_name?.split(" ").slice(1).join(" ") || "",
             email: r.attendee_email,
+            status: r.status,
             ticket_type: r.ticket_type
           })),
           addons: allAddons
@@ -507,7 +594,9 @@ export default function OrdersPage() {
             <SelectItem value="completed">Paid</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
             <SelectItem value="refunded">Refunded</SelectItem>
+            <SelectItem value="refund_pending">Refund Pending</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -565,7 +654,17 @@ export default function OrdersPage() {
                   <td className="py-3 px-4">
                     <span className="font-semibold">₹{order.net_amount.toLocaleString()}</span>
                   </td>
-                  <td className="py-3 px-4">{getStatusBadge(order.status)}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {getStatusBadge(order.status)}
+                      {order.registrations?.some((r) => r.status === "cancelled") && order.status !== "cancelled" && order.status !== "refunded" && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
+                          <XCircle className="w-3 h-3" />
+                          Cancelled
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="py-3 px-4">
                     <span className="text-sm text-muted-foreground">
                       {format(new Date(order.created_at), "dd MMM yyyy")}
@@ -591,6 +690,45 @@ export default function OrdersPage() {
                           <Download className="w-4 h-4 mr-2" />
                           Download Invoice
                         </DropdownMenuItem>
+                        {order.status === "completed" && order.registrations?.some((r) => r.status === "cancelled") && (
+                          order.registrations.some((r) => r.id) ? (
+                            <DropdownMenuItem
+                              onClick={(e) => handleRefund(order, e)}
+                              disabled={refundingOrderId === order.id}
+                              className="text-info focus:text-info"
+                            >
+                              <RefreshCw className="w-4 h-4 mr-2" />
+                              {refundingOrderId === order.id ? "Processing..." : "Refund via Razorpay"}
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (order.razorpay_payment_id) {
+                                  window.open(`https://dashboard.razorpay.com/app/payments/${order.razorpay_payment_id}`, "_blank")
+                                } else {
+                                  window.open("https://dashboard.razorpay.com/app/payments", "_blank")
+                                }
+                              }}
+                              className="text-info focus:text-info"
+                            >
+                              <RefreshCw className="w-4 h-4 mr-2" />
+                              Refund via Razorpay Dashboard
+                            </DropdownMenuItem>
+                          )
+                        )}
+                        {order.status === "completed" && !order.registrations?.some((r) => r.status === "cancelled") && !order.registrations?.length && order.razorpay_payment_id && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              window.open(`https://dashboard.razorpay.com/app/payments/${order.razorpay_payment_id}`, "_blank")
+                            }}
+                            className="text-info focus:text-info"
+                          >
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Refund via Razorpay Dashboard
+                          </DropdownMenuItem>
+                        )}
                         {(order.status === "failed" || order.status === "pending" || (order.status === "completed" && (!order.registrations || order.registrations.length === 0))) && (
                           <DropdownMenuItem onClick={(e) => openVerifyDialog(order, e)}>
                             <ShieldCheck className="w-4 h-4 mr-2" />
@@ -707,12 +845,22 @@ export default function OrdersPage() {
                     {selectedOrder.registrations.map((reg) => (
                       <div
                         key={reg.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                        className={cn(
+                          "flex items-center justify-between p-3 rounded-lg",
+                          reg.status === "cancelled" ? "bg-destructive/5 border border-destructive/20" : "bg-muted/30"
+                        )}
                       >
                         <div>
-                          <p className="font-medium text-sm">
-                            {reg.first_name} {reg.last_name}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm">
+                              {reg.first_name} {reg.last_name}
+                            </p>
+                            {reg.status === "cancelled" && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-destructive/10 text-destructive">
+                                Cancelled
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {reg.ticket_type?.name || "Standard Ticket"}
                           </p>
@@ -720,7 +868,7 @@ export default function OrdersPage() {
                             {reg.registration_number}
                           </p>
                         </div>
-                        <p className="font-semibold">
+                        <p className={cn("font-semibold", reg.status === "cancelled" && "line-through text-muted-foreground")}>
                           ₹{reg.ticket_type?.price?.toLocaleString() || "0"}
                         </p>
                       </div>

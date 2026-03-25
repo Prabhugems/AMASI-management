@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/exam-daily-sync",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/payment-reconciliation",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
