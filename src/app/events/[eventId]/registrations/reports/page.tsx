@@ -22,6 +22,7 @@ import {
   Ticket,
   Calendar,
   TrendingUp,
+  UtensilsCrossed,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -90,6 +91,71 @@ export default function RegistrationReportsPage() {
       byStatus: Object.entries(byStatus),
     }
   }, [registrations])
+
+  // Parse food preference from custom_fields
+  const parseFoodPref = (r: any): "Veg" | "Non-Veg" | "Not Specified" => {
+    const cf = r.custom_fields
+    if (!cf || typeof cf !== "object") return "Not Specified"
+    const raw = cf.food_preference ?? cf.Preferred_Food ?? cf.preferred_food ?? cf.Food_Preference ?? cf.foodPreference
+    if (!raw) return "Not Specified"
+    const val = String(raw).trim().toLowerCase().replace(/[\s_-]+/g, "")
+    if (val === "veg" || val === "vegetarian") return "Veg"
+    if (val === "nonveg" || val === "nonvegetarian") return "Non-Veg"
+    return "Not Specified"
+  }
+
+  // Food preference stats
+  const foodStats = useMemo(() => {
+    if (!registrations) return null
+
+    const overall: Record<string, number> = { "Veg": 0, "Non-Veg": 0, "Not Specified": 0 }
+    const byTicket: Record<string, Record<string, number>> = {}
+
+    registrations.forEach((r: any) => {
+      const pref = parseFoodPref(r)
+      overall[pref]++
+
+      const ticketName = r.ticket_type?.name || "Unknown"
+      if (!byTicket[ticketName]) {
+        byTicket[ticketName] = { "Veg": 0, "Non-Veg": 0, "Not Specified": 0 }
+      }
+      byTicket[ticketName][pref]++
+    })
+
+    return {
+      overall,
+      byTicket: Object.entries(byTicket).sort(([a], [b]) => a.localeCompare(b)),
+    }
+  }, [registrations])
+
+  const exportFoodCSV = () => {
+    if (!foodStats) return
+
+    const lines: string[] = []
+    lines.push("Food Preference Summary")
+    lines.push("")
+    lines.push("Preference,Count")
+    lines.push(`Veg,${foodStats.overall["Veg"]}`)
+    lines.push(`Non-Veg,${foodStats.overall["Non-Veg"]}`)
+    lines.push(`Not Specified,${foodStats.overall["Not Specified"]}`)
+    lines.push("")
+    lines.push("Breakdown by Ticket Type")
+    lines.push("Ticket Type,Veg,Non-Veg,Not Specified,Total")
+    foodStats.byTicket.forEach(([ticket, counts]) => {
+      const total = counts["Veg"] + counts["Non-Veg"] + counts["Not Specified"]
+      lines.push(`"${ticket}",${counts["Veg"]},${counts["Non-Veg"]},${counts["Not Specified"]},${total}`)
+    })
+
+    const csv = lines.join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `food-preference-summary-${new Date().toISOString().split("T")[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success("Food preference report exported")
+  }
 
   const exportCSV = () => {
     if (!registrations) return
@@ -246,6 +312,69 @@ export default function RegistrationReportsPage() {
           </div>
         </div>
       </div>
+
+      {/* Food Preference Summary */}
+      {foodStats && (
+        <div className="bg-card rounded-lg border overflow-hidden">
+          <div className="px-4 py-3 border-b bg-muted/50 flex items-center justify-between">
+            <h3 className="font-semibold flex items-center gap-2">
+              <UtensilsCrossed className="h-4 w-4" />
+              Food Preference Summary
+            </h3>
+            <Button variant="outline" size="sm" onClick={exportFoodCSV}>
+              <Download className="h-3 w-3 mr-1" />
+              Export CSV
+            </Button>
+          </div>
+          <div className="p-4 space-y-4">
+            {/* Overall counts */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900">
+                <p className="text-sm text-muted-foreground">Veg</p>
+                <p className="text-2xl font-bold text-green-700 dark:text-green-400">{foodStats.overall["Veg"]}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900">
+                <p className="text-sm text-muted-foreground">Non-Veg</p>
+                <p className="text-2xl font-bold text-red-700 dark:text-red-400">{foodStats.overall["Non-Veg"]}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/50 border">
+                <p className="text-sm text-muted-foreground">Not Specified</p>
+                <p className="text-2xl font-bold">{foodStats.overall["Not Specified"]}</p>
+              </div>
+            </div>
+
+            {/* Breakdown by ticket type */}
+            {foodStats.byTicket.length > 0 && (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ticket Type</TableHead>
+                      <TableHead className="text-right">Veg</TableHead>
+                      <TableHead className="text-right">Non-Veg</TableHead>
+                      <TableHead className="text-right">Not Specified</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {foodStats.byTicket.map(([ticket, counts]) => (
+                      <TableRow key={ticket}>
+                        <TableCell className="font-medium">{ticket}</TableCell>
+                        <TableCell className="text-right">{counts["Veg"]}</TableCell>
+                        <TableCell className="text-right">{counts["Non-Veg"]}</TableCell>
+                        <TableCell className="text-right">{counts["Not Specified"]}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {counts["Veg"] + counts["Non-Veg"] + counts["Not Specified"]}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
