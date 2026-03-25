@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { getNextRegistrationNumber } from "@/lib/services/registration-number"
+import { sendPaymentAlert } from "@/lib/services/payment-alerts"
 import { NextRequest, NextResponse } from "next/server"
 
 // Razorpay API base
@@ -381,6 +382,18 @@ export async function GET(request: NextRequest) {
             )
           }
 
+          // Send admin alert for missing registration auto-created
+          sendPaymentAlert("registration_missing", {
+            delegateName: payerName,
+            delegateEmail: payerEmail,
+            amount,
+            currency: rzpPayment.currency || "INR",
+            razorpayPaymentId: rzpPayment.id,
+            razorpayOrderId: rzpPayment.order_id,
+            eventId,
+            notes: "Payment found on Razorpay but missing from database. Auto-created payment and registration during reconciliation.",
+          }).catch(console.error)
+
           summary.auto_created++
           summary.details.push({
             type: "auto_created",
@@ -443,6 +456,17 @@ export async function GET(request: NextRequest) {
         } catch {
           // payment_alerts table might not exist
         }
+
+        // Send admin alert for orphan payment
+        sendPaymentAlert("orphan_payment", {
+          delegateName: payerName,
+          delegateEmail: payerEmail || undefined,
+          amount,
+          currency: rzpPayment.currency || "INR",
+          razorpayPaymentId: rzpPayment.id,
+          razorpayOrderId: rzpPayment.order_id,
+          notes: "Found during reconciliation. No event_id in payment notes.",
+        }).catch(console.error)
 
         summary.orphans_logged++
         summary.details.push({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { verifyWebhookSignature } from "@/lib/services/razorpay"
 import { createAdminClient } from "@/lib/supabase/server"
 import { getNextRegistrationNumber } from "@/lib/services/registration-number"
+import { sendPaymentAlert } from "@/lib/services/payment-alerts"
 
 // Razorpay webhook events we handle
 type WebhookEvent =
@@ -157,6 +158,14 @@ export async function POST(request: NextRequest) {
         const refund = payload.payload.refund?.entity
         if (!refund) break
         console.error(`[WEBHOOK] Refund failed: ${refund.id}`)
+
+        // Send admin alert for failed refund
+        sendPaymentAlert("refund_failed", {
+          amount: refund.amount / 100,
+          razorpayPaymentId: refund.payment_id,
+          notes: `Refund ID: ${refund.id}. Status: ${refund.status}.`,
+        }).catch(console.error)
+
         break
       }
 
@@ -362,6 +371,19 @@ async function handlePaymentFailed(supabase: any, razorpayPayment: any) {
       },
     } as any)
     .eq("razorpay_order_id", razorpayPayment.order_id)
+
+  // Send admin alert for failed payment
+  sendPaymentAlert("payment_failed", {
+    delegateName: razorpayPayment.notes?.payer_name || razorpayPayment.notes?.name,
+    delegateEmail: razorpayPayment.email,
+    amount: razorpayPayment.amount / 100,
+    currency: razorpayPayment.currency,
+    razorpayPaymentId: razorpayPayment.id,
+    razorpayOrderId: razorpayPayment.order_id,
+    errorCode: razorpayPayment.error_code,
+    errorDescription: razorpayPayment.error_description,
+    eventId: razorpayPayment.notes?.event_id,
+  }).catch(console.error)
 
   console.log(`[WEBHOOK] Payment failed: ${razorpayPayment.id}`)
 }
