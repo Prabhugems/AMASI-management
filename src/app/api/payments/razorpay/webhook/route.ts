@@ -538,7 +538,7 @@ async function createOrphanPaymentRecord(supabase: any, razorpayPayment: any) {
       if (matchedTicket) {
         const regNumber = await getNextRegistrationNumber(supabase, eventId)
 
-        await supabase.from("registrations").insert({
+        const { data: newReg } = await supabase.from("registrations").insert({
           event_id: eventId,
           ticket_type_id: matchedTicket.id,
           registration_number: regNumber,
@@ -550,12 +550,17 @@ async function createOrphanPaymentRecord(supabase: any, razorpayPayment: any) {
           status: "confirmed",
           payment_status: "completed",
           payment_id: (payment as any).id,
-        } as any)
+        } as any).select("id").single()
 
         // Increment ticket sold (atomic + idempotent)
         await incrementTicketSold(supabase, matchedTicket.id, 1, (payment as any).id)
 
         console.log(`[WEBHOOK] Auto-created registration ${regNumber} for orphan payment ${payerEmail}`)
+
+        // Trigger auto-actions (badge, certificate, receipt)
+        if (newReg?.id) {
+          triggerAutoActions(supabase, newReg.id, eventId).catch(console.error)
+        }
       }
     } catch (regError) {
       console.error("[WEBHOOK] Failed to auto-create registration for orphan:", regError)
