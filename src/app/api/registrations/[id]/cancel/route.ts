@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { createRefund, RazorpayCredentials } from "@/lib/services/razorpay"
 import { logActivityFromRequest } from "@/lib/activity-logger"
 import { getApiUser } from "@/lib/auth/api-auth"
+import { notifyWaitlist } from "@/lib/services/waitlist-notify"
 
 // POST /api/registrations/[id]/cancel - Cancel registration with optional refund
 export async function POST(
@@ -210,6 +211,11 @@ export async function POST(
         subtract_tax: subtract_tax,
         razorpay_refund_id: razorpayRefundId,
       },
+    })
+
+    // 9. Notify waitlist — fire and forget (don't block the response)
+    notifyWaitlist(registration.event_id, registration.ticket_type_id).catch((err) => {
+      console.error("[CancelRoute] Waitlist notification failed:", err)
     })
 
     return NextResponse.json({

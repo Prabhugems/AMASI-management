@@ -15,7 +15,6 @@ import {
   Link as LinkIcon,
   RefreshCw,
   UserPlus,
-  ArrowRight,
   Copy,
   Check,
   Plus,
@@ -336,130 +335,319 @@ export default function EventAnalyticsPage({
             </div>
           </div>
 
-          {/* Funnel */}
+          {/* Visual Funnel Chart */}
           <div className="bg-white rounded-xl border p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Conversion Funnel</h2>
-            <div className="flex items-center justify-between">
-              {/* Event Page */}
-              <div className="flex-1 text-center">
-                <div className="w-full bg-blue-500 rounded-t-lg py-4 px-2">
-                  <p className="text-white font-bold text-2xl">{analytics.funnel.eventPageViews}</p>
-                  <p className="text-blue-100 text-sm">Event Page Views</p>
-                </div>
-              </div>
-              <ArrowRight className="w-6 h-6 text-gray-300 mx-2" />
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Conversion Funnel</h2>
+            <p className="text-sm text-gray-500 mb-6">Visitor journey from page view to registration</p>
+            {(() => {
+              const maxCount = analytics.funnel.eventPageViews || 1
+              const steps = [
+                {
+                  label: "Page Views",
+                  count: analytics.funnel.eventPageViews,
+                  color: "from-blue-500 to-blue-600",
+                  bgLight: "bg-blue-50",
+                  textColor: "text-blue-700",
+                  borderColor: "border-blue-200",
+                },
+                {
+                  label: "Registration Page",
+                  count: analytics.funnel.registrationPageViews,
+                  color: "from-purple-500 to-purple-600",
+                  bgLight: "bg-purple-50",
+                  textColor: "text-purple-700",
+                  borderColor: "border-purple-200",
+                },
+                {
+                  label: "Checkout",
+                  count: analytics.funnel.checkoutPageViews,
+                  color: "from-amber-500 to-amber-600",
+                  bgLight: "bg-amber-50",
+                  textColor: "text-amber-700",
+                  borderColor: "border-amber-200",
+                },
+                {
+                  label: "Paid",
+                  count: analytics.funnel.registrations,
+                  color: "from-emerald-500 to-emerald-600",
+                  bgLight: "bg-emerald-50",
+                  textColor: "text-emerald-700",
+                  borderColor: "border-emerald-200",
+                },
+              ]
 
-              {/* Registration Page */}
-              <div className="flex-1 text-center">
-                <div className="w-full bg-purple-500 rounded-t-lg py-4 px-2">
-                  <p className="text-white font-bold text-2xl">{analytics.funnel.registrationPageViews}</p>
-                  <p className="text-purple-100 text-sm">Registration Page</p>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">{funnelPercentages?.registerRate}% clicked</p>
-              </div>
-              <ArrowRight className="w-6 h-6 text-gray-300 mx-2" />
+              return (
+                <div className="space-y-3">
+                  {steps.map((step, idx) => {
+                    const widthPercent = maxCount > 0 ? Math.max((step.count / maxCount) * 100, 8) : 8
+                    const prevCount = idx > 0 ? steps[idx - 1].count : null
+                    const dropOff = prevCount !== null && prevCount > 0
+                      ? ((1 - step.count / prevCount) * 100).toFixed(1)
+                      : null
+                    const stepRate = prevCount !== null && prevCount > 0
+                      ? ((step.count / prevCount) * 100).toFixed(1)
+                      : null
 
-              {/* Checkout */}
-              <div className="flex-1 text-center">
-                <div className="w-full bg-amber-500 rounded-t-lg py-4 px-2">
-                  <p className="text-white font-bold text-2xl">{analytics.funnel.checkoutPageViews}</p>
-                  <p className="text-amber-100 text-sm">Checkout Page</p>
+                    return (
+                      <div key={step.label}>
+                        {/* Drop-off indicator between steps */}
+                        {dropOff !== null && (
+                          <div className="flex items-center gap-2 py-1.5 pl-4">
+                            <div className="flex items-center gap-1.5">
+                              <svg className="w-3.5 h-3.5 text-gray-400 -rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
+                              <span className="text-xs font-medium text-gray-500">
+                                {stepRate}% continued
+                              </span>
+                              <span className="text-xs text-red-400 ml-1">
+                                ({dropOff}% drop-off)
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        {/* Funnel bar */}
+                        <div className="flex items-center gap-4">
+                          <div className="w-32 sm:w-40 shrink-0 text-right">
+                            <span className="text-sm font-medium text-gray-700">{step.label}</span>
+                          </div>
+                          <div className="flex-1 relative">
+                            <div
+                              className={`bg-gradient-to-r ${step.color} rounded-lg py-3 px-4 transition-all duration-500 relative overflow-hidden`}
+                              style={{
+                                width: `${widthPercent}%`,
+                                minWidth: "80px",
+                              }}
+                            >
+                              {/* Subtle pattern overlay */}
+                              <div className="absolute inset-0 opacity-10" style={{
+                                backgroundImage: "repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(255,255,255,0.3) 10px, rgba(255,255,255,0.3) 11px)",
+                              }} />
+                              <span className="relative text-white font-bold text-lg leading-none">
+                                {step.count.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-16 shrink-0 text-right">
+                            <span className={`text-sm font-semibold ${step.textColor}`}>
+                              {maxCount > 0 ? ((step.count / maxCount) * 100).toFixed(0) : 0}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{funnelPercentages?.checkoutRate}% proceeded</p>
-              </div>
-              <ArrowRight className="w-6 h-6 text-gray-300 mx-2" />
+              )
+            })()}
 
-              {/* Registrations */}
-              <div className="flex-1 text-center">
-                <div className="w-full bg-emerald-500 rounded-t-lg py-4 px-2">
-                  <p className="text-white font-bold text-2xl">{analytics.funnel.registrations}</p>
-                  <p className="text-emerald-100 text-sm">Registered</p>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">{funnelPercentages?.conversionRate}% converted</p>
-              </div>
+            {/* Overall conversion summary */}
+            <div className="mt-6 pt-4 border-t flex items-center justify-between">
+              <span className="text-sm text-gray-500">Overall conversion (Page View to Paid)</span>
+              <span className="text-lg font-bold text-emerald-600">
+                {analytics.funnel.eventPageViews > 0
+                  ? ((analytics.funnel.registrations / analytics.funnel.eventPageViews) * 100).toFixed(1)
+                  : "0"}%
+              </span>
             </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Device Breakdown */}
+            {/* Device Breakdown - CSS Pie Chart */}
             <div className="bg-white rounded-xl border p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Device Breakdown</h2>
-              <div className="space-y-4">
-                {[
-                  { label: "Desktop", icon: Monitor, count: analytics.deviceBreakdown.desktop, color: "bg-blue-500" },
-                  { label: "Mobile", icon: Smartphone, count: analytics.deviceBreakdown.mobile, color: "bg-purple-500" },
-                  { label: "Tablet", icon: Smartphone, count: analytics.deviceBreakdown.tablet, color: "bg-amber-500" },
-                ].map((device) => {
-                  const total = analytics.deviceBreakdown.desktop + analytics.deviceBreakdown.mobile + analytics.deviceBreakdown.tablet
-                  const percentage = total > 0 ? (device.count / total * 100).toFixed(1) : "0"
-                  return (
-                    <div key={device.label} className="flex items-center gap-3">
-                      <device.icon className="w-5 h-5 text-gray-400" />
-                      <div className="flex-1">
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium">{device.label}</span>
-                          <span className="text-gray-500">{device.count} ({percentage}%)</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full ${device.color} rounded-full`}
-                            style={{ width: `${percentage}%` }}
-                          />
+              {(() => {
+                const total = analytics.deviceBreakdown.desktop + analytics.deviceBreakdown.mobile + analytics.deviceBreakdown.tablet
+                const devices = [
+                  { label: "Desktop", icon: Monitor, count: analytics.deviceBreakdown.desktop, color: "#3b82f6", lightBg: "bg-blue-50", textColor: "text-blue-600" },
+                  { label: "Mobile", icon: Smartphone, count: analytics.deviceBreakdown.mobile, color: "#8b5cf6", lightBg: "bg-purple-50", textColor: "text-purple-600" },
+                  { label: "Tablet", icon: Smartphone, count: analytics.deviceBreakdown.tablet, color: "#f59e0b", lightBg: "bg-amber-50", textColor: "text-amber-600" },
+                ]
+
+                if (total === 0) {
+                  return <p className="text-gray-500 text-sm text-center py-8">No device data yet</p>
+                }
+
+                // Build conic-gradient segments
+                let cumulative = 0
+                const gradientParts: string[] = []
+                devices.forEach((d) => {
+                  const pct = (d.count / total) * 100
+                  gradientParts.push(`${d.color} ${cumulative}% ${cumulative + pct}%`)
+                  cumulative += pct
+                })
+                const gradient = `conic-gradient(${gradientParts.join(", ")})`
+
+                return (
+                  <div className="flex items-center gap-6">
+                    {/* Pie chart */}
+                    <div className="relative shrink-0">
+                      <div
+                        className="w-32 h-32 rounded-full"
+                        style={{ background: gradient }}
+                      />
+                      {/* Center hole for donut effect */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center">
+                          <div className="text-center">
+                            <p className="text-lg font-bold text-gray-900">{total}</p>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total</p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
+
+                    {/* Legend */}
+                    <div className="flex-1 space-y-3">
+                      {devices.map((device) => {
+                        const percentage = ((device.count / total) * 100).toFixed(1)
+                        return (
+                          <div key={device.label} className="flex items-center gap-3">
+                            <div
+                              className="w-3 h-3 rounded-full shrink-0"
+                              style={{ backgroundColor: device.color }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <device.icon className="w-4 h-4 text-gray-400" />
+                                  <span className="text-sm font-medium text-gray-700">{device.label}</span>
+                                </div>
+                                <span className="text-sm tabular-nums text-gray-900 font-semibold">{percentage}%</span>
+                              </div>
+                              <p className="text-xs text-gray-400 mt-0.5">{device.count.toLocaleString()} visits</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
-            {/* Top Referrers */}
+            {/* Top Referrers with Progress Bars */}
             <div className="bg-white rounded-xl border p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Referrers</h2>
               {analytics.topReferrers.length > 0 ? (
                 <div className="space-y-3">
-                  {analytics.topReferrers.map((ref, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Globe className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-medium truncate max-w-[200px]">{ref.source}</span>
+                  {analytics.topReferrers.map((ref, i) => {
+                    const maxRefCount = analytics.topReferrers[0]?.count || 1
+                    const barWidth = (ref.count / maxRefCount) * 100
+                    return (
+                      <div key={i} className="group">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Globe className="w-4 h-4 text-gray-400 shrink-0" />
+                            <span className="text-sm font-medium text-gray-700 truncate">{ref.source}</span>
+                          </div>
+                          <span className="text-sm font-semibold text-gray-900 tabular-nums shrink-0 ml-3">
+                            {ref.count.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-indigo-400 to-indigo-500 rounded-full transition-all duration-300"
+                            style={{ width: `${barWidth}%` }}
+                          />
+                        </div>
                       </div>
-                      <span className="text-sm text-gray-500">{ref.count} visits</span>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm">No referrer data yet</p>
+                <p className="text-gray-500 text-sm text-center py-8">No referrer data yet</p>
               )}
             </div>
 
-            {/* UTM Sources */}
-            <div className="bg-white rounded-xl border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">UTM Sources</h2>
-              {analytics.topUtmSources.length > 0 ? (
-                <div className="space-y-3">
-                  {analytics.topUtmSources.map((utm, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <LinkIcon className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-medium">{utm.source}</span>
-                      </div>
-                      <span className="text-sm text-gray-500">{utm.count} visits</span>
-                    </div>
-                  ))}
+            {/* UTM Campaign Performance Table */}
+            <div className="bg-white rounded-xl border p-6 md:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">UTM Campaign Performance</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">Which channels are driving the most traffic</p>
                 </div>
-              ) : (
-                <p className="text-gray-500 text-sm">No UTM tracking data yet</p>
-              )}
-
-              <div className="mt-4 pt-4 border-t">
                 <button
                   onClick={() => setShowUtmGenerator(true)}
-                  className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                  className="text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1"
                 >
-                  Generate tracked links →
+                  <Plus className="w-4 h-4" />
+                  Generate Links
                 </button>
               </div>
+              {analytics.topUtmSources.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="text-left py-3 px-3 font-medium text-gray-500 uppercase text-xs tracking-wider">Source</th>
+                        <th className="text-right py-3 px-3 font-medium text-gray-500 uppercase text-xs tracking-wider">Visits</th>
+                        <th className="text-left py-3 px-3 font-medium text-gray-500 uppercase text-xs tracking-wider w-1/3">Distribution</th>
+                        <th className="text-right py-3 px-3 font-medium text-gray-500 uppercase text-xs tracking-wider">Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const totalUtm = analytics.topUtmSources.reduce((sum, u) => sum + u.count, 0)
+                        const maxUtmCount = analytics.topUtmSources[0]?.count || 1
+                        const barColors = [
+                          "from-emerald-400 to-emerald-500",
+                          "from-blue-400 to-blue-500",
+                          "from-purple-400 to-purple-500",
+                          "from-amber-400 to-amber-500",
+                          "from-rose-400 to-rose-500",
+                          "from-cyan-400 to-cyan-500",
+                          "from-indigo-400 to-indigo-500",
+                          "from-pink-400 to-pink-500",
+                        ]
+                        return analytics.topUtmSources.map((utm, i) => {
+                          const barWidth = (utm.count / maxUtmCount) * 100
+                          const share = totalUtm > 0 ? ((utm.count / totalUtm) * 100).toFixed(1) : "0"
+                          const colorClass = barColors[i % barColors.length]
+                          return (
+                            <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${colorClass} shrink-0`} />
+                                  <span className="font-medium text-gray-900">{utm.source}</span>
+                                </div>
+                              </td>
+                              <td className="text-right py-3 px-3 font-semibold text-gray-900 tabular-nums">
+                                {utm.count.toLocaleString()}
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full bg-gradient-to-r ${colorClass} rounded-full transition-all duration-300`}
+                                    style={{ width: `${barWidth}%` }}
+                                  />
+                                </div>
+                              </td>
+                              <td className="text-right py-3 px-3 text-gray-500 tabular-nums">{share}%</td>
+                            </tr>
+                          )
+                        })
+                      })()}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t">
+                        <td className="py-3 px-3 font-medium text-gray-500">Total</td>
+                        <td className="text-right py-3 px-3 font-bold text-gray-900 tabular-nums">
+                          {analytics.topUtmSources.reduce((sum, u) => sum + u.count, 0).toLocaleString()}
+                        </td>
+                        <td></td>
+                        <td className="text-right py-3 px-3 text-gray-500">100%</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <LinkIcon className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">No UTM tracking data yet</p>
+                  <p className="text-xs text-gray-400 mt-1">Generate tracked links above and share them to see which channels perform best</p>
+                </div>
+              )}
             </div>
 
             {/* Leads */}
