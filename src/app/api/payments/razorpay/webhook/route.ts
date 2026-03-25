@@ -566,7 +566,7 @@ async function createOrphanPaymentRecord(supabase: any, razorpayPayment: any) {
       // Find a suitable ticket type for this event
       const { data: tickets } = await supabase
         .from("ticket_types")
-        .select("id, name, price")
+        .select("id, name, price, quantity_sold")
         .eq("event_id", eventId)
         .eq("status", "active")
         .order("price", { ascending: false })
@@ -591,10 +591,8 @@ async function createOrphanPaymentRecord(supabase: any, razorpayPayment: any) {
           payment_id: (payment as any).id,
         } as any)
 
-        // Increment ticket sold
-        await supabase.from("ticket_types")
-          .update({ quantity_sold: (matchedTicket as any).quantity_sold + 1 })
-          .eq("id", matchedTicket.id)
+        // Increment ticket sold (atomic + idempotent)
+        await incrementTicketSold(supabase, matchedTicket.id, 1, (payment as any).id)
 
         console.log(`[WEBHOOK] Auto-created registration ${regNumber} for orphan payment ${payerEmail}`)
       }

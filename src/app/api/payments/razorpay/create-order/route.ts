@@ -208,6 +208,14 @@ export async function POST(request: NextRequest) {
             if (discountData.max_discount_amount && discountAmount > discountData.max_discount_amount) {
               discountAmount = discountData.max_discount_amount
             }
+
+            // Increment current_uses to reserve the discount code immediately
+            if (discountAmount > 0) {
+              await supabase
+                .from("discount_codes")
+                .update({ current_uses: (discountData.current_uses || 0) + 1 })
+                .eq("id", discountData.id)
+            }
           }
         }
       }
@@ -276,13 +284,19 @@ export async function POST(request: NextRequest) {
     // Check for existing pending payment within duplicate window (5 minutes)
     const duplicateWindowStart = new Date(Date.now() - DUPLICATE_WINDOW_MS).toISOString()
 
-    const { data: existingPayments } = await supabase
+    const duplicateQuery = supabase
       .from("payments")
       .select("id, razorpay_order_id, payment_number, status, created_at, amount")
       .eq("payer_email", trimmedEmail)
       .eq("amount", amount)
       .eq("status", "pending")
       .gte("created_at", duplicateWindowStart)
+
+    if (event_id) {
+      duplicateQuery.eq("event_id", event_id)
+    }
+
+    const { data: existingPayments } = await duplicateQuery
       .order("created_at", { ascending: false })
       .limit(1)
 
@@ -390,6 +404,8 @@ export async function POST(request: NextRequest) {
           registration_data,
           razorpay_order: order,
           uses_event_credentials: !!credentials,
+          // Store discount code used (for tracking/reversal on failure)
+          discount_code: discount_code ? discount_code.toUpperCase() : null,
           // Store server-validated ticket details for verification
           validated_tickets: ticketDetails.length > 0 ? ticketDetails : null,
           validated_amount: amount,
