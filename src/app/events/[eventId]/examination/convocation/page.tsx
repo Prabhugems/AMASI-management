@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
+import { toast } from "sonner"
 import { useParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useExamSettings } from "@/hooks/use-exam-settings"
@@ -71,6 +72,7 @@ export default function ConvocationPage() {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [autoAssigning, setAutoAssigning] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [syncingAirtable, setSyncingAirtable] = useState(false)
   const [activeTab, setActiveTab] = useState("exam")
   const [sortBy, setSortBy] = useState<"convocation" | "name" | "reg" | "marks" | "amasi">("convocation")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
@@ -228,6 +230,30 @@ export default function ConvocationPage() {
     setSyncing(false)
   }
 
+  const syncAirtableRecords = async () => {
+    setSyncingAirtable(true)
+    try {
+      // Find registrations with convocation number but no fillout link
+      const missing = (allRegistrations || []).filter(
+        (r: any) => r.convocation_number && !r.exam_marks?.fillout_link && (r.exam_result === "pass" || r.exam_result === "without_exam")
+      )
+      if (!missing.length) {
+        toast.info("All records already synced to Airtable")
+        setSyncingAirtable(false)
+        return
+      }
+      // Call the exam-daily-sync cron to create missing Airtable records
+      const res = await fetch("/api/cron/exam-daily-sync")
+      const result = await res.json()
+      toast.success(`Airtable sync complete!\nCreated: ${result.results?.airtableCreated || 0}\nErrors: ${result.results?.errors?.length || 0}`)
+      await queryClient.invalidateQueries({ queryKey: ["exam-convocation", eventId] })
+    } catch (error) {
+      toast.error("Airtable sync failed")
+      console.error("Airtable sync error:", error)
+    }
+    setSyncingAirtable(false)
+  }
+
   const downloadCSV = () => {
     if (!filtered.length) return
     startExport("Generating CSV...")
@@ -281,6 +307,10 @@ export default function ConvocationPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button onClick={syncAirtableRecords} variant="outline" className="gap-2" disabled={syncingAirtable}>
+            {syncingAirtable ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Sync Airtable
+          </Button>
           <Button onClick={syncAmasiNumbers} variant="outline" className="gap-2" disabled={syncing}>
             {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             Sync {COMPANY_CONFIG.name} No.
