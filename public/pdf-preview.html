@@ -18,35 +18,38 @@
 
   .page { background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,0.12); position: relative; width: 210mm; min-height: 297mm; padding: 14mm 14mm 25mm; }
 
-  .sheet-header { font-size: 18px; font-weight: 700; color: #1c1917; margin-bottom: 4px; }
-  .sheet-subheader { font-size: 11px; color: #57534e; margin-bottom: 14px; }
+  .sheet-header { font-size: 14px; font-weight: 700; color: #1c1917; margin-bottom: 3px; }
+  .sheet-subheader { font-size: 9px; color: #57534e; margin-bottom: 10px; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 10px; }
-  thead th { background: #fff; color: #000; font-weight: 700; font-size: 10px; text-align: left; padding: 7px 8px; border: 1px solid #000; }
+  table { width: 100%; border-collapse: collapse; font-size: 9px; }
+  thead th { background: #fff; color: #000; font-weight: 700; font-size: 9px; text-align: left; padding: 5px 6px; border: 1px solid #000; }
   thead th.center { text-align: center; }
-  tbody td { padding: 7px 8px; border: 1px solid #000; vertical-align: middle; }
+  tbody td { padding: 5px 6px; border: 1px solid #000; vertical-align: middle; height: 24px; }
 
-  .attendance-table tbody td { padding: 8px; height: 28px; }
-  .attendance-table .col-num { width: 12mm; text-align: center; }
-  .attendance-table .col-reg { width: 35mm; }
-  .attendance-table .col-name { width: 60mm; }
-  .attendance-table .col-sig { width: 60mm; }
+  .attendance-table .col-num { width: 10mm; text-align: center; }
+  .attendance-table .col-reg { width: 28mm; }
+  .attendance-table .col-name { width: 55mm; }
+  .attendance-table .col-sig { width: 55mm; }
 
-  .scoring-table .col-num { width: 10mm; text-align: center; }
-  .scoring-table .col-reg { width: 28mm; }
-  .scoring-table .col-name { width: 42mm; }
-  .scoring-table .col-mark { text-align: center; width: 22mm; }
-  .scoring-table .col-remarks { }
+  .scoring-table { font-size: 8px; }
+  .scoring-table thead th { font-size: 8px; padding: 4px 5px; }
+  .scoring-table tbody td { padding: 4px 5px; height: 22px; }
+  .scoring-table .col-num { width: 8mm; text-align: center; }
+  .scoring-table .col-reg { width: 22mm; }
+  .scoring-table .col-name { width: 38mm; }
+  .scoring-table .col-mark { text-align: center; width: 20mm; }
 
-  .page-count { font-size: 9px; color: #646464; margin-top: 8px; }
+  .page-count { font-size: 8px; color: #646464; margin-top: 5px; }
 
-  .sig-block { position: absolute; bottom: 18mm; left: 14mm; right: 14mm; font-size: 11px; color: #1c1917; }
-  .sig-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .sig-block { position: absolute; bottom: 18mm; left: 14mm; right: 14mm; font-size: 9px; color: #1c1917; }
+  .sig-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
 
   .page-break-marker { display: flex; align-items: center; gap: 12px; color: #a8a29e; font-size: 11px; font-weight: 500; width: 210mm; }
   .page-break-marker::before, .page-break-marker::after { content: ''; flex: 1; border-top: 2px dashed #d6d3d1; }
 
-  @media print { .nav { display: none; } .page-wrapper { padding: 0; gap: 0; background: #fff; } .page { box-shadow: none; page-break-after: always; } .page-break-marker, .section-label { display: none; } }
+  .last-page-label { font-size: 10px; color: #1a5276; font-weight: 600; margin-top: 8px; margin-bottom: -30px; }
+
+  @media print { .nav { display: none; } .page-wrapper { padding: 0; gap: 0; background: #fff; } .page { box-shadow: none; page-break-after: always; } .page-break-marker, .section-label, .last-page-label { display: none; } }
 </style>
 </head>
 <body>
@@ -60,21 +63,17 @@
 <div class="page-wrapper">
 
   <!-- ===================== ATTENDANCE SHEET ===================== -->
-  <div class="section-label" id="attendance-sheet">Attendance Sheet (Portrait A4 - 25 per page)</div>
+  <div class="section-label" id="attendance-sheet">Attendance Sheet (Portrait A4 - 20 per page)</div>
 
   <!-- Attendance Page 1 -->
   <div class="page">
     <div class="sheet-header">Attendance Sheet - Skill Course with FMAS Exam - Gynaecology</div>
-    <div class="sheet-subheader">FMAS Examination | Page 1 of 4 | Total Candidates: 83</div>
+    <div class="sheet-subheader">FMAS Examination | Page 1 of 5 | Total Candidates: 83</div>
     <table class="attendance-table">
-      <thead><tr><th class="col-num">#</th><th class="col-reg">Registration No.</th><th class="col-name">Name</th><th class="col-sig">Signature</th></tr></thead>
-      <tbody id="attendance-page1"></tbody>
+      <thead><tr><th class="col-num">#</th><th class="col-reg">Reg No.</th><th class="col-name">Name</th><th class="col-sig">Signature</th></tr></thead>
+      <tbody id="att-p1"></tbody>
     </table>
-    <div class="page-count">Showing 1 - 25 of 83 candidates</div>
-    <div class="sig-block">
-      <div class="sig-row"><span>Invigilator's Name: ___________________________</span><span>Signature: ___________________________</span></div>
-      <div class="sig-row"><span>Date: _______________</span><span>Remarks: ___________________________</span></div>
-    </div>
+    <div class="page-count">Showing 1 - 20 of 83 candidates</div>
   </div>
 
   <div class="page-break-marker">PAGE BREAK</div>
@@ -82,33 +81,44 @@
   <!-- Attendance Page 2 -->
   <div class="page">
     <div class="sheet-header">Attendance Sheet - Skill Course with FMAS Exam - Gynaecology</div>
-    <div class="sheet-subheader">FMAS Examination | Page 2 of 4 | Total Candidates: 83</div>
+    <div class="sheet-subheader">FMAS Examination | Page 2 of 5 | Total Candidates: 83</div>
     <table class="attendance-table">
-      <thead><tr><th class="col-num">#</th><th class="col-reg">Registration No.</th><th class="col-name">Name</th><th class="col-sig">Signature</th></tr></thead>
-      <tbody id="attendance-page2"></tbody>
+      <thead><tr><th class="col-num">#</th><th class="col-reg">Reg No.</th><th class="col-name">Name</th><th class="col-sig">Signature</th></tr></thead>
+      <tbody id="att-p2"></tbody>
     </table>
-    <div class="page-count">Showing 26 - 50 of 83 candidates</div>
+    <div class="page-count">Showing 21 - 40 of 83 candidates</div>
+  </div>
+
+  <div class="page-break-marker">PAGE BREAK</div>
+
+  <!-- Attendance Last Page (Page 5 - with signature) -->
+  <div class="last-page-label">Last Page — with Invigilator Signature Block</div>
+  <div class="page">
+    <div class="sheet-header">Attendance Sheet - Skill Course with FMAS Exam - Gynaecology</div>
+    <div class="sheet-subheader">FMAS Examination | Page 5 of 5 | Total Candidates: 83</div>
+    <table class="attendance-table">
+      <thead><tr><th class="col-num">#</th><th class="col-reg">Reg No.</th><th class="col-name">Name</th><th class="col-sig">Signature</th></tr></thead>
+      <tbody id="att-last"></tbody>
+    </table>
+    <div class="page-count">Showing 81 - 83 of 83 candidates</div>
     <div class="sig-block">
-      <div class="sig-row"><span>Invigilator's Name: ___________________________</span><span>Signature: ___________________________</span></div>
-      <div class="sig-row"><span>Date: _______________</span><span>Remarks: ___________________________</span></div>
+      <div class="sig-row"><span>Invigilator's Name: ___________________________</span><span>Date: _______________</span></div>
+      <div class="sig-row"><span>Signature: ___________________________</span><span>Remarks: ___________________________</span></div>
     </div>
   </div>
 
   <!-- ===================== SCORING SHEET ===================== -->
-  <div class="section-label" id="scoring-sheet">Scoring Sheet (Portrait A4 - 25 per page)</div>
+  <div class="section-label" id="scoring-sheet">Scoring Sheet (Portrait A4 - 20 per page)</div>
 
   <!-- Scoring Page 1 -->
   <div class="page">
     <div class="sheet-header">Scoring Sheet - Skill Course with FMAS Exam - Gynaecology</div>
-    <div class="sheet-subheader">FMAS Examination | Practical(10) + VIVA(10) + Publication(5) = 25 marks | Page 1 of 4</div>
+    <div class="sheet-subheader">FMAS Examination | Practical(10) + VIVA(10) + Publication(5) = 25 marks | Page 1 of 5</div>
     <table class="scoring-table">
-      <thead><tr><th class="col-num">#</th><th class="col-reg">Registration No.</th><th class="col-name">Name</th><th class="col-mark center">Practical [10]</th><th class="col-mark center">VIVA [10]</th><th class="col-mark center">Publication [5]</th><th class="col-remarks">Remarks</th></tr></thead>
-      <tbody id="scoring-page1"></tbody>
+      <thead><tr><th class="col-num">#</th><th class="col-reg">Reg No.</th><th class="col-name">Name</th><th class="col-mark center">Practical [10]</th><th class="col-mark center">VIVA [10]</th><th class="col-mark center">Publication [5]</th><th>Remarks</th></tr></thead>
+      <tbody id="scr-p1"></tbody>
     </table>
-    <div class="page-count">Showing 1 - 25 of 83 candidates</div>
-    <div class="sig-block">
-      <div class="sig-row"><span>Examiner's Name: ___________________________</span><span>Signature: ___________________________</span></div>
-    </div>
+    <div class="page-count">Showing 1 - 20 of 83 candidates</div>
   </div>
 
   <div class="page-break-marker">PAGE BREAK</div>
@@ -116,14 +126,29 @@
   <!-- Scoring Page 2 -->
   <div class="page">
     <div class="sheet-header">Scoring Sheet - Skill Course with FMAS Exam - Gynaecology</div>
-    <div class="sheet-subheader">FMAS Examination | Practical(10) + VIVA(10) + Publication(5) = 25 marks | Page 2 of 4</div>
+    <div class="sheet-subheader">FMAS Examination | Practical(10) + VIVA(10) + Publication(5) = 25 marks | Page 2 of 5</div>
     <table class="scoring-table">
-      <thead><tr><th class="col-num">#</th><th class="col-reg">Registration No.</th><th class="col-name">Name</th><th class="col-mark center">Practical [10]</th><th class="col-mark center">VIVA [10]</th><th class="col-mark center">Publication [5]</th><th class="col-remarks">Remarks</th></tr></thead>
-      <tbody id="scoring-page2"></tbody>
+      <thead><tr><th class="col-num">#</th><th class="col-reg">Reg No.</th><th class="col-name">Name</th><th class="col-mark center">Practical [10]</th><th class="col-mark center">VIVA [10]</th><th class="col-mark center">Publication [5]</th><th>Remarks</th></tr></thead>
+      <tbody id="scr-p2"></tbody>
     </table>
-    <div class="page-count">Showing 26 - 50 of 83 candidates</div>
+    <div class="page-count">Showing 21 - 40 of 83 candidates</div>
+  </div>
+
+  <div class="page-break-marker">PAGE BREAK</div>
+
+  <!-- Scoring Last Page (with signature) -->
+  <div class="last-page-label">Last Page — with Examiner Signature Block</div>
+  <div class="page">
+    <div class="sheet-header">Scoring Sheet - Skill Course with FMAS Exam - Gynaecology</div>
+    <div class="sheet-subheader">FMAS Examination | Practical(10) + VIVA(10) + Publication(5) = 25 marks | Page 5 of 5</div>
+    <table class="scoring-table">
+      <thead><tr><th class="col-num">#</th><th class="col-reg">Reg No.</th><th class="col-name">Name</th><th class="col-mark center">Practical [10]</th><th class="col-mark center">VIVA [10]</th><th class="col-mark center">Publication [5]</th><th>Remarks</th></tr></thead>
+      <tbody id="scr-last"></tbody>
+    </table>
+    <div class="page-count">Showing 81 - 83 of 83 candidates</div>
     <div class="sig-block">
-      <div class="sig-row"><span>Examiner's Name: ___________________________</span><span>Signature: ___________________________</span></div>
+      <div class="sig-row"><span>Examiner's Name: ___________________________</span><span>Date: _______________</span></div>
+      <div class="sig-row"><span>Signature: ___________________________</span><span>Remarks: ___________________________</span></div>
     </div>
   </div>
 
@@ -154,30 +179,32 @@ const candidates = [
   "Sarita Tripathi", "Seema Karandikar", "Shilpa Marathe"
 ];
 
-function generateRegId(i) { return '123A' + String(1001 + i); }
+function regId(i) { return '123A' + String(1001 + i); }
 
-function populateAttendance(tbodyId, start, end) {
-  const tbody = document.getElementById(tbodyId);
+function fillAttendance(id, start, end) {
+  const tb = document.getElementById(id);
   for (let i = start; i < end && i < candidates.length; i++) {
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td class="col-num">' + (i + 1) + '</td><td class="col-reg">' + generateRegId(i) + '</td><td class="col-name">' + candidates[i] + '</td><td class="col-sig"></td>';
-    tbody.appendChild(tr);
+    tr.innerHTML = `<td class="col-num">${i+1}</td><td class="col-reg">${regId(i)}</td><td class="col-name">${candidates[i]}</td><td class="col-sig"></td>`;
+    tb.appendChild(tr);
   }
 }
 
-function populateScoring(tbodyId, start, end) {
-  const tbody = document.getElementById(tbodyId);
+function fillScoring(id, start, end) {
+  const tb = document.getElementById(id);
   for (let i = start; i < end && i < candidates.length; i++) {
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td class="col-num">' + (i + 1) + '</td><td class="col-reg">' + generateRegId(i) + '</td><td class="col-name">' + candidates[i] + '</td><td class="col-mark"></td><td class="col-mark"></td><td class="col-mark"></td><td class="col-remarks"></td>';
-    tbody.appendChild(tr);
+    tr.innerHTML = `<td class="col-num">${i+1}</td><td class="col-reg">${regId(i)}</td><td class="col-name">${candidates[i]}</td><td class="col-mark"></td><td class="col-mark"></td><td class="col-mark"></td><td></td>`;
+    tb.appendChild(tr);
   }
 }
 
-populateAttendance('attendance-page1', 0, 25);
-populateAttendance('attendance-page2', 25, 50);
-populateScoring('scoring-page1', 0, 25);
-populateScoring('scoring-page2', 25, 50);
+fillAttendance('att-p1', 0, 20);
+fillAttendance('att-p2', 20, 40);
+fillAttendance('att-last', 80, 83);
+fillScoring('scr-p1', 0, 20);
+fillScoring('scr-p2', 20, 40);
+fillScoring('scr-last', 80, 83);
 </script>
 </body>
 </html>

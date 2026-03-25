@@ -24,12 +24,10 @@ import { usePermissions } from "@/hooks/use-permissions"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 
 // Dashboard components
-import { AlertsPanel } from "@/components/dashboard/alerts-panel"
 import { WhosOnlineWidget } from "@/components/dashboard/whos-online-widget"
 import { EventsTable } from "@/components/dashboard/events-table"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { RecentFacultyTable } from "@/components/dashboard/recent-faculty-table"
-import { TasksWidget } from "@/components/dashboard/tasks-widget"
 import { HealthWidget } from "@/components/dashboard/health-widget"
 
 function StatCardSkeleton() {
@@ -43,27 +41,6 @@ function StatCardSkeleton() {
       <div className="w-20 h-10 rounded bg-gray-200 dark:bg-slate-700 mb-4" />
       <div className="pt-4 border-t border-gray-200/80 dark:border-slate-700/50">
         <div className="w-32 h-3 rounded bg-gray-200 dark:bg-slate-700" />
-      </div>
-    </div>
-  )
-}
-
-function WidgetSkeleton({ title }: { title: string }) {
-  return (
-    <div className="paper-card animate-pulse">
-      <div className="p-5 border-b border-border">
-        <div className="w-40 h-5 rounded bg-gray-200 dark:bg-slate-700" />
-      </div>
-      <div className="p-5 space-y-3">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-slate-700" />
-            <div className="flex-1 space-y-1.5">
-              <div className="w-3/4 h-3 rounded bg-gray-200 dark:bg-slate-700" />
-              <div className="w-1/2 h-3 rounded bg-gray-200 dark:bg-slate-700" />
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   )
