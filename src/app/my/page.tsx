@@ -128,7 +128,7 @@ function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promise<void>
   }
 
   return (
-    <div ref={containerRef} className="relative overflow-hidden">
+    <div ref={containerRef} className="relative overflow-x-hidden overflow-y-auto">
       {/* Pull indicator */}
       <motion.div
         className="absolute top-0 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center"
