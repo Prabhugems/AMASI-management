@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
 
     // Query in batches of 100 to avoid query size limits
     const existingPaymentIds = new Set<string>()
-    const pendingPayments: { id: string; razorpay_payment_id: string; razorpay_order_id: string }[] = []
+    const pendingPayments: { id: string; razorpay_payment_id: string; razorpay_order_id: string; metadata?: any }[] = []
 
     for (let i = 0; i < razorpayPaymentIds.length; i += 100) {
       const batch = razorpayPaymentIds.slice(i, i + 100)
@@ -255,6 +255,7 @@ export async function GET(request: NextRequest) {
                   id: p.id,
                   razorpay_payment_id: rzpPayment.id,
                   razorpay_order_id: p.razorpay_order_id,
+                  metadata: p.metadata,
                 })
               }
             }
@@ -534,7 +535,7 @@ export async function GET(request: NextRequest) {
     // (e.g., payments older than 24h that are still pending but were captured long ago)
     const { data: stalePending } = await supabase
       .from("payments")
-      .select("id, razorpay_payment_id, razorpay_order_id")
+      .select("id, razorpay_payment_id, razorpay_order_id, metadata")
       .eq("status", "pending")
       .eq("payment_method", "razorpay")
       .not("razorpay_payment_id", "is", null)
