@@ -24,7 +24,8 @@ type ReminderType = "7_days" | "1_day" | "day_of"
 export async function GET(request: Request) {
   // Verify cron secret
   const authHeader = request.headers.get("authorization")
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET?.trim()
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
       .from("events")
       .select("id, name, short_name, start_date, end_date, venue, venue_name, city, status")
       .in("start_date", targetDates)
-      .not("status", "in", '("completed","cancelled","archived")')
+      .not("status", "in", '(completed,cancelled,archived)')
 
     if (eventsError) {
       console.error("Cron event-reminders: failed to fetch events:", eventsError)

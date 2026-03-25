@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, Suspense } from "react"
-import { useParams, useSearchParams } from "next/navigation"
+import { useParams, useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -136,6 +136,7 @@ export default function RegistrationsPage() {
 function RegistrationsContent() {
   const params = useParams()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const eventId = params.eventId as string
   const supabase = createClient()
   const queryClient = useQueryClient()
@@ -1120,12 +1121,14 @@ function RegistrationsContent() {
 
         case "cancel":
           for (const id of ids) {
-            const { error } = await (supabase as any)
-              .from("registrations")
-              .update({ status: "cancelled" })
-              .eq("id", id)
-            if (error) failCount++
-            else successCount++
+            const res = await fetch(`/api/registrations/${id}/cancel`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ refund_now: true }),
+              credentials: "include",
+            })
+            if (res.ok) successCount++
+            else failCount++
           }
           toast.success(`Cancelled ${successCount} registration(s)`)
           logActivityClient({
@@ -1340,7 +1343,7 @@ function RegistrationsContent() {
       }
 
       // Refresh data and clear selection
-      queryClient.invalidateQueries({ queryKey: ["registrations", eventId] })
+      queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] })
       clearSelection()
     } catch (error) {
       console.error("Bulk action error:", error)
@@ -1380,7 +1383,7 @@ function RegistrationsContent() {
               View Page
             </Button>
           )}
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => router.push(`/events/${eventId}/registrations/export`)}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>

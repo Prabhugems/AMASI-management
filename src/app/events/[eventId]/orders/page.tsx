@@ -979,7 +979,7 @@ export default function OrdersPage() {
                   {selectedOrder?.status === "completed" ? "Fix Missing Ticket" : "Verify Payment"}
                 </Button>
               )}
-              <Button variant="outline" className="flex-1">
+              <Button variant="outline" className="flex-1" onClick={() => toast.info("Coming soon")}>
                 <Send className="w-4 h-4 mr-2" />
                 Send Receipt
               </Button>
