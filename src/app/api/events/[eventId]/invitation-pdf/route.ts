@@ -145,7 +145,7 @@ export async function GET(
 
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
-    const margin = 25
+    const margin = 20
     const contentWidth = pageWidth - 2 * margin
     let y = 0
 
@@ -158,7 +158,7 @@ export async function GET(
     const light: [number, number, number] = [148, 163, 184]       // Slate-400
 
     // === HEADER BAND ===
-    const headerHeight = 50
+    const headerHeight = 35
     // Gradient effect with two rectangles
     doc.setFillColor(...primaryDark)
     doc.rect(0, 0, pageWidth, headerHeight, "F")
@@ -167,11 +167,11 @@ export async function GET(
 
     // Event title
     doc.setTextColor(255, 255, 255)
-    doc.setFontSize(20)
+    doc.setFontSize(16)
     doc.setFont("helvetica", "bold")
     const eventTitle = event.name || "Event"
     const titleLines = doc.splitTextToSize(eventTitle, contentWidth - 10)
-    const titleStartY = titleLines.length > 1 ? 16 : 20
+    const titleStartY = titleLines.length > 1 ? 12 : 15
     doc.text(titleLines, pageWidth / 2, titleStartY, { align: "center", lineHeightFactor: 1.3 })
 
     y = titleStartY + titleLines.length * 7.5
@@ -195,7 +195,7 @@ export async function GET(
       })
     }
 
-    y = headerHeight + 15
+    y = headerHeight + 8
 
     // === DATE LINE ===
     doc.setTextColor(...muted)
@@ -208,40 +208,39 @@ export async function GET(
     })
     doc.text(`Date: ${today}`, margin, y)
 
-    y += 18
+    y += 10
 
     // === ADDRESSEE ===
     if (attendee) {
       doc.setTextColor(...dark)
-      doc.setFontSize(11)
+      doc.setFontSize(10)
       doc.setFont("helvetica", "bold")
       doc.text("To,", margin, y)
-      y += 7
+      y += 5
       doc.setFont("helvetica", "normal")
       doc.setTextColor(...body)
+      doc.setFontSize(9.5)
       doc.text(attendee.name, margin, y)
-      y += 6
+      y += 5
       if (attendee.designation) {
-        doc.setFontSize(10)
         doc.text(attendee.designation, margin, y)
-        y += 5.5
+        y += 4.5
       }
       if (attendee.institution) {
-        doc.setFontSize(10)
         doc.text(attendee.institution, margin, y)
-        y += 5.5
+        y += 4.5
       }
-      y += 8
+      y += 4
     }
 
     // === SALUTATION ===
     doc.setTextColor(...dark)
-    doc.setFontSize(11)
+    doc.setFontSize(10)
     doc.setFont("helvetica", "normal")
     const salutation = attendee ? `Dear ${attendee.name},` : "Dear Sir/Madam,"
     doc.text(salutation, margin, y)
 
-    y += 12
+    y += 8
 
     // === BODY PARAGRAPH ===
     const orgName = event.organized_by || event.short_name || "the organizing committee"
@@ -258,17 +257,17 @@ export async function GET(
       bodyText = `${invitePhrase} "${event.name}"${editionText}, organized by ${orgName}. This ${event.event_type || "event"} brings together professionals, academicians, and researchers for knowledge exchange and collaborative learning.`
     }
 
-    doc.setFontSize(10.5)
+    doc.setFontSize(9.5)
     doc.setFont("helvetica", "normal")
     doc.setTextColor(...body)
     const bodyLines = doc.splitTextToSize(bodyText, contentWidth)
-    doc.text(bodyLines, margin, y, { lineHeightFactor: 1.5 })
-    y += bodyLines.length * 6 + 12
+    doc.text(bodyLines, margin, y, { lineHeightFactor: 1.4 })
+    y += bodyLines.length * 5 + 8
 
     // === EVENT DETAILS BOX ===
-    const labelX = margin + 8
-    const valueX = margin + 38
-    const rowHeight = 9
+    const labelX = margin + 6
+    const valueX = margin + 30
+    const rowHeight = 7
 
     // Count detail rows
     let detailRows = 2 // Date + Venue always
@@ -276,8 +275,8 @@ export async function GET(
     if (location) detailRows++
     if (attendee?.registration_number) detailRows++
 
-    const boxPadding = 8
-    const boxHeaderHeight = 12
+    const boxPadding = 5
+    const boxHeaderHeight = 9
     const boxHeight = boxPadding * 2 + boxHeaderHeight + detailRows * rowHeight + 2
 
     // Box background
@@ -292,14 +291,14 @@ export async function GET(
     const boxContentY = y + boxPadding
 
     // "Event Details" header
-    doc.setFontSize(11)
+    doc.setFontSize(9.5)
     doc.setFont("helvetica", "bold")
     doc.setTextColor(...primary)
     doc.text("Event Details", labelX, boxContentY + 4)
 
     let detailY = boxContentY + boxHeaderHeight + 2
 
-    doc.setFontSize(10)
+    doc.setFontSize(9)
 
     // Date
     doc.setFont("helvetica", "bold")
@@ -340,13 +339,11 @@ export async function GET(
       doc.text(attendee.registration_number, valueX, detailY)
     }
 
-    y += boxHeight + 14
+    y += boxHeight + 8
 
     // === SPEAKER SESSIONS TABLE ===
     if (speakerSessions.length > 0) {
-      if (y > pageHeight - 100) { doc.addPage(); y = 25 }
-
-      doc.setFontSize(11)
+      doc.setFontSize(9.5)
       doc.setFont("helvetica", "bold")
       doc.setTextColor(...primary)
       doc.text("Your Sessions", margin, y)
@@ -406,48 +403,15 @@ export async function GET(
       y += 8
     }
 
-    // === DESCRIPTION ===
-    if (event.description) {
-      doc.setTextColor(...body)
-      doc.setFontSize(10.5)
-      doc.setFont("helvetica", "normal")
-
-      let desc = event.description
-      if (desc.length > 600) {
-        desc = desc.substring(0, 597) + "..."
-      }
-
-      const descLines = doc.splitTextToSize(desc, contentWidth)
-      if (y + descLines.length * 5.5 > pageHeight - 70) {
-        doc.addPage()
-        y = 25
-      }
-      doc.text(descLines, margin, y, { lineHeightFactor: 1.5 })
-      y += descLines.length * 6 + 10
-    }
-
     // === CLOSING ===
-    if (y > pageHeight - 85) {
-      doc.addPage()
-      y = 25
-    }
-
     doc.setTextColor(...body)
-    doc.setFontSize(10.5)
+    doc.setFontSize(9.5)
     doc.setFont("helvetica", "normal")
-    doc.text(
-      "We look forward to your esteemed presence and participation.",
-      margin,
-      y
-    )
-    y += 7
-    doc.text(
-      "Kindly make necessary arrangements to attend.",
-      margin,
-      y
-    )
+    doc.text("We look forward to your esteemed presence and participation.", margin, y)
+    y += 5
+    doc.text("Kindly make necessary arrangements to attend.", margin, y)
 
-    y += 18
+    y += 12
 
     // === SIGNATURE ===
     // Determine signer details: use speaker_invitation settings if type=speaker and settings exist
@@ -470,9 +434,9 @@ export async function GET(
       : event.signature_image_url
 
     doc.setTextColor(...body)
-    doc.setFontSize(10.5)
+    doc.setFontSize(9.5)
     doc.text("With warm regards,", margin, y)
-    y += 10
+    y += 6
 
     // Signature image (if uploaded)
     if (signerImageUrl) {
@@ -499,12 +463,12 @@ export async function GET(
 
     if (signerName) {
       doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
+      doc.setFontSize(10)
       doc.setTextColor(...dark)
       doc.text(signerName, margin, y)
-      y += 7
+      y += 5
       doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
+      doc.setFontSize(9)
       doc.setTextColor(...muted)
       doc.text(signerTitle, margin, y)
     }
