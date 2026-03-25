@@ -489,9 +489,24 @@ export default function SpeakerPortalPage() {
 
               {portalRegistration.status === "confirmed" && (
                 <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
-                  <div className="flex items-center gap-2 text-green-400">
-                    <CheckCircle className="h-5 w-5" />
-                    <span className="font-medium">Your participation is confirmed!</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-green-400">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">Your participation is confirmed!</span>
+                    </div>
+                    {event?.id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-green-400/50 text-green-300 hover:bg-green-500/20"
+                        onClick={() => {
+                          window.open(`/api/events/${event.id}/invitation-pdf?type=speaker&name=${encodeURIComponent(faculty?.name || "")}&email=${encodeURIComponent(faculty?.email || "")}`, "_blank")
+                        }}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Invitation
+                      </Button>
+                    )}
                   </div>
                 </div>
               )}
