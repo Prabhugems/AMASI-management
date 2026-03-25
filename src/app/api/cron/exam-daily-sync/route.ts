@@ -2,10 +2,10 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
 const AMASI_API = "https://application.amasi.org/api/member_detail_data"
-const FILLOUT_KEY = process.env.FILLOUT_API_KEY || ""
-const AIRTABLE_PAT = process.env.AIRTABLE_PAT || ""
-const AIRTABLE_BASE = process.env.AIRTABLE_CONVOCATION_BASE || ""
-const AIRTABLE_TABLE = process.env.AIRTABLE_CONVOCATION_TABLE || ""
+const FILLOUT_KEY = (process.env.FILLOUT_API_KEY || "").trim()
+const AIRTABLE_PAT = (process.env.AIRTABLE_PAT || "").trim()
+const AIRTABLE_BASE = (process.env.AIRTABLE_CONVOCATION_BASE || "").trim()
+const AIRTABLE_TABLE = (process.env.AIRTABLE_CONVOCATION_TABLE || "").trim()
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
 
