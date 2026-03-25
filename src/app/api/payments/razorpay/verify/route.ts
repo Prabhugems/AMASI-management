@@ -4,9 +4,6 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 import { isQikchatEnabled, sendQikchatText } from "@/lib/qikchat"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let supabase: any
-
 // Generate registration number
 function generateRegistrationNumber(prefix?: string): string {
   const date = new Date()
@@ -18,7 +15,8 @@ function generateRegistrationNumber(prefix?: string): string {
 }
 
 // Get custom registration number from event settings
-async function getNextRegistrationNumber(eventId: string): Promise<string> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getNextRegistrationNumber(supabase: any, eventId: string): Promise<string> {
   const { data: settings } = await supabase
     .from("event_settings")
     .select("customize_registration_id, registration_prefix, registration_start_number, registration_suffix, current_registration_number")
@@ -50,7 +48,7 @@ async function getNextRegistrationNumber(eventId: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    supabase = await createAdminClient() as any
+    const supabase = await createAdminClient() as any
     const body = await request.json()
     const {
       razorpay_order_id,
@@ -270,6 +268,7 @@ export async function POST(request: NextRequest) {
     // ============================================================
     if (existingMetadata.order_id) {
       return await handleGroupRegistration(
+        supabase,
         paymentData,
         existingMetadata,
         razorpay_payment_id
@@ -285,6 +284,7 @@ export async function POST(request: NextRequest) {
       // Add addons to the existing registration
       if (existingMetadata.addons_selection?.length > 0) {
         await createRegistrationAddons(
+          supabase,
           existingMetadata.registration_id,
           existingMetadata.addons_selection
         )
@@ -381,7 +381,7 @@ export async function POST(request: NextRequest) {
         if (body.payer_phone) paymentData.payer_phone = body.payer_phone
       }
 
-      const created = await createRegistrationFromPayment(paymentData, mergedMetadata)
+      const created = await createRegistrationFromPayment(supabase, paymentData, mergedMetadata)
       if (created) {
         finalRegistration = created
         console.log(`[VERIFY] Created registration: ${created.registration_number}`)
@@ -395,6 +395,7 @@ export async function POST(request: NextRequest) {
     // ============================================================
     if (finalRegistration) {
       await incrementTicketSold(
+        supabase,
         finalRegistration.ticket_type_id,
         finalRegistration.quantity || 1,
         paymentData.id // Use payment_id for idempotency
@@ -403,6 +404,7 @@ export async function POST(request: NextRequest) {
       // Create registration_addons if addons were purchased
       if (existingMetadata.addons_selection?.length > 0) {
         await createRegistrationAddons(
+          supabase,
           finalRegistration.id,
           existingMetadata.addons_selection
         )
@@ -410,7 +412,7 @@ export async function POST(request: NextRequest) {
 
       // Trigger auto actions (receipt, badge, certificate)
       if (paymentData.event_id) {
-        triggerAutoActions(finalRegistration.id, paymentData.event_id).catch(console.error)
+        triggerAutoActions(supabase, finalRegistration.id, paymentData.event_id).catch(console.error)
       }
 
       // Send WhatsApp confirmation (non-blocking)
@@ -476,6 +478,7 @@ export async function POST(request: NextRequest) {
 // HELPER: Handle group registration
 // ============================================================
 async function handleGroupRegistration(
+  supabase: any,
   paymentData: any,
   metadata: any,
   razorpayPaymentId: string
@@ -533,13 +536,13 @@ async function handleGroupRegistration(
     }
 
     for (const [ticketId, count] of ticketCounts) {
-      await incrementTicketSold(ticketId, count, paymentData.id)
+      await incrementTicketSold(supabase, ticketId, count, paymentData.id)
     }
 
     // Trigger auto actions for each registration
     if (paymentData.event_id) {
       for (const reg of registrations) {
-        triggerAutoActions(reg.id, paymentData.event_id).catch(console.error)
+        triggerAutoActions(supabase, reg.id, paymentData.event_id).catch(console.error)
       }
     }
   }
@@ -558,75 +561,87 @@ async function handleGroupRegistration(
 // ============================================================
 // HELPER: Create registration from payment metadata (SAFETY NET)
 // ============================================================
-async function createRegistrationFromPayment(paymentData: any, metadata: any) {
-  const ticketDetails = metadata.validated_tickets?.[0]
+async function createRegistrationFromPayment(supabase: any, paymentData: any, metadata: any) {
+  const validatedTickets = metadata.validated_tickets || []
+  const firstTicket = validatedTickets[0]
 
-  if (!ticketDetails && !paymentData.event_id) {
+  if (!firstTicket && !paymentData.event_id) {
     console.error("[VERIFY] Cannot create registration - no ticket details or event_id")
     return null
   }
 
-  // Get ticket type if not in metadata
-  let ticketTypeId = ticketDetails?.ticket_type_id
-  if (!ticketTypeId && paymentData.event_id) {
-    const { data: defaultTicket } = await supabase
-      .from("ticket_types")
-      .select("id")
-      .eq("event_id", paymentData.event_id)
-      .eq("status", "active")
-      .order("sort_order", { ascending: true })
-      .limit(1)
-      .single()
-
-    ticketTypeId = defaultTicket?.id
-  }
-
-  // Generate registration number
-  const registrationNumber = await getNextRegistrationNumber(paymentData.event_id)
-
   // Use registration_data from metadata for attendee details (set by verify body or create-order)
   const regData = metadata.registration_data || {}
 
-  const registrationData = {
-    registration_number: registrationNumber,
-    event_id: paymentData.event_id,
-    ticket_type_id: ticketTypeId,
-    attendee_name: regData.attendee_name || paymentData.payer_name || "Pending Verification",
-    attendee_email: regData.attendee_email || paymentData.payer_email,
-    attendee_phone: regData.attendee_phone || paymentData.payer_phone,
-    quantity: ticketDetails?.quantity || 1,
-    unit_price: ticketDetails?.price || paymentData.amount,
-    total_amount: paymentData.amount,
-    status: "confirmed",
-    payment_status: "completed",
-    payment_id: paymentData.id,
-    confirmed_at: new Date().toISOString(),
-    custom_fields: {
-      ...(regData.custom_fields || {}),
-      auto_created_from_payment: true,
-      created_at: new Date().toISOString(),
-    },
+  // If there are multiple tickets, create a registration for each
+  const ticketsToProcess = validatedTickets.length > 0
+    ? validatedTickets
+    : [null] // null sentinel means "use defaults"
+
+  let firstRegistration: any = null
+
+  for (const ticketDetails of ticketsToProcess) {
+    // Get ticket type if not in metadata
+    let ticketTypeId = ticketDetails?.ticket_type_id
+    if (!ticketTypeId && paymentData.event_id) {
+      const { data: defaultTicket } = await supabase
+        .from("ticket_types")
+        .select("id")
+        .eq("event_id", paymentData.event_id)
+        .eq("status", "active")
+        .order("sort_order", { ascending: true })
+        .limit(1)
+        .single()
+
+      ticketTypeId = defaultTicket?.id
+    }
+
+    // Generate registration number
+    const registrationNumber = await getNextRegistrationNumber(supabase, paymentData.event_id)
+
+    const registrationData = {
+      registration_number: registrationNumber,
+      event_id: paymentData.event_id,
+      ticket_type_id: ticketTypeId,
+      attendee_name: ticketDetails?.attendee_name || regData.attendee_name || paymentData.payer_name || "Pending Verification",
+      attendee_email: ticketDetails?.attendee_email || regData.attendee_email || paymentData.payer_email,
+      attendee_phone: ticketDetails?.attendee_phone || regData.attendee_phone || paymentData.payer_phone,
+      quantity: ticketDetails?.quantity || 1,
+      unit_price: ticketDetails?.price || paymentData.amount,
+      total_amount: ticketDetails?.total_price || paymentData.amount,
+      status: "confirmed",
+      payment_status: "completed",
+      payment_id: paymentData.id,
+      confirmed_at: new Date().toISOString(),
+      custom_fields: {
+        ...(regData.custom_fields || {}),
+        auto_created_from_payment: true,
+        created_at: new Date().toISOString(),
+      },
+    }
+
+    const { data: registration, error } = await supabase
+      .from("registrations")
+      .insert(registrationData as any)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("[VERIFY] Failed to create registration from payment:", error)
+      continue
+    }
+
+    console.log(`[VERIFY] Auto-created registration: ${registrationNumber} for payment ${paymentData.id}`)
+    if (!firstRegistration) firstRegistration = registration
   }
 
-  const { data: registration, error } = await supabase
-    .from("registrations")
-    .insert(registrationData as any)
-    .select()
-    .single()
-
-  if (error) {
-    console.error("[VERIFY] Failed to create registration from payment:", error)
-    return null
-  }
-
-  console.log(`[VERIFY] Auto-created registration: ${registrationNumber} for payment ${paymentData.id}`)
-  return registration
+  return firstRegistration
 }
 
 // ============================================================
 // HELPER: Increment ticket quantity_sold (ATOMIC with RPC)
 // ============================================================
-async function incrementTicketSold(ticketTypeId: string, quantity: number, paymentId: string) {
+async function incrementTicketSold(supabase: any, ticketTypeId: string, quantity: number, paymentId: string) {
   if (!ticketTypeId) return
 
   try {
@@ -640,7 +655,7 @@ async function incrementTicketSold(ticketTypeId: string, quantity: number, payme
     if (error) {
       // Fallback to non-atomic update if RPC doesn't exist yet
       console.log(`[VERIFY] RPC not available, using fallback: ${error.message}`)
-      await incrementTicketSoldFallback(ticketTypeId, quantity, paymentId)
+      await incrementTicketSoldFallback(supabase, ticketTypeId, quantity, paymentId)
       return
     }
 
@@ -655,12 +670,12 @@ async function incrementTicketSold(ticketTypeId: string, quantity: number, payme
   } catch (err) {
     console.error(`[VERIFY] Error in atomic increment:`, err)
     // Fallback
-    await incrementTicketSoldFallback(ticketTypeId, quantity, paymentId)
+    await incrementTicketSoldFallback(supabase, ticketTypeId, quantity, paymentId)
   }
 }
 
 // Fallback for when RPC is not yet deployed
-async function incrementTicketSoldFallback(ticketTypeId: string, quantity: number, paymentId: string) {
+async function incrementTicketSoldFallback(supabase: any, ticketTypeId: string, quantity: number, paymentId: string) {
   const { data: ticket } = await supabase
     .from("ticket_types")
     .select("quantity_sold, metadata")
@@ -694,7 +709,7 @@ async function incrementTicketSoldFallback(ticketTypeId: string, quantity: numbe
 // ============================================================
 // HELPER: Create registration addons
 // ============================================================
-async function createRegistrationAddons(registrationId: string, addonsSelection: any[]) {
+async function createRegistrationAddons(supabase: any, registrationId: string, addonsSelection: any[]) {
   if (!addonsSelection || addonsSelection.length === 0) return
 
   // Get existing addons to avoid duplicates
@@ -741,7 +756,7 @@ async function createRegistrationAddons(registrationId: string, addonsSelection:
 // ============================================================
 // HELPER: Trigger auto actions (receipt, badge, certificate)
 // ============================================================
-async function triggerAutoActions(registrationId: string, eventId: string) {
+async function triggerAutoActions(supabase: any, registrationId: string, eventId: string) {
   try {
     // Fetch event settings
     const { data: eventSettings } = await supabase

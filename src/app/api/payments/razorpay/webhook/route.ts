@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { verifyWebhookSignature } from "@/lib/services/razorpay"
 import { createAdminClient } from "@/lib/supabase/server"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let supabase: any
-
 // Razorpay webhook events we handle
 type WebhookEvent =
   | "payment.captured"
@@ -46,7 +43,8 @@ interface WebhookPayload {
 /**
  * Get event-specific webhook secret or fall back to default
  */
-async function getWebhookSecret(orderId: string): Promise<string | null> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getWebhookSecret(supabase: any, orderId: string): Promise<string | null> {
   const { data: payment } = await supabase
     .from("payments")
     .select("event_id")
@@ -73,7 +71,7 @@ async function getWebhookSecret(orderId: string): Promise<string | null> {
 /**
  * Get order_id from payment_id (for refund webhooks)
  */
-async function getOrderIdFromPaymentId(paymentId: string): Promise<string | null> {
+async function getOrderIdFromPaymentId(supabase: any, paymentId: string): Promise<string | null> {
   const { data: payment } = await supabase
     .from("payments")
     .select("razorpay_order_id")
@@ -95,7 +93,7 @@ function generateRegistrationNumber(): string {
 }
 
 // Get custom registration number from event settings
-async function getNextRegistrationNumber(eventId: string): Promise<string> {
+async function getNextRegistrationNumber(supabase: any, eventId: string): Promise<string> {
   const { data: settings } = await supabase
     .from("event_settings")
     .select("customize_registration_id, registration_prefix, registration_start_number, registration_suffix, current_registration_number")
@@ -126,7 +124,7 @@ async function getNextRegistrationNumber(eventId: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    supabase = await createAdminClient() as any
+    const supabase = await createAdminClient() as any
 
     // Get raw body for signature verification
     const rawBody = await request.text()
@@ -143,11 +141,11 @@ export async function POST(request: NextRequest) {
     // Get the order_id to look up event-specific webhook secret
     const orderId = payload.payload.payment?.entity?.order_id
       || (payload.payload.refund?.entity?.payment_id
-        ? await getOrderIdFromPaymentId(payload.payload.refund.entity.payment_id)
+        ? await getOrderIdFromPaymentId(supabase, payload.payload.refund.entity.payment_id)
         : null)
 
     // Get the appropriate webhook secret
-    const webhookSecret = orderId ? await getWebhookSecret(orderId) : process.env.RAZORPAY_WEBHOOK_SECRET?.trim()
+    const webhookSecret = orderId ? await getWebhookSecret(supabase, orderId) : process.env.RAZORPAY_WEBHOOK_SECRET?.trim()
 
     if (!webhookSecret) {
       console.error("[WEBHOOK] No webhook secret configured")
@@ -174,7 +172,7 @@ export async function POST(request: NextRequest) {
         if (!payment) break
 
         console.log(`[WEBHOOK] Payment captured: ${payment.id}, Order: ${payment.order_id}`)
-        await handlePaymentCaptured(payment)
+        await handlePaymentCaptured(supabase, payment)
         break
       }
 
@@ -182,7 +180,7 @@ export async function POST(request: NextRequest) {
         const payment = payload.payload.payment?.entity
         if (!payment) break
 
-        await handlePaymentFailed(payment)
+        await handlePaymentFailed(supabase, payment)
         break
       }
 
@@ -190,7 +188,7 @@ export async function POST(request: NextRequest) {
         const refund = payload.payload.refund?.entity
         if (!refund) break
 
-        await handleRefundProcessed(refund)
+        await handleRefundProcessed(supabase, refund)
         break
       }
 
@@ -215,7 +213,7 @@ export async function POST(request: NextRequest) {
 // ============================================================
 // HANDLER: Payment Captured
 // ============================================================
-async function handlePaymentCaptured(razorpayPayment: any) {
+async function handlePaymentCaptured(supabase: any, razorpayPayment: any) {
   // Find existing payment record
   const { data: paymentRecord, error: paymentFetchError } = await supabase
     .from("payments")
@@ -228,8 +226,8 @@ async function handlePaymentCaptured(razorpayPayment: any) {
   if (paymentFetchError || !paymentData) {
     // ORPHAN PAYMENT: Received from Razorpay but not in our database
     console.log(`[WEBHOOK] ORPHAN PAYMENT: ${razorpayPayment.order_id} not found in database`)
-    await createOrphanPaymentRecord(razorpayPayment)
-    await logPaymentAlert(null, "orphan_webhook", `Received payment ${razorpayPayment.id} not found in database`)
+    await createOrphanPaymentRecord(supabase, razorpayPayment)
+    await logPaymentAlert(supabase, null, "orphan_webhook", `Received payment ${razorpayPayment.id} not found in database`)
     return
   }
 
@@ -260,7 +258,7 @@ async function handlePaymentCaptured(razorpayPayment: any) {
       if (!emailReg) {
         // Payment completed but no registration found - create one as safety net
         console.log(`[WEBHOOK] Payment completed but no registration found - creating one`)
-        await createRegistrationFromPayment(paymentData, paymentData.metadata || {})
+        await createRegistrationFromPayment(supabase, paymentData, paymentData.metadata || {})
       } else {
         console.log(`[WEBHOOK] Registration found by email for payment ${paymentData.id}: ${emailReg.id}`)
         // Link registration to payment if not already linked
@@ -304,7 +302,7 @@ async function handlePaymentCaptured(razorpayPayment: any) {
   // Handle Group Registration
   // ============================================================
   if (existingMetadata.order_id) {
-    await handleGroupRegistrationWebhook(paymentData, existingMetadata)
+    await handleGroupRegistrationWebhook(supabase, paymentData, existingMetadata)
     return
   }
 
@@ -319,23 +317,23 @@ async function handlePaymentCaptured(razorpayPayment: any) {
   if (!registrations || registrations.length === 0) {
     // NO REGISTRATION - Create from payment metadata!
     console.log(`[WEBHOOK] No registration found - creating from payment metadata`)
-    const newReg = await createRegistrationFromPayment(paymentData, existingMetadata)
+    const newReg = await createRegistrationFromPayment(supabase, paymentData, existingMetadata)
 
     if (newReg) {
-      await incrementTicketSold(newReg.ticket_type_id, newReg.quantity || 1, paymentData.id)
+      await incrementTicketSold(supabase, newReg.ticket_type_id, newReg.quantity || 1, paymentData.id)
 
       // Create addons if any
       if (existingMetadata.addons_selection?.length > 0) {
-        await createRegistrationAddons(newReg.id, existingMetadata.addons_selection)
+        await createRegistrationAddons(supabase, newReg.id, existingMetadata.addons_selection)
       }
 
       // Trigger auto actions
       if (paymentData.event_id) {
-        triggerAutoActions(newReg.id, paymentData.event_id).catch(console.error)
+        triggerAutoActions(supabase, newReg.id, paymentData.event_id).catch(console.error)
       }
     }
 
-    await logPaymentAlert(paymentData.id, "orphan_payment",
+    await logPaymentAlert(supabase, paymentData.id, "orphan_payment",
       `Payment ${razorpayPayment.id} completed but no registration found. Auto-registration created.`)
     return
   }
@@ -353,13 +351,13 @@ async function handlePaymentCaptured(razorpayPayment: any) {
         .eq("id", reg.id)
 
       // Increment ticket count
-      await incrementTicketSold(reg.ticket_type_id, reg.quantity || 1, paymentData.id)
+      await incrementTicketSold(supabase, reg.ticket_type_id, reg.quantity || 1, paymentData.id)
 
       console.log(`[WEBHOOK] Auto-confirmed registration ${reg.id}`)
 
       // Trigger auto actions
       if (paymentData.event_id) {
-        triggerAutoActions(reg.id, paymentData.event_id).catch(console.error)
+        triggerAutoActions(supabase, reg.id, paymentData.event_id).catch(console.error)
       }
     }
   }
@@ -370,15 +368,23 @@ async function handlePaymentCaptured(razorpayPayment: any) {
 // ============================================================
 // HANDLER: Payment Failed
 // ============================================================
-async function handlePaymentFailed(razorpayPayment: any) {
+async function handlePaymentFailed(supabase: any, razorpayPayment: any) {
   // Fetch existing payment to preserve metadata
   const { data: existingPayment } = await supabase
     .from("payments")
-    .select("metadata")
+    .select("status, metadata")
     .eq("razorpay_order_id", razorpayPayment.order_id)
     .single()
 
-  const existingMetadata = (existingPayment as any)?.metadata || {}
+  const existingData = existingPayment as any
+
+  // Don't overwrite a completed payment with failed status
+  if (existingData?.status === "completed") {
+    console.log(`[WEBHOOK] Payment already completed, ignoring failed webhook: ${razorpayPayment.order_id}`)
+    return
+  }
+
+  const existingMetadata = existingData?.metadata || {}
 
   await supabase
     .from("payments")
@@ -402,7 +408,7 @@ async function handlePaymentFailed(razorpayPayment: any) {
 // ============================================================
 // HANDLER: Refund Processed
 // ============================================================
-async function handleRefundProcessed(refund: any) {
+async function handleRefundProcessed(supabase: any, refund: any) {
   // Update payment with refund details
   const { data: paymentRecord } = await supabase
     .from("payments")
@@ -444,7 +450,7 @@ async function handleRefundProcessed(refund: any) {
 // ============================================================
 // HANDLER: Group Registration via Webhook
 // ============================================================
-async function handleGroupRegistrationWebhook(paymentData: any, metadata: any) {
+async function handleGroupRegistrationWebhook(supabase: any, paymentData: any, metadata: any) {
   const orderId = metadata.order_id
   const buyerId = metadata.buyer_id
 
@@ -484,10 +490,10 @@ async function handleGroupRegistrationWebhook(paymentData: any, metadata: any) {
           })
           .eq("id", reg.id)
 
-        await incrementTicketSold(reg.ticket_type_id, reg.quantity || 1, paymentData.id)
+        await incrementTicketSold(supabase, reg.ticket_type_id, reg.quantity || 1, paymentData.id)
 
         if (paymentData.event_id) {
-          triggerAutoActions(reg.id, paymentData.event_id).catch(console.error)
+          triggerAutoActions(supabase, reg.id, paymentData.event_id).catch(console.error)
         }
       }
     }
@@ -499,7 +505,7 @@ async function handleGroupRegistrationWebhook(paymentData: any, metadata: any) {
 // ============================================================
 // HELPER: Create orphan payment record
 // ============================================================
-async function createOrphanPaymentRecord(razorpayPayment: any) {
+async function createOrphanPaymentRecord(supabase: any, razorpayPayment: any) {
   const paymentNumber = `ORPHAN-${Date.now().toString(36).toUpperCase()}`
   const eventId = razorpayPayment.notes?.event_id || null
   const payerEmail = razorpayPayment.email || razorpayPayment.notes?.payer_email || "unknown@unknown.com"
@@ -569,7 +575,7 @@ async function createOrphanPaymentRecord(razorpayPayment: any) {
       const matchedTicket = tickets?.find((t: any) => Math.abs(t.price - amount) < 200) || tickets?.[0]
 
       if (matchedTicket) {
-        const regNumber = await getNextRegistrationNumber(eventId)
+        const regNumber = await getNextRegistrationNumber(supabase, eventId)
 
         await supabase.from("registrations").insert({
           event_id: eventId,
@@ -601,7 +607,7 @@ async function createOrphanPaymentRecord(razorpayPayment: any) {
 // ============================================================
 // HELPER: Create registration from payment metadata
 // ============================================================
-async function createRegistrationFromPayment(paymentData: any, metadata: any) {
+async function createRegistrationFromPayment(supabase: any, paymentData: any, metadata: any) {
   // Double-check: a registration might have been created by the frontend in the meantime
   const { data: existingReg } = await supabase
     .from("registrations")
@@ -668,7 +674,7 @@ async function createRegistrationFromPayment(paymentData: any, metadata: any) {
     return null
   }
 
-  const registrationNumber = await getNextRegistrationNumber(paymentData.event_id)
+  const registrationNumber = await getNextRegistrationNumber(supabase, paymentData.event_id)
 
   // Pull registration data from payment metadata if available
   const regData = metadata.registration_data || {}
@@ -722,7 +728,7 @@ async function createRegistrationFromPayment(paymentData: any, metadata: any) {
 // ============================================================
 // HELPER: Increment ticket quantity_sold (ATOMIC with RPC)
 // ============================================================
-async function incrementTicketSold(ticketTypeId: string, quantity: number, paymentId: string) {
+async function incrementTicketSold(supabase: any, ticketTypeId: string, quantity: number, paymentId: string) {
   if (!ticketTypeId) return
 
   try {
@@ -736,7 +742,7 @@ async function incrementTicketSold(ticketTypeId: string, quantity: number, payme
     if (error) {
       // Fallback to non-atomic update if RPC doesn't exist yet
       console.log(`[WEBHOOK] RPC not available, using fallback: ${error.message}`)
-      await incrementTicketSoldFallback(ticketTypeId, quantity, paymentId)
+      await incrementTicketSoldFallback(supabase, ticketTypeId, quantity, paymentId)
       return
     }
 
@@ -751,12 +757,12 @@ async function incrementTicketSold(ticketTypeId: string, quantity: number, payme
   } catch (err) {
     console.error(`[WEBHOOK] Error in atomic increment:`, err)
     // Fallback
-    await incrementTicketSoldFallback(ticketTypeId, quantity, paymentId)
+    await incrementTicketSoldFallback(supabase, ticketTypeId, quantity, paymentId)
   }
 }
 
 // Fallback for when RPC is not yet deployed
-async function incrementTicketSoldFallback(ticketTypeId: string, quantity: number, paymentId: string) {
+async function incrementTicketSoldFallback(supabase: any, ticketTypeId: string, quantity: number, paymentId: string) {
   const { data: ticket } = await supabase
     .from("ticket_types")
     .select("quantity_sold, metadata")
@@ -790,7 +796,7 @@ async function incrementTicketSoldFallback(ticketTypeId: string, quantity: numbe
 // ============================================================
 // HELPER: Create registration addons
 // ============================================================
-async function createRegistrationAddons(registrationId: string, addonsSelection: any[]) {
+async function createRegistrationAddons(supabase: any, registrationId: string, addonsSelection: any[]) {
   if (!addonsSelection || addonsSelection.length === 0) return
 
   const { data: existing } = await supabase
@@ -827,7 +833,7 @@ async function createRegistrationAddons(registrationId: string, addonsSelection:
 // ============================================================
 // HELPER: Log payment alert
 // ============================================================
-async function logPaymentAlert(paymentId: string | null, alertType: string, message: string) {
+async function logPaymentAlert(supabase: any, paymentId: string | null, alertType: string, message: string) {
   console.log(`[PAYMENT ALERT] ${alertType}: ${message}`)
 
   try {
@@ -847,7 +853,7 @@ async function logPaymentAlert(paymentId: string | null, alertType: string, mess
 // ============================================================
 // HELPER: Trigger auto actions
 // ============================================================
-async function triggerAutoActions(registrationId: string, eventId: string) {
+async function triggerAutoActions(supabase: any, registrationId: string, eventId: string) {
   try {
     const { data: eventSettings } = await supabase
       .from("event_settings")

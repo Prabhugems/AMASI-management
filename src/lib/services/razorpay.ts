@@ -106,7 +106,7 @@ export function verifyPaymentSignature(
   signature: string,
   keySecret?: string
 ): boolean {
-  const secret = keySecret || process.env.RAZORPAY_KEY_SECRET!
+  const secret = keySecret || process.env.RAZORPAY_KEY_SECRET?.trim() || ""
   const body = orderId + "|" + paymentId
   const expectedSignature = crypto
     .createHmac("sha256", secret)
@@ -135,7 +135,7 @@ export function verifyWebhookSignature(
   signature: string,
   webhookSecret?: string
 ): boolean {
-  const secret = webhookSecret || process.env.RAZORPAY_WEBHOOK_SECRET!
+  const secret = webhookSecret || process.env.RAZORPAY_WEBHOOK_SECRET?.trim() || ""
   const expectedSignature = crypto
     .createHmac("sha256", secret)
     .update(body)
