@@ -32,6 +32,8 @@ import {
   ArrowRight,
   AlertTriangle,
   CheckCircle2,
+  FileText,
+  Download,
 } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import { cn } from "@/lib/utils"
@@ -971,6 +973,33 @@ export default function SpeakerPortalPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Download Invitation Letter */}
+            {confirmedCount > 0 && event?.id && (
+              <Card className="bg-gradient-to-r from-blue-600/20 to-indigo-600/20 backdrop-blur border-blue-500/30">
+                <CardContent className="py-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-white flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-blue-400" />
+                        Invitation Letter
+                      </h4>
+                      <p className="text-sm text-white/60 mt-1">Download for your institution / travel approval</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="border-blue-400/50 text-blue-300 hover:bg-blue-500/20"
+                      onClick={() => {
+                        window.open(`/api/events/${event.id}/invitation-pdf?name=${encodeURIComponent(faculty?.name || "")}&email=${encodeURIComponent(faculty?.email || "")}`, "_blank")
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download PDF
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Journey Itinerary (if booking exists) */}
             {registration?.custom_fields?.booking && (
