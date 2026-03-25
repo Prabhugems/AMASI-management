@@ -614,7 +614,7 @@ function RegistrationsContent() {
         const res = await fetch(`/api/registrations/${id}/cancel`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ refund_now: true }),
           credentials: "include",
         })
         if (!res.ok) {
@@ -1794,13 +1794,7 @@ function RegistrationsContent() {
                               Cancel
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => setDeleteConfirm(reg.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
+                          {/* Delete removed — use Cancel instead */}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
