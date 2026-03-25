@@ -633,6 +633,85 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Trigger auto-actions (badge, certificate) for confirmed registrations
+    if (initialStatus === "confirmed" && event_id) {
+      const internalHeaders = {
+        "Content-Type": "application/json",
+        "x-internal-secret": process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "",
+      }
+
+      // Check event settings for auto-actions
+      const { data: eventSettings } = await (supabase as any)
+        .from("event_settings")
+        .select("auto_generate_badge, auto_email_badge, auto_generate_certificate, auto_email_certificate")
+        .eq("event_id", event_id)
+        .maybeSingle()
+
+      // Auto-generate badge
+      if (eventSettings?.auto_generate_badge) {
+        const { data: badgeTemplate } = await (supabase as any)
+          .from("badge_templates")
+          .select("id")
+          .eq("event_id", event_id)
+          .eq("is_default", true)
+          .maybeSingle()
+
+        if (badgeTemplate) {
+          fetch(`${baseUrl}/api/badges/generate`, {
+            method: "POST",
+            headers: internalHeaders,
+            body: JSON.stringify({
+              template_id: badgeTemplate.id,
+              registration_ids: [registration.id],
+            }),
+          }).then(async (res) => {
+            if (res.ok) {
+              console.log(`[AUTO] Badge generated for ${registrationNumber}`)
+              if (eventSettings?.auto_email_badge) {
+                fetch(`${baseUrl}/api/badges/email`, {
+                  method: "POST",
+                  headers: internalHeaders,
+                  body: JSON.stringify({ registration_id: registration.id }),
+                }).catch(err => console.error("[AUTO] Badge email failed:", err))
+              }
+            }
+          }).catch(err => console.error("[AUTO] Badge generation failed:", err))
+        }
+      }
+
+      // Auto-generate certificate
+      if (eventSettings?.auto_generate_certificate) {
+        const { data: certTemplate } = await (supabase as any)
+          .from("certificate_templates")
+          .select("id")
+          .eq("event_id", event_id)
+          .eq("is_default", true)
+          .maybeSingle()
+
+        if (certTemplate) {
+          fetch(`${baseUrl}/api/certificates/generate`, {
+            method: "POST",
+            headers: internalHeaders,
+            body: JSON.stringify({
+              template_id: certTemplate.id,
+              registration_ids: [registration.id],
+            }),
+          }).then(async (res) => {
+            if (res.ok) {
+              console.log(`[AUTO] Certificate generated for ${registrationNumber}`)
+              if (eventSettings?.auto_email_certificate) {
+                fetch(`${baseUrl}/api/certificates/email`, {
+                  method: "POST",
+                  headers: internalHeaders,
+                  body: JSON.stringify({ registration_id: registration.id }),
+                }).catch(err => console.error("[AUTO] Certificate email failed:", err))
+              }
+            }
+          }).catch(err => console.error("[AUTO] Certificate generation failed:", err))
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: registration,
