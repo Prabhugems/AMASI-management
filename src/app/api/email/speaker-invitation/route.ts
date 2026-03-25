@@ -5,6 +5,7 @@ import { shortenSpeakerPortalUrl } from "@/lib/linkila"
 import { escapeHtml } from "@/lib/string-utils"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 const PRODUCTION_URL = process.env.NEXT_PUBLIC_APP_URL || ""
 
@@ -330,6 +331,9 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
 // POST /api/email/speaker-invitation - Send speaker invitation email
 export async function POST(request: NextRequest) {
   try {
+    const { user } = await getApiUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     // Pre-flight check: fail fast with clear message
     if (!isEmailEnabled()) {
       return NextResponse.json(

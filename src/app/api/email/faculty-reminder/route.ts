@@ -4,6 +4,7 @@ import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { logEmail } from "@/lib/email-tracking"
 import { escapeHtml } from "@/lib/string-utils"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 const PRODUCTION_URL = process.env.NEXT_PUBLIC_APP_URL || ""
 
@@ -44,6 +45,9 @@ function formatDate(dateStr: string) {
 // POST /api/email/faculty-reminder - Send faculty reminder email
 export async function POST(request: NextRequest) {
   try {
+    const { user } = await getApiUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const body: FacultyReminderData = await request.json()
     const {
       assignment_id,

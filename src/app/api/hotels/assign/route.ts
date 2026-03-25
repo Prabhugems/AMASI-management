@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 // POST /api/hotels/assign - Bulk assign guests to a hotel
 export async function POST(request: NextRequest) {
   try {
+    // Auth check - require logged-in user
+    const { error: authError } = await getApiUser()
+    if (authError) return authError
+
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
 

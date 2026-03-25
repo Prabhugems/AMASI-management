@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 export async function POST(request: NextRequest) {
   try {
+    // Auth check - require logged-in user
+    const { error: authError } = await getApiUser()
+    if (authError) return authError
+
     const supabaseClient = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any

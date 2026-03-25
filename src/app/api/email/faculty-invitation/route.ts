@@ -4,6 +4,7 @@ import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { logEmail } from "@/lib/email-tracking"
 import { escapeHtml } from "@/lib/string-utils"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 const PRODUCTION_URL = process.env.NEXT_PUBLIC_APP_URL || ""
 

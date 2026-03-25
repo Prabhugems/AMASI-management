@@ -4,10 +4,14 @@ import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { logEmail } from "@/lib/email-tracking"
 import { escapeHtml } from "@/lib/string-utils"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 // POST /api/email/feedback-reminder - Send feedback reminder email to attendee
 export async function POST(request: NextRequest) {
   try {
+    const { user } = await getApiUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const { registration_id, event_id, form_id, form_name } = await request.json()
 
     if (!registration_id) {

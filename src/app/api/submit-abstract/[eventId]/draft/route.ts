@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // POST /api/submit-abstract/[eventId]/draft - Save draft
 export async function POST(
@@ -7,6 +8,11 @@ export async function POST(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    // Rate limit check for public endpoint
+    const ip = getClientIp(request)
+    const rateLimitResult = checkRateLimit(ip, "public")
+    if (!rateLimitResult.success) return rateLimitExceededResponse(rateLimitResult)
+
     const { eventId } = await params
     const body = await request.json()
 
@@ -74,6 +80,11 @@ export async function GET(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    // Rate limit check for public endpoint
+    const ip = getClientIp(request)
+    const rateLimitResult = checkRateLimit(ip, "public")
+    if (!rateLimitResult.success) return rateLimitExceededResponse(rateLimitResult)
+
     const { eventId } = await params
     const { searchParams } = new URL(request.url)
     const email = searchParams.get("email")
@@ -112,6 +123,11 @@ export async function DELETE(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    // Rate limit check for public endpoint
+    const ip = getClientIp(request)
+    const rateLimitResult = checkRateLimit(ip, "public")
+    if (!rateLimitResult.success) return rateLimitExceededResponse(rateLimitResult)
+
     const { eventId } = await params
     const { searchParams } = new URL(request.url)
     const email = searchParams.get("email")

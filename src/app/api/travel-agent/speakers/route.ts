@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 export async function GET(request: NextRequest) {
   try {
+    // Auth check - require logged-in user
+    const { error: authError } = await getApiUser()
+    if (authError) return authError
+
     const supabase = await createAdminClient()
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")

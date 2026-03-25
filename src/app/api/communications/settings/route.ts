@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 export interface CommunicationSettings {
   id?: string
@@ -81,6 +82,9 @@ const defaultSettings: Omit<CommunicationSettings, "event_id"> = {
 // GET /api/communications/settings?event_id=xxx
 export async function GET(request: NextRequest) {
   try {
+    const { user } = await getApiUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 
@@ -130,6 +134,9 @@ export async function GET(request: NextRequest) {
 // PUT /api/communications/settings
 export async function PUT(request: NextRequest) {
   try {
+    const { user } = await getApiUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const body = await request.json()
     const { event_id, ...settingsData } = body
 
@@ -187,6 +194,9 @@ export async function PUT(request: NextRequest) {
 // POST /api/communications/settings/test - Test connection
 export async function POST(request: NextRequest) {
   try {
+    const { user } = await getApiUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const body = await request.json()
     const { channel, provider, credentials, event_id: _event_id } = body
 

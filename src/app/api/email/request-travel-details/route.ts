@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { logEmail } from "@/lib/email-tracking"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 interface RequestTravelDetailsData {
   registration_id?: string
@@ -29,6 +30,9 @@ function formatDate(dateStr: string) {
 // POST /api/email/request-travel-details - Send request for travel details
 export async function POST(request: NextRequest) {
   try {
+    const { user } = await getApiUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const body: RequestTravelDetailsData = await request.json()
 
     const {

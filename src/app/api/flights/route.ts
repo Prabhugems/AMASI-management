@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getFlightsByRoute, getAirportList, getAvailableDestinations, AIRPORT_INFO } from "@/lib/airline-api"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 export async function GET(request: NextRequest) {
+  // Auth check - require logged-in user
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
+
   const { searchParams } = new URL(request.url)
   const action = searchParams.get("action")
   const from = searchParams.get("from")
