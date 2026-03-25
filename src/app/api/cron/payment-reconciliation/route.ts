@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET?.trim()
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -307,7 +307,7 @@ export async function GET(request: NextRequest) {
           }
 
           // Create payment record
-          const paymentNumber = `RECON-${Date.now().toString(36).toUpperCase()}`
+          const paymentNumber = `RECON-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`
           const { data: newPayment, error: paymentError } = await supabase
             .from("payments")
             .insert({
@@ -417,7 +417,7 @@ export async function GET(request: NextRequest) {
         // Create a minimal payment record so it's tracked
         try {
           await supabase.from("payments").insert({
-            payment_number: `ORPHAN-RECON-${Date.now().toString(36).toUpperCase()}`,
+            payment_number: `ORPHAN-RECON-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
             payment_type: "registration",
             payment_method: "razorpay",
             payer_name: payerName,
@@ -491,6 +491,7 @@ export async function GET(request: NextRequest) {
             razorpay_payment_id: pending.razorpay_payment_id,
             completed_at: new Date().toISOString(),
             metadata: {
+              ...(pending.metadata || {}),
               updated_by_cron_reconciliation: true,
               reconciled_at: new Date().toISOString(),
             },
@@ -560,6 +561,7 @@ export async function GET(request: NextRequest) {
                   status: "completed",
                   completed_at: new Date().toISOString(),
                   metadata: {
+                    ...(stale.metadata || {}),
                     updated_by_cron_reconciliation: true,
                     reconciled_at: new Date().toISOString(),
                     was_stale_pending: true,
