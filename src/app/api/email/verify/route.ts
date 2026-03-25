@@ -1,17 +1,50 @@
 import { NextRequest, NextResponse } from "next/server"
-import { Resend } from "resend"
 import crypto from "crypto"
+import { sendEmail } from "@/lib/email"
 import { COMPANY_CONFIG } from "@/lib/config"
 
-// Initialize Resend (will be undefined if no API key)
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
-
-// In-memory OTP store (in production, use Redis or database)
-const otpStore = new Map<string, { otp: string; expires: number; attempts: number }>()
+// HMAC signing key for OTP tokens (no server-side storage needed)
+const SIGNING_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || "secret").trim()
 
 // Generate 6-digit OTP using cryptographically secure random
 function generateOTP(): string {
   return crypto.randomInt(100000, 999999).toString()
+}
+
+// Create a signed token containing { email, otp, exp, form_id }
+function createOtpToken(email: string, otp: string, formId: string): string {
+  const payload = JSON.stringify({
+    email,
+    otp,
+    form_id: formId,
+    exp: Date.now() + 10 * 60 * 1000, // 10 minutes
+  })
+  const encoded = Buffer.from(payload).toString("base64url")
+  const signature = crypto
+    .createHmac("sha256", SIGNING_KEY)
+    .update(encoded)
+    .digest("base64url")
+  return `${encoded}.${signature}`
+}
+
+// Verify and decode a signed OTP token
+function verifyOtpToken(token: string): { email: string; otp: string; form_id: string; exp: number } | null {
+  const parts = token.split(".")
+  if (parts.length !== 2) return null
+
+  const [encoded, signature] = parts
+  const expectedSig = crypto
+    .createHmac("sha256", SIGNING_KEY)
+    .update(encoded)
+    .digest("base64url")
+
+  if (signature !== expectedSig) return null
+
+  try {
+    return JSON.parse(Buffer.from(encoded, "base64url").toString())
+  } catch {
+    return null
+  }
 }
 
 // Validate email format
@@ -69,16 +102,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // For test emails in development, return OTP directly without sending email
     const isDevelopment = process.env.NODE_ENV === "development"
+    const formId = form_id || "global"
+
+    // For test emails in development, return OTP directly without sending email
     if (isTestEmail(email) && isDevelopment) {
       const otp = generateOTP()
-      const key = `${email}:${form_id || 'global'}`
-      otpStore.set(key, { otp, expires: Date.now() + 10 * 60 * 1000, attempts: 1 })
+      const otpToken = createOtpToken(email, otp, formId)
       return NextResponse.json({
         success: true,
         message: "Test mode - use the OTP shown",
-        dev_otp: otp
+        dev_otp: otp,
+        otp_token: otpToken,
       })
     }
 
@@ -90,103 +125,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Rate limiting - max 3 OTPs per email per 10 minutes
-    const key = `${email}:${form_id || 'global'}`
-    const existing = otpStore.get(key)
-    if (existing && existing.attempts >= 3 && Date.now() < existing.expires + 600000) {
-      return NextResponse.json(
-        { error: "Too many attempts. Please try again in 10 minutes." },
-        { status: 429 }
-      )
-    }
-
     // Generate OTP
     const otp = generateOTP()
-    const expires = Date.now() + 10 * 60 * 1000 // 10 minutes
+    const otpToken = createOtpToken(email, otp, formId)
 
-    // Store OTP
-    otpStore.set(key, {
-      otp,
-      expires,
-      attempts: (existing?.attempts || 0) + 1
-    })
+    // Send OTP via unified email service
+    const subject = "Your Verification Code"
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #10b981; margin: 0;">${COMPANY_CONFIG.name}</h1>
+        </div>
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 16px; padding: 30px; text-align: center;">
+          <p style="color: white; font-size: 16px; margin: 0 0 20px 0;">Your verification code is:</p>
+          <div style="background: white; border-radius: 12px; padding: 20px; display: inline-block;">
+            <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #10b981;">${otp}</span>
+          </div>
+          <p style="color: rgba(255,255,255,0.8); font-size: 14px; margin: 20px 0 0 0;">This code expires in 10 minutes</p>
+        </div>
+        <p style="color: #666; font-size: 12px; text-align: center; margin-top: 20px;">
+          If you didn't request this code, please ignore this email.
+        </p>
+      </div>
+    `
 
-    // Send OTP via Resend
-    if (resend) {
-      try {
-        const result = await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Forms <noreply@resend.dev>`,
-          to: email,
-          subject: "Your Verification Code",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-              <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #10b981; margin: 0;">${COMPANY_CONFIG.name}</h1>
-              </div>
-              <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 16px; padding: 30px; text-align: center;">
-                <p style="color: white; font-size: 16px; margin: 0 0 20px 0;">Your verification code is:</p>
-                <div style="background: white; border-radius: 12px; padding: 20px; display: inline-block;">
-                  <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #10b981;">${otp}</span>
-                </div>
-                <p style="color: rgba(255,255,255,0.8); font-size: 14px; margin: 20px 0 0 0;">This code expires in 10 minutes</p>
-              </div>
-              <p style="color: #666; font-size: 12px; text-align: center; margin-top: 20px;">
-                If you didn't request this code, please ignore this email.
-              </p>
-            </div>
-          `,
-        })
+    const result = await sendEmail({ to: email, subject, html })
 
-        // Check if Resend returned an error
-        if (result.error) {
-          console.error("Resend API error:", result.error)
-          // In production, don't expose OTP even on error
-          if (isDevelopment) {
-            return NextResponse.json({
-              success: true,
-              message: "Email service error - use this code",
-              dev_otp: otp
-            })
-          }
-          return NextResponse.json(
-            { error: "Failed to send verification email. Please try again." },
-            { status: 500 }
-          )
-        }
-      } catch (emailError) {
-        console.error("Resend error:", emailError)
-        // In production, don't expose OTP on error
-        if (isDevelopment) {
-          return NextResponse.json({
-            success: true,
-            message: "Verification code generated",
-            dev_otp: otp
-          })
-        }
-        return NextResponse.json(
-          { error: "Failed to send verification email. Please try again." },
-          { status: 500 }
-        )
-      }
-    } else {
-      // No Resend API key
+    if (!result.success) {
+      console.error("Email send error:", result.error)
       if (isDevelopment) {
         return NextResponse.json({
           success: true,
-          message: "Verification code generated (dev mode)",
-          dev_otp: otp
+          message: "Email service error - use this code",
+          dev_otp: otp,
+          otp_token: otpToken,
         })
       }
-      // In production without email service, fail gracefully
       return NextResponse.json(
-        { error: "Email service not configured" },
+        { error: "Failed to send verification email. Please try again." },
         { status: 500 }
       )
     }
 
     return NextResponse.json({
       success: true,
-      message: "Verification code sent to your email"
+      message: "Verification code sent to your email",
+      otp_token: otpToken,
     })
   } catch (error) {
     console.error("Error in POST /api/email/verify:", error)
@@ -201,7 +185,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, otp, form_id } = body
+    const { email, otp, form_id, otp_token } = body
 
     if (!email || !otp) {
       return NextResponse.json(
@@ -210,35 +194,55 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    const key = `${email}:${form_id || 'global'}`
-    const stored = otpStore.get(key)
-
-    if (!stored) {
+    if (!otp_token) {
       return NextResponse.json(
         { error: "No verification code found. Please request a new code." },
         { status: 400 }
       )
     }
 
-    if (Date.now() > stored.expires) {
-      otpStore.delete(key)
+    // Verify the signed token
+    const tokenData = verifyOtpToken(otp_token)
+    if (!tokenData) {
+      return NextResponse.json(
+        { error: "Invalid verification token. Please request a new code." },
+        { status: 400 }
+      )
+    }
+
+    // Check expiry
+    if (Date.now() > tokenData.exp) {
       return NextResponse.json(
         { error: "Verification code has expired. Please request a new code." },
         { status: 400 }
       )
     }
 
-    if (stored.otp !== otp) {
+    // Check email matches
+    if (tokenData.email !== email) {
+      return NextResponse.json(
+        { error: "Email mismatch. Please request a new code." },
+        { status: 400 }
+      )
+    }
+
+    // Check form_id matches
+    if (tokenData.form_id !== (form_id || "global")) {
+      return NextResponse.json(
+        { error: "Invalid verification context. Please request a new code." },
+        { status: 400 }
+      )
+    }
+
+    // Check OTP matches
+    if (tokenData.otp !== otp) {
       return NextResponse.json(
         { error: "Invalid verification code. Please try again." },
         { status: 400 }
       )
     }
 
-    // OTP verified successfully
-    otpStore.delete(key)
-
-    // Generate a verification token for this session
+    // OTP verified successfully - generate a verification token for this session
     const verificationToken = Buffer.from(
       JSON.stringify({ email, verified_at: Date.now(), form_id })
     ).toString("base64")

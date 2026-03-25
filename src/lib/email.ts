@@ -5,12 +5,18 @@
 
 import { COMPANY_CONFIG } from "@/lib/config"
 
+type EmailAttachment = {
+  filename: string
+  content: Buffer
+}
+
 type EmailOptions = {
   to: string | string[]
   subject: string
   html: string
   text?: string
   from?: string
+  attachments?: EmailAttachment[]
 }
 
 type SendResult = {
@@ -100,6 +106,7 @@ async function sendViaResend(options: EmailOptions): Promise<SendResult> {
       subject: options.subject,
       html: options.html,
       text: options.text,
+      attachments: options.attachments,
     })
 
     if (result.error) {

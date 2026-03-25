@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
-import { Resend } from "resend"
 import { createAdminClient } from "@/lib/supabase/server"
+import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { logEmail } from "@/lib/email-tracking"
 import { generateTravelItineraryICS } from "@/lib/ics-generator"
 import { escapeHtml } from "@/lib/string-utils"
 import { COMPANY_CONFIG } from "@/lib/config"
-
-// Initialize Resend
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 interface TravelItineraryData {
   registration_id: string
@@ -471,93 +468,93 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Send email via Resend
-    if (resend) {
-      try {
-        const result = await resend.emails.send({
-          from: fromEmail,
-          to: speaker_email,
-          subject: emailSubject,
-          html: emailHtml,
-          attachments: attachments.length > 0 ? attachments : undefined,
-        })
-
-        if (result.error) {
-          console.error("Resend API error:", result.error)
-          return NextResponse.json({
-            success: false,
-            error: "Failed to send email",
-            details: result.error
-          }, { status: 500 })
-        }
-
-        console.log(`Travel itinerary sent to ${speaker_email} - ID: ${result.data?.id}`)
-
-        // Log email for tracking
-        if (result.data?.id) {
-          await logEmail({
-            resendEmailId: result.data.id,
-            emailType: "travel_itinerary",
-            fromEmail,
-            toEmail: speaker_email,
-            subject: emailSubject,
-            eventId: event_id,
-            registrationId: registration_id,
-            metadata: {
-              speaker_name,
-              has_onward_flight: !!booking.onward_flight_number,
-              has_return_flight: !!booking.return_flight_number,
-              has_hotel: !!booking.hotel_name,
-              has_calendar: hasAnyBooking,
-              attachments_count: attachments.length,
-            },
-          })
-        }
-
-        // Update registration to mark voucher as sent
-        if (registration_id) {
-          const supabase = await createAdminClient()
-          const { data: current } = await (supabase as any)
-            .from("registrations")
-            .select("custom_fields")
-            .eq("id", registration_id)
-            .single()
-
-          await (supabase as any)
-            .from("registrations")
-            .update({
-              custom_fields: {
-                ...(current?.custom_fields || {}),
-                booking: {
-                  ...(current?.custom_fields?.booking || {}),
-                  voucher_sent: true,
-                  voucher_sent_date: new Date().toISOString(),
-                  voucher_email_id: result.data?.id,
-                },
-              }
-            })
-            .eq("id", registration_id)
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: "Travel itinerary sent",
-          email_id: result.data?.id
-        })
-      } catch (emailError) {
-        console.error("Resend error:", emailError)
-        return NextResponse.json({
-          success: false,
-          error: "Email service error"
-        }, { status: 500 })
-      }
-    } else {
+    // Send email via unified email service
+    if (!isEmailEnabled()) {
       console.log(`[DEV] Would send travel itinerary to ${speaker_email}`)
       return NextResponse.json({
         success: true,
         message: "Email skipped (no API key configured)",
         dev_mode: true
       })
+    }
+
+    try {
+      const result = await sendEmail({
+        from: fromEmail,
+        to: speaker_email,
+        subject: emailSubject,
+        html: emailHtml,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      })
+
+      if (!result.success) {
+        console.error("Email send error:", result.error)
+        return NextResponse.json({
+          success: false,
+          error: "Failed to send email",
+          details: result.error
+        }, { status: 500 })
+      }
+
+      console.log(`Travel itinerary sent to ${speaker_email} - ID: ${result.id}`)
+
+      // Log email for tracking
+      if (result.id) {
+        await logEmail({
+          resendEmailId: result.id,
+          emailType: "travel_itinerary",
+          fromEmail,
+          toEmail: speaker_email,
+          subject: emailSubject,
+          eventId: event_id,
+          registrationId: registration_id,
+          metadata: {
+            speaker_name,
+            has_onward_flight: !!booking.onward_flight_number,
+            has_return_flight: !!booking.return_flight_number,
+            has_hotel: !!booking.hotel_name,
+            has_calendar: hasAnyBooking,
+            attachments_count: attachments.length,
+          },
+        })
+      }
+
+      // Update registration to mark voucher as sent
+      if (registration_id) {
+        const supabase = await createAdminClient()
+        const { data: current } = await (supabase as any)
+          .from("registrations")
+          .select("custom_fields")
+          .eq("id", registration_id)
+          .single()
+
+        await (supabase as any)
+          .from("registrations")
+          .update({
+            custom_fields: {
+              ...(current?.custom_fields || {}),
+              booking: {
+                ...(current?.custom_fields?.booking || {}),
+                voucher_sent: true,
+                voucher_sent_date: new Date().toISOString(),
+                voucher_email_id: result.id,
+              },
+            }
+          })
+          .eq("id", registration_id)
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Travel itinerary sent",
+        email_id: result.id
+      })
+    } catch (emailError) {
+      console.error("Email service error:", emailError)
+      return NextResponse.json({
+        success: false,
+        error: "Email service error"
+      }, { status: 500 })
     }
   } catch (error) {
     console.error("Error in POST /api/email/travel-itinerary:", error)

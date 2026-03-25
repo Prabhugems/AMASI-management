@@ -64,6 +64,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
     status: 'idle' | 'sending' | 'sent' | 'verifying' | 'verified' | 'error'
     otp: string
     token?: string
+    otp_token?: string
     error?: string
     memberFound?: boolean
     memberData?: Record<string, unknown>
@@ -124,7 +125,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
       setEmailVerificationState((prev) => ({
         ...prev,
-        [fieldId]: { status: 'sent', otp: '' }
+        [fieldId]: { status: 'sent', otp: '', otp_token: data.otp_token }
       }))
       toast.success("Verification code sent to your email")
 
@@ -153,10 +154,11 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
     }))
 
     try {
+      const otpToken = emailVerificationState[fieldId]?.otp_token
       const response = await fetch('/api/email/verify', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp, form_id: form.id })
+        body: JSON.stringify({ email, otp, form_id: form.id, otp_token: otpToken })
       })
 
       const data = await response.json()
