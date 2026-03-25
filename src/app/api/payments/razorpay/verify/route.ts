@@ -126,8 +126,7 @@ export async function POST(request: NextRequest) {
             net_amount: amount,
             razorpay_order_id,
             razorpay_payment_id,
-            status: "completed",
-            completed_at: new Date().toISOString(),
+            status: "pending", // Set to pending so it flows through normal STEP 6 verification
             event_id: eventId,
             metadata: {
               recovered_from_verify: true,
@@ -356,11 +355,39 @@ export async function POST(request: NextRequest) {
         console.log(`[VERIFY] Updated registration from frontend: ${regData?.registration_number}`)
       }
     } else {
-      // NO REGISTRATION EXISTS YET
-      // Don't auto-create here - the frontend will create the registration
-      // with full attendee details after verify returns success.
-      // The webhook serves as the async safety net if the frontend fails.
-      console.log(`[VERIFY] No registration yet - frontend will create after verify returns`)
+      // NO REGISTRATION EXISTS YET - create it server-side from payment metadata
+      // This is the primary registration creation path. The frontend sends
+      // registration_data in the verify request, and create-order also stores
+      // it in payment metadata as a fallback.
+      console.log(`[VERIFY] No registration yet - creating from payment metadata`)
+
+      // Merge registration data: prefer fresh data from verify request body,
+      // fall back to what was stored in payment metadata by create-order
+      const mergedMetadata = {
+        ...existingMetadata,
+        registration_data: body.registration_data || existingMetadata.registration_data,
+      }
+
+      // Update payer info on payment record if provided fresh in body
+      if (body.payer_name || body.payer_email || body.payer_phone) {
+        const patchFields: any = {}
+        if (body.payer_name) patchFields.payer_name = body.payer_name
+        if (body.payer_email) patchFields.payer_email = body.payer_email
+        if (body.payer_phone) patchFields.payer_phone = body.payer_phone
+        await supabase.from("payments").update(patchFields).eq("id", paymentData.id)
+        // Also update local reference
+        if (body.payer_name) paymentData.payer_name = body.payer_name
+        if (body.payer_email) paymentData.payer_email = body.payer_email
+        if (body.payer_phone) paymentData.payer_phone = body.payer_phone
+      }
+
+      const created = await createRegistrationFromPayment(paymentData, mergedMetadata)
+      if (created) {
+        finalRegistration = created
+        console.log(`[VERIFY] Created registration: ${created.registration_number}`)
+      } else {
+        console.error(`[VERIFY] Failed to create registration from payment metadata`)
+      }
     }
 
     // ============================================================
@@ -557,13 +584,16 @@ async function createRegistrationFromPayment(paymentData: any, metadata: any) {
   // Generate registration number
   const registrationNumber = await getNextRegistrationNumber(paymentData.event_id)
 
+  // Use registration_data from metadata for attendee details (set by verify body or create-order)
+  const regData = metadata.registration_data || {}
+
   const registrationData = {
     registration_number: registrationNumber,
     event_id: paymentData.event_id,
     ticket_type_id: ticketTypeId,
-    attendee_name: paymentData.payer_name || "Pending Verification",
-    attendee_email: paymentData.payer_email,
-    attendee_phone: paymentData.payer_phone,
+    attendee_name: regData.attendee_name || paymentData.payer_name || "Pending Verification",
+    attendee_email: regData.attendee_email || paymentData.payer_email,
+    attendee_phone: regData.attendee_phone || paymentData.payer_phone,
     quantity: ticketDetails?.quantity || 1,
     unit_price: ticketDetails?.price || paymentData.amount,
     total_amount: paymentData.amount,
@@ -572,9 +602,9 @@ async function createRegistrationFromPayment(paymentData: any, metadata: any) {
     payment_id: paymentData.id,
     confirmed_at: new Date().toISOString(),
     custom_fields: {
+      ...(regData.custom_fields || {}),
       auto_created_from_payment: true,
       created_at: new Date().toISOString(),
-      original_metadata: metadata.registration_data || null,
     },
   }
 

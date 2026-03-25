@@ -797,7 +797,16 @@ export default function CheckoutPage() {
         },
         handler: async (response: any) => {
           try {
-            // Verify payment
+            // Capture form data NOW to avoid stale closure issues
+            const currentFormData = { ...formData }
+            const currentCustomFormResponses = { ...customFormResponses }
+            const currentEmail = currentFormData.email
+
+            const attendeeName = currentFormData.salutation
+              ? `${currentFormData.salutation} ${currentFormData.first_name} ${currentFormData.last_name}`
+              : `${currentFormData.first_name} ${currentFormData.last_name}`
+
+            // Verify payment AND send registration data for server-side creation
             const verifyResponse = await fetch("/api/payments/razorpay/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -805,29 +814,51 @@ export default function CheckoutPage() {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
+                // Send registration data for server-side registration creation
+                payer_name: `${currentFormData.first_name} ${currentFormData.last_name}`,
+                payer_email: currentEmail,
+                payer_phone: currentFormData.phone,
+                registration_data: {
+                  attendee_name: attendeeName,
+                  attendee_email: currentEmail,
+                  attendee_phone: currentFormData.phone,
+                  custom_fields: hasCustomForm ? currentCustomFormResponses : {
+                    salutation: currentFormData.salutation,
+                    first_name: currentFormData.first_name,
+                    last_name: currentFormData.last_name,
+                  },
+                },
               }),
             })
 
             const verifyData = await verifyResponse.json()
 
             if (verifyData.success) {
-              // Create registration after successful payment
-              const registration = await createRegistration("razorpay", verifyData.payment_id)
+              // Registration is now created server-side by the verify endpoint.
+              // If verify returned a registration_number, use it directly.
+              // Otherwise fall back to client-side creation as a safety net.
+              let regNumber = verifyData.registration_number
+              let regEmail = currentEmail
 
-              // Update registration with confirmed status
-              await fetch(`/api/registrations/${registration.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  status: "confirmed",
-                  payment_status: "completed",
-                }),
-              })
+              if (!regNumber) {
+                // Fallback: server didn't create registration (shouldn't happen, but be safe)
+                console.warn("Verify did not return registration_number, creating client-side")
+                const registration = await createRegistration("razorpay", verifyData.payment_id)
+                await fetch(`/api/registrations/${registration.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    status: "confirmed",
+                    payment_status: "completed",
+                  }),
+                })
+                regNumber = registration.registration_number
+              }
 
               setShowConfetti(true)
               sessionStorage.removeItem(`checkout_${eventSlug}`)
               setTimeout(() => {
-                router.push(getSuccessUrl(registration.registration_number, formData.email))
+                router.push(getSuccessUrl(regNumber, regEmail))
               }, 1500)
             } else {
               setError("Payment verification failed. Please contact support.")
