@@ -56,6 +56,7 @@ export async function GET(
 
   const { searchParams } = new URL(request.url)
   const registrationId = searchParams.get("registration_id")
+  const invitationType = searchParams.get("type") // "speaker" to use speaker invitation settings
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
@@ -64,7 +65,7 @@ export async function GET(
     const { data: event, error } = await supabase
       .from("events")
       .select(
-        "id, name, short_name, tagline, description, start_date, end_date, venue_name, city, state, scientific_chairman, organizing_chairman, organized_by, signatory_title, signature_image_url, logo_url, event_type, edition"
+        "id, name, short_name, tagline, description, start_date, end_date, venue_name, city, state, scientific_chairman, organizing_chairman, organized_by, signatory_title, signature_image_url, logo_url, event_type, edition, settings"
       )
       .eq("id", eventId)
       .single()
@@ -335,15 +336,34 @@ export async function GET(
     y += 18
 
     // === SIGNATURE ===
+    // Determine signer details: use speaker_invitation settings if type=speaker and settings exist
+    const speakerInvitation = event.settings?.speaker_invitation as
+      | { signer_name?: string; signer_title?: string; signature_url?: string }
+      | undefined
+    const useSpeakerSigner =
+      invitationType === "speaker" &&
+      speakerInvitation &&
+      (speakerInvitation.signer_name || speakerInvitation.signature_url)
+
+    const signerName = useSpeakerSigner && speakerInvitation.signer_name
+      ? speakerInvitation.signer_name
+      : event.organizing_chairman || event.scientific_chairman || null
+    const signerTitle = useSpeakerSigner && speakerInvitation.signer_title
+      ? speakerInvitation.signer_title
+      : event.signatory_title || "Course Convenor"
+    const signerImageUrl = useSpeakerSigner && speakerInvitation.signature_url
+      ? speakerInvitation.signature_url
+      : event.signature_image_url
+
     doc.setTextColor(...body)
     doc.setFontSize(10.5)
     doc.text("With warm regards,", margin, y)
     y += 10
 
     // Signature image (if uploaded)
-    if (event.signature_image_url) {
+    if (signerImageUrl) {
       try {
-        const sigRes = await fetch(event.signature_image_url)
+        const sigRes = await fetch(signerImageUrl)
         if (sigRes.ok) {
           const sigBuffer = await sigRes.arrayBuffer()
           const sigBase64 = Buffer.from(sigBuffer).toString("base64")
@@ -363,18 +383,16 @@ export async function GET(
       y += 2
     }
 
-    const chairmanName =
-      event.organizing_chairman || event.scientific_chairman || null
-    if (chairmanName) {
+    if (signerName) {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(...dark)
-      doc.text(chairmanName, margin, y)
+      doc.text(signerName, margin, y)
       y += 7
       doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
       doc.setTextColor(...muted)
-      doc.text(event.signatory_title || "Course Convenor", margin, y)
+      doc.text(signerTitle, margin, y)
     }
 
     // === FOOTER ===

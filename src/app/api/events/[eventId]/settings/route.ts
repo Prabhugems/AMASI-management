@@ -26,7 +26,7 @@ export async function PATCH(
       'timezone', 'is_public', 'registration_open', 'max_attendees',
       'contact_email', 'website_url', 'banner_url', 'logo_url', 'primary_color',
       'edition', 'scientific_chairman', 'organizing_chairman',
-      'organized_by', 'signatory_title', 'signature_image_url'
+      'organized_by', 'signatory_title', 'signature_image_url', 'settings'
     ]
 
     for (const field of allowedFields) {

@@ -37,6 +37,7 @@ import {
   BookOpen,
   ChevronLeft,
   GraduationCap,
+  Mic,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -71,6 +72,14 @@ interface EventSettings {
   organized_by: string | null
   signatory_title: string | null
   signature_image_url: string | null
+  settings: {
+    speaker_invitation?: {
+      signer_name: string
+      signer_title: string
+      signature_url: string
+    }
+    [key: string]: any
+  } | null
 }
 
 export default function SettingsPage() {
@@ -483,6 +492,93 @@ export default function SettingsPage() {
                       onChange={(url) => updateField("signature_image_url", url)}
                       eventId={eventId}
                       folder={`events/${eventId}/signature`}
+                      aspectRatio="banner"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Speaker Invitation Signature */}
+              <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <Mic className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Speaker Invitation</h3>
+                    <p className="text-sm text-muted-foreground">Override signer details for speaker invitation letters. If not set, the default signatory above is used.</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Signer Name</label>
+                      <Input
+                        value={formData.settings?.speaker_invitation?.signer_name || ""}
+                        onChange={(e) => {
+                          const current = formData.settings || {}
+                          const currentSpeaker = current.speaker_invitation || { signer_name: "", signer_title: "", signature_url: "" }
+                          setFormData((prev) => ({
+                            ...prev,
+                            settings: {
+                              ...current,
+                              speaker_invitation: {
+                                ...currentSpeaker,
+                                signer_name: e.target.value,
+                              },
+                            },
+                          }))
+                        }}
+                        placeholder="Dr. Roshan Shetty A"
+                        className="mt-1.5"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Signer Title</label>
+                      <Input
+                        value={formData.settings?.speaker_invitation?.signer_title || ""}
+                        onChange={(e) => {
+                          const current = formData.settings || {}
+                          const currentSpeaker = current.speaker_invitation || { signer_name: "", signer_title: "", signature_url: "" }
+                          setFormData((prev) => ({
+                            ...prev,
+                            settings: {
+                              ...current,
+                              speaker_invitation: {
+                                ...currentSpeaker,
+                                signer_title: e.target.value,
+                              },
+                            },
+                          }))
+                        }}
+                        placeholder="Secretary"
+                        className="mt-1.5"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Signature Image</label>
+                    <p className="text-xs text-muted-foreground mt-1 mb-2">Upload a signature image for speaker invitation letters.</p>
+                    <ImageUpload
+                      value={formData.settings?.speaker_invitation?.signature_url || ""}
+                      onChange={(url) => {
+                        const current = formData.settings || {}
+                        const currentSpeaker = current.speaker_invitation || { signer_name: "", signer_title: "", signature_url: "" }
+                        setFormData((prev) => ({
+                          ...prev,
+                          settings: {
+                            ...current,
+                            speaker_invitation: {
+                              ...currentSpeaker,
+                              signature_url: url,
+                            },
+                          },
+                        }))
+                      }}
+                      eventId={eventId}
+                      folder={`events/${eventId}/speaker-signature`}
                       aspectRatio="banner"
                     />
                   </div>
