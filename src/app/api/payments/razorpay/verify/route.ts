@@ -391,15 +391,18 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================
-    // STEP 9: Update ticket quantity_sold (with race condition protection)
+    // STEP 9: Update ticket quantity_sold (skip if already done in createRegistrationFromPayment)
     // ============================================================
     if (finalRegistration) {
-      await incrementTicketSold(
-        supabase,
-        finalRegistration.ticket_type_id,
-        finalRegistration.quantity || 1,
-        paymentData.id // Use payment_id for idempotency
-      )
+      // Only increment if registration was NOT auto-created (auto-created ones handle it internally)
+      if (!finalRegistration.custom_fields?.auto_created_from_payment) {
+        await incrementTicketSold(
+          supabase,
+          finalRegistration.ticket_type_id,
+          finalRegistration.quantity || 1,
+          paymentData.id
+        )
+      }
 
       // Create registration_addons if addons were purchased
       if (existingMetadata.addons_selection?.length > 0) {
@@ -632,6 +635,12 @@ async function createRegistrationFromPayment(supabase: any, paymentData: any, me
     }
 
     console.log(`[VERIFY] Auto-created registration: ${registrationNumber} for payment ${paymentData.id}`)
+
+    // Increment ticket sold count for this ticket type
+    if (ticketTypeId) {
+      await incrementTicketSold(supabase, ticketTypeId, ticketDetails?.quantity || 1, paymentData.id)
+    }
+
     if (!firstRegistration) firstRegistration = registration
   }
 
