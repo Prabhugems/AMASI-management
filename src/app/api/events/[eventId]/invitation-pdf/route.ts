@@ -76,7 +76,7 @@ export async function GET(
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
 
-    // Fetch attendee info if registration_id is provided
+    // Fetch attendee info
     let attendee: { name: string; designation?: string; institution?: string; registration_number?: string } | null = null
     if (registrationId) {
       const { data: reg } = await supabase
@@ -93,6 +93,26 @@ export async function GET(
           registration_number: reg.registration_number,
         }
       }
+    } else if (speakerEmail) {
+      // Look up by email
+      const { data: reg } = await supabase
+        .from("registrations")
+        .select("attendee_name, attendee_designation, attendee_institution, registration_number")
+        .eq("event_id", eventId)
+        .ilike("attendee_email", speakerEmail)
+        .maybeSingle()
+      if (reg) {
+        attendee = {
+          name: reg.attendee_name,
+          designation: reg.attendee_designation || "Speaker",
+          institution: reg.attendee_institution,
+          registration_number: reg.registration_number,
+        }
+      } else if (speakerName) {
+        attendee = { name: speakerName, designation: "Speaker" }
+      }
+    } else if (speakerName) {
+      attendee = { name: speakerName, designation: "Speaker" }
     }
 
     // Fetch speaker sessions if type=speaker

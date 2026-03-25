@@ -1005,7 +1005,7 @@ export default function SpeakerPortalPage() {
                       variant="outline"
                       className="border-blue-400/50 text-blue-300 hover:bg-blue-500/20"
                       onClick={() => {
-                        window.open(`/api/events/${event.id}/invitation-pdf?name=${encodeURIComponent(faculty?.name || "")}&email=${encodeURIComponent(faculty?.email || "")}`, "_blank")
+                        window.open(`/api/events/${event.id}/invitation-pdf?type=speaker&name=${encodeURIComponent(faculty?.name || "")}&email=${encodeURIComponent(faculty?.email || "")}`, "_blank")
                       }}
                     >
                       <Download className="h-4 w-4 mr-2" />
