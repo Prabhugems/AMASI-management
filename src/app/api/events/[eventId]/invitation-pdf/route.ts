@@ -57,6 +57,8 @@ export async function GET(
   const { searchParams } = new URL(request.url)
   const registrationId = searchParams.get("registration_id")
   const invitationType = searchParams.get("type") // "speaker" to use speaker invitation settings
+  const speakerName = searchParams.get("name")
+  const speakerEmail = searchParams.get("email")
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
@@ -90,6 +92,47 @@ export async function GET(
           institution: reg.attendee_institution,
           registration_number: reg.registration_number,
         }
+      }
+    }
+
+    // Fetch speaker sessions if type=speaker
+    let speakerSessions: { session_name: string; session_date: string; start_time: string; end_time: string; hall: string; role: string }[] = []
+    if (invitationType === "speaker" && speakerEmail) {
+      const { data: assignments } = await supabase
+        .from("faculty_assignments")
+        .select("session_name, session_date, start_time, end_time, hall, role")
+        .eq("event_id", eventId)
+        .ilike("faculty_email", speakerEmail)
+        .in("status", ["confirmed", "pending", "invited"])
+        .order("session_date", { ascending: true })
+        .order("start_time", { ascending: true })
+
+      if (assignments?.length) {
+        speakerSessions = assignments
+      } else {
+        // Fallback: check sessions table for speaker name
+        const nameToSearch = speakerName || attendee?.name
+        if (nameToSearch) {
+          const { data: sessions } = await supabase
+            .from("sessions")
+            .select("session_name, session_date, start_time, end_time, hall, speakers")
+            .eq("event_id", eventId)
+            .ilike("speakers", `%${nameToSearch}%`)
+            .order("session_date", { ascending: true })
+            .order("start_time", { ascending: true })
+
+          if (sessions?.length) {
+            speakerSessions = sessions.map((s: any) => ({
+              ...s,
+              role: "Speaker",
+            }))
+          }
+        }
+      }
+
+      // If no attendee but we have speaker info from params
+      if (!attendee && speakerName) {
+        attendee = { name: speakerName, designation: "Speaker" }
       }
     }
 
@@ -203,10 +246,17 @@ export async function GET(
     // === BODY PARAGRAPH ===
     const orgName = event.organized_by || event.short_name || "the organizing committee"
     const editionText = event.edition ? ` (${event.edition} Edition)` : ""
-    const invitePhrase = attendee
-      ? `We are pleased to confirm your participation in`
-      : `We are pleased to invite you to attend`
-    const bodyText = `${invitePhrase} "${event.name}"${editionText}, organized by ${orgName}. This ${event.event_type || "event"} brings together professionals, academicians, and researchers for knowledge exchange and collaborative learning.`
+    let invitePhrase: string
+    let bodyText: string
+    if (invitationType === "speaker" && speakerSessions.length > 0) {
+      invitePhrase = `We are pleased to invite you as a distinguished Speaker/Faculty`
+      bodyText = `${invitePhrase} at "${event.name}"${editionText}, organized by ${orgName}. Your sessions are listed below. We request you to kindly make necessary arrangements to attend and deliver your presentations. Any assistance required for travel and accommodation will be provided by the organizing committee.`
+    } else {
+      invitePhrase = attendee
+        ? `We are pleased to confirm your participation in`
+        : `We are pleased to invite you to attend`
+      bodyText = `${invitePhrase} "${event.name}"${editionText}, organized by ${orgName}. This ${event.event_type || "event"} brings together professionals, academicians, and researchers for knowledge exchange and collaborative learning.`
+    }
 
     doc.setFontSize(10.5)
     doc.setFont("helvetica", "normal")
@@ -291,6 +341,70 @@ export async function GET(
     }
 
     y += boxHeight + 14
+
+    // === SPEAKER SESSIONS TABLE ===
+    if (speakerSessions.length > 0) {
+      if (y > pageHeight - 100) { doc.addPage(); y = 25 }
+
+      doc.setFontSize(11)
+      doc.setFont("helvetica", "bold")
+      doc.setTextColor(...primary)
+      doc.text("Your Sessions", margin, y)
+      y += 8
+
+      // Table header
+      const colWidths = [75, 25, 22, 22, 16]
+      const headers = ["Topic", "Date", "From", "To", "Hall"]
+      doc.setFillColor(248, 250, 252)
+      doc.setDrawColor(226, 232, 240)
+      doc.rect(margin, y - 4, contentWidth, 8, "FD")
+      doc.setFontSize(8)
+      doc.setFont("helvetica", "bold")
+      doc.setTextColor(...dark)
+      let hx = margin + 2
+      headers.forEach((h, i) => {
+        doc.text(h, hx, y)
+        hx += colWidths[i]
+      })
+      y += 6
+
+      // Table rows
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(8)
+      for (const session of speakerSessions) {
+        if (y > pageHeight - 50) { doc.addPage(); y = 25 }
+
+        doc.setDrawColor(240, 240, 240)
+        doc.line(margin, y - 3, margin + contentWidth, y - 3)
+
+        doc.setTextColor(...body)
+        let rx = margin + 2
+        // Topic (wrap if needed)
+        const topicLines = doc.splitTextToSize(session.session_name || "", colWidths[0] - 4)
+        doc.text(topicLines[0] || "", rx, y)
+        rx += colWidths[0]
+
+        // Date
+        const sessionDate = session.session_date ? new Date(session.session_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : ""
+        doc.text(sessionDate, rx, y)
+        rx += colWidths[1]
+
+        // From
+        doc.text(session.start_time || "", rx, y)
+        rx += colWidths[2]
+
+        // To
+        doc.text(session.end_time || "", rx, y)
+        rx += colWidths[3]
+
+        // Hall
+        doc.text(session.hall || "", rx, y)
+
+        y += topicLines.length > 1 ? 10 : 7
+      }
+
+      y += 8
+    }
 
     // === DESCRIPTION ===
     if (event.description) {
