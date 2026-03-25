@@ -1198,7 +1198,7 @@ export default function SpeakersPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => bulkUpdateStatus.mutate("confirmed")}
+              onClick={() => { if (confirm("Confirm all selected speakers?")) bulkUpdateStatus.mutate("confirmed") }}
               disabled={bulkUpdateStatus.isPending}
             >
               <CheckCircle className="h-3.5 w-3.5 mr-1.5 text-green-500" />
@@ -1207,7 +1207,7 @@ export default function SpeakersPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => bulkUpdateStatus.mutate("pending")}
+              onClick={() => { if (confirm("Mark all selected speakers as pending?")) bulkUpdateStatus.mutate("pending") }}
               disabled={bulkUpdateStatus.isPending}
             >
               <Clock className="h-3.5 w-3.5 mr-1.5 text-amber-500" />
@@ -1293,9 +1293,10 @@ export default function SpeakersPage() {
         </button>
 
         <button
-          onClick={() => { setStatusFilter("all"); setTravelFilter("all"); }}
+          onClick={() => { setStatusFilter("declined"); setTravelFilter("all"); }}
           className={cn(
             "bg-card rounded-lg border p-3 text-left transition-all hover:shadow-md",
+            statusFilter === "declined" && "ring-2 ring-red-500",
             stats.declined > 0 && "border-red-200"
           )}
         >

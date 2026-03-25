@@ -326,6 +326,10 @@ export default function GenerateBadgesPage() {
       return
     }
 
+    if (!confirm(`Send badge emails to ${regsWithBadges.length} attendee(s)?`)) {
+      return
+    }
+
     setIsEmailing(true)
     let successCount = 0
     let failCount = 0

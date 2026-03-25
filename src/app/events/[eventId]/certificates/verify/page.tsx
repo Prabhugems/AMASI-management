@@ -82,6 +82,7 @@ export default function VerifyCertificatePage() {
           attendee_institution,
           status,
           ticket_type_id,
+          certificate_generated_at,
           ticket_types (name)
         `)
         .eq("event_id", eventId)
@@ -101,6 +102,14 @@ export default function VerifyCertificatePage() {
           error: isEmail
             ? "No confirmed registration found with this email for this event."
             : "No confirmed registration found with this registration number.",
+        })
+        return
+      }
+
+      if (!data.certificate_generated_at) {
+        setResult({
+          valid: false,
+          error: "Registration found, but no certificate has been generated for this attendee yet.",
         })
         return
       }

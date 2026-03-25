@@ -124,6 +124,10 @@ export default function SendCertificatesPage() {
       return
     }
 
+    if (!retryOnly && !confirm(`Send certificates to ${idsToSend.size} selected attendee(s)?`)) {
+      return
+    }
+
     setSending(true)
     setSendProgress(0)
     setFailedIds(new Set())
