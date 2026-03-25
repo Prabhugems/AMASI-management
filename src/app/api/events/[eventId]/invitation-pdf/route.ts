@@ -370,8 +370,8 @@ export async function GET(
       y += 8
 
       // Table header
-      const colWidths = [75, 25, 22, 22, 16]
-      const headers = ["Topic", "Date", "From", "To", "Hall"]
+      const colWidths = [80, 22, 28, 30]
+      const headers = ["Topic", "Date", "Time", "Hall"]
       doc.setFillColor(248, 250, 252)
       doc.setDrawColor(226, 232, 240)
       doc.rect(margin, y - 4, contentWidth, 8, "FD")
@@ -396,7 +396,8 @@ export async function GET(
 
         doc.setTextColor(...body)
         let rx = margin + 2
-        // Topic (wrap if needed)
+
+        // Topic
         const topicLines = doc.splitTextToSize(session.session_name || "", colWidths[0] - 4)
         doc.text(topicLines[0] || "", rx, y)
         rx += colWidths[0]
@@ -406,18 +407,24 @@ export async function GET(
         doc.text(sessionDate, rx, y)
         rx += colWidths[1]
 
-        // From
-        doc.text(session.start_time || "", rx, y)
+        // Time (combine start-end, format to 12hr)
+        const formatTime = (t: string) => {
+          if (!t) return ""
+          const parts = t.split(":")
+          const h = parseInt(parts[0])
+          const m = parts[1] || "00"
+          const ampm = h >= 12 ? "PM" : "AM"
+          const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h
+          return `${h12}:${m} ${ampm}`
+        }
+        const timeStr = session.start_time ? `${formatTime(session.start_time)} - ${formatTime(session.end_time)}` : ""
+        doc.text(timeStr, rx, y)
         rx += colWidths[2]
 
-        // To
-        doc.text(session.end_time || "", rx, y)
-        rx += colWidths[3]
-
         // Hall
-        doc.text(session.hall || "", rx, y)
+        doc.text(session.hall || "-", rx, y)
 
-        y += topicLines.length > 1 ? 10 : 7
+        y += 6
       }
 
       y += 8
