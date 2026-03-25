@@ -611,7 +611,11 @@ function RegistrationsContent() {
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       if (status === "cancelled") {
         // Use the cancel API to properly decrement ticket quantity_sold
-        const res = await fetch(`/api/registrations/${id}/cancel`, { method: "POST" })
+        const res = await fetch(`/api/registrations/${id}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        })
         if (!res.ok) {
           const data = await res.json()
           throw new Error(data.error || "Failed to cancel")
