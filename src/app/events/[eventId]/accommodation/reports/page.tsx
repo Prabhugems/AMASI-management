@@ -76,6 +76,7 @@ export default function AccommodationReportsPage() {
         .eq("event_id", eventId)
 
       return (data || []).filter((g: any) =>
+        g.custom_fields?.needs_travel ||
         g.custom_fields?.travel_details?.hotel_required ||
         g.custom_fields?.assigned_hotel_id ||
         g.custom_fields?.booking?.hotel_name

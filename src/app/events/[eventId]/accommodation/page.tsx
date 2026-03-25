@@ -64,7 +64,7 @@ export default function AccommodationOverviewPage() {
         .eq("event_id", eventId)
         .or("attendee_designation.ilike.%speaker%,attendee_designation.ilike.%faculty%,attendee_designation.ilike.%chairperson%,attendee_designation.ilike.%moderator%")
 
-      return (data || []).filter((g: Guest) => g.custom_fields?.travel_details?.hotel_required) as Guest[]
+      return (data || []).filter((g: Guest) => g.custom_fields?.needs_travel || g.custom_fields?.travel_details?.hotel_required) as Guest[]
     },
   })
 

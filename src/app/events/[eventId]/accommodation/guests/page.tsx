@@ -167,7 +167,7 @@ export default function AccommodationGuestsPage() {
         .or("attendee_designation.ilike.%speaker%,attendee_designation.ilike.%faculty%,attendee_designation.ilike.%chairperson%,attendee_designation.ilike.%moderator%")
         .order("attendee_name")
 
-      return (data || []).filter((s: Speaker) => s.custom_fields?.travel_details?.hotel_required) as Speaker[]
+      return (data || []).filter((s: Speaker) => s.custom_fields?.needs_travel || s.custom_fields?.travel_details?.hotel_required) as Speaker[]
     },
   })
 
