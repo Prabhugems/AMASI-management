@@ -135,7 +135,9 @@ export default function CheckinListAttendeesPage() {
           action
         })
       })
-      return res.json()
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Check-in failed")
+      return data
     },
     onSuccess: () => {
       refetch()
@@ -156,7 +158,9 @@ export default function CheckinListAttendeesPage() {
           action
         })
       })
-      return res.json()
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Bulk check-in failed")
+      return data
     },
     onSuccess: () => {
       setSelectedIds(new Set())
@@ -456,14 +460,14 @@ export default function CheckinListAttendeesPage() {
                 {selectedIds.size} selected
               </span>
               <button
-                onClick={() => bulkCheckinMutation.mutate({ action: "check_in" })}
+                onClick={() => { if (confirm("Check in all selected attendees?")) bulkCheckinMutation.mutate({ action: "check_in" }) }}
                 disabled={bulkCheckinMutation.isPending}
                 className="px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 disabled:opacity-50 font-medium transition-colors"
               >
                 Check In All
               </button>
               <button
-                onClick={() => bulkCheckinMutation.mutate({ action: "check_out" })}
+                onClick={() => { if (confirm("Check out all selected attendees?")) bulkCheckinMutation.mutate({ action: "check_out" }) }}
                 disabled={bulkCheckinMutation.isPending}
                 className="px-4 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 disabled:opacity-50 font-medium transition-colors"
               >

@@ -202,6 +202,9 @@ export default function CheckinListsPage() {
       toast.success("List deleted")
       setSelectedListId(null)
     },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete list")
+    },
   })
 
   const resetForm = () => {

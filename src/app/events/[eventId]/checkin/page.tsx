@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import Link from "next/link"
 import {
   Plus,
@@ -159,6 +160,9 @@ export default function CheckinHubPage() {
         resetForm()
         setShowCreateModal(false)
       }, 1500)
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create list")
     }
   })
 
@@ -180,6 +184,9 @@ export default function CheckinHubPage() {
         resetForm()
         setEditingList(null)
       }, 1500)
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update list")
     }
   })
 
@@ -192,7 +199,7 @@ export default function CheckinHubPage() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["checkin-lists", eventId] })
+      queryClient.invalidateQueries({ queryKey: ["checkin-lists-active", eventId] })
     }
   })
 
@@ -447,7 +454,7 @@ export default function CheckinHubPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Check-in Lists</h2>
                 <button
-                  onClick={() => queryClient.invalidateQueries({ queryKey: ["checkin-lists", eventId] })}
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ["checkin-lists-active", eventId] })}
                   className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
                 >
                   <RefreshCw className="w-4 h-4" />

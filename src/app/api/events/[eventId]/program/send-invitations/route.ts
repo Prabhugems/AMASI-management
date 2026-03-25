@@ -1,3 +1,4 @@
+import crypto from "crypto"
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
@@ -109,6 +110,15 @@ export async function POST(
         failed++
         errors.push(`No email for ${assignment.faculty_name}`)
         continue
+      }
+
+      // Generate invitation_token if missing
+      if (!assignment.invitation_token) {
+        assignment.invitation_token = crypto.randomUUID()
+        await db
+          .from("faculty_assignments")
+          .update({ invitation_token: assignment.invitation_token })
+          .eq("id", assignment.id)
       }
 
       // Prepare email content with substitutions
