@@ -1,59 +1,12 @@
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { onRegistration } from "@/lib/services/auto-send"
+import { getNextRegistrationNumber } from "@/lib/services/registration-number"
 import { validatePagination, sanitizeSearchInput, isValidUUID } from "@/lib/validation"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { DEFAULTS } from "@/lib/config"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 import { isQikchatEnabled, sendQikchatText } from "@/lib/qikchat"
-
-type EventSettings = {
-  customize_registration_id: boolean
-  registration_prefix: string | null
-  registration_start_number: number | null
-  registration_suffix: string | null
-  current_registration_number: number | null
-}
-
-// Generate custom registration number based on event settings
-async function generateRegistrationNumber(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, eventId: string): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
-  // Try to get event settings - use maybeSingle since settings might not exist yet
-  const { data: settingsData } = await db
-    .from("event_settings")
-    .select("customize_registration_id, registration_prefix, registration_start_number, registration_suffix, current_registration_number")
-    .eq("event_id", eventId)
-    .maybeSingle()
-
-  const settings = settingsData as EventSettings | null
-
-  if (settings?.customize_registration_id) {
-    // Use custom format
-    const prefix = settings.registration_prefix || ""
-    const suffix = settings.registration_suffix || ""
-    const startNumber = settings.registration_start_number || 1
-    const currentNumber = (settings.current_registration_number || 0) + 1
-    const regNumber = Math.max(startNumber, currentNumber)
-
-    // Update the current registration number
-    await db
-      .from("event_settings")
-      .update({ current_registration_number: regNumber })
-      .eq("event_id", eventId)
-
-    // Format: PREFIX + NUMBER + SUFFIX
-    return `${prefix}${regNumber}${suffix}`
-  }
-
-  // Default format: REG-YYYYMMDD-XXXXXXX (7-char random for collision resistance)
-  const date = new Date()
-  const dateStr = date.getFullYear().toString() +
-    (date.getMonth() + 1).toString().padStart(2, "0") +
-    date.getDate().toString().padStart(2, "0")
-  const random = Math.random().toString(36).substring(2, 9).toUpperCase()
-  return `REG-${dateStr}-${random}`
-}
 
 // GET - List registrations (with optional filters)
 export async function GET(request: NextRequest) {
@@ -474,8 +427,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate custom registration number
-    const registrationNumber = await generateRegistrationNumber(supabase, event_id)
+    // Generate custom registration number (atomic to prevent duplicates under concurrency)
+    const registrationNumber = await getNextRegistrationNumber(supabase, event_id)
 
     // Create registration linked to payment
     const { data: registration, error: regError } = await (supabase as any)
