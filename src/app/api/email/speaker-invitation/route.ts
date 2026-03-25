@@ -361,6 +361,9 @@ export async function POST(request: NextRequest) {
 // POST /api/email/speaker-invitation/bulk - Send bulk invitations
 export async function PUT(request: NextRequest) {
   try {
+    const { user } = await getApiUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const { registration_ids, event_id } = await request.json()
 
     if (!registration_ids || !Array.isArray(registration_ids) || registration_ids.length === 0) {

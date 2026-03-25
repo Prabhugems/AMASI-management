@@ -311,6 +311,9 @@ async function sendFacultyInvitation(data: FacultyInvitationData): Promise<{ suc
 // POST /api/email/faculty-invitation - Send single faculty invitation
 export async function POST(request: NextRequest) {
   try {
+    const { user } = await getApiUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const body: FacultyInvitationData = await request.json()
     const result = await sendFacultyInvitation(body)
 
@@ -330,6 +333,9 @@ export async function POST(request: NextRequest) {
 // PUT /api/email/faculty-invitation - Send bulk faculty invitations
 export async function PUT(request: NextRequest) {
   try {
+    const { user } = await getApiUser()
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const body = await request.json()
     const { assignment_ids, event_id, event_name, event_start_date, event_end_date, event_venue } = body
 
