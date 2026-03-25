@@ -1502,7 +1502,7 @@ export default function DelegatePortalPage() {
         </motion.div>
 
         {/* Certificate Dispatch - Full width prominent banner */}
-        {registration.exam_result === "pass" && registration.exam_marks?.fillout_link && (
+        {(registration.exam_result === "pass" || registration.exam_result === "without_exam") && registration.exam_marks?.fillout_link && (
           <motion.button
             variants={itemVariants}
             whileHover={{ scale: 1.01, y: -2 }}
