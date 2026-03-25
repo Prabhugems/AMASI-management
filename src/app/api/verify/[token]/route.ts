@@ -162,7 +162,8 @@ export async function POST(
     )
   }
 
-  // Verify staff access token
+  // Verify staff access token and extract the authorized checkin_list_id
+  let verified_checkin_list_id: string
   {
     const { data: checkinList, error: listError } = await (supabase as any)
       .from("checkin_lists")
@@ -185,6 +186,9 @@ export async function POST(
         { status: 401 }
       )
     }
+
+    // Use the checkin_list_id from the validated token, not the user-supplied one
+    verified_checkin_list_id = checkinList.id
   }
 
   // Determine if this is a checkin_token (long) or registration_number (short)
@@ -220,7 +224,7 @@ export async function POST(
   if (regError || !registration) {
     // Log failed attempt
     await logAudit(supabase, {
-      checkin_list_id,
+      checkin_list_id: verified_checkin_list_id,
       action,
       performed_by,
       performed_via: "qr_scan",
@@ -240,7 +244,7 @@ export async function POST(
   if (registration.status !== "confirmed") {
     await logAudit(supabase, {
       event_id: registration.event_id,
-      checkin_list_id,
+      checkin_list_id: verified_checkin_list_id,
       registration_id: registration.id,
       action,
       performed_by,
@@ -262,19 +266,19 @@ export async function POST(
   const isCheckIn = action === "check_in"
 
   // Check if already checked in for this specific list (prevent duplicate food/meals)
-  if (isCheckIn && checkin_list_id) {
+  if (isCheckIn) {
     // Get checkin list settings
     const { data: listSettings } = await (supabase as any)
       .from("checkin_lists")
       .select("allow_multiple_checkins, name")
-      .eq("id", checkin_list_id)
+      .eq("id", verified_checkin_list_id)
       .single()
 
     // Check for existing check-in record
     const { data: existingRecord } = await (supabase as any)
       .from("checkin_records")
       .select("id, checked_in_at")
-      .eq("checkin_list_id", checkin_list_id)
+      .eq("checkin_list_id", verified_checkin_list_id)
       .eq("registration_id", registration.id)
       .is("checked_out_at", null)
       .maybeSingle()
@@ -287,7 +291,7 @@ export async function POST(
 
       await logAudit(supabase, {
         event_id: registration.event_id,
-        checkin_list_id,
+        checkin_list_id: verified_checkin_list_id,
         registration_id: registration.id,
         action,
         performed_by,
@@ -328,30 +332,40 @@ export async function POST(
     )
   }
 
-  // Create check-in record if checkin_list_id provided
-  if (checkin_list_id) {
-    if (isCheckIn) {
+  // Create check-in record
+  if (isCheckIn) {
+    // Race condition guard: re-check for existing record right before insert
+    // to prevent duplicates from concurrent scans
+    const { data: existingBeforeInsert } = await (supabase as any)
+      .from("checkin_records")
+      .select("id, checked_in_at")
+      .eq("checkin_list_id", verified_checkin_list_id)
+      .eq("registration_id", registration.id)
+      .is("checked_out_at", null)
+      .maybeSingle()
+
+    if (!existingBeforeInsert) {
       await (supabase as any).from("checkin_records").insert({
-        checkin_list_id,
+        checkin_list_id: verified_checkin_list_id,
         registration_id: registration.id,
         checked_in_at: new Date().toISOString(),
         checked_in_by: performed_by,
       })
-    } else {
-      // Check-out: update the record with checkout time
-      await (supabase as any)
-        .from("checkin_records")
-        .update({ checked_out_at: new Date().toISOString() })
-        .eq("checkin_list_id", checkin_list_id)
-        .eq("registration_id", registration.id)
-        .is("checked_out_at", null)
     }
+  } else {
+    // Check-out: update the record with checkout time
+    await (supabase as any)
+      .from("checkin_records")
+      .update({ checked_out_at: new Date().toISOString() })
+      .eq("checkin_list_id", verified_checkin_list_id)
+      .eq("registration_id", registration.id)
+      .is("checked_out_at", null)
   }
 
   // Log successful action
   await logAudit(supabase, {
     event_id: registration.event_id,
-    checkin_list_id,
+    checkin_list_id: verified_checkin_list_id,
     registration_id: registration.id,
     action,
     performed_by,

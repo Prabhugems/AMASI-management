@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
-import { Resend } from "resend"
 import { renderEmailTemplate } from "@/lib/email-templates"
 import { escapeHtml } from "@/lib/string-utils"
 import { getApiUser } from "@/lib/auth/api-auth"
 import { COMPANY_CONFIG } from "@/lib/config"
 import { createAdminClient } from "@/lib/supabase/server"
-
-// Initialize Resend
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+import { sendEmail, isEmailEnabled } from "@/lib/email"
 
 interface RegistrationEmailData {
   registration_id: string
@@ -259,47 +256,38 @@ export async function POST(request: NextRequest) {
     `
     } // End of else block for fallback template
 
-    // Send email via Resend
-    if (resend) {
-      try {
-        const result = await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`,
-          to: attendee_email,
-          subject: emailSubject,
-          html: emailHtml,
-        })
-
-        if (result.error) {
-          console.error("Resend API error:", result.error)
-          return NextResponse.json({
-            success: false,
-            error: "Failed to send email",
-            details: result.error
-          }, { status: 500 })
-        }
-
-        console.log(`Registration confirmation sent to ${attendee_email} - ID: ${result.data?.id}`)
-
-        return NextResponse.json({
-          success: true,
-          message: "Confirmation email sent",
-          email_id: result.data?.id
-        })
-      } catch (emailError) {
-        console.error("Resend error:", emailError)
-        return NextResponse.json({
-          success: false,
-          error: "Email service error"
-        }, { status: 500 })
-      }
-    } else {
+    // Send email via unified email service (Blastable primary, Resend fallback)
+    if (!isEmailEnabled()) {
       console.log(`[DEV] Would send registration confirmation to ${attendee_email}`)
       return NextResponse.json({
         success: true,
-        message: "Email skipped (no API key configured)",
+        message: "Email skipped (no email provider configured)",
         dev_mode: true
       })
     }
+
+    const result = await sendEmail({
+      to: attendee_email,
+      subject: emailSubject,
+      html: emailHtml,
+    })
+
+    if (!result.success) {
+      console.error("Email send error:", result.error)
+      return NextResponse.json({
+        success: false,
+        error: "Failed to send email",
+        details: result.error
+      }, { status: 500 })
+    }
+
+    console.log(`Registration confirmation sent to ${attendee_email} - ID: ${result.id}`)
+
+    return NextResponse.json({
+      success: true,
+      message: "Confirmation email sent",
+      email_id: result.id
+    })
   } catch (error) {
     console.error("Error in POST /api/email/registration-confirmation:", error)
     return NextResponse.json(
