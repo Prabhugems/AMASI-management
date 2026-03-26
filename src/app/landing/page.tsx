@@ -498,51 +498,6 @@ function Marquee({ items }: { items: string[] }) {
   )
 }
 
-/* ─────────────────────────────────────
-   DATA
-   ───────────────────────────────────── */
-const SPEAKERS = [
-  { name: "Dr. C. Palanivelu", title: "Conference Chairman", org: "GEM Hospital" },
-  { name: "To Be Announced", title: "Organizing Secretary", org: "GEM Hospital" },
-  { name: "To Be Announced", title: "International Faculty", org: "Robotic Surgery" },
-  { name: "To Be Announced", title: "International Faculty", org: "AI in Surgery" },
-  { name: "To Be Announced", title: "National Faculty", org: "Fluorescence Surgery" },
-  { name: "To Be Announced", title: "National Faculty", org: "Bariatric Surgery" },
-]
-
-const DAY1 = [
-  { time: "09:00", title: "Inaugural Ceremony" },
-  { time: "09:30", title: "Principles of ICG Fluorescence Imaging in Surgery", tag: "keynote" },
-  { time: "10:00", title: "Evolution & Applications of Fluorescence-Guided Surgery" },
-  { time: "10:30", title: "ICG in Colorectal Surgery — Preventing Anastomotic Leaks" },
-  { time: "11:00", title: "ICG in Upper GI Surgery" },
-  { time: "11:30", title: "ICG in Liver Transplant & Segmental Liver Resections" },
-  { time: "12:00", title: "ICG-Guided Laparoscopic Cholecystectomy — Biliary Mapping & Safety" },
-  { time: "12:30", title: "ICG in Complex Ventral Hernias / AWR" },
-  { time: "14:00", title: "ICG-Guided Lymphatic Mapping in Malignancies / SLNB" },
-  { time: "14:30", title: "ICG in Bariatric Surgery" },
-  { time: "15:00", title: "AI in Endoscopy", tag: "keynote" },
-  { time: "15:30", title: "Debate: ICG — Mandatory vs Marketing Hype", tag: "debate" },
-  { time: "16:30", title: "Robotic Surgery — SSI, HUGO, da Vinci, MERIL/MISSO" },
-  { time: "17:00", title: "Debate: Robotic Surgery — Value vs Vanity", tag: "debate" },
-  { time: "17:30", title: "Panel: The Operating Room in 2035 — What Will Change" },
-  { time: "18:00", title: "Telesurgery — India's Next Leap" },
-  { time: "19:00", title: "Conference Dinner" },
-]
-
-const DAY2 = [
-  { time: "09:00", title: "Keynote: AI in Surgery", tag: "keynote" },
-  { time: "09:30", title: "AI in Preoperative Imaging — Detection & Triage" },
-  { time: "10:00", title: "AI in Surgical Planning — Radiomics & Prediction" },
-  { time: "10:30", title: "AI in Postoperative ICU — Decision Support" },
-  { time: "11:00", title: "AI in Ward Recovery — Remote Monitoring" },
-  { time: "11:30", title: "AI in Diagnostics — Lab & Pathology" },
-  { time: "12:00", title: "Autonomous Surgery — Reality or Risk?", tag: "keynote" },
-  { time: "14:00", title: "AR / VR in Surgery & Surgical Training", tag: "workshop" },
-  { time: "14:30", title: "HoloSuit — Immersive Surgical Simulation" },
-  { time: "15:00", title: "AI-Powered Radiology & Teleradiology" },
-  { time: "16:00", title: "Valedictory Ceremony" },
-]
 
 /* ─────────────────────────────────────
    MAIN PAGE
@@ -570,10 +525,9 @@ export default function LandingPage() {
     return () => obs.disconnect()
   }, [])
 
-  const [day, setDay] = useState<1 | 2>(1)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const navLinks = ["About", "Faculty", "Schedule", "Register"] as const
+  const navLinks = ["About", "Schedule", "Register"] as const
 
   return (
     <div className="bg-[#050a14] text-white antialiased selection:bg-cyan-500/30 overflow-x-hidden">
@@ -586,7 +540,7 @@ export default function LandingPage() {
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-sm font-medium tracking-tight text-white/80">GEM TechnoSurg</span>
+          <img src="/landing/technosurg-logo.png" alt="GEM TechnoSurg" className="h-8 w-auto" />
           <div className="hidden md:flex items-center gap-8 text-[13px] text-white/40">
             {navLinks.map((l) => (
               <a key={l} href={`#${l.toLowerCase()}`} className="hover:text-white transition-colors duration-300 relative group">
@@ -819,43 +773,57 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── SPEAKERS ── */}
-      <section id="faculty" className="bg-[#050a14] relative overflow-hidden">
-        {/* Faculty background video */}
+      {/* ── LEARN FROM THE PIONEERS ── */}
+      <section className="bg-[#050a14] relative overflow-hidden">
+        {/* Background video */}
         <div className="absolute inset-0 z-0">
           <LazyVideo src="/landing/Section-video.mp4" className="w-full h-full object-cover opacity-[0.08]" />
         </div>
         <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
-          <Reveal>
-            <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-500/60 mb-6">Faculty</p>
-          </Reveal>
-          <Reveal delay={100}>
-            <h2 className="text-4xl sm:text-5xl font-light tracking-tighter mb-20 text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]">
-              Learn from the pioneers.
-            </h2>
-          </Reveal>
-
-          <div className="space-y-0">
-            {SPEAKERS.map((s, i) => (
-              <Reveal key={i} delay={i * 80}>
-                <motion.div
-                  className="group flex items-center gap-6 sm:gap-10 py-8 border-b border-white/[0.06] cursor-default"
-                  whileHover={{ x: 12 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                >
-                  <span className="text-3xl sm:text-4xl font-light text-white/[0.06] group-hover:text-cyan-500/20 transition-colors duration-700 w-16 sm:w-20 shrink-0 leading-none">
-                    {s.name.split(" ").pop()?.charAt(0)}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg sm:text-xl font-light text-white/90 group-hover:text-white transition-colors">{s.name}</h3>
-                    <p className="text-sm text-white/30 mt-0.5">{s.org}</p>
-                  </div>
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-cyan-500/50 group-hover:text-cyan-400 transition-colors shrink-0 hidden sm:block">
-                    {s.title}
-                  </span>
-                </motion.div>
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            {/* Left side - Content */}
+            <div>
+              <Reveal>
+                <h2 className="text-4xl sm:text-5xl font-light tracking-tighter mb-8 text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]">
+                  Learn from the pioneers.
+                </h2>
               </Reveal>
-            ))}
+              <Reveal delay={100}>
+                <p className="text-base sm:text-lg text-white/70 font-light leading-relaxed mb-6">
+                  TECHNOSURG 2026 represents our continued commitment to advancing surgical excellence through innovation. Over the years, our academic platforms have brought together some of the finest minds in minimally invasive surgery.
+                </p>
+              </Reveal>
+              <Reveal delay={200}>
+                <p className="text-base sm:text-lg text-white/70 font-light leading-relaxed mb-6">
+                  With the rapid evolution of AI, robotics, and fluorescence-guided surgery, the way we operate is being redefined. This conference will serve as a platform to explore these advancements through live surgeries, interactive sessions, and global collaboration.
+                </p>
+              </Reveal>
+              <Reveal delay={300}>
+                <p className="text-base sm:text-lg text-white/70 font-light leading-relaxed mb-8">
+                  We invite you to be part of this transformative journey and help shape the future of surgery.
+                </p>
+              </Reveal>
+              <Reveal delay={400}>
+                <div className="border-l-2 border-cyan-500/40 pl-6">
+                  <p className="text-lg sm:text-xl font-light text-white">Prof. C. Palanivelu</p>
+                  <p className="text-sm text-white/50 mt-1">Founder &amp; Chairman, GEM Hospitals</p>
+                </div>
+              </Reveal>
+            </div>
+            {/* Right side - Image */}
+            <Reveal delay={200}>
+              <div className="relative">
+                <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-white/5">
+                  <img
+                    src="/landing/dr-palanivelu.jpg"
+                    alt="Prof. C. Palanivelu"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                {/* Decorative glow */}
+                <div className="absolute -inset-4 bg-cyan-500/10 rounded-3xl blur-2xl -z-10" />
+              </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -863,74 +831,21 @@ export default function LandingPage() {
       {/* ── SCHEDULE ── */}
       <section id="schedule" className="bg-[#fafafa] text-zinc-900">
         <div className="max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
-          <div className="flex items-end justify-between mb-16 flex-wrap gap-6">
-            <div>
-              <Reveal>
-                <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-600 mb-6">Programme</p>
-              </Reveal>
-              <Reveal delay={100}>
-                <h2 className="text-4xl sm:text-5xl font-light tracking-tighter">
-                  Two days. Boundless learning.
-                </h2>
-              </Reveal>
-            </div>
+          <div className="text-center">
+            <Reveal>
+              <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-600 mb-6">Programme</p>
+            </Reveal>
+            <Reveal delay={100}>
+              <h2 className="text-4xl sm:text-5xl font-light tracking-tighter mb-8">
+                Two days. Boundless learning.
+              </h2>
+            </Reveal>
             <Reveal delay={200}>
-              <div className="flex gap-1 bg-zinc-200/60 rounded-full p-1">
-                {[1, 2].map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setDay(d as 1 | 2)}
-                    className={`relative px-5 py-2 rounded-full text-sm transition-all duration-300 ${day === d ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-600"}`}
-                  >
-                    {day === d && (
-                      <motion.div
-                        layoutId="dayTab"
-                        className="absolute inset-0 bg-white rounded-full shadow-sm"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                    <span className="relative z-10">Day {d} — Jun {d === 1 ? "19" : "20"}</span>
-                  </button>
-                ))}
-              </div>
+              <p className="text-xl text-zinc-500 font-light">
+                Will be updated soon.
+              </p>
             </Reveal>
           </div>
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={day}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.4 }}
-              className="border-t border-zinc-200"
-            >
-              {(day === 1 ? DAY1 : DAY2).map((s, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: i * 0.05 }}
-                  className="flex items-center gap-4 sm:gap-6 py-5 border-b border-zinc-200/80 group"
-                >
-                  <span className="text-sm font-mono text-zinc-300 w-16 shrink-0 tabular-nums">{s.time}</span>
-                  {s.tag && (
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                      s.tag === "live" ? "bg-cyan-500" : s.tag === "keynote" ? "bg-zinc-400" : s.tag === "debate" ? "bg-rose-500" : "bg-amber-500"
-                    }`} />
-                  )}
-                  <span className="text-[15px] text-zinc-700 group-hover:text-zinc-950 transition-colors flex-1">{s.title}</span>
-                  {s.tag && (
-                    <span className={`text-[10px] uppercase tracking-[0.15em] font-medium shrink-0 hidden sm:block ${
-                      s.tag === "live" ? "text-cyan-600" : s.tag === "keynote" ? "text-zinc-400" : s.tag === "debate" ? "text-rose-600" : "text-amber-600"
-                    }`}>
-                      {s.tag}
-                    </span>
-                  )}
-                </motion.div>
-              ))}
-            </motion.div>
-          </AnimatePresence>
         </div>
       </section>
 
@@ -990,7 +905,7 @@ export default function LandingPage() {
             </div>
           </Reveal>
           <Reveal delay={400}>
-            <p className="mt-8 text-sm text-white/40">Limited to 500 delegates</p>
+            <p className="mt-8 text-sm text-white/40">Special early bird price still available until April 30th.</p>
           </Reveal>
         </div>
       </section>
@@ -1026,7 +941,7 @@ export default function LandingPage() {
       {/* ── FOOTER ── */}
       <footer className="bg-[#050a14] border-t border-white/[0.04]">
         <div className="max-w-[1200px] mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[13px] text-white/20">
-          <span>GEM TechnoSurg 2026</span>
+          <img src="/landing/technosurg-logo.png" alt="GEM TechnoSurg 2026" className="h-6 w-auto" />
           <span>&copy; {new Date().getFullYear()} GEM Hospital &amp; Research Centre</span>
         </div>
       </footer>
