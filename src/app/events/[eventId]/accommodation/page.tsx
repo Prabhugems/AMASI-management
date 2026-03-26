@@ -25,6 +25,7 @@ type Guest = {
   attendee_name: string
   custom_fields: {
     assigned_hotel_id?: string
+    needs_travel?: boolean
     travel_details?: {
       arrival_date?: string
       departure_date?: string
