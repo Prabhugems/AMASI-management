@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
       print_station_id,
       registration_id,
       registration_number,
+      search_query,
       event_id,
       token,
       device_info
@@ -70,11 +71,51 @@ export async function POST(request: NextRequest) {
       regQuery = regQuery.eq("id", registration_id)
     } else if (registration_number) {
       regQuery = regQuery.eq("registration_number", registration_number)
+    } else if (search_query) {
+      // Search by name, email, or partial registration number (case-insensitive)
+      // This allows searching "1001" to match "124A1001", "SPK1001", etc.
+      regQuery = regQuery.or(`attendee_name.ilike.%${search_query}%,attendee_email.ilike.%${search_query}%,registration_number.ilike.%${search_query}%`)
     } else {
-      return NextResponse.json({ error: "registration_id or registration_number is required" }, { status: 400 })
+      return NextResponse.json({ error: "registration_id, registration_number, or search_query is required" }, { status: 400 })
     }
 
-    const { data: registration, error: regError } = await regQuery.single()
+    // For search queries, we might get multiple results
+    if (search_query) {
+      const { data: searchResults, error: searchError } = await regQuery.limit(10)
+
+      if (searchError) {
+        return NextResponse.json({ error: "Search failed" }, { status: 500 })
+      }
+
+      if (!searchResults || searchResults.length === 0) {
+        return NextResponse.json({
+          error: "No attendees found matching your search",
+          search_query
+        }, { status: 404 })
+      }
+
+      // If multiple results, return them for user to select
+      if (searchResults.length > 1) {
+        return NextResponse.json({
+          multiple_results: true,
+          results: searchResults.map((r: any) => ({
+            id: r.id,
+            registration_number: r.registration_number,
+            attendee_name: r.attendee_name,
+            attendee_email: r.attendee_email,
+            ticket_type: r.ticket_types?.name,
+            status: r.status
+          })),
+          count: searchResults.length
+        })
+      }
+
+      // Single result - continue with print
+      var registration = searchResults[0]
+      var regError = null
+    } else {
+      var { data: registration, error: regError } = await regQuery.single()
+    }
 
     if (regError || !registration) {
       return NextResponse.json({

@@ -28,7 +28,9 @@ function LoginForm() {
   const [loading, setLoading] = React.useState(false)
   const [sent, setSent] = React.useState(false)
   const [error, setError] = React.useState("")
-  const [loginMode, setLoginMode] = React.useState<"password" | "magic-link">("password")
+  const [loginMode, setLoginMode] = React.useState<"password" | "magic-link">(
+    FEATURES.membership ? "magic-link" : "password"
+  )
 
   // If login page receives a code param, redirect to auth callback
   React.useEffect(() => {

@@ -116,6 +116,7 @@ function PrintStationKioskPage() {
   const [manualInput, setManualInput] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [scannedRegistration, setScannedRegistration] = useState<Registration | null>(null)
+  const [searchResults, setSearchResults] = useState<Registration[] | null>(null)
   const [isPrinting, setIsPrinting] = useState(false)
   const [printSuccess, setPrintSuccess] = useState(false)
   const [_printError, setPrintError] = useState<string | null>(null)
@@ -167,8 +168,14 @@ function PrintStationKioskPage() {
 
   // Print mutation
   const printMutation = useMutation({
-    mutationFn: async (registrationNumber: string) => {
+    mutationFn: async (input: string) => {
       const hasDirectPrinter = !!station?.print_settings?.printer_ip
+
+      // Detect if input looks like a full registration number or a partial search
+      // Full reg numbers look like: 124A1001, SPK1001, REG-2024-0001
+      // If it looks like a full code, do exact match; otherwise do search
+      const isFullRegNumber = /^(124A|SPK|REG|DEL|FAC)[A-Z0-9-]+$/i.test(input.trim()) ||
+                              /^[A-Z]{2,4}[0-9]{4,}$/i.test(input.trim())
 
       // When Zebra IP is configured, create job as "completed" (we'll print locally)
       // No queue needed — iPad sends ZPL directly to printer via HTTP
@@ -177,7 +184,7 @@ function PrintStationKioskPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          registration_number: registrationNumber,
+          ...(isFullRegNumber ? { registration_number: input } : { search_query: input }),
           queue: false,
           device_info: {
             userAgent: navigator.userAgent,
@@ -190,6 +197,11 @@ function PrintStationKioskPage() {
 
       if (!res.ok) {
         throw new Error(data.error || "Print failed")
+      }
+
+      // Handle multiple search results
+      if (data.multiple_results) {
+        return { multiple_results: true, results: data.results }
       }
 
       // If we have a direct printer, generate ZPL and send it
@@ -241,6 +253,15 @@ function PrintStationKioskPage() {
       return data
     },
     onSuccess: async (data) => {
+      // Handle multiple search results - show list for user to select
+      if (data.multiple_results) {
+        setSearchResults(data.results)
+        setIsPrinting(false)
+        if (soundEnabled) playSuccessSound()
+        return
+      }
+
+      setSearchResults(null)
       setScannedRegistration(data.registration)
       setReprintInfo({ is_reprint: data.is_reprint, print_number: data.print_number })
       queryClient.invalidateQueries({ queryKey: ["print-history", station?.id] })
@@ -1064,6 +1085,7 @@ function PrintStationKioskPage() {
 
   const resetScan = () => {
     setScannedRegistration(null)
+    setSearchResults(null)
     setError(null)
     setPrintError(null)
     setPrintSuccess(false)
@@ -1223,7 +1245,45 @@ function PrintStationKioskPage() {
         <div className={`flex-1 p-4 flex flex-col ${showHistory ? "max-w-2xl" : ""}`}>
           {/* Scan Input Section */}
           <div className="flex-1 flex items-center justify-center">
-            {!scannedRegistration ? (
+            {/* Search Results - Multiple Matches */}
+            {searchResults && searchResults.length > 0 ? (
+              <div className="w-full max-w-lg">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Select Attendee ({searchResults.length} found)</h2>
+                  <button
+                    onClick={resetScan}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    ← Back to search
+                  </button>
+                </div>
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                  {searchResults.map((result: any) => (
+                    <button
+                      key={result.id}
+                      onClick={() => {
+                        setSearchResults(null)
+                        printMutation.mutate(result.registration_number)
+                      }}
+                      className="w-full p-4 bg-card border border-border rounded-xl text-left hover:bg-muted/50 hover:border-purple-500/50 transition-all"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold">{result.attendee_name}</p>
+                          <p className="text-sm text-muted-foreground">{result.attendee_email}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-mono bg-muted px-2 py-1 rounded">{result.registration_number}</span>
+                          {result.ticket_type && (
+                            <p className="text-xs text-muted-foreground mt-1">{result.ticket_type}</p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : !scannedRegistration ? (
               <div className="w-full max-w-lg">
                 {/* Mode Toggle */}
                 <div className="flex bg-muted rounded-xl p-1 mb-6">
@@ -1260,7 +1320,7 @@ function PrintStationKioskPage() {
                         type="text"
                         value={manualInput}
                         onChange={(e) => setManualInput(e.target.value)}
-                        placeholder="Scan QR code or enter registration number..."
+                        placeholder="Scan QR, enter name, or number (e.g. 1001)..."
                         className="w-full pl-14 pr-6 py-5 bg-muted border-2 border-border rounded-2xl text-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder-muted-foreground"
                         autoFocus
                         autoComplete="off"
