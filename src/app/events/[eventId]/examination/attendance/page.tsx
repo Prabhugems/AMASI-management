@@ -151,7 +151,11 @@ export default function AttendancePage() {
       doc.text(`${(examSettings?.exam_type || "FMAS").toUpperCase()} Examination | Total: ${displayList.length}`, 14, 22)
 
       const headers = ["#", "Registration No.", "Name", "Ticket Type", "Status"]
-      const rows = displayList.map((reg, i) => [
+      // Sort by registration number
+      const sortedList = [...displayList].sort((a, b) =>
+        (a.registration_id || "").localeCompare(b.registration_id || "", undefined, { numeric: true })
+      )
+      const rows = sortedList.map((reg, i) => [
         String(i + 1),
         reg.registration_id,
         reg.name,

@@ -289,7 +289,11 @@ export default function MarksheetPage() {
       const selectedTotal = cols.reduce((s, c) => s + c.max, 0)
       const ROWS_PER_PAGE = 25
       const headers = ["#", "Reg No.", "Name", ...cols.map(col => `${col.label} [${col.max}]`), "Remarks"]
-      const allRows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ...cols.map(() => ""), ""])
+      // Sort by registration number
+      const sortedFiltered = [...filtered].sort((a, b) =>
+        (a.registration_id || "").localeCompare(b.registration_id || "", undefined, { numeric: true })
+      )
+      const allRows = sortedFiltered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ...cols.map(() => ""), ""])
       const totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE)
       const pageWidth = doc.internal.pageSize.getWidth()
       const pageHeight = doc.internal.pageSize.getHeight()
@@ -353,7 +357,11 @@ export default function MarksheetPage() {
       const ticketLabel = getTicketLabel()
       const ROWS_PER_PAGE = 20
       const headers = ["#", "Reg No.", "Name", "Signature"]
-      const allRows = filtered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ""])
+      // Sort by registration number
+      const sortedFiltered = [...filtered].sort((a, b) =>
+        (a.registration_id || "").localeCompare(b.registration_id || "", undefined, { numeric: true })
+      )
+      const allRows = sortedFiltered.map((reg, i) => [String(i + 1), reg.registration_id, reg.name, ""])
       const totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE)
       const pageWidth = doc.internal.pageSize.getWidth()
       const pageHeight = doc.internal.pageSize.getHeight()
@@ -414,7 +422,11 @@ export default function MarksheetPage() {
 
     setTimeout(() => {
       const headers = ["registration_id", "name", "email", ...cols.map(c => `${c.label.toLowerCase().replace(/\s/g, "_")}_${c.max}`), "remarks"]
-      const rows = filtered.map((reg) => [reg.registration_id, reg.name, reg.email, ...cols.map(c => reg.exam_marks?.[c.key] ?? ""), String(reg.exam_marks?.remarks || "")])
+      // Sort by registration number
+      const sortedFiltered = [...filtered].sort((a, b) =>
+        (a.registration_id || "").localeCompare(b.registration_id || "", undefined, { numeric: true })
+      )
+      const rows = sortedFiltered.map((reg) => [reg.registration_id, reg.name, reg.email, ...cols.map(c => reg.exam_marks?.[c.key] ?? ""), String(reg.exam_marks?.remarks || "")])
       const csv = [headers.join(","), ...rows.map((r: any[]) => r.map((v: any) => `"${v}"`).join(","))].join("\n")
       const blob = new Blob([csv], { type: "text/csv" })
       const url = URL.createObjectURL(blob)
