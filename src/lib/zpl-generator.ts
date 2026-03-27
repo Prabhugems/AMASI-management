@@ -104,12 +104,12 @@ function generateDefaultZPL(registration: ZPLRegistration, station: ZPLStation):
 
   lines.push(
     "",
-    `^FO${centerX - 100},${startY + 320}^GB200,50,3^FS`,
-    `^FO${centerX - 90},${startY + 332}^A0N,30,30^FB180,1,0,C^FD${ticketType}^FS`,
+    `^FO${centerX - 200},${startY + 320}^GB400,70,3^FS`,
+    `^FO${centerX - 190},${startY + 330}^A0N,28,28^FB380,2,0,C^FD${ticketType}^FS`,
     "",
-    `^FO${centerX - 80},${startY + 400}^A0N,25,25^FB160,1,0,C^FD${regNumber}^FS`,
+    `^FO${centerX - 80},${startY + 420}^A0N,25,25^FB160,1,0,C^FD${regNumber}^FS`,
     "",
-    `^FO${centerX - 60},${startY + 450}^BQN,2,4^FDQA,${regNumber}^FS`,
+    `^FO${centerX - 60},${startY + 470}^BQN,2,4^FDQA,${regNumber}^FS`,
     "",
     "^XZ"
   )
@@ -167,7 +167,10 @@ function generateZPLFromTemplate(
 
       const align = element.align === "center" ? "C" : element.align === "right" ? "R" : "L"
 
-      zplElements += `^FO${x},${y}^A0N,${fontHeight},${fontWidth}^FB${width},1,0,${align}^FD${content}^FS\n`
+      // Calculate max lines based on element height and font size
+      const maxLines = Math.max(1, Math.floor(height / fontHeight))
+
+      zplElements += `^FO${x},${y}^A0N,${fontHeight},${fontWidth}^FB${width},${maxLines},0,${align}^FD${content}^FS\n`
     } else if (element.type === "shape" && element.shapeType === "rectangle") {
       const borderWidth = Math.max(1, Math.floor((element.borderWidth || 1) * scaleX))
       zplElements += `^FO${x},${y}^GB${width},${height},${borderWidth}^FS\n`

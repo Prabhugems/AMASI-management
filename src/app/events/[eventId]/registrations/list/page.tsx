@@ -1636,6 +1636,9 @@ function RegistrationsContent() {
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">
                     Status
                   </th>
+                  <th className="text-center p-4 text-sm font-medium text-muted-foreground">
+                    Check-in
+                  </th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground">
                     Actions
                   </th>
@@ -1719,6 +1722,17 @@ function RegistrationsContent() {
                           </Badge>
                         )}
                       </div>
+                    </td>
+                    <td className="p-4 text-center">
+                      {reg.checked_in ? (
+                        <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500/20" title={`Checked in ${reg.checked_in_at ? new Date(reg.checked_in_at).toLocaleString() : ''}`}>
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800" title="Not checked in">
+                          <Clock className="h-4 w-4 text-slate-400" />
+                        </div>
+                      )}
                     </td>
                     <td className="p-4 text-right">
                       <DropdownMenu>
