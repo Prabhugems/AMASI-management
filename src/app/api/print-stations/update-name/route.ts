@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient()
 
     // Verify token belongs to a valid print station
-    const { data: station, error: stationError } = await supabase
+    const { data: station, error: stationError } = await (supabase as any)
       .from("print_stations")
       .select("id, event_id, is_active")
       .eq("access_token", token)
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify registration belongs to this event
-    const { data: registration, error: regError } = await supabase
+    const { data: registration, error: regError } = await (supabase as any)
       .from("registrations")
       .select("id, event_id, attendee_name")
       .eq("id", registration_id)
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the name
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from("registrations")
       .update({
         attendee_name: attendee_name.trim(),
