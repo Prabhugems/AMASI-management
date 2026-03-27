@@ -360,7 +360,11 @@ function RegistrationsContent() {
         .eq("event_id", eventId)
         .order("created_at", { ascending: false })
 
-      if (statusFilter !== "all") {
+      if (statusFilter === "checked_in") {
+        query = query.eq("checked_in", true)
+      } else if (statusFilter === "not_checked_in") {
+        query = query.or("checked_in.is.null,checked_in.eq.false")
+      } else if (statusFilter !== "all") {
         query = query.eq("status", statusFilter)
       }
 
@@ -1575,6 +1579,8 @@ function RegistrationsContent() {
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
             <SelectItem value="refunded">Refunded</SelectItem>
+            <SelectItem value="checked_in">Checked In</SelectItem>
+            <SelectItem value="not_checked_in">Not Checked In</SelectItem>
           </SelectContent>
         </Select>
         <Select value={modeFilter} onValueChange={setModeFilter}>
