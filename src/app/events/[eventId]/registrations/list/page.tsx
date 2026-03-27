@@ -1740,6 +1740,26 @@ function RegistrationsContent() {
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation()
+                              setEditData({
+                                registration_number: reg.registration_number,
+                                attendee_name: reg.attendee_name,
+                                attendee_email: reg.attendee_email,
+                                attendee_phone: reg.attendee_phone || "",
+                                attendee_institution: reg.attendee_institution || "",
+                                attendee_designation: reg.attendee_designation || "",
+                                participation_mode: reg.participation_mode || "offline",
+                                notes: reg.notes || "",
+                              })
+                              setSelectedRegistration(reg)
+                              setIsEditOpen(true)
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4 mr-2" />
+                            Edit Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
                               window.open(`mailto:${reg.attendee_email}`)
                             }}
                           >

@@ -215,9 +215,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: jobError.message }, { status: 500 })
     }
 
-    // Check-in if required
-    if (station.require_checkin) {
-      // You could integrate with check-in system here
+    // Mark as checked in when badge is printed (first print only)
+    if (printNumber === 1) {
+      await (supabase as any)
+        .from("registrations")
+        .update({
+          checked_in: true,
+          checked_in_at: new Date().toISOString()
+        })
+        .eq("id", registration.id)
     }
 
     return NextResponse.json({

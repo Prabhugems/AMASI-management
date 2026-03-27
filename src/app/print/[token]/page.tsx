@@ -33,6 +33,9 @@ import {
   RotateCcw,
   Eye,
   SwitchCamera,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react"
 
 interface PrintStation {
@@ -131,6 +134,9 @@ function PrintStationKioskPage() {
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([])
   const [selectedCameraId, setSelectedCameraId] = useState<string>("")
   const [printerOnline, setPrinterOnline] = useState<boolean | null>(null)
+  const [editingName, setEditingName] = useState(false)
+  const [editedName, setEditedName] = useState("")
+  const [savingName, setSavingName] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -1092,6 +1098,8 @@ function PrintStationKioskPage() {
     setManualInput("")
     setReprintInfo(null)
     setZplStatus(null)
+    setEditingName(false)
+    setEditedName("")
 
     // If in camera mode, restart the scanner
     if (scanMode === "camera") {
@@ -1102,6 +1110,52 @@ function PrintStationKioskPage() {
     } else if (inputRef.current) {
       inputRef.current.focus()
     }
+  }
+
+  const handleEditName = () => {
+    if (scannedRegistration) {
+      setEditedName(scannedRegistration.attendee_name)
+      setEditingName(true)
+    }
+  }
+
+  const handleSaveName = async () => {
+    if (!scannedRegistration || !editedName.trim()) return
+
+    setSavingName(true)
+    try {
+      const res = await fetch("/api/print-stations/update-name", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          registration_id: scannedRegistration.id,
+          attendee_name: editedName.trim()
+        })
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Failed to update name")
+      }
+
+      // Update the local state
+      setScannedRegistration({
+        ...scannedRegistration,
+        attendee_name: editedName.trim()
+      })
+      setEditingName(false)
+      if (soundEnabled) playSuccessSound()
+    } catch (err: any) {
+      setError(err.message)
+      if (soundEnabled) playErrorSound()
+    }
+    setSavingName(false)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingName(false)
+    setEditedName("")
   }
 
   const getPrintModeIcon = (mode: string) => {
@@ -1484,9 +1538,50 @@ function PrintStationKioskPage() {
                 <div className="bg-card rounded-2xl border-2 border-border overflow-hidden shadow-lg">
                   <div className={`p-6 bg-gradient-to-r ${getPrintModeColor(station.print_mode)} text-white`}>
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="flex-1">
                         <p className="text-white/80 text-sm font-medium">{station.events?.name}</p>
-                        <h2 className="text-2xl font-bold mt-1">{scannedRegistration.attendee_name}</h2>
+                        {editingName ? (
+                          <div className="mt-1 flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={editedName}
+                              onChange={(e) => setEditedName(e.target.value)}
+                              className="flex-1 px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white text-xl font-bold placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50"
+                              placeholder="Enter name..."
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveName()
+                                if (e.key === "Escape") handleCancelEdit()
+                              }}
+                            />
+                            <button
+                              onClick={handleSaveName}
+                              disabled={savingName || !editedName.trim()}
+                              className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors disabled:opacity-50"
+                              title="Save"
+                            >
+                              {savingName ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+                              title="Cancel"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="mt-1 flex items-center gap-2">
+                            <h2 className="text-2xl font-bold">{scannedRegistration.attendee_name}</h2>
+                            <button
+                              onClick={handleEditName}
+                              className="p-1.5 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+                              title="Edit name"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                         {scannedRegistration.attendee_designation && (
                           <p className="mt-1 text-white/90">{scannedRegistration.attendee_designation}</p>
                         )}
