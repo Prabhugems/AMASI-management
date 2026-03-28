@@ -143,9 +143,22 @@ export function AddonsSelector({
 
               {/* Addon Details */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{addon.name}</h4>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between sm:block">
+                      <h4 className="font-semibold text-gray-900">{addon.name}</h4>
+                      {/* Mobile: Price next to title */}
+                      {!addon.has_variants && (
+                        <div className="text-right sm:hidden">
+                          <p className="font-bold text-emerald-600">
+                            {addon.price > 0 ? `₹${addon.price.toLocaleString()}` : "Free"}
+                          </p>
+                          {addon.price > 0 && taxPercentage > 0 && (
+                            <p className="text-[10px] text-gray-400">+{taxPercentage}% GST</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     {addon.description && (
                       <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">
                         {addon.description}
@@ -154,7 +167,7 @@ export function AddonsSelector({
 
                     {/* Course badge & details */}
                     {addon.is_course && (
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
                           <Award className="w-3 h-3" />
                           Course with Certificate
@@ -170,8 +183,9 @@ export function AddonsSelector({
 
                   {/* Price & Quantity (for non-variant addons) */}
                   {!addon.has_variants && (
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
+                    <div className="flex items-center justify-between sm:justify-end gap-4">
+                      {/* Desktop: Price on left of controls */}
+                      <div className="hidden sm:block text-right">
                         <p className="font-bold text-emerald-600">
                           {addon.price > 0 ? `₹${addon.price.toLocaleString()}` : "Free"}
                         </p>

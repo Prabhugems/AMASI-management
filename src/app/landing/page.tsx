@@ -935,6 +935,17 @@ export default function LandingPage() {
               15 minutes from Chennai International Airport
             </p>
           </Reveal>
+          <Reveal delay={250}>
+            <div className="mt-8 pt-8 border-t border-white/10">
+              <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400/60 mb-3">Contact</p>
+              <a
+                href="mailto:technosurg@geminstitute.in"
+                className="text-white/70 hover:text-cyan-400 transition-colors text-lg font-light"
+              >
+                technosurg@geminstitute.in
+              </a>
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -942,6 +953,9 @@ export default function LandingPage() {
       <footer className="bg-[#050a14] border-t border-white/[0.04]">
         <div className="max-w-[1200px] mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[13px] text-white/20">
           <img src="/landing/technosurg-logo.png" alt="GEM TechnoSurg 2026" className="h-6 w-auto" />
+          <a href="mailto:technosurg@geminstitute.in" className="hover:text-cyan-400 transition-colors">
+            technosurg@geminstitute.in
+          </a>
           <span>&copy; {new Date().getFullYear()} GEM Hospital &amp; Research Centre</span>
         </div>
       </footer>
