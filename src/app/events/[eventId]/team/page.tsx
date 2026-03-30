@@ -343,9 +343,14 @@ export default function EventTeamPage() {
     },
   })
 
-  // Send magic link
-  const sendInvite = async (member: TeamMember) => {
+  // Send login link via both Email + WhatsApp
+  const sendLoginLink = async (member: TeamMember) => {
     setSendingInvite(member.id)
+    const loginUrl = `${window.location.origin}/team-login`
+    const results: string[] = []
+    const errors: string[] = []
+
+    // Send email magic link
     try {
       const res = await fetch('/api/auth/magic-link', {
         method: 'POST',
@@ -355,48 +360,39 @@ export default function EventTeamPage() {
           redirectTo: '/team-portal',
         }),
       })
-      if (res.ok) {
-        toast.success("Login link sent!", { description: `Sent to ${member.email}` })
-      } else {
-        toast.error("Failed to send login link")
-      }
+      if (res.ok) results.push('Email')
+      else errors.push('Email')
     } catch {
-      toast.error("Failed to send login link")
-    } finally {
-      setSendingInvite(null)
+      errors.push('Email')
     }
-  }
 
-  // Send WhatsApp login link
-  const sendWhatsApp = async (member: TeamMember) => {
-    if (!member.phone) {
-      toast.error("No phone number", { description: "This member doesn't have a phone number" })
-      return
-    }
-    setSendingWhatsApp(member.id)
-    try {
-      const loginUrl = `${window.location.origin}/team-login`
-      const res = await fetch('/api/whatsapp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: member.phone,
-          recipient_name: member.name,
-          type: 'text',
-          text: `Hi ${member.name},\n\nYou have been added as a team member. Use the link below to login:\n\n${loginUrl}\n\nUse your registered email: ${member.email}`,
-        }),
-      })
-      if (res.ok) {
-        toast.success("WhatsApp sent!", { description: `Login link sent to ${member.phone}` })
-      } else {
-        const err = await res.json().catch(() => ({}))
-        toast.error("Failed to send WhatsApp", { description: err.error || "Unknown error" })
+    // Send WhatsApp if phone exists
+    if (member.phone) {
+      try {
+        const res = await fetch('/api/whatsapp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: member.phone,
+            recipient_name: member.name,
+            type: 'text',
+            text: `Hi ${member.name},\n\nYou have been added as a team member. Use the link below to login:\n\n${loginUrl}\n\nUse your registered email: ${member.email}`,
+          }),
+        })
+        if (res.ok) results.push('WhatsApp')
+        else errors.push('WhatsApp')
+      } catch {
+        errors.push('WhatsApp')
       }
-    } catch {
-      toast.error("Failed to send WhatsApp")
-    } finally {
-      setSendingWhatsApp(null)
     }
+
+    if (results.length > 0) {
+      toast.success("Login link sent!", { description: `Sent via ${results.join(' + ')}` })
+    }
+    if (errors.length > 0) {
+      toast.error(`Failed to send via ${errors.join(' + ')}`)
+    }
+    setSendingInvite(null)
   }
 
   // Toggle active status
@@ -709,7 +705,7 @@ export default function EventTeamPage() {
                               Edit Member
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => sendInvite(member)}
+                              onClick={() => sendLoginLink(member)}
                               disabled={sendingInvite === member.id}
                             >
                               {sendingInvite === member.id ? (
@@ -717,24 +713,7 @@ export default function EventTeamPage() {
                               ) : (
                                 <Send className="h-4 w-4 mr-2" />
                               )}
-                              Send Login Link
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <a href={`mailto:${member.email}`}>
-                                <Mail className="h-4 w-4 mr-2" />
-                                Send Email
-                              </a>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => sendWhatsApp(member)}
-                              disabled={!member.phone || sendingWhatsApp === member.id}
-                            >
-                              {sendingWhatsApp === member.id ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              ) : (
-                                <MessageCircle className="h-4 w-4 mr-2" />
-                              )}
-                              Send WhatsApp
+                              Send Link
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
