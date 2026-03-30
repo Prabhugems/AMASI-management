@@ -400,7 +400,7 @@ function TicketCard({
                 ${isDark ? "text-white" : "text-gray-900"}
               `}
             >
-              Subtotal: {"\u20B9"}{(totalPrice * quantity).toLocaleString()}
+              Subtotal: {"\u20B9"}{Math.round(totalPrice * quantity).toLocaleString("en-IN")}
             </span>
           </div>
         )}

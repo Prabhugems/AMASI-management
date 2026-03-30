@@ -865,7 +865,7 @@ function EventDetailsPage() {
                           {ticket.name} x {quantity}
                         </span>
                         <span className="font-medium text-gray-900">
-                          {"\u20B9"}{(ticket.price * quantity).toLocaleString()}
+                          {"\u20B9"}{Math.round(ticket.price * (1 + ticket.tax_percentage / 100) * quantity).toLocaleString("en-IN")}
                         </span>
                       </div>
                     )
@@ -900,13 +900,13 @@ function EventDetailsPage() {
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-gray-500">Tickets Subtotal</span>
                       <span className="text-gray-900">
-                        {"\u20B9"}{totals.subtotal.toLocaleString()}
+                        {"\u20B9"}{Math.round(totals.subtotal).toLocaleString("en-IN")}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-gray-500">Tickets GST</span>
                       <span className="text-gray-900">
-                        {"\u20B9"}{totals.tax.toLocaleString()}
+                        {"\u20B9"}{Math.round(totals.tax).toLocaleString("en-IN")}
                       </span>
                     </div>
                     {totals.addonsTotal > 0 && (
@@ -914,20 +914,20 @@ function EventDetailsPage() {
                         <div className="flex justify-between text-sm mb-2">
                           <span className="text-gray-500">Add-ons Subtotal</span>
                           <span className="text-gray-900">
-                            {"\u20B9"}{totals.addonsTotal.toLocaleString()}
+                            {"\u20B9"}{Math.round(totals.addonsTotal).toLocaleString("en-IN")}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm mb-2">
                           <span className="text-gray-500">Add-ons GST</span>
                           <span className="text-gray-900">
-                            {"\u20B9"}{totals.addonsTax.toLocaleString()}
+                            {"\u20B9"}{Math.round(totals.addonsTax).toLocaleString("en-IN")}
                           </span>
                         </div>
                       </>
                     )}
                     <div className="flex justify-between text-lg font-bold pt-4 border-t border-gray-200">
                       <span className="text-gray-900">Total</span>
-                      <span key={priceAnimKey} className="text-emerald-600 price-transition changing">{"\u20B9"}{totals.total.toLocaleString()}</span>
+                      <span key={priceAnimKey} className="text-emerald-600 price-transition changing">{"\u20B9"}{Math.round(totals.total).toLocaleString("en-IN")}</span>
                     </div>
                   </div>
                 </div>
