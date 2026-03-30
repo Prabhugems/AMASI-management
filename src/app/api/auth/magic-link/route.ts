@@ -290,6 +290,7 @@ export async function POST(request: NextRequest) {
     if (!userResult.data && !teamResult.data) {
       // Return same generic message to avoid email enumeration
       console.warn(`[Magic Link] Blocked login attempt for unknown email: ${normalizedEmail}`)
+      // Fire-and-forget: don't await activity logging (it can hang without auth session)
       logActivityFromRequest(request, {
         action: "failed_login",
         entityType: "user",
@@ -297,34 +298,45 @@ export async function POST(request: NextRequest) {
         description: `Blocked magic link request for unknown email: ${normalizedEmail}`,
         metadata: { reason: "unknown_email", email: normalizedEmail },
         userEmail: normalizedEmail,
-      })
+      }).catch(() => {})
       return NextResponse.json({ success: true })
     }
 
     // If team member exists but no auth user, create one first
     if (!userResult.data && teamResult.data) {
       console.log(`[Magic Link] Creating auth user for team member: ${normalizedEmail}`)
-      const { error: createError } = await adminClient.auth.admin.createUser({
-        email: normalizedEmail,
-        email_confirm: true,
-      })
-      if (createError && !createError.message?.includes("already been registered")) {
-        console.error("[Magic Link] Failed to create auth user:", createError.message)
-        return NextResponse.json(
-          { error: "Failed to create user account" },
-          { status: 500 }
-        )
+      try {
+        const { error: createError } = await adminClient.auth.admin.createUser({
+          email: normalizedEmail,
+          email_confirm: true,
+        })
+        if (createError && !createError.message?.includes("already been registered")) {
+          console.error("[Magic Link] Failed to create auth user:", createError.message)
+        }
+      } catch (createErr) {
+        console.error("[Magic Link] Exception creating auth user:", createErr)
       }
     }
 
-    const { data: linkData, error: linkError } =
-      await adminClient.auth.admin.generateLink({
+    console.log(`[Magic Link] Generating link for: ${normalizedEmail}`)
+    let linkData, linkError
+    try {
+      const result = await adminClient.auth.admin.generateLink({
         type: "magiclink",
         email: normalizedEmail,
         options: {
           redirectTo: callbackUrl,
         },
       })
+      linkData = result.data
+      linkError = result.error
+    } catch (genErr) {
+      console.error("[Magic Link] Exception generating link:", genErr)
+      return NextResponse.json(
+        { error: "Failed to generate login link" },
+        { status: 500 }
+      )
+    }
 
     if (linkError) {
       console.error("[Magic Link] Failed to generate link:", linkError.message)
