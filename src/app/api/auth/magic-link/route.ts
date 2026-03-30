@@ -301,6 +301,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
+    // If team member exists but no auth user, create one first
+    if (!userResult.data && teamResult.data) {
+      console.log(`[Magic Link] Creating auth user for team member: ${normalizedEmail}`)
+      const { error: createError } = await adminClient.auth.admin.createUser({
+        email: normalizedEmail,
+        email_confirm: true,
+      })
+      if (createError && !createError.message?.includes("already been registered")) {
+        console.error("[Magic Link] Failed to create auth user:", createError.message)
+        return NextResponse.json(
+          { error: "Failed to create user account" },
+          { status: 500 }
+        )
+      }
+    }
+
     const { data: linkData, error: linkError } =
       await adminClient.auth.admin.generateLink({
         type: "magiclink",
