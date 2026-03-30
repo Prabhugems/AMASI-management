@@ -523,6 +523,7 @@ export default function TicketsPage() {
       tax_percentage: ticket.tax_percentage,
       form_id: ticket.form_id,
       exclusivity_group: ticket.exclusivity_group || "",
+      gst_inclusive: false,
       linked_addon_ids: linkedAddons,
     })
     setDialogTab("basic")
