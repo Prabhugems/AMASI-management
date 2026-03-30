@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // GET - List email templates
 export async function GET(request: NextRequest) {
-  const user = await getApiUser()
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
 
   const supabase = await createServerSupabaseClient()
   const { searchParams } = new URL(request.url)
@@ -41,8 +41,8 @@ export async function GET(request: NextRequest) {
 
 // POST - Create new email template
 export async function POST(request: NextRequest) {
-  const user = await getApiUser()
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const { error: authError2 } = await requireAdmin()
+  if (authError2) return authError2
 
   const ip = getClientIp(request)
   const rateLimit = checkRateLimit(ip, "authenticated")

@@ -2,7 +2,7 @@ import crypto from "crypto"
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 type FacultyAssignment = {
   id: string
@@ -50,10 +50,9 @@ export async function POST(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const user = await getApiUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
     const { eventId } = await params
+    const { error: authError } = await requireEventAndPermission(eventId, 'speakers')
+    if (authError) return authError
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any

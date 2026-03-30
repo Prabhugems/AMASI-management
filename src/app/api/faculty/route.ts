@@ -1,19 +1,12 @@
-import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { DEFAULTS } from '@/lib/config'
+import { requireAdmin } from '@/lib/auth/api-auth'
 
 export async function POST(request: NextRequest) {
   try {
-    // Authentication check
-    const supabaseAuth = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized - please login to create faculty' },
-        { status: 401 }
-      )
-    }
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
 
     // Use admin client for the operation (bypasses RLS)
     const supabase = await createAdminClient()

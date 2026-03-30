@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 
 // POST /api/abstracts/[id]/presenter-checkin - Check-in presenter on conference day
@@ -8,7 +8,6 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user } = await getApiUser()
     const { id } = await params
     const body = await request.json()
 
@@ -36,6 +35,9 @@ export async function POST(
     if (fetchError || !abstract) {
       return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
     }
+
+    const { user, error: authError } = await requireEventAndPermission(abstract.event_id, 'abstracts')
+    if (authError) return authError
 
     if (abstract.status !== 'accepted') {
       return NextResponse.json(
@@ -131,7 +133,6 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await getApiUser()
     const { id } = await params
     const body = await request.json()
 
@@ -142,6 +143,20 @@ export async function PUT(
     }
 
     const supabase = await createAdminClient()
+
+    // Get abstract to check event permission
+    const { data: abstractRecord } = await (supabase as any)
+      .from("abstracts")
+      .select("event_id")
+      .eq("id", id)
+      .single()
+
+    if (!abstractRecord) {
+      return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(abstractRecord.event_id, 'abstracts')
+    if (authError) return authError
 
     // Get check-in record
     const { data: checkin, error: fetchError } = await (supabase as any)
@@ -206,6 +221,20 @@ export async function GET(
     const { id } = await params
 
     const supabase = await createAdminClient()
+
+    // Get abstract to check event permission
+    const { data: absForAuth } = await (supabase as any)
+      .from("abstracts")
+      .select("event_id")
+      .eq("id", id)
+      .single()
+
+    if (!absForAuth) {
+      return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(absForAuth.event_id, 'abstracts')
+    if (authError) return authError
 
     // Get abstract with check-in info
     const { data: abstract, error: fetchError } = await (supabase as any)

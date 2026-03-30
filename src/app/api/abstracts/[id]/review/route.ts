@@ -1,4 +1,5 @@
-import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -16,26 +17,25 @@ export async function GET(
       return NextResponse.json({ error: "id is required" }, { status: 400 })
     }
 
-    const supabase: SupabaseClient = await createServerSupabaseClient()
+    const adminClient: SupabaseClient = await createAdminClient()
 
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Get abstract to check event permission
+    const { data: abstractRecord } = await adminClient
+      .from("abstracts")
+      .select("event_id")
+      .eq("id", id)
+      .single()
+
+    if (!abstractRecord) {
+      return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
     }
 
-    // Check if user is an active team member
-    const adminClient: SupabaseClient = await createAdminClient()
-    const { data: teamMember } = await adminClient
-      .from("team_members")
-      .select("id")
-      .eq("email", user.email?.toLowerCase())
-      .eq("is_active", true)
-      .maybeSingle()
+    const { error: authError } = await requireEventAndPermission(abstractRecord.event_id, 'abstracts')
+    if (authError) return authError
 
-    const isTeamMember = !!teamMember
+    const isTeamMember = true // User passed requireEventAndPermission, so they are authorized
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (adminClient as any)
       .from("abstract_reviews")
       .select("*")
       .eq("abstract_id", id)
@@ -95,16 +95,27 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
 
     if (!id) {
       return NextResponse.json({ error: "abstract id is required" }, { status: 400 })
+    }
+
+    const adminClient: SupabaseClient = await createAdminClient()
+
+    // Get abstract to check event permission
+    const { data: abstractRecord } = await adminClient
+      .from("abstracts")
+      .select("event_id")
+      .eq("id", id)
+      .single()
+
+    if (!abstractRecord) {
+      return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
+    }
+
+    const { user, error: authError } = await requireEventAndPermission(abstractRecord.event_id, 'abstracts')
+    if (!user || authError) {
+      return authError || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await request.json()
@@ -131,25 +142,19 @@ export async function POST(
       )
     }
 
-    const adminClient: SupabaseClient = await createAdminClient()
-
-    // Verify user is an active team member to add reviews
+    // Get team member info for the reviewer record
     const { data: teamMember } = await adminClient
       .from("team_members")
       .select("id, name, email")
-      .eq("email", user.email?.toLowerCase())
+      .ilike("email", user.email || '')
       .eq("is_active", true)
       .maybeSingle()
 
-    if (!teamMember) {
-      return NextResponse.json({ error: "Only active team members can add reviews" }, { status: 403 })
-    }
-
-    // Get reviewer info from team_members
+    // Get reviewer info from team_members or user profile
     const reviewerInfo = {
-      reviewer_id: teamMember.id,
-      reviewer_name: teamMember.name || user.email,
-      reviewer_email: teamMember.email || user.email,
+      reviewer_id: teamMember?.id || user.id,
+      reviewer_name: teamMember?.name || user.name || user.email,
+      reviewer_email: teamMember?.email || user.email,
     }
 
     // Build insert data - supports both dynamic JSONB scores and legacy fixed scores
@@ -212,13 +217,6 @@ export async function PUT(
 ) {
   try {
     const { id: _id } = await params
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
 
     const body = await request.json()
 
@@ -253,10 +251,10 @@ export async function PUT(
 
     const adminClient: SupabaseClient = await createAdminClient()
 
-    // Verify user is the original reviewer or an active team member
+    // Verify review exists and get abstract for permission check
     const { data: existingReview } = await adminClient
       .from("abstract_reviews")
-      .select("reviewer_email")
+      .select("reviewer_email, abstract_id")
       .eq("id", body.review_id)
       .maybeSingle()
 
@@ -264,18 +262,19 @@ export async function PUT(
       return NextResponse.json({ error: "Review not found" }, { status: 404 })
     }
 
-    const isOriginalReviewer = existingReview.reviewer_email?.toLowerCase() === user.email?.toLowerCase()
+    // Get abstract to check event permission
+    const { data: abstractRecord } = await adminClient
+      .from("abstracts")
+      .select("event_id")
+      .eq("id", existingReview.abstract_id)
+      .single()
 
-    const { data: teamMember } = await adminClient
-      .from("team_members")
-      .select("id")
-      .eq("email", user.email?.toLowerCase())
-      .eq("is_active", true)
-      .maybeSingle()
-
-    if (!isOriginalReviewer && !teamMember) {
-      return NextResponse.json({ error: "Only the original reviewer or team members can update reviews" }, { status: 403 })
+    if (!abstractRecord) {
+      return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
     }
+
+    const { error: authError } = await requireEventAndPermission(abstractRecord.event_id, 'abstracts')
+    if (authError) return authError
 
     const updateData: Record<string, any> = {}
 

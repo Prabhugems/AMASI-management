@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import * as XLSX from "xlsx"
 
 // GET /api/abstracts/export?event_id=...&format=xlsx|csv
@@ -13,6 +14,9 @@ export async function GET(request: NextRequest) {
     if (!eventId) {
       return NextResponse.json({ error: "Event ID is required" }, { status: 400 })
     }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 

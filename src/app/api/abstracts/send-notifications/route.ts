@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 import { sendEmail } from "@/lib/email"
 
@@ -175,10 +175,6 @@ ${data.event_name} Scientific Committee`,
 // POST /api/abstracts/send-notifications - Send notifications to presenters
 export async function POST(request: NextRequest) {
   try {
-    const { user, error: authError } = await requireAdmin()
-    if (!user || authError) {
-      return authError || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
     const body = await request.json()
 
     const {
@@ -195,6 +191,11 @@ export async function POST(request: NextRequest) {
         { error: "event_id and notification_type are required" },
         { status: 400 }
       )
+    }
+
+    const { user, error: authError } = await requireEventAndPermission(event_id, 'abstracts')
+    if (!user || authError) {
+      return authError || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const supabase = await createAdminClient()
@@ -348,11 +349,18 @@ export async function POST(request: NextRequest) {
 }
 
 // GET /api/abstracts/send-notifications - Get notification templates
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { error: authError } = await requireAdmin()
-    if (authError) {
-      return authError
+    const { searchParams } = new URL(request.url)
+    const eventId = searchParams.get('event_id')
+    if (eventId) {
+      const { error: authError } = await requireEventAndPermission(eventId, 'abstracts')
+      if (authError) return authError
+    } else {
+      // Fallback: require at least basic admin auth via requireEventAndPermission with empty check
+      const { requireAdmin } = await import('@/lib/auth/api-auth')
+      const { error: authError } = await requireAdmin()
+      if (authError) return authError
     }
     return NextResponse.json({
       templates: Object.keys(templates).map(key => ({

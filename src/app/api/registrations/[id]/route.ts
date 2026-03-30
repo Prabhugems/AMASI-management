@@ -1,6 +1,6 @@
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
-import { requireEventAccess, getEventIdFromRegistration } from "@/lib/auth/api-auth"
+import { requireEventAndPermission, getEventIdFromRegistration } from "@/lib/auth/api-auth"
 
 // GET - Get single registration (requires event access)
 export async function GET(
@@ -17,7 +17,7 @@ export async function GET(
     }
 
     // Check authorization
-    const { error: authError } = await requireEventAccess(eventId)
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
     if (authError) return authError
 
     const supabase = await createServerSupabaseClient()
@@ -61,7 +61,7 @@ export async function PATCH(
     }
 
     // Check authorization
-    const { error: authError } = await requireEventAccess(eventId)
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
     if (authError) return authError
 
     const supabase = await createServerSupabaseClient()
@@ -249,7 +249,7 @@ export async function DELETE(
     }
 
     // Check authorization
-    const { error: authError } = await requireEventAccess(eventId)
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
     if (authError) return authError
 
     const supabase = await createServerSupabaseClient()

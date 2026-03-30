@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { logActivityFromRequest } from "@/lib/activity-logger"
 import crypto from "crypto"
 
@@ -9,10 +9,9 @@ export async function POST(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const { user, error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const { eventId } = await params
+    const { user, error: authError } = await requireEventAndPermission(eventId, 'speakers')
+    if (authError) return authError
     const body = await request.json()
 
     const {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { logActivityFromRequest } from "@/lib/activity-logger"
 
 // Generate registration number
@@ -37,10 +37,6 @@ interface ImportRegistration {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Require admin authentication
-    const { user: _user, error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
@@ -59,6 +55,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Require event access + registrations permission
+    const { error: authError } = await requireEventAndPermission(event_id, 'registrations')
+    if (authError) return authError
 
     // Fetch all ticket types for this event (for matching by name)
     const { data: ticketTypes, error: ticketsError } = await db
@@ -323,15 +323,21 @@ export async function POST(request: NextRequest) {
  * Get import template/help
  */
 export async function GET(request: NextRequest) {
-  // Require admin authentication
-  const { user: _user, error: authError } = await requireAdmin()
+  const { searchParams } = new URL(request.url)
+  const eventId = searchParams.get("event_id")
+
+  // Require event_id for permission check
+  if (!eventId) {
+    return NextResponse.json({ error: "event_id is required" }, { status: 400 })
+  }
+
+  // Require event access + registrations permission
+  const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
   if (authError) return authError
 
   const supabase = await createAdminClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
-  const { searchParams } = new URL(request.url)
-  const eventId = searchParams.get("event_id")
   const format = searchParams.get("format") // 'json' or 'csv'
 
   // If event_id provided, generate CSV template with ticket names

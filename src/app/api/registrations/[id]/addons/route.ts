@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
-import { requireEventAccess, getEventIdFromRegistration } from "@/lib/auth/api-auth"
+import { requireEventAndPermission, getEventIdFromRegistration } from "@/lib/auth/api-auth"
 
 // GET - Fetch addons for a registration
 export async function GET(
@@ -16,7 +16,7 @@ export async function GET(
       return NextResponse.json({ error: "Registration not found" }, { status: 404 })
     }
 
-    const { error: authError } = await requireEventAccess(eventId)
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
     if (authError) return authError
 
     const supabase = await createServerSupabaseClient()
@@ -54,7 +54,7 @@ export async function POST(
       return NextResponse.json({ error: "Registration not found" }, { status: 404 })
     }
 
-    const { error: authError } = await requireEventAccess(eventId)
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
     if (authError) return authError
 
     const supabase = await createServerSupabaseClient()
@@ -195,7 +195,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Registration not found" }, { status: 404 })
     }
 
-    const { error: authError } = await requireEventAccess(eventId)
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
     if (authError) return authError
 
     const supabase = await createServerSupabaseClient()

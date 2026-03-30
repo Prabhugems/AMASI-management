@@ -96,8 +96,12 @@ import {
   WifiOff,
   CircleDot,
   Settings,
+  Download,
 } from "lucide-react"
 import { toast } from "sonner"
+import { PendingInvitations, Invitation } from "@/components/team/pending-invitations"
+import { ActivityLog } from "@/components/team/activity-log"
+import { AccessLogViewer } from "@/components/team/access-log-viewer"
 import { format, formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 
@@ -584,7 +588,25 @@ export default function TeamPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [roleFilter, setRoleFilter] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"grid" | "table">("table")
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredMembers.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredMembers.map(m => m.id)))
+    }
+  }
+  const clearSelection = () => setSelectedIds(new Set())
   const [currentPage, setCurrentPage] = useState(1)
   const [isGuideOpen, setIsGuideOpen] = useState(false)
   const itemsPerPage = 10
@@ -679,6 +701,46 @@ export default function TeamPage() {
     },
   })
 
+  const { data: invitations, isLoading: invitationsLoading } = useQuery({
+    queryKey: ["team-invitations"],
+    queryFn: async () => {
+      const res = await fetch('/api/team/invite')
+      if (!res.ok) return []
+      const data = await res.json()
+      return (data.invitations || []) as Invitation[]
+    },
+  })
+
+  const resendInvite = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/team/${id}/resend-invite`, { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to resend')
+      }
+    },
+    onSuccess: () => {
+      toast.success("Invitation resent!")
+      queryClient.invalidateQueries({ queryKey: ["team-invitations"] })
+    },
+    onError: (error: any) => toast.error(error.message),
+  })
+
+  const revokeInvite = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/team/invite/${id}/revoke`, { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to revoke')
+      }
+    },
+    onSuccess: () => {
+      toast.success("Invitation revoked")
+      queryClient.invalidateQueries({ queryKey: ["team-invitations"] })
+    },
+    onError: (error: any) => toast.error(error.message),
+  })
+
   const [eventSearch, setEventSearch] = useState("")
 
   const categorizedEvents = useMemo(() => {
@@ -700,9 +762,10 @@ export default function TeamPage() {
 
   const addMember = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await (supabase as any)
-        .from("team_members")
-        .insert({
+      const res = await fetch('/api/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           email: data.email.toLowerCase(),
           name: data.name,
           phone: data.phone || null,
@@ -710,28 +773,36 @@ export default function TeamPage() {
           notes: data.notes || null,
           event_ids: data.all_events ? [] : data.event_ids,
           permissions: data.all_permissions ? [] : data.permissions,
-          is_active: true,
-        })
-      if (error) throw error
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to add member')
+      }
+      return res.json()
     },
     onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: ["team-members"] })
       toast.success("Team member added successfully!")
       setIsAddOpen(false)
-      // Auto-send invite email to the new team member
-      fetch('/api/auth/magic-link', {
+      // Auto-send invite email
+      fetch('/api/team/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: data.email.toLowerCase(),
-          isInvite: true,
+          name: data.name,
+          role: data.role,
+          permissions: data.all_permissions ? [] : data.permissions,
+          event_ids: data.all_events ? [] : data.event_ids,
         }),
       }).then(res => {
-        if (res.ok) toast.success("Invite email sent!")
-        else toast.error("Member added but invite email failed to send")
-      }).catch(() => {
-        toast.error("Member added but invite email failed to send")
-      })
+        if (res.ok) {
+          toast.success("Invite email sent!")
+          queryClient.invalidateQueries({ queryKey: ["team-invitations"] })
+        }
+        else toast.error("Member added but invite email failed")
+      }).catch(() => toast.error("Member added but invite email failed"))
       resetForm()
     },
     onError: (error: any) => {
@@ -741,11 +812,16 @@ export default function TeamPage() {
 
   const updateMember = useMutation({
     mutationFn: async (data: { id: string; updates: any }) => {
-      const { error } = await (supabase as any)
-        .from("team_members")
-        .update(data.updates)
-        .eq("id", data.id)
-      if (error) throw error
+      const res = await fetch(`/api/team/${data.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data.updates),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to update')
+      }
+      return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team-members"] })
@@ -760,16 +836,61 @@ export default function TeamPage() {
 
   const deleteMember = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from("team_members")
-        .delete()
-        .eq("id", id)
-      if (error) throw error
+      const res = await fetch(`/api/team/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to remove')
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team-members"] })
       toast.success("Member removed")
       setSelectedMember(null)
+    },
+  })
+
+  const bulkActivate = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map(id =>
+        fetch(`/api/team/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: true }),
+        })
+      ))
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] })
+      toast.success(`${selectedIds.size} members activated`)
+      clearSelection()
+    },
+  })
+
+  const bulkDeactivate = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map(id =>
+        fetch(`/api/team/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: false }),
+        })
+      ))
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] })
+      toast.success(`${selectedIds.size} members deactivated`)
+      clearSelection()
+    },
+  })
+
+  const bulkDelete = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map(id => fetch(`/api/team/${id}`, { method: 'DELETE' })))
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] })
+      toast.success(`${selectedIds.size} members removed`)
+      clearSelection()
     },
   })
 
@@ -822,9 +943,10 @@ export default function TeamPage() {
     return (teamMembers || []).filter(m => {
       const matchesSearch = (m.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || (m.email || "").toLowerCase().includes(searchQuery.toLowerCase())
       const matchesStatus = statusFilter === "all" || (statusFilter === "active" && m.is_active) || (statusFilter === "inactive" && !m.is_active)
-      return matchesSearch && matchesStatus
+      const matchesRole = roleFilter === "all" || m.role === roleFilter
+      return matchesSearch && matchesStatus && matchesRole
     })
-  }, [teamMembers, searchQuery, statusFilter])
+  }, [teamMembers, searchQuery, statusFilter, roleFilter])
 
   // Pagination
   const totalPages = Math.ceil(filteredMembers.length / itemsPerPage)
@@ -833,10 +955,11 @@ export default function TeamPage() {
     return filteredMembers.slice(start, start + itemsPerPage)
   }, [filteredMembers, currentPage])
 
-  // Reset page when filters change
+  // Reset page and selection when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, statusFilter])
+    setSelectedIds(new Set())
+  }, [searchQuery, statusFilter, roleFilter])
 
   const totalMembers = teamMembers?.length || 0
   const activeMembers = teamMembers?.filter(m => m.is_active).length || 0
@@ -859,6 +982,7 @@ export default function TeamPage() {
       const updated = teamMembers.find(m => m.id === selectedMember.id)
       if (updated) setSelectedMember(updated)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamMembers])
 
   return (
@@ -898,6 +1022,22 @@ export default function TeamPage() {
               <Button onClick={() => copyToClipboard(`${window.location.origin}/team-login`, "Portal link copied!")} size="sm" className="bg-white/10 border border-white/20 text-white hover:bg-white/20">
                 <Link2 className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Portal Link</span>
               </Button>
+              <Button onClick={() => {
+                fetch('/api/team/export')
+                  .then(res => res.blob())
+                  .then(blob => {
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `team-members-${new Date().toISOString().slice(0, 10)}.csv`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                    toast.success("Team data exported!")
+                  })
+                  .catch(() => toast.error("Export failed"))
+              }} size="sm" className="bg-white/10 border border-white/20 text-white hover:bg-white/20">
+                <Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Export</span>
+              </Button>
               <Button onClick={() => { resetForm(); setIsAddOpen(true) }} size="sm" className="bg-white text-slate-900 hover:bg-slate-100 shadow-lg">
                 <UserPlus className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Add Member</span>
               </Button>
@@ -905,7 +1045,7 @@ export default function TeamPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 sm:mt-8">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mt-6 sm:mt-8">
             <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
@@ -950,6 +1090,17 @@ export default function TeamPage() {
                 </div>
               </div>
             </div>
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                  <Mail className="h-5 w-5 text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{invitations?.filter(i => i.status === 'pending').length || 0}</p>
+                  <p className="text-xs text-slate-400">Pending Invites</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -970,6 +1121,12 @@ export default function TeamPage() {
                 <TabsTrigger value="inactive" className="flex-1 sm:flex-none data-[state=active]:bg-slate-600 data-[state=active]:text-white text-xs sm:text-sm">
                   <span className="h-2 w-2 rounded-full bg-slate-400 mr-1 sm:mr-2" />Inactive
                 </TabsTrigger>
+                <TabsTrigger value="pending" className="flex-1 sm:flex-none data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs sm:text-sm">
+                  <span className="h-2 w-2 rounded-full bg-blue-500 mr-1 sm:mr-2" />Pending
+                  {(invitations?.filter(i => i.status === 'pending').length || 0) > 0 && (
+                    <span className="ml-1 text-[10px] bg-white/20 rounded-full px-1.5">{invitations?.filter(i => i.status === 'pending').length}</span>
+                  )}
+                </TabsTrigger>
               </TabsList>
             </Tabs>
             <span className="text-sm text-muted-foreground hidden sm:inline">
@@ -977,6 +1134,16 @@ export default function TeamPage() {
             </span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="h-10 px-3 rounded-lg border bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="all">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="coordinator">Coordinator</option>
+              <option value="travel">Travel</option>
+            </select>
             <div className="relative flex-1 sm:w-72 sm:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-white shadow-sm" />
@@ -992,8 +1159,43 @@ export default function TeamPage() {
           </div>
         </div>
 
+        {/* Bulk Action Bar */}
+        {selectedIds.size > 0 && statusFilter !== "pending" && (
+          <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+              {selectedIds.size} selected
+            </Badge>
+            <div className="flex items-center gap-2 ml-auto">
+              <Button variant="outline" size="sm" onClick={() => bulkActivate.mutate(Array.from(selectedIds))} disabled={bulkActivate.isPending}>
+                <UserCheck className="h-3.5 w-3.5 mr-1.5" />Activate
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => bulkDeactivate.mutate(Array.from(selectedIds))} disabled={bulkDeactivate.isPending}>
+                <UserX className="h-3.5 w-3.5 mr-1.5" />Deactivate
+              </Button>
+              <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
+                if (confirm(`Remove ${selectedIds.size} members? This cannot be undone.`)) {
+                  bulkDelete.mutate(Array.from(selectedIds))
+                }
+              }} disabled={bulkDelete.isPending}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />Remove
+              </Button>
+              <Button variant="ghost" size="sm" onClick={clearSelection}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Team List/Grid */}
-        {isLoading ? (
+        {statusFilter === "pending" ? (
+          <PendingInvitations
+            invitations={invitations?.filter(i => i.status === 'pending') || []}
+            isLoading={invitationsLoading}
+            onResend={(id) => resendInvite.mutate(id)}
+            onRevoke={(id) => revokeInvite.mutate(id)}
+            isResending={resendInvite.isPending}
+          />
+        ) : isLoading ? (
           viewMode === "table" ? (
             <SkeletonTable rows={5} />
           ) : (
@@ -1022,6 +1224,9 @@ export default function TeamPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50 hover:bg-slate-50">
+                  <TableHead className="w-[40px]">
+                    <input type="checkbox" checked={selectedIds.size === filteredMembers.length && filteredMembers.length > 0} onChange={toggleSelectAll} className="rounded" />
+                  </TableHead>
                   <TableHead className="w-[300px]">Member</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Permissions</TableHead>
@@ -1039,6 +1244,9 @@ export default function TeamPage() {
 
                   return (
                     <TableRow key={member.id} className={cn("cursor-pointer hover:bg-slate-50", !member.is_active && "opacity-60")} onClick={() => setSelectedMember(member)}>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" checked={selectedIds.has(member.id)} onChange={() => toggleSelect(member.id)} className="rounded" />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="relative">
@@ -1739,6 +1947,18 @@ export default function TeamPage() {
                         <p className="text-sm font-medium">{format(new Date(selectedMember.created_at), "MMM d, yyyy")}</p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Activity Log */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Activity History</h4>
+                    <ActivityLog memberId={selectedMember.id} />
+                  </div>
+
+                  {/* Module Access */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Module Access</h4>
+                    <AccessLogViewer memberId={selectedMember.id} memberEmail={selectedMember.email} />
                   </div>
 
                   {/* Meta */}

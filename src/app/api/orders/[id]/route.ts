@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // DELETE - Delete an order and associated registrations
 export async function DELETE(
@@ -7,6 +8,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const supabaseAdminClient = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabaseAdmin = supabaseAdminClient as any
@@ -94,6 +98,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const supabaseAdminClient = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabaseAdmin = supabaseAdminClient as any

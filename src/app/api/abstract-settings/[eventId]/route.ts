@@ -1,5 +1,6 @@
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -89,33 +90,6 @@ export async function PUT(
 ) {
   try {
     const { eventId } = await params
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
-    // Use admin client to bypass RLS
-    const adminClient: SupabaseClient = await createAdminClient()
-
-    // Team member authorization
-    const { data: teamMember } = await adminClient
-      .from("team_members")
-      .select("id")
-      .eq("email", user.email?.toLowerCase())
-      .eq("is_active", true)
-      .single()
-    if (!teamMember) {
-      return NextResponse.json(
-        { error: "Only team members can update settings" },
-        { status: 403 }
-      )
-    }
 
     if (!eventId) {
       return NextResponse.json(
@@ -123,6 +97,12 @@ export async function PUT(
         { status: 400 }
       )
     }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (authError) return authError
+
+    // Use admin client to bypass RLS
+    const adminClient: SupabaseClient = await createAdminClient()
 
     const body = await request.json()
 

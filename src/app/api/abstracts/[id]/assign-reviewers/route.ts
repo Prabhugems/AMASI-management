@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 
 interface Reviewer {
@@ -81,11 +81,6 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user, error: authError } = await getApiUser()
-    if (!user || authError) {
-      return authError || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const { id: abstractId } = await params
     const body = await request.json()
     const {
@@ -118,6 +113,12 @@ export async function POST(
 
     if (abstractError || !abstract) {
       return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
+    }
+
+    // Check permission after fetching abstract to get event_id
+    const { user, error: authError } = await requireEventAndPermission((abstract as any).event_id, 'abstracts')
+    if (!user || authError) {
+      return authError || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     let selectedReviewerIds: string[] = []
@@ -256,11 +257,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user, error: authError } = await getApiUser()
-    if (!user || authError) {
-      return authError || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const { id: abstractId } = await params
     const supabase = await createAdminClient()
 
@@ -284,6 +280,12 @@ export async function GET(
 
     if (abstractError || !abstract) {
       return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
+    }
+
+    // Check permission after fetching abstract to get event_id
+    const { error: authError } = await requireEventAndPermission((abstract as any).event_id, 'abstracts')
+    if (authError) {
+      return authError
     }
 
     // Get all active reviewers

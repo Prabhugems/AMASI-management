@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 
 // Valid decline reasons
@@ -338,6 +339,20 @@ export async function PUT(
     } = body
 
     const supabase = await createAdminClient()
+
+    // Get abstract to check event permission
+    const { data: abstractRecord } = await (supabase as any)
+      .from("abstracts")
+      .select("event_id")
+      .eq("id", abstractId)
+      .single()
+
+    if (!abstractRecord) {
+      return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(abstractRecord.event_id, 'abstracts')
+    if (authError) return authError
 
     switch (action) {
       case "reassign": {

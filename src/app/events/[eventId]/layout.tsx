@@ -5,6 +5,8 @@ import { usePathname, useParams, useRouter } from "next/navigation"
 import { EventSidebar } from "@/components/layout/event-sidebar"
 import { Header } from "@/components/layout/header"
 import { usePermissions } from "@/hooks/use-permissions"
+import { PermissionGate } from "@/components/auth/permission-gate"
+import { getRequiredPermission } from "@/lib/route-permissions"
 import { Loader2, ShieldX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -25,6 +27,9 @@ export default function EventLayout({
 
   // Check event access for event-scoped users
   const canAccessEvent = !isEventScoped || hasEventAccess(eventId)
+
+  // Determine if the current route requires a module-level permission
+  const requiredPermission = pathname ? getRequiredPermission(pathname) : null
 
   if (isPublicPage) {
     return (
@@ -56,7 +61,7 @@ export default function EventLayout({
           </div>
           <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
           <p className="text-muted-foreground mb-6">
-            You don't have permission to access this event. Please contact an administrator if you believe this is an error.
+            You don&apos;t have permission to access this event. Please contact an administrator if you believe this is an error.
           </p>
           <Button onClick={() => router.back()}>Go Back</Button>
         </div>
@@ -78,7 +83,15 @@ export default function EventLayout({
       </div>
       <div className="lg:pl-16 transition-all duration-300 print:pl-0">
         <Header sidebarCollapsed={false} onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
-        <main className="px-4 sm:px-6 pt-16 print:p-0 print:pt-0">{children}</main>
+        <main className="px-4 sm:px-6 pt-16 print:p-0 print:pt-0">
+          {requiredPermission ? (
+            <PermissionGate permission={requiredPermission} eventId={eventId}>
+              {children}
+            </PermissionGate>
+          ) : (
+            children
+          )}
+        </main>
       </div>
     </div>
   )

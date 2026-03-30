@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // GET - Get single ticket type
 export async function GET(
@@ -7,6 +8,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { id } = await params
     const supabase = await createServerSupabaseClient()
 
@@ -36,6 +40,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { id } = await params
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
@@ -86,6 +93,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { id } = await params
     const supabase = await createServerSupabaseClient()
 

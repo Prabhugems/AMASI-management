@@ -1,4 +1,5 @@
-import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -11,30 +12,12 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Role-based authorization: verify user is an active team member
-    const adminClient: SupabaseClient = await createAdminClient()
-    const { data: teamMember } = await adminClient
-      .from("team_members")
-      .select("id")
-      .eq("email", user.email?.toLowerCase())
-      .eq("is_active", true)
-      .maybeSingle()
-
-    if (!teamMember) {
-      return NextResponse.json({ error: "Only team members can make decisions" }, { status: 403 })
-    }
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
     }
+
+    const adminClient: SupabaseClient = await createAdminClient()
 
     const body = await request.json()
 
@@ -63,6 +46,9 @@ export async function PUT(
     if (fetchError || !abstract) {
       return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
     }
+
+    const { error: permError } = await requireEventAndPermission(abstract.event_id, 'abstracts')
+    if (permError) return permError
 
     // Handle "Redirect to Free Session" decision
     if (body.decision === "redirected") {
@@ -153,26 +139,7 @@ export async function POST(
   { params: _params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Role-based authorization: verify user is an active team member
     const adminClient: SupabaseClient = await createAdminClient()
-    const { data: teamMember } = await adminClient
-      .from("team_members")
-      .select("id")
-      .eq("email", user.email?.toLowerCase())
-      .eq("is_active", true)
-      .maybeSingle()
-
-    if (!teamMember) {
-      return NextResponse.json({ error: "Only team members can make decisions" }, { status: 403 })
-    }
 
     const body = await request.json()
 
@@ -224,6 +191,10 @@ export async function POST(
         { status: 400 }
       )
     }
+
+    // Check permission for the event
+    const { error: permError } = await requireEventAndPermission(abstracts[0].event_id, 'abstracts')
+    if (permError) return permError
 
     // Handle bulk redirect to free session
     if (body.decision === "redirected") {

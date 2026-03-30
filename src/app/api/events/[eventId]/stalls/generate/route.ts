@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   const { eventId } = await params
+
+  const { error: authError } = await requireEventAccess(eventId)
+  if (authError) return authError
+
   const supabase = await createAdminClient()
 
   const body = await request.json()

@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // GET /api/hotels - Get hotels for an event
 export async function GET(request: NextRequest) {
-  const user = await getApiUser()
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
   try {
-    const supabase = await createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 
     if (!eventId) {
       return NextResponse.json({ error: "event_id required" }, { status: 400 })
     }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'hotels')
+    if (authError) return authError
+
+    const supabase = await createServerSupabaseClient()
 
     const { data: hotels, error } = await (supabase as any)
       .from("hotels")
@@ -55,12 +56,18 @@ export async function GET(request: NextRequest) {
 
 // POST /api/hotels - Create a new hotel
 export async function POST(request: NextRequest) {
-  const user = await getApiUser()
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
   try {
-    const supabase = await createServerSupabaseClient()
     const body = await request.json()
+    const eventId = body.event_id
+
+    if (!eventId) {
+      return NextResponse.json({ error: "event_id required" }, { status: 400 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'hotels')
+    if (authError) return authError
+
+    const supabase = await createServerSupabaseClient()
 
     const { data, error } = await (supabase as any)
       .from("hotels")
@@ -79,17 +86,23 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/hotels - Update a hotel
 export async function PUT(request: NextRequest) {
-  const user = await getApiUser()
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
   try {
-    const supabase = await createServerSupabaseClient()
     const body = await request.json()
     const { id, ...updateData } = body
+    const eventId = body.event_id
 
     if (!id) {
       return NextResponse.json({ error: "id required" }, { status: 400 })
     }
+
+    if (!eventId) {
+      return NextResponse.json({ error: "event_id required" }, { status: 400 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'hotels')
+    if (authError) return authError
+
+    const supabase = await createServerSupabaseClient()
 
     const { data, error } = await (supabase as any)
       .from("hotels")
@@ -109,17 +122,23 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/hotels - Delete a hotel (soft delete)
 export async function DELETE(request: NextRequest) {
-  const user = await getApiUser()
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
   try {
-    const supabase = await createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
+    const eventId = searchParams.get("event_id")
 
     if (!id) {
       return NextResponse.json({ error: "id required" }, { status: 400 })
     }
+
+    if (!eventId) {
+      return NextResponse.json({ error: "event_id required" }, { status: 400 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'hotels')
+    if (authError) return authError
+
+    const supabase = await createServerSupabaseClient()
 
     const { error } = await (supabase as any)
       .from("hotels")

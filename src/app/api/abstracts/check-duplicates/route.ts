@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // Simple similarity check using Jaccard index for word sets
 function calculateSimilarity(text1: string, text2: string): number {
@@ -35,6 +36,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const { error: authError } = await requireEventAndPermission(event_id, 'abstracts')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 

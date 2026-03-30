@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireEventAccess } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 interface DelegatePortalSettings {
   show_invitation: boolean
@@ -31,7 +31,7 @@ export async function GET(
 ) {
   try {
     const { eventId } = await params
-    const auth = await requireEventAccess(eventId)
+    const auth = await requireEventAndPermission(eventId, 'events')
     if (auth.error) return auth.error
 
     const supabase = await createAdminClient()
@@ -82,7 +82,7 @@ export async function POST(
 ) {
   try {
     const { eventId } = await params
-    const auth = await requireEventAccess(eventId)
+    const auth = await requireEventAndPermission(eventId, 'events')
     if (auth.error) return auth.error
 
     const body = await request.json()

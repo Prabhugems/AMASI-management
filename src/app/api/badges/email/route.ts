@@ -2,20 +2,20 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/email"
 import { escapeHtml } from "@/lib/string-utils"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
-  const { error: authError } = await getApiUser()
-  if (authError) return authError
-
   try {
     const { registration_id, event_id } = await request.json()
 
     if (!registration_id || !event_id) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
+
+    const { error: authError } = await requireEventAndPermission(event_id, 'badges')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -51,18 +52,6 @@ function specialtyScore(
   return matches
 }
 
-async function authCheck(supabase: SupabaseClient, adminClient: SupabaseClient) {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const { data: teamMember } = await adminClient
-    .from("team_members")
-    .select("id")
-    .eq("email", user.email?.toLowerCase())
-    .eq("is_active", true)
-    .single()
-  return teamMember ? user : null
-}
-
 // POST — Auto-assign abstracts to reviewers (round-robin, least-loaded)
 export async function POST(
   request: NextRequest,
@@ -74,13 +63,10 @@ export async function POST(
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 })
     }
 
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-    const adminClient: SupabaseClient = await createAdminClient()
+    const { error: authError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (authError) return authError
 
-    const user = await authCheck(supabase, adminClient)
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const adminClient: SupabaseClient = await createAdminClient()
 
     // Fetch settings
     const { data: settings } = await adminClient
@@ -194,13 +180,10 @@ export async function PUT(
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 })
     }
 
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-    const adminClient: SupabaseClient = await createAdminClient()
+    const { error: putAuthError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (putAuthError) return putAuthError
 
-    const user = await authCheck(supabase, adminClient)
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const adminClient: SupabaseClient = await createAdminClient()
 
     return await reassignPending(adminClient, eventId)
   } catch (error) {
@@ -220,13 +203,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 })
     }
 
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-    const adminClient: SupabaseClient = await createAdminClient()
+    const { error: delAuthError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (delAuthError) return delAuthError
 
-    const user = await authCheck(supabase, adminClient)
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const adminClient: SupabaseClient = await createAdminClient()
 
     const { error } = await adminClient
       .from("abstract_reviewers")

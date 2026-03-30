@@ -1,4 +1,5 @@
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,34 +54,6 @@ export async function GET(request: NextRequest) {
 // POST /api/abstract-categories - Create a new category
 export async function POST(request: NextRequest) {
   try {
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
-    // Use admin client to bypass RLS
-    const adminClient: SupabaseClient = await createAdminClient()
-
-    // Team member authorization
-    const { data: teamMember } = await adminClient
-      .from("team_members")
-      .select("id")
-      .eq("email", user.email?.toLowerCase())
-      .eq("is_active", true)
-      .maybeSingle()
-    if (!teamMember) {
-      return NextResponse.json(
-        { error: "Only team members can manage categories" },
-        { status: 403 }
-      )
-    }
-
     const body = await request.json()
 
     if (!body.event_id) {
@@ -89,6 +62,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const { error: authError } = await requireEventAndPermission(body.event_id, 'abstracts')
+    if (authError) return authError
+
+    // Use admin client to bypass RLS
+    const adminClient: SupabaseClient = await createAdminClient()
 
     if (!body.name) {
       return NextResponse.json(
@@ -152,34 +131,6 @@ export async function POST(request: NextRequest) {
 // PUT /api/abstract-categories - Update a category
 export async function PUT(request: NextRequest) {
   try {
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
-    // Use admin client to bypass RLS
-    const adminClient: SupabaseClient = await createAdminClient()
-
-    // Team member authorization
-    const { data: teamMember } = await adminClient
-      .from("team_members")
-      .select("id")
-      .eq("email", user.email?.toLowerCase())
-      .eq("is_active", true)
-      .maybeSingle()
-    if (!teamMember) {
-      return NextResponse.json(
-        { error: "Only team members can manage categories" },
-        { status: 403 }
-      )
-    }
-
     const body = await request.json()
 
     if (!body.id) {
@@ -188,6 +139,23 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Use admin client to bypass RLS
+    const adminClient: SupabaseClient = await createAdminClient()
+
+    // Get category to find event_id for permission check
+    const { data: category } = await adminClient
+      .from("abstract_categories")
+      .select("event_id")
+      .eq("id", body.id)
+      .single()
+
+    if (!category) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(category.event_id, 'abstracts')
+    if (authError) return authError
 
     const updateData: Record<string, any> = {}
     if (body.name !== undefined) updateData.name = body.name
@@ -233,34 +201,6 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/abstract-categories - Delete a category
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
-    // Use admin client to bypass RLS
-    const adminClient: SupabaseClient = await createAdminClient()
-
-    // Team member authorization
-    const { data: teamMember } = await adminClient
-      .from("team_members")
-      .select("id")
-      .eq("email", user.email?.toLowerCase())
-      .eq("is_active", true)
-      .maybeSingle()
-    if (!teamMember) {
-      return NextResponse.json(
-        { error: "Only team members can manage categories" },
-        { status: 403 }
-      )
-    }
-
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
 
@@ -270,6 +210,23 @@ export async function DELETE(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Use admin client to bypass RLS
+    const adminClient: SupabaseClient = await createAdminClient()
+
+    // Get category to find event_id for permission check
+    const { data: categoryRecord } = await adminClient
+      .from("abstract_categories")
+      .select("event_id")
+      .eq("id", id)
+      .single()
+
+    if (!categoryRecord) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(categoryRecord.event_id, 'abstracts')
+    if (authError) return authError
 
     // Check if category has any abstracts
     const { count: abstractCount } = await adminClient

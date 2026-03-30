@@ -1,4 +1,5 @@
-import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -7,30 +8,7 @@ type SupabaseClient = any
 // PUT /api/abstracts/awards - Batch update award rankings
 export async function PUT(request: NextRequest) {
   try {
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const adminClient: SupabaseClient = await createAdminClient()
-
-    // Team member authorization
-    const { data: teamMember } = await adminClient
-      .from("team_members")
-      .select("id")
-      .eq("email", user.email?.toLowerCase())
-      .eq("is_active", true)
-      .maybeSingle()
-
-    if (!teamMember) {
-      return NextResponse.json(
-        { error: "Only team members can manage awards" },
-        { status: 403 }
-      )
-    }
 
     const body = await request.json()
 
@@ -56,6 +34,21 @@ export async function PUT(request: NextRequest) {
         )
       }
     }
+
+    // Check permission using the first abstract's event_id
+    const firstAbstractId = body.rankings[0].abstract_id
+    const { data: firstAbstract } = await adminClient
+      .from("abstracts")
+      .select("event_id")
+      .eq("id", firstAbstractId)
+      .single()
+
+    if (!firstAbstract) {
+      return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(firstAbstract.event_id, 'abstracts')
+    if (authError) return authError
 
     // Auto-assign award types based on rank
     const getAwardType = (rank: number | null): string | null => {

@@ -1,5 +1,6 @@
 import { createAdminClient, createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 const BUCKET_NAME = "uploads"
 
@@ -22,6 +23,9 @@ async function ensureBucketExists(adminClient: any) {
 // This bypasses Vercel's 50MB API limit by having the client upload directly to Supabase Storage
 export async function POST(request: NextRequest) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body = await request.json()
     const { event_id, file_name, content_type, type } = body
 

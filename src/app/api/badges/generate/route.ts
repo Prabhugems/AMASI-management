@@ -4,7 +4,7 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import { logActivityFromRequest } from "@/lib/activity-logger"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -135,9 +135,6 @@ const A4_HEIGHT = 842
 
 // POST /api/badges/generate - Generate PDF badges
 export async function POST(request: NextRequest) {
-  const { error: authError } = await getApiUser()
-  if (authError) return authError
-
   // Rate limit: bulk tier for badge generation (resource intensive)
   const ip = getClientIp(request)
   const rateLimit = checkRateLimit(ip, "bulk")
@@ -152,6 +149,9 @@ export async function POST(request: NextRequest) {
     if (!event_id || !template_id) {
       return NextResponse.json({ error: "event_id and template_id are required" }, { status: 400 })
     }
+
+    const { error: authError } = await requireEventAndPermission(event_id, 'badges')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 

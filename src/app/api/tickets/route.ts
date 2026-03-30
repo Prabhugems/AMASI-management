@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
-import { requireEventAccess } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // GET - List tickets for an event
 export async function GET(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Auth: require event access
-    const { error: authError } = await requireEventAccess(eventId)
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
     if (authError) return authError
 
     let query = (supabase as any)
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { error: authError } = await requireEventAccess(event_id)
+    const { error: authError } = await requireEventAndPermission(event_id, 'registrations')
     if (authError) return authError
 
     // Get the highest sort order if not provided

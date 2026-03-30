@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 type Session = {
   id: string
@@ -57,6 +58,10 @@ export async function GET(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   const { eventId } = await params
+
+  const { error: authError } = await requireEventAccess(eventId)
+  if (authError) return authError
+
   const supabaseClient = await createAdminClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = supabaseClient as any

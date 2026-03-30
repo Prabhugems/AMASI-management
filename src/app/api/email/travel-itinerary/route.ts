@@ -5,6 +5,7 @@ import { logEmail } from "@/lib/email-tracking"
 import { generateTravelItineraryICS } from "@/lib/ics-generator"
 import { escapeHtml } from "@/lib/string-utils"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 interface TravelItineraryData {
   registration_id: string
@@ -84,6 +85,9 @@ function formatDate(dateStr: string) {
 // POST /api/email/travel-itinerary - Send travel itinerary email
 export async function POST(request: NextRequest) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const body: TravelItineraryData = await request.json()
 
     const {

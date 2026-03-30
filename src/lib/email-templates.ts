@@ -13,6 +13,11 @@ export type TemplateType =
   | "abstract_revision"
   | "abstract_schedule"
   | "abstract_reminder"
+  | "team_invitation"
+  | "team_role_changed"
+  | "team_deactivated"
+  | "team_activated"
+  | "team_welcome"
   | "custom"
 
 export interface TemplateVariables {
@@ -64,6 +69,15 @@ export interface TemplateVariables {
   organizer_name?: string
   organizer_email?: string
   year?: string
+
+  // Team
+  name?: string
+  role?: string
+  old_role?: string
+  new_role?: string
+  org_name?: string
+  invite_link?: string
+  login_link?: string
 
   // Custom variables
   [key: string]: string | undefined
@@ -378,5 +392,142 @@ export function buildAbstractVariables(
     organizer_name: COMPANY_CONFIG.name,
     organizer_email: organizerEmail || COMPANY_CONFIG.supportEmail,
     year: new Date().getFullYear().toString(),
+  }
+}
+
+// ─── Team Email Templates ────────────────────────────────────────────
+
+const teamEmailWrapper = (content: string) => `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+  <div style="background-color: #2563eb; padding: 24px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 22px;">${COMPANY_CONFIG.name}</h1>
+  </div>
+  <div style="padding: 32px 24px;">
+    ${content}
+  </div>
+  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 0;" />
+  <div style="padding: 16px 24px; text-align: center;">
+    <p style="color: #9ca3af; font-size: 12px; margin: 0;">${COMPANY_CONFIG.fullName}</p>
+  </div>
+</div>
+`
+
+const teamButton = (href: string, label: string) => `
+<p style="margin: 24px 0;">
+  <a href="${href}"
+     style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+    ${label}
+  </a>
+</p>
+<p style="color: #6b7280; font-size: 14px;">
+  Or copy and paste this link:<br/>
+  <a href="${href}" style="color: #2563eb;">${href}</a>
+</p>
+`
+
+/**
+ * Team Invitation Email
+ */
+export function teamInvitation(vars: {
+  name?: string
+  role: string
+  org_name: string
+  invite_link: string
+}): { subject: string; html: string } {
+  const greeting = vars.name ? `Hi ${vars.name},` : "Hi,"
+  return {
+    subject: `You're invited to join ${vars.org_name} team`,
+    html: teamEmailWrapper(`
+      <h2 style="color: #1f2937; margin-top: 0;">Team Invitation</h2>
+      <p style="color: #374151;">${greeting}</p>
+      <p style="color: #374151;">You have been invited to join the <strong>${vars.org_name}</strong> team as <strong>${vars.role}</strong>.</p>
+      <p style="color: #374151;">Click the button below to accept the invitation:</p>
+      ${teamButton(vars.invite_link, "Accept Invitation")}
+      <p style="color: #6b7280; font-size: 14px;">This invitation expires in 7 days.</p>
+    `),
+  }
+}
+
+/**
+ * Role Changed Email
+ */
+export function teamRoleChanged(vars: {
+  name: string
+  old_role: string
+  new_role: string
+  org_name: string
+}): { subject: string; html: string } {
+  return {
+    subject: "Your role has been updated",
+    html: teamEmailWrapper(`
+      <h2 style="color: #1f2937; margin-top: 0;">Role Updated</h2>
+      <p style="color: #374151;">Hi ${vars.name},</p>
+      <p style="color: #374151;">Your role in the <strong>${vars.org_name}</strong> team has been changed from <strong>${vars.old_role}</strong> to <strong>${vars.new_role}</strong>.</p>
+      <p style="color: #374151;">This may affect the features and sections you can access within the platform. Your updated permissions are effective immediately.</p>
+      <p style="color: #6b7280; font-size: 14px;">If you have any questions about this change, please contact your administrator.</p>
+    `),
+  }
+}
+
+/**
+ * Account Deactivated Email
+ */
+export function teamDeactivated(vars: {
+  name: string
+  org_name: string
+}): { subject: string; html: string } {
+  return {
+    subject: "Your account has been deactivated",
+    html: teamEmailWrapper(`
+      <h2 style="color: #1f2937; margin-top: 0;">Account Deactivated</h2>
+      <p style="color: #374151;">Hi ${vars.name},</p>
+      <p style="color: #374151;">Your access to the <strong>${vars.org_name}</strong> team platform has been deactivated. You will no longer be able to sign in or access team resources.</p>
+      <p style="color: #6b7280; font-size: 14px;">If you believe this was done in error, please contact your administrator to have your account reactivated.</p>
+    `),
+  }
+}
+
+/**
+ * Account Activated Email
+ */
+export function teamActivated(vars: {
+  name: string
+  org_name: string
+  login_link: string
+}): { subject: string; html: string } {
+  return {
+    subject: "Your account has been reactivated",
+    html: teamEmailWrapper(`
+      <h2 style="color: #1f2937; margin-top: 0;">Account Reactivated</h2>
+      <p style="color: #374151;">Hi ${vars.name},</p>
+      <p style="color: #374151;">Your access to the <strong>${vars.org_name}</strong> team platform has been restored. You can now sign in and access all resources associated with your role.</p>
+      ${teamButton(vars.login_link, "Sign In")}
+    `),
+  }
+}
+
+/**
+ * Welcome Email (after invite accepted)
+ */
+export function teamWelcome(vars: {
+  name: string
+  role: string
+  org_name: string
+  login_link: string
+}): { subject: string; html: string } {
+  return {
+    subject: `Welcome to ${vars.org_name} team!`,
+    html: teamEmailWrapper(`
+      <h2 style="color: #1f2937; margin-top: 0;">Welcome to the Team!</h2>
+      <p style="color: #374151;">Hi ${vars.name},</p>
+      <p style="color: #374151;">You are now part of the <strong>${vars.org_name}</strong> team as <strong>${vars.role}</strong>. Here are a few things to get you started:</p>
+      <ul style="color: #374151; padding-left: 20px;">
+        <li>Sign in to the platform to explore your dashboard</li>
+        <li>Review the events and resources available to you</li>
+        <li>Update your profile information if needed</li>
+      </ul>
+      ${teamButton(vars.login_link, "Go to Dashboard")}
+      <p style="color: #6b7280; font-size: 14px;">If you need help, reach out to your administrator or contact us at ${COMPANY_CONFIG.supportEmail}.</p>
+    `),
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { jsPDF } from "jspdf"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 function formatDateRange(
   startDate: string | null | undefined,
@@ -70,6 +71,9 @@ export async function GET(
       { status: 400 }
     )
   }
+
+  const { error: authError } = await requireEventAndPermission(eventId, 'speakers')
+  if (authError) return authError
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any

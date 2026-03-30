@@ -349,9 +349,9 @@ export async function requireFormAccess(formId: string): Promise<AuthResult> {
 }
 
 export type Permission =
-  | 'flights' | 'hotels' | 'transfers' | 'trains'
+  | 'events' | 'flights' | 'hotels' | 'transfers' | 'trains'
   | 'speakers' | 'program' | 'checkin' | 'badges'
-  | 'certificates' | 'registrations' | 'abstracts'
+  | 'certificates' | 'registrations' | 'abstracts' | 'forms'
 
 /**
  * Require both event access and a specific module permission.

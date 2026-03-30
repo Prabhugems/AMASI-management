@@ -1,15 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const user = await getApiUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     const { eventId } = await params
+    const { error: authError } = await requireEventAndPermission(eventId, 'speakers')
+    if (authError) return authError
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any

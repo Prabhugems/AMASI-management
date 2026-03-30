@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 
@@ -130,15 +130,15 @@ function formatTime(time: string | null): string {
 // POST /api/abstracts/certificates - Generate presenter certificates
 export async function POST(request: NextRequest) {
   try {
-    const { user, error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const body = await request.json()
     const { event_id, abstract_ids, template_id } = body
 
     if (!event_id) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
+
+    const { user, error: authError } = await requireEventAndPermission(event_id, 'abstracts')
+    if (authError) return authError
 
     if (!abstract_ids || !Array.isArray(abstract_ids) || abstract_ids.length === 0) {
       return NextResponse.json({ error: "abstract_ids are required" }, { status: 400 })
@@ -616,6 +616,9 @@ export async function GET(request: NextRequest) {
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 

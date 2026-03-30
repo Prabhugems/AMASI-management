@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { enhanceFlightData } from "@/lib/airline-api"
 import { extractTextFromImage, isOCREnabled } from "@/lib/ocr"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // Parse PDF and extract text using pdf-parse v1
 async function parsePDF(buffer: Buffer): Promise<{ text: string }> {
@@ -824,6 +825,9 @@ function parseDate(dateStr: string): string | null {
 
 export async function POST(request: NextRequest) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const formData = await request.formData()
     const file = formData.get("file") as File
     const ticketCategory = formData.get("ticket_category") as string || "oneway" // oneway, roundtrip, multicity

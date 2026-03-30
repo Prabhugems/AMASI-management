@@ -1,6 +1,6 @@
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { getApiUser, requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -83,13 +83,18 @@ export async function GET(request: NextRequest) {
 // POST /api/forms - Create a new form
 export async function POST(request: NextRequest) {
   try {
-    const { user: authUser, error: authErr } = await getApiUser()
-    if (authErr) return authErr
+    const body = await request.json()
+
+    // If event_id is provided, check event + forms permission; otherwise just require login
+    const eventId = body.event_id
+    const authResult = eventId
+      ? await requireEventAndPermission(eventId, 'forms')
+      : await getApiUser()
+    if (authResult.error) return authResult.error
+
+    const user = { id: authResult.user!.id, email: authResult.user!.email }
 
     const supabase: SupabaseClient = await createServerSupabaseClient()
-    const user = { id: authUser!.id, email: authUser!.email }
-
-    const body = await request.json()
 
     // Generate slug if not provided
     let slug = body.slug
@@ -112,7 +117,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate event_id is a valid UUID if provided
-    const eventId = body.event_id
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (eventId && !uuidRegex.test(eventId)) {
       return NextResponse.json(

@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { sendGallaboxTemplate, isGallaboxEnabled } from "@/lib/gallabox"
 
 // POST /api/abstracts/reminders - Send deadline reminders
 export async function POST(request: NextRequest) {
   try {
-    const { error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const body = await request.json()
     const { event_id, reminder_type, channel = "email" } = body
 
     if (!event_id || !reminder_type) {
       return NextResponse.json({ error: "event_id and reminder_type are required" }, { status: 400 })
     }
+
+    const { error: authError } = await requireEventAndPermission(event_id, 'abstracts')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 
@@ -280,15 +280,15 @@ export async function POST(request: NextRequest) {
 // GET /api/abstracts/reminders?event_id=... - Get reminder history
 export async function GET(request: NextRequest) {
   try {
-    const { error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 

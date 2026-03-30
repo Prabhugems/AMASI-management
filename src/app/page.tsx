@@ -29,6 +29,7 @@ import { EventsTable } from "@/components/dashboard/events-table"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { RecentFacultyTable } from "@/components/dashboard/recent-faculty-table"
 import { HealthWidget } from "@/components/dashboard/health-widget"
+import { TeamWidget } from "@/components/dashboard/team-widget"
 
 function StatCardSkeleton() {
   return (
@@ -240,6 +241,9 @@ export default function Home() {
         <div className="space-y-6">
           {/* System Health Widget */}
           <HealthWidget />
+
+          {/* Team Widget */}
+          <TeamWidget />
 
           {/* Who's Online Widget */}
           <WhosOnlineWidget />

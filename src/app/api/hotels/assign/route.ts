@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // POST /api/hotels/assign - Bulk assign guests to a hotel
 export async function POST(request: NextRequest) {
   try {
-    // Auth check - require logged-in user
-    const { error: authError } = await getApiUser()
-    if (authError) return authError
-
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
 
-    const { guest_ids, hotel_id, hotel_name, hotel_address, hotel_phone, check_in, check_out, room_type } = body
+    const { guest_ids, hotel_id, hotel_name, hotel_address, hotel_phone, check_in, check_out, room_type, event_id } = body
+
+    if (!event_id) {
+      return NextResponse.json({ error: "event_id required" }, { status: 400 })
+    }
+
+    // Auth check - require hotels permission for the event
+    const { error: authError } = await requireEventAndPermission(event_id, 'hotels')
+    if (authError) return authError
 
     if (!guest_ids || guest_ids.length === 0) {
       return NextResponse.json({ error: "guest_ids required" }, { status: 400 })

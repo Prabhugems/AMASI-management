@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // GET /api/abstract-sessions?event_id=...
 export async function GET(request: NextRequest) {
   try {
-    // Require admin authentication
-    const { error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 
     if (!eventId) {
       return NextResponse.json({ error: "Event ID is required" }, { status: 400 })
     }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 
@@ -113,9 +112,6 @@ export async function GET(request: NextRequest) {
 // POST /api/abstract-sessions - Create a new session for abstracts
 export async function POST(request: NextRequest) {
   try {
-    const { error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const body = await request.json()
     const {
       event_id,
@@ -138,6 +134,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const { error: authError } = await requireEventAndPermission(event_id, 'abstracts')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 

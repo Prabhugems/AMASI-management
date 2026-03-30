@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { exec } from "child_process"
 import { promisify } from "util"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 const execAsync = promisify(exec)
 
 // POST /api/local-print - Send ZPL to local USB Zebra printer
 export async function POST(request: NextRequest) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { zpl, printer_name } = await request.json()
 
     if (!zpl) {

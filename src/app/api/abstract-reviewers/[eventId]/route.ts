@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -16,6 +17,9 @@ export async function GET(
     if (!uuidRegex.test(eventId)) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 })
     }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (authError) return authError
 
     const supabase: SupabaseClient = await createAdminClient()
 
@@ -202,11 +206,8 @@ export async function POST(
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 })
     }
 
-    const authSupabase: SupabaseClient = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await authSupabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { error: authError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (authError) return authError
 
     const supabase: SupabaseClient = await createAdminClient()
 
@@ -266,11 +267,8 @@ export async function PUT(
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 })
     }
 
-    const authSupabase: SupabaseClient = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await authSupabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { error: putAuthError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (putAuthError) return putAuthError
 
     const supabase: SupabaseClient = await createAdminClient()
     const body = await request.json()
@@ -323,11 +321,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 })
     }
 
-    const authSupabase: SupabaseClient = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await authSupabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { error: delAuthError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (delAuthError) return delAuthError
 
     const supabase: SupabaseClient = await createAdminClient()
     const { searchParams } = new URL(request.url)

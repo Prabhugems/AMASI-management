@@ -1,9 +1,13 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // GET /api/forms/templates - Get all form templates
 export async function GET(request: NextRequest) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const supabase = await createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
 

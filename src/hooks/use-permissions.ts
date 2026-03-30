@@ -110,7 +110,7 @@ export function usePermissions(): UserPermissions {
       }
 
       // Check if user is event-scoped (has specific event_ids assigned)
-      const isEventScoped = teamMember.event_ids && teamMember.event_ids.length > 0
+      const isEventScoped = !!(teamMember.event_ids && teamMember.event_ids.length > 0)
       const eventIds = teamMember.event_ids || []
 
       // Respect role and permissions even for event-scoped users

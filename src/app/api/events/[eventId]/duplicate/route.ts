@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 /**
  * POST /api/events/[eventId]/duplicate
@@ -9,6 +10,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   const supabaseClient = await createAdminClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = supabaseClient as any

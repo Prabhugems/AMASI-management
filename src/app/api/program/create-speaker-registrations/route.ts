@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { DEFAULTS } from "@/lib/config"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // Generate speaker registration number with faculty-specific prefix
 async function generateRegistrationNumber(supabase: any, eventId: string): Promise<string> {
@@ -42,6 +43,9 @@ async function generateRegistrationNumber(supabase: any, eventId: string): Promi
 
 export async function POST(request: NextRequest) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const { event_id } = await request.json()
 
     if (!event_id) {

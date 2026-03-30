@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { sanitizeSearchInput } from "@/lib/validation"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // GET /api/membership/applications - List membership applications
 export async function GET(request: NextRequest) {
@@ -12,12 +13,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabaseAuth = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { error: adminAuthError } = await requireAdmin()
+    if (adminAuthError) return adminAuthError
 
     const supabase = await createAdminClient()
     const { searchParams } = new URL(request.url)

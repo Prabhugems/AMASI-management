@@ -3,6 +3,7 @@ import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/se
 import { sendEmail } from "@/lib/email"
 import { COMPANY_CONFIG } from "@/lib/config"
 import crypto from "crypto"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 function generateToken(): string {
   return crypto.randomBytes(16).toString("hex")
@@ -49,6 +50,9 @@ function normalizeName(name: string): string {
 // GET /api/reviewers-pool - List all reviewers in global pool with membership/faculty lookup
 export async function GET(request: NextRequest) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const supabase: SupabaseClient = await createAdminClient()
     const { searchParams } = new URL(request.url)
     const checkDuplicates = searchParams.get("check_duplicates") === "true"
@@ -208,6 +212,9 @@ export async function GET(request: NextRequest) {
 // POST /api/reviewers-pool - Add single or bulk reviewers to pool
 export async function POST(request: NextRequest) {
   try {
+    const { error: postAuthError } = await requireAdmin()
+    if (postAuthError) return postAuthError
+
     const authSupabase: SupabaseClient = await createServerSupabaseClient()
     const { data: { user }, error: authError } = await authSupabase.auth.getUser()
     if (authError || !user) {
@@ -290,6 +297,9 @@ export async function POST(request: NextRequest) {
 // PUT /api/reviewers-pool - Update a reviewer
 export async function PUT(request: NextRequest) {
   try {
+    const { error: putAuthError } = await requireAdmin()
+    if (putAuthError) return putAuthError
+
     const authSupabase: SupabaseClient = await createServerSupabaseClient()
     const { data: { user }, error: authError } = await authSupabase.auth.getUser()
     if (authError || !user) {
@@ -343,6 +353,9 @@ export async function PUT(request: NextRequest) {
 // PATCH /api/reviewers-pool - Sync reviewers with members table
 export async function PATCH(request: NextRequest) {
   try {
+    const { error: patchAuthError } = await requireAdmin()
+    if (patchAuthError) return patchAuthError
+
     const authSupabase: SupabaseClient = await createServerSupabaseClient()
     const { data: { user }, error: authError } = await authSupabase.auth.getUser()
     if (authError || !user) {
@@ -532,6 +545,9 @@ export async function PATCH(request: NextRequest) {
 // DELETE /api/reviewers-pool - Remove a reviewer (or all with id=all)
 export async function DELETE(request: NextRequest) {
   try {
+    const { error: delAuthError } = await requireAdmin()
+    if (delAuthError) return delAuthError
+
     const authSupabase: SupabaseClient = await createServerSupabaseClient()
     const { data: { user }, error: authError } = await authSupabase.auth.getUser()
     if (authError || !user) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 import { COMPANY_CONFIG } from "@/lib/config"
 
 // Sample data for preview/test
@@ -51,6 +52,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   const supabase = await createServerSupabaseClient()
   const { id } = await params
 
@@ -153,6 +157,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   const supabase = await createServerSupabaseClient()
   const { id } = await params
 

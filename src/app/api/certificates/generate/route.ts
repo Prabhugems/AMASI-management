@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import { logActivityFromRequest } from "@/lib/activity-logger"
@@ -101,16 +101,16 @@ async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Respons
 // POST /api/certificates/generate - Generate PDF certificates
 export async function POST(request: NextRequest) {
   try {
-    // Require admin authentication
-    const { user, error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const body = await request.json()
     const { event_id, template_id, registration_ids, single_registration_id } = body
 
     if (!event_id || !template_id) {
       return NextResponse.json({ error: "event_id and template_id are required" }, { status: 400 })
     }
+
+    // Require event access + certificates permission
+    const { error: authError } = await requireEventAndPermission(event_id, 'certificates')
+    if (authError) return authError
 
     // Validate registration_ids limit
     if (registration_ids && Array.isArray(registration_ids) && registration_ids.length > 500) {

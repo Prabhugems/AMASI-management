@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // GET - Get single template
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   const supabase = await createServerSupabaseClient()
   const { id } = await params
 
@@ -30,6 +34,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   const supabase = await createServerSupabaseClient()
   const { id } = await params
 
@@ -93,6 +100,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   const supabase = await createServerSupabaseClient()
   const { id } = await params
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { Resend } from "resend"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { COMPANY_CONFIG } from "@/lib/config"
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -19,9 +19,6 @@ interface UpdateTimeRequest {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const body: UpdateTimeRequest = await request.json()
     const {
       session_id,
@@ -60,6 +57,10 @@ export async function PUT(request: NextRequest) {
     if (sessionError || !session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 })
     }
+
+    // Permission check using session's event_id
+    const { error: authError } = await requireEventAndPermission(session.event_id, 'program')
+    if (authError) return authError
 
     // Store old values for comparison
     const oldDate = session.session_date

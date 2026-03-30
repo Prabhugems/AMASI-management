@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const { error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const { eventId } = await params
+    const { error: authError } = await requireEventAndPermission(eventId, 'program')
+    if (authError) return authError
     const supabase = await createAdminClient()
     const db = supabase as any
 

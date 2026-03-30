@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { renderEmailTemplate, buildAbstractVariables, TemplateType } from "@/lib/email-templates"
 import { sendEmail } from "@/lib/email"
 
@@ -9,10 +9,6 @@ const MAX_BULK_SIZE = 500
 // POST /api/abstracts/bulk/notify - Send notifications to authors
 export async function POST(request: NextRequest) {
   try {
-    // Require admin authentication
-    const { error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const body = await request.json()
     const { abstract_ids, send_email = true } = body
 
@@ -48,9 +44,13 @@ export async function POST(request: NextRequest) {
       `)
       .in("id", abstract_ids)
 
-    if (error || !abstracts) {
+    if (error || !abstracts || abstracts.length === 0) {
       return NextResponse.json({ error: "Failed to fetch abstracts" }, { status: 500 })
     }
+
+    // Check permission using the first abstract's event_id
+    const { error: authError } = await requireEventAndPermission(abstracts[0].event_id, 'abstracts')
+    if (authError) return authError
 
     // Filter to only those with decisions
     const validStatuses = ["accepted", "rejected", "revision_requested"]

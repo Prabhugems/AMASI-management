@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { syncSpeakerStatus } from "@/lib/services/sync-speaker-status"
 
 export async function PATCH(
@@ -8,10 +8,9 @@ export async function PATCH(
   { params }: { params: Promise<{ eventId: string; assignmentId: string }> }
 ) {
   try {
-    const { user: _user, error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const { eventId, assignmentId } = await params
+    const { error: authError } = await requireEventAndPermission(eventId, 'speakers')
+    if (authError) return authError
     const body = await request.json()
     const { status } = body
 
@@ -103,10 +102,9 @@ export async function DELETE(
   { params }: { params: Promise<{ eventId: string; assignmentId: string }> }
 ) {
   try {
-    const { user: _user, error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const { eventId, assignmentId } = await params
+    const { error: authError } = await requireEventAndPermission(eventId, 'speakers')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

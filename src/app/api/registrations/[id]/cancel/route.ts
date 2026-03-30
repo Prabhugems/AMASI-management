@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { createRefund, RazorpayCredentials } from "@/lib/services/razorpay"
 import { logActivityFromRequest } from "@/lib/activity-logger"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAndPermission, getEventIdFromRegistration } from "@/lib/auth/api-auth"
 import { notifyWaitlist } from "@/lib/services/waitlist-notify"
 
 // POST /api/registrations/[id]/cancel - Cancel registration with optional refund
@@ -13,8 +13,12 @@ export async function POST(
   try {
     const { id } = await params
 
-    // Auth: require logged in user
-    const { user, error: authError } = await getApiUser()
+    // Auth: require event access + registrations permission
+    const eventId = await getEventIdFromRegistration(id)
+    if (!eventId) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
     if (authError) return authError
 
     const body = await request.json()

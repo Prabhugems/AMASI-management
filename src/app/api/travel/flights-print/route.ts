@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 export async function GET(request: NextRequest) {
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   const eventId = request.nextUrl.searchParams.get("eventId")
   if (!eventId) {
     return NextResponse.json({ error: "eventId required" }, { status: 400 })

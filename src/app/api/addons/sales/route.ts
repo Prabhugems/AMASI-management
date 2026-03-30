@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
-import { requireEventAccess } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // GET - Fetch addon sales data (requires event access)
 export async function GET(request: NextRequest) {
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check authorization
-    const { error: authError } = await requireEventAccess(eventId)
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
     if (authError) return authError
 
     const supabase = await createAdminClient()

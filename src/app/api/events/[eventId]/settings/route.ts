@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // PATCH /api/events/[eventId]/settings - Update event settings
 export async function PATCH(
@@ -8,6 +9,10 @@ export async function PATCH(
 ) {
   try {
     const { eventId } = await params
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'events')
+    if (authError) return authError
+
     const body = await request.json()
 
     console.log("Saving event settings for:", eventId)

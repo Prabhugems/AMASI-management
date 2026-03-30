@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 
 // POST /api/abstracts/presentation-reminder - Send presentation upload reminder
 export async function POST(request: NextRequest) {
   try {
-    const { error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const body = await request.json()
     const { abstract_id } = body
 
@@ -39,6 +36,9 @@ export async function POST(request: NextRequest) {
     if (abstractError || !abstract) {
       return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
     }
+
+    const { error: authError } = await requireEventAndPermission(abstract.event_id, 'abstracts')
+    if (authError) return authError
 
     // Check if abstract is accepted
     if (abstract.status !== "accepted") {

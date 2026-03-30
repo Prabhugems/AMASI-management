@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // POST /api/abstracts/bulk/schedule - Bulk assign abstracts to session
 export async function POST(request: NextRequest) {
   try {
-    const { error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const body = await request.json()
     const {
       abstract_ids,
@@ -39,9 +36,13 @@ export async function POST(request: NextRequest) {
       .select("id, event_id, accepted_as, status, presenting_author_name, presenting_author_email, title")
       .in("id", abstract_ids)
 
-    if (fetchError || !abstracts) {
+    if (fetchError || !abstracts || abstracts.length === 0) {
       return NextResponse.json({ error: "Failed to fetch abstracts" }, { status: 500 })
     }
+
+    // Check permission using the first abstract's event_id
+    const { error: authError } = await requireEventAndPermission(abstracts[0].event_id, 'abstracts')
+    if (authError) return authError
 
     // Filter to only accepted abstracts
     const acceptedAbstracts = abstracts.filter((a: any) => a.status === "accepted")

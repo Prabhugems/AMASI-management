@@ -1,21 +1,22 @@
 // @ts-nocheck
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 
 // POST /api/abstracts/verify-registrations - Bulk verify registrations for accepted abstracts
 export async function POST(request: NextRequest) {
   try {
-    const { error: authError } = await requireAdmin()
-    if (authError) {
-      return authError
-    }
     const body = await request.json()
 
     const { event_id, abstract_ids } = body
 
     if (!event_id) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(event_id, 'abstracts')
+    if (authError) {
+      return authError
     }
 
     const supabase = await createAdminClient()
@@ -119,15 +120,16 @@ export async function POST(request: NextRequest) {
 // GET /api/abstracts/verify-registrations - Get registration status summary
 export async function GET(request: NextRequest) {
   try {
-    const { error: authError } = await requireAdmin()
-    if (authError) {
-      return authError
-    }
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (authError) {
+      return authError
     }
 
     const supabase = await createAdminClient()

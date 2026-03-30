@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { logEmail } from "@/lib/email-tracking"
 import { escapeHtml } from "@/lib/string-utils"
@@ -9,14 +9,16 @@ import { COMPANY_CONFIG } from "@/lib/config"
 // POST /api/certificates/email - Send certificate email to attendee
 export async function POST(request: NextRequest) {
   try {
-    // Require admin authentication
-    const { user, error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const { registration_id, event_id } = await request.json()
 
     if (!registration_id) {
       return NextResponse.json({ error: "registration_id is required" }, { status: 400 })
+    }
+
+    // Require event access + certificates permission (event_id resolved after fetching registration if needed)
+    if (event_id) {
+      const { error: authError } = await requireEventAndPermission(event_id, 'certificates')
+      if (authError) return authError
     }
 
     const supabase = await createAdminClient()
@@ -50,6 +52,12 @@ export async function POST(request: NextRequest) {
     // where the certificate is generated on-demand when the delegate downloads it
 
     const eventIdToUse = event_id || registration.event_id
+
+    // If event_id was not provided in request, check permission using the registration's event_id
+    if (!event_id && eventIdToUse) {
+      const { error: authError } = await requireEventAndPermission(eventIdToUse, 'certificates')
+      if (authError) return authError
+    }
 
     // Get event details
     const { data: event } = await db

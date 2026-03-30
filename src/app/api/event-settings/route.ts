@@ -1,5 +1,6 @@
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -16,6 +17,9 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
 
     const supabase: SupabaseClient = await createServerSupabaseClient()
 
@@ -101,17 +105,6 @@ export async function GET(request: NextRequest) {
 // POST /api/event-settings - Create or update event settings
 export async function POST(request: NextRequest) {
   try {
-    const supabase: SupabaseClient = await createServerSupabaseClient()
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
     const body = await request.json()
 
     if (!body.event_id) {
@@ -121,47 +114,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use admin client to bypass RLS for permission checks and saves
+    const { error: eventAuthError } = await requireEventAccess(body.event_id)
+    if (eventAuthError) return eventAuthError
+
+    // Use admin client to bypass RLS for saves
     const adminClient: SupabaseClient = await createAdminClient()
-
-    // Verify user has access to this event (is creator or team member)
-    const { data: event, error: eventError } = await supabase
-      .from("events")
-      .select("id, created_by")
-      .eq("id", body.event_id)
-      .single()
-
-    if (eventError || !event) {
-      return NextResponse.json(
-        { error: "Event not found" },
-        { status: 404 }
-      )
-    }
-
-    // Check if user is the event creator
-    const isCreator = event.created_by === user.id
-
-    // Check if user is a team member for this event (use admin client to bypass RLS)
-    let isTeamMember = false
-    const { data: teamMembership } = await adminClient
-      .from("team_members")
-      .select("id, role")
-      .eq("event_id", body.event_id)
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .maybeSingle()
-
-    isTeamMember = !!teamMembership
-
-    // Allow access if: user is creator, OR user is team member, OR event has no creator set (legacy events)
-    const hasAccess = isCreator || isTeamMember || event.created_by === null
-
-    if (!hasAccess) {
-      return NextResponse.json(
-        { error: "You don't have permission to modify this event's settings" },
-        { status: 403 }
-      )
-    }
 
     const payload: Record<string, any> = {
       event_id: body.event_id,

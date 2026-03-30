@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { requireAdmin, requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // Force dynamic - never cache this route
 export const dynamic = "force-dynamic"
@@ -8,16 +8,16 @@ export const dynamic = "force-dynamic"
 // GET /api/badge-templates - Get all templates for an event
 export async function GET(request: NextRequest) {
   try {
-    // Require admin authentication
-    const { user, error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
+
+    // Require event access + badges permission
+    const { error: authError } = await requireEventAndPermission(eventId, 'badges')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 
@@ -44,16 +44,16 @@ export async function GET(request: NextRequest) {
 // POST /api/badge-templates - Create a new template
 export async function POST(request: NextRequest) {
   try {
-    // Require admin authentication
-    const { user, error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const body = await request.json()
     const { event_id, name, description, size, template_image_url, template_data, ticket_type_ids, is_default } = body
 
     if (!event_id || !name) {
       return NextResponse.json({ error: "event_id and name are required" }, { status: 400 })
     }
+
+    // Require event access + badges permission
+    const { error: authError } = await requireEventAndPermission(event_id, 'badges')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 
@@ -104,15 +104,20 @@ export async function POST(request: NextRequest) {
 // PUT /api/badge-templates - Update a template
 export async function PUT(request: NextRequest) {
   try {
-    // Require admin authentication
-    const { user, error: authError } = await requireAdmin()
-    if (authError) return authError
-
     const body = await request.json()
     const { id, name, description, size, template_image_url, template_data, ticket_type_ids, is_default, event_id, force_unlock } = body
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
+    }
+
+    // Require event access + badges permission if event_id provided, else requireAdmin
+    if (event_id) {
+      const { error: authError } = await requireEventAndPermission(event_id, 'badges')
+      if (authError) return authError
+    } else {
+      const { error: authError } = await requireAdmin()
+      if (authError) return authError
     }
 
     const supabase = await createAdminClient()
@@ -193,7 +198,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // Require admin authentication
-    const { user, error: authError } = await requireAdmin()
+    const { error: authError } = await requireAdmin()
     if (authError) return authError
 
     const { searchParams } = new URL(request.url)

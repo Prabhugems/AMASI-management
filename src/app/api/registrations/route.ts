@@ -7,17 +7,12 @@ import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/ra
 import { DEFAULTS } from "@/lib/config"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 import { isQikchatEnabled, sendQikchatText } from "@/lib/qikchat"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // GET - List registrations (with optional filters)
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
-
-    // Authentication check
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
 
     const { searchParams } = new URL(request.url)
 
@@ -25,46 +20,19 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status")
     const search = searchParams.get("search")
 
-    // Validate event_id if provided
-    if (eventId && !isValidUUID(eventId)) {
+    // Require event_id for proper permission enforcement
+    if (!eventId) {
+      return NextResponse.json({ error: "event_id is required" }, { status: 400 })
+    }
+
+    // Validate event_id format
+    if (!isValidUUID(eventId)) {
       return NextResponse.json({ error: "Invalid event_id format" }, { status: 400 })
     }
 
-    // Authorization check - verify user has access to this event
-    if (eventId) {
-      const { data: event } = await (supabase as any)
-        .from("events")
-        .select("id, created_by")
-        .eq("id", eventId)
-        .maybeSingle()
-
-      if (!event) {
-        return NextResponse.json({ error: "Event not found" }, { status: 404 })
-      }
-
-      // Check if user is the creator or a team member
-      const isCreator = event.created_by === user.id
-
-      if (!isCreator) {
-        // Check if user is a team member with access
-        const { data: teamMember } = await (supabase as any)
-          .from("team_members")
-          .select("id, event_ids, permissions")
-          .eq("email", user.email?.toLowerCase())
-          .eq("is_active", true)
-          .maybeSingle()
-
-        const hasEventAccess = teamMember && (
-          !teamMember.event_ids || // No event restriction = all events
-          teamMember.event_ids.length === 0 ||
-          teamMember.event_ids.includes(eventId)
-        )
-
-        if (!hasEventAccess) {
-          return NextResponse.json({ error: "You don't have access to this event" }, { status: 403 })
-        }
-      }
-    }
+    // Authorization: require event access + registrations permission
+    const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
+    if (authError) return authError
 
     // Validate and clamp pagination
     const { limit, offset } = validatePagination(
@@ -79,12 +47,9 @@ export async function GET(request: NextRequest) {
         *,
         ticket_type:ticket_types(id, name, price)
       `, { count: "exact" })
+      .eq("event_id", eventId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1)
-
-    if (eventId) {
-      query = query.eq("event_id", eventId)
-    }
 
     // Validate status values
     const validStatuses = ["pending", "confirmed", "cancelled", "refunded", "waitlisted"]

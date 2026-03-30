@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { parse } from "csv-parse/sync"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 /**
  * AI-Powered Program Import
@@ -298,16 +299,8 @@ function _minutesToTime(minutes: number): string {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authentication check - only authenticated users can import programs
-    const supabaseAuth = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized - please login to import program data' },
-        { status: 401 }
-      )
-    }
+    const { error: adminError } = await requireAdmin()
+    if (adminError) return adminError
 
     const formData = await request.formData()
     const file = formData.get("file") as File

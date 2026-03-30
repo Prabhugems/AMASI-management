@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib"
 
 // GET /api/abstracts/book?event_id=...&status=accepted
@@ -12,6 +13,9 @@ export async function GET(request: NextRequest) {
     if (!eventId) {
       return NextResponse.json({ error: "Event ID is required" }, { status: 400 })
     }
+
+    const { error: authError } = await requireEventAndPermission(eventId, 'abstracts')
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 

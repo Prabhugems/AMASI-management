@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { DEFAULTS } from "@/lib/config"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 interface MemberImportRow {
   name?: string
@@ -79,6 +80,9 @@ function parseStatus(val: any): string {
 
 // POST /api/import/members - Import members from CSV
 export async function POST(request: NextRequest) {
+  const { error: authError } = await requireAdmin()
+  if (authError) return authError
+
   const ip = getClientIp(request)
   const rateLimit = checkRateLimit(ip, "bulk")
   if (!rateLimit.success) {

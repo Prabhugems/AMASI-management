@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -10,13 +11,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { error: authError } = await requireAdmin()
+    if (authError) return authError
+
     const supabase: SupabaseClient = await createServerSupabaseClient()
     const { id } = await params
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
 
     const { data: submission, error } = await supabase
       .from("form_submissions")
@@ -41,14 +40,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { user: adminUser, error: adminError } = await requireAdmin()
+    if (adminError) return adminError
+
     const supabase: SupabaseClient = await createServerSupabaseClient()
     const { id } = await params
     const body = await request.json()
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const user = { id: adminUser!.id }
 
     const { status } = body
 
@@ -91,13 +89,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { error: adminError } = await requireAdmin()
+    if (adminError) return adminError
+
     const supabase: SupabaseClient = await createServerSupabaseClient()
     const { id } = await params
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
 
     const { error } = await supabase
       .from("form_submissions")
