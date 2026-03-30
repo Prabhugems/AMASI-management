@@ -104,6 +104,7 @@ import { ActivityLog } from "@/components/team/activity-log"
 import { AccessLogViewer } from "@/components/team/access-log-viewer"
 import { format, formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
+import { CategoryPermissionPicker } from "@/components/team/category-permission-picker"
 
 // Get login-aware status for a team member
 function getLoginStatus(member: TeamMember): "online" | "away" | "logged_out" | "offline" | "pending" | "deactivated" {
@@ -2125,47 +2126,12 @@ export default function TeamPage() {
 
             <div className="space-y-3">
               <Label>Module Permissions</Label>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Full access to all modules</span>
-                </div>
-                <Switch checked={formData.all_permissions} onCheckedChange={(checked) => setFormData({ ...formData, all_permissions: checked, permissions: checked ? [] : allPermissionValues })} />
-              </div>
-              {!formData.all_permissions && (
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Travel & Logistics</p>
-                    <div className="flex flex-wrap gap-2">
-                      {TRAVEL_PERMISSIONS.map((perm) => {
-                        const isSelected = formData.permissions.includes(perm.value)
-                        return (
-                          <label key={perm.value} className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all", isSelected ? `${perm.bgLight}` : "border-slate-200 hover:border-slate-300")}>
-                            <input type="checkbox" checked={isSelected} onChange={(e) => setFormData({ ...formData, permissions: e.target.checked ? [...formData.permissions, perm.value] : formData.permissions.filter(p => p !== perm.value) })} className="sr-only" />
-                            <perm.icon className={cn("h-4 w-4", perm.color)} />
-                            <span className="text-sm">{perm.label}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Event Management</p>
-                    <div className="flex flex-wrap gap-2">
-                      {EVENT_PERMISSIONS.map((perm) => {
-                        const isSelected = formData.permissions.includes(perm.value)
-                        return (
-                          <label key={perm.value} className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all", isSelected ? `${perm.bgLight}` : "border-slate-200 hover:border-slate-300")}>
-                            <input type="checkbox" checked={isSelected} onChange={(e) => setFormData({ ...formData, permissions: e.target.checked ? [...formData.permissions, perm.value] : formData.permissions.filter(p => p !== perm.value) })} className="sr-only" />
-                            <perm.icon className={cn("h-4 w-4", perm.color)} />
-                            <span className="text-sm">{perm.label}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
+              <CategoryPermissionPicker
+                selectedPermissions={formData.permissions}
+                onChange={(perms) => setFormData({ ...formData, permissions: perms })}
+                allAccess={formData.all_permissions}
+                onAllAccessChange={(checked) => setFormData({ ...formData, all_permissions: checked, permissions: checked ? [] : formData.permissions })}
+              />
             </div>
 
               </div>
@@ -2359,47 +2325,12 @@ export default function TeamPage() {
 
             <div className="space-y-3">
               <Label>Module Permissions</Label>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Full access to all modules</span>
-                </div>
-                <Switch checked={formData.all_permissions} onCheckedChange={(checked) => setFormData({ ...formData, all_permissions: checked, permissions: checked ? [] : allPermissionValues })} />
-              </div>
-              {!formData.all_permissions && (
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Travel & Logistics</p>
-                    <div className="flex flex-wrap gap-2">
-                      {TRAVEL_PERMISSIONS.map((perm) => {
-                        const isSelected = formData.permissions.includes(perm.value)
-                        return (
-                          <label key={perm.value} className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all", isSelected ? `${perm.bgLight}` : "border-slate-200 hover:border-slate-300")}>
-                            <input type="checkbox" checked={isSelected} onChange={(e) => setFormData({ ...formData, permissions: e.target.checked ? [...formData.permissions, perm.value] : formData.permissions.filter(p => p !== perm.value) })} className="sr-only" />
-                            <perm.icon className={cn("h-4 w-4", perm.color)} />
-                            <span className="text-sm">{perm.label}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Event Management</p>
-                    <div className="flex flex-wrap gap-2">
-                      {EVENT_PERMISSIONS.map((perm) => {
-                        const isSelected = formData.permissions.includes(perm.value)
-                        return (
-                          <label key={perm.value} className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all", isSelected ? `${perm.bgLight}` : "border-slate-200 hover:border-slate-300")}>
-                            <input type="checkbox" checked={isSelected} onChange={(e) => setFormData({ ...formData, permissions: e.target.checked ? [...formData.permissions, perm.value] : formData.permissions.filter(p => p !== perm.value) })} className="sr-only" />
-                            <perm.icon className={cn("h-4 w-4", perm.color)} />
-                            <span className="text-sm">{perm.label}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
+              <CategoryPermissionPicker
+                selectedPermissions={formData.permissions}
+                onChange={(perms) => setFormData({ ...formData, permissions: perms })}
+                allAccess={formData.all_permissions}
+                onAllAccessChange={(checked) => setFormData({ ...formData, all_permissions: checked, permissions: checked ? [] : formData.permissions })}
+              />
             </div>
 
               </div>

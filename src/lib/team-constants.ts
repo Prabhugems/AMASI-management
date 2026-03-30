@@ -265,6 +265,122 @@ export const PERMISSIONS: PermissionDef[] = [
 ]
 
 // ---------------------------------------------------------------------------
+// Category-based permission groups (5 categories, 22 modules)
+// ---------------------------------------------------------------------------
+
+export type PermissionCategoryItem = {
+  value: string
+  label: string
+  icon: string
+  description: string
+}
+
+export type PermissionCategory = {
+  key: string
+  label: string
+  description: string
+  icon: string
+  color: string
+  bg: string
+  bgLight: string
+  permissions: PermissionCategoryItem[]
+}
+
+export const PERMISSION_CATEGORIES: PermissionCategory[] = [
+  {
+    key: 'event_operations',
+    label: 'Event Operations',
+    description: 'Manage speakers, program, check-in, badges, certificates',
+    icon: 'Calendar',
+    color: 'text-indigo-500',
+    bg: 'bg-indigo-500',
+    bgLight: 'bg-indigo-50 border-indigo-200',
+    permissions: [
+      { value: 'speakers', label: 'Speakers', icon: 'Users', description: 'Manage speakers, invitations, portal & accommodation' },
+      { value: 'program', label: 'Program', icon: 'Calendar', description: 'Build event schedule with sessions & tracks' },
+      { value: 'checkin', label: 'Check-in Hub', icon: 'CheckCircle', description: 'QR scanning, session tracking & attendance' },
+      { value: 'badges', label: 'Badges', icon: 'Award', description: 'Design and print attendee badges' },
+      { value: 'certificates', label: 'Certificates', icon: 'FileText', description: 'Generate and email certificates' },
+      { value: 'print_station', label: 'Print Station', icon: 'Palette', description: 'Kiosk mode for on-site badge printing' },
+    ],
+  },
+  {
+    key: 'registration_forms',
+    label: 'Registration & Forms',
+    description: 'Registrations, addons, waitlist, forms, delegate portal',
+    icon: 'ClipboardList',
+    color: 'text-teal-500',
+    bg: 'bg-teal-500',
+    bgLight: 'bg-teal-50 border-teal-200',
+    permissions: [
+      { value: 'registrations', label: 'Registrations', icon: 'ClipboardList', description: 'Manage event registrations' },
+      { value: 'addons', label: 'Addons', icon: 'Settings', description: 'Configure add-on items for registration' },
+      { value: 'waitlist', label: 'Waitlist', icon: 'Clock', description: 'Manage waitlist when tickets sold out' },
+      { value: 'forms', label: 'Forms', icon: 'FileText', description: 'Custom form builder for collecting data' },
+      { value: 'delegate_portal', label: 'Delegate Portal', icon: 'Users', description: 'Self-service portal for attendees' },
+      { value: 'surveys', label: 'Surveys', icon: 'BookOpen', description: 'Post-event feedback and surveys' },
+      { value: 'leads', label: 'Leads', icon: 'MapPin', description: 'Capture and manage potential attendee leads' },
+    ],
+  },
+  {
+    key: 'travel_logistics',
+    label: 'Travel & Logistics',
+    description: 'Flights, hotels, meals, visa letters',
+    icon: 'Plane',
+    color: 'text-cyan-500',
+    bg: 'bg-cyan-500',
+    bgLight: 'bg-cyan-50 border-cyan-200',
+    permissions: [
+      { value: 'flights', label: 'Travel (Flights)', icon: 'Plane', description: 'Manage flight bookings and transfers' },
+      { value: 'hotels', label: 'Accommodation', icon: 'Hotel', description: 'Manage hotel bookings and room allocations' },
+      { value: 'meals', label: 'Meals', icon: 'Settings', description: 'Meal preferences, dietary requirements' },
+      { value: 'transfers', label: 'Transfers', icon: 'Car', description: 'Ground transportation management' },
+      { value: 'visa_letters', label: 'Visa Letters', icon: 'FileText', description: 'Generate visa invitation letters' },
+    ],
+  },
+  {
+    key: 'finance_sponsors',
+    label: 'Finance & Sponsors',
+    description: 'Sponsors, budget, payments',
+    icon: 'Shield',
+    color: 'text-amber-500',
+    bg: 'bg-amber-500',
+    bgLight: 'bg-amber-50 border-amber-200',
+    permissions: [
+      { value: 'sponsors', label: 'Sponsors', icon: 'Shield', description: 'Manage event sponsors and sponsorship packages' },
+      { value: 'budget', label: 'Budget', icon: 'Settings', description: 'Track event budget, expenses, and reports' },
+    ],
+  },
+  {
+    key: 'advanced',
+    label: 'Advanced Modules',
+    description: 'Abstracts, examination',
+    icon: 'BookOpen',
+    color: 'text-purple-500',
+    bg: 'bg-purple-500',
+    bgLight: 'bg-purple-50 border-purple-200',
+    permissions: [
+      { value: 'abstracts', label: 'Abstract Management', icon: 'BookOpen', description: 'Abstract submission, review workflow & decisions' },
+      { value: 'examination', label: 'Examination', icon: 'FileText', description: 'FMAS/MMAS theory examination and scoring' },
+    ],
+  },
+]
+
+// Helper: get all permission values from all categories
+export const ALL_PERMISSION_VALUES = PERMISSION_CATEGORIES.flatMap(c => c.permissions.map(p => p.value))
+
+// Helper: get category for a permission value
+export function getCategoryForPermission(permValue: string): PermissionCategory | null {
+  return PERMISSION_CATEGORIES.find(c => c.permissions.some(p => p.value === permValue)) || null
+}
+
+// Helper: get all permission values for a category
+export function getCategoryPermissions(categoryKey: string): string[] {
+  const cat = PERMISSION_CATEGORIES.find(c => c.key === categoryKey)
+  return cat ? cat.permissions.map(p => p.value) : []
+}
+
+// ---------------------------------------------------------------------------
 // Role config (metadata per role value)
 // ---------------------------------------------------------------------------
 
@@ -353,7 +469,7 @@ export const ROLE_PRESETS: RolePreset[] = [
     icon: "UserCog",
     description: "All event modules",
     role: "coordinator",
-    permissions: ["speakers", "program", "checkin", "badges", "certificates", "registrations", "abstracts"],
+    permissions: ["speakers", "program", "checkin", "badges", "certificates", "print_station"],
     allEvents: false,
     allPermissions: false,
     gradient: "from-blue-500 to-indigo-500",
@@ -366,7 +482,7 @@ export const ROLE_PRESETS: RolePreset[] = [
     icon: "ClipboardList",
     description: "Registrations only",
     role: "coordinator",
-    permissions: ["registrations"],
+    permissions: ["registrations", "addons", "waitlist", "forms", "delegate_portal", "surveys", "leads"],
     allEvents: false,
     allPermissions: false,
     gradient: "from-teal-500 to-emerald-500",
@@ -418,7 +534,7 @@ export const ROLE_PRESETS: RolePreset[] = [
     icon: "MapPin",
     description: "All travel modules",
     role: "travel",
-    permissions: ["flights", "hotels", "transfers", "trains"],
+    permissions: ["flights", "hotels", "meals", "transfers", "visa_letters"],
     allEvents: false,
     allPermissions: false,
     gradient: "from-cyan-500 to-blue-500",

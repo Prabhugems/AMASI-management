@@ -79,10 +79,10 @@ import {
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
-import { Checkbox } from "@/components/ui/checkbox"
 import { SkeletonTable } from "@/components/ui/skeleton"
+import { CategoryPermissionPicker } from "@/components/team/category-permission-picker"
 import {
-  PERMISSIONS as SHARED_PERMISSIONS,
+  PERMISSION_CATEGORIES,
   ROLE_PRESETS as SHARED_ROLE_PRESETS,
   ROLE_CONFIG as SHARED_ROLE_CONFIG,
   detectPreset as sharedDetectPreset,
@@ -117,12 +117,6 @@ const ICON_MAP: Record<string, any> = {
   Users, Calendar, QrCode, Award, ClipboardList, BookOpen, Plane, Hotel, Car, Train,
   Shield, UserCog, CheckCircle, Settings, MapPin, Palette, FileText,
 }
-
-// Build local PERMISSIONS with React icon components from shared constants
-const PERMISSIONS = SHARED_PERMISSIONS.map(p => ({
-  ...p,
-  icon: ICON_MAP[p.icon] || Users,
-}))
 
 // Build local ROLE_PRESETS with React icon components from shared constants
 const ROLE_PRESETS = SHARED_ROLE_PRESETS.map(p => ({
@@ -466,15 +460,6 @@ export default function EventTeamPage() {
     }
   }
 
-  const togglePermission = (perm: string) => {
-    setFormData(prev => ({
-      ...prev,
-      permissions: prev.permissions.includes(perm)
-        ? prev.permissions.filter(p => p !== perm)
-        : [...prev.permissions, perm],
-    }))
-  }
-
   // Filter by search
   const filteredTeam = eventTeam?.filter(member =>
     member.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -667,15 +652,29 @@ export default function EventTeamPage() {
                           </Badge>
                         ) : (
                           <div className="flex flex-wrap gap-1">
-                            {member.permissions.map((perm) => {
-                              const config = PERMISSIONS.find(p => p.value === perm)
-                              if (!config) return null
-                              const Icon = config.icon
+                            {PERMISSION_CATEGORIES.map((cat) => {
+                              const catPerms = cat.permissions.map(p => p.value)
+                              const memberCatPerms = (member.permissions || []).filter(p => catPerms.includes(p))
+                              if (memberCatPerms.length === 0) return null
+                              const allInCat = memberCatPerms.length === catPerms.length
                               return (
-                                <Badge key={perm} variant="outline" className={cn("text-[11px] gap-1 py-0 px-1.5")}>
-                                  <Icon className={cn("h-3 w-3", config.color)} />
-                                  {config.label}
-                                </Badge>
+                                <TooltipProvider key={cat.key}>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Badge variant="outline" className={cn("text-[11px] gap-1 py-0 px-1.5", cat.bgLight)}>
+                                        {(() => { const CIcon = ICON_MAP[cat.icon] || Users; return <CIcon className={cn("h-3 w-3", cat.color)} /> })()}
+                                        {allInCat ? cat.label : `${cat.label} (${memberCatPerms.length}/${catPerms.length})`}
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="font-medium text-xs mb-1">{cat.label}</p>
+                                      {memberCatPerms.map(pv => {
+                                        const pd = cat.permissions.find(p => p.value === pv)
+                                        return pd ? <p key={pv} className="text-xs">{pd.label}</p> : null
+                                      })}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               )
                             })}
                           </div>
@@ -868,57 +867,19 @@ export default function EventTeamPage() {
               />
             </div>
 
-            {/* Permissions - only show if not full access */}
-            {!formData.allPermissions && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Module Permissions</Label>
-                  <p className="text-xs text-muted-foreground">
-                    {formData.permissions.length === 0
-                      ? "Select at least one module"
-                      : `${formData.permissions.length} selected`
-                    }
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {PERMISSIONS.map((perm) => {
-                    const Icon = perm.icon
-                    const isSelected = formData.permissions.includes(perm.value)
-                    return (
-                      <div
-                        key={perm.value}
-                        onClick={() => togglePermission(perm.value)}
-                        className={cn(
-                          "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                          isSelected
-                            ? "bg-primary/5 border-primary"
-                            : "bg-background hover:bg-muted/50"
-                        )}
-                      >
-                        <Checkbox checked={isSelected} />
-                        <Icon className={cn("h-4 w-4", perm.color)} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{perm.label}</p>
-                          <p className="text-xs text-muted-foreground truncate">{perm.description}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {formData.allPermissions && (
-              <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-rose-700">
-                  <Shield className="h-5 w-5" />
-                  <span className="font-medium">Full Access</span>
-                </div>
-                <p className="text-sm text-rose-600 mt-1">
-                  This member will have full access to all modules for this event
-                </p>
-              </div>
-            )}
+            {/* Permissions - category-based picker */}
+            <CategoryPermissionPicker
+              selectedPermissions={formData.permissions}
+              onChange={(perms) => setFormData(prev => ({ ...prev, permissions: perms }))}
+              allAccess={formData.allPermissions}
+              onAllAccessChange={(checked) => {
+                setFormData(prev => ({
+                  ...prev,
+                  allPermissions: checked,
+                  ...(checked ? { permissions: [] } : {}),
+                }))
+              }}
+            />
 
             {/* Notes */}
             <div className="space-y-2">
