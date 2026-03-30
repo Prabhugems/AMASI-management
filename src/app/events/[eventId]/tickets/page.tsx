@@ -110,6 +110,7 @@ const initialFormData = {
   is_hidden: false,
   requires_approval: false,
   tax_percentage: 18,
+  gst_inclusive: false,
   form_id: null as string | null,
   exclusivity_group: "" as string,
   linked_addon_ids: [] as string[],
@@ -1162,11 +1163,25 @@ export default function TicketsPage() {
                     <label className="text-sm font-medium">Price (₹)</label>
                     <Input
                       type="number"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                      value={formData.gst_inclusive
+                        ? Math.round(formData.price * (1 + formData.tax_percentage / 100))
+                        : formData.price
+                      }
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0
+                        if (formData.gst_inclusive && formData.tax_percentage > 0) {
+                          // Back-calculate base price from inclusive amount
+                          const base = Math.round((val / (1 + formData.tax_percentage / 100)) * 100) / 100
+                          setFormData({ ...formData, price: base })
+                        } else {
+                          setFormData({ ...formData, price: val })
+                        }
+                      }}
                       className="mt-1.5"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Set to 0 for free tickets</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formData.gst_inclusive ? "Enter total amount inclusive of GST" : "Set to 0 for free tickets"}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">GST (%)</label>
@@ -1179,21 +1194,33 @@ export default function TicketsPage() {
                   </div>
                 </div>
 
+                {formData.tax_percentage > 0 && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.gst_inclusive || false}
+                      onChange={(e) => setFormData({ ...formData, gst_inclusive: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span className="text-sm">Price is inclusive of GST</span>
+                  </label>
+                )}
+
                 {formData.price > 0 && (
                   <div className="p-4 bg-secondary/30 rounded-xl">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Base Price</span>
-                      <span>₹{formData.price.toLocaleString()}</span>
+                      <span>₹{formData.price.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                     </div>
                     {formData.tax_percentage > 0 && (
                       <div className="flex justify-between text-sm mt-2">
                         <span className="text-muted-foreground">GST ({formData.tax_percentage}%)</span>
-                        <span>₹{((formData.price * formData.tax_percentage) / 100).toLocaleString()}</span>
+                        <span>₹{((formData.price * formData.tax_percentage) / 100).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-medium mt-2 pt-2 border-t">
                       <span>Total Price</span>
-                      <span className="text-primary">₹{(formData.price * (1 + formData.tax_percentage / 100)).toLocaleString()}</span>
+                      <span className="text-primary">₹{(formData.price * (1 + formData.tax_percentage / 100)).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
                 )}
