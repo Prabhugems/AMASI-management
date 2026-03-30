@@ -4,10 +4,10 @@ import { NextRequest, NextResponse } from 'next/server'
 // POST - Accept team invitation (public route, no auth required)
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { token } = await params
+    const { id: token } = await params
 
     if (!token) {
       return NextResponse.json(
