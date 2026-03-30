@@ -5,6 +5,7 @@ import { useParams, useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
+import { usePermissions } from "@/hooks/use-permissions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -140,6 +141,7 @@ function RegistrationsContent() {
   const eventId = params.eventId as string
   const supabase = createClient()
   const queryClient = useQueryClient()
+  const { isAdmin } = usePermissions()
 
   const initialStatus = searchParams.get("status") || "all"
   const [searchQuery, setSearchQuery] = useState("")
@@ -1397,10 +1399,12 @@ function RegistrationsContent() {
               Import
             </Link>
           </Button>
-          <Button variant="outline" onClick={() => setIsOfflineRegOpen(true)}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Offline Registration
-          </Button>
+          {isAdmin && (
+            <Button variant="outline" onClick={() => setIsOfflineRegOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Offline Registration
+            </Button>
+          )}
           <Button onClick={() => window.open(`/register/${event?.slug || eventId}`, '_blank')}>
             <ExternalLink className="h-4 w-4 mr-2" />
             Online Form
