@@ -74,6 +74,7 @@ import {
   WifiOff,
   CircleDot,
   UserX,
+  MessageCircle,
 } from "lucide-react"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
@@ -172,6 +173,7 @@ export default function EventTeamPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
   const [sendingInvite, setSendingInvite] = useState<string | null>(null)
+  const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -368,6 +370,38 @@ export default function EventTeamPage() {
       toast.error("Failed to send login link")
     } finally {
       setSendingInvite(null)
+    }
+  }
+
+  // Send WhatsApp login link
+  const sendWhatsApp = async (member: TeamMember) => {
+    if (!member.phone) {
+      toast.error("No phone number", { description: "This member doesn't have a phone number" })
+      return
+    }
+    setSendingWhatsApp(member.id)
+    try {
+      const loginUrl = `${window.location.origin}/team-login`
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: member.phone,
+          recipient_name: member.name,
+          type: 'text',
+          text: `Hi ${member.name},\n\nYou have been added as a team member. Use the link below to login:\n\n${loginUrl}\n\nUse your registered email: ${member.email}`,
+        }),
+      })
+      if (res.ok) {
+        toast.success("WhatsApp sent!", { description: `Login link sent to ${member.phone}` })
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast.error("Failed to send WhatsApp", { description: err.error || "Unknown error" })
+      }
+    } catch {
+      toast.error("Failed to send WhatsApp")
+    } finally {
+      setSendingWhatsApp(null)
     }
   }
 
@@ -691,6 +725,17 @@ export default function EventTeamPage() {
                                 <Mail className="h-4 w-4 mr-2" />
                                 Send Email
                               </a>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => sendWhatsApp(member)}
+                              disabled={!member.phone || sendingWhatsApp === member.id}
+                            >
+                              {sendingWhatsApp === member.id ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <MessageCircle className="h-4 w-4 mr-2" />
+                              )}
+                              Send WhatsApp
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
