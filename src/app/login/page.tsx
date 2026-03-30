@@ -28,9 +28,7 @@ function LoginForm() {
   const [loading, setLoading] = React.useState(false)
   const [sent, setSent] = React.useState(false)
   const [error, setError] = React.useState("")
-  const [loginMode, setLoginMode] = React.useState<"password" | "magic-link">(
-    FEATURES.membership ? "magic-link" : "password"
-  )
+  const [loginMode] = React.useState<"password" | "magic-link">("magic-link")
 
   // If login page receives a code param, redirect to auth callback
   React.useEffect(() => {
@@ -263,35 +261,6 @@ function LoginForm() {
                     </div>
                   </div>
 
-                  {loginMode === "password" && (
-                    <div>
-                      <label
-                        htmlFor="password"
-                        className="block text-sm font-medium text-foreground mb-2"
-                      >
-                        Password
-                      </label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <input
-                          id="password"
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Enter your password"
-                          required
-                          className={cn(
-                            "w-full h-12 pl-11 pr-4 rounded-xl bg-secondary/50 border text-foreground",
-                            "placeholder:text-muted-foreground",
-                            "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
-                            "transition-all duration-200",
-                            error ? "border-destructive" : "border-transparent"
-                          )}
-                        />
-                      </div>
-                    </div>
-                  )}
-
                   {error && (
                     <p className="text-sm text-destructive">{error}</p>
                   )}
@@ -299,43 +268,25 @@ function LoginForm() {
                   <Button
                     type="submit"
                     className="w-full h-12"
-                    disabled={loading || !email || (loginMode === "password" && !password)}
+                    disabled={loading || !email}
                   >
                     {loading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        {loginMode === "password" ? "Signing in..." : "Sending magic link..."}
+                        Sending login link...
                       </>
                     ) : (
                       <>
-                        {loginMode === "password" ? (
-                          <>
-                            <ArrowRight className="h-4 w-4 mr-2" />
-                            Sign in
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="h-4 w-4 mr-2" />
-                            Send magic link
-                          </>
-                        )}
+                        <Mail className="h-4 w-4 mr-2" />
+                        Send login link
                       </>
                     )}
                   </Button>
-                </form>
 
-                <div className="mt-4 text-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginMode(loginMode === "password" ? "magic-link" : "password")
-                      setError("")
-                    }}
-                    className="text-sm text-primary hover:underline"
-                  >
-                    {loginMode === "password" ? "Sign in with magic link instead" : "Sign in with password instead"}
-                  </button>
-                </div>
+                  <p className="text-xs text-muted-foreground text-center mt-3">
+                    We&apos;ll send a secure login link to your email. No password needed.
+                  </p>
+                </form>
               </>
             )}
           </div>
