@@ -284,7 +284,7 @@ function TicketCard({
                   }
                 `}
               >
-                {ticket.price === 0 ? "FREE" : `\u20B9${ticket.price.toLocaleString()}`}
+                {ticket.price === 0 ? "FREE" : `\u20B9${Math.round(totalPrice).toLocaleString("en-IN")}`}
               </p>
               {ticket.tax_percentage > 0 && ticket.price > 0 && (
                 <p
@@ -293,7 +293,7 @@ function TicketCard({
                     ${isDark ? "text-slate-500" : "text-gray-400"}
                   `}
                 >
-                  +{ticket.tax_percentage}% GST
+                  incl. {ticket.tax_percentage}% GST
                 </p>
               )}
             </div>

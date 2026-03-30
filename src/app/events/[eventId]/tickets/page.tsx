@@ -906,7 +906,7 @@ export default function TicketsPage() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Base Price</span>
                       <span className="font-medium">
-                        {selectedTicket.price === 0 ? "Free" : `₹${selectedTicket.price.toLocaleString()}`}
+                        {selectedTicket.price === 0 ? "Free" : `₹${Math.round(selectedTicket.price).toLocaleString("en-IN")}`}
                       </span>
                     </div>
                     {selectedTicket.tax_percentage > 0 && selectedTicket.price > 0 && (
@@ -914,13 +914,13 @@ export default function TicketsPage() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">GST ({selectedTicket.tax_percentage}%)</span>
                           <span className="font-medium">
-                            ₹{((selectedTicket.price * selectedTicket.tax_percentage) / 100).toLocaleString()}
+                            ₹{Math.round(selectedTicket.price * selectedTicket.tax_percentage / 100).toLocaleString("en-IN")}
                           </span>
                         </div>
                         <div className="flex justify-between pt-3 border-t border-border">
                           <span className="font-medium">Total Price</span>
                           <span className="font-bold text-primary">
-                            ₹{(selectedTicket.price * (1 + selectedTicket.tax_percentage / 100)).toLocaleString()}
+                            ₹{Math.round(selectedTicket.price * (1 + selectedTicket.tax_percentage / 100)).toLocaleString("en-IN")}
                           </span>
                         </div>
                       </>
@@ -1171,8 +1171,8 @@ export default function TicketsPage() {
                       onChange={(e) => {
                         const val = parseFloat(e.target.value) || 0
                         if (formData.gst_inclusive && formData.tax_percentage > 0) {
-                          // Back-calculate base price from inclusive amount
-                          const base = Math.round((val / (1 + formData.tax_percentage / 100)) * 100) / 100
+                          // Back-calculate base price from inclusive amount, round to nearest rupee
+                          const base = Math.round(val / (1 + formData.tax_percentage / 100))
                           setFormData({ ...formData, price: base })
                         } else {
                           setFormData({ ...formData, price: val })
