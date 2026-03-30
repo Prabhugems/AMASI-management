@@ -284,7 +284,7 @@ export async function POST(request: NextRequest) {
     // Security: Only allow login for known users or team members
     const [userResult, teamResult] = await Promise.all([
       adminClient.from("users").select("id").ilike("email", normalizedEmail).maybeSingle(),
-      adminClient.from("team_members").select("id").ilike("email", normalizedEmail).eq("is_active", true).maybeSingle(),
+      adminClient.from("team_members").select("id, is_active").ilike("email", normalizedEmail).maybeSingle(),
     ])
 
     if (!userResult.data && !teamResult.data) {
