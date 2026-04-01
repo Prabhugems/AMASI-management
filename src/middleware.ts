@@ -119,8 +119,15 @@ export async function middleware(request: NextRequest) {
   )
 
   if (!user && isProtectedRoute) {
-    // No user, redirect to login
     const url = request.nextUrl.clone()
+
+    // Root path: show landing page instead of login redirect
+    if (request.nextUrl.pathname === '/') {
+      url.pathname = '/technosurg.html'
+      return NextResponse.rewrite(url)
+    }
+
+    // Other protected routes: redirect to login
     url.pathname = '/login'
 
     // Validate redirectTo is a relative path (prevent open redirect attacks)
