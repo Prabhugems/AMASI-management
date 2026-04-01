@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useRouter } from "next/navigation"
 import {
   LayoutDashboard,
   Calendar,
@@ -16,11 +17,15 @@ import {
   HelpCircle,
   PanelLeftClose,
   PanelLeft,
+  LogOut,
+  Settings,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { usePermissions } from "@/hooks/use-permissions"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface SidebarProps {
   collapsed: boolean
@@ -122,6 +127,7 @@ const quickNavItems = [
 
 export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [openMenus, setOpenMenus] = React.useState<string[]>(["Dashboard"])
   const [userMenuOpen, setUserMenuOpen] = React.useState(false)
   const [activePopItem, setActivePopItem] = React.useState<string | null>(null)
@@ -234,62 +240,6 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             {COMPANY_CONFIG.name}
           </span>
         </Link>
-      </div>
-
-      {/* User Profile */}
-      <div className={cn(
-        "p-4 border-b border-sidebar-border/50 transition-all duration-300",
-        collapsed && "px-3 py-3"
-      )}>
-        <div
-          className={cn(
-            "flex items-center gap-3 cursor-pointer rounded-xl p-2 -m-2 transition-all duration-200",
-            "hover:bg-white/5",
-            collapsed && "justify-center p-1 -m-1"
-          )}
-          onClick={() => !collapsed && setUserMenuOpen(!userMenuOpen)}
-        >
-          <Avatar className={cn(
-            "h-10 w-10 border-2 border-white/10 avatar-hover-ring flex-shrink-0",
-            collapsed && "h-9 w-9"
-          )}>
-            <AvatarFallback className="bg-gradient-to-br from-sidebar-primary to-sidebar-primary/70 text-white text-sm font-medium">
-              {isLoading ? "..." : getInitials(userName || userEmail || "U")}
-            </AvatarFallback>
-          </Avatar>
-          <div className={cn(
-            "flex-1 min-w-0 transition-all duration-300 overflow-hidden",
-            collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-full"
-          )}>
-            {isLoading ? (
-              <div className="space-y-1.5">
-                <div className="h-4 w-24 bg-white/10 rounded animate-pulse" />
-                <div className="h-3 w-16 bg-white/10 rounded animate-pulse" />
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-sidebar-foreground truncate">
-                    {userName || userEmail?.split("@")[0] || "User"}
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-3.5 w-3.5 text-sidebar-muted chevron-rotate flex-shrink-0",
-                      userMenuOpen && "open"
-                    )}
-                  />
-                </div>
-                <span className="text-xs text-sidebar-muted/70 truncate block mt-0.5">{getRoleLabel()}</span>
-              </>
-            )}
-          </div>
-        </div>
-        {/* User submenu */}
-        {!collapsed && userMenuOpen && (
-          <div className="mt-3 space-y-1 pl-14 submenu-enter">
-            <p className="text-xs text-sidebar-muted/50 truncate mb-2">{userEmail}</p>
-          </div>
-        )}
       </div>
 
       {/* Navigation */}
@@ -411,26 +361,131 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
         </div>
       </nav>
 
-      {/* Collapse Toggle Footer */}
-      <div className="p-3 sidebar-gradient-separator">
-        <button
-          onClick={onToggle}
-          className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm collapse-btn",
-            "text-sidebar-muted hover:text-sidebar-foreground",
-            "bg-white/[0.03] hover:bg-white/[0.06]",
-            "border border-white/[0.04]"
-          )}
-        >
-          {collapsed ? (
-            <PanelLeft className="h-4 w-4" />
-          ) : (
+      {/* User Profile & Collapse Footer */}
+      <div className="sidebar-gradient-separator">
+        {/* User Profile */}
+        <div className={cn(
+          "relative px-3 pt-3",
+          collapsed && "px-2"
+        )}>
+          <button
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-xl p-2 transition-all duration-200",
+              "hover:bg-white/[0.08]",
+              userMenuOpen && "bg-white/[0.08]",
+              collapsed && "justify-center p-2"
+            )}
+          >
+            <Avatar className={cn(
+              "h-9 w-9 border-2 border-white/10 flex-shrink-0",
+              collapsed && "h-8 w-8"
+            )}>
+              <AvatarFallback className="bg-gradient-to-br from-sidebar-primary to-sidebar-primary/70 text-white text-xs font-medium">
+                {isLoading ? "..." : getInitials(userName || userEmail || "U")}
+              </AvatarFallback>
+            </Avatar>
+            {!collapsed && (
+              <div className="flex-1 min-w-0 text-left">
+                {isLoading ? (
+                  <div className="space-y-1">
+                    <div className="h-3.5 w-20 bg-white/10 rounded animate-pulse" />
+                    <div className="h-3 w-14 bg-white/10 rounded animate-pulse" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-sidebar-foreground truncate leading-tight">
+                      {userName || userEmail?.split("@")[0] || "User"}
+                    </p>
+                    <p className="text-[11px] text-sidebar-muted/60 truncate leading-tight mt-0.5">{getRoleLabel()}</p>
+                  </>
+                )}
+              </div>
+            )}
+            {!collapsed && (
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 text-sidebar-muted/60 flex-shrink-0 transition-transform duration-200",
+                  userMenuOpen && "rotate-180"
+                )}
+              />
+            )}
+          </button>
+
+          {/* User Popover Menu */}
+          {userMenuOpen && (
             <>
-              <PanelLeftClose className="h-4 w-4" />
-              <span className="text-xs font-medium">Collapse</span>
+              <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+              <div className={cn(
+                "absolute z-50 w-56 rounded-xl border border-white/10 bg-sidebar shadow-2xl shadow-black/40 overflow-hidden",
+                collapsed
+                  ? "left-full bottom-0 ml-2"
+                  : "left-3 right-3 bottom-full mb-2 w-auto"
+              )}>
+                {/* Email */}
+                <div className="px-3 py-2.5 border-b border-white/[0.06]">
+                  <p className="text-xs text-sidebar-muted/50 truncate">{userEmail}</p>
+                </div>
+                {/* Menu Items */}
+                <div className="p-1.5">
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false)
+                      router.push("/help")
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-sidebar-muted hover:text-sidebar-foreground hover:bg-white/[0.06] transition-colors"
+                  >
+                    <HelpCircle className="h-4 w-4 flex-shrink-0" />
+                    <span>Help & Support</span>
+                  </button>
+                </div>
+                {/* Sign Out */}
+                <div className="p-1.5 border-t border-white/[0.06]">
+                  <button
+                    onClick={async () => {
+                      setUserMenuOpen(false)
+                      try {
+                        await fetch("/api/track-logout", { method: "POST" }).catch(() => {})
+                        const supabase = createClient()
+                        await supabase.auth.signOut()
+                        toast.success("Signed out successfully")
+                        router.push("/login")
+                      } catch {
+                        toast.error("Failed to sign out")
+                      }
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4 flex-shrink-0" />
+                    <span>Sign out</span>
+                  </button>
+                </div>
+              </div>
             </>
           )}
-        </button>
+        </div>
+
+        {/* Collapse Toggle */}
+        <div className="p-3 pt-2">
+          <button
+            onClick={onToggle}
+            className={cn(
+              "flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm collapse-btn",
+              "text-sidebar-muted hover:text-sidebar-foreground",
+              "bg-white/[0.03] hover:bg-white/[0.06]",
+              "border border-white/[0.04]"
+            )}
+          >
+            {collapsed ? (
+              <PanelLeft className="h-4 w-4" />
+            ) : (
+              <>
+                <PanelLeftClose className="h-4 w-4" />
+                <span className="text-xs font-medium">Collapse</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </aside>
     </>

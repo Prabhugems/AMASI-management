@@ -103,8 +103,8 @@ export default function RegistrationsLayout({ children }: { children: React.Reac
       const hasFullAccess = !isEventScoped && (!teamMember.permissions || teamMember.permissions.length === 0)
       const hasRegistrationsPermission = teamMember.permissions?.includes("registrations")
 
-      // Event-scoped users need registrations permission, non-event-scoped admins get full access
-      const hasAccess = (!isEventScoped && isAdmin) || hasFullAccess || hasRegistrationsPermission
+      // Admins always have access, non-admin event-scoped users need registrations permission
+      const hasAccess = isAdmin || hasFullAccess || hasRegistrationsPermission
 
       return {
         permissions: teamMember?.permissions || [],

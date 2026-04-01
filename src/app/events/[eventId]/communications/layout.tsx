@@ -104,7 +104,7 @@ export default function CommunicationsLayout({
       const hasFullAccess = !isEventScoped && (!teamMember.permissions || teamMember.permissions.length === 0)
       const hasCommunicationsPermission = teamMember.permissions?.includes("communications")
 
-      const hasAccess = (!isEventScoped && isAdmin) || hasFullAccess || hasCommunicationsPermission
+      const hasAccess = isAdmin || hasFullAccess || hasCommunicationsPermission
 
       return {
         permissions: teamMember?.permissions || [],
