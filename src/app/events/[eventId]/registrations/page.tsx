@@ -135,7 +135,7 @@ export default function RegistrationsOverviewPage() {
             <span className="text-sm">Revenue</span>
           </div>
           <p className="text-xl sm:text-2xl font-bold mt-2 text-purple-600">
-            ₹{(stats?.revenue || 0).toLocaleString()}
+            ₹{Math.round(stats?.revenue || 0).toLocaleString()}
           </p>
         </Link>
       </div>

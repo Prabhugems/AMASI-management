@@ -126,6 +126,10 @@ interface TicketType {
   price: number
 }
 
+/** Format currency amount as whole number */
+const fmtAmt = (v: number | null | undefined) =>
+  `₹${Math.round(v || 0).toLocaleString("en-IN")}`
+
 export default function RegistrationsPage() {
   return (
     <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading...</div>}>
@@ -1447,7 +1451,7 @@ function RegistrationsContent() {
             <p className="text-sm text-muted-foreground">Revenue</p>
             <HelpTooltip content="Total amount collected from all confirmed registrations (after discounts and taxes)" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold">₹{Math.round(stats.totalRevenue).toLocaleString()}</p>
         </div>
       </div>
 
@@ -1702,7 +1706,7 @@ function RegistrationsContent() {
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">
-                          ₹{reg.total_amount.toLocaleString()}
+                          {fmtAmt(reg.total_amount)}
                         </span>
                         {getPaymentStatusIcon(reg.payment_status)}
                       </div>
@@ -2026,9 +2030,9 @@ function RegistrationsContent() {
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-sm">{selectedRegistration.ticket_type?.name || "Standard Ticket"}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    <span className="font-semibold text-cyan-700 dark:text-cyan-400">₹{selectedRegistration.unit_price.toLocaleString()}</span>
+                    <span className="font-semibold text-cyan-700 dark:text-cyan-400">{fmtAmt(selectedRegistration.unit_price)}</span>
                     {selectedRegistration.tax_amount > 0 && (
-                      <span className="text-muted-foreground/60"> + ₹{selectedRegistration.tax_amount.toLocaleString()} GST</span>
+                      <span className="text-muted-foreground/60"> + {fmtAmt(selectedRegistration.tax_amount)} GST</span>
                     )}
                   </p>
                 </div>
@@ -2146,7 +2150,7 @@ function RegistrationsContent() {
                         <div className="flex items-center gap-2 mt-0.5">
                           {item.quantity > 1 && (
                             <span className="text-xs text-muted-foreground">
-                              Qty: {item.quantity} × ₹{item.unit_price.toLocaleString()}
+                              Qty: {item.quantity} × {fmtAmt(item.unit_price)}
                             </span>
                           )}
                           {item.addon?.is_course && (
@@ -2157,7 +2161,7 @@ function RegistrationsContent() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="font-semibold text-sm">₹{item.total_price.toLocaleString()}</span>
+                        <span className="font-semibold text-sm">{fmtAmt(item.total_price)}</span>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -2200,24 +2204,24 @@ function RegistrationsContent() {
                 <div className="p-4 space-y-3 bg-gradient-to-b from-green-50 to-transparent dark:from-green-950/40">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Ticket</span>
-                    <span className="font-semibold tabular-nums">₹{selectedRegistration.unit_price.toLocaleString()}</span>
+                    <span className="font-semibold tabular-nums">{fmtAmt(selectedRegistration.unit_price)}</span>
                   </div>
                   {registrationAddons && registrationAddons.length > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Add-ons</span>
-                      <span className="font-semibold tabular-nums">₹{registrationAddons.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0).toLocaleString()}</span>
+                      <span className="font-semibold tabular-nums">{fmtAmt(registrationAddons.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0))}</span>
                     </div>
                   )}
                   {selectedRegistration.tax_amount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Tax (GST)</span>
-                      <span className="font-semibold tabular-nums">₹{selectedRegistration.tax_amount.toLocaleString()}</span>
+                      <span className="font-semibold tabular-nums">{fmtAmt(selectedRegistration.tax_amount)}</span>
                     </div>
                   )}
                   {selectedRegistration.discount_amount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Discount</span>
-                      <span className="font-bold tabular-nums text-emerald-600">-₹{selectedRegistration.discount_amount.toLocaleString()}</span>
+                      <span className="font-bold tabular-nums text-emerald-600">-{fmtAmt(selectedRegistration.discount_amount)}</span>
                     </div>
                   )}
                 </div>
@@ -2237,10 +2241,10 @@ function RegistrationsContent() {
                       {selectedRegistration.payment_status}
                     </Badge>
                   </div>
-                  <span className="font-black text-lg tabular-nums text-green-700 dark:text-green-400">₹{(
+                  <span className="font-black text-lg tabular-nums text-green-700 dark:text-green-400">{fmtAmt(
                     selectedRegistration.total_amount +
                     (registrationAddons?.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0) || 0)
-                  ).toLocaleString()}</span>
+                  )}</span>
                 </div>
               </div>
             </SlideOverSection>
@@ -2736,7 +2740,7 @@ function RegistrationsContent() {
               <p className="text-sm font-medium">Current Ticket</p>
               <p className="text-lg">{selectedRegistration?.ticket_type?.name}</p>
               <p className="text-sm text-muted-foreground">
-                {selectedRegistration?.total_amount?.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                {fmtAmt(selectedRegistration?.total_amount)}
               </p>
             </div>
 
@@ -2754,7 +2758,7 @@ function RegistrationsContent() {
                         <div className="flex items-center justify-between w-full gap-4">
                           <span>{ticket.name}</span>
                           <span className="text-muted-foreground">
-                            {ticket.price?.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                            {fmtAmt(ticket.price)}
                           </span>
                         </div>
                       </SelectItem>
@@ -2770,7 +2774,7 @@ function RegistrationsContent() {
                   {ticketTypes?.find((t) => t.id === switchToTicketId)?.name}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {ticketTypes?.find((t) => t.id === switchToTicketId)?.price?.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                  {fmtAmt(ticketTypes?.find((t) => t.id === switchToTicketId)?.price)}
                 </p>
               </div>
             )}
@@ -2824,7 +2828,7 @@ function RegistrationsContent() {
               <p className="text-sm font-medium">Current Registration</p>
               <p className="text-lg">{selectedRegistration?.ticket_type?.name}</p>
               <p className="text-sm text-muted-foreground">
-                {selectedRegistration?.total_amount?.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                {fmtAmt(selectedRegistration?.total_amount)}
               </p>
             </div>
 
@@ -2876,7 +2880,7 @@ function RegistrationsContent() {
                           <div className="flex items-center justify-between w-full gap-4">
                             <span>{ticket.name}</span>
                             <span className="text-muted-foreground">
-                              {ticket.price?.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                              {fmtAmt(ticket.price)}
                               {available < 5 && <span className="text-orange-500 ml-2">({available} left)</span>}
                             </span>
                           </div>
@@ -2899,7 +2903,7 @@ function RegistrationsContent() {
                   {transferEventTickets?.find((t) => t.id === transferToTicketId)?.name}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {transferEventTickets?.find((t) => t.id === transferToTicketId)?.price?.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                  {fmtAmt(transferEventTickets?.find((t) => t.id === transferToTicketId)?.price)}
                 </p>
               </div>
             )}
@@ -3028,7 +3032,7 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
                 <SelectContent>
                   {ticketTypes?.map((ticket) => (
                     <SelectItem key={ticket.id} value={ticket.id}>
-                      {ticket.name} {ticket.price === 0 ? "(Free)" : `(₹${ticket.price})`}
+                      {ticket.name} {ticket.price === 0 ? "(Free)" : `(${fmtAmt(ticket.price)})`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -3204,7 +3208,7 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
                 <SelectContent>
                   {ticketTypes?.map((ticket) => (
                     <SelectItem key={ticket.id} value={ticket.id}>
-                      {ticket.name} - {ticket.price?.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                      {ticket.name} - {fmtAmt(ticket.price)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -3278,7 +3282,7 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
                 <SelectContent>
                   {availableAddons?.map((addon: any) => (
                     <SelectItem key={addon.id} value={addon.id}>
-                      {addon.name} - ₹{addon.price.toLocaleString()}
+                      {addon.name} - {fmtAmt(addon.price)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -3302,7 +3306,7 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
                             {variant.name}
                             {variant.price_adjustment !== 0 && (
                               <span className="text-muted-foreground ml-2">
-                                ({variant.price_adjustment > 0 ? '+' : ''}₹{variant.price_adjustment})
+                                ({variant.price_adjustment > 0 ? '+' : ''}{fmtAmt(variant.price_adjustment)})
                               </span>
                             )}
                           </SelectItem>
@@ -3331,21 +3335,21 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Unit Price</span>
                   <span>
-                    ₹{(() => {
+                    {(() => {
                       const addon = availableAddons?.find((a: any) => a.id === selectedAddonId)
                       const variant = addon?.variants?.find((v: any) => v.id === selectedVariantId)
-                      return (addon?.price + (variant?.price_adjustment || 0)).toLocaleString()
+                      return fmtAmt(addon?.price + (variant?.price_adjustment || 0))
                     })()}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t">
                   <span>Total</span>
                   <span>
-                    ₹{(() => {
+                    {(() => {
                       const addon = availableAddons?.find((a: any) => a.id === selectedAddonId)
                       const variant = addon?.variants?.find((v: any) => v.id === selectedVariantId)
                       const unitPrice = addon?.price + (variant?.price_adjustment || 0)
-                      return (unitPrice * addonQuantity).toLocaleString()
+                      return fmtAmt(unitPrice * addonQuantity)
                     })()}
                   </span>
                 </div>

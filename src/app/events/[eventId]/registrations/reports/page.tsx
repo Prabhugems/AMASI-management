@@ -38,6 +38,10 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   free: "Free",
 }
 
+/** Format currency amount as whole number */
+const fmtAmt = (v: number | null | undefined) =>
+  `₹${Math.round(v || 0).toLocaleString("en-IN")}`
+
 export default function RegistrationReportsPage() {
   const params = useParams()
   const eventId = params.eventId as string
@@ -428,14 +432,14 @@ export default function RegistrationReportsPage() {
             <IndianRupee className="h-4 w-4" />
             <span className="text-sm">Revenue</span>
           </div>
-          <p className="text-xl font-bold mt-1">{"\u20B9"}{stats.revenue.toLocaleString()}</p>
+          <p className="text-xl font-bold mt-1">{fmtAmt(stats.revenue)}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-blue-500">
             <Ticket className="h-4 w-4" />
             <span className="text-sm">Avg Price</span>
           </div>
-          <p className="text-xl font-bold mt-1">{"\u20B9"}{Math.round(stats.avgTicketPrice).toLocaleString()}</p>
+          <p className="text-xl font-bold mt-1">{fmtAmt(stats.avgTicketPrice)}</p>
         </div>
       </div>
 
@@ -463,7 +467,7 @@ export default function RegistrationReportsPage() {
                 <TableRow key={ticket}>
                   <TableCell className="font-medium">{ticket}</TableCell>
                   <TableCell className="text-right">{data.count}</TableCell>
-                  <TableCell className="text-right">{"\u20B9"}{data.revenue.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{fmtAmt(data.revenue)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -529,28 +533,28 @@ export default function RegistrationReportsPage() {
                 <IndianRupee className="h-4 w-4" />
                 <span className="text-sm">Total Revenue</span>
               </div>
-              <p className="text-xl font-bold mt-1">{"\u20B9"}{revenueStats.totalRevenue.toLocaleString()}</p>
+              <p className="text-xl font-bold mt-1">{fmtAmt(revenueStats.totalRevenue)}</p>
             </div>
             <div className="bg-card rounded-lg border p-4">
               <div className="flex items-center gap-2 text-blue-600">
                 <Globe className="h-4 w-4" />
                 <span className="text-sm">Online</span>
               </div>
-              <p className="text-xl font-bold mt-1">{"\u20B9"}{revenueStats.onlineRevenue.toLocaleString()}</p>
+              <p className="text-xl font-bold mt-1">{fmtAmt(revenueStats.onlineRevenue)}</p>
             </div>
             <div className="bg-card rounded-lg border p-4">
               <div className="flex items-center gap-2 text-amber-600">
                 <Banknote className="h-4 w-4" />
                 <span className="text-sm">Offline</span>
               </div>
-              <p className="text-xl font-bold mt-1">{"\u20B9"}{revenueStats.offlineRevenue.toLocaleString()}</p>
+              <p className="text-xl font-bold mt-1">{fmtAmt(revenueStats.offlineRevenue)}</p>
             </div>
             <div className="bg-card rounded-lg border p-4">
               <div className="flex items-center gap-2 text-red-500">
                 <ArrowDownRight className="h-4 w-4" />
                 <span className="text-sm">Refunded</span>
               </div>
-              <p className="text-xl font-bold mt-1">{"\u20B9"}{revenueStats.refundedAmount.toLocaleString()}</p>
+              <p className="text-xl font-bold mt-1">{fmtAmt(revenueStats.refundedAmount)}</p>
             </div>
             <div className="bg-card rounded-lg border p-4 col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 text-green-600">
@@ -558,7 +562,7 @@ export default function RegistrationReportsPage() {
                 <span className="text-sm">Net Revenue</span>
               </div>
               <p className="text-xl font-bold mt-1 text-green-700 dark:text-green-400">
-                {"\u20B9"}{revenueStats.netRevenue.toLocaleString()}
+                {fmtAmt(revenueStats.netRevenue)}
               </p>
             </div>
           </div>
@@ -595,10 +599,10 @@ export default function RegistrationReportsPage() {
                           <TableCell className="font-medium">{t.name}</TableCell>
                           <TableCell className="text-right">{t.quantity}</TableCell>
                           <TableCell className="text-right">
-                            {"\u20B9"}{t.unitPrice.toLocaleString()}
+                            {fmtAmt(t.unitPrice)}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {"\u20B9"}{t.totalRevenue.toLocaleString()}
+                            {fmtAmt(t.totalRevenue)}
                           </TableCell>
                           <TableCell className="text-right">
                             <span className="inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-950/40 px-2 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-300">
@@ -649,7 +653,7 @@ export default function RegistrationReportsPage() {
                           <div className="flex items-center gap-3 text-muted-foreground">
                             <span>{data.count} txn{data.count !== 1 ? "s" : ""}</span>
                             <span className="font-medium text-foreground">
-                              {"\u20B9"}{data.amount.toLocaleString()}
+                              {fmtAmt(data.amount)}
                             </span>
                           </div>
                         </div>
@@ -705,7 +709,7 @@ export default function RegistrationReportsPage() {
                             })}
                           </div>
                           <div className="text-muted-foreground">
-                            {"\u20B9"}{amount.toLocaleString()}
+                            {fmtAmt(amount)}
                           </div>
                         </div>
                       </div>

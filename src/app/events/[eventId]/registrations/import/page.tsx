@@ -204,7 +204,7 @@ export default function ImportRegistrationsPage() {
           <option value="" disabled>Assign ticket...</option>
           {ticketTypes.map(t => (
             <option key={t.id} value={t.id}>
-              {t.name} - ₹{t.price.toLocaleString()}
+              {t.name} - ₹{Math.round(t.price).toLocaleString("en-IN")}
             </option>
           ))}
         </select>
@@ -258,7 +258,7 @@ export default function ImportRegistrationsPage() {
                 <option value="">Select ticket type</option>
                 {ticketTypes.map(ticket => (
                   <option key={ticket.id} value={ticket.id}>
-                    {ticket.name} - ₹{ticket.price.toLocaleString()}
+                    {ticket.name} - ₹{Math.round(ticket.price).toLocaleString("en-IN")}
                   </option>
                 ))}
               </select>
