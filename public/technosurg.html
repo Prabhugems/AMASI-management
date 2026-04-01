@@ -1,0 +1,4024 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GEM TechnoSurg 2026 | AI, Robotics & Fluorescence in Surgery.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet" />
+
+  <style>
+    /* ─── RESET ─── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #05050a;
+      color: #fff;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #05050a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #22d3ee;
+      border-radius: 3px;
+    }
+
+    /* ─── VARIABLES ─── */
+    :root {
+      --cyan: #22d3ee;
+      --cyan-dim: rgba(34, 211, 238, 0.12);
+      --bg: #05050a;
+      --bg2: #0a0a10;
+      --border: rgba(255, 255, 255, 0.07);
+      --muted: rgba(255, 255, 255, 0.38);
+      --pad: clamp(1.5rem, 7vw, 7rem);
+    }
+
+    /* ─── NAV ─── */
+    #nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      height: 80px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: 0 var(--pad);
+      background: rgba(5, 5, 10, 0.92);
+      backdrop-filter: blur(20px) saturate(1.4);
+      -webkit-backdrop-filter: blur(20px) saturate(1.4);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .nav-logo {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #ffffff;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .nav-logo em {
+      font-style: normal;
+      color: var(--cyan);
+      margin-right: 0.25rem;
+    }
+
+    .nav-center {
+      display: flex;
+      gap: 2.5rem;
+      list-style: none;
+      justify-content: center;
+    }
+
+    .nav-center a {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.6);
+      text-decoration: none;
+      letter-spacing: 0.02em;
+      transition: color 0.15s;
+    }
+
+    .nav-center a:hover {
+      color: #ffffff;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    .nav-btn {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #ffffff;
+      text-decoration: none;
+      background: var(--cyan);
+      padding: 0.42rem 1.1rem;
+      border-radius: 6px;
+      letter-spacing: 0.02em;
+      transition: opacity 0.15s;
+    }
+
+    .nav-btn:hover {
+      opacity: 0.85;
+    }
+
+    .nav-mob {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .nav-mob span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 2px;
+      transition: transform 0.25s, opacity 0.25s;
+    }
+
+    /* ─── SHARED VIDEO BG ─── */
+    .sec-vid {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .vid-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: calc(64px + 4rem) var(--pad) 5rem;
+      overflow: hidden;
+      background: #05050a;
+    }
+
+    .hero .vid-overlay {
+      background:
+        linear-gradient(105deg, rgba(5, 5, 10, 0.82) 35%, rgba(5, 5, 10, 0.42) 100%),
+        radial-gradient(ellipse 80% 70% at 15% 60%, transparent 45%, rgba(5, 5, 10, 0.55) 100%);
+    }
+
+    .hero-inner {
+      position: relative;
+      z-index: 2;
+      /* max-width: 680px; */
+    }
+
+    .hero-eyebrow {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 28px;
+      height: 1px;
+      background: var(--cyan);
+    }
+
+    .hero h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(3.2rem, 6.5vw, 4rem);
+      font-weight: 800;
+      line-height: 1.04;
+      letter-spacing: -0.03em;
+      margin-bottom: 2.25rem;
+    }
+
+    .hero h1 .c {
+      color: var(--cyan);
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 2.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 3rem;
+    }
+
+    .btn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: #fff;
+      color: #050510;
+      padding: 0.72rem 1.8rem;
+      border-radius: 100px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-pill:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-pill svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Countdown */
+    .countdown {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .cd-grp {
+      display: flex;
+      align-items: baseline;
+      gap: 0.3rem;
+    }
+
+    .cd-n {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(2rem, 3.5vw, 2.8rem);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+
+    .cd-u {
+      font-size: 0.58rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .cd-dot {
+      font-size: 1.8rem;
+      color: rgba(255, 255, 255, 0.18);
+      font-weight: 300;
+      line-height: 1;
+    }
+
+    /* ── WHAT YOU'LL LEARN ── */
+    .learn-block {
+      margin-top: 40px;
+      /* max-width: 580px; */
+    }
+
+    .learn-heading {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(2.5rem, 2vw, 1.4rem);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #fff;
+      margin-bottom: 1.4rem;
+      text-shadow: 0 0 32px rgba(34, 211, 238, 0.35);
+    }
+
+    .learn-heading .c {
+      color: var(--cyan);
+      text-shadow: 0 0 18px rgba(34, 211, 238, 0.7), 0 0 48px rgba(34, 211, 238, 0.3);
+    }
+
+    .learn-list {
+      list-style: none;
+      display: flex;
+      flex-direction: row;
+      gap: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .learn-item {
+      display: flex;
+      /* align-items: flex-start; */
+      gap: 0.85rem;
+      font-size: 16px;
+      /* line-height: 1.65; */
+      color: rgba(255, 255, 255, 0.62);
+      transition: color 0.2s;
+    }
+
+    .learn-item:hover {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .learn-item:hover .learn-dot {
+      box-shadow: 0 0 10px 3px rgba(34, 211, 238, 0.7), 0 0 22px 6px rgba(34, 211, 238, 0.3);
+      background: #fff;
+    }
+
+    .learn-dot {
+      flex-shrink: 0;
+      margin-top: 0.48rem;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 6px 2px rgba(34, 211, 238, 0.55), 0 0 14px 4px rgba(34, 211, 238, 0.25);
+      animation: pulse-dot 2.4s ease-in-out infinite;
+    }
+
+    .learn-item:nth-child(2) .learn-dot {
+      animation-delay: 0.48s;
+    }
+
+    .learn-item:nth-child(3) .learn-dot {
+      animation-delay: 0.96s;
+    }
+
+    .learn-item:nth-child(4) .learn-dot {
+      animation-delay: 1.44s;
+    }
+
+    .learn-item:nth-child(5) .learn-dot {
+      animation-delay: 1.92s;
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        box-shadow: 0 0 6px 2px rgba(34, 211, 238, 0.55), 0 0 14px 4px rgba(34, 211, 238, 0.25);
+      }
+
+      50% {
+        box-shadow: 0 0 10px 4px rgba(34, 211, 238, 0.85), 0 0 26px 8px rgba(34, 211, 238, 0.4);
+      }
+    }
+
+    /* ─── TICKER ─── */
+    .ticker {
+      background: #040408;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+      padding: 0.55rem 0;
+    }
+
+    .ticker-track {
+      display: flex;
+      white-space: nowrap;
+      animation: ticker 40s linear infinite;
+    }
+
+    .ticker-track span {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.35);
+      padding: 0 1.6rem;
+    }
+
+    .ticker-track .tdot {
+      color: var(--cyan);
+      opacity: 0.55;
+      padding: 0 0.3rem;
+    }
+
+    @keyframes ticker {
+      from {
+        transform: translateX(0);
+      }
+
+      to {
+        transform: translateX(-50%);
+      }
+    }
+
+    /* ─── ABOUT ─── */
+    .about {
+      position: relative;
+      min-height: 620px;
+      display: flex;
+      align-items: flex-end;
+      padding: 5.5rem var(--pad);
+      overflow: hidden;
+      background: #05050a;
+    }
+
+    .about .vid-overlay {
+      background: linear-gradient(to bottom,
+          rgba(5, 5, 10, 0.15) 0%,
+          rgba(5, 5, 10, 0.60) 50%,
+          rgba(5, 5, 10, 0.92) 100%);
+    }
+
+    .about-inner {
+      position: relative;
+      z-index: 2;
+      max-width: 100%;
+      width: 100%;
+    }
+
+    .eyebrow {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.35);
+      margin-bottom: 0.85rem;
+    }
+
+    .about h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(1.9rem, 3.8vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.18;
+      margin-bottom: 1.1rem;
+    }
+
+    .about h2 .c {
+      color: var(--cyan);
+    }
+
+    .about p {
+      font-size: 0.92rem;
+      line-height: 1.78;
+      color: rgba(255, 255, 255, 0.55);
+      max-width: 600px;
+      margin-bottom: 3rem;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: clamp(2rem, 5vw, 4.5rem);
+      flex-wrap: wrap;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stat .sn {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(1.9rem, 3.5vw, 2.8rem);
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+
+    .stat .sl {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    /* ─── FACULTY ─── */
+    .faculty {
+      position: relative;
+      overflow: hidden;
+      background: #05050a;
+      padding: 5.5rem var(--pad);
+    }
+
+    .faculty .vid-overlay {
+      background: rgba(5, 5, 10, 0.80);
+    }
+
+    .sec-head {
+      position: relative;
+      z-index: 2;
+      margin-bottom: 3rem;
+    }
+
+    .fac-list {
+      position: relative;
+      z-index: 2;
+    }
+
+    .sec-head .eyebrow {
+      margin-bottom: 0.6rem;
+    }
+
+    .sec-head h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(2rem, 3.8vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+    }
+
+    .fac-list {
+      border-top: 1px solid var(--border);
+    }
+
+    .fac-row {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 1.35rem 0;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+
+    .fac-row:hover {
+      background: rgba(255, 255, 255, 0.025);
+      margin: 0 -1rem;
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .fac-idx {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.2);
+      width: 1.6rem;
+      flex-shrink: 0;
+      text-align: right;
+    }
+
+    .fac-av {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--cyan), #0891b2);
+      color: #fff;
+    }
+
+    .fac-av.tba {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px dashed rgba(255, 255, 255, 0.14);
+      color: rgba(255, 255, 255, 0.2);
+      font-size: 0.65rem;
+      letter-spacing: 0.04em;
+    }
+
+    .fac-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .fac-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.18rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .fac-hosp {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.32);
+    }
+
+    .fac-role {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.36);
+      text-align: right;
+      max-width: 200px;
+      flex-shrink: 0;
+    }
+
+    .fac-confirmed {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      background: rgba(34, 211, 238, 0.1);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      padding: 0.18rem 0.6rem;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ─── SCHEDULE ─── */
+    .schedule {
+      background: #f7f8fa;
+      padding: 5.5rem var(--pad);
+    }
+
+    .sched-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+      flex-wrap: wrap;
+    }
+
+    .sched-head h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(2rem, 3.8vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+      color: #0a0a14;
+    }
+
+    .sched-head .eyebrow {
+      color: #9ca3af;
+    }
+
+    .day-tabs {
+      display: flex;
+      gap: 0.35rem;
+      margin-top: 0.4rem;
+    }
+
+    .day-tab {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.4rem 1rem;
+      border-radius: 100px;
+      border: 1px solid #e5e7eb;
+      background: transparent;
+      color: #9ca3af;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .day-tab.active {
+      background: #0a0a14;
+      color: #fff;
+      border-color: #0a0a14;
+    }
+
+    .sched-body {
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .sched-panel {
+      display: none;
+    }
+
+    .sched-panel.on {
+      display: block;
+    }
+
+    .si {
+      display: grid;
+      grid-template-columns: 60px 1fr auto;
+      gap: 1.5rem;
+      align-items: center;
+      padding: 0.95rem 0;
+      border-bottom: 1px solid #f1f2f4;
+    }
+
+    .si-time {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #b0b7c3;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .si-title {
+      font-size: 0.86rem;
+      font-weight: 500;
+      color: #111827;
+      line-height: 1.5;
+    }
+
+    .si-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.18rem 0.55rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .t-key {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .t-debate {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .t-panel {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .t-talk {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    .t-live {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .t-dinner {
+      background: #fce7f3;
+      color: #9d174d;
+    }
+
+    .t-cer {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    /* ─── REGISTER ─── */
+    .register {
+      background: #03030a;
+      padding: 7rem var(--pad);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .register .vid-overlay {
+      background: rgba(3, 3, 10, 0.82);
+    }
+
+    .register::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 700px;
+      height: 500px;
+      background: radial-gradient(ellipse, rgba(34, 211, 238, 0.08) 0%, transparent 65%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .register h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(2.6rem, 5.5vw, 5rem);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      margin-bottom: 1.25rem;
+      position: relative;
+      z-index: 3;
+    }
+
+    .reg-price {
+      font-size: 0.88rem;
+      color: rgba(255, 255, 255, 0.4);
+      margin-bottom: 2.8rem;
+      position: relative;
+      z-index: 3;
+      letter-spacing: 0.01em;
+    }
+
+    .reg-price strong {
+      color: rgba(255, 255, 255, 0.65);
+      font-weight: 500;
+    }
+
+    .btn-reg {
+      display: inline-block;
+      background: var(--cyan);
+      color: #03030a;
+      padding: 0.82rem 2.4rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-decoration: none;
+      position: relative;
+      z-index: 3;
+      transition: opacity 0.15s, transform 0.15s;
+      margin-bottom: 1.1rem;
+    }
+
+    .btn-reg:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .reg-note {
+      display: block;
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #fff6;
+      position: relative;
+      z-index: 3;
+    }
+
+    /* ─── DEBATE ─── */
+    .debate {
+      background: var(--bg);
+      padding: 5.5rem var(--pad);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .debate::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 55% at 50% 0%, rgba(34, 211, 238, 0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .debate-inner {
+      position: relative;
+      z-index: 1;
+      margin: 0 auto;
+    }
+
+    .debate-eyebrow {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 0.75rem;
+    }
+
+    .debate h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.9rem;
+      line-height: 1.15;
+    }
+
+    .debate-sub {
+      font-size: 0.95rem;
+      color: var(--muted);
+      max-width: 560px;
+      line-height: 1.7;
+      margin-bottom: 0.6rem;
+    }
+
+    .debate-tags {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 2.8rem;
+    }
+
+    .debate-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      padding: 0.25rem 0.75rem;
+      border: 1px solid rgba(34, 211, 238, 0.3);
+      border-radius: 2rem;
+    }
+
+    .debate-list {
+      display: flex;
+      flex-direction: row;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .dbt-item {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr;
+      align-items: center;
+      gap: 1.1rem;
+      padding: 1.2rem 1.4rem;
+      background: var(--cyan-dim);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      transition: border-color .25s, box-shadow .25s, transform .2s;
+      cursor: default;
+    }
+
+    .dbt-item:hover {
+      border-color: rgba(34, 211, 238, 0.45);
+      box-shadow: 0 0 28px rgba(34, 211, 238, 0.12);
+      transform: translateX(4px);
+    }
+
+    .dbt-num {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--cyan);
+      opacity: 0.55;
+      text-align: center;
+    }
+
+    .dbt-text {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(0.9rem, 1.8vw, 1.05rem);
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.01em;
+    }
+
+    @media (max-width: 540px) {
+      .dbt-item {
+        grid-template-columns: 2rem 1fr;
+        gap: 0.8rem;
+        padding: 1rem 1.1rem;
+      }
+
+      .dbt-text {
+        font-size: 0.9rem;
+      }
+    }
+
+    /* ─── VENUE ─── */
+    .venue {
+      position: relative;
+      min-height: 520px;
+      display: flex;
+      align-items: flex-end;
+      padding: 5.5rem var(--pad);
+      overflow: hidden;
+    }
+
+    .venue .vid-overlay {
+      background:
+        linear-gradient(to top, rgba(5, 5, 10, 0.90) 0%, rgba(5, 5, 10, 0.38) 55%, rgba(5, 5, 10, 0.20) 100%),
+        linear-gradient(to right, rgba(5, 5, 10, 0.60) 0%, transparent 60%);
+    }
+
+    .venue-inner {
+      position: relative;
+      z-index: 2;
+    }
+
+    .venue h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.45rem;
+    }
+
+    .venue-sub {
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.42);
+      margin-bottom: 0.3rem;
+    }
+
+    .venue-addr {
+      font-size: 0.8rem;
+      color: #fff6;
+      margin-top: 1rem;
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .venue-addr span {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      line-height: 25px;
+    }
+
+    /* ─── EXHIBITION STALLS ─── */
+    .stalls {
+      background: var(--bg2);
+      padding: 5.5rem var(--pad);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stalls::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(34, 211, 238, 0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .stalls-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .stalls-head {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .stalls-head .eyebrow {
+      justify-content: center;
+    }
+
+    .stalls-count {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(3.5rem, 8vw, 6rem);
+      font-weight: 900;
+      line-height: 1;
+      color: var(--cyan);
+      opacity: 0.15;
+      letter-spacing: -0.04em;
+      margin: -0.5rem 0 0.2rem;
+    }
+
+    .stalls-head h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
+
+    .stalls-head p {
+      font-size: 0.95rem;
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    /* hex grid container */
+    .st-grid {
+      display: flex;
+      flex-direction: column;
+      width: max-content;
+      margin: 0 auto;
+    }
+
+    .st-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .st-row+.st-row {
+      margin-top: -39px;
+    }
+
+    .st-row.sb {
+      padding-left: 85px;
+    }
+
+    /* hex border shell */
+    .st-b {
+      width: 172px;
+      height: 149px;
+      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+      background: linear-gradient(145deg, #a5f3fc, #0891b2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* hex dark fill */
+    .st-f {
+      width: 165px;
+      height: 142px;
+      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+      background: #06060f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 6px;
+      padding: 0 20px;
+    }
+
+    .st-g {
+      filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.35)) drop-shadow(0 0 15px rgba(34, 211, 238, 0.15));
+      transition: filter .3s, transform .3s;
+    }
+
+    .st-g:hover {
+      filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.9)) drop-shadow(0 0 30px rgba(34, 211, 238, 0.45));
+      transform: scale(1.04);
+    }
+
+    .st-icon {
+      color: var(--cyan);
+      flex-shrink: 0;
+    }
+
+    .st-icon svg {
+      width: 28px;
+      height: 28px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .st-lbl {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.85);
+      line-height: 1.3;
+    }
+
+    /* Mobile fallback cards */
+    .st-cards {
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+
+    .st-card {
+      background: var(--cyan-dim);
+      border: 1px solid var(--border);
+      border-radius: 0.6rem;
+      padding: 1rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      text-align: center;
+      transition: border-color .25s, box-shadow .25s;
+    }
+
+    .st-card:hover {
+      border-color: rgba(34, 211, 238, 0.5);
+      box-shadow: 0 0 20px rgba(34, 211, 238, 0.15);
+    }
+
+    .st-card .st-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .st-card .st-lbl {
+      font-size: 0.62rem;
+    }
+
+    @media (max-width: 849px) {
+      .st-grid {
+        display: none;
+      }
+
+      .st-cards {
+        display: grid;
+      }
+    }
+
+    @media (max-width: 580px) {
+      .st-cards {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 360px) {
+      .st-cards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      background: #040408;
+      border-top: 1px solid var(--border);
+      padding: 2rem var(--pad);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .ft-copy {
+      font-size: 0.75rem;
+      color: #fff6;
+    }
+
+    .ft-copy a {
+      color: var(--cyan);
+      text-decoration: none;
+    }
+
+    .ft-links {
+      display: flex;
+      gap: 2rem;
+    }
+
+    .ft-links a {
+      font-size: 0.75rem;
+      color: #fff6;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .ft-links a:hover {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    /* ─── MOBILE DRAWER ─── */
+    #mobileDrawer {
+      display: none;
+      position: fixed;
+      top: 64px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 190;
+      background: #05050a;
+      border-top: 1px solid var(--border);
+      padding: 2.5rem clamp(1.5rem, 6vw, 3rem);
+      flex-direction: column;
+      gap: 0;
+      overflow-y: auto;
+    }
+
+    #mobileDrawer.open {
+      display: flex;
+    }
+
+    #mobileDrawer a {
+      display: block;
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.65);
+      text-decoration: none;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border);
+      transition: color 0.15s;
+    }
+
+    #mobileDrawer a:last-child {
+      border-bottom: none;
+    }
+
+    #mobileDrawer a:hover {
+      color: #fff;
+    }
+
+    #mobileDrawer .mob-register {
+      margin-top: 1.5rem;
+      display: inline-block;
+      background: var(--cyan);
+      color: #05050a;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 0.75rem 1.75rem;
+      border-radius: 8px;
+      text-align: center;
+      border-bottom: none;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 700px) {
+
+      .nav-center,
+      .nav-btn {
+        display: none;
+      }
+
+      .nav-right {
+        justify-content: flex-end;
+      }
+
+      .nav-mob {
+        display: flex;
+      }
+
+      .si {
+        grid-template-columns: 52px 1fr;
+      }
+
+      .si-tag {
+        display: none;
+      }
+
+      .fac-role {
+        display: none;
+      }
+
+      .stats-row {
+        gap: 1.5rem;
+      }
+    }
+
+    /* ─── SCIENTIFIC PROGRAM ─── */
+    .sci-prog {
+      background: var(--bg2);
+      padding: 5.5rem var(--pad);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sci-prog::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(34, 211, 238, 0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .sp-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .sp-header {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
+
+    .sp-live-dot {
+      width: 7px;
+      height: 7px;
+      background: #ef4444;
+      border-radius: 50%;
+      animation: lp 1.4s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes lp {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1)
+      }
+
+      50% {
+        opacity: .35;
+        transform: scale(.65)
+      }
+    }
+
+    .sp-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .sp-date {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Honeycomb Grid (2-3-2-3, 10 hexes) ── */
+    .hx-grid {
+      display: flex;
+      flex-direction: column;
+      width: 680px;
+      margin: 0 auto;
+    }
+
+    .hx-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .hx-row+.hx-row {
+      margin-top: -47px;
+    }
+
+    .hx-row.rb {
+      padding-left: 115px;
+    }
+
+    /* 2-hex offset rows */
+
+    /* Glow wrapper */
+    .hx-g {
+      filter: drop-shadow(0 0 7px rgba(34, 211, 238, .4)) drop-shadow(0 0 18px rgba(34, 211, 238, .18));
+      transition: filter .3s;
+    }
+
+    .hx-g:hover {
+      filter: drop-shadow(0 0 14px rgba(34, 211, 238, .85)) drop-shadow(0 0 36px rgba(34, 211, 238, .4));
+    }
+
+    .hx-g.hx-cg {
+      filter: drop-shadow(0 0 18px rgba(34, 211, 238, .7)) drop-shadow(0 0 45px rgba(34, 211, 238, .35));
+      animation: cg 3s ease-in-out infinite;
+    }
+
+    @keyframes cg {
+
+      0%,
+      100% {
+        filter: drop-shadow(0 0 18px rgba(34, 211, 238, .7)) drop-shadow(0 0 45px rgba(34, 211, 238, .35));
+      }
+
+      50% {
+        filter: drop-shadow(0 0 30px rgba(34, 211, 238, 1)) drop-shadow(0 0 70px rgba(34, 211, 238, .55));
+      }
+    }
+
+    /* Cyan shell (border) */
+    .hx-b {
+      width: 220px;
+      height: 190px;
+      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+      background: linear-gradient(145deg, #a5f3fc, #0891b2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Dark fill */
+    .hx-f {
+      width: 213px;
+      height: 183px;
+      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+      background: #04040e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 5px;
+      padding: 0 38px;
+    }
+
+    /* Center variant */
+    .hx-b.cb {
+      background: linear-gradient(145deg, #a5f3fc, #22d3ee, #0891b2);
+    }
+
+    .hx-f.cf {
+      background: linear-gradient(180deg, #05121a 0%, #03080f 100%);
+      gap: 3px;
+    }
+
+    .hx-tag {
+      font-family: 'Poppins', sans-serif;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      line-height: 1.2;
+    }
+
+    .hx-tag.sm {
+      font-size: 9px;
+    }
+
+    .hx-ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .hx-ul li {
+      font-size: 9px;
+      line-height: 1.55;
+      color: rgba(255, 255, 255, .6);
+    }
+
+    .hx-ul li::before {
+      content: '· ';
+      color: var(--cyan);
+    }
+
+    /* Center content */
+    .hx-logo {
+      font-family: 'Poppins', sans-serif;
+      font-size: 17px;
+      font-weight: 900;
+      color: var(--cyan);
+      line-height: 1;
+    }
+
+    .hx-brand {
+      font-family: 'Poppins', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: .04em;
+    }
+
+    .hx-year {
+      font-family: 'Poppins', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .hx-tech {
+      font-size: 7.5px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .38);
+    }
+
+    /* Mobile cards */
+    @media (max-width: 849px) {
+      .hx-grid {
+        display: none;
+      }
+
+      .sp-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.85rem;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .sp-cards {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 380px) {
+      .sp-cards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .sp-card {
+      display: none;
+      background: var(--cyan-dim);
+      border: 1px solid rgba(34, 211, 238, .25);
+      border-radius: 12px;
+      padding: 1.1rem 1rem;
+      box-shadow: 0 0 18px rgba(34, 211, 238, .08);
+      transition: box-shadow .25s, border-color .25s;
+    }
+
+    .sp-card:hover {
+      border-color: rgba(34, 211, 238, .6);
+      box-shadow: 0 0 30px rgba(34, 211, 238, .2);
+    }
+
+    .sp-card-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: .55rem;
+    }
+
+    .sp-card ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .sp-card ul li {
+      font-size: .72rem;
+      color: rgba(255, 255, 255, .6);
+    }
+
+    .sp-card ul li::before {
+      content: '· ';
+      color: var(--cyan);
+    }
+
+    .sp-card.center-card {
+      border-color: rgba(34, 211, 238, .5);
+      background: rgba(34, 211, 238, .08);
+      box-shadow: 0 0 28px rgba(34, 211, 238, .18);
+      text-align: center;
+    }
+
+    @media (max-width: 849px) {
+      .sp-card {
+        display: block;
+      }
+    }
+
+    /* ─── FADE IN ─── */
+    .fi {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .fi.in {
+      opacity: 1;
+      transform: none;
+    }
+
+    @media (max-width:700px) {
+      #nav {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+  <style>
+    /* ── Main section ── */
+    .pioneer-section {
+      position: relative;
+      z-index: 1;
+      /* min-height: 100vh; */
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      /* align-items: center; */
+      max-width: 1400px;
+      gap: 40px;
+    }
+
+    /* ── LEFT — content ── */
+    .content {
+      opacity: 0;
+      transform: translateX(-30px);
+      animation: slideIn .9s cubic-bezier(.22, 1, .36, 1) .2s forwards;
+    }
+
+    @keyframes slideIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .headline {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.8rem, 5vw, 4.5rem);
+      font-weight: 300;
+      line-height: 1.08;
+      letter-spacing: -.02em;
+      color: var(--white);
+      margin-bottom: 2rem;
+    }
+
+    .headline span {
+      display: inline-block;
+      position: relative;
+    }
+
+    /* Animated underline on the last word */
+    .headline span::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: var(--accent);
+      animation: lineGrow 1s cubic-bezier(.22, 1, .36, 1) 1s forwards;
+    }
+
+    @keyframes lineGrow {
+      to {
+        width: 100%;
+      }
+    }
+
+    .body-text {
+      font-size: .95rem;
+      line-height: 1.85;
+      color: var(--text);
+      max-width: 560px;
+    }
+
+    .body-text p+p {
+      margin-top: 1.4rem;
+    }
+
+    /* Subtle highlight on key phrases */
+    .body-text strong {
+      color: var(--accent);
+      font-weight: 400;
+    }
+
+    /* ── Letter quote block ── */
+    .letter-quote {
+      margin: 1.8rem 0;
+      padding: 1rem 1.4rem;
+      border-left: 2px solid var(--cyan);
+      background: rgba(34, 211, 238, 0.04);
+      border-radius: 0 6px 6px 0;
+      font-family: 'Poppins', sans-serif;
+      font-size: .92rem;
+      font-style: italic;
+      font-weight: 500;
+      line-height: 1.65;
+      color: rgba(255, 255, 255, 0.82);
+      letter-spacing: 0.01em;
+    }
+
+    .letter-quote--closing {
+      font-size: .88rem;
+      color: var(--cyan);
+      background: rgba(34, 211, 238, 0.06);
+      border-color: var(--cyan);
+      margin-bottom: 0;
+    }
+
+    /* ── Signature block ── */
+    .signature {
+      margin-top: 2.8rem;
+      padding-left: 1.2rem;
+      border-left: 2px solid var(--accent);
+      opacity: 0;
+      animation: fadeUp .7s ease .9s forwards;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .sig-name {
+      /* font-family: 'Cormorant Garamond', serif; */
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--white);
+      letter-spacing: .01em;
+    }
+
+    .sig-title {
+      margin-top: .25rem;
+      font-size: .78rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ── RIGHT — photo ── */
+    .photo-wrap {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      /* align-items: flex-end; */
+      opacity: 0;
+      animation: revealPhoto 1s cubic-bezier(.22, 1, .36, 1) .5s forwards;
+    }
+
+    @keyframes revealPhoto {
+      from {
+        opacity: 0;
+        transform: scale(.97) translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    /* decorative arc */
+    /* .photo-wrap::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 260px 260px 0 0;
+      background: linear-gradient(160deg, rgba(75, 163, 199, .18) 0%, transparent 60%);
+      z-index: 0;
+    } */
+
+    /* corner brackets */
+    .photo-wrap::after {
+      content: '';
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      width: 44px;
+      height: 44px;
+      border-top: 1.5px solid var(--accent);
+      border-right: 1.5px solid var(--accent);
+      opacity: .6;
+    }
+
+    .corner-bl {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      width: 44px;
+      height: 44px;
+      border-bottom: 1.5px solid var(--accent);
+      border-left: 1.5px solid var(--accent);
+      opacity: .6;
+      z-index: 2;
+    }
+
+    .photo {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 540px;
+      /* height: 580px; */
+      object-fit: cover;
+      object-position: top center;
+      /* border-radius: 220px 220px 0 0; */
+      filter: grayscale(10%) contrast(1.05);
+      display: block;
+    }
+
+    /* Placeholder when no real image is supplied */
+    .photo-placeholder {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 540px;
+      height: 580px;
+      border-radius: 220px 220px 0 0;
+      background:
+        linear-gradient(175deg, #0d2a3e 0%, #071522 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: var(--muted);
+      font-size: .85rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .photo-placeholder svg {
+      width: 80px;
+      height: 80px;
+      opacity: .3;
+    }
+
+    /* glow under photo */
+    .glow {
+      position: absolute;
+      bottom: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 70%;
+      height: 120px;
+      background: radial-gradient(ellipse, rgba(75, 163, 199, .18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ── Floating accent line ── */
+    .accent-line {
+      position: absolute;
+      top: 50%;
+      left: -30px;
+      width: 1px;
+      height: 140px;
+      background: linear-gradient(to bottom, transparent, var(--accent), transparent);
+      transform: translateY(-50%);
+      opacity: .4;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 860px) {
+      .pioneer-section {
+        grid-template-columns: 1fr;
+        /* padding: 60px 28px 0; */
+        gap: 50px;
+      }
+
+      /* .photo-wrap { order: -1; } */
+      .photo,
+      .photo-placeholder {
+        max-width: 100%;
+        height: 420px;
+      }
+
+      .accent-line {
+        display: none;
+      }
+    }
+  </style>
+  <style>
+    /* ══════════════════════════════════════════════════
+       SCIENTIFIC PROGRAMME — FULLY ENHANCED
+    ══════════════════════════════════════════════════ */
+    .sci-prog-wrap {
+      margin-top: 3rem;
+      background: #03040e;
+      border-radius: 24px;
+      padding: 2.8rem 2rem 3rem;
+      border: 1px solid rgba(34, 211, 238, .14);
+      box-shadow:
+        0 0 0 1px rgba(34, 211, 238, .04),
+        0 0 80px rgba(34, 211, 238, .07),
+        0 40px 100px rgba(0, 0, 0, .55);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* subtle grid texture overlay */
+    .sci-prog-wrap::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(34, 211, 238, .03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34, 211, 238, .03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* radial vignette to fade grid at edges */
+    .sci-prog-wrap::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 85% 85% at 50% 50%, transparent 40%, #03040e 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .sci-prog-wrap>* {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── header ── */
+    .sp-header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .sp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      background: rgba(34, 211, 238, .08);
+      border: 1px solid rgba(34, 211, 238, .32);
+      border-radius: 100px;
+      padding: .42rem 1.2rem;
+      font-size: .63rem;
+      font-weight: 700;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      box-shadow: 0 0 22px rgba(34, 211, 238, .14), inset 0 1px 0 rgba(255, 255, 255, .05);
+    }
+
+    .sp-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, .28);
+      animation: pulse-dot 2s ease-in-out infinite;
+      display: inline-block;
+    }
+
+    .sp-sub {
+      margin-top: .8rem;
+      font-size: .68rem;
+      color: rgba(255, 255, 255, .35);
+      letter-spacing: .06em;
+    }
+
+    /* ══ DESKTOP DIAGRAM ══ */
+    .hex-diagram {
+      position: relative;
+      width: 100%;
+      /* max-width: 960px; */
+      margin: 0 auto;
+      aspect-ratio: 960/720;
+    }
+
+    /* SVG layer */
+    .hd-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* spokes */
+    .spoke {
+      stroke: #22d3ee;
+      stroke-width: 1.5;
+      stroke-dasharray: 6 5;
+      opacity: .6;
+      filter: url(#fglow);
+    }
+
+    .spoke--dim {
+      opacity: .22;
+      stroke-dasharray: 4 7;
+      stroke-width: 1;
+    }
+
+    .spoke--ring {
+      opacity: .35;
+      stroke-dasharray: 4 6;
+      stroke-width: 1.2;
+    }
+
+    .spoke--cross {
+      opacity: .13;
+      stroke-dasharray: 3 9;
+      stroke-width: 1;
+    }
+
+    /* traveling dot */
+    .trav {
+      fill: #fff;
+      opacity: .95;
+    }
+
+    .trav--dim {
+      fill: var(--cyan);
+      opacity: .45;
+    }
+
+    .trav--ring {
+      fill: var(--cyan);
+      opacity: .72;
+    }
+
+    .trav--cross {
+      fill: var(--cyan);
+      opacity: .42;
+    }
+
+    /* hub ring pulses (SVG) */
+    .hub-ring {
+      fill: none;
+      stroke: rgba(34, 211, 238, .3);
+      stroke-width: 1.5;
+    }
+
+    .r1 {
+      animation: ring-pulse 3s ease-in-out infinite;
+    }
+
+    .r2 {
+      animation: ring-pulse 3s ease-in-out infinite .6s;
+    }
+
+    .r3 {
+      animation: ring-pulse 3s ease-in-out infinite 1.2s;
+    }
+
+    @keyframes ring-pulse {
+
+      0%,
+      100% {
+        stroke-opacity: .3;
+      }
+
+      50% {
+        stroke-opacity: .07;
+      }
+    }
+
+    /* ── HUB ── */
+    .hd-hub {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+    }
+
+    /* CSS ring glow behind hub */
+    .hub-ring-css {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      border: 1px solid rgba(34, 211, 238, .18);
+    }
+
+    .hub-ring-css.r1 {
+      width: 136px;
+      height: 136px;
+      animation: cring 3.2s ease-in-out infinite;
+    }
+
+    .hub-ring-css.r2 {
+      width: 168px;
+      height: 168px;
+      animation: cring 3.2s ease-in-out infinite 1s;
+    }
+
+    .hub-ring-css.r3 {
+      width: 202px;
+      height: 202px;
+      animation: cring 3.2s ease-in-out infinite 2s;
+      border-color: rgba(34, 211, 238, .08);
+    }
+
+    @keyframes cring {
+
+      0%,
+      100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: .7;
+      }
+
+      50% {
+        transform: translate(-50%, -50%) scale(1.08);
+        opacity: .18;
+      }
+    }
+
+    /* hub hexagon */
+    .hub-hex {
+      width: 230px;
+      height: 230px;
+      clip-path: polygon(50% 0%, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%);
+      background: linear-gradient(145deg, rgba(34, 211, 238, .32) 0%, rgba(8, 145, 178, .18) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      animation: hub-glow 3s ease-in-out infinite;
+    }
+
+    @keyframes hub-glow {
+
+      0%,
+      100% {
+        filter: drop-shadow(0 0 18px rgba(34, 211, 238, .65)) drop-shadow(0 0 40px rgba(34, 211, 238, .28));
+      }
+
+      50% {
+        filter: drop-shadow(0 0 30px rgba(34, 211, 238, .95)) drop-shadow(0 0 60px rgba(34, 211, 238, .45));
+      }
+    }
+
+    .hub-hex::before {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      clip-path: polygon(50% 0%, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%);
+      background: linear-gradient(160deg, rgba(8, 8, 22, .88) 0%, rgba(3, 4, 14, .95) 100%);
+    }
+
+    .hub-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 0 6px;
+    }
+
+    .hub-tags {
+      /* font-family: 'Poppins', sans-serif; */
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #fff;
+      line-height: 1.4;
+      text-shadow: 0 0 12px rgba(34, 211, 238, .7);
+    }
+
+    .hub-divider {
+      width: 28px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      margin: 4px auto;
+      opacity: .6;
+    }
+
+    .hub-sub {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      line-height: 1.5;
+    }
+
+    .hub-sub--dim {
+      color: rgba(255, 255, 255, .35);
+      margin-top: 1px;
+    }
+
+    /* ── NODES ── */
+    .hd-node {
+      position: absolute;
+      left: var(--nx);
+      top: var(--ny);
+      transform: translate(-50%, -50%);
+      z-index: 3;
+      cursor: pointer;
+    }
+
+    /* idle float animation per node */
+    .hd-node:nth-child(2) {
+      animation: float-node 4.0s ease-in-out infinite 0.0s;
+    }
+
+    .hd-node:nth-child(3) {
+      animation: float-node 4.2s ease-in-out infinite 0.3s;
+    }
+
+    .hd-node:nth-child(4) {
+      animation: float-node 3.8s ease-in-out infinite 0.6s;
+    }
+
+    .hd-node:nth-child(5) {
+      animation: float-node 4.3s ease-in-out infinite 0.9s;
+    }
+
+    .hd-node:nth-child(6) {
+      animation: float-node 3.9s ease-in-out infinite 1.2s;
+    }
+
+    .hd-node:nth-child(7) {
+      animation: float-node 4.1s ease-in-out infinite 1.5s;
+    }
+
+    .hd-node:nth-child(8) {
+      animation: float-node 4.4s ease-in-out infinite 1.8s;
+    }
+
+    .hd-node:nth-child(9) {
+      animation: float-node 3.7s ease-in-out infinite 2.1s;
+    }
+
+    .hd-node:nth-child(10) {
+      animation: float-node 4.0s ease-in-out infinite 0.5s;
+    }
+
+    @keyframes float-node {
+
+      0%,
+      100% {
+        transform: translate(-50%, -50%) translateY(0px);
+      }
+
+      50% {
+        transform: translate(-50%, -50%) translateY(-4px);
+      }
+    }
+
+    .hd-node:hover {
+      animation: none !important;
+    }
+
+    /* outer glow wrapper */
+    .hd-hex {
+      width: 130px;
+      height: 130px;
+      clip-path: polygon(50% 0%, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%);
+      background: linear-gradient(145deg, rgba(34, 211, 238, .26), rgba(8, 145, 178, .14));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1), filter .3s;
+      filter: drop-shadow(0 0 9px rgba(34, 211, 238, .5));
+      position: relative;
+    }
+
+    .hd-hex::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      clip-path: polygon(50% 0%, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%);
+      background: linear-gradient(160deg, rgba(8, 8, 22, .88) 0%, rgba(3, 4, 14, .94) 100%);
+    }
+
+    .hd-hex span {
+      position: relative;
+      z-index: 1;
+      /* font-family: 'Poppins', sans-serif; */
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #fff;
+      text-align: center;
+      padding: 0 5px;
+      line-height: 1.3;
+      text-shadow: 0 0 10px rgba(34, 211, 238, .9);
+    }
+
+    .hd-hex--sm {
+      width: 120px;
+      height: 120px;
+    }
+
+    .hd-hex--sm span {
+      font-size: .49rem;
+    }
+
+    .hd-node--sm .hd-hex {
+      filter: drop-shadow(0 0 5px rgba(34, 211, 238, .3));
+    }
+
+    /* hover state */
+    .hd-node:hover .hd-hex {
+      transform: scale(1.14);
+      filter: drop-shadow(0 0 16px rgba(34, 211, 238, .85)) drop-shadow(0 0 32px rgba(34, 211, 238, .4));
+    }
+
+    /* ── tooltip cards ── */
+    .hd-card {
+      position: absolute;
+      width: 210px;
+      background: rgba(4, 5, 18, .96);
+      border: 1px solid rgba(34, 211, 238, .28);
+      border-radius: 12px;
+      padding: .95rem 1.1rem;
+      box-shadow:
+        0 0 0 1px rgba(34, 211, 238, .06),
+        0 0 28px rgba(34, 211, 238, .12),
+        0 12px 40px rgba(0, 0, 0, .75);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+      z-index: 20;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .hd-node:hover .hd-card {
+      opacity: 1;
+      pointer-events: auto;
+      z-index: 10;
+    }
+
+    /* card positions */
+    .hd-card--down {
+      top: calc(100% + 12px);
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+    }
+
+    .hd-card--up {
+      bottom: calc(100% + 12px);
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+    }
+
+    .hd-card--left {
+      top: 50%;
+      right: calc(100% + 12px);
+      transform: translateY(-50%) translateX(8px);
+    }
+
+    .hd-card--right {
+      top: 50%;
+      left: calc(100% + 12px);
+      transform: translateY(-50%) translateX(-8px);
+    }
+
+    .hd-node:hover .hd-card--down {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .hd-node:hover .hd-card--up {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .hd-node:hover .hd-card--left {
+      transform: translateY(-50%) translateX(0);
+    }
+
+    .hd-node:hover .hd-card--right {
+      transform: translateY(-50%) translateX(0);
+    }
+
+    .hdc-title {
+      /* font-family: 'Poppins', sans-serif; */
+      font-size: .66rem;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: .6rem;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid rgba(34, 211, 238, .18);
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    /* .hdc-title::before {
+        content: '';
+        display: inline-block;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--cyan);
+        box-shadow: 0 0 6px rgba(34, 211, 238, .9);
+        flex-shrink: 0;
+      } */
+
+    .hd-card ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .hd-card ul li {
+      font-size: .63rem;
+      line-height: 1.7;
+      color: rgba(255, 255, 255, .68);
+      padding-left: .9rem;
+      position: relative;
+      transition: color .15s;
+    }
+
+    .hd-card ul li:hover {
+      color: rgba(255, 255, 255, .95);
+    }
+
+    .hd-card ul li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: .5em;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 5px rgba(34, 211, 238, .8);
+    }
+
+    /* ── coming soon state ── */
+    .hdc-soon {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      font-size: .63rem;
+      color: rgba(255, 255, 255, .35);
+      letter-spacing: .04em;
+      font-style: italic;
+      padding: .3rem 0 .1rem;
+    }
+
+    .hdc-soon-icon {
+      font-style: normal;
+      font-size: .72rem;
+    }
+
+    .spm-soon {
+      font-size: .65rem;
+      color: rgba(255, 255, 255, .3);
+      font-style: italic;
+      letter-spacing: .03em;
+    }
+
+    /* ══ MOBILE GRID ══ */
+    .sp-mobile-grid {
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      padding: .5rem 0;
+    }
+
+    .spm-card {
+      background: rgba(6, 7, 20, .9);
+      border: 1px solid rgba(34, 211, 238, .18);
+      border-radius: 14px;
+      padding: 1.1rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: .75rem;
+      transition: border-color .22s, box-shadow .22s, transform .22s;
+    }
+
+    .spm-card:hover {
+      border-color: rgba(34, 211, 238, .5);
+      box-shadow: 0 0 28px rgba(34, 211, 238, .14);
+      transform: translateY(-2px);
+    }
+
+    .spm-hex {
+      width: 56px;
+      height: 56px;
+      clip-path: polygon(50% 0%, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%);
+      background: linear-gradient(145deg, rgba(34, 211, 238, .24), rgba(8, 145, 178, .1));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 7px rgba(34, 211, 238, .42));
+      position: relative;
+    }
+
+    .spm-hex::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      clip-path: polygon(50% 0%, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%);
+      background: rgba(4, 5, 18, .88);
+    }
+
+    .spm-hex span {
+      /* font-family: 'Poppins', sans-serif; */
+      font-size: .43rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: #fff;
+      text-align: center;
+      padding: 0 4px;
+      line-height: 1.3;
+      text-shadow: 0 0 7px rgba(34, 211, 238, .9);
+      position: relative;
+      z-index: 1;
+    }
+
+    .spm-body {
+      width: 100%;
+    }
+
+    .spm-title {
+      /* font-family: 'Poppins', sans-serif; */
+      font-size: .73rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: .5rem;
+      letter-spacing: .02em;
+    }
+
+    .spm-card ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .spm-card ul li {
+      font-size: .62rem;
+      line-height: 1.72;
+      color: rgba(255, 255, 255, .62);
+      padding-left: .85rem;
+      position: relative;
+    }
+
+    .spm-card ul li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: .48em;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 5px rgba(34, 211, 238, .75);
+    }
+
+    .spm-card .spm-hex {
+      width: 100%;
+      height: 100px;
+    }
+
+    /* ── responsive breakpoints ── */
+    @media (max-width: 860px) {
+      .hex-diagram {
+        display: none;
+      }
+
+      .sp-mobile-grid {
+        display: grid;
+      }
+
+      .sp-sub {
+        display: none;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .sp-mobile-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: .75rem;
+      }
+
+      .spm-card {
+        padding: .9rem .8rem;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .sp-mobile-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ══ NAV ══════════════════════════════════════════════════════ -->
+  <nav id="nav">
+    <!-- <a href="#" class="nav-logo"><em>GEM</em> TechnoSurg</a> -->
+    <a href="#" class="nav-logo"><img src="https://technosurg.gemhospitals.com/landing/technosurg-logo.png" alt="logo"
+        style="width: 230px;"></a>
+    <ul class="nav-center" id="navMenu">
+      <li><a href="#about">About</a></li>
+      <li><a href="#schedule">Schedule</a></li>
+      <!-- <li><a href="#">Faculty</a></li> -->
+      <li><a href="#venue">Contact Us</a></li>
+    </ul>
+    <div class="nav-right">
+      <a href="https://technosurg.gemhospitals.com/register/technosurg2026-mmvs3874" target="_blank"
+        class="nav-btn">Register →</a>
+      <button class="nav-mob" id="mobBtn" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ══ MOBILE DRAWER (sibling to nav, outside backdrop-filter) ══ -->
+  <div id="mobileDrawer" role="dialog" aria-label="Navigation menu">
+    <a href="#about" class="mob-link">About</a>
+    <a href="#schedule" class="mob-link">Schedule</a>
+    <!-- <a href="#">Faculty</a> -->
+    <a href="#venue">Contact Us</a>
+    <a href="https://technosurg.gemhospitals.com/register/technosurg2026-mmvs3874" target="_blank"
+      class="mob-register">Register →</a>
+  </div>
+
+  <!-- ══ HERO ══════════════════════════════════════════════════════ -->
+  <section class="hero" id="home">
+    <video class="sec-vid" autoplay muted loop playsinline poster="">
+      <source src="https://technosurg.gemhospitals.com/landing/hero-video.mp4" type="video/mp4">
+    </video>
+    <div class="vid-overlay"></div>
+    <div class="hero-inner">
+      <div class="hero-eyebrow">June 19–20, 2026 · ITC Grand Chola, Chennai</div>
+
+      <h1>
+        An International<br> Conference & Surgical<br> Workshop On<br>
+        AI. Robotics.<br>
+        <span class="c" style="color:#39FF14;">Fluorescence</span><br>
+        in Surgery.
+      </h1>
+      <div class="hero-actions">
+        <a href="https://technosurg.gemhospitals.com/register/technosurg2026-mmvs3874" target="_blank" class="btn-pill">
+          Register Now
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M4 10h12M10 4l6 6-6 6" />
+          </svg>
+        </a>
+      </div>
+      <div class="countdown">
+        <div class="cd-grp"><span class="cd-n" id="cdD">85</span><span class="cd-u">D</span></div>
+        <span class="cd-dot">·</span>
+        <div class="cd-grp"><span class="cd-n" id="cdH">00</span><span class="cd-u">H</span></div>
+        <span class="cd-dot">·</span>
+        <div class="cd-grp"><span class="cd-n" id="cdM">00</span><span class="cd-u">M</span></div>
+        <span class="cd-dot">·</span>
+        <div class="cd-grp"><span class="cd-n" id="cdS">00</span><span class="cd-u">S</span></div>
+      </div>
+
+      <!-- ── WHAT YOU'LL LEARN ── -->
+      <div class="learn-block">
+        <h3 class="learn-heading">FOR <span class="c">WHOM?</span></h3>
+        <ul class="learn-list">
+          <li class="learn-item">
+            <span class="learn-dot"></span>
+            General Surgeons
+          </li>
+          <li class="learn-item">
+            <span class="learn-dot"></span>
+            Surgical Gastroenterologists
+          </li>
+          <li class="learn-item">
+            <span class="learn-dot"></span>
+            Surgical Oncologists
+          </li>
+          <li class="learn-item">
+            <span class="learn-dot"></span>
+            Gynaecologists
+          </li>
+          <li class="learn-item">
+            <span class="learn-dot"></span>
+            Minimal Access & Robotic Surgeons
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ TICKER ═════════════════════════════════════════════════════ -->
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track">
+      <span>AI Surgery</span><span class="tdot">·</span>
+      <span>Robotic Surgery</span><span class="tdot">·</span>
+      <span>Fluorescence Surgery</span><span class="tdot">·</span>
+      <span>Live Surgery</span><span class="tdot">·</span>
+      <span>Innovation</span><span class="tdot">·</span>
+      <span>ICG Navigation</span><span class="tdot">·</span>
+      <span>Next Gen Tech</span><span class="tdot">·</span>
+      <span>Smart OR</span><span class="tdot">·</span>
+      <!-- duplicate for seamless loop -->
+      <span>AI Surgery</span><span class="tdot">·</span>
+      <span>Robotic Surgery</span><span class="tdot">·</span>
+      <span>Fluorescence Surgery</span><span class="tdot">·</span>
+      <span>Live Surgery</span><span class="tdot">·</span>
+      <span>Innovation</span><span class="tdot">·</span>
+      <span>ICG Navigation</span><span class="tdot">·</span>
+      <span>Next Gen Tech</span><span class="tdot">·</span>
+      <span>Smart OR</span><span class="tdot">·</span>
+    </div>
+  </div>
+
+  <!-- ══ ABOUT ══════════════════════════════════════════════════════ -->
+  <section class="about" id="about">
+    <video class="sec-vid" autoplay muted loop playsinline>
+      <source src="https://technosurg.gemhospitals.com/landing/about-video.mp4" type="video/mp4">
+    </video>
+    <div class="vid-overlay"></div>
+    <div class="about-inner fi">
+      <div class="eyebrow c">About the Conference</div>
+      <h2>
+        Where surgical technology meets<br>
+        <span class="c">clinical excellence.</span>
+      </h2>
+      <p>
+        India's most anticipated surgical technology summit bringing together
+        500+ surgeons, AI researchers, and medtech innovators for two
+        transformative days of live robotic procedures, fluorescence-guided
+        surgery, and hands-on simulation at the iconic ITC Grand Chola, Chennai.
+      </p>
+      <div class="stats-row">
+        <div class="stat">
+          <div class="sn">500+</div>
+          <div class="sl">Delegates</div>
+        </div>
+        <div class="stat">
+          <div class="sn">50+</div>
+          <div class="sl">Expert Faculty</div>
+        </div>
+        <div class="stat">
+          <div class="sn">30+</div>
+          <div class="sl">Live Surgeries</div>
+        </div>
+        <div class="stat">
+          <div class="sn">2</div>
+          <div class="sl">Intensive Days</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ FACULTY ════════════════════════════════════════════════════ -->
+  <section class="faculty" id="faculty">
+    <video class="sec-vid" autoplay muted loop playsinline>
+      <source src="https://technosurg.gemhospitals.com/landing/Section-video.mp4" type="video/mp4">
+    </video>
+    <div class="vid-overlay"></div>
+
+    <section class="pioneer-section">
+
+      <!-- LEFT: Content -->
+      <div class="content">
+        <div class="accent-line"></div>
+        <div class="sec-head fi">
+          <div class="eyebrow">Message from the Chairman</div>
+          <h2>Greetings from <span class="c">GEM Hospitals.</span></h2>
+        </div>
+        <div class="body-text">
+          <p><i>
+              It is our privilege to invite you to <strong>GEM TECHNOSURG 2026</strong>. As surgical practice
+              continues to evolve with the integration of <strong>Artificial Intelligence</strong>, robotic platforms,
+              and Fluorescence guided surgery, there is an increasing need for structured learning
+              and hands-on exposure.</i>
+          </p>
+
+          <blockquote class="letter-quote">
+            "Surgery is no longer defined by technique alone,<br>but by technology and insight."
+          </blockquote>
+
+          <p>
+            <i>TECHNOSURG 2026 is designed as a focused academic platform featuring renowned national
+              and international faculty, delivering expert-led sessions, panel discussions, and
+              immersive training experiences.</i>
+          </p>
+          <p>
+            <i> The conference will highlight the practical application of emerging technologies,
+              enabling participants to integrate these advancements into everyday surgical practice.
+              A key component of the program includes <strong>robotic simulation and skill-based training
+                modules</strong>,
+              providing an opportunity to gain direct experience in a guided environment.</i>
+          </p>
+          <p>
+            <i> We invite you to be part of this academic initiative and engage with the future
+              direction of surgery.</i>
+          </p>
+
+          <blockquote class="letter-quote letter-quote--closing">
+            "Learning today. Leading tomorrow."
+          </blockquote>
+        </div>
+
+        <div class="signature">
+          <div class="sig-name">Prof. C. Palanivelu</div>
+          <div class="sig-title">Chairman, GEM Hospitals</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Photo -->
+      <div class="photo-wrap">
+
+        <img src="https://technosurg.gemhospitals.com/landing/dr-palanivelu.jpg" alt="Prof. C. Palanivelu"
+          class="photo" />
+        <div class="corner-bl"></div>
+        <div class="glow"></div>
+      </div>
+
+    </section>
+  </section>
+
+  <!-- ══ SCHEDULE ═══════════════════════════════════════════════════ -->
+
+  <section class="schedule" id="schedule">
+    <div class="sched-head fi" style="margin-bottom: 0; justify-content: center;">
+      <div>
+        <div class="eyebrow" style="text-align: center;">Programme</div>
+        <h2 style="text-align: center;">Two days.<br>Boundless learning.</h2>
+      </div>
+    </div>
+
+    <!-- ── SCIENTIFIC PROGRAM HEX MAP ── -->
+    <div class="sci-prog-wrap fi" id="sciProg">
+
+      <!-- <div class="sp-header">
+        <div class="sp-badge"><span class="sp-dot"></span>Scientific Programme</div>
+        <div class="sp-sub">Hover a specialty to explore topics · Scroll on mobile</div>
+      </div> -->
+
+      <!-- ═══ DESKTOP: radial hex diagram ═══ -->
+      <div class="hex-diagram" id="hexDiagram">
+
+        <!-- animated SVG lines + particles -->
+        <svg class="hd-svg" viewBox="0 0 960 720" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="fglow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="b" />
+              <feMerge>
+                <feMergeNode in="b" />
+                <feMergeNode in="b" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="fglow2" x="-80%" y="-80%" width="260%" height="260%">
+              <feGaussianBlur stdDeviation="8" result="b" />
+              <feMerge>
+                <feMergeNode in="b" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#22d3ee" stop-opacity=".07" />
+              <stop offset="100%" stop-color="#22d3ee" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+
+          <!-- ═══ HUB → NODE SPOKES ═══ -->
+          <!-- hub→1 Fluorescence top -->
+          <line class="spoke" x1="480" y1="360" x2="480" y2="65" />
+          <!-- hub→2 Robotics top-right -->
+          <line class="spoke" x1="480" y1="360" x2="768" y2="122" />
+          <!-- hub→3 AI right -->
+          <line class="spoke" x1="480" y1="360" x2="874" y2="360" />
+          <!-- hub→4 Live OR bot-right -->
+          <line class="spoke" x1="480" y1="360" x2="768" y2="598" />
+          <!-- hub→5 Colorectal bottom -->
+          <line class="spoke" x1="480" y1="360" x2="480" y2="655" />
+          <!-- hub→6 Gynaec bot-left -->
+          <line class="spoke" x1="480" y1="360" x2="192" y2="598" />
+          <!-- hub→7 HPB left -->
+          <line class="spoke" x1="480" y1="360" x2="86" y2="360" />
+          <!-- hub→8 Hernia top-left -->
+          <line class="spoke" x1="480" y1="360" x2="192" y2="122" />
+          <!-- hub→9 Upper GI inner -->
+          <!-- <line class="spoke spoke--dim" x1="480" y1="360" x2="614" y2="216" /> -->
+
+          <!-- ═══ OUTER RING: node-to-node perimeter ═══ -->
+          <line class="spoke spoke--ring" x1="480" y1="65" x2="768" y2="122" />
+          <line class="spoke spoke--ring" x1="768" y1="122" x2="874" y2="360" />
+          <line class="spoke spoke--ring" x1="874" y1="360" x2="768" y2="598" />
+          <line class="spoke spoke--ring" x1="768" y1="598" x2="480" y2="655" />
+          <line class="spoke spoke--ring" x1="480" y1="655" x2="192" y2="598" />
+          <line class="spoke spoke--ring" x1="192" y1="598" x2="86" y2="360" />
+          <line class="spoke spoke--ring" x1="86" y1="360" x2="192" y2="122" />
+          <line class="spoke spoke--ring" x1="192" y1="122" x2="480" y2="65" />
+
+          <!-- ═══ CROSS CONNECTIONS: skip-one diagonals ═══ -->
+          <line class="spoke spoke--cross" x1="480" y1="65" x2="874" y2="360" />
+          <line class="spoke spoke--cross" x1="768" y1="122" x2="768" y2="598" />
+          <line class="spoke spoke--cross" x1="874" y1="360" x2="192" y2="598" />
+          <line class="spoke spoke--cross" x1="768" y1="598" x2="86" y2="360" />
+          <line class="spoke spoke--cross" x1="480" y1="655" x2="192" y2="122" />
+          <line class="spoke spoke--cross" x1="192" y1="598" x2="480" y2="65" />
+          <line class="spoke spoke--cross" x1="86" y1="360" x2="768" y2="122" />
+          <line class="spoke spoke--cross" x1="192" y1="122" x2="768" y2="598" />
+
+          <!-- ═══ INNER NODE → node 9 (Upper GI) connections ═══ -->
+          <!-- <line class="spoke spoke--dim" x1="614" y1="216" x2="480" y2="65" />
+          <line class="spoke spoke--dim" x1="614" y1="216" x2="768" y2="122" />
+          <line class="spoke spoke--dim" x1="614" y1="216" x2="874" y2="360" /> -->
+
+          <!-- ═══ TRAVELING DOTS — hub outward ═══ -->
+          <circle class="trav" r="3" filter="url(#fglow)">
+            <animateMotion dur="2.4s" repeatCount="indefinite" path="M480,360 L480,65" />
+          </circle>
+          <circle class="trav" r="3" filter="url(#fglow)">
+            <animateMotion dur="2.8s" repeatCount="indefinite" begin="0.4s" path="M480,360 L768,122" />
+          </circle>
+          <circle class="trav" r="3" filter="url(#fglow)">
+            <animateMotion dur="3.1s" repeatCount="indefinite" begin="0.8s" path="M480,360 L874,360" />
+          </circle>
+          <circle class="trav" r="3" filter="url(#fglow)">
+            <animateMotion dur="2.6s" repeatCount="indefinite" begin="0.2s" path="M480,360 L768,598" />
+          </circle>
+          <circle class="trav" r="3" filter="url(#fglow)">
+            <animateMotion dur="2.4s" repeatCount="indefinite" begin="1.0s" path="M480,360 L480,655" />
+          </circle>
+          <circle class="trav" r="3" filter="url(#fglow)">
+            <animateMotion dur="2.9s" repeatCount="indefinite" begin="0.6s" path="M480,360 L192,598" />
+          </circle>
+          <circle class="trav" r="3" filter="url(#fglow)">
+            <animateMotion dur="3.0s" repeatCount="indefinite" begin="1.4s" path="M480,360 L86,360" />
+          </circle>
+          <circle class="trav" r="3" filter="url(#fglow)">
+            <animateMotion dur="2.5s" repeatCount="indefinite" begin="0.9s" path="M480,360 L192,122" />
+          </circle>
+          <circle class="trav trav--dim" r="2" filter="url(#fglow)">
+            <animateMotion dur="2.0s" repeatCount="indefinite" begin="1.2s" path="M480,360 L614,216" />
+          </circle>
+
+          <!-- ═══ TRAVELING DOTS — ring clockwise ═══ -->
+          <circle class="trav trav--ring" r="2.5" filter="url(#fglow)">
+            <animateMotion dur="3.8s" repeatCount="indefinite" begin="0.0s" path="M480,65 L768,122" />
+          </circle>
+          <circle class="trav trav--ring" r="2.5" filter="url(#fglow)">
+            <animateMotion dur="3.6s" repeatCount="indefinite" begin="0.5s" path="M768,122 L874,360" />
+          </circle>
+          <circle class="trav trav--ring" r="2.5" filter="url(#fglow)">
+            <animateMotion dur="3.9s" repeatCount="indefinite" begin="1.0s" path="M874,360 L768,598" />
+          </circle>
+          <circle class="trav trav--ring" r="2.5" filter="url(#fglow)">
+            <animateMotion dur="3.7s" repeatCount="indefinite" begin="1.5s" path="M768,598 L480,655" />
+          </circle>
+          <circle class="trav trav--ring" r="2.5" filter="url(#fglow)">
+            <animateMotion dur="3.8s" repeatCount="indefinite" begin="2.0s" path="M480,655 L192,598" />
+          </circle>
+          <circle class="trav trav--ring" r="2.5" filter="url(#fglow)">
+            <animateMotion dur="3.6s" repeatCount="indefinite" begin="2.5s" path="M192,598 L86,360" />
+          </circle>
+          <circle class="trav trav--ring" r="2.5" filter="url(#fglow)">
+            <animateMotion dur="3.9s" repeatCount="indefinite" begin="3.0s" path="M86,360 L192,122" />
+          </circle>
+          <circle class="trav trav--ring" r="2.5" filter="url(#fglow)">
+            <animateMotion dur="3.7s" repeatCount="indefinite" begin="3.5s" path="M192,122 L480,65" />
+          </circle>
+
+          <!-- ═══ TRAVELING DOTS — cross diagonals ═══ -->
+          <circle class="trav trav--cross" r="2" filter="url(#fglow)">
+            <animateMotion dur="5.2s" repeatCount="indefinite" begin="0.3s" path="M480,65 L874,360" />
+          </circle>
+          <circle class="trav trav--cross" r="2" filter="url(#fglow)">
+            <animateMotion dur="5.5s" repeatCount="indefinite" begin="1.3s" path="M768,122 L768,598" />
+          </circle>
+          <circle class="trav trav--cross" r="2" filter="url(#fglow)">
+            <animateMotion dur="5.8s" repeatCount="indefinite" begin="2.3s" path="M874,360 L192,598" />
+          </circle>
+          <circle class="trav trav--cross" r="2" filter="url(#fglow)">
+            <animateMotion dur="5.3s" repeatCount="indefinite" begin="0.8s" path="M86,360 L768,122" />
+          </circle>
+
+          <!-- ═══ TRAVELING DOTS — inner node 9 ═══ -->
+          <!-- <circle class="trav trav--dim" r="2" filter="url(#fglow)">
+            <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.7s" path="M614,216 L480,65" />
+          </circle>
+          <circle class="trav trav--dim" r="2" filter="url(#fglow)">
+            <animateMotion dur="2.5s" repeatCount="indefinite" begin="1.5s" path="M614,216 L768,122" />
+          </circle>
+          <circle class="trav trav--dim" r="2" filter="url(#fglow)">
+            <animateMotion dur="2.8s" repeatCount="indefinite" begin="0.2s" path="M614,216 L874,360" />
+          </circle> -->
+
+          <!-- hub pulse rings -->
+          <circle class="hub-ring r1" cx="480" cy="360" r="72" />
+          <circle class="hub-ring r2" cx="480" cy="360" r="95" />
+          <circle class="hub-ring r3" cx="480" cy="360" r="118" />
+          <!-- ambient center glow -->
+          <ellipse cx="480" cy="360" rx="200" ry="150" fill="url(#centerGlow)" />
+        </svg>
+
+        <!-- ── HUB ── -->
+        <div class="hd-hub">
+          <div class="hub-hex">
+            <div class="hub-content">
+              <div class="hub-tags">AI · ROBOTICS</div>
+              <div class="hub-tags" style="color:#39FF14;">FLUORESCENCE</div>
+              <div class="hub-divider"></div>
+              <div class="hub-sub">Live 4K · 3D · ICG-Guided</div>
+              <div class="hub-sub hub-sub--dim" style="display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;"><img src="/Red_circle.gif" alt="logo" style="width: 10%;">LIVE SURGERIES</div>
+            </div>
+          </div>
+          <div class="hub-ring-css r1"></div>
+          <div class="hub-ring-css r2"></div>
+          <div class="hub-ring-css r3"></div>
+        </div>
+
+        <!-- ── NODES ── (9 specialty hexagons) -->
+
+        <!-- 1 TOP: Fluorescence & ICG -->
+        <div class="hd-node" style="--nx:50%;--ny:9%;" data-card="c1">
+          <div class="hd-hex"><span>FLUORESCENCE & ICG MASTERCLASS </span></div>
+          <!-- <div class="hd-card hd-card--down" id="c1">
+            <div class="hdc-title">Fluorescence &amp; ICG</div>
+            <div class="hdc-soon"><span class="hdc-soon-icon">⏳</span> Topics will be announced soon</div>
+          </div> -->
+        </div>
+
+        <!-- 2 TOP-RIGHT: Robotic Surgery -->
+        <div class="hd-node" style="--nx:80%;--ny:17%;" data-card="c2">
+          <div class="hd-hex"><span>ROBOTIC SURGERY MASTERCLASS </span></div>
+          <!-- <div class="hd-card hd-card--left" id="c2">
+            <div class="hdc-title">Robotic Surgery</div>
+            <div class="hdc-soon"><span class="hdc-soon-icon">⏳</span> Topics will be announced soon</div>
+          </div> -->
+        </div>
+
+        <!-- 3 RIGHT: Hernia &amp; Abdominal Wall -->
+        <div class="hd-node" style="--nx:91%;--ny:50%;" data-card="c3">
+          <div class="hd-hex"><span>COLORECTAL SURGERY</span></div>
+          <!-- <div class="hd-card hd-card--left" id="c3">
+            <div class="hdc-title">Hernia &amp; Abdominal Wall</div>
+            <div class="hdc-soon"><span class="hdc-soon-icon">⏳</span> Topics will be announced soon</div>
+          </div> -->
+        </div>
+
+        <!-- 4 BOTTOM-RIGHT: Upper GI &amp; Bariatric -->
+        <div class="hd-node" style="--nx:80%;--ny:83%;" data-card="c4">
+          <div class="hd-hex"><span>GYNAECOLOGY & GYNAE-ONCOLOGY </span></div>
+          <!-- <div class="hd-card hd-card--left" id="c4">
+            <div class="hdc-title">Upper GI &amp; Bariatric</div>
+            <div class="hdc-soon"><span class="hdc-soon-icon">⏳</span> Topics will be announced soon</div>
+          </div> -->
+        </div>
+
+        <!-- 5 BOTTOM: Colorectal -->
+        <div class="hd-node" style="--nx:50%;--ny:91%;" data-card="c5">
+          <div class="hd-hex"><span>HEPATOBILIARY & PANCREATIC </span></div>
+          <!-- <div class="hd-card hd-card--up" id="c5">
+            <div class="hdc-title">Colorectal Surgery</div>
+            <div class="hdc-soon"><span class="hdc-soon-icon">⏳</span> Topics will be announced soon</div>
+          </div> -->
+        </div>
+
+        <!-- 6 BOTTOM-LEFT: Gynaecology -->
+        <div class="hd-node" style="--nx:20%;--ny:83%;" data-card="c6">
+          <div class="hd-hex"><span>HERNIA & ABDOMINAL WALL </span></div>
+          <!-- <div class="hd-card hd-card--right" id="c6">
+            <div class="hdc-title">Gynaecology &amp; Gynae-Oncology</div>
+            <div class="hdc-soon"><span class="hdc-soon-icon">⏳</span> Topics will be announced soon</div>
+          </div> -->
+        </div>
+
+        <!-- 7 LEFT: HPB -->
+        <div class="hd-node" style="--nx:9%;--ny:50%;" data-card="c7">
+          <div class="hd-hex"><span>UPPER GI & BARIATRIC</span></div>
+          <!-- <div class="hd-card hd-card--right" id="c7">
+            <div class="hdc-title">Hepatobiliary &amp; Pancreatic</div>
+            <div class="hdc-soon"><span class="hdc-soon-icon">⏳</span> Topics will be announced soon</div>
+          </div> -->
+        </div>
+
+        <!-- 8 TOP-LEFT: AI in Surgery -->
+        <div class="hd-node" style="--nx:20%;--ny:17%;" data-card="c8">
+          <div class="hd-hex"><span>AI IN SURGERY</span></div>
+          <!-- <div class="hd-card hd-card--right" id="c8">
+            <div class="hdc-title">AI in Surgery</div>
+            <div class="hdc-soon"><span class="hdc-soon-icon">⏳</span> Topics will be announced soon</div>
+          </div> -->
+        </div>
+
+      </div><!-- /.hex-diagram -->
+
+      <!-- ═══ MOBILE: card grid ═══ -->
+      <div class="sp-mobile-grid">
+
+        <div class="spm-card">
+          <div class="spm-hex"><span>FLUORESCENCE & ICG MASTERCLASS </span></div>
+          <!-- <div class="spm-body">
+            <div class="spm-title">Fluorescence &amp; ICG</div>
+            <div class="spm-soon">Topics coming soon</div>
+          </div> -->
+        </div>
+
+        <div class="spm-card">
+          <div class="spm-hex"><span>ROBOTIC SURGERY MASTERCLASS</span></div>
+          <!-- <div class="spm-body">
+            <div class="spm-title">Robotic Surgery</div>
+            <div class="spm-soon">Topics coming soon</div>
+          </div> -->
+        </div>
+
+        <div class="spm-card">
+          <div class="spm-hex"><span>AI IN SURGERY </span></div>
+          <!-- <div class="spm-body">
+            <div class="spm-title">AI in Surgery</div>
+            <div class="spm-soon">Topics coming soon</div>
+          </div> -->
+        </div>
+
+        <div class="spm-card">
+          <div class="spm-hex"><span>GYNAECOLOGY & GYNAE-ONCOLOGY </span></div>
+          <!-- <div class="spm-body">
+            <div class="spm-title">Gynaecology &amp; Gynae-Oncology</div>
+            <div class="spm-soon">Topics coming soon</div>
+          </div> -->
+        </div>
+
+        <div class="spm-card">
+          <div class="spm-hex"><span>HEPATOBILIARY & PANCREATIC </span></div>
+          <!-- <div class="spm-body">
+            <div class="spm-title">Hepatobiliary &amp; Pancreatic</div>
+            <div class="spm-soon">Topics coming soon</div>
+          </div> -->
+        </div>
+
+        <div class="spm-card">
+          <div class="spm-hex"><span>HERNIA & ABDOMINAL <br>WALL </span></div>
+          <!-- <div class="spm-body">
+            <div class="spm-title">Hernia &amp; Abdominal Wall</div>
+            <div class="spm-soon">Topics coming soon</div>
+          </div> -->
+        </div>
+
+        <div class="spm-card">
+          <div class="spm-hex"><span>UPPER GI & BARIATRIC</span></div>
+          <!-- <div class="spm-body">
+            <div class="spm-title">Upper GI &amp; Bariatric</div>
+            <div class="spm-soon">Topics coming soon</div>
+          </div> -->
+        </div>
+
+        <div class="spm-card">
+          <div class="spm-hex"><span>COLORECTAL SURGERY</span></div>
+          <!-- <div class="spm-body">
+            <div class="spm-title">Colorectal Surgery</div>
+            <div class="spm-soon">Topics coming soon</div>
+          </div> -->
+        </div>
+
+      </div><!-- /.sp-mobile-grid -->
+
+    </div><!-- /.sci-prog-wrap -->
+  </section>
+  <!-- ══ REGISTER ═══════════════════════════════════════════════════ -->
+  <section class="register" id="register">
+    <video class="sec-vid" autoplay muted loop playsinline>
+      <source src="https://technosurg.gemhospitals.com/landing/cta-video.mp4" type="video/mp4">
+    </video>
+    <div class="vid-overlay"></div>
+    <h2>Secure your seat.</h2>
+    <p class="reg-price">
+      <strong>Delegate ₹7,000</strong> &nbsp;·&nbsp;
+      <strong>PG ₹5,000</strong> &nbsp;·&nbsp;
+      incl. GST
+    </p>
+    <div style="z-index: 3; margin-bottom: 20px;">
+      <a href="index.html" class="nav-logo"><img src="https://technosurg.gemhospitals.com/landing/technosurg-logo.png"
+          alt="logo" style="width: 230px;z-index: 3;"></a>
+    </div>
+
+    <a href="https://technosurg.gemhospitals.com/register/technosurg2026-mmvs3874" class="btn-reg" target="_blank"
+      rel="noopener">
+      Register Now
+    </a>
+    <span class="reg-note">Special early bird price available until April 30th.</span>
+  </section>
+
+  <!-- ══ DEBATE FORUM ═══════════════════════════════════════════════ -->
+  <section class="debate fi" id="debate">
+    <video class="sec-vid" autoplay muted loop playsinline>
+      <source src="https://technosurg.gemhospitals.com/landing/Section-video.mp4" type="video/mp4">
+    </video>
+    <div class="vid-overlay" style="background: rgba(5, 5, 10, 0.90);"></div>
+    <div class="debate-inner">
+      <div class="debate-eyebrow">Surgical Debate Forum</div>
+      <h2>Experience expert discussions that<br>challenge established surgical approaches.</h2>
+      <p class="debate-sub">Exploring innovations shaping modern practice through open, evidence-based dialogue.</p>
+      <div class="debate-tags">
+        <span class="debate-tag">Techniques</span>
+        <span class="debate-tag">Perspectives</span>
+        <span class="debate-tag">Evidence</span>
+      </div>
+      <div class="debate-list">
+        <div class="dbt-item fi">
+          <div class="dbt-num">01</div>
+          <div class="dbt-text">Technology vs Technique – What Matters More?</div>
+        </div>
+        <div class="dbt-item fi">
+          <div class="dbt-num">02</div>
+          <div class="dbt-text">Robotic Surgery – Precision or Price?</div>
+        </div>
+        <div class="dbt-item fi">
+          <div class="dbt-num">03</div>
+          <div class="dbt-text">Surgery 2035 – Will Surgeons Lead or Be Replaced?</div>
+        </div>
+        <div class="dbt-item fi">
+          <div class="dbt-num">04</div>
+          <div class="dbt-text">Autonomous Surgery – Reality or Risk?</div>
+        </div>
+        <div class="dbt-item fi">
+          <div class="dbt-num">05</div>
+          <div class="dbt-text">Borderless Surgery – Can Geography Become Irrelevant?</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ EXHIBITION STALLS ══════════════════════════════════════════ -->
+  <section class="stalls fi" id="stalls">
+    <video class="sec-vid" autoplay muted loop playsinline>
+      <source src="https://technosurg.gemhospitals.com/landing/cta-video.mp4" type="video/mp4">
+    </video>
+    <div class="vid-overlay" style="background: rgba(5, 5, 10, 0.95);"></div>
+    <div class="stalls-inner">
+
+      <div class="stalls-head fi">
+        <div class="eyebrow" style="justify-content:center;">Exhibition Stalls</div>
+        <div class="stalls-count">100+</div>
+        <h2>World-Class Surgical<br>Technology on Display</h2>
+        <p>Explore cutting-edge instruments, robotics, imaging, and digital health innovations from leading global
+          manufacturers.</p>
+      </div>
+
+      <!-- ── Desktop honeycomb: 5-4-5-4 = 18 ── -->
+      <div class="st-grid fi">
+
+        <!-- Row 1: 5 hexes -->
+        <div class="st-row">
+          <!-- AI Systems: CPU chip -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <rect x="9" y="9" width="6" height="6" rx="1" />
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                    <path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" />
+                  </svg></div>
+                <div class="st-lbl">AI Systems</div>
+              </div>
+            </div>
+          </div>
+          <!-- Digital Surgery: monitor + surgical cross -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <path d="M8 21h8M12 17v4" />
+                    <path d="M12 7v6M9 10h6" />
+                  </svg></div>
+                <div class="st-lbl">Digital Surgery</div>
+              </div>
+            </div>
+          </div>
+          <!-- Smart OR: house + wifi waves -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <path d="M9 22V14h6v8" />
+                    <path d="M8.5 11a4.5 4.5 0 0 1 7 0" />
+                    <path d="M10.8 13.2a2 2 0 0 1 2.4 0" />
+                  </svg></div>
+                <div class="st-lbl">Smart OR</div>
+              </div>
+            </div>
+          </div>
+          <!-- Robotic Consoles: gamepad controller -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <rect x="2" y="7" width="20" height="13" rx="2" />
+                    <path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" />
+                    <path d="M6 13h4M8 11v4" />
+                    <circle cx="17" cy="13" r="1.5" />
+                    <circle cx="14" cy="16" r="1" />
+                  </svg></div>
+                <div class="st-lbl">Robotic Consoles</div>
+              </div>
+            </div>
+          </div>
+          <!-- Robotic Surgery: robotic arm segments -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="3" r="2" />
+                    <path d="M12 5v4" />
+                    <path d="M9 9h6" />
+                    <path d="M9 9l-2 5" />
+                    <path d="M15 9l2 5" />
+                    <path d="M7 14h10" />
+                    <path d="M7 14l-1 5h12l-1-5" />
+                    <circle cx="8" cy="19" r="1" />
+                    <circle cx="16" cy="19" r="1" />
+                  </svg></div>
+                <div class="st-lbl">Robotic Surgery</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: 4 hexes (offset) -->
+        <div class="st-row sb">
+          <!-- ICG Imaging: camera with fluorescence rays -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z" />
+                    <circle cx="12" cy="13" r="3" />
+                    <path d="M12 10V8M9.5 10.5 8 9M14.5 10.5 16 9M12 16v2M9.5 15.5 8 17M14.5 15.5 16 17" />
+                  </svg></div>
+                <div class="st-lbl">ICG Imaging</div>
+              </div>
+            </div>
+          </div>
+          <!-- Fluorescence Imaging: microscope -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <path d="M6 22h12" />
+                    <path d="M9 22v-2" />
+                    <path d="M15 22v-2" />
+                    <circle cx="12" cy="15" r="4" />
+                    <path d="M12 11V7" />
+                    <path d="M9 7h6" />
+                    <path d="M10 5h4" />
+                    <path d="M11 3h2" />
+                  </svg></div>
+                <div class="st-lbl">Fluorescence Imaging</div>
+              </div>
+            </div>
+          </div>
+          <!-- Image Guidance: crosshair target -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="4" />
+                    <line x1="12" y1="2" x2="12" y2="8" />
+                    <line x1="12" y1="16" x2="12" y2="22" />
+                    <line x1="2" y1="12" x2="8" y2="12" />
+                    <line x1="16" y1="12" x2="22" y2="12" />
+                  </svg></div>
+                <div class="st-lbl">Image Guidance</div>
+              </div>
+            </div>
+          </div>
+          <!-- Energy Systems: power tower / zap -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg></div>
+                <div class="st-lbl">Energy Systems</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3: 5 hexes -->
+        <div class="st-row">
+          <!-- Energy Devices: electrosurgical pencil -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                    <path d="m15 5 4 4" />
+                    <path d="M11 14l1-3-2 1 1-3" />
+                  </svg></div>
+                <div class="st-lbl">Energy Devices</div>
+              </div>
+            </div>
+          </div>
+          <!-- Precision Energy: fine-tune sliders -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <line x1="4" y1="21" x2="4" y2="14" />
+                    <line x1="4" y1="10" x2="4" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12" y2="3" />
+                    <line x1="20" y1="21" x2="20" y2="16" />
+                    <line x1="20" y1="12" x2="20" y2="3" />
+                    <line x1="1" y1="14" x2="7" y2="14" />
+                    <line x1="9" y1="8" x2="15" y2="8" />
+                    <line x1="17" y1="16" x2="23" y2="16" />
+                  </svg></div>
+                <div class="st-lbl">Precision Energy</div>
+              </div>
+            </div>
+          </div>
+          <!-- NextGen Tech: rocket -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <path
+                      d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+                    <path
+                      d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+                    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+                    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+                  </svg></div>
+                <div class="st-lbl">NextGen Tech</div>
+              </div>
+            </div>
+          </div>
+          <!-- Surgical Innovation: lightbulb -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <path
+                      d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+                    <path d="M9 18h6" />
+                    <path d="M10 22h4" />
+                  </svg></div>
+                <div class="st-lbl">Surgical Innovation</div>
+              </div>
+            </div>
+          </div>
+          <!-- Clinical AI: stethoscope -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <circle cx="18" cy="16" r="3" />
+                    <path d="M18 13v-2a6 6 0 0 0-6-6H8" />
+                    <path d="M5 9V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4a4 4 0 0 1-8 0z" />
+                  </svg></div>
+                <div class="st-lbl">Clinical AI</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 4: 4 hexes (offset) -->
+        <div class="st-row sb">
+          <!-- OR Intelligence: brain -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <path
+                      d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z" />
+                    <path
+                      d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z" />
+                  </svg></div>
+                <div class="st-lbl">OR Intelligence</div>
+              </div>
+            </div>
+          </div>
+          <!-- Surgical Simulation: VR headset -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <path d="M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z" />
+                    <circle cx="8" cy="12" r="2" />
+                    <circle cx="16" cy="12" r="2" />
+                    <path d="M10 12h4" />
+                  </svg></div>
+                <div class="st-lbl">Surgical Simulation</div>
+              </div>
+            </div>
+          </div>
+          <!-- Simulation Labs: flask/beaker -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <path d="M10 2v7.31l-3.24 5A2 2 0 0 0 8.48 17h7.04a2 2 0 0 0 1.72-2.69L14 9.31V2" />
+                    <path d="M8.5 2h7" />
+                    <path d="M7 16.5h10" />
+                  </svg></div>
+                <div class="st-lbl">Simulation Labs</div>
+              </div>
+            </div>
+          </div>
+          <!-- Therapeutic Solutions: heart + ECG pulse -->
+          <div class="st-g">
+            <div class="st-b">
+              <div class="st-f">
+                <div class="st-icon"><svg viewBox="0 0 24 24">
+                    <path
+                      d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                    <path d="M3.22 12H9.5l1.5-2 2 4.5 1.5-2.5H21" />
+                  </svg></div>
+                <div class="st-lbl">Therapeutic Solutions</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /st-grid -->
+
+      <!-- ── Mobile cards ── -->
+      <div class="st-cards fi">
+        <!-- AI Systems: CPU chip -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <rect x="9" y="9" width="6" height="6" rx="1" />
+              <rect x="6" y="6" width="12" height="12" rx="2" />
+              <path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" />
+            </svg></div>
+          <div class="st-lbl">AI Systems</div>
+        </div>
+        <!-- Digital Surgery: monitor + cross -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <path d="M8 21h8M12 17v4" />
+              <path d="M12 7v6M9 10h6" />
+            </svg></div>
+          <div class="st-lbl">Digital Surgery</div>
+        </div>
+        <!-- Smart OR: house + wifi -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <path d="M9 22V14h6v8" />
+              <path d="M8.5 11a4.5 4.5 0 0 1 7 0" />
+              <path d="M10.8 13.2a2 2 0 0 1 2.4 0" />
+            </svg></div>
+          <div class="st-lbl">Smart OR</div>
+        </div>
+        <!-- Robotic Consoles: gamepad -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <rect x="2" y="7" width="20" height="13" rx="2" />
+              <path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" />
+              <path d="M6 13h4M8 11v4" />
+              <circle cx="17" cy="13" r="1.5" />
+            </svg></div>
+          <div class="st-lbl">Robotic Consoles</div>
+        </div>
+        <!-- Robotic Surgery: arm segments -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <circle cx="12" cy="3" r="2" />
+              <path d="M12 5v4M9 9h6M9 9l-2 5M15 9l2 5M7 14h10M7 14l-1 5h12l-1-5" />
+            </svg></div>
+          <div class="st-lbl">Robotic Surgery</div>
+        </div>
+        <!-- ICG Imaging: camera with rays -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z" />
+              <circle cx="12" cy="13" r="3" />
+              <path d="M12 10V8M9.5 10.5 8 9M14.5 10.5 16 9" />
+            </svg></div>
+          <div class="st-lbl">ICG Imaging</div>
+        </div>
+        <!-- Fluorescence Imaging: microscope -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <path d="M6 22h12M9 22v-2M15 22v-2" />
+              <circle cx="12" cy="15" r="4" />
+              <path d="M12 11V7M9 7h6M10 5h4M11 3h2" />
+            </svg></div>
+          <div class="st-lbl">Fluorescence Imaging</div>
+        </div>
+        <!-- Image Guidance: crosshair -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="4" />
+              <line x1="12" y1="2" x2="12" y2="8" />
+              <line x1="12" y1="16" x2="12" y2="22" />
+              <line x1="2" y1="12" x2="8" y2="12" />
+              <line x1="16" y1="12" x2="22" y2="12" />
+            </svg></div>
+          <div class="st-lbl">Image Guidance</div>
+        </div>
+        <!-- Energy Systems: lightning -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg></div>
+          <div class="st-lbl">Energy Systems</div>
+        </div>
+        <!-- Energy Devices: electrosurgical pen -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+              <path d="m15 5 4 4" />
+              <path d="M11 14l1-3-2 1 1-3" />
+            </svg></div>
+          <div class="st-lbl">Energy Devices</div>
+        </div>
+        <!-- Precision Energy: sliders -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <line x1="4" y1="21" x2="4" y2="14" />
+              <line x1="4" y1="10" x2="4" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12" y2="3" />
+              <line x1="20" y1="21" x2="20" y2="16" />
+              <line x1="20" y1="12" x2="20" y2="3" />
+              <line x1="1" y1="14" x2="7" y2="14" />
+              <line x1="9" y1="8" x2="15" y2="8" />
+              <line x1="17" y1="16" x2="23" y2="16" />
+            </svg></div>
+          <div class="st-lbl">Precision Energy</div>
+        </div>
+        <!-- NextGen Tech: rocket -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+              <path
+                d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+            </svg></div>
+          <div class="st-lbl">NextGen Tech</div>
+        </div>
+        <!-- Surgical Innovation: lightbulb -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <path
+                d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+              <path d="M9 18h6M10 22h4" />
+            </svg></div>
+          <div class="st-lbl">Surgical Innovation</div>
+        </div>
+        <!-- Clinical AI: stethoscope -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <circle cx="18" cy="16" r="3" />
+              <path d="M18 13v-2a6 6 0 0 0-6-6H8" />
+              <path d="M5 9V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4a4 4 0 0 1-8 0z" />
+            </svg></div>
+          <div class="st-lbl">Clinical AI</div>
+        </div>
+        <!-- OR Intelligence: brain -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <path
+                d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z" />
+              <path
+                d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z" />
+            </svg></div>
+          <div class="st-lbl">OR Intelligence</div>
+        </div>
+        <!-- Surgical Simulation: VR headset -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <path d="M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z" />
+              <circle cx="8" cy="12" r="2" />
+              <circle cx="16" cy="12" r="2" />
+              <path d="M10 12h4" />
+            </svg></div>
+          <div class="st-lbl">Surgical Simulation</div>
+        </div>
+        <!-- Simulation Labs: flask -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <path d="M10 2v7.31l-3.24 5A2 2 0 0 0 8.48 17h7.04a2 2 0 0 0 1.72-2.69L14 9.31V2" />
+              <path d="M8.5 2h7M7 16.5h10" />
+            </svg></div>
+          <div class="st-lbl">Simulation Labs</div>
+        </div>
+        <!-- Therapeutic Solutions: heart + ECG -->
+        <div class="st-card">
+          <div class="st-icon"><svg viewBox="0 0 24 24">
+              <path
+                d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+              <path d="M3.22 12H9.5l1.5-2 2 4.5 1.5-2.5H21" />
+            </svg></div>
+          <div class="st-lbl">Therapeutic Solutions</div>
+        </div>
+      </div><!-- /st-cards -->
+
+    </div>
+  </section>
+
+  <!-- ══ VENUE ══════════════════════════════════════════════════════ -->
+  <section class="venue" id="venue">
+    <video class="sec-vid" autoplay muted loop playsinline>
+      <source src="https://technosurg.gemhospitals.com/landing/venue-video.mp4" type="video/mp4">
+    </video>
+    <div class="vid-overlay"></div>
+    <div class="venue-inner fi">
+      <div class="eyebrow" style="color:rgba(255,255,255,0.35);">Conference Venue</div>
+      <h2>ITC Grand Chola</h2>
+      <!-- <div class="venue-sub">Chennai, Tamil Nadu</div>
+      <div class="venue-addr">
+        <span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+            <circle cx="12" cy="9" r="2.5" />
+          </svg>
+          63, Anna Salai, Guindy, Chennai 600032 <br> 15 minutes from Chennai International Airport
+        </span>
+      </div> -->
+
+      <!-- ── CONTACT DETAILS GRID ── -->
+      <div class="contact-grid">
+
+        <!-- Event Venue -->
+        <div class="contact-card contact-card--wide">
+          <div class="contact-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
+          <div class="contact-body">
+            <div class="contact-label">Event Venue</div>
+            <a class="contact-value contact-link" href=" https://maps.app.goo.gl/gwe3EDH3u38p7Mm87?g_st=iw"
+              target="_blank" rel="noopener">
+              ITC Grand Chola, Guindy, Chennai
+            </a>
+          </div>
+        </div>
+
+        <!-- Hospital Address -->
+        <div class="contact-card contact-card--wide">
+          <div class="contact-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+              <circle cx="12" cy="9" r="2.5" />
+            </svg>
+          </div>
+          <div class="contact-body">
+            <div class="contact-label">Hospital Address</div>
+            <div class="contact-value">GEM Hospital, MDR452, Gandhi Nagar,Thiruvengadam Nagar,
+              Perungudi,Chennai, Tamil Nadu – 600096</div>
+          </div>
+        </div>
+
+        <!-- Website -->
+        <div class="contact-card">
+          <div class="contact-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path
+                d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+          </div>
+          <div class="contact-body">
+            <div class="contact-label">Website</div>
+            <a class="contact-value contact-link" href="https://technosurg.gemhospitals.com/landing" rel="noopener">
+              technosurg.gemhospitals.com
+            </a>
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div class="contact-card">
+          <div class="contact-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+          </div>
+          <div class="contact-body">
+            <div class="contact-label">Email</div>
+            <a class="contact-value contact-link" target="_blank" href="mailto:technosurg@geminstitute.in">
+              technosurg@geminstitute.in
+            </a>
+          </div>
+        </div>
+
+        <!-- Conference Secretariat -->
+        <div class="contact-card">
+          <div class="contact-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17.24v-.32z" />
+            </svg>
+          </div>
+          <div class="contact-body">
+            <div class="contact-label">Conference Secretariat</div>
+            <a class="contact-value contact-link" href="tel:+919500127980" target="_blank">95001 27980</a>
+          </div>
+        </div>
+
+      </div><!-- /.contact-grid -->
+    </div>
+  </section>
+
+  <style>
+    /* ── VENUE CONTACT DETAILS ── */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: .85rem;
+      margin-top: 2rem;
+      max-width: 620px;
+    }
+
+    .contact-card--wide {
+      grid-column: span 2;
+    }
+
+    .contact-card {
+      display: flex;
+      align-items: flex-start;
+      gap: .85rem;
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 12px;
+      padding: .95rem 1.1rem;
+      transition: background .2s, border-color .2s;
+    }
+
+    .contact-card:hover {
+      background: rgba(34, 211, 238, .06);
+      border-color: rgba(34, 211, 238, .22);
+    }
+
+    .contact-icon {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(34, 211, 238, .1);
+      border: 1px solid rgba(34, 211, 238, .2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cyan);
+      margin-top: .05rem;
+    }
+
+    .contact-body {
+      min-width: 0;
+    }
+
+    .contact-label {
+      font-size: .6rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: .3rem;
+      opacity: .8;
+    }
+
+    .contact-value {
+      font-size: .8rem;
+      color: rgba(255, 255, 255, .72);
+      line-height: 1.6;
+    }
+
+    .contact-link {
+      text-decoration: none;
+      color: rgba(255, 255, 255, .72);
+      transition: color .15s;
+    }
+
+    .contact-link:hover {
+      color: var(--cyan);
+    }
+
+    @media (max-width: 500px) {
+      .contact-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .contact-card--wide {
+        grid-column: span 1;
+      }
+    }
+  </style>
+
+  <!-- ══ FOOTER ═════════════════════════════════════════════════════ -->
+  <footer>
+    <div class="ft-copy">
+      © 2026 <a href="https://gemhospitals.com" target="_blank" rel="noopener">GEM Hospital &amp; Research Centre</a>.
+      All rights reserved.
+    </div>
+    <!-- <nav class="ft-links">
+      <a href="#about">About</a>
+      <a href="#faculty">Faculty</a>
+      <a href="#schedule">Schedule</a>
+      <a href="#register">Register</a>
+      <a href="#venue">Venue</a>
+    </nav> -->
+  </footer>
+
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+  <script>
+    // ── COUNTDOWN ──
+    (function tick() {
+      const target = new Date('2026-06-19T09:00:00+05:30').getTime();
+      const diff = target - Date.now();
+      if (diff > 0) {
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff % 86400000) / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        document.getElementById('cdD').textContent = d;
+        document.getElementById('cdH').textContent = String(h).padStart(2, '0');
+        document.getElementById('cdM').textContent = String(m).padStart(2, '0');
+        document.getElementById('cdS').textContent = String(s).padStart(2, '0');
+      }
+      setTimeout(tick, 1000);
+    })();
+
+    // ── SCHEDULE TABS ──
+    document.querySelectorAll('.day-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.day-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.sched-panel').forEach(p => p.classList.remove('on'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.p).classList.add('on');
+      });
+    });
+
+    // ── MOBILE NAV ──
+    const drawer = document.getElementById('mobileDrawer');
+    const mobBtn = document.getElementById('mobBtn');
+    const spans = mobBtn.querySelectorAll('span');
+
+    function toggleDrawer(force) {
+      const open = force !== undefined ? force : !drawer.classList.contains('open');
+      drawer.classList.toggle('open', open);
+      // animate hamburger → X
+      spans[0].style.transform = open ? 'translateY(7px) rotate(45deg)' : '';
+      spans[1].style.opacity = open ? '0' : '1';
+      spans[2].style.transform = open ? 'translateY(-7px) rotate(-45deg)' : '';
+      document.body.style.overflow = open ? 'hidden' : '';
+    }
+
+    mobBtn.addEventListener('click', () => toggleDrawer());
+    drawer.querySelectorAll('a').forEach(a => a.addEventListener('click', () => toggleDrawer(false)));
+
+    // ── SCROLL FADE IN ──
+    const obs = new IntersectionObserver(entries =>
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); }),
+      { threshold: 0.1 }
+    );
+    document.querySelectorAll('.fi').forEach(el => obs.observe(el));
+  </script>
+</body>
+
+</html>
