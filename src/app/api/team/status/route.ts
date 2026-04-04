@@ -76,7 +76,7 @@ export async function GET() {
         email: member.email,
         role: member.role,
         is_active: member.is_active,
-        permissions: member.permissions ?? null,
+        permissions: Array.isArray(member.permissions) ? member.permissions : [],
         event_ids: member.event_ids ?? null,
         has_logged_in: !!auth?.last_sign_in_at,
         last_sign_in_at: auth?.last_sign_in_at ?? null,

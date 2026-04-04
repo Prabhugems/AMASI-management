@@ -615,7 +615,7 @@ export function detectPreset(
  * Convenience wrapper around detectPreset().
  */
 export function detectPresetForMember(member: TeamMember): RolePreset | null {
-  const hasAllPerms = !member.permissions || member.permissions.length === 0
+  const hasAllPerms = !Array.isArray(member.permissions) || member.permissions.length === 0
   const hasAllEvents = !member.event_ids || member.event_ids.length === 0
   const presetValue = detectPreset(member.permissions || [], member.role, {
     allPermissions: hasAllPerms,

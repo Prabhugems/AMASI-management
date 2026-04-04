@@ -146,13 +146,14 @@ export default function TeamPortalPage() {
     if (!teamMember) return []
 
     // Admin or empty permissions = full access
-    const hasFullAccess = teamMember.role.includes("admin") || !teamMember.permissions || teamMember.permissions.length === 0
+    const perms = Array.isArray(teamMember.permissions) ? teamMember.permissions : []
+    const hasFullAccess = teamMember.role.includes("admin") || perms.length === 0
 
     if (hasFullAccess) {
       return Object.entries(ALL_MODULES).map(([key, value]) => ({ key, ...value }))
     }
 
-    return teamMember.permissions
+    return perms
       .filter(perm => ALL_MODULES[perm as keyof typeof ALL_MODULES])
       .map(perm => ({ key: perm, ...ALL_MODULES[perm as keyof typeof ALL_MODULES] }))
   }
@@ -235,7 +236,7 @@ export default function TeamPortalPage() {
                     <Shield className="h-3 w-3 mr-1" />
                     {teamMember?.role}
                   </Badge>
-                  {(!teamMember?.permissions || teamMember.permissions.length === 0) && !teamMember?.role.includes("admin") && (
+                  {(!Array.isArray(teamMember?.permissions) || teamMember.permissions.length === 0) && !teamMember?.role.includes("admin") && (
                     <Badge variant="outline" className="text-green-600 border-green-300">
                       Full Access
                     </Badge>
@@ -254,7 +255,7 @@ export default function TeamPortalPage() {
                 <Shield className="h-5 w-5" />
                 <span className="font-medium">Administrator - Full access to all modules</span>
               </div>
-            ) : !teamMember?.permissions || teamMember.permissions.length === 0 ? (
+            ) : !Array.isArray(teamMember?.permissions) || teamMember.permissions.length === 0 ? (
               <div className="flex items-center gap-2 text-green-600">
                 <CheckCircle className="h-5 w-5" />
                 <span className="font-medium">Full access to all modules</span>
@@ -279,7 +280,7 @@ export default function TeamPortalPage() {
             )}
 
             {/* Restricted modules */}
-            {teamMember?.permissions && teamMember.permissions.length > 0 && (
+            {Array.isArray(teamMember?.permissions) && teamMember.permissions.length > 0 && (
               <div className="mt-4">
                 <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
                   <Lock className="h-3 w-3" /> Restricted Modules

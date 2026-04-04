@@ -117,10 +117,11 @@ export function usePermissions(): UserPermissions {
       // Event-scoped admins get admin access within their assigned events
       const isAdmin = teamMember.role?.includes("admin") || false
       const isTeamUser = !isAdmin
-      const hasFullAccess = !teamMember.permissions || teamMember.permissions.length === 0
+      const perms = Array.isArray(teamMember.permissions) ? teamMember.permissions : []
+      const hasFullAccess = perms.length === 0
 
       return {
-        permissions: (teamMember.permissions || []) as Permission[],
+        permissions: perms as Permission[],
         role: teamMember.role as Role,
         isAdmin,
         isTeamUser,

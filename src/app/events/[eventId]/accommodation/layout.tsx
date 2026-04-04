@@ -139,7 +139,7 @@ export default function AccommodationLayout({
       // Check if transport/travel user (not admin)
       const isTransportUser = (teamMember?.role?.includes("travel") || teamMember?.role?.includes("transport") || teamMember?.role?.includes("coordinator")) || isEventScoped
       // Empty permissions array means full access (but not if event-scoped)
-      const hasFullAccess = !isEventScoped && (!teamMember?.permissions || teamMember.permissions.length === 0)
+      const hasFullAccess = !isEventScoped && (!Array.isArray(teamMember.permissions) || teamMember.permissions.length === 0)
       // Check specific permissions
       const hasHotelsPermission = teamMember?.permissions?.includes("hotels")
       const hasFlightsPermission = teamMember?.permissions?.includes("flights")

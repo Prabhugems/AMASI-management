@@ -97,7 +97,7 @@ export default function CheckinLayout({ children }: { children: React.ReactNode 
       // Event-scoped users should NOT get isAdmin or hasFullAccess
       const isAdmin = teamMember.role?.includes("admin") || false
       const isTeamUser = !isAdmin
-      const hasFullAccess = !teamMember.permissions || teamMember.permissions.length === 0
+      const hasFullAccess = !Array.isArray(teamMember.permissions) || teamMember.permissions.length === 0
       const hasCheckinPermission = teamMember.permissions?.includes("checkin")
 
       return {

@@ -561,9 +561,10 @@ const ROLE_PRESETS = [
 ]
 
 function detectPresetForMember(member: TeamMember) {
-  const hasAllPerms = !member.permissions || member.permissions.length === 0
+  const perms = Array.isArray(member.permissions) ? member.permissions : []
+  const hasAllPerms = perms.length === 0
   const hasAllEvents = !member.event_ids || member.event_ids.length === 0
-  const memberPerms = [...(member.permissions || [])].sort()
+  const memberPerms = [...perms].sort()
   for (const preset of ROLE_PRESETS) {
     if (preset.value === "custom") continue
     if (preset.role !== member.role) continue
@@ -970,8 +971,8 @@ export default function TeamPage() {
       email: member.email, name: member.name, phone: member.phone || "", role: member.role,
       notes: member.notes || "", event_ids: member.event_ids || [],
       all_events: !member.event_ids || member.event_ids.length === 0,
-      permissions: member.permissions || [],
-      all_permissions: !member.permissions || member.permissions.length === 0,
+      permissions: Array.isArray(member.permissions) ? member.permissions : [],
+      all_permissions: !Array.isArray(member.permissions) || member.permissions.length === 0,
     })
     setEventSearch("")
     setIsEditing(true)
@@ -1241,7 +1242,8 @@ export default function TeamPage() {
                 {paginatedMembers.map((member) => {
                   const roleInfo = getRoleInfo(member.role)
                   const RoleIcon = roleInfo.icon
-                  const hasFullAccess = !member.permissions || member.permissions.length === 0
+                  const memberPermsArr = Array.isArray(member.permissions) ? member.permissions : []
+                  const hasFullAccess = memberPermsArr.length === 0
 
                   return (
                     <TableRow key={member.id} className={cn("cursor-pointer hover:bg-slate-50", !member.is_active && "opacity-60")} onClick={() => setSelectedMember(member)}>
@@ -1427,7 +1429,8 @@ export default function TeamPage() {
             {paginatedMembers.map((member) => {
               const roleInfo = getRoleInfo(member.role)
               const RoleIcon = roleInfo.icon
-              const hasFullAccess = !member.permissions || member.permissions.length === 0
+              const memberPermsArr = Array.isArray(member.permissions) ? member.permissions : []
+              const hasFullAccess = memberPermsArr.length === 0
 
               return (
                 <Card key={member.id} className={cn(
@@ -1523,9 +1526,9 @@ export default function TeamPage() {
                     </div>
 
                     {/* Permissions preview */}
-                    {!hasFullAccess && member.permissions && member.permissions.length > 0 && (
+                    {!hasFullAccess && memberPermsArr.length > 0 && (
                       <div className="flex items-center gap-1.5 mt-3">
-                        {member.permissions.slice(0, 5).map(p => {
+                        {memberPermsArr.slice(0, 5).map(p => {
                           const perm = PERMISSIONS.find(x => x.value === p)
                           if (!perm) return null
                           return (
@@ -1541,9 +1544,9 @@ export default function TeamPage() {
                             </TooltipProvider>
                           )
                         })}
-                        {member.permissions.length > 5 && (
+                        {memberPermsArr.length > 5 && (
                           <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-slate-100 text-xs font-medium text-slate-600">
-                            +{member.permissions.length - 5}
+                            +{memberPermsArr.length - 5}
                           </div>
                         )}
                       </div>
@@ -1598,7 +1601,8 @@ export default function TeamPage() {
           {selectedMember && (() => {
             const roleInfo = getRoleInfo(selectedMember.role)
             const RoleIcon = roleInfo.icon
-            const hasFullAccess = !selectedMember.permissions || selectedMember.permissions.length === 0
+            const selectedPermsArr = Array.isArray(selectedMember.permissions) ? selectedMember.permissions : []
+            const hasFullAccess = selectedPermsArr.length === 0
             const hasAllEvents = !selectedMember.event_ids || selectedMember.event_ids.length === 0
 
             return (
@@ -1769,14 +1773,14 @@ export default function TeamPage() {
                     ) : (
                       <div className="space-y-3">
                         {/* Accessible modules */}
-                        {selectedMember.permissions && selectedMember.permissions.length > 0 && (
+                        {selectedPermsArr.length > 0 && (
                           <div>
                             <p className="text-xs font-medium text-green-600 mb-1.5 flex items-center gap-1">
                               <CheckCircle className="h-3 w-3" />
-                              Accessible ({selectedMember.permissions.length})
+                              Accessible ({selectedPermsArr.length})
                             </p>
                             <div className="grid grid-cols-3 gap-1.5">
-                              {selectedMember.permissions.map(p => {
+                              {selectedPermsArr.map(p => {
                                 const perm = PERMISSIONS.find(x => x.value === p)
                                 if (!perm) return null
                                 return (

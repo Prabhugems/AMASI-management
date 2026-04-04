@@ -167,7 +167,7 @@ export default function TravelLayout({
       // Check if transport/travel user (not admin)
       const isTransportUser = (teamMember.role?.includes("travel") || teamMember.role?.includes("transport")) && !isAdmin
       // Empty permissions array means full access (only for non-event-scoped users)
-      const hasFullAccess = !teamMember.permissions || teamMember.permissions.length === 0
+      const hasFullAccess = !Array.isArray(teamMember.permissions) || teamMember.permissions.length === 0
       // Check specific permissions
       const hasHotelsPermission = teamMember.permissions?.includes("hotels")
       const hasFlightsPermission = teamMember.permissions?.includes("flights")

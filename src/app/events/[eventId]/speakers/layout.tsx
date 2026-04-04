@@ -141,7 +141,7 @@ export default function SpeakersLayout({
       // Respect role and permissions even for event-scoped users
       const isAdmin = teamMember.role?.includes("admin") || false
       const isTeamUser = !isAdmin
-      const hasFullAccess = !teamMember.permissions || teamMember.permissions.length === 0
+      const hasFullAccess = !Array.isArray(teamMember.permissions) || teamMember.permissions.length === 0
       // Check if has speakers permission
       const hasSpeakersPermission = teamMember.permissions?.includes("speakers")
 

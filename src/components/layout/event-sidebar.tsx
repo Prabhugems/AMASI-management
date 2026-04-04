@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { usePathname, useParams } from "next/navigation"
+import { usePathname, useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -41,8 +41,14 @@ import {
   IndianRupee,
   ClipboardList,
   GraduationCap,
+  HelpCircle,
+  LogOut,
+  ChevronDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { usePermissions } from "@/hooks/use-permissions"
+import { toast } from "sonner"
 
 const COLLAPSED_WIDTH = 64
 const EXPANDED_WIDTH = 260
@@ -140,6 +146,30 @@ export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   const sidebarRef = useRef<HTMLElement>(null)
 
   const supabase = createClient()
+
+  const router = useRouter()
+
+  // User profile
+  const { userName, userEmail, isAdmin, hasFullAccess, isEventScoped, role, isLoading: isUserLoading } = usePermissions()
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  const getRoleLabel = () => {
+    if (isAdmin && !isEventScoped) return "Super Admin"
+    if (hasFullAccess && !isEventScoped) return "Full Access"
+    if (isEventScoped) return "Event Team"
+    if (role === "travel") return "Travel Coord."
+    if (role === "coordinator") return "Coordinator"
+    return role || "User"
+  }
 
   // Hover and pinned state
   const [isHovered, setIsHovered] = useState(false)
@@ -511,40 +541,144 @@ export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
         })}
       </nav>
 
-      {/* Status Footer */}
-      <div className={cn(
-        "sidebar-gradient-separator transition-all duration-300",
-        isExpanded ? "p-4" : "p-2"
-      )}>
-        {isExpanded ? (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-sidebar-muted/60 text-[11px] font-medium">Status</span>
-            <span
-              className={cn(
-                "px-2.5 py-1 rounded-full text-[10px] font-semibold capitalize tracking-wide",
-                event?.status === "ongoing" ? "bg-green-500/15 text-green-400 ring-1 ring-green-500/20" :
-                event?.status === "planning" ? "bg-yellow-500/15 text-yellow-400 ring-1 ring-yellow-500/20" :
-                event?.status === "completed" ? "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/20" :
-                "bg-gray-500/15 text-gray-400 ring-1 ring-gray-500/20"
-              )}
-            >
-              {event?.status || "Draft"}
-            </span>
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <div
-              className={cn(
-                "w-2.5 h-2.5 rounded-full transition-all duration-300",
-                event?.status === "ongoing" ? "bg-green-500 notification-pulse" :
-                event?.status === "planning" ? "bg-yellow-500" :
-                event?.status === "completed" ? "bg-blue-500" :
-                "bg-gray-400"
-              )}
-              title={event?.status || "Draft"}
-            />
-          </div>
-        )}
+      {/* User Profile Footer */}
+      <div className="sidebar-gradient-separator">
+        <div className={cn(
+          "relative",
+          isExpanded ? "px-3 pt-3" : "px-2 pt-2"
+        )}>
+          <button
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-xl p-2 transition-all duration-200",
+              "hover:bg-white/[0.08]",
+              userMenuOpen && "bg-white/[0.08]",
+              !isExpanded && "justify-center p-2"
+            )}
+          >
+            <Avatar className={cn(
+              "h-9 w-9 border-2 border-white/10 flex-shrink-0",
+              !isExpanded && "h-8 w-8"
+            )}>
+              <AvatarFallback className="bg-gradient-to-br from-sidebar-primary to-sidebar-primary/70 text-white text-xs font-medium">
+                {isUserLoading ? "..." : getInitials(userName || userEmail || "U")}
+              </AvatarFallback>
+            </Avatar>
+            {isExpanded && (
+              <div className="flex-1 min-w-0 text-left">
+                {isUserLoading ? (
+                  <div className="space-y-1">
+                    <div className="h-3.5 w-20 bg-white/10 rounded animate-pulse" />
+                    <div className="h-3 w-14 bg-white/10 rounded animate-pulse" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-sidebar-foreground truncate leading-tight">
+                      {userName || userEmail?.split("@")[0] || "User"}
+                    </p>
+                    <p className="text-[11px] text-sidebar-muted/60 truncate leading-tight mt-0.5">{getRoleLabel()}</p>
+                  </>
+                )}
+              </div>
+            )}
+            {isExpanded && (
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 text-sidebar-muted/60 flex-shrink-0 transition-transform duration-200",
+                  userMenuOpen && "rotate-180"
+                )}
+              />
+            )}
+          </button>
+
+          {/* User Popover Menu */}
+          {userMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+              <div className={cn(
+                "absolute z-50 w-56 rounded-xl border border-white/10 bg-sidebar shadow-2xl shadow-black/40 overflow-hidden",
+                !isExpanded
+                  ? "left-full bottom-0 ml-2"
+                  : "left-3 right-3 bottom-full mb-2 w-auto"
+              )}>
+                {/* Email */}
+                <div className="px-3 py-2.5 border-b border-white/[0.06]">
+                  <p className="text-xs text-sidebar-muted/50 truncate">{userEmail}</p>
+                </div>
+                {/* Menu Items */}
+                <div className="p-1.5">
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false)
+                      router.push("/help")
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-sidebar-muted hover:text-sidebar-foreground hover:bg-white/[0.06] transition-colors"
+                  >
+                    <HelpCircle className="h-4 w-4 flex-shrink-0" />
+                    <span>Help & Support</span>
+                  </button>
+                </div>
+                {/* Sign Out */}
+                <div className="p-1.5 border-t border-white/[0.06]">
+                  <button
+                    onClick={async () => {
+                      setUserMenuOpen(false)
+                      try {
+                        await fetch("/api/track-logout", { method: "POST" }).catch(() => {})
+                        const authClient = createClient()
+                        await authClient.auth.signOut()
+                        toast.success("Signed out successfully")
+                        router.push("/login")
+                      } catch {
+                        toast.error("Failed to sign out")
+                      }
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4 flex-shrink-0" />
+                    <span>Sign out</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Event Status */}
+        <div className={cn(
+          "transition-all duration-300",
+          isExpanded ? "px-4 py-2 pb-3" : "px-2 py-2 pb-3"
+        )}>
+          {isExpanded ? (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-sidebar-muted/60 text-[11px] font-medium">Status</span>
+              <span
+                className={cn(
+                  "px-2.5 py-1 rounded-full text-[10px] font-semibold capitalize tracking-wide",
+                  event?.status === "ongoing" ? "bg-green-500/15 text-green-400 ring-1 ring-green-500/20" :
+                  event?.status === "planning" ? "bg-yellow-500/15 text-yellow-400 ring-1 ring-yellow-500/20" :
+                  event?.status === "completed" ? "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/20" :
+                  "bg-gray-500/15 text-gray-400 ring-1 ring-gray-500/20"
+                )}
+              >
+                {event?.status || "Draft"}
+              </span>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <div
+                className={cn(
+                  "w-2.5 h-2.5 rounded-full transition-all duration-300",
+                  event?.status === "ongoing" ? "bg-green-500 notification-pulse" :
+                  event?.status === "planning" ? "bg-yellow-500" :
+                  event?.status === "completed" ? "bg-blue-500" :
+                  "bg-gray-400"
+                )}
+                title={event?.status || "Draft"}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   )

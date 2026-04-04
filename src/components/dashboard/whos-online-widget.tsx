@@ -162,7 +162,7 @@ function TeamMemberRow({
         <p className={`text-xs truncate ${isDark ? "text-slate-500" : "text-gray-500"}`}>{member.role}</p>
         {/* Permission badges */}
         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-          {(!member.permissions || member.permissions.length === 0) ? (
+          {(!Array.isArray(member.permissions) || member.permissions.length === 0) ? (
             <span className={`inline-flex items-center px-1.5 py-0 rounded-full text-[10px] font-medium leading-4 ${isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700"}`}>
               Full Access
             </span>
