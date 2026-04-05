@@ -121,9 +121,10 @@ export async function middleware(request: NextRequest) {
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone()
 
-    // Root path: show landing page instead of login redirect
-    if (request.nextUrl.pathname === '/') {
-      url.pathname = '/technosurg.html'
+    // Root path: show landing page for deployments that have one configured
+    const landingPage = process.env.NEXT_PUBLIC_LANDING_PAGE
+    if (request.nextUrl.pathname === '/' && landingPage) {
+      url.pathname = landingPage
       return NextResponse.rewrite(url)
     }
 
