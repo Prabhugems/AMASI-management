@@ -101,15 +101,25 @@ export async function PATCH(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
-    // Check if convocation_number is being assigned (for Airtable sync)
+    // Fetch existing row when we need it for either:
+    //   (a) convocation_number Airtable sync diff, or
+    //   (b) exam_marks JSONB merge so we don't clobber sibling keys
+    //       like amasi_number, remarks, fillout_link, etc.
     let oldConvNo: string | null = null
-    if (updates.convocation_number) {
+    const needsExisting = updates.convocation_number || updates.exam_marks
+    if (needsExisting) {
       const { data: existing } = await db
         .from("registrations")
-        .select("convocation_number")
+        .select("convocation_number, exam_marks")
         .eq("id", id)
         .single()
-      oldConvNo = existing?.convocation_number
+      oldConvNo = existing?.convocation_number ?? null
+
+      // Merge exam_marks: incoming values win, but preserve any existing keys
+      // that aren't in the incoming payload (e.g. amasi_number).
+      if (updates.exam_marks && typeof updates.exam_marks === "object") {
+        updates.exam_marks = { ...(existing?.exam_marks || {}), ...updates.exam_marks }
+      }
     }
 
     const { data, error } = await db
