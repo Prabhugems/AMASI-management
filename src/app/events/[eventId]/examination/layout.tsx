@@ -74,8 +74,8 @@ export default function ExaminationLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex h-[calc(100vh-6rem)] -mx-4 sm:-mx-6 -mb-4 sm:-mb-6">
-      <div className="w-56 border-r bg-muted/30 flex flex-col">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] -mx-4 sm:-mx-6 -mb-4 sm:-mb-6">
+      <div className="hidden lg:flex w-56 border-r bg-muted/30 flex-col flex-shrink-0">
         <Link href={`/events/${eventId}`} className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground border-b">
           <ChevronLeft className="h-4 w-4" />Back to Event
         </Link>
@@ -97,6 +97,28 @@ export default function ExaminationLayout({ children }: { children: React.ReactN
                 )}
               >
                 <Icon className="h-4 w-4" />
+                {item.title}
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
+      {/* Mobile: horizontal scrollable tabs */}
+      <div className="lg:hidden border-b bg-muted/30 overflow-x-auto flex-shrink-0">
+        <nav className="flex items-center gap-1 p-2 min-w-max">
+          {sidebarItems.map((item) => {
+            const Icon = item.icon
+            const active = isActive(item.href)
+            return (
+              <Link
+                key={item.href}
+                href={`${basePath}${item.href}`}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg whitespace-nowrap transition-colors",
+                  active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
                 {item.title}
               </Link>
             )

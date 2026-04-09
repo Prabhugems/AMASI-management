@@ -320,9 +320,9 @@ export default function SpeakersLayout({
 
   // Regular layout for admin users (within event layout)
   return (
-    <div className="flex h-[calc(100vh-6rem)] -mx-4 sm:-mx-6 -mb-4 sm:-mb-6">
-      {/* Sidebar */}
-      <div className="w-56 border-r bg-muted/30 flex flex-col">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] -mx-4 sm:-mx-6 -mb-4 sm:-mb-6">
+      {/* Desktop: vertical sidebar */}
+      <div className="hidden lg:flex w-56 border-r bg-muted/30 flex-col flex-shrink-0">
         {/* Back link */}
         <Link
           href={`/events/${eventId}`}
@@ -365,6 +365,30 @@ export default function SpeakersLayout({
               )
             })
           )}
+        </nav>
+      </div>
+      {/* Mobile: horizontal scrollable tabs */}
+      <div className="lg:hidden border-b bg-muted/30 overflow-x-auto flex-shrink-0">
+        <nav className="flex items-center gap-1 p-2 min-w-max">
+          {sidebarItems.map((item) => {
+            const Icon = item.icon
+            const active = isActive(item.href)
+            return (
+              <Link
+                key={item.href}
+                href={`${basePath}${item.href}`}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg whitespace-nowrap transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {item.title}
+              </Link>
+            )
+          })}
         </nav>
       </div>
 
