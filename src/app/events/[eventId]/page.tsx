@@ -952,34 +952,34 @@ export default function EventDashboardPage() {
             </h5>
           </div>
           <div className="p-5 space-y-4">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Type</span>
-              <span className="font-medium capitalize">{event.event_type}</span>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground flex-shrink-0">Type</span>
+              <span className="font-medium capitalize text-right">{event.event_type}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Edition</span>
-              <span className="font-medium">{event.edition || "—"}</span>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground flex-shrink-0">Edition</span>
+              <span className="font-medium text-right">{event.edition || "—"}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Venue</span>
-              <span className="font-medium">{event.venue_name || "TBD"}</span>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground flex-shrink-0">Venue</span>
+              <span className="font-medium text-right">{event.venue_name || "TBD"}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Location</span>
-              <span className="font-medium">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground flex-shrink-0">Location</span>
+              <span className="font-medium text-right">
                 {event.city ? `${event.city}, ${event.state || ""}` : "TBD"}
               </span>
             </div>
             {event.scientific_chairman && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Scientific Chairman</span>
-                <span className="font-medium">{event.scientific_chairman}</span>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground flex-shrink-0">Scientific Chairman</span>
+                <span className="font-medium text-right">{event.scientific_chairman}</span>
               </div>
             )}
             {event.organizing_chairman && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Organizing Chairman</span>
-                <span className="font-medium">{event.organizing_chairman}</span>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground flex-shrink-0">Organizing Chairman</span>
+                <span className="font-medium text-right">{event.organizing_chairman}</span>
               </div>
             )}
           </div>
