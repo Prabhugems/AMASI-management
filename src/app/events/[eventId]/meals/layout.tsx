@@ -1,9 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { useParams, usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { UtensilsCrossed, BookOpen } from "lucide-react"
+import { UtensilsCrossed, BookOpen, ChevronDown } from "lucide-react"
 
 const navItems = [
   { href: "", label: "Meals", icon: UtensilsCrossed },
@@ -15,6 +16,7 @@ export default function MealsLayout({
 }: {
   children: React.ReactNode
 }) {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const params = useParams()
   const pathname = usePathname()
   const eventId = params.eventId as string
@@ -53,33 +55,57 @@ export default function MealsLayout({
           })}
         </nav>
       </div>
-      {/* Mobile: horizontal scrollable tabs */}
-      <div className="lg:hidden border-b bg-muted/30 overflow-x-auto flex-shrink-0">
-        <nav className="flex items-center gap-1 p-2 min-w-max">
-          {navItems.map((item) => {
-            const href = `${basePath}${item.href}`
-            const isActive = item.href === ""
-              ? pathname === basePath
-              : pathname.startsWith(href)
-
-            return (
-              <Link
-                key={item.href}
-                href={href}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg whitespace-nowrap transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <item.icon className="h-3.5 w-3.5" />
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
-      </div>
+      {/* Mobile: sticky bar + bottom sheet */}
+      {(() => {
+        const activeItem = navItems.find((item) => {
+          const href = `${basePath}${item.href}`
+          return item.href === "" ? pathname === basePath : pathname.startsWith(href)
+        }) || navItems[0]
+        const ActiveIcon = activeItem.icon
+        return (
+          <>
+            <div className="lg:hidden flex items-center justify-between px-4 py-2.5 border-b bg-muted/30 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <ActiveIcon className="h-4 w-4" />
+                <span className="text-sm font-medium">{activeItem.label}</span>
+              </div>
+              <button onClick={() => setMobileNavOpen(true)} className="p-1">
+                <ChevronDown className="h-5 w-5" />
+              </button>
+            </div>
+            {mobileNavOpen && (
+              <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMobileNavOpen(false)} />
+            )}
+            <div className={cn(
+              "lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background rounded-t-2xl shadow-2xl max-h-[70vh] overflow-y-auto transition-transform duration-300",
+              mobileNavOpen ? "translate-y-0" : "translate-y-full"
+            )}>
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto my-3" />
+              <div className="px-4 pb-2 font-semibold text-lg border-b">Meals</div>
+              <nav className="p-2 space-y-1">
+                {navItems.map((item) => {
+                  const href = `${basePath}${item.href}`
+                  const isActive = item.href === "" ? pathname === basePath : pathname.startsWith(href)
+                  return (
+                    <Link
+                      key={item.href}
+                      href={href}
+                      onClick={() => setMobileNavOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 text-sm rounded-md transition-colors",
+                        isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </nav>
+            </div>
+          </>
+        )
+      })()}
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
