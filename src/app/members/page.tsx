@@ -336,7 +336,7 @@ export default function MembersPage() {
             </div>
 
             {/* Stats Bar */}
-            <div className="flex items-center gap-4 sm:gap-6 mb-4 overflow-x-auto">
+            <div className="flex items-center gap-4 sm:gap-6 mb-4 flex-wrap overflow-x-auto">
               <div className="flex items-center gap-2 flex-shrink-0">
                 <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <IdCard className="h-4 w-4 text-primary" />

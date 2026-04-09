@@ -437,7 +437,7 @@ export default function StaffCheckinPage() {
 
       {/* Stats Bar */}
       <div className="bg-black/10 px-4 py-3">
-        <div className="flex items-center justify-center gap-8 max-w-2xl mx-auto">
+        <div className="flex items-center justify-center gap-3 sm:gap-8 max-w-2xl mx-auto">
           <div className="text-center">
             <p className="text-3xl font-bold text-emerald-400">{stats.checkedIn}</p>
             <p className="text-xs text-white/50 font-medium">Checked In</p>
@@ -620,7 +620,7 @@ export default function StaffCheckinPage() {
               ) : (
                 <>
                   <div className="relative">
-                    <div id="qr-reader" className="w-full" style={{ minHeight: "300px" }} />
+                    <div id="qr-reader" className="w-full" style={{ minHeight: "250px" }} />
                     {!scannerReady && (
                       <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
                         <div className="text-center">
@@ -693,7 +693,7 @@ export default function StaffCheckinPage() {
                   onChange={(e) => setInputValue(e.target.value.toUpperCase())}
                   onKeyDown={handleKeyDown}
                   placeholder="Enter reg number..."
-                  className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 text-center text-lg font-mono tracking-wider"
+                  className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 text-center text-base sm:text-lg font-mono tracking-wider"
                   disabled={processing}
                   autoFocus
                   autoComplete="off"

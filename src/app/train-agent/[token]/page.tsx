@@ -355,7 +355,7 @@ export default function TrainAgentPortal() {
 
       {/* Edit Sheet */}
       <Sheet open={!!editingSpeaker} onOpenChange={(open) => !open && setEditingSpeaker(null)}>
-        <ResizableSheetContent defaultWidth={650} minWidth={450} maxWidth={950} storageKey="train-agent-sheet-width" className="overflow-y-auto p-0">
+        <ResizableSheetContent defaultWidth={650} minWidth={320} maxWidth={950} storageKey="train-agent-sheet-width" className="overflow-y-auto p-0">
           <div className="px-6 py-4 border-b bg-gradient-to-r from-orange-50 to-orange-100/50">
             <SheetHeader>
               <SheetTitle className="flex items-center gap-3">
@@ -368,7 +368,7 @@ export default function TrainAgentPortal() {
             </SheetHeader>
           </div>
 
-          <div className="grid grid-cols-2 gap-0 divide-x">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:divide-x">
             {/* LEFT: Request */}
             <div className="p-5 bg-slate-50/50">
               <h3 className="font-semibold text-sm mb-4">Passenger Request</h3>
@@ -448,13 +448,13 @@ export default function TrainAgentPortal() {
                   <div><Label className="text-xs">To</Label><Input value={trainForm.to_station} onChange={(e) => setTrainForm({ ...trainForm, to_station: e.target.value })} className="mt-1" /></div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div><Label className="text-xs">Date</Label><Input type="date" value={trainForm.departure_date} onChange={(e) => setTrainForm({ ...trainForm, departure_date: e.target.value })} className="mt-1" /></div>
                   <div><Label className="text-xs">Departure</Label><Input value={trainForm.departure_time} onChange={(e) => setTrainForm({ ...trainForm, departure_time: e.target.value })} placeholder="08:30" className="mt-1 font-mono" /></div>
                   <div><Label className="text-xs">Arrival</Label><Input value={trainForm.arrival_time} onChange={(e) => setTrainForm({ ...trainForm, arrival_time: e.target.value })} placeholder="14:45" className="mt-1 font-mono" /></div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div><Label className="text-xs">PNR</Label><Input value={trainForm.pnr} onChange={(e) => setTrainForm({ ...trainForm, pnr: e.target.value.toUpperCase() })} className="mt-1 font-mono" /></div>
                   <div><Label className="text-xs">Coach</Label><Input value={trainForm.coach} onChange={(e) => setTrainForm({ ...trainForm, coach: e.target.value.toUpperCase() })} className="mt-1" /></div>
                   <div><Label className="text-xs">Seat</Label><Input value={trainForm.seat} onChange={(e) => setTrainForm({ ...trainForm, seat: e.target.value })} className="mt-1" /></div>

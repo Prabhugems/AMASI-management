@@ -139,7 +139,7 @@ const navItems: NavItem[] = [
   { label: "Settings", href: "/settings", icon: Settings },
 ]
 
-export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
+export function EventSidebar({ onNavigate, mobileOpen, onMobileClose }: { onNavigate?: () => void; mobileOpen?: boolean; onMobileClose?: () => void } = {}) {
   const pathname = usePathname()
   const params = useParams()
   const eventId = params.eventId as string
@@ -333,7 +333,7 @@ export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   })
 
   const basePath = `/events/${eventId}`
-  const isExpanded = isHovered || isPinned
+  const isExpanded = isHovered || isPinned || !!mobileOpen
 
   const isItemActive = (item: NavItem) => {
     const href = `${basePath}${item.href}`
@@ -343,17 +343,32 @@ export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
     return pathname === href || pathname.startsWith(href + "/")
   }
 
+  const handleNavigate = () => {
+    onNavigate?.()
+    onMobileClose?.()
+  }
+
   return (
+    <>
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity duration-300"
+          onClick={onMobileClose}
+        />
+      )}
     <aside
       ref={sidebarRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-sidebar flex flex-col event-sidebar print:hidden",
+        "fixed left-0 top-0 z-50 h-screen bg-sidebar flex flex-col event-sidebar print:hidden",
         "sidebar-glass sidebar-border-gradient sidebar-inner-shadow",
         "transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
-        isExpanded && "shadow-2xl shadow-black/20"
+        isExpanded && "shadow-2xl shadow-black/20",
+        // Mobile: hidden by default, slide in when open
+        mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}
     >
       {/* Back Button & Pin Toggle */}
@@ -491,7 +506,7 @@ export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
               )}
             <Link
               href={href}
-              onClick={onNavigate}
+              onClick={handleNavigate}
               title={!isExpanded ? (needsAttention ? `${item.label} - Needs setup` : item.label) : undefined}
               className={cn(
                 "flex items-center rounded-xl transition-all duration-200 group relative",
@@ -681,5 +696,6 @@ export function EventSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
         </div>
       </div>
     </aside>
+    </>
   )
 }

@@ -509,7 +509,7 @@ export default function FlightAgentPortal() {
 
       {/* Edit Sheet */}
       <Sheet open={!!editingSpeaker} onOpenChange={(open) => !open && setEditingSpeaker(null)}>
-        <ResizableSheetContent defaultWidth={700} minWidth={500} maxWidth={1000} storageKey="flight-agent-sheet-width" className="overflow-y-auto p-0">
+        <ResizableSheetContent defaultWidth={700} minWidth={320} maxWidth={1000} storageKey="flight-agent-sheet-width" className="overflow-y-auto p-0">
           <div className={cn(
             "px-6 py-4 border-b",
             editingType === "onward" ? "bg-gradient-to-r from-blue-50 to-blue-100/50" : "bg-gradient-to-r from-purple-50 to-purple-100/50"
@@ -527,7 +527,7 @@ export default function FlightAgentPortal() {
             </SheetHeader>
           </div>
 
-          <div className="grid grid-cols-2 gap-0 divide-x">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:divide-x">
             {/* LEFT: Speaker's Request */}
             <div className="p-5 bg-slate-50/50">
               <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
@@ -669,7 +669,7 @@ export default function FlightAgentPortal() {
                   <div><Label className="text-xs">To</Label><Input value={bookingForm.to_city} onChange={(e) => setBookingForm({ ...bookingForm, to_city: e.target.value })} className="mt-1" /></div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div><Label className="text-xs">Date</Label><Input type="date" value={bookingForm.departure_date} onChange={(e) => setBookingForm({ ...bookingForm, departure_date: e.target.value })} className="mt-1" /></div>
                   <div><Label className="text-xs">Departure</Label><Input value={bookingForm.departure_time} onChange={(e) => setBookingForm({ ...bookingForm, departure_time: e.target.value })} placeholder="08:30" maxLength={5} className="mt-1 font-mono" /></div>
                   <div><Label className="text-xs">Arrival</Label><Input value={bookingForm.arrival_time} onChange={(e) => setBookingForm({ ...bookingForm, arrival_time: e.target.value })} placeholder="14:45" maxLength={5} className="mt-1 font-mono" /></div>

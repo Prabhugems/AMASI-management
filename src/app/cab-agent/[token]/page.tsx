@@ -306,7 +306,7 @@ export default function CabAgentPortal() {
 
       {/* Edit Sheet */}
       <Sheet open={!!editingGuest} onOpenChange={(open) => !open && setEditingGuest(null)}>
-        <ResizableSheetContent defaultWidth={600} minWidth={450} maxWidth={900} storageKey="cab-agent-sheet-width" className="overflow-y-auto p-0">
+        <ResizableSheetContent defaultWidth={600} minWidth={320} maxWidth={900} storageKey="cab-agent-sheet-width" className="overflow-y-auto p-0">
           <div className={cn(
             "px-6 py-4 border-b",
             editingType === "pickup" ? "bg-gradient-to-r from-green-50 to-green-100/50" : "bg-gradient-to-r from-red-50 to-red-100/50"
@@ -324,7 +324,7 @@ export default function CabAgentPortal() {
             </SheetHeader>
           </div>
 
-          <div className="grid grid-cols-2 gap-0 divide-x">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:divide-x">
             {/* LEFT: Guest Info */}
             <div className="p-5 bg-slate-50/50">
               <h3 className="font-semibold text-sm mb-4">Guest Details</h3>

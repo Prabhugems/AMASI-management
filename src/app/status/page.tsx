@@ -287,7 +287,7 @@ function StatusPageContent() {
             {/* Attendee Info */}
             <div className="p-6 border-b">
               <h3 className="font-semibold text-lg text-gray-900 mb-4">{registration.attendee_name}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 text-sm">
                 <div className="flex items-center gap-2 text-gray-600">
                   <Mail className="h-4 w-4" />
                   <span>{registration.attendee_email}</span>
@@ -317,7 +317,7 @@ function StatusPageContent() {
             {registration.event && (
               <div className="p-6 border-b bg-gray-50">
                 <h4 className="font-medium text-gray-900 mb-3">{registration.event.name}</h4>
-                <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap gap-2 sm:gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
                     <span>

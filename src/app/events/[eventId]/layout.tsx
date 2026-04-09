@@ -71,16 +71,11 @@ export default function EventLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile sidebar overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
-      <div className={`lg:block ${mobileMenuOpen ? 'block' : 'hidden'}`}>
-        <EventSidebar onNavigate={() => setMobileMenuOpen(false)} />
-      </div>
+      <EventSidebar
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
+        onNavigate={() => setMobileMenuOpen(false)}
+      />
       <div className="lg:pl-16 transition-all duration-300 print:pl-0">
         <Header sidebarCollapsed={false} onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
         <main className="px-4 sm:px-6 pt-16 print:p-0 print:pt-0">

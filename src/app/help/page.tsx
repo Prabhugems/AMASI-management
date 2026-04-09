@@ -556,7 +556,7 @@ export default function HelpPage() {
           // Section Grid
           <div className="grid gap-6">
             {/* Quick Actions */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
               <Link
                 href="/events"
                 className="flex flex-col items-center gap-2 p-4 bg-card border rounded-xl hover:shadow-md transition-shadow"

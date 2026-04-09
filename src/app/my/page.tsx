@@ -685,7 +685,7 @@ export default function DelegatePortalPage() {
             <div className="w-20 h-20 bg-white/10 backdrop-blur-lg rounded-2xl flex items-center justify-center mx-auto mb-4 ring-1 ring-white/20 shadow-lg shadow-indigo-500/10">
               <User className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Delegate Portal</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Delegate Portal</h1>
             <p className="text-white/70">Access your badge, certificate & event details</p>
           </motion.div>
 
@@ -896,7 +896,7 @@ export default function DelegatePortalPage() {
             <div className="w-16 h-16 bg-white/10 backdrop-blur-lg rounded-2xl flex items-center justify-center mx-auto mb-4 ring-1 ring-white/20">
               <Calendar className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">
               Welcome, {registrations[0].attendee_name}!
             </h1>
             <p className="text-white/70">You have {registrations.length} event registrations</p>
@@ -1070,17 +1070,17 @@ export default function DelegatePortalPage() {
             </div>
             <div className="flex items-center justify-center gap-4 mt-3">
               <div className="text-center">
-                <div className="text-3xl font-bold text-white tabular-nums">{countdown.days}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums">{countdown.days}</div>
                 <div className="text-xs text-white/60 uppercase tracking-wider">days</div>
               </div>
-              <div className="text-xl text-white/40 font-light">:</div>
+              <div className="text-lg sm:text-xl text-white/40 font-light">:</div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-white tabular-nums">{countdown.hours}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums">{countdown.hours}</div>
                 <div className="text-xs text-white/60 uppercase tracking-wider">hours</div>
               </div>
-              <div className="text-xl text-white/40 font-light">:</div>
+              <div className="text-lg sm:text-xl text-white/40 font-light">:</div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-white tabular-nums">{countdown.minutes}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums">{countdown.minutes}</div>
                 <div className="text-xs text-white/60 uppercase tracking-wider">mins</div>
               </div>
             </div>
@@ -1092,11 +1092,11 @@ export default function DelegatePortalPage() {
           <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-xl overflow-hidden">
             {event.banner_url ? (
               <div
-                className="h-28 bg-cover bg-center"
+                className="h-20 sm:h-28 bg-cover bg-center"
                 style={{ backgroundImage: `url(${event.banner_url})` }}
               />
             ) : (
-              <div className="h-28 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 flex items-center justify-center relative overflow-hidden">
+              <div className="h-20 sm:h-28 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 flex items-center justify-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGMzLjg2NyAwIDcuNDQ3LTEuMjIgMTAuMzgyLTMuMjk0IiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiIHN0cm9rZS13aWR0aD0iMiIvPjwvZz48L3N2Zz4=')] opacity-30" />
                 <h2 className="text-white/10 text-4xl font-black tracking-widest select-none relative">
                   {(event.short_name || event.name).toUpperCase()}
@@ -1143,7 +1143,7 @@ export default function DelegatePortalPage() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.2 }}
-              className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-3xl font-bold shadow-lg shadow-indigo-500/30"
+              className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-3xl font-bold shadow-lg shadow-indigo-500/30"
             >
               {registration.attendee_name.charAt(0).toUpperCase()}
             </motion.div>
@@ -1287,7 +1287,7 @@ export default function DelegatePortalPage() {
                   <Mail className="w-4 h-4" />
                   Email
                 </span>
-                <span className="text-sm text-gray-700">{registration.attendee_email}</span>
+                <span className="text-sm text-gray-700 truncate">{registration.attendee_email}</span>
               </div>
             )}
 
@@ -1297,7 +1297,7 @@ export default function DelegatePortalPage() {
                   <Phone className="w-4 h-4" />
                   Phone
                 </span>
-                <span className="text-sm text-gray-700">{registration.attendee_phone}</span>
+                <span className="text-sm text-gray-700 truncate">{registration.attendee_phone}</span>
               </div>
             )}
           </div>

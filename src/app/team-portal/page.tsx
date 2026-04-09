@@ -465,7 +465,7 @@ function EventCard({
                         <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white", module.color)}>
                           <Icon className="h-4 w-4" />
                         </div>
-                        <span className="text-sm font-medium">{module.label}</span>
+                        <span className="text-xs sm:text-sm font-medium">{module.label}</span>
                       </Link>
                     )
                   })}
@@ -491,7 +491,7 @@ function EventCard({
                         <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white", module.color)}>
                           <Icon className="h-4 w-4" />
                         </div>
-                        <span className="text-sm font-medium">{module.label}</span>
+                        <span className="text-xs sm:text-sm font-medium">{module.label}</span>
                       </Link>
                     )
                   })}

@@ -271,7 +271,7 @@ export default function BecomeReviewerPage() {
           <div className="space-y-3">
             <Label className="text-base font-semibold">Specialty Interests</Label>
             <p className="text-sm text-muted-foreground">Select all areas you can review</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {SPECIALTIES.map((specialty) => (
                 <div key={specialty} className="flex items-center space-x-2">
                   <Checkbox

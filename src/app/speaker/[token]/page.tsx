@@ -790,7 +790,7 @@ export default function SpeakerPortalPage() {
                     </div>
 
                     {/* Response buttons */}
-                    <div className="flex gap-2 mt-3">
+                    <div className="flex flex-wrap gap-2 mt-3">
                       <Button
                         size="sm"
                         variant={responses[assignment.id] === "confirmed" ? "default" : "outline"}

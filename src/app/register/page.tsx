@@ -281,7 +281,7 @@ function FilterDropdown({
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full left-0 mt-2 w-48 py-2 rounded-xl bg-card border border-border shadow-lg z-20">
+          <div className="absolute top-full left-0 mt-2 w-full sm:w-48 py-2 rounded-xl bg-card border border-border shadow-lg z-20">
             {options.map((option) => (
               <button
                 key={option.value}
@@ -633,7 +633,7 @@ export default function RegisterPage() {
 
       {/* Events Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="paper-card overflow-hidden animate-pulse">
               <div className="h-48 bg-secondary" />
@@ -646,7 +646,7 @@ export default function RegisterPage() {
           ))}
         </div>
       ) : filteredEvents && filteredEvents.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {filteredEvents.map((event, index) => (
             <EventCard key={event.id} event={event} isDark={isDark} index={index} />
           ))}

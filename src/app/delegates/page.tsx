@@ -179,7 +179,7 @@ export default function GlobalAttendeesPage() {
                 <h1 className="text-2xl font-bold text-foreground">Attendees</h1>
                 <p className="text-muted-foreground mt-1">Manage attendees across all events</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <Button variant="outline" size="sm" onClick={handleExport}>
                   <Download className="h-4 w-4 mr-2" />
                   Export

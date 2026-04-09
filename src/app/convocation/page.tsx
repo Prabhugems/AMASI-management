@@ -327,7 +327,7 @@ function ConvocationPortalPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-wider text-white/60">Convocation Number</p>
-                    <p className="text-2xl sm:text-3xl font-mono font-bold mt-1">{data.convocation_number}</p>
+                    <p className="text-lg sm:text-2xl md:text-3xl font-mono font-bold mt-1">{data.convocation_number}</p>
                   </div>
                   <CopyButton text={data.convocation_number} />
                 </div>

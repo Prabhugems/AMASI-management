@@ -162,7 +162,7 @@ function LoginForm() {
       </div>
 
       {/* Right Panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
@@ -175,7 +175,7 @@ function LoginForm() {
             </div>
           </div>
 
-          <div className="paper-card p-8">
+          <div className="paper-card p-4 sm:p-6 md:p-8">
             {!supabaseConfigured ? (
               <div className="text-center">
                 <div className="h-16 w-16 rounded-full bg-warning/20 flex items-center justify-center mx-auto mb-4">

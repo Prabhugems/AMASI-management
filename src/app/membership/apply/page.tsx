@@ -348,7 +348,7 @@ export default function MembershipApplyPage() {
                       value={formData.mobile_code}
                       onChange={(e) => handleChange("mobile_code", e.target.value)}
                       placeholder="+91"
-                      className="w-20"
+                      className="w-16 sm:w-20"
                     />
                     <Input
                       type="tel"
@@ -367,7 +367,7 @@ export default function MembershipApplyPage() {
                       value={formData.std_code}
                       onChange={(e) => handleChange("std_code", e.target.value)}
                       placeholder="STD"
-                      className="w-20"
+                      className="w-16 sm:w-20"
                     />
                     <Input
                       value={formData.landline}

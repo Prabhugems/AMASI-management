@@ -255,7 +255,7 @@ export default function KioskPage() {
         </div>
 
         {/* Result Content */}
-        <div className="flex-1 flex items-center justify-center p-8">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 py-8">
           <div className="max-w-2xl w-full text-center">
             {result.success ? (
               <>
@@ -276,7 +276,7 @@ export default function KioskPage() {
 
                 {/* Details Card */}
                 <div className="bg-white/10 backdrop-blur rounded-2xl p-8 mb-8 text-left">
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
                     <div className="flex items-start gap-4">
                       <User className="h-6 w-6 text-white/60 mt-1" />
                       <div>
@@ -391,7 +391,7 @@ export default function KioskPage() {
       onClick={() => inputRef.current?.focus()}
     >
       {/* Header */}
-      <div className="bg-black/20 px-8 py-6">
+      <div className="bg-black/20 px-4 sm:px-8 py-4 sm:py-6">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white">{event?.short_name || event?.name || "Event"}</h1>
@@ -422,7 +422,7 @@ export default function KioskPage() {
         <div className="max-w-2xl w-full">
           {/* QR Icon */}
           <div className="text-center mb-8">
-            <div className="w-40 h-40 mx-auto rounded-3xl bg-white/10 flex items-center justify-center mb-6">
+            <div className="w-24 h-24 sm:w-40 sm:h-40 mx-auto rounded-3xl bg-white/10 flex items-center justify-center mb-6">
               <QrCode className="h-24 w-24 text-white/80" />
             </div>
             <h2 className="text-4xl font-bold text-white mb-2">Self Check-in</h2>
@@ -439,7 +439,7 @@ export default function KioskPage() {
                 value={registrationNumber}
                 onChange={(e) => setRegistrationNumber(e.target.value.toUpperCase())}
                 onKeyPress={handleKeyPress}
-                className="h-20 text-2xl text-center bg-white text-slate-900 border-0 rounded-xl placeholder:text-slate-400"
+                className="h-14 sm:h-20 text-lg sm:text-2xl text-center bg-white text-slate-900 border-0 rounded-xl placeholder:text-slate-400"
                 autoComplete="off"
                 autoFocus
               />
@@ -448,7 +448,7 @@ export default function KioskPage() {
 
             <Button
               size="lg"
-              className="w-full h-20 mt-6 text-2xl font-semibold bg-green-600 hover:bg-green-700 rounded-xl"
+              className="w-full h-14 sm:h-20 mt-6 text-lg sm:text-2xl font-semibold bg-green-600 hover:bg-green-700 rounded-xl"
               onClick={handleCheckin}
               disabled={isProcessing || !registrationNumber.trim()}
             >
@@ -467,7 +467,7 @@ export default function KioskPage() {
           </div>
 
           {/* Instructions */}
-          <div className="mt-8 grid grid-cols-2 gap-6">
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="bg-white/5 rounded-xl p-6 flex items-start gap-4">
               <Camera className="h-8 w-8 text-blue-400 flex-shrink-0" />
               <div>

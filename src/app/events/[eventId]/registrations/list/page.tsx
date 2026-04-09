@@ -1383,7 +1383,7 @@ function RegistrationsContent() {
             Manage event registrations and attendees
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {event?.slug && (
             <Button
               variant="outline"
@@ -1457,7 +1457,7 @@ function RegistrationsContent() {
 
       {/* Sticky Bulk Actions Toolbar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-40 px-6 py-3 flex items-center justify-between">
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-40 px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <CheckSquare className="h-5 w-5 text-primary" />
@@ -1467,7 +1467,7 @@ function RegistrationsContent() {
               Clear
             </Button>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"

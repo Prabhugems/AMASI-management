@@ -472,7 +472,7 @@ export default function MarksheetPage() {
             {examSettings?.exam_type.toUpperCase()} Examination - {examSettings?.mark_columns.map(c => `${c.label}(${c.max})`).join(" + ")} = {totalMax} marks
           </p>
         </div>
-        <div className="flex items-center gap-2 no-print">
+        <div className="flex flex-wrap items-center gap-2 no-print">
           <Button onClick={() => openDownloadDialog("attendance")} variant="outline" size="sm" className="gap-2">
             <ClipboardList className="h-4 w-4" />
             Attendance PDF
@@ -549,7 +549,7 @@ export default function MarksheetPage() {
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-3 no-print">
+      <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3 no-print">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -564,7 +564,7 @@ export default function MarksheetPage() {
           </span>
         </div>
         <Select value={ticketFilter} onValueChange={setTicketFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="All Tickets" />
           </SelectTrigger>
           <SelectContent>

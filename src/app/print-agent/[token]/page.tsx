@@ -438,7 +438,7 @@ export default function PrintAgentPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-800 px-6 py-4">
+      <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
@@ -481,7 +481,7 @@ export default function PrintAgentPage() {
       <div className="flex-1 p-6">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 text-center">
               <p className="text-4xl font-bold text-blue-400">{jobsProcessed}</p>
               <p className="text-sm text-gray-400 mt-1">Badges Printed</p>

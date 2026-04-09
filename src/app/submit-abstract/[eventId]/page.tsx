@@ -1124,7 +1124,7 @@ export default function SubmitAbstractPage() {
                       value={formData.presentation_type}
                       onValueChange={(value) => updateFormData("presentation_type", value)}
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div
                           className={`flex flex-col items-center justify-center border rounded-xl p-6 cursor-pointer hover:bg-gray-50 transition-all ${
                             formData.presentation_type === "paper" ? "border-primary bg-primary/5 ring-2 ring-primary" : ""
@@ -1296,7 +1296,7 @@ export default function SubmitAbstractPage() {
                 {/* File Upload Section */}
                 {uploadMode === "file" && (
                   <>
-                    <div className="border-2 border-dashed rounded-lg p-8 text-center">
+                    <div className="border-2 border-dashed rounded-lg p-4 sm:p-6 md:p-8 text-center">
                       <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <p className="text-muted-foreground mb-2">
                         Drag and drop your file here, or click to browse

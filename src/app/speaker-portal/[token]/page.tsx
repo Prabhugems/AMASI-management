@@ -192,7 +192,7 @@ export default function SpeakerPortalPage() {
             </div>
 
             {/* Status Summary */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
               <div className={cn(
                 "rounded-lg p-3 text-center",
                 speaker.bio_submitted ? "bg-green-50 border border-green-200" : "bg-amber-50 border border-amber-200"
@@ -258,7 +258,7 @@ export default function SpeakerPortalPage() {
                   value={bioText}
                   onChange={(e) => setBioText(e.target.value)}
                   placeholder="Enter your professional bio here..."
-                  rows={6}
+                  rows={4}
                   className="resize-none"
                 />
                 {bioText && (
