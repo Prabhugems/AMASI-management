@@ -244,6 +244,7 @@ interface Registration {
   certificate_generated_at?: string
   certificate_url?: string
   convocation_number?: string
+  convocation_address?: Record<string, any> | null
   exam_result?: string
   exam_marks?: Record<string, any>
   checkin_token?: string
@@ -1503,39 +1504,65 @@ export default function DelegatePortalPage() {
 
         {/* Certificate Dispatch - Full width prominent banner */}
         {registration.exam_marks?.fillout_link && (
-          <motion.button
-            variants={itemVariants}
-            whileHover={{ scale: 1.01, y: -2 }}
-            whileTap={{ scale: 0.99 }}
-            onClick={() => { haptic("medium"); window.open(registration.exam_marks?.fillout_link, "_blank") }}
-            className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 bg-[length:200%_auto] animate-gradient text-white rounded-2xl shadow-xl shadow-purple-500/20 p-6 hover:shadow-2xl transition-shadow text-left relative overflow-hidden"
-          >
-            {/* Urgency pulse */}
-            <div className="absolute top-3 right-3 flex items-center gap-1.5">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
-              </span>
-              <span className="text-xs font-bold text-red-200 uppercase tracking-wider">Action Required</span>
-            </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mt-2">
-              <div className="flex items-center gap-3 sm:gap-4">
+          registration.convocation_address ? (
+            <motion.div
+              variants={itemVariants}
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-2xl shadow-xl shadow-green-500/20 p-6 text-left relative overflow-hidden"
+            >
+              <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4 text-green-200" />
+                <span className="text-xs font-bold text-green-200 uppercase tracking-wider">Address Received</span>
+              </div>
+              <div className="flex items-center gap-3 sm:gap-4 mt-2">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
                   <Truck className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-bold text-base sm:text-lg">FMAS Certificate Dispatch</h3>
-                  <p className="text-white/80 text-sm mt-0.5">Fill your address details for certificate delivery</p>
-                  <p className="text-white/60 text-xs mt-1">Mandatory - Please complete this form to receive your certificate</p>
+                  <p className="text-white/80 text-sm mt-0.5">
+                    {registration.convocation_address.city && registration.convocation_address.state
+                      ? `${registration.convocation_address.city}, ${registration.convocation_address.state} - ${registration.convocation_address.pincode || ""}`
+                      : "Your address has been received"}
+                  </p>
+                  <p className="text-white/60 text-xs mt-1">Your certificate will be dispatched to this address</p>
                 </div>
               </div>
-              <div className="flex-shrink-0 w-full sm:w-auto">
-                <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2.5 text-sm font-semibold text-center min-h-[44px] flex items-center justify-center">
-                  Fill Now &rarr;
+            </motion.div>
+          ) : (
+            <motion.button
+              variants={itemVariants}
+              whileHover={{ scale: 1.01, y: -2 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => { haptic("medium"); window.open(registration.exam_marks?.fillout_link, "_blank") }}
+              className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 bg-[length:200%_auto] animate-gradient text-white rounded-2xl shadow-xl shadow-purple-500/20 p-6 hover:shadow-2xl transition-shadow text-left relative overflow-hidden"
+            >
+              {/* Urgency pulse */}
+              <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                </span>
+                <span className="text-xs font-bold text-red-200 uppercase tracking-wider">Action Required</span>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mt-2">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Truck className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-base sm:text-lg">FMAS Certificate Dispatch</h3>
+                    <p className="text-white/80 text-sm mt-0.5">Fill your address details for certificate delivery</p>
+                    <p className="text-white/60 text-xs mt-1">Mandatory - Please complete this form to receive your certificate</p>
+                  </div>
+                </div>
+                <div className="flex-shrink-0 w-full sm:w-auto">
+                  <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2.5 text-sm font-semibold text-center min-h-[44px] flex items-center justify-center">
+                    Fill Now &rarr;
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.button>
+            </motion.button>
+          )
         )}
 
         {/* Pending Payments Section */}
