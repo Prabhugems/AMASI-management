@@ -529,23 +529,28 @@ function PrintStationKioskPage() {
     }
   }, [])
 
-  // Local print proxy detection (checks localhost:3001)
+  // Local print proxy detection (tries HTTPS:3002 first for mixed-content, falls back to HTTP:3001)
+  const [proxyUrl, setProxyUrl] = useState("")
   useEffect(() => {
     let active = true
     const checkProxy = async () => {
-      try {
-        const res = await fetch("http://localhost:3001/status", { signal: AbortSignal.timeout(2000) })
-        if (!active) return
-        if (res.ok) {
-          const data = await res.json()
-          setProxyOnline(true)
-          setProxyPrinters(data.printers || [])
-        } else {
-          setProxyOnline(false)
+      // Try HTTPS first (needed when page is served over HTTPS — browsers block mixed content)
+      for (const url of ["https://localhost:3002", "http://localhost:3001"]) {
+        try {
+          const res = await fetch(`${url}/status`, { signal: AbortSignal.timeout(2000) })
+          if (!active) return
+          if (res.ok) {
+            const data = await res.json()
+            setProxyOnline(true)
+            setProxyUrl(url)
+            setProxyPrinters(data.printers || [])
+            return
+          }
+        } catch {
+          // Try next URL
         }
-      } catch {
-        if (active) setProxyOnline(false)
       }
+      if (active) { setProxyOnline(false); setProxyUrl("") }
     }
     checkProxy()
     const interval = setInterval(checkProxy, 30000)
@@ -563,7 +568,7 @@ function PrintStationKioskPage() {
     }
     const paperSize = paperMap[station?.print_settings?.paper_size || "4x6"] || "w4h6"
 
-    const res = await fetch("http://localhost:3001/print", {
+    const res = await fetch(`${proxyUrl}/print`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -15,6 +15,8 @@
  */
 
 import http from "node:http"
+import https from "node:https"
+import crypto from "node:crypto"
 import { execSync, exec } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
@@ -58,7 +60,34 @@ function getPrinterOptions(printerName) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
+// Generate self-signed certificate for HTTPS (browsers block mixed content http from https pages)
+function generateSelfSignedCert() {
+  const certDir = path.join(os.homedir(), ".amasi-print-proxy")
+  const certFile = path.join(certDir, "cert.pem")
+  const keyFile = path.join(certDir, "key.pem")
+
+  if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
+    return { cert: fs.readFileSync(certFile), key: fs.readFileSync(keyFile) }
+  }
+
+  // Generate using openssl
+  try {
+    fs.mkdirSync(certDir, { recursive: true })
+    execSync(
+      `openssl req -x509 -newkey rsa:2048 -keyout "${keyFile}" -out "${certFile}" -days 3650 -nodes -subj "/CN=localhost"`,
+      { stdio: "pipe" }
+    )
+    console.log("  Generated self-signed certificate for HTTPS")
+    return { cert: fs.readFileSync(certFile), key: fs.readFileSync(keyFile) }
+  } catch (e) {
+    console.warn("  Could not generate HTTPS cert, falling back to HTTP only")
+    return null
+  }
+}
+
+const tlsCert = generateSelfSignedCert()
+
+const handler = async (req, res) => {
   // CORS headers — allow browser requests from any origin
   res.setHeader("Access-Control-Allow-Origin", "*")
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -166,15 +195,26 @@ const server = http.createServer(async (req, res) => {
   // 404
   res.writeHead(404, { "Content-Type": "application/json" })
   res.end(JSON.stringify({ error: "Not found" }))
-})
+}
 
-server.listen(PORT, () => {
+// Start both HTTP and HTTPS servers
+const httpServer = http.createServer(handler)
+const HTTPS_PORT = PORT + 1 // 3002
+
+let httpsServer = null
+if (tlsCert) {
+  httpsServer = https.createServer(tlsCert, handler)
+  httpsServer.listen(HTTPS_PORT)
+}
+
+httpServer.listen(PORT, () => {
   const printers = detectPrinters()
   console.log(`
 ╔══════════════════════════════════════════════╗
 ║        AMASI Print Proxy v1.0               ║
 ╠══════════════════════════════════════════════╣
-║  Running on: http://localhost:${String(PORT).padEnd(14)}║
+║  HTTP:  http://localhost:${String(PORT).padEnd(15)}║
+║  HTTPS: https://localhost:${String(HTTPS_PORT).padEnd(13)}║
 ║  Host: ${os.hostname().padEnd(37)}║
 ╠══════════════════════════════════════════════╣
 ║  Detected Printers:                         ║`)
