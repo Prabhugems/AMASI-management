@@ -1135,7 +1135,7 @@ function PrintStationKioskPage() {
     const isOverlayMode = stationInfo.print_mode === "overlay"
     // Overlay mode: NO rotation (pre-printed stock orientation is fixed)
     // Full badge/label: 180° rotation for thermal printers (labels feed bottom-first)
-    const rotation = isOverlayMode ? 0 : (settings.rotation ?? 180)
+    const rotation = settings.rotation ?? (isOverlayMode ? 0 : 180)
 
     // If we have a badge template, render it
     if (badge_template?.template_data) {
