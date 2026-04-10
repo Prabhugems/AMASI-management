@@ -53,6 +53,7 @@ interface PrintStation {
     paper_size: string
     orientation: string
     rotation?: number
+    printer_type?: "browser" | "zebra" | "thermal"
     printer_ip?: string
     printer_port?: number
     margins: { top: number; right: number; bottom: number; left: number }
@@ -151,10 +152,16 @@ function PrintStationKioskPage() {
     scale: 1,
     copies: 1,
     margins: { top: 0, right: 0, bottom: 0, left: 0 },
+    printer_type: "browser" as "browser" | "zebra" | "thermal",
     printer_ip: "",
     printer_port: 9100,
     auto_print: false,
   })
+  const [thermalPrinting, setThermalPrinting] = useState(false)
+  const [thermalStatus, setThermalStatus] = useState<{ success: boolean; message: string } | null>(null)
+  const [testingThermal, setTestingThermal] = useState(false)
+  const [proxyOnline, setProxyOnline] = useState(false)
+  const [proxyPrinters, setProxyPrinters] = useState<{ name: string; usb: boolean }[]>([])
 
   const inputRef = useRef<HTMLInputElement>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -193,7 +200,8 @@ function PrintStationKioskPage() {
   // Print mutation
   const printMutation = useMutation({
     mutationFn: async (input: string) => {
-      const hasDirectPrinter = !!station?.print_settings?.printer_ip
+      const printerType = station?.print_settings?.printer_type || "browser"
+      const hasDirectPrinter = !!station?.print_settings?.printer_ip && printerType !== "thermal"
 
       // Detect if input looks like a full registration number or a partial search
       // Full reg numbers look like: 124A1001, SPK1001, REG-2024-0001
@@ -203,6 +211,7 @@ function PrintStationKioskPage() {
 
       // When Zebra IP is configured, create job as "completed" (we'll print locally)
       // No queue needed — iPad sends ZPL directly to printer via HTTP
+      // (Thermal printers are handled in onSuccess since they need HTML rendering)
       const res = await fetch("/api/print-stations/print", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -322,8 +331,26 @@ function PrintStationKioskPage() {
         return
       }
 
+      // Thermal printer auto-print path
+      const isThermalPrinter = station?.print_settings?.printer_type === "thermal" && !!station?.print_settings?.printer_ip
+      if (isThermalPrinter && (station?.auto_print || isPrinting)) {
+        const printData = {
+          registration: data.registration,
+          station: {
+            id: station?.id,
+            name: station?.name,
+            print_mode: station?.print_mode,
+            print_settings: station?.print_settings,
+            events: station?.events
+          },
+          badge_template: station?.badge_templates
+        }
+        triggerThermalPrint(printData)
+        return
+      }
+
       // Local USB print or browser print path (no network Zebra)
-      if (!hasDirectPrinter && (station?.auto_print || isPrinting)) {
+      if (!hasDirectPrinter && !isThermalPrinter && (station?.auto_print || isPrinting)) {
         const printData = {
           registration: data.registration,
           station: {
@@ -502,17 +529,84 @@ function PrintStationKioskPage() {
     }
   }, [])
 
+  // Local print proxy detection (checks localhost:3001)
+  useEffect(() => {
+    let active = true
+    const checkProxy = async () => {
+      try {
+        const res = await fetch("http://localhost:3001/status", { signal: AbortSignal.timeout(2000) })
+        if (!active) return
+        if (res.ok) {
+          const data = await res.json()
+          setProxyOnline(true)
+          setProxyPrinters(data.printers || [])
+        } else {
+          setProxyOnline(false)
+        }
+      } catch {
+        if (active) setProxyOnline(false)
+      }
+    }
+    checkProxy()
+    const interval = setInterval(checkProxy, 30000)
+    return () => { active = false; clearInterval(interval) }
+  }, [])
+
+  // Print via local proxy (for USB thermal printers with auto-cut)
+  const printViaProxy = async (htmlContent: string) => {
+    const printerName = proxyPrinters.find(p => p.usb)?.name || proxyPrinters[0]?.name
+    if (!printerName) throw new Error("No printer found on proxy")
+
+    const paperMap: Record<string, string> = {
+      "4x6": "w4h6", "4x3": "w4h3", "4x2": "w4h2", "3x2": "w3h2",
+      "4x4": "w4h4", "A4": "A4", "Letter": "Letter",
+    }
+    const paperSize = paperMap[station?.print_settings?.paper_size || "4x6"] || "w4h6"
+
+    const res = await fetch("http://localhost:3001/print", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        printer: printerName,
+        html: htmlContent,
+        copies: station?.print_settings?.copies || 1,
+        paperSize,
+        autoCut: true,
+        labelMark: true,
+      }),
+    })
+
+    const data = await res.json()
+    if (!data.success) throw new Error(data.error || "Print proxy error")
+    return data
+  }
+
   // Printer health check polling (every 15s)
   useEffect(() => {
     const printerIp = station?.print_settings?.printer_ip
-    if (!printerIp) return
+    const printerType = station?.print_settings?.printer_type || "browser"
+    if (!printerIp || printerType === "browser") return
 
     let active = true
     const check = async () => {
       try {
-        const { isZebraReachable } = await import("@/lib/zebra-printer")
-        const online = await isZebraReachable(printerIp)
-        if (active) setPrinterOnline(online)
+        if (printerType === "thermal") {
+          // For thermal printers, try a TCP connect check via API
+          const res = await fetch("/api/print/thermal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              printer_ip: printerIp,
+              port: station?.print_settings?.printer_port || 9100,
+              data: btoa("\x1b\x40"), // Just init command - harmless
+            }),
+          })
+          if (active) setPrinterOnline(res.ok)
+        } else {
+          const { isZebraReachable } = await import("@/lib/zebra-printer")
+          const online = await isZebraReachable(printerIp)
+          if (active) setPrinterOnline(online)
+        }
       } catch {
         if (active) setPrinterOnline(false)
       }
@@ -521,7 +615,7 @@ function PrintStationKioskPage() {
     check()
     const interval = setInterval(check, 15000)
     return () => { active = false; clearInterval(interval) }
-  }, [station?.print_settings?.printer_ip])
+  }, [station?.print_settings?.printer_ip, station?.print_settings?.printer_type, station?.print_settings?.printer_port])
 
   // Register service worker for PWA
   useEffect(() => {
@@ -727,6 +821,21 @@ function PrintStationKioskPage() {
     // Create printable content based on print mode and template
     const printContent = generatePrintContent(data)
 
+    // If local print proxy is running and printer_type is thermal, use proxy (auto-cut via CUPS)
+    const printerType = station?.print_settings?.printer_type || "browser"
+    if (proxyOnline && (printerType === "thermal" || printerType === "browser")) {
+      try {
+        await printViaProxy(printContent)
+        if (soundEnabled) playSuccessSound()
+        setIsPrinting(false)
+        setPrintSuccess(true)
+        return
+      } catch (err: any) {
+        console.warn("Proxy print failed, falling back to browser:", err.message)
+        // Fall through to browser print
+      }
+    }
+
     // Use hidden iframe for printing (works on iPad Safari unlike window.open)
     const iframe = printFrameRef.current
     if (iframe) {
@@ -804,8 +913,96 @@ function PrintStationKioskPage() {
     setZplPrinting(false)
   }
 
+  // Direct thermal ESC/POS print (used by manual "Print to Thermal" button)
+  const triggerThermalPrint = async (data: any) => {
+    setThermalPrinting(true)
+    setThermalStatus(null)
+
+    try {
+      const { canvasToEscPos, sendToThermalPrinter } = await import("@/lib/escpos-printer")
+      const html2canvas = (await import("html2canvas")).default
+
+      // Pre-generate QR codes
+      const badgeTemplate = data.badge_template || station?.badge_templates
+      if (badgeTemplate?.template_data?.elements) {
+        for (const el of badgeTemplate.template_data.elements) {
+          if (el.type === "qr_code") {
+            const qrValue = replacePlaceholders(el.content || "", data.registration)
+            if (qrValue) {
+              try {
+                el._qrDataUrl = await QRCode.toDataURL(qrValue, {
+                  width: Math.min(el.width, el.height) * 2,
+                  margin: 1,
+                  errorCorrectionLevel: "M",
+                })
+              } catch (_e) { /* ignore */ }
+            }
+          }
+        }
+      }
+
+      // Generate the badge HTML
+      const printContent = generatePrintContent(data)
+
+      // Render HTML to a temporary container
+      const container = document.createElement("div")
+      container.style.position = "absolute"
+      container.style.left = "-9999px"
+      container.style.top = "0"
+      container.innerHTML = printContent
+      // Extract just the body content from the full HTML
+      const bodyMatch = printContent.match(/<body[^>]*>([\s\S]*)<\/body>/)
+      if (bodyMatch) {
+        container.innerHTML = bodyMatch[1]
+      }
+      document.body.appendChild(container)
+
+      // Wait for fonts/images to load
+      await new Promise(resolve => setTimeout(resolve, 800))
+
+      // Render to canvas
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      })
+
+      document.body.removeChild(container)
+
+      // Convert to ESC/POS raster data
+      const escposData = await canvasToEscPos(
+        canvas,
+        station?.print_settings?.paper_size || "4x6"
+      )
+
+      // Send to printer
+      const result = await sendToThermalPrinter(
+        station!.print_settings!.printer_ip!,
+        station!.print_settings!.printer_port || 9100,
+        escposData
+      )
+
+      if (result.success) {
+        setThermalStatus({ success: true, message: "Printed!" })
+        if (soundEnabled) playSuccessSound()
+        setPrintSuccess(true)
+        setTimeout(() => resetScan(), 1500)
+      } else {
+        setThermalStatus({ success: false, message: result.error || "Print failed" })
+        if (soundEnabled) playErrorSound()
+      }
+    } catch (err: any) {
+      setThermalStatus({ success: false, message: err.message || "Print failed" })
+      if (soundEnabled) playErrorSound()
+    }
+
+    setThermalPrinting(false)
+  }
+
   // Check if direct ZPL printing is available
-  const hasZplPrinter = !!station?.print_settings?.printer_ip
+  const hasZplPrinter = !!station?.print_settings?.printer_ip && station?.print_settings?.printer_type !== "thermal"
+  const hasThermalPrinter = station?.print_settings?.printer_type === "thermal" && !!station?.print_settings?.printer_ip
 
   // Replace placeholders in text with registration data
   const replacePlaceholders = (text: string, reg: any) => {
@@ -1189,6 +1386,7 @@ function PrintStationKioskPage() {
         scale: station.print_settings?.scale || 1,
         copies: station.print_settings?.copies || 1,
         margins: station.print_settings?.margins || { top: 0, right: 0, bottom: 0, left: 0 },
+        printer_type: station.print_settings?.printer_type || "browser",
         printer_ip: station.print_settings?.printer_ip || "",
         printer_port: station.print_settings?.printer_port || 9100,
         auto_print: station.auto_print || false,
@@ -1212,6 +1410,7 @@ function PrintStationKioskPage() {
             scale: settingsForm.scale,
             copies: settingsForm.copies,
             margins: settingsForm.margins,
+            printer_type: settingsForm.printer_type || "browser",
             printer_ip: settingsForm.printer_ip || undefined,
             printer_port: settingsForm.printer_ip ? settingsForm.printer_port : undefined,
           },
@@ -1552,19 +1751,41 @@ function PrintStationKioskPage() {
                 </div>
               </div>
 
-              {/* Printer IP */}
+              {/* Printer Type */}
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-muted-foreground">Printer IP (Zebra/ZPL)</label>
-                <Input
-                  type="text"
-                  placeholder="e.g. 192.168.1.100"
-                  value={settingsForm.printer_ip}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, printer_ip: e.target.value })}
-                />
+                <label className="text-sm font-medium text-muted-foreground">Printer Type</label>
+                <Select
+                  value={settingsForm.printer_type}
+                  onValueChange={(v) => setSettingsForm({ ...settingsForm, printer_type: v as "browser" | "zebra" | "thermal" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="browser">Browser (default)</SelectItem>
+                    <SelectItem value="zebra">Zebra (ZPL)</SelectItem>
+                    <SelectItem value="thermal">Thermal (ESC/POS + Auto-Cut)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Printer Port - only shown if IP is set */}
-              {settingsForm.printer_ip && (
+              {/* Printer IP - shown for Zebra and Thermal */}
+              {settingsForm.printer_type !== "browser" && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Printer IP {settingsForm.printer_type === "zebra" ? "(Zebra/ZPL)" : "(Thermal/ESC-POS)"}
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="e.g. 192.168.1.100"
+                    value={settingsForm.printer_ip}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, printer_ip: e.target.value })}
+                  />
+                </div>
+              )}
+
+              {/* Printer Port - shown if IP is set and type is not browser */}
+              {settingsForm.printer_type !== "browser" && settingsForm.printer_ip && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-muted-foreground">Printer Port</label>
                   <Input
@@ -1574,6 +1795,52 @@ function PrintStationKioskPage() {
                     value={settingsForm.printer_port}
                     onChange={(e) => setSettingsForm({ ...settingsForm, printer_port: parseInt(e.target.value) || 9100 })}
                   />
+                </div>
+              )}
+
+              {/* Test Print button for Thermal printers */}
+              {settingsForm.printer_type === "thermal" && settingsForm.printer_ip && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-muted-foreground">Test Printer</label>
+                  <button
+                    onClick={async () => {
+                      setTestingThermal(true)
+                      try {
+                        const { testThermalPrinter } = await import("@/lib/escpos-printer")
+                        const result = await testThermalPrinter(
+                          settingsForm.printer_ip,
+                          settingsForm.printer_port
+                        )
+                        if (result.success) {
+                          setThermalStatus({ success: true, message: "Test print sent!" })
+                          if (soundEnabled) playSuccessSound()
+                        } else {
+                          setThermalStatus({ success: false, message: result.error || "Test failed" })
+                          if (soundEnabled) playErrorSound()
+                        }
+                      } catch (err: any) {
+                        setThermalStatus({ success: false, message: err.message || "Test failed" })
+                        if (soundEnabled) playErrorSound()
+                      }
+                      setTestingThermal(false)
+                      setTimeout(() => setThermalStatus(null), 4000)
+                    }}
+                    disabled={testingThermal}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+                  >
+                    {testingThermal ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Printer className="w-4 h-4" />
+                    )}
+                    {testingThermal ? "Sending..." : "Test Print"}
+                  </button>
+                  {thermalStatus && (
+                    <div className={`flex items-center gap-2 text-sm mt-1 ${thermalStatus.success ? "text-emerald-600" : "text-red-600"}`}>
+                      {thermalStatus.success ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                      {thermalStatus.message}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1949,9 +2216,63 @@ function PrintStationKioskPage() {
                   </div>
                 )}
 
+                {/* Thermal Status */}
+                {thermalStatus && (
+                  <div className={`mb-4 p-4 rounded-xl flex items-center gap-3 ${
+                    thermalStatus.success
+                      ? "bg-emerald-500/10 border border-emerald-500/30"
+                      : "bg-destructive/10 border border-destructive/30"
+                  }`}>
+                    {thermalStatus.success ? (
+                      <CheckCircle className="w-5 h-5 text-emerald-500" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-destructive" />
+                    )}
+                    <span className={thermalStatus.success ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}>
+                      {thermalStatus.message}
+                    </span>
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div className="mt-6 space-y-3">
-                  {/* Show ZPL Direct Print button if printer IP is configured */}
+                  {/* Show Thermal Direct Print button if thermal printer is configured */}
+                  {hasThermalPrinter && (
+                    <button
+                      onClick={() => {
+                        if (scannedRegistration) {
+                          const printData = {
+                            registration: scannedRegistration,
+                            station: {
+                              id: station.id,
+                              name: station.name,
+                              print_mode: station.print_mode,
+                              print_settings: station.print_settings,
+                              events: station.events
+                            },
+                            badge_template: station.badge_templates
+                          }
+                          triggerThermalPrint(printData)
+                        }
+                      }}
+                      disabled={thermalPrinting}
+                      className={`w-full flex items-center justify-center gap-2 px-5 py-4 bg-gradient-to-r ${getPrintModeColor(station.print_mode)} text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg disabled:opacity-50`}
+                    >
+                      {thermalPrinting ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Sending to Printer...
+                        </>
+                      ) : (
+                        <>
+                          <Printer className="w-5 h-5" />
+                          Print to Thermal ({station.print_settings?.printer_ip})
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {/* Show ZPL Direct Print button if Zebra printer IP is configured */}
                   {hasZplPrinter && (
                     <button
                       onClick={() => {
@@ -2011,7 +2332,7 @@ function PrintStationKioskPage() {
                       <Eye className="w-5 h-5" />
                       Preview / Save PDF
                     </button>
-                    {!hasZplPrinter && (
+                    {!hasZplPrinter && !hasThermalPrinter && (
                       <button
                         onClick={() => {
                           // Browser print dialog
@@ -2107,7 +2428,7 @@ function PrintStationKioskPage() {
             <span className="text-muted-foreground">
               {station.print_settings?.paper_size} • {station.print_settings?.orientation}
             </span>
-            {hasZplPrinter && (
+            {(hasZplPrinter || hasThermalPrinter) && (
               <>
                 <span className="text-muted-foreground">•</span>
                 <div className="flex items-center gap-2">
@@ -2118,7 +2439,9 @@ function PrintStationKioskPage() {
                   <span className={printerOnline ? "text-emerald-600" : printerOnline === false ? "text-red-600" : "text-muted-foreground"}>
                     {printerOnline === null ? "Checking..." : printerOnline ? "Printer Online" : "Printer Offline"}
                   </span>
-                  <span className="text-muted-foreground text-xs">({station.print_settings?.printer_ip})</span>
+                  <span className="text-muted-foreground text-xs">
+                    ({hasThermalPrinter ? "Thermal" : "Zebra"} {station.print_settings?.printer_ip})
+                  </span>
                 </div>
               </>
             )}
