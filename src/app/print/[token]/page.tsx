@@ -36,7 +36,12 @@ import {
   Pencil,
   Check,
   X,
+  Settings,
+  Save,
 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/input"
 
 interface PrintStation {
   id: string
@@ -137,6 +142,19 @@ function PrintStationKioskPage() {
   const [editingName, setEditingName] = useState(false)
   const [editedName, setEditedName] = useState("")
   const [savingName, setSavingName] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [savingSettings, setSavingSettings] = useState(false)
+  const [settingsForm, setSettingsForm] = useState({
+    paper_size: "4x6",
+    orientation: "portrait",
+    rotation: 0,
+    scale: 1,
+    copies: 1,
+    margins: { top: 0, right: 0, bottom: 0, left: 0 },
+    printer_ip: "",
+    printer_port: 9100,
+    auto_print: false,
+  })
 
   const inputRef = useRef<HTMLInputElement>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -1001,6 +1019,9 @@ function PrintStationKioskPage() {
                 -webkit-font-smoothing: none !important;
                 text-rendering: geometricPrecision !important;
               }
+              .badge-wrapper {
+                page-break-after: always;
+              }
             }
           </style>
         </head>
@@ -1037,7 +1058,7 @@ function PrintStationKioskPage() {
           .institution { font-size: ${isLabel ? "10pt" : "14pt"}; color: #666; margin-bottom: ${isLabel ? "3mm" : "6mm"}; }
           .ticket-type { font-size: ${isLabel ? "11pt" : "16pt"}; font-weight: bold; color: white; background: #333; padding: 2mm 6mm; border-radius: 2mm; margin-bottom: 3mm; }
           .reg-number { font-size: ${isLabel ? "9pt" : "11pt"}; color: #888; font-family: monospace; }
-          @media print { html, body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+          @media print { html, body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } .badge-wrapper { page-break-after: always; } }
         </style>
       </head>
       <body>
@@ -1156,6 +1177,62 @@ function PrintStationKioskPage() {
   const handleCancelEdit = () => {
     setEditingName(false)
     setEditedName("")
+  }
+
+  // Initialize settings form from station data
+  useEffect(() => {
+    if (station) {
+      setSettingsForm({
+        paper_size: station.print_settings?.paper_size || "4x6",
+        orientation: station.print_settings?.orientation || "portrait",
+        rotation: station.print_settings?.rotation || 0,
+        scale: station.print_settings?.scale || 1,
+        copies: station.print_settings?.copies || 1,
+        margins: station.print_settings?.margins || { top: 0, right: 0, bottom: 0, left: 0 },
+        printer_ip: station.print_settings?.printer_ip || "",
+        printer_port: station.print_settings?.printer_port || 9100,
+        auto_print: station.auto_print || false,
+      })
+    }
+  }, [station])
+
+  const handleSaveSettings = async () => {
+    if (!station) return
+    setSavingSettings(true)
+    try {
+      const res = await fetch("/api/print-stations/update-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          print_settings: {
+            paper_size: settingsForm.paper_size,
+            orientation: settingsForm.orientation,
+            rotation: settingsForm.rotation,
+            scale: settingsForm.scale,
+            copies: settingsForm.copies,
+            margins: settingsForm.margins,
+            printer_ip: settingsForm.printer_ip || undefined,
+            printer_port: settingsForm.printer_ip ? settingsForm.printer_port : undefined,
+          },
+          auto_print: settingsForm.auto_print,
+        })
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Failed to save settings")
+      }
+
+      // Refetch station to get updated data
+      await refetchStation()
+      setShowSettings(false)
+      if (soundEnabled) playSuccessSound()
+    } catch (err: any) {
+      setError(err.message)
+      if (soundEnabled) playErrorSound()
+    }
+    setSavingSettings(false)
   }
 
   const getPrintModeIcon = (mode: string) => {
@@ -1282,6 +1359,15 @@ function PrintStationKioskPage() {
               title="Print history"
             >
               <History className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className={`p-2.5 rounded-xl transition-colors ${
+                showSettings ? "bg-blue-500/20 text-blue-600" : "bg-muted text-foreground"
+              }`}
+              title="Printer settings"
+            >
+              <Settings className="w-5 h-5" />
             </button>
             <button
               onClick={toggleFullscreen}
