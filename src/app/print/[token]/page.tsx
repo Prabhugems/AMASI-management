@@ -1380,6 +1380,221 @@ function PrintStationKioskPage() {
         </div>
       </header>
 
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="bg-muted/30 border-b border-border px-4 py-4 flex-shrink-0">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Paper Size */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-muted-foreground">Paper Size</label>
+                <Select
+                  value={settingsForm.paper_size}
+                  onValueChange={(v) => setSettingsForm({ ...settingsForm, paper_size: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="4x6">4x6</SelectItem>
+                    <SelectItem value="4x3">4x3</SelectItem>
+                    <SelectItem value="4x2">4x2</SelectItem>
+                    <SelectItem value="3x2">3x2</SelectItem>
+                    <SelectItem value="A4">A4</SelectItem>
+                    <SelectItem value="Letter">Letter</SelectItem>
+                    <SelectItem value="Custom">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Orientation */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-muted-foreground">Orientation</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSettingsForm({ ...settingsForm, orientation: "portrait" })}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      settingsForm.orientation === "portrait"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Portrait
+                  </button>
+                  <button
+                    onClick={() => setSettingsForm({ ...settingsForm, orientation: "landscape" })}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      settingsForm.orientation === "landscape"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Landscape
+                  </button>
+                </div>
+              </div>
+
+              {/* Rotation */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-muted-foreground">Rotation</label>
+                <Select
+                  value={String(settingsForm.rotation)}
+                  onValueChange={(v) => setSettingsForm({ ...settingsForm, rotation: Number(v) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">0°</SelectItem>
+                    <SelectItem value="90">90°</SelectItem>
+                    <SelectItem value="180">180°</SelectItem>
+                    <SelectItem value="270">270°</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Scale */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-muted-foreground">Scale</label>
+                <Input
+                  type="number"
+                  min={0.5}
+                  max={2.0}
+                  step={0.1}
+                  value={settingsForm.scale}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, scale: parseFloat(e.target.value) || 1 })}
+                />
+              </div>
+
+              {/* Copies */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-muted-foreground">Copies</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={settingsForm.copies}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, copies: Math.min(10, Math.max(1, parseInt(e.target.value) || 1)) })}
+                />
+              </div>
+
+              {/* Auto Print */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-muted-foreground">Auto Print</label>
+                <div className="flex items-center gap-3 h-11">
+                  <Switch
+                    checked={settingsForm.auto_print}
+                    onCheckedChange={(checked) => setSettingsForm({ ...settingsForm, auto_print: checked })}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {settingsForm.auto_print ? "Print immediately after scan" : "Manual print"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Margins */}
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-sm font-medium text-muted-foreground">Margins (mm)</label>
+                <div className="grid grid-cols-4 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Top</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={settingsForm.margins.top}
+                      onChange={(e) => setSettingsForm({
+                        ...settingsForm,
+                        margins: { ...settingsForm.margins, top: parseFloat(e.target.value) || 0 }
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Right</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={settingsForm.margins.right}
+                      onChange={(e) => setSettingsForm({
+                        ...settingsForm,
+                        margins: { ...settingsForm.margins, right: parseFloat(e.target.value) || 0 }
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Bottom</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={settingsForm.margins.bottom}
+                      onChange={(e) => setSettingsForm({
+                        ...settingsForm,
+                        margins: { ...settingsForm.margins, bottom: parseFloat(e.target.value) || 0 }
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Left</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={settingsForm.margins.left}
+                      onChange={(e) => setSettingsForm({
+                        ...settingsForm,
+                        margins: { ...settingsForm.margins, left: parseFloat(e.target.value) || 0 }
+                      })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Printer IP */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-muted-foreground">Printer IP (Zebra/ZPL)</label>
+                <Input
+                  type="text"
+                  placeholder="e.g. 192.168.1.100"
+                  value={settingsForm.printer_ip}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, printer_ip: e.target.value })}
+                />
+              </div>
+
+              {/* Printer Port - only shown if IP is set */}
+              {settingsForm.printer_ip && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-muted-foreground">Printer Port</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={65535}
+                    value={settingsForm.printer_port}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, printer_port: parseInt(e.target.value) || 9100 })}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSaveSettings}
+              disabled={savingSettings}
+              className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {savingSettings ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {savingSettings ? "Saving..." : "Save Settings"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex">
         {/* Main Content */}
         <div className={`flex-1 p-4 flex flex-col ${showHistory ? "max-w-2xl" : ""}`}>
