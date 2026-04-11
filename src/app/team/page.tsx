@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { SkeletonTable } from "@/components/ui/skeleton"
@@ -304,6 +305,7 @@ const SIDEBAR_SECTIONS: { heading: string; items: { key: ActiveView; label: stri
 // ---------------------------------------------------------------------------
 
 export default function TeamPage() {
+  const router = useRouter()
   const supabase = createClient()
   const queryClient = useQueryClient()
 
@@ -603,8 +605,15 @@ export default function TeamPage() {
         "fixed lg:sticky top-0 left-0 z-50 lg:z-auto h-screen w-[220px] flex-shrink-0 bg-[#185FA5] text-white flex flex-col transition-transform duration-300",
         sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        {/* Logo area */}
-        <div className="px-5 pt-6 pb-4">
+        {/* Back + Logo area */}
+        <div className="px-5 pt-4 pb-4">
+          <button
+            onClick={() => router.push("/events")}
+            className="flex items-center gap-1.5 text-white/60 hover:text-white text-xs mb-3 transition-colors"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Back to Dashboard
+          </button>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold tracking-tight">AMASI</h1>
