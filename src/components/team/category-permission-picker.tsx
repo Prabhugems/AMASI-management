@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { PERMISSION_CATEGORIES, ALL_PERMISSION_VALUES, type PermissionCategory } from "@/lib/team-constants"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
@@ -32,6 +32,19 @@ export function CategoryPermissionPicker({
   onAllAccessChange,
 }: CategoryPermissionPickerProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  const handleAllAccessChange = useCallback(
+    (value: boolean) => {
+      if (value) {
+        const confirmed = window.confirm(
+          "Granting full access allows this member to access ALL modules without restriction. Continue?"
+        )
+        if (!confirmed) return
+      }
+      onAllAccessChange?.(value)
+    },
+    [onAllAccessChange]
+  )
 
   const toggle = (key: string) =>
     setExpanded((prev) => {
@@ -70,7 +83,16 @@ export function CategoryPermissionPicker({
             <Sparkles className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm">Full access to all modules</span>
           </div>
-          <Switch checked={allAccess} onCheckedChange={onAllAccessChange} />
+          <Switch checked={allAccess} onCheckedChange={handleAllAccessChange} />
+        </div>
+      )}
+
+      {allAccess && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-800">
+          <Shield className="h-4 w-4 shrink-0" />
+          <span className="text-sm font-medium">
+            Full Access: This member can access ALL modules without restriction.
+          </span>
         </div>
       )}
 

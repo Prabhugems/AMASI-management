@@ -1,6 +1,7 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useEffect } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 
 export type Permission =
@@ -26,11 +27,14 @@ export interface UserPermissions {
   hasEventAccess: (eventId: string) => boolean // NEW: check if user can access specific event
 }
 
+const PERMISSIONS_QUERY_KEY = ["user-permissions"]
+
 export function usePermissions(): UserPermissions {
   const supabase = createClient()
+  const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
-    queryKey: ["user-permissions"],
+    queryKey: PERMISSIONS_QUERY_KEY,
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession()
 
@@ -132,8 +136,37 @@ export function usePermissions(): UserPermissions {
         userEmail: session.user.email,
       }
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 30 * 1000, // Cache for 30 seconds so permissions refresh faster
   })
+
+  // Subscribe to realtime changes on team_members for the current user
+  useEffect(() => {
+    const userEmail = data?.userEmail
+    if (!userEmail) return
+
+    const channel = supabase
+      .channel("team-members-permissions")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "team_members",
+          filter: `email=eq.${userEmail}`,
+        },
+        async () => {
+          // Refresh the session so the JWT picks up new permissions
+          await supabase.auth.refreshSession()
+          // Invalidate the permissions cache to refetch immediately
+          queryClient.invalidateQueries({ queryKey: PERMISSIONS_QUERY_KEY })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [data?.userEmail, supabase, queryClient])
 
   const hasPermission = (permission: Permission): boolean => {
     if (!data) return false

@@ -2,8 +2,9 @@ import { requireAdmin } from '@/lib/auth/api-auth'
 import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail, isEmailEnabled } from '@/lib/email'
+import { sendWhatsAppTeamInvite } from '@/lib/gallabox'
 import { COMPANY_CONFIG } from '@/lib/config'
-import { teamInvitation } from '@/lib/email-templates'
+import { teamInvitation, teamExpressInvitation } from '@/lib/email-templates'
 
 // POST - Send team invitation
 export async function POST(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { email, name, role, permissions, event_ids } = body
+    const { email, name, role, permissions, event_ids, phone, express } = body
 
     if (!email?.trim()) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
@@ -64,13 +65,18 @@ export async function POST(request: NextRequest) {
 
     // Create invitation record
     const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 7)
+    if (express) {
+      expiresAt.setHours(expiresAt.getHours() + 24)
+    } else {
+      expiresAt.setDate(expiresAt.getDate() + 7)
+    }
 
     const { data: invitation, error: insertError } = await supabase
       .from('team_invitations')
       .insert({
         email: normalizedEmail,
         name: name?.trim() || null,
+        phone: phone?.trim() || null,
         role,
         permissions: permissions || null,
         event_ids: event_ids || null,
@@ -94,12 +100,19 @@ export async function POST(request: NextRequest) {
     const inviteLink = `${appUrl}/team/accept-invite?token=${invitation.token}`
 
     if (isEmailEnabled()) {
-      const inviteEmail = teamInvitation({
-        name: name?.trim() || undefined,
-        role,
-        org_name: COMPANY_CONFIG.name,
-        invite_link: inviteLink,
-      })
+      const inviteEmail = express
+        ? teamExpressInvitation({
+            name: name?.trim() || 'Team Member',
+            inviteLink,
+            invitedBy: user.email || 'an administrator',
+            role,
+          })
+        : teamInvitation({
+            name: name?.trim() || undefined,
+            role,
+            org_name: COMPANY_CONFIG.name,
+            invite_link: inviteLink,
+          })
 
       const emailResult = await sendEmail({
         to: normalizedEmail,
@@ -115,6 +128,21 @@ export async function POST(request: NextRequest) {
       console.warn('[Team Invite] Email not enabled. Invite link:', inviteLink)
     }
 
+    // Send WhatsApp invite (fire-and-forget)
+    let whatsappSent = false
+    if (phone?.trim()) {
+      sendWhatsAppTeamInvite(phone.trim(), name?.trim() || '', inviteLink)
+        .then((result) => {
+          if (!result.success) {
+            console.error('Failed to send WhatsApp invite:', result.error)
+          }
+        })
+        .catch((err) => {
+          console.error('WhatsApp invite error:', err)
+        })
+      whatsappSent = true
+    }
+
     // Log activity
     try {
       await supabase.from('team_activity_logs').insert({
@@ -126,6 +154,8 @@ export async function POST(request: NextRequest) {
           invitation_id: invitation.id,
           role,
           invited_name: name?.trim() || null,
+          ...(whatsappSent && { whatsapp_sent: true }),
+          ...(express && { express_invite: true }),
         },
       })
     } catch (logError) {

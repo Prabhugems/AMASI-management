@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { SkeletonTable, SkeletonCard } from "@/components/ui/skeleton"
@@ -9,9 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -50,7 +46,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import {
   Users,
-  Loader2,
   Mail,
   Plane,
   Shield,
@@ -75,14 +70,12 @@ import {
   Clock,
   RefreshCw,
   MailPlus,
-  PhoneCall,
   Globe,
   MoreHorizontal,
   ChevronRight,
   ChevronLeft,
   Zap,
   Activity,
-  TrendingUp,
   LayoutGrid,
   List,
   BookOpen,
@@ -97,37 +90,26 @@ import {
   CircleDot,
   Settings,
   Download,
+  Eye,
+  LayoutDashboard,
+  Menu,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { PendingInvitations, Invitation } from "@/components/team/pending-invitations"
-import { ActivityLog } from "@/components/team/activity-log"
-import { AccessLogViewer } from "@/components/team/access-log-viewer"
-import { format, formatDistanceToNow } from "date-fns"
+import { ActivityFeed } from "@/components/team/activity-feed"
+import { DeviceTokens } from "@/components/team/device-tokens"
+import { PreviewModal } from "@/components/team/preview-modal"
+import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 import { CategoryPermissionPicker } from "@/components/team/category-permission-picker"
+import { InviteDialog } from "@/components/team/invite-dialog"
+import { MemberDetailPanel } from "@/components/team/member-detail-panel"
+import { ModulesCoverage } from "@/components/team/modules-coverage"
 
-// Get login-aware status for a team member
-function getLoginStatus(member: TeamMember): "online" | "away" | "logged_out" | "offline" | "pending" | "deactivated" {
-  if (!member.is_active) return "deactivated"
-  if (!member.last_login_at) return "pending"
-  if (member.last_active_at) {
-    const diff = Date.now() - new Date(member.last_active_at).getTime()
-    if (diff < 15 * 60 * 1000) return "online"
-    if (diff < 60 * 60 * 1000) return "away"
-  }
-  if (member.logged_out_at) return "logged_out"
-  return "offline"
-}
-
-// Login status badge config
-const LOGIN_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: any; pulse?: boolean }> = {
-  online: { label: "Online", color: "text-green-700", bgColor: "bg-green-100", icon: Wifi, pulse: true },
-  away: { label: "Away", color: "text-amber-700", bgColor: "bg-amber-100", icon: Clock },
-  logged_out: { label: "Logged out", color: "text-orange-700", bgColor: "bg-orange-100", icon: LogOut },
-  offline: { label: "Offline", color: "text-slate-600", bgColor: "bg-slate-100", icon: WifiOff },
-  pending: { label: "Pending", color: "text-blue-700", bgColor: "bg-blue-100", icon: CircleDot },
-  deactivated: { label: "Deactivated", color: "text-red-700", bgColor: "bg-red-100", icon: UserX },
-}
+// ---------------------------------------------------------------------------
+// Types & Constants
+// ---------------------------------------------------------------------------
 
 type TeamMember = {
   id: string
@@ -144,267 +126,12 @@ type TeamMember = {
   last_active_at?: string | null
   logged_out_at?: string | null
   login_count?: number
+  needs_review?: boolean
+  last_reviewed_at?: string | null
+  timezone?: string
+  tags?: string[]
+  backup_member_id?: string | null
 }
-
-const TRAVEL_PERMISSIONS = [
-  {
-    value: "flights",
-    label: "Flights",
-    icon: Plane,
-    color: "text-sky-500",
-    bg: "bg-sky-500",
-    bgLight: "bg-sky-50 border-sky-200",
-    description: "Manage flight bookings for faculty",
-    access: [
-      "View all flight bookings",
-      "Create new flight bookings",
-      "Edit existing bookings",
-      "Cancel/delete bookings",
-      "Export flight data",
-    ],
-    path: "/travel-dashboard → Flights"
-  },
-  {
-    value: "hotels",
-    label: "Hotels",
-    icon: Hotel,
-    color: "text-amber-500",
-    bg: "bg-amber-500",
-    bgLight: "bg-amber-50 border-amber-200",
-    description: "Manage hotel accommodations",
-    access: [
-      "View all hotel bookings",
-      "Create new reservations",
-      "Edit booking details",
-      "Cancel reservations",
-      "Export hotel data",
-    ],
-    path: "/travel-dashboard → Hotels"
-  },
-  {
-    value: "transfers",
-    label: "Transfers",
-    icon: Car,
-    color: "text-emerald-500",
-    bg: "bg-emerald-500",
-    bgLight: "bg-emerald-50 border-emerald-200",
-    description: "Manage ground transportation",
-    access: [
-      "View all transfer requests",
-      "Schedule pickups/drops",
-      "Assign vehicles",
-      "Track transfer status",
-      "Export transfer data",
-    ],
-    path: "/travel-dashboard → Transfers"
-  },
-  {
-    value: "trains",
-    label: "Trains",
-    icon: Train,
-    color: "text-orange-500",
-    bg: "bg-orange-500",
-    bgLight: "bg-orange-50 border-orange-200",
-    description: "Manage train reservations",
-    access: [
-      "View all train bookings",
-      "Create new bookings",
-      "Edit booking details",
-      "Cancel bookings",
-      "Export train data",
-    ],
-    path: "/travel-dashboard → Trains"
-  },
-]
-
-const EVENT_PERMISSIONS = [
-  {
-    value: "speakers",
-    label: "Speakers",
-    icon: Users,
-    color: "text-cyan-500",
-    bg: "bg-cyan-500",
-    bgLight: "bg-cyan-50 border-cyan-200",
-    description: "Manage event speakers/faculty",
-    access: [
-      "View all speakers list",
-      "Add new speakers",
-      "Edit speaker profiles",
-      "Remove speakers",
-      "Send communications",
-      "Export speaker data",
-    ],
-    path: "/events/[id]/speakers"
-  },
-  {
-    value: "program",
-    label: "Program",
-    icon: Calendar,
-    color: "text-indigo-500",
-    bg: "bg-indigo-500",
-    bgLight: "bg-indigo-50 border-indigo-200",
-    description: "Manage event program/schedule",
-    access: [
-      "View full program schedule",
-      "Create sessions",
-      "Edit session details",
-      "Assign speakers to sessions",
-      "Manage session timings",
-      "Send confirmations",
-    ],
-    path: "/events/[id]/program"
-  },
-  {
-    value: "checkin",
-    label: "Check-in",
-    icon: CheckCircle,
-    color: "text-green-500",
-    bg: "bg-green-500",
-    bgLight: "bg-green-50 border-green-200",
-    description: "Handle attendee check-ins",
-    access: [
-      "Access check-in scanner",
-      "Manual check-in attendees",
-      "View check-in statistics",
-      "Search attendees",
-      "Print badges on-site",
-    ],
-    path: "/events/[id]/checkin"
-  },
-  {
-    value: "badges",
-    label: "Badges",
-    icon: Award,
-    color: "text-pink-500",
-    bg: "bg-pink-500",
-    bgLight: "bg-pink-50 border-pink-200",
-    description: "Design and print badges",
-    access: [
-      "Access badge designer",
-      "Create badge templates",
-      "Generate badges",
-      "Print badges (bulk/individual)",
-      "Export badge PDFs",
-    ],
-    path: "/events/[id]/badges"
-  },
-  {
-    value: "certificates",
-    label: "Certificates",
-    icon: FileText,
-    color: "text-violet-500",
-    bg: "bg-violet-500",
-    bgLight: "bg-violet-50 border-violet-200",
-    description: "Design and send certificates",
-    access: [
-      "Access certificate designer",
-      "Create certificate templates",
-      "Generate certificates",
-      "Send certificates via email",
-      "Verify certificates",
-    ],
-    path: "/events/[id]/certificates"
-  },
-  {
-    value: "registrations",
-    label: "Registrations",
-    icon: ClipboardList,
-    color: "text-teal-500",
-    bg: "bg-teal-500",
-    bgLight: "bg-teal-50 border-teal-200",
-    description: "Manage event registrations",
-    access: [
-      "View all registrations",
-      "Add/edit registrations",
-      "Import registrations (CSV)",
-      "Export registration data",
-      "Send communications",
-      "View reports & analytics",
-    ],
-    path: "/events/[id]/registrations"
-  },
-  {
-    value: "abstracts",
-    label: "Abstracts",
-    icon: BookOpen,
-    color: "text-orange-500",
-    bg: "bg-orange-500",
-    bgLight: "bg-orange-50 border-orange-200",
-    description: "Manage abstract submissions & reviews",
-    access: [
-      "View all abstract submissions",
-      "Review & score abstracts",
-      "Accept/reject abstracts",
-      "Configure abstract settings",
-      "Manage abstract categories",
-      "Export abstract data",
-    ],
-    path: "/events/[id]/abstracts"
-  },
-]
-
-const PERMISSIONS = [...TRAVEL_PERMISSIONS, ...EVENT_PERMISSIONS]
-
-const ROLE_DETAILS = [
-  {
-    value: "admin",
-    label: "Administrator",
-    icon: Shield,
-    gradient: "from-purple-500 to-pink-500",
-    color: "bg-purple-500",
-    textColor: "text-purple-600",
-    bgLight: "bg-gradient-to-br from-purple-50 to-pink-50",
-    borderColor: "border-purple-300",
-    description: "Full system access with all privileges",
-    capabilities: [
-      "Access to ALL modules without restrictions",
-      "Manage team members (add/edit/remove)",
-      "Assign permissions to other users",
-      "Access all events (past, present, future)",
-      "View system-wide reports & analytics",
-      "Configure system settings",
-    ],
-    recommended: "For organization owners and senior managers"
-  },
-  {
-    value: "coordinator",
-    label: "Event Coordinator",
-    icon: UserCog,
-    gradient: "from-blue-500 to-indigo-500",
-    color: "bg-blue-500",
-    textColor: "text-blue-600",
-    bgLight: "bg-gradient-to-br from-blue-50 to-indigo-50",
-    borderColor: "border-blue-300",
-    description: "Manages events and attendees",
-    capabilities: [
-      "Access based on assigned permissions",
-      "Can only see assigned events",
-      "Cannot manage team members",
-      "Cannot change system settings",
-      "Limited to their module access",
-    ],
-    recommended: "For event managers and on-ground coordinators"
-  },
-  {
-    value: "travel",
-    label: "Travel Coordinator",
-    icon: Plane,
-    gradient: "from-cyan-500 to-blue-500",
-    color: "bg-cyan-500",
-    textColor: "text-cyan-600",
-    bgLight: "bg-gradient-to-br from-cyan-50 to-blue-50",
-    borderColor: "border-cyan-300",
-    description: "Manages travel and logistics",
-    capabilities: [
-      "Access based on assigned permissions",
-      "Focused on travel-related modules",
-      "Can only see assigned events",
-      "Cannot manage team members",
-      "Cannot change system settings",
-    ],
-    recommended: "For travel desk and logistics staff"
-  },
-]
 
 type Event = {
   id: string
@@ -415,150 +142,93 @@ type Event = {
   status: string | null
 }
 
-const ROLES = ROLE_DETAILS.map(r => ({
-  value: r.value,
-  label: r.label,
-  icon: r.icon,
-  gradient: r.gradient,
-  color: r.color,
-  textColor: r.textColor,
-  bgLight: r.bgLight,
-  borderColor: r.borderColor,
-  description: r.description,
-}))
+type ActiveView = "overview" | "invitations" | "audit" | "settings"
+
+const TIMEZONE_OPTIONS = [
+  { value: "Asia/Kolkata", label: "Asia/Kolkata (IST)" },
+  { value: "Europe/London", label: "Europe/London (GMT/BST)" },
+  { value: "Asia/Kuala_Lumpur", label: "Asia/Kuala_Lumpur (MYT)" },
+  { value: "America/New_York", label: "America/New_York (EST)" },
+  { value: "Asia/Dubai", label: "Asia/Dubai (GST)" },
+]
+
+const TAG_SUGGESTIONS = ["logistics", "finance", "travel", "registration", "technical", "medical", "hospitality", "coordination"]
+
+const TAG_COLORS: Record<string, string> = {
+  logistics: "bg-blue-100 text-blue-700 border-blue-200",
+  finance: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  travel: "bg-sky-100 text-sky-700 border-sky-200",
+  registration: "bg-teal-100 text-teal-700 border-teal-200",
+  technical: "bg-violet-100 text-violet-700 border-violet-200",
+  medical: "bg-red-100 text-red-700 border-red-200",
+  hospitality: "bg-amber-100 text-amber-700 border-amber-200",
+  coordination: "bg-pink-100 text-pink-700 border-pink-200",
+}
+
+const TRAVEL_PERMISSIONS = [
+  { value: "flights", label: "Flights", icon: Plane, color: "text-sky-500", bg: "bg-sky-500", bgLight: "bg-sky-50 border-sky-200", description: "Manage flight bookings for faculty", access: ["View all flight bookings", "Create new flight bookings", "Edit existing bookings", "Cancel/delete bookings", "Export flight data"], path: "/travel-dashboard -> Flights" },
+  { value: "hotels", label: "Hotels", icon: Hotel, color: "text-amber-500", bg: "bg-amber-500", bgLight: "bg-amber-50 border-amber-200", description: "Manage hotel accommodations", access: ["View all hotel bookings", "Create new reservations", "Edit booking details", "Cancel reservations", "Export hotel data"], path: "/travel-dashboard -> Hotels" },
+  { value: "transfers", label: "Transfers", icon: Car, color: "text-emerald-500", bg: "bg-emerald-500", bgLight: "bg-emerald-50 border-emerald-200", description: "Manage ground transportation", access: ["View all transfer requests", "Schedule pickups/drops", "Assign vehicles", "Track transfer status", "Export transfer data"], path: "/travel-dashboard -> Transfers" },
+  { value: "trains", label: "Trains", icon: Train, color: "text-orange-500", bg: "bg-orange-500", bgLight: "bg-orange-50 border-orange-200", description: "Manage train reservations", access: ["View all train bookings", "Create new bookings", "Edit booking details", "Cancel bookings", "Export train data"], path: "/travel-dashboard -> Trains" },
+]
+
+const EVENT_PERMISSIONS = [
+  { value: "speakers", label: "Speakers", icon: Users, color: "text-cyan-500", bg: "bg-cyan-500", bgLight: "bg-cyan-50 border-cyan-200", description: "Manage event speakers/faculty", access: ["View all speakers list", "Add new speakers", "Edit speaker profiles", "Remove speakers", "Send communications", "Export speaker data"], path: "/events/[id]/speakers" },
+  { value: "program", label: "Program", icon: Calendar, color: "text-indigo-500", bg: "bg-indigo-500", bgLight: "bg-indigo-50 border-indigo-200", description: "Manage event program/schedule", access: ["View full program schedule", "Create sessions", "Edit session details", "Assign speakers to sessions", "Manage session timings", "Send confirmations"], path: "/events/[id]/program" },
+  { value: "checkin", label: "Check-in", icon: CheckCircle, color: "text-green-500", bg: "bg-green-500", bgLight: "bg-green-50 border-green-200", description: "Handle attendee check-ins", access: ["Access check-in scanner", "Manual check-in attendees", "View check-in statistics", "Search attendees", "Print badges on-site"], path: "/events/[id]/checkin" },
+  { value: "badges", label: "Badges", icon: Award, color: "text-pink-500", bg: "bg-pink-500", bgLight: "bg-pink-50 border-pink-200", description: "Design and print badges", access: ["Access badge designer", "Create badge templates", "Generate badges", "Print badges (bulk/individual)", "Export badge PDFs"], path: "/events/[id]/badges" },
+  { value: "certificates", label: "Certificates", icon: FileText, color: "text-violet-500", bg: "bg-violet-500", bgLight: "bg-violet-50 border-violet-200", description: "Design and send certificates", access: ["Access certificate designer", "Create certificate templates", "Generate certificates", "Send certificates via email", "Verify certificates"], path: "/events/[id]/certificates" },
+  { value: "registrations", label: "Registrations", icon: ClipboardList, color: "text-teal-500", bg: "bg-teal-500", bgLight: "bg-teal-50 border-teal-200", description: "Manage event registrations", access: ["View all registrations", "Add/edit registrations", "Import registrations (CSV)", "Export registration data", "Send communications", "View reports & analytics"], path: "/events/[id]/registrations" },
+  { value: "abstracts", label: "Abstracts", icon: BookOpen, color: "text-orange-500", bg: "bg-orange-500", bgLight: "bg-orange-50 border-orange-200", description: "Manage abstract submissions & reviews", access: ["View all abstract submissions", "Review & score abstracts", "Accept/reject abstracts", "Configure abstract settings", "Manage abstract categories", "Export abstract data"], path: "/events/[id]/abstracts" },
+]
+
+const PERMISSIONS = [...TRAVEL_PERMISSIONS, ...EVENT_PERMISSIONS]
+
+const ROLE_DETAILS = [
+  { value: "admin", label: "Administrator", icon: Shield, gradient: "from-purple-500 to-pink-500", color: "bg-purple-500", textColor: "text-purple-600", bgLight: "bg-gradient-to-br from-purple-50 to-pink-50", borderColor: "border-purple-300", description: "Full system access with all privileges", capabilities: ["Access to ALL modules without restrictions", "Manage team members (add/edit/remove)", "Assign permissions to other users", "Access all events (past, present, future)", "View system-wide reports & analytics", "Configure system settings"], recommended: "For organization owners and senior managers" },
+  { value: "coordinator", label: "Event Coordinator", icon: UserCog, gradient: "from-blue-500 to-indigo-500", color: "bg-blue-500", textColor: "text-blue-600", bgLight: "bg-gradient-to-br from-blue-50 to-indigo-50", borderColor: "border-blue-300", description: "Manages events and attendees", capabilities: ["Access based on assigned permissions", "Can only see assigned events", "Cannot manage team members", "Cannot change system settings", "Limited to their module access"], recommended: "For event managers and on-ground coordinators" },
+  { value: "travel", label: "Travel Coordinator", icon: Plane, gradient: "from-cyan-500 to-blue-500", color: "bg-cyan-500", textColor: "text-cyan-600", bgLight: "bg-gradient-to-br from-cyan-50 to-blue-50", borderColor: "border-cyan-300", description: "Manages travel and logistics", capabilities: ["Access based on assigned permissions", "Focused on travel-related modules", "Can only see assigned events", "Cannot manage team members", "Cannot change system settings"], recommended: "For travel desk and logistics staff" },
+]
+
+const ROLES = ROLE_DETAILS.map(r => ({ value: r.value, label: r.label, icon: r.icon, gradient: r.gradient, color: r.color, textColor: r.textColor, bgLight: r.bgLight, borderColor: r.borderColor, description: r.description }))
 
 const ROLE_PRESETS = [
-  {
-    value: "administrator",
-    label: "Administrator",
-    icon: Shield,
-    description: "Full system access",
-    role: "admin",
-    permissions: [] as string[],
-    allEvents: true,
-    allPermissions: true,
-    gradient: "from-purple-500 to-pink-500",
-    borderColor: "border-purple-300",
-    bgLight: "bg-purple-50",
-  },
-  {
-    value: "event-manager",
-    label: "Event Manager",
-    icon: UserCog,
-    description: "All event modules",
-    role: "coordinator",
-    permissions: ["speakers", "program", "checkin", "badges", "certificates", "registrations", "abstracts"],
-    allEvents: false,
-    allPermissions: false,
-    gradient: "from-blue-500 to-indigo-500",
-    borderColor: "border-blue-300",
-    bgLight: "bg-blue-50",
-  },
-  {
-    value: "registration-manager",
-    label: "Registration Mgr",
-    icon: ClipboardList,
-    description: "Registrations only",
-    role: "coordinator",
-    permissions: ["registrations"],
-    allEvents: false,
-    allPermissions: false,
-    gradient: "from-teal-500 to-emerald-500",
-    borderColor: "border-teal-300",
-    bgLight: "bg-teal-50",
-  },
-  {
-    value: "program-coordinator",
-    label: "Program Coord.",
-    icon: Calendar,
-    description: "Speakers & program",
-    role: "coordinator",
-    permissions: ["speakers", "program"],
-    allEvents: false,
-    allPermissions: false,
-    gradient: "from-indigo-500 to-violet-500",
-    borderColor: "border-indigo-300",
-    bgLight: "bg-indigo-50",
-  },
-  {
-    value: "checkin-staff",
-    label: "Check-in Staff",
-    icon: CheckCircle,
-    description: "Check-in & badges",
-    role: "coordinator",
-    permissions: ["checkin", "badges"],
-    allEvents: false,
-    allPermissions: false,
-    gradient: "from-green-500 to-emerald-500",
-    borderColor: "border-green-300",
-    bgLight: "bg-green-50",
-  },
-  {
-    value: "badge-certificate",
-    label: "Badge & Cert",
-    icon: Award,
-    description: "Badges & certificates",
-    role: "coordinator",
-    permissions: ["badges", "certificates"],
-    allEvents: false,
-    allPermissions: false,
-    gradient: "from-pink-500 to-rose-500",
-    borderColor: "border-pink-300",
-    bgLight: "bg-pink-50",
-  },
-  {
-    value: "travel-manager",
-    label: "Travel Manager",
-    icon: MapPin,
-    description: "All travel modules",
-    role: "travel",
-    permissions: ["flights", "hotels", "transfers", "trains"],
-    allEvents: false,
-    allPermissions: false,
-    gradient: "from-cyan-500 to-blue-500",
-    borderColor: "border-cyan-300",
-    bgLight: "bg-cyan-50",
-  },
-  {
-    value: "hotel-coordinator",
-    label: "Hotel Coord.",
-    icon: Hotel,
-    description: "Hotels only",
-    role: "travel",
-    permissions: ["hotels"],
-    allEvents: false,
-    allPermissions: false,
-    gradient: "from-amber-500 to-orange-500",
-    borderColor: "border-amber-300",
-    bgLight: "bg-amber-50",
-  },
-  {
-    value: "flight-coordinator",
-    label: "Flight Coord.",
-    icon: Plane,
-    description: "Flights only",
-    role: "travel",
-    permissions: ["flights"],
-    allEvents: false,
-    allPermissions: false,
-    gradient: "from-sky-500 to-blue-500",
-    borderColor: "border-sky-300",
-    bgLight: "bg-sky-50",
-  },
-  {
-    value: "custom",
-    label: "Custom",
-    icon: Settings,
-    description: "Configure manually",
-    role: "",
-    permissions: [] as string[],
-    allEvents: false,
-    allPermissions: false,
-    gradient: "from-slate-400 to-slate-500",
-    borderColor: "border-slate-300",
-    bgLight: "bg-slate-50",
-  },
+  { value: "administrator", label: "Administrator", icon: Shield, description: "Full system access", role: "admin", permissions: [] as string[], allEvents: true, allPermissions: true, gradient: "from-purple-500 to-pink-500", borderColor: "border-purple-300", bgLight: "bg-purple-50" },
+  { value: "event-manager", label: "Event Manager", icon: UserCog, description: "All event modules", role: "coordinator", permissions: ["speakers", "program", "checkin", "badges", "certificates", "registrations", "abstracts"], allEvents: false, allPermissions: false, gradient: "from-blue-500 to-indigo-500", borderColor: "border-blue-300", bgLight: "bg-blue-50" },
+  { value: "registration-manager", label: "Registration Mgr", icon: ClipboardList, description: "Registrations only", role: "coordinator", permissions: ["registrations"], allEvents: false, allPermissions: false, gradient: "from-teal-500 to-emerald-500", borderColor: "border-teal-300", bgLight: "bg-teal-50" },
+  { value: "program-coordinator", label: "Program Coord.", icon: Calendar, description: "Speakers & program", role: "coordinator", permissions: ["speakers", "program"], allEvents: false, allPermissions: false, gradient: "from-indigo-500 to-violet-500", borderColor: "border-indigo-300", bgLight: "bg-indigo-50" },
+  { value: "checkin-staff", label: "Check-in Staff", icon: CheckCircle, description: "Check-in & badges", role: "coordinator", permissions: ["checkin", "badges"], allEvents: false, allPermissions: false, gradient: "from-green-500 to-emerald-500", borderColor: "border-green-300", bgLight: "bg-green-50" },
+  { value: "badge-certificate", label: "Badge & Cert", icon: Award, description: "Badges & certificates", role: "coordinator", permissions: ["badges", "certificates"], allEvents: false, allPermissions: false, gradient: "from-pink-500 to-rose-500", borderColor: "border-pink-300", bgLight: "bg-pink-50" },
+  { value: "travel-manager", label: "Travel Manager", icon: MapPin, description: "All travel modules", role: "travel", permissions: ["flights", "hotels", "transfers", "trains"], allEvents: false, allPermissions: false, gradient: "from-cyan-500 to-blue-500", borderColor: "border-cyan-300", bgLight: "bg-cyan-50" },
+  { value: "hotel-coordinator", label: "Hotel Coord.", icon: Hotel, description: "Hotels only", role: "travel", permissions: ["hotels"], allEvents: false, allPermissions: false, gradient: "from-amber-500 to-orange-500", borderColor: "border-amber-300", bgLight: "bg-amber-50" },
+  { value: "flight-coordinator", label: "Flight Coord.", icon: Plane, description: "Flights only", role: "travel", permissions: ["flights"], allEvents: false, allPermissions: false, gradient: "from-sky-500 to-blue-500", borderColor: "border-sky-300", bgLight: "bg-sky-50" },
+  { value: "custom", label: "Custom", icon: Settings, description: "Configure manually", role: "", permissions: [] as string[], allEvents: false, allPermissions: false, gradient: "from-slate-400 to-slate-500", borderColor: "border-slate-300", bgLight: "bg-slate-50" },
 ]
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getLoginStatus(member: TeamMember): "online" | "away" | "logged_out" | "offline" | "pending" | "deactivated" {
+  if (!member.is_active) return "deactivated"
+  if (!member.last_login_at) return "pending"
+  if (member.last_active_at) {
+    const diff = Date.now() - new Date(member.last_active_at).getTime()
+    if (diff < 15 * 60 * 1000) return "online"
+    if (diff < 60 * 60 * 1000) return "away"
+  }
+  if (member.logged_out_at) return "logged_out"
+  return "offline"
+}
+
+const LOGIN_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: any; pulse?: boolean }> = {
+  online: { label: "Online", color: "text-green-700", bgColor: "bg-green-100", icon: Wifi, pulse: true },
+  away: { label: "Away", color: "text-amber-700", bgColor: "bg-amber-100", icon: Clock },
+  logged_out: { label: "Logged out", color: "text-orange-700", bgColor: "bg-orange-100", icon: LogOut },
+  offline: { label: "Offline", color: "text-slate-600", bgColor: "bg-slate-100", icon: WifiOff },
+  pending: { label: "Pending", color: "text-blue-700", bgColor: "bg-blue-100", icon: CircleDot },
+  deactivated: { label: "Deactivated", color: "text-red-700", bgColor: "bg-red-100", icon: UserX },
+}
 
 function detectPresetForMember(member: TeamMember) {
   const perms = Array.isArray(member.permissions) ? member.permissions : []
@@ -580,101 +250,65 @@ function detectPresetForMember(member: TeamMember) {
   return null
 }
 
+const getRoleInfo = (role: string) => ROLES.find(r => r.value === role) || ROLES[0]
+const getInitials = (name: string) => name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+const copyToClipboard = (text: string, msg: string) => { navigator.clipboard.writeText(text); toast.success(msg) }
+
+// ---------------------------------------------------------------------------
+// Main Component
+// ---------------------------------------------------------------------------
+
 export default function TeamPage() {
-  const router = useRouter()
   const supabase = createClient()
   const queryClient = useQueryClient()
 
-  const [isAddOpen, setIsAddOpen] = useState(false)
+  // -- View state
+  const [activeView, setActiveView] = useState<ActiveView>("overview")
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // -- Dialog/sheet state
+  const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
-  const [isEditing, setIsEditing] = useState(false)
+  const [previewMemberId, setPreviewMemberId] = useState<string | null>(null)
+  const [isGuideOpen, setIsGuideOpen] = useState(false)
+  const [isAuditExportOpen, setIsAuditExportOpen] = useState(false)
+
+  // -- Filter state
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [roleFilter, setRoleFilter] = useState<string>("all")
+  const [tagFilter, setTagFilter] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"grid" | "table">("table")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  // -- Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const toggleSelect = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-  const toggleSelectAll = () => {
-    if (selectedIds.size === filteredMembers.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(filteredMembers.map(m => m.id)))
-    }
+    setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
   }
   const clearSelection = () => setSelectedIds(new Set())
-  const [currentPage, setCurrentPage] = useState(1)
-  const [isGuideOpen, setIsGuideOpen] = useState(false)
-  const itemsPerPage = 10
-  const allPermissionValues = PERMISSIONS.map(p => p.value)
 
-  const [formData, setFormData] = useState<{
-    email: string; name: string; phone: string; role: string; notes: string;
-    event_ids: string[]; all_events: boolean; permissions: string[]; all_permissions: boolean;
-  }>({
-    email: "",
-    name: "",
-    phone: "",
-    role: "travel",
-    notes: "",
-    event_ids: [] as string[],
-    all_events: true,
-    permissions: allPermissionValues,
-    all_permissions: true,
-  })
+  // -- Audit export state
+  const [auditFrom, setAuditFrom] = useState("")
+  const [auditTo, setAuditTo] = useState("")
+  const [auditActionType, setAuditActionType] = useState("")
+  const [auditActorEmail, setAuditActorEmail] = useState("")
 
-  const detectedPreset = useMemo(() => {
-    const formPerms = [...formData.permissions].sort()
-    for (const preset of ROLE_PRESETS) {
-      if (preset.value === "custom") continue
-      if (preset.role !== formData.role) continue
-      if (preset.allPermissions !== formData.all_permissions) continue
-      if (preset.allEvents !== formData.all_events) continue
-      if (!preset.allPermissions) {
-        const presetPerms = [...preset.permissions].sort()
-        if (presetPerms.length !== formPerms.length) continue
-        if (presetPerms.some((p, i) => p !== formPerms[i])) continue
-      }
-      return preset.value
-    }
-    return "custom"
-  }, [formData.role, formData.permissions, formData.all_permissions, formData.all_events])
 
-  const applyPreset = (presetValue: string) => {
-    const preset = ROLE_PRESETS.find(p => p.value === presetValue)
-    if (!preset || preset.value === "custom") return
-    setFormData(prev => ({
-      ...prev,
-      role: preset.role,
-      permissions: preset.allPermissions ? [] : preset.permissions,
-      all_events: preset.allEvents,
-      all_permissions: preset.allPermissions,
-    }))
-  }
+  // ---------------------------------------------------------------------------
+  // Queries
+  // ---------------------------------------------------------------------------
 
   const { data: teamMembers, isLoading, refetch } = useQuery({
     queryKey: ["team-members"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("team_members")
-        .select("*")
-        .order("created_at", { ascending: false })
+      const { data, error } = await (supabase as any).from("team_members").select("*").order("created_at", { ascending: false })
       if (error) throw error
       const members = data as TeamMember[]
-
-      // Fetch login activity from users table by matching emails
       const emails = members.map(m => (m.email || "").toLowerCase())
       if (emails.length > 0) {
-        const { data: users } = await (supabase as any)
-          .from("users")
-          .select("email, last_login_at, last_active_at, login_count")
-          .in("email", emails)
+        const { data: users } = await (supabase as any).from("users").select("email, last_login_at, last_active_at, login_count").in("email", emails)
         if (users) {
           const userMap = new Map<string, any>(users.map((u: any) => [u.email?.toLowerCase(), u]))
           for (const member of members) {
@@ -687,7 +321,6 @@ export default function TeamPage() {
           }
         }
       }
-
       return members
     },
   })
@@ -695,11 +328,18 @@ export default function TeamPage() {
   const { data: events } = useQuery({
     queryKey: ["events-list"],
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("events")
-        .select("id, name, short_name, start_date, end_date, status")
-        .order("start_date", { ascending: false })
+      const { data } = await (supabase as any).from("events").select("id, name, short_name, start_date, end_date, status").order("start_date", { ascending: false })
       return (data || []) as Event[]
+    },
+  })
+
+  const { data: isSuperAdmin } = useQuery({
+    queryKey: ["current-user-super-admin"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return false
+      const { data: profile } = await (supabase as any).from("users").select("is_super_admin, platform_role").eq("id", user.id).maybeSingle()
+      return profile?.is_super_admin === true || profile?.platform_role === "super_admin"
     },
   })
 
@@ -713,16 +353,18 @@ export default function TeamPage() {
     },
   })
 
+  // ---------------------------------------------------------------------------
+  // Mutations
+  // ---------------------------------------------------------------------------
+
   const resendInvite = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/team/${id}/resend-invite`, { method: 'POST' })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Failed to resend')
-      }
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Failed to resend') }
+      return res.json()
     },
-    onSuccess: () => {
-      toast.success("Invitation resent!")
+    onSuccess: (data) => {
+      toast.success(data?.whatsapp_sent ? "Invitation resent via email + WhatsApp" : "Invitation resent with new link")
       queryClient.invalidateQueries({ queryKey: ["team-invitations"] })
     },
     onError: (error: any) => toast.error(error.message),
@@ -731,254 +373,79 @@ export default function TeamPage() {
   const revokeInvite = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/team/invite/${id}/revoke`, { method: 'POST' })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Failed to revoke')
-      }
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Failed to revoke') }
     },
-    onSuccess: () => {
-      toast.success("Invitation revoked")
-      queryClient.invalidateQueries({ queryKey: ["team-invitations"] })
-    },
+    onSuccess: () => { toast.success("Invitation revoked"); queryClient.invalidateQueries({ queryKey: ["team-invitations"] }) },
     onError: (error: any) => toast.error(error.message),
-  })
-
-  const [eventSearch, setEventSearch] = useState("")
-
-  const categorizedEvents = useMemo(() => {
-    if (!events) return { live: [], completed: [] }
-    const now = new Date()
-    const live: Event[] = []
-    const completed: Event[] = []
-    for (const event of events) {
-      const endDate = event.end_date ? new Date(event.end_date) : null
-      const isCompleted = event.status === "completed" || event.status === "cancelled" || (endDate && endDate < now)
-      if (isCompleted) {
-        completed.push(event)
-      } else {
-        live.push(event)
-      }
-    }
-    return { live, completed }
-  }, [events])
-
-  const addMember = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      const res = await fetch('/api/team', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: data.email.toLowerCase(),
-          name: data.name,
-          phone: data.phone || null,
-          role: data.role,
-          notes: data.notes || null,
-          event_ids: data.all_events ? [] : data.event_ids,
-          permissions: data.all_permissions ? [] : data.permissions,
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Failed to add member')
-      }
-      return res.json()
-    },
-    onSuccess: (_, data) => {
-      queryClient.invalidateQueries({ queryKey: ["team-members"] })
-      toast.success("Team member added successfully!")
-      setIsAddOpen(false)
-      // Auto-send invite email
-      fetch('/api/team/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: data.email.toLowerCase(),
-          name: data.name,
-          role: data.role,
-          permissions: data.all_permissions ? [] : data.permissions,
-          event_ids: data.all_events ? [] : data.event_ids,
-        }),
-      }).then(res => {
-        if (res.ok) {
-          toast.success("Invite email sent!")
-          queryClient.invalidateQueries({ queryKey: ["team-invitations"] })
-        }
-        else toast.error("Member added but invite email failed")
-      }).catch(() => toast.error("Member added but invite email failed"))
-      resetForm()
-    },
-    onError: (error: any) => {
-      toast.error(error.message?.includes("duplicate") ? "This email already exists" : error.message || "Failed to add")
-    },
-  })
-
-  const updateMember = useMutation({
-    mutationFn: async (data: { id: string; updates: any }) => {
-      const res = await fetch(`/api/team/${data.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data.updates),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Failed to update')
-      }
-      return res.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-members"] })
-      toast.success("Updated successfully!")
-      setIsEditing(false)
-      setSelectedMember(null)
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to update")
-    },
   })
 
   const deleteMember = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/team/${id}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Failed to remove')
-      }
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Failed to remove') }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-members"] })
-      toast.success("Member removed")
-      setSelectedMember(null)
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["team-members"] }); toast.success("Member removed"); setSelectedMember(null) },
   })
 
   const bulkActivate = useMutation({
-    mutationFn: async (ids: string[]) => {
-      await Promise.all(ids.map(id =>
-        fetch(`/api/team/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ is_active: true }),
-        })
-      ))
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-members"] })
-      toast.success(`${selectedIds.size} members activated`)
-      clearSelection()
-    },
+    mutationFn: async (ids: string[]) => { await Promise.all(ids.map(id => fetch(`/api/team/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: true }) }))) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["team-members"] }); toast.success(`${selectedIds.size} members activated`); clearSelection() },
   })
 
   const bulkDeactivate = useMutation({
-    mutationFn: async (ids: string[]) => {
-      await Promise.all(ids.map(id =>
-        fetch(`/api/team/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ is_active: false }),
-        })
-      ))
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-members"] })
-      toast.success(`${selectedIds.size} members deactivated`)
-      clearSelection()
-    },
+    mutationFn: async (ids: string[]) => { await Promise.all(ids.map(id => fetch(`/api/team/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: false }) }))) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["team-members"] }); toast.success(`${selectedIds.size} members deactivated`); clearSelection() },
   })
 
   const bulkDelete = useMutation({
-    mutationFn: async (ids: string[]) => {
-      await Promise.all(ids.map(id => fetch(`/api/team/${id}`, { method: 'DELETE' })))
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-members"] })
-      toast.success(`${selectedIds.size} members removed`)
-      clearSelection()
-    },
+    mutationFn: async (ids: string[]) => { await Promise.all(ids.map(id => fetch(`/api/team/${id}`, { method: 'DELETE' }))) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["team-members"] }); toast.success(`${selectedIds.size} members removed`); clearSelection() },
   })
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await (supabase as any)
-        .from("team_members")
-        .update({ is_active })
-        .eq("id", id)
+      const { error } = await (supabase as any).from("team_members").update({ is_active }).eq("id", id)
       if (error) throw error
     },
-    onSuccess: (_, v) => {
-      queryClient.invalidateQueries({ queryKey: ["team-members"] })
-      toast.success(v.is_active ? "Member activated" : "Member deactivated")
-    },
+    onSuccess: (_, v) => { queryClient.invalidateQueries({ queryKey: ["team-members"] }); toast.success(v.is_active ? "Member activated" : "Member deactivated") },
   })
 
   const sendMagicLink = useMutation({
     mutationFn: async (email: string) => {
-      const res = await fetch('/api/auth/magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.toLowerCase(),
-          redirectTo: '/team-portal',
-        }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Failed to send login link')
-      }
+      const res = await fetch('/api/auth/magic-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.toLowerCase(), redirectTo: '/team-portal' }) })
+      if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error || 'Failed to send login link') }
     },
     onSuccess: () => toast.success("Login link sent!"),
     onError: (error: any) => toast.error(error.message || "Failed to send"),
   })
 
-  const resetForm = () => {
-    setFormData({
-      email: "", name: "", phone: "", role: "travel", notes: "",
-      event_ids: [], all_events: true, permissions: allPermissionValues, all_permissions: true,
-    })
-    setEventSearch("")
-  }
-
-  const getRoleInfo = (role: string) => ROLES.find(r => r.value === role) || ROLES[0]
-  const getInitials = (name: string) => name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-  const copyToClipboard = (text: string, msg: string) => { navigator.clipboard.writeText(text); toast.success(msg) }
+  // ---------------------------------------------------------------------------
+  // Derived data
+  // ---------------------------------------------------------------------------
 
   const filteredMembers = useMemo(() => {
     return (teamMembers || []).filter(m => {
       const matchesSearch = (m.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || (m.email || "").toLowerCase().includes(searchQuery.toLowerCase())
       const matchesStatus = statusFilter === "all" || (statusFilter === "active" && m.is_active) || (statusFilter === "inactive" && !m.is_active)
       const matchesRole = roleFilter === "all" || m.role === roleFilter
-      return matchesSearch && matchesStatus && matchesRole
+      const matchesTag = tagFilter === "all" || (Array.isArray(m.tags) && m.tags.includes(tagFilter))
+      return matchesSearch && matchesStatus && matchesRole && matchesTag
     })
-  }, [teamMembers, searchQuery, statusFilter, roleFilter])
+  }, [teamMembers, searchQuery, statusFilter, roleFilter, tagFilter])
 
-  // Pagination
   const totalPages = Math.ceil(filteredMembers.length / itemsPerPage)
   const paginatedMembers = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage
     return filteredMembers.slice(start, start + itemsPerPage)
   }, [filteredMembers, currentPage])
 
-  // Reset page and selection when filters change
-  useEffect(() => {
-    setCurrentPage(1)
-    setSelectedIds(new Set())
-  }, [searchQuery, statusFilter, roleFilter])
-
-  const totalMembers = teamMembers?.length || 0
-  const activeMembers = teamMembers?.filter(m => m.is_active).length || 0
-
-  const startEdit = (member: TeamMember) => {
-    setFormData({
-      email: member.email, name: member.name, phone: member.phone || "", role: member.role,
-      notes: member.notes || "", event_ids: member.event_ids || [],
-      all_events: !member.event_ids || member.event_ids.length === 0,
-      permissions: Array.isArray(member.permissions) ? member.permissions : [],
-      all_permissions: !Array.isArray(member.permissions) || member.permissions.length === 0,
-    })
-    setEventSearch("")
-    setIsEditing(true)
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredMembers.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(filteredMembers.map(m => m.id)))
   }
 
-  // Update selected member when teamMembers changes
+  useEffect(() => { setCurrentPage(1); setSelectedIds(new Set()) }, [searchQuery, statusFilter, roleFilter, tagFilter])
+
   useEffect(() => {
     if (selectedMember && teamMembers) {
       const updated = teamMembers.find(m => m.id === selectedMember.id)
@@ -987,1610 +454,1023 @@ export default function TeamPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamMembers])
 
+  const totalMembers = teamMembers?.length || 0
+  const activeMembers = teamMembers?.filter(m => m.is_active).length || 0
+  const pendingInviteCount = invitations?.filter(i => i.status === 'pending').length || 0
+  const newThisMonth = useMemo(() => {
+    if (!teamMembers) return 0
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
+    return teamMembers.filter(m => new Date(m.created_at).getTime() > thirtyDaysAgo).length
+  }, [teamMembers])
+
+  const moduleCoverage = useMemo(() => {
+    if (!teamMembers) return { covered: 0, total: PERMISSIONS.length }
+    const coveredModules = new Set<string>()
+    for (const m of teamMembers) {
+      if (!m.is_active) continue
+      if (!Array.isArray(m.permissions) || m.permissions.length === 0) {
+        // Full access -- all covered
+        PERMISSIONS.forEach(p => coveredModules.add(p.value))
+      } else {
+        m.permissions.forEach(p => coveredModules.add(p))
+      }
+    }
+    return { covered: coveredModules.size, total: PERMISSIONS.length }
+  }, [teamMembers])
+
+  const handleExportCSV = () => {
+    fetch('/api/team/export')
+      .then(res => res.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href = url
+        a.download = `team-members-${new Date().toISOString().slice(0, 10)}.csv`
+        a.click(); URL.revokeObjectURL(url); toast.success("Team data exported!")
+      })
+      .catch(() => toast.error("Export failed"))
+  }
+
+  const handleExportAudit = () => {
+    const params = new URLSearchParams({ type: 'audit' })
+    if (auditFrom) params.set('from', auditFrom)
+    if (auditTo) params.set('to', auditTo)
+    if (auditActionType) params.set('action_type', auditActionType)
+    if (auditActorEmail) params.set('actor_email', auditActorEmail)
+    fetch(`/api/team/export?${params.toString()}`)
+      .then(res => { if (!res.ok) throw new Error('Export failed'); return res.blob() })
+      .then(blob => {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href = url
+        a.download = `audit-trail-${new Date().toISOString().slice(0, 10)}.csv`
+        a.click(); URL.revokeObjectURL(url); toast.success("Audit trail exported!"); setIsAuditExportOpen(false)
+      })
+      .catch(() => toast.error("Audit export failed"))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Navigation items
+  // ---------------------------------------------------------------------------
+
+  const NAV_ITEMS: { key: ActiveView; label: string; icon: any; badge?: number }[] = [
+    { key: "overview", label: "Overview", icon: LayoutDashboard, badge: totalMembers },
+    { key: "invitations", label: "Invitations", icon: Mail, badge: pendingInviteCount },
+    { key: "audit", label: "Audit", icon: Shield },
+    { key: "settings", label: "Settings", icon: Settings },
+  ]
+
+  const VIEW_TITLES: Record<ActiveView, string> = {
+    overview: "Team Overview",
+    invitations: "Invitations",
+    audit: "Audit & Activity",
+    settings: "Settings",
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      {/* Hero Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4 sm:gap-5">
-              <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors">
-                <ChevronLeft className="h-4 w-4" />
-                Back
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* ================================================================= */}
+      {/* SIDEBAR                                                           */}
+      {/* ================================================================= */}
+      <aside className={cn(
+        "fixed lg:sticky top-0 left-0 z-50 lg:z-auto h-screen w-[220px] flex-shrink-0 bg-[#185FA5] text-white flex flex-col transition-transform duration-300",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
+        {/* Logo area */}
+        <div className="px-5 pt-6 pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">AMASI</h1>
+              <p className="text-[11px] text-white/60 mt-0.5">Team Management</p>
+            </div>
+            <button className="lg:hidden p-1 hover:bg-white/10 rounded" onClick={() => setSidebarOpen(false)}>
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-3 space-y-1">
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider px-2 mb-2">Navigation</p>
+          {NAV_ITEMS.map(item => {
+            const Icon = item.icon
+            const isActive = activeView === item.key
+            return (
+              <button
+                key={item.key}
+                onClick={() => { setActiveView(item.key); setSidebarOpen(false) }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                  isActive
+                    ? "bg-white/15 border-l-[3px] border-white"
+                    : "hover:bg-white/10 border-l-[3px] border-transparent"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="flex-1 text-left">{item.label}</span>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5 font-medium">{item.badge}</span>
+                )}
               </button>
-              <div className="h-6 w-px bg-slate-600" />
-              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
-                <Users className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Team Management</h1>
-                <p className="text-slate-400 text-xs sm:text-sm mt-0.5">Manage access, permissions and team members</p>
+            )
+          })}
+        </nav>
+
+        {/* Quick Actions */}
+        <div className="px-3 pb-6 space-y-2">
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider px-2 mb-2">Quick Actions</p>
+          <button
+            onClick={() => { setIsInviteOpen(true); setSidebarOpen(false) }}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-white/30 hover:bg-white/10 transition-colors"
+          >
+            <UserPlus className="h-4 w-4" />
+            Invite Member
+          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={() => { setActiveView("settings"); setSidebarOpen(false) }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-white/30 hover:bg-white/10 transition-colors"
+            >
+              <Shield className="h-4 w-4" />
+              Device Tokens
+            </button>
+          )}
+        </div>
+      </aside>
+
+      {/* ================================================================= */}
+      {/* MAIN CONTENT                                                      */}
+      {/* ================================================================= */}
+      <main className="flex-1 min-w-0 overflow-auto">
+
+        {/* TOP BAR */}
+        <div className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b px-4 sm:px-6 py-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <button className="lg:hidden p-2 hover:bg-slate-100 rounded-lg" onClick={() => setSidebarOpen(true)}>
+                <Menu className="h-5 w-5" />
+              </button>
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold truncate">{VIEW_TITLES[activeView]}</h2>
+                <p className="text-xs text-muted-foreground truncate">
+                  {events?.length || 0} events &middot; {totalMembers} members &middot; {pendingInviteCount} pending invites
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <div className="flex items-center gap-2 shrink-0">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={() => refetch()} className="text-slate-400 hover:text-white hover:bg-white/10">
+                    <Button variant="ghost" size="icon" onClick={() => refetch()} className="h-9 w-9">
                       <RefreshCw className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Refresh</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <Button onClick={() => setIsGuideOpen(true)} size="sm" className="bg-white/10 border border-white/20 text-white hover:bg-white/20">
-                <BookOpen className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Permission Guide</span>
+              <Button variant="outline" size="sm" onClick={handleExportCSV} className="hidden sm:flex">
+                <Download className="h-4 w-4 mr-2" />Export CSV
               </Button>
-              <Button onClick={() => copyToClipboard(`${window.location.origin}/team-login`, "Portal link copied!")} size="sm" className="bg-white/10 border border-white/20 text-white hover:bg-white/20">
-                <Link2 className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Portal Link</span>
-              </Button>
-              <Button onClick={() => {
-                fetch('/api/team/export')
-                  .then(res => res.blob())
-                  .then(blob => {
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = `team-members-${new Date().toISOString().slice(0, 10)}.csv`
-                    a.click()
-                    URL.revokeObjectURL(url)
-                    toast.success("Team data exported!")
-                  })
-                  .catch(() => toast.error("Export failed"))
-              }} size="sm" className="bg-white/10 border border-white/20 text-white hover:bg-white/20">
-                <Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Export</span>
-              </Button>
-              <Button onClick={() => { resetForm(); setIsAddOpen(true) }} size="sm" className="bg-white text-slate-900 hover:bg-slate-100 shadow-lg">
-                <UserPlus className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Add Member</span>
+              {isSuperAdmin && (
+                <Button variant="outline" size="sm" onClick={() => setIsAuditExportOpen(true)} className="hidden sm:flex">
+                  <FileText className="h-4 w-4 mr-2" />Export Audit
+                </Button>
+              )}
+              <Button size="sm" className="bg-[#185FA5] hover:bg-[#14508c] text-white" onClick={() => setIsInviteOpen(true)}>
+                <UserPlus className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Invite Member</span>
               </Button>
             </div>
           </div>
+        </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mt-6 sm:mt-8">
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-blue-400" />
+        <div className="p-4 sm:p-6 max-w-[1400px] mx-auto">
+
+          {/* ============================================================= */}
+          {/* OVERVIEW VIEW                                                  */}
+          {/* ============================================================= */}
+          {activeView === "overview" && (
+            <>
+              {/* Stats Row */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <StatsCard icon={<Users className="h-5 w-5 text-[#185FA5]" />} label="Total Members" value={totalMembers} subtitle={newThisMonth > 0 ? `+${newThisMonth} this month` : "No new this month"} />
+                <StatsCard icon={<UserCheck className="h-5 w-5 text-green-600" />} label="Active Now" value={activeMembers} subtitle={`${totalMembers - activeMembers} inactive`} />
+                <StatsCard icon={<Mail className="h-5 w-5 text-amber-600" />} label="Pending Invites" value={pendingInviteCount} subtitle={pendingInviteCount > 0 ? "Awaiting response" : "All caught up"} />
+                <StatsCard icon={<BarChart3 className="h-5 w-5 text-violet-600" />} label="Module Coverage" value={`${moduleCoverage.covered}/${moduleCoverage.total}`} subtitle={moduleCoverage.covered < moduleCoverage.total ? `${moduleCoverage.total - moduleCoverage.covered} uncovered` : "Fully covered"} />
+              </div>
+
+              {/* Module Coverage Widget */}
+              <ModulesCoverage
+                members={teamMembers || []}
+                eventId={events?.[0]?.id}
+              />
+
+              {/* Role Filter Chips + Search + Filters */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {[{ value: "all", label: "All", count: totalMembers }, { value: "admin", label: "Admin", count: teamMembers?.filter(m => m.role === "admin").length || 0 }, { value: "coordinator", label: "Coordinator", count: teamMembers?.filter(m => m.role === "coordinator").length || 0 }, { value: "travel", label: "Travel", count: teamMembers?.filter(m => m.role === "travel").length || 0 }].map(chip => (
+                    <button
+                      key={chip.value}
+                      onClick={() => { setRoleFilter(chip.value); setStatusFilter("all") }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-sm font-medium transition-all border",
+                        roleFilter === chip.value
+                          ? "bg-[#185FA5] text-white border-[#185FA5]"
+                          : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#185FA5]/50"
+                      )}
+                    >
+                      {chip.label}
+                      <span className="ml-1.5 text-[11px] opacity-70">{chip.count}</span>
+                    </button>
+                  ))}
+                  {/* Inactive chip */}
+                  <button
+                    onClick={() => { setStatusFilter(statusFilter === "inactive" ? "all" : "inactive"); setRoleFilter("all") }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-sm font-medium transition-all border",
+                      statusFilter === "inactive"
+                        ? "bg-slate-700 text-white border-slate-700"
+                        : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400"
+                    )}
+                  >
+                    Inactive
+                    <span className="ml-1.5 text-[11px] opacity-70">{totalMembers - activeMembers}</span>
+                  </button>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{totalMembers}</p>
-                  <p className="text-xs text-slate-400">Total Members</p>
+                <div className="flex items-center gap-2">
+                  <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className="h-9 px-3 rounded-lg border bg-white dark:bg-slate-800 shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-[#185FA5]/20">
+                    <option value="all">All Tags</option>
+                    {TAG_SUGGESTIONS.map(tag => <option key={tag} value={tag}>{tag.charAt(0).toUpperCase() + tag.slice(1)}</option>)}
+                  </select>
+                  <div className="relative w-56">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search members..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-9 bg-white dark:bg-slate-800 shadow-sm" />
+                  </div>
+                  <div className="hidden sm:flex bg-white dark:bg-slate-800 border rounded-lg shadow-sm p-0.5">
+                    <Button variant={viewMode === "table" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("table")} className="h-8 px-2">
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("grid")} className="h-8 px-2">
+                      <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
+
+              {/* Bulk Action Bar */}
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-xl">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">{selectedIds.size} selected</Badge>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button variant="outline" size="sm" onClick={() => bulkActivate.mutate(Array.from(selectedIds))} disabled={bulkActivate.isPending}>
+                      <UserCheck className="h-3.5 w-3.5 mr-1.5" />Activate
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => bulkDeactivate.mutate(Array.from(selectedIds))} disabled={bulkDeactivate.isPending}>
+                      <UserX className="h-3.5 w-3.5 mr-1.5" />Deactivate
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => { if (confirm(`Remove ${selectedIds.size} members? This cannot be undone.`)) bulkDelete.mutate(Array.from(selectedIds)) }} disabled={bulkDelete.isPending}>
+                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />Remove
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Member Table / Grid */}
+              {isLoading ? (
+                viewMode === "table" ? <SkeletonTable rows={5} /> : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+                  </div>
+                )
+              ) : filteredMembers.length === 0 ? (
+                <div className="text-center py-20">
+                  <div className="h-20 w-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                    <Users className="h-10 w-10 text-slate-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">{searchQuery ? "No matching members" : "No team members yet"}</h3>
+                  <p className="text-muted-foreground mb-6">{searchQuery ? "Try a different search term" : "Add your first team member to get started"}</p>
+                  {!searchQuery && <Button onClick={() => setIsInviteOpen(true)} size="lg"><UserPlus className="h-5 w-5 mr-2" />Add First Member</Button>}
+                </div>
+              ) : viewMode === "table" ? (
+                <MemberTable
+                  members={paginatedMembers}
+                  allMembers={filteredMembers}
+                  events={events}
+                  selectedIds={selectedIds}
+                  toggleSelect={toggleSelect}
+                  toggleSelectAll={toggleSelectAll}
+                  isSuperAdmin={isSuperAdmin}
+                  onSelectMember={setSelectedMember}
+                  onSendMagicLink={(email) => sendMagicLink.mutate(email)}
+                  onToggleActive={(id, is_active) => toggleActive.mutate({ id, is_active })}
+                  onDelete={(id, name) => { if (confirm(`Remove ${name}?`)) deleteMember.mutate(id) }}
+                  onPreview={setPreviewMemberId}
+                />
+              ) : (
+                <MemberGrid
+                  members={paginatedMembers}
+                  events={events}
+                  onSelectMember={setSelectedMember}
+                />
+              )}
+
+              {/* Pagination */}
+              {filteredMembers.length > itemsPerPage && (
+                <div className="flex items-center justify-between mt-6 px-2">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredMembers.length)} of {filteredMembers.length} members
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                      <ChevronLeft className="h-4 w-4 mr-1" />Previous
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum: number
+                        if (totalPages <= 5) pageNum = i + 1
+                        else if (currentPage <= 3) pageNum = i + 1
+                        else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i
+                        else pageNum = currentPage - 2 + i
+                        return (
+                          <Button key={pageNum} variant={currentPage === pageNum ? "default" : "outline"} size="sm" className="w-9 h-9" onClick={() => setCurrentPage(pageNum)}>
+                            {pageNum}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                      Next<ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom Two-Column Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-8">
+                {/* Pending Invitations Summary (60%) */}
+                <div className="lg:col-span-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-sm">Pending Invitations</h3>
+                    {pendingInviteCount > 0 && (
+                      <button onClick={() => setActiveView("invitations")} className="text-xs text-[#185FA5] hover:underline font-medium flex items-center gap-1">
+                        View all <ArrowRight className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                  <PendingInvitations
+                    invitations={(invitations?.filter(i => i.status === 'pending') || []).slice(0, 5)}
+                    isLoading={invitationsLoading}
+                    onResend={(id) => resendInvite.mutate(id)}
+                    onRevoke={(id) => revokeInvite.mutate(id)}
+                    isResending={resendInvite.isPending}
+                  />
+                </div>
+                {/* Live Activity Feed (40%) */}
+                <div className="lg:col-span-2">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-sm">Live Activity</h3>
+                    <button onClick={() => setActiveView("audit")} className="text-xs text-[#185FA5] hover:underline font-medium flex items-center gap-1">
+                      View all <ArrowRight className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border overflow-hidden" style={{ height: 360 }}>
+                    <ActivityFeed onClose={() => {}} />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ============================================================= */}
+          {/* INVITATIONS VIEW                                               */}
+          {/* ============================================================= */}
+          {activeView === "invitations" && (
+            <>
+              {/* Invitation stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <StatsCard icon={<Mail className="h-5 w-5 text-blue-600" />} label="Total Sent" value={invitations?.length || 0} subtitle="All time" />
+                <StatsCard icon={<CheckCircle className="h-5 w-5 text-green-600" />} label="Accepted" value={invitations?.filter(i => i.status === 'accepted').length || 0} subtitle="Onboarded" />
+                <StatsCard icon={<Clock className="h-5 w-5 text-red-600" />} label="Expired" value={invitations?.filter(i => i.status === 'expired').length || 0} subtitle="Need resending" />
+                <StatsCard icon={<CircleDot className="h-5 w-5 text-amber-600" />} label="Pending" value={pendingInviteCount} subtitle="Awaiting response" />
+              </div>
+              <PendingInvitations
+                invitations={invitations || []}
+                isLoading={invitationsLoading}
+                onResend={(id) => resendInvite.mutate(id)}
+                onRevoke={(id) => revokeInvite.mutate(id)}
+                isResending={resendInvite.isPending}
+              />
+            </>
+          )}
+
+          {/* ============================================================= */}
+          {/* AUDIT VIEW                                                     */}
+          {/* ============================================================= */}
+          {activeView === "audit" && (
+            <>
+              <div className="flex items-center justify-between mb-6">
+                <p className="text-sm text-muted-foreground">Review team activity and access logs</p>
+                {isSuperAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => setIsAuditExportOpen(true)}>
+                    <Download className="h-4 w-4 mr-2" />Export Audit Trail
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-6">
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border overflow-hidden">
+                  <div className="p-4 border-b">
+                    <h3 className="font-semibold text-sm">Live Activity Feed</h3>
+                  </div>
+                  <div style={{ height: 500 }}>
+                    <ActivityFeed onClose={() => {}} />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ============================================================= */}
+          {/* SETTINGS VIEW                                                  */}
+          {/* ============================================================= */}
+          {activeView === "settings" && (
+            <div className="space-y-6">
+              {/* Permission Guide */}
+              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                      <BookOpen className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Permission Guide</h3>
+                      <p className="text-xs text-muted-foreground">Understand what each role and permission grants access to</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setIsGuideOpen(true)}>
+                    <BookOpen className="h-4 w-4 mr-2" />Open Guide
+                  </Button>
+                </div>
+              </div>
+
+              {/* Portal Link */}
+              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <Link2 className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Team Portal Link</h3>
+                      <p className="text-xs text-muted-foreground">Share this link so team members can log in</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => copyToClipboard(`${window.location.origin}/team-login`, "Portal link copied!")}>
+                    <Copy className="h-4 w-4 mr-2" />Copy Link
+                  </Button>
+                </div>
+              </div>
+
+              {/* Device Tokens (super_admin only) */}
+              {isSuperAdmin && (
+                <DeviceTokens />
+              )}
             </div>
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-                  <UserCheck className="h-5 w-5 text-green-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{activeMembers}</p>
-                  <p className="text-xs text-slate-400">Active</p>
-                </div>
-              </div>
+          )}
+        </div>
+      </main>
+
+      {/* ================================================================= */}
+      {/* DIALOGS & SHEETS                                                  */}
+      {/* ================================================================= */}
+
+      {/* Member Detail Panel (combined view + edit) */}
+      <MemberDetailPanel
+        open={!!selectedMember}
+        onClose={() => setSelectedMember(null)}
+        member={selectedMember}
+        events={events || []}
+        allMembers={teamMembers || []}
+        isSuperAdmin={!!isSuperAdmin}
+      />
+
+      {/* Permission Diff Confirmation Modal */}
+      {/* Preview Access Modal (super_admin only) */}
+      <PreviewModal open={!!previewMemberId} onClose={() => setPreviewMemberId(null)} memberId={previewMemberId} />
+
+      {/* Invite Dialog (single + bulk, 4-step wizard) */}
+      <InviteDialog
+        open={isInviteOpen}
+        onOpenChange={setIsInviteOpen}
+        onComplete={() => { queryClient.invalidateQueries({ queryKey: ["team-invitations"] }); queryClient.invalidateQueries({ queryKey: ["team-members"] }) }}
+      />
+
+      {/* Permission Guide Sheet */}
+      <Sheet open={isGuideOpen} onOpenChange={setIsGuideOpen}>
+        <ResizableSheetContent defaultWidth={672} minWidth={500} maxWidth={1000} storageKey="team-activity-sheet-width" className="overflow-y-auto p-0">
+          <PermissionGuideContent />
+        </ResizableSheetContent>
+      </Sheet>
+
+      {/* Audit Trail Export Dialog */}
+      <Dialog open={isAuditExportOpen} onOpenChange={setIsAuditExportOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export Audit Trail</DialogTitle>
+            <DialogDescription>Download team activity logs as CSV. Apply filters to narrow results.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label htmlFor="audit-from">From</Label><Input id="audit-from" type="date" value={auditFrom} onChange={(e) => setAuditFrom(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="audit-to">To</Label><Input id="audit-to" type="date" value={auditTo} onChange={(e) => setAuditTo(e.target.value)} /></div>
             </div>
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                  <UserX className="h-5 w-5 text-amber-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{totalMembers - activeMembers}</p>
-                  <p className="text-xs text-slate-400">Inactive</p>
-                </div>
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="audit-action-type">Action Type</Label>
+              <select id="audit-action-type" value={auditActionType} onChange={(e) => setAuditActionType(e.target.value)} className="w-full h-10 px-3 rounded-lg border bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-[#185FA5]/20">
+                <option value="">All Actions</option>
+                <option value="team_member.created">Member Created</option>
+                <option value="team_member.updated">Member Updated</option>
+                <option value="team_member.deleted">Member Deleted</option>
+                <option value="team_member.role_changed">Role Changed</option>
+                <option value="team_member.activated">Member Activated</option>
+                <option value="team_member.deactivated">Member Deactivated</option>
+                <option value="team_member.permissions_changed">Permissions Changed</option>
+                <option value="team_member.invited">Member Invited</option>
+                <option value="team_member.invite_accepted">Invite Accepted</option>
+                <option value="team_member.invite_resent">Invite Resent</option>
+                <option value="team_member.invite_revoked">Invite Revoked</option>
+                <option value="invite.token_fail">Invite Token Fail</option>
+              </select>
             </div>
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                  <Shield className="h-5 w-5 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{teamMembers?.filter(m => m.role === "admin").length || 0}</p>
-                  <p className="text-xs text-slate-400">Admins</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                  <Mail className="h-5 w-5 text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{invitations?.filter(i => i.status === 'pending').length || 0}</p>
-                  <p className="text-xs text-slate-400">Pending Invites</p>
-                </div>
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="audit-actor-email">Actor Email (optional)</Label>
+              <Input id="audit-actor-email" type="email" placeholder="e.g. admin@example.com" value={auditActorEmail} onChange={(e) => setAuditActorEmail(e.target.value)} />
             </div>
           </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setIsAuditExportOpen(false)}>Cancel</Button>
+            <Button onClick={handleExportAudit}><Download className="h-4 w-4 mr-2" />Export CSV</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+// ===========================================================================
+// Sub-components
+// ===========================================================================
+
+function StatsCard({ icon, label, value, subtitle }: { icon: React.ReactNode; label: string; value: number | string; subtitle: string }) {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0">{icon}</div>
+        <div className="min-w-0">
+          <p className="text-2xl font-bold leading-none">{value}</p>
+          <p className="text-xs text-muted-foreground mt-1">{label}</p>
         </div>
       </div>
+      <p className="text-[11px] text-muted-foreground mt-2">{subtitle}</p>
+    </div>
+  )
+}
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-            <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-              <TabsList className="bg-white shadow-sm border w-full sm:w-auto">
-                <TabsTrigger value="all" className="flex-1 sm:flex-none data-[state=active]:bg-slate-900 data-[state=active]:text-white text-xs sm:text-sm">
-                  All
-                </TabsTrigger>
-                <TabsTrigger value="active" className="flex-1 sm:flex-none data-[state=active]:bg-green-600 data-[state=active]:text-white text-xs sm:text-sm">
-                  <span className="h-2 w-2 rounded-full bg-green-500 mr-1 sm:mr-2" />Active
-                </TabsTrigger>
-                <TabsTrigger value="inactive" className="flex-1 sm:flex-none data-[state=active]:bg-slate-600 data-[state=active]:text-white text-xs sm:text-sm">
-                  <span className="h-2 w-2 rounded-full bg-slate-400 mr-1 sm:mr-2" />Inactive
-                </TabsTrigger>
-                <TabsTrigger value="pending" className="flex-1 sm:flex-none data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs sm:text-sm">
-                  <span className="h-2 w-2 rounded-full bg-blue-500 mr-1 sm:mr-2" />Pending
-                  {(invitations?.filter(i => i.status === 'pending').length || 0) > 0 && (
-                    <span className="ml-1 text-[10px] bg-white/20 rounded-full px-1.5">{invitations?.filter(i => i.status === 'pending').length}</span>
+// ---------------------------------------------------------------------------
+// MemberTable
+// ---------------------------------------------------------------------------
+
+function MemberTable({ members, allMembers, events, selectedIds, toggleSelect, toggleSelectAll, isSuperAdmin, onSelectMember, onSendMagicLink, onToggleActive, onDelete, onPreview }: {
+  members: TeamMember[]
+  allMembers: TeamMember[]
+  events?: Event[]
+  selectedIds: Set<string>
+  toggleSelect: (id: string) => void
+  toggleSelectAll: () => void
+  isSuperAdmin?: boolean
+  onSelectMember: (m: TeamMember) => void
+  onSendMagicLink: (email: string) => void
+  onToggleActive: (id: string, is_active: boolean) => void
+  onDelete: (id: string, name: string) => void
+  onPreview: (id: string) => void
+}) {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+            <TableHead className="w-[40px]">
+              <input type="checkbox" checked={selectedIds.size === allMembers.length && allMembers.length > 0} onChange={toggleSelectAll} className="rounded" />
+            </TableHead>
+            <TableHead className="w-[280px]">Member</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Permissions</TableHead>
+            <TableHead>Event Access</TableHead>
+            <TableHead>Last Active</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="w-[50px]"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {members.map((member) => {
+            const roleInfo = getRoleInfo(member.role)
+            const RoleIcon = roleInfo.icon
+            const memberPermsArr = Array.isArray(member.permissions) ? member.permissions : []
+            const hasFullAccess = memberPermsArr.length === 0
+            const hasAllEvents = !member.event_ids || member.event_ids.length === 0
+            const status = getLoginStatus(member)
+            const statusConfig = LOGIN_STATUS_CONFIG[status]
+            const StatusIcon = statusConfig.icon
+
+            return (
+              <TableRow key={member.id} className={cn("cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50", !member.is_active && "opacity-60")} onClick={() => onSelectMember(member)}>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <input type="checkbox" checked={selectedIds.has(member.id)} onChange={() => toggleSelect(member.id)} className="rounded" />
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Avatar className="h-9 w-9">
+                        <AvatarFallback className={cn("text-xs font-semibold bg-gradient-to-br text-white", roleInfo.gradient)}>
+                          {getInitials(member.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-slate-900", member.is_active ? "bg-green-500" : "bg-slate-400")} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm truncate">{member.name}</p>
+                        {member.needs_review && (
+                          <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-yellow-300 shrink-0">
+                            <Clock className="h-2.5 w-2.5 mr-0.5" />Review
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge className={cn("text-white text-xs bg-gradient-to-r", roleInfo.gradient)}>
+                    <RoleIcon className="h-3 w-3 mr-1" />
+                    {roleInfo.label.split(" ")[0]}
+                  </Badge>
+                  {(() => {
+                    const preset = detectPresetForMember(member)
+                    return preset ? <p className="text-[10px] text-muted-foreground mt-0.5">{preset.label}</p> : null
+                  })()}
+                </TableCell>
+                <TableCell>
+                  {hasFullAccess ? (
+                    <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-0">
+                      <Sparkles className="h-3 w-3 mr-1" />Full Access
+                    </Badge>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      {memberPermsArr.slice(0, 4).map(p => {
+                        const perm = PERMISSIONS.find(x => x.value === p)
+                        if (!perm) return null
+                        return (
+                          <TooltipProvider key={p}>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <div className={cn("h-6 w-6 rounded flex items-center justify-center border", perm.bgLight)}>
+                                  <perm.icon className={cn("h-3 w-3", perm.color)} />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>{perm.label}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )
+                      })}
+                      {memberPermsArr.length > 4 && <span className="text-xs text-muted-foreground ml-1">+{memberPermsArr.length - 4}</span>}
+                    </div>
                   )}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <span className="text-sm text-muted-foreground hidden sm:inline">
-              {filteredMembers.length} {filteredMembers.length === 1 ? "member" : "members"}
-            </span>
+                </TableCell>
+                <TableCell>
+                  {hasAllEvents ? (
+                    <span className="text-xs text-muted-foreground">All Events</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{member.event_ids?.length || 0} event{(member.event_ids?.length || 0) !== 1 ? "s" : ""}</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {status === "online" ? (
+                    <span className="text-xs text-green-600 font-medium">Active now</span>
+                  ) : member.last_active_at ? (
+                    <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(member.last_active_at), { addSuffix: true })}</span>
+                  ) : member.last_login_at ? (
+                    <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true })}</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground/50">Never</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary" className={cn("text-xs gap-1", statusConfig.bgColor, statusConfig.color)}>
+                    {statusConfig.pulse ? (
+                      <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" /><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" /></span>
+                    ) : (
+                      <StatusIcon className="h-3 w-3" />
+                    )}
+                    {statusConfig.label}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSelectMember(member) }}><Edit className="h-4 w-4 mr-2" />View Details</DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSendMagicLink(member.email) }} disabled={!member.is_active}><MailPlus className="h-4 w-4 mr-2" />Send Login Link</DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); copyToClipboard(member.email, "Email copied!") }}><Copy className="h-4 w-4 mr-2" />Copy Email</DropdownMenuItem>
+                      {isSuperAdmin && (
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onPreview(member.id) }}><Eye className="h-4 w-4 mr-2" />Preview Access</DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onToggleActive(member.id, !member.is_active) }}>
+                        {member.is_active ? <UserX className="h-4 w-4 mr-2" /> : <UserCheck className="h-4 w-4 mr-2" />}
+                        {member.is_active ? "Deactivate" : "Activate"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(member.id, member.name) }}>
+                        <Trash2 className="h-4 w-4 mr-2" />Remove
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// MemberGrid
+// ---------------------------------------------------------------------------
+
+function MemberGrid({ members, events, onSelectMember }: { members: TeamMember[]; events?: Event[]; onSelectMember: (m: TeamMember) => void }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {members.map((member) => {
+        const roleInfo = getRoleInfo(member.role)
+        const RoleIcon = roleInfo.icon
+        const memberPermsArr = Array.isArray(member.permissions) ? member.permissions : []
+        const hasFullAccess = memberPermsArr.length === 0
+        const status = getLoginStatus(member)
+        const statusConfig = LOGIN_STATUS_CONFIG[status]
+        const StatusIcon = statusConfig.icon
+
+        return (
+          <Card key={member.id} className={cn("group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer border-0 shadow-md", !member.is_active && "opacity-70")} onClick={() => onSelectMember(member)}>
+            <div className={cn("absolute top-0 left-0 right-0 h-1 bg-gradient-to-r", roleInfo.gradient)} />
+            <CardContent className="p-5">
+              <div className="flex items-start gap-4">
+                <div className="relative">
+                  <Avatar className={cn("h-14 w-14 ring-2 ring-offset-2", roleInfo.borderColor)}>
+                    <AvatarFallback className={cn("text-lg font-bold bg-gradient-to-br text-white", roleInfo.gradient)}>{getInitials(member.name)}</AvatarFallback>
+                  </Avatar>
+                  <div className={cn(
+                    "absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white",
+                    status === "online" ? "bg-green-500" : status === "away" ? "bg-amber-500" : status === "logged_out" ? "bg-orange-400" : status === "pending" ? "bg-blue-400" : status === "deactivated" ? "bg-red-400" : "bg-slate-400"
+                  )} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-lg truncate">{member.name}</h3>
+                    {member.needs_review && <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-yellow-300 shrink-0"><Clock className="h-2.5 w-2.5 mr-1" />Review Due</Badge>}
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">{member.email}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <Badge className={cn("text-white text-xs bg-gradient-to-r", roleInfo.gradient)}><RoleIcon className="h-3 w-3 mr-1" />{roleInfo.label.split(" ")[0]}</Badge>
+                    {(() => { const preset = detectPresetForMember(member); return preset ? <Badge variant="outline" className="text-[10px]">{preset.label}</Badge> : null })()}
+                    {hasFullAccess && <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-0"><Sparkles className="h-3 w-3 mr-1" />Full Access</Badge>}
+                    {member.event_ids && member.event_ids.length > 0 && (
+                      <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                        <Calendar className="h-2.5 w-2.5 mr-1" />{member.event_ids.length} event{member.event_ids.length > 1 ? "s" : ""}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); onSelectMember(member) }}>
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-4 mt-4 pt-4 border-t">
+                <div className="flex items-center gap-1.5 text-sm">
+                  {statusConfig.pulse ? (
+                    <span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" /><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" /></span>
+                  ) : (
+                    <StatusIcon className={cn("h-3.5 w-3.5", statusConfig.color)} />
+                  )}
+                  <span className={statusConfig.color}>
+                    {status === "online" ? "Online now" :
+                     status === "logged_out" && member.logged_out_at ? `Logged out ${formatDistanceToNow(new Date(member.logged_out_at), { addSuffix: true })}` :
+                     status === "pending" ? "Never logged in" :
+                     member.last_active_at ? formatDistanceToNow(new Date(member.last_active_at), { addSuffix: true }) :
+                     member.last_login_at ? formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true }) :
+                     statusConfig.label}
+                  </span>
+                </div>
+                {(member.login_count ?? 0) > 0 && (
+                  <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-600 ml-auto">{member.login_count} login{member.login_count !== 1 ? "s" : ""}</Badge>
+                )}
+              </div>
+              {!hasFullAccess && memberPermsArr.length > 0 && (
+                <div className="flex items-center gap-1.5 mt-3">
+                  {memberPermsArr.slice(0, 5).map(p => {
+                    const perm = PERMISSIONS.find(x => x.value === p)
+                    if (!perm) return null
+                    return (
+                      <TooltipProvider key={p}>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center border", perm.bgLight)}>
+                              <perm.icon className={cn("h-3.5 w-3.5", perm.color)} />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>{perm.label}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )
+                  })}
+                  {memberPermsArr.length > 5 && <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-slate-100 text-xs font-medium text-slate-600">+{memberPermsArr.length - 5}</div>}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// PermissionGuideContent
+// ---------------------------------------------------------------------------
+
+function PermissionGuideContent() {
+  return (
+    <>
+      <div className="sticky top-0 z-10 bg-gradient-to-r from-[#185FA5] via-[#185FA5] to-[#14508c] text-white p-6">
+        <SheetHeader><SheetTitle className="text-white flex items-center gap-3 text-xl">
+          <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center"><BookOpen className="h-5 w-5" /></div>
+          Permission Guide
+        </SheetTitle></SheetHeader>
+        <p className="text-white/60 mt-2 text-sm">Understand what each role and permission grants access to</p>
+      </div>
+      <div className="p-6 space-y-8">
+        {/* Roles Section */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center"><Shield className="h-4 w-4 text-purple-600" /></div>
+            <h3 className="text-lg font-semibold">User Roles</h3>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="h-10 px-3 rounded-lg border bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="all">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="coordinator">Coordinator</option>
-              <option value="travel">Travel</option>
-            </select>
-            <div className="relative flex-1 sm:w-72 sm:flex-none">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-white shadow-sm" />
-            </div>
-            <div className="flex bg-white border rounded-lg shadow-sm p-1">
-              <Button variant={viewMode === "table" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("table")} className="h-8 px-2 sm:px-3 hidden sm:flex">
-                <List className="h-4 w-4" />
-              </Button>
-              <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("grid")} className="h-8 px-2 sm:px-3">
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
+          <p className="text-sm text-muted-foreground mb-4">Roles determine the type of user and their general purpose in the system.</p>
+          <div className="space-y-4">
+            {ROLE_DETAILS.map((role) => {
+              const RoleIcon = role.icon
+              return (
+                <div key={role.value} className={cn("rounded-xl border-2 overflow-hidden", role.borderColor)}>
+                  <div className={cn("p-4", role.bgLight)}>
+                    <div className="flex items-center gap-3">
+                      <div className={cn("h-12 w-12 rounded-xl bg-gradient-to-br text-white flex items-center justify-center", role.gradient)}><RoleIcon className="h-6 w-6" /></div>
+                      <div><h4 className="font-semibold text-lg">{role.label}</h4><p className="text-sm text-muted-foreground">{role.description}</p></div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-white dark:bg-slate-900">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Capabilities</p>
+                    <ul className="space-y-1.5">
+                      {role.capabilities.map((cap, i) => <li key={i} className="flex items-start gap-2 text-sm"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /><span>{cap}</span></li>)}
+                    </ul>
+                    <div className="mt-3 pt-3 border-t"><p className="text-xs text-muted-foreground"><span className="font-medium">Recommended for:</span> {role.recommended}</p></div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* How Access Works */}
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+          <div className="flex items-start gap-3">
+            <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0"><Info className="h-4 w-4 text-amber-600" /></div>
+            <div>
+              <h4 className="font-semibold text-amber-900">How Access Works</h4>
+              <ul className="mt-2 space-y-1 text-sm text-amber-800">
+                <li className="flex items-start gap-2"><ArrowRight className="h-4 w-4 mt-0.5 shrink-0" /><span><strong>Admins</strong> have full access to everything - no permissions needed</span></li>
+                <li className="flex items-start gap-2"><ArrowRight className="h-4 w-4 mt-0.5 shrink-0" /><span><strong>Full Access toggle ON</strong> = User can access all modules</span></li>
+                <li className="flex items-start gap-2"><ArrowRight className="h-4 w-4 mt-0.5 shrink-0" /><span><strong>Full Access toggle OFF</strong> = User can only access selected modules</span></li>
+                <li className="flex items-start gap-2"><ArrowRight className="h-4 w-4 mt-0.5 shrink-0" /><span><strong>Event Access</strong> limits which events the user can see</span></li>
+              </ul>
             </div>
           </div>
         </div>
 
-        {/* Bulk Action Bar */}
-        {selectedIds.size > 0 && statusFilter !== "pending" && (
-          <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-              {selectedIds.size} selected
-            </Badge>
-            <div className="flex items-center gap-2 ml-auto">
-              <Button variant="outline" size="sm" onClick={() => bulkActivate.mutate(Array.from(selectedIds))} disabled={bulkActivate.isPending}>
-                <UserCheck className="h-3.5 w-3.5 mr-1.5" />Activate
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => bulkDeactivate.mutate(Array.from(selectedIds))} disabled={bulkDeactivate.isPending}>
-                <UserX className="h-3.5 w-3.5 mr-1.5" />Deactivate
-              </Button>
-              <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
-                if (confirm(`Remove ${selectedIds.size} members? This cannot be undone.`)) {
-                  bulkDelete.mutate(Array.from(selectedIds))
-                }
-              }} disabled={bulkDelete.isPending}>
-                <Trash2 className="h-3.5 w-3.5 mr-1.5" />Remove
-              </Button>
-              <Button variant="ghost" size="sm" onClick={clearSelection}>
-                Clear
-              </Button>
-            </div>
+        {/* Travel Permissions */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-8 w-8 rounded-lg bg-cyan-100 flex items-center justify-center"><Plane className="h-4 w-4 text-cyan-600" /></div>
+            <h3 className="text-lg font-semibold">Travel & Logistics Modules</h3>
           </div>
-        )}
+          <div className="grid gap-3">
+            {TRAVEL_PERMISSIONS.map((perm) => {
+              const PermIcon = perm.icon
+              return (
+                <div key={perm.value} className={cn("rounded-xl border overflow-hidden", perm.bgLight)}>
+                  <div className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-white", perm.bg)}><PermIcon className="h-5 w-5" /></div>
+                      <div><h4 className="font-semibold">{perm.label}</h4><p className="text-xs text-muted-foreground">{perm.description}</p></div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 rounded-lg p-3 border">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Access Includes</p>
+                      <div className="grid grid-cols-2 gap-1">
+                        {perm.access.map((item, i) => <div key={i} className="flex items-center gap-1.5 text-xs"><CheckCircle className="h-3 w-3 text-green-500 shrink-0" /><span>{item}</span></div>)}
+                      </div>
+                      <div className="mt-2 pt-2 border-t flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" /><span className="font-mono">{perm.path}</span></div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
-        {/* Team List/Grid */}
-        {statusFilter === "pending" ? (
-          <PendingInvitations
-            invitations={invitations?.filter(i => i.status === 'pending') || []}
-            isLoading={invitationsLoading}
-            onResend={(id) => resendInvite.mutate(id)}
-            onRevoke={(id) => revokeInvite.mutate(id)}
-            isResending={resendInvite.isPending}
-          />
-        ) : isLoading ? (
-          viewMode === "table" ? (
-            <SkeletonTable rows={5} />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          )
-        ) : filteredMembers.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="h-20 w-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-              <Users className="h-10 w-10 text-slate-400" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">{searchQuery ? "No matching members" : "No team members yet"}</h3>
-            <p className="text-muted-foreground mb-6">{searchQuery ? "Try a different search term" : "Add your first team member to get started"}</p>
-            {!searchQuery && (
-              <Button onClick={() => setIsAddOpen(true)} size="lg">
-                <UserPlus className="h-5 w-5 mr-2" />Add First Member
-              </Button>
-            )}
+        {/* Event Permissions */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center"><Calendar className="h-4 w-4 text-indigo-600" /></div>
+            <h3 className="text-lg font-semibold">Event Management Modules</h3>
           </div>
-        ) : viewMode === "table" ? (
-          /* Table View */
-          <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+          <div className="grid gap-3">
+            {EVENT_PERMISSIONS.map((perm) => {
+              const PermIcon = perm.icon
+              return (
+                <div key={perm.value} className={cn("rounded-xl border overflow-hidden", perm.bgLight)}>
+                  <div className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-white", perm.bg)}><PermIcon className="h-5 w-5" /></div>
+                      <div><h4 className="font-semibold">{perm.label}</h4><p className="text-xs text-muted-foreground">{perm.description}</p></div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 rounded-lg p-3 border">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Access Includes</p>
+                      <div className="grid grid-cols-2 gap-1">
+                        {perm.access.map((item, i) => <div key={i} className="flex items-center gap-1.5 text-xs"><CheckCircle className="h-3 w-3 text-green-500 shrink-0" /><span>{item}</span></div>)}
+                      </div>
+                      <div className="mt-2 pt-2 border-t flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" /><span className="font-mono">{perm.path}</span></div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Quick Reference Table */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center"><BarChart3 className="h-4 w-4 text-slate-600" /></div>
+            <h3 className="text-lg font-semibold">Quick Reference</h3>
+          </div>
+          <div className="rounded-xl border overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-slate-50 hover:bg-slate-50">
-                  <TableHead className="w-[40px]">
-                    <input type="checkbox" checked={selectedIds.size === filteredMembers.length && filteredMembers.length > 0} onChange={toggleSelectAll} className="rounded" />
-                  </TableHead>
-                  <TableHead className="w-[300px]">Member</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Active</TableHead>
-                  <TableHead>Logins</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                <TableRow className="bg-slate-50 dark:bg-slate-800">
+                  <TableHead className="font-semibold">Permission</TableHead>
+                  <TableHead className="font-semibold">Module Path</TableHead>
+                  <TableHead className="font-semibold text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedMembers.map((member) => {
-                  const roleInfo = getRoleInfo(member.role)
-                  const RoleIcon = roleInfo.icon
-                  const memberPermsArr = Array.isArray(member.permissions) ? member.permissions : []
-                  const hasFullAccess = memberPermsArr.length === 0
-
+                {PERMISSIONS.map((perm) => {
+                  const PermIcon = perm.icon
                   return (
-                    <TableRow key={member.id} className={cn("cursor-pointer hover:bg-slate-50", !member.is_active && "opacity-60")} onClick={() => setSelectedMember(member)}>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" checked={selectedIds.has(member.id)} onChange={() => toggleSelect(member.id)} className="rounded" />
-                      </TableCell>
+                    <TableRow key={perm.value}>
                       <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="relative">
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback className={cn("text-sm font-semibold bg-gradient-to-br text-white", roleInfo.gradient)}>
-                                {getInitials(member.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className={cn("absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white", member.is_active ? "bg-green-500" : "bg-slate-400")} />
-                          </div>
-                          <div>
-                            <p className="font-medium">{member.name}</p>
-                            <p className="text-sm text-muted-foreground">{member.email}</p>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <div className={cn("h-7 w-7 rounded flex items-center justify-center", perm.bgLight)}><PermIcon className={cn("h-3.5 w-3.5", perm.color)} /></div>
+                          <span className="font-medium">{perm.label}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <Badge className={cn("text-white text-xs bg-gradient-to-r", roleInfo.gradient)}>
-                            <RoleIcon className="h-3 w-3 mr-1" />
-                            {roleInfo.label.split(" ")[0]}
-                          </Badge>
-                          {(() => {
-                            const preset = detectPresetForMember(member)
-                            return preset ? (
-                              <p className="text-[10px] text-muted-foreground">{preset.label}</p>
-                            ) : null
-                          })()}
-                          {/* Show event names for event-scoped users */}
-                          {member.event_ids && member.event_ids.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {member.event_ids.slice(0, 2).map(eventId => {
-                                const event = events?.find(e => e.id === eventId)
-                                return event ? (
-                                  <Badge key={eventId} variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
-                                    <Calendar className="h-2.5 w-2.5 mr-1" />
-                                    {event.short_name || event.name.slice(0, 15)}
-                                  </Badge>
-                                ) : null
-                              })}
-                              {member.event_ids.length > 2 && (
-                                <Badge variant="outline" className="text-[10px]">
-                                  +{member.event_ids.length - 2} more
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {hasFullAccess ? (
-                          <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-0">
-                            <Sparkles className="h-3 w-3 mr-1" />Full Access
-                          </Badge>
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            {member.permissions?.slice(0, 4).map(p => {
-                              const perm = PERMISSIONS.find(x => x.value === p)
-                              if (!perm) return null
-                              return (
-                                <TooltipProvider key={p}>
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <div className={cn("h-6 w-6 rounded flex items-center justify-center border", perm.bgLight)}>
-                                        <perm.icon className={cn("h-3 w-3", perm.color)} />
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>{perm.label}</TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )
-                            })}
-                            {(member.permissions?.length || 0) > 4 && (
-                              <span className="text-xs text-muted-foreground ml-1">+{(member.permissions?.length || 0) - 4}</span>
-                            )}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {(() => {
-                          const status = getLoginStatus(member)
-                          const config = LOGIN_STATUS_CONFIG[status]
-                          const StatusIcon = config.icon
-                          return (
-                            <Badge variant="secondary" className={cn("text-xs gap-1", config.bgColor, config.color)}>
-                              {config.pulse ? (
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-                                </span>
-                              ) : (
-                                <StatusIcon className="h-3 w-3" />
-                              )}
-                              {config.label}
-                            </Badge>
-                          )
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        {(() => {
-                          const status = getLoginStatus(member)
-                          if (status === "online") {
-                            return (
-                              <span className="text-sm text-green-600 font-medium">Active now</span>
-                            )
-                          }
-                          if (status === "logged_out" && member.logged_out_at) {
-                            return (
-                              <span className="text-sm text-muted-foreground">
-                                Logged out {formatDistanceToNow(new Date(member.logged_out_at), { addSuffix: true })}
-                              </span>
-                            )
-                          }
-                          if (member.last_active_at) {
-                            return (
-                              <span className="text-sm text-muted-foreground">
-                                {formatDistanceToNow(new Date(member.last_active_at), { addSuffix: true })}
-                              </span>
-                            )
-                          }
-                          if (member.last_login_at) {
-                            return (
-                              <span className="text-sm text-muted-foreground">
-                                {formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true })}
-                              </span>
-                            )
-                          }
-                          return <span className="text-sm text-muted-foreground/50">Never</span>
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        {(member.login_count ?? 0) > 0 ? (
-                          <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-700">
-                            {member.login_count}
-                          </Badge>
-                        ) : (
-                          <span className="text-sm text-muted-foreground/50">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedMember(member) }}>
-                              <Edit className="h-4 w-4 mr-2" />View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); sendMagicLink.mutate(member.email) }} disabled={!member.is_active}>
-                              <MailPlus className="h-4 w-4 mr-2" />Send Login Link
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); copyToClipboard(member.email, "Email copied!") }}>
-                              <Copy className="h-4 w-4 mr-2" />Copy Email
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toggleActive.mutate({ id: member.id, is_active: !member.is_active }) }}>
-                              {member.is_active ? <UserX className="h-4 w-4 mr-2" /> : <UserCheck className="h-4 w-4 mr-2" />}
-                              {member.is_active ? "Deactivate" : "Activate"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); if(confirm(`Remove ${member.name}?`)) deleteMember.mutate(member.id) }}>
-                              <Trash2 className="h-4 w-4 mr-2" />Remove
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{perm.path}</TableCell>
+                      <TableCell className="text-center">{perm.access.length}</TableCell>
                     </TableRow>
                   )
                 })}
               </TableBody>
             </Table>
           </div>
-        ) : (
-          /* Grid View */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {paginatedMembers.map((member) => {
-              const roleInfo = getRoleInfo(member.role)
-              const RoleIcon = roleInfo.icon
-              const memberPermsArr = Array.isArray(member.permissions) ? member.permissions : []
-              const hasFullAccess = memberPermsArr.length === 0
-
-              return (
-                <Card key={member.id} className={cn(
-                  "group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer border-0 shadow-md",
-                  !member.is_active && "opacity-70"
-                )} onClick={() => setSelectedMember(member)}>
-                  {/* Role gradient bar */}
-                  <div className={cn("absolute top-0 left-0 right-0 h-1 bg-gradient-to-r", roleInfo.gradient)} />
-
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="relative">
-                        <Avatar className={cn("h-14 w-14 ring-2 ring-offset-2", roleInfo.borderColor)}>
-                          <AvatarFallback className={cn("text-lg font-bold bg-gradient-to-br", roleInfo.gradient, "text-white")}>
-                            {getInitials(member.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className={cn(
-                          "absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white",
-                          getLoginStatus(member) === "online" ? "bg-green-500" :
-                          getLoginStatus(member) === "away" ? "bg-amber-500" :
-                          getLoginStatus(member) === "logged_out" ? "bg-orange-400" :
-                          getLoginStatus(member) === "pending" ? "bg-blue-400" :
-                          getLoginStatus(member) === "deactivated" ? "bg-red-400" :
-                          "bg-slate-400"
-                        )} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg truncate">{member.name}</h3>
-                        <p className="text-sm text-muted-foreground truncate">{member.email}</p>
-                        <div className="flex flex-wrap items-center gap-2 mt-2">
-                          <Badge className={cn("text-white text-xs bg-gradient-to-r", roleInfo.gradient)}>
-                            <RoleIcon className="h-3 w-3 mr-1" />
-                            {roleInfo.label.split(" ")[0]}
-                          </Badge>
-                          {(() => {
-                            const preset = detectPresetForMember(member)
-                            return preset ? (
-                              <Badge variant="outline" className="text-[10px]">{preset.label}</Badge>
-                            ) : null
-                          })()}
-                          {hasFullAccess && (
-                            <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-0">
-                              <Sparkles className="h-3 w-3 mr-1" />Full Access
-                            </Badge>
-                          )}
-                          {/* Show event names for event-scoped users */}
-                          {member.event_ids && member.event_ids.length > 0 && (
-                            <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
-                              <Calendar className="h-2.5 w-2.5 mr-1" />
-                              {member.event_ids.length} event{member.event_ids.length > 1 ? "s" : ""}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setSelectedMember(member) }}>
-                        <ChevronRight className="h-5 w-5" />
-                      </Button>
-                    </div>
-
-                    {/* Quick stats */}
-                    <div className="flex items-center gap-4 mt-4 pt-4 border-t">
-                      {(() => {
-                        const status = getLoginStatus(member)
-                        const config = LOGIN_STATUS_CONFIG[status]
-                        const StatusIcon = config.icon
-                        return (
-                          <div className="flex items-center gap-1.5 text-sm">
-                            {config.pulse ? (
-                              <span className="relative flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
-                              </span>
-                            ) : (
-                              <StatusIcon className={cn("h-3.5 w-3.5", config.color)} />
-                            )}
-                            <span className={config.color}>
-                              {status === "online" ? "Online now" :
-                               status === "logged_out" && member.logged_out_at ? `Logged out ${formatDistanceToNow(new Date(member.logged_out_at), { addSuffix: true })}` :
-                               status === "pending" ? "Never logged in" :
-                               member.last_active_at ? formatDistanceToNow(new Date(member.last_active_at), { addSuffix: true }) :
-                               member.last_login_at ? formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true }) :
-                               config.label}
-                            </span>
-                          </div>
-                        )
-                      })()}
-                      {(member.login_count ?? 0) > 0 && (
-                        <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-600 ml-auto">
-                          {member.login_count} login{member.login_count !== 1 ? "s" : ""}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Permissions preview */}
-                    {!hasFullAccess && memberPermsArr.length > 0 && (
-                      <div className="flex items-center gap-1.5 mt-3">
-                        {memberPermsArr.slice(0, 5).map(p => {
-                          const perm = PERMISSIONS.find(x => x.value === p)
-                          if (!perm) return null
-                          return (
-                            <TooltipProvider key={p}>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center border", perm.bgLight)}>
-                                    <perm.icon className={cn("h-3.5 w-3.5", perm.color)} />
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent>{perm.label}</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )
-                        })}
-                        {memberPermsArr.length > 5 && (
-                          <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-slate-100 text-xs font-medium text-slate-600">
-                            +{memberPermsArr.length - 5}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {filteredMembers.length > itemsPerPage && (
-          <div className="flex items-center justify-between mt-6 px-2">
-            <p className="text-sm text-muted-foreground">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredMembers.length)} of {filteredMembers.length} members
-            </p>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-                <ChevronLeft className="h-4 w-4 mr-1" />Previous
-              </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum: number
-                  if (totalPages <= 5) {
-                    pageNum = i + 1
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i
-                  } else {
-                    pageNum = currentPage - 2 + i
-                  }
-                  return (
-                    <Button key={pageNum} variant={currentPage === pageNum ? "default" : "outline"} size="sm" className="w-9 h-9" onClick={() => setCurrentPage(pageNum)}>
-                      {pageNum}
-                    </Button>
-                  )
-                })}
-              </div>
-              <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-                Next<ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
-
-      {/* Detail Sheet */}
-      <Sheet open={!!selectedMember && !isEditing} onOpenChange={(open) => !open && setSelectedMember(null)}>
-        <ResizableSheetContent defaultWidth={512} minWidth={400} maxWidth={800} storageKey="team-member-sheet-width" className="p-0 overflow-y-auto">
-          {selectedMember && (() => {
-            const roleInfo = getRoleInfo(selectedMember.role)
-            const RoleIcon = roleInfo.icon
-            const selectedPermsArr = Array.isArray(selectedMember.permissions) ? selectedMember.permissions : []
-            const hasFullAccess = selectedPermsArr.length === 0
-            const hasAllEvents = !selectedMember.event_ids || selectedMember.event_ids.length === 0
-
-            return (
-              <>
-                {/* Header */}
-                <div className={cn("p-6 bg-gradient-to-br", roleInfo.bgLight)}>
-                  <SheetHeader className="mb-0">
-                    <SheetTitle className="sr-only">{selectedMember.name} - Team Member Details</SheetTitle>
-                  </SheetHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                      <Avatar className={cn("h-16 w-16 ring-4 ring-white shadow-lg")}>
-                        <AvatarFallback className={cn("text-xl font-bold bg-gradient-to-br text-white", roleInfo.gradient)}>
-                          {getInitials(selectedMember.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h2 className="text-xl font-bold">{selectedMember.name}</h2>
-                        <Badge className={cn("text-white mt-1 bg-gradient-to-r", roleInfo.gradient)}>
-                          <RoleIcon className="h-3 w-3 mr-1" />{roleInfo.label}
-                        </Badge>
-                        {(() => {
-                          const preset = detectPresetForMember(selectedMember)
-                          return preset ? (
-                            <p className="text-xs text-muted-foreground mt-1">{preset.label}</p>
-                          ) : null
-                        })()}
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => startEdit(selectedMember)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { if(confirm(`Remove ${selectedMember.name}?`)) deleteMember.mutate(selectedMember.id) }}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-6 space-y-6">
-                  {/* Quick Actions */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button variant="outline" className="h-auto py-4 flex-col gap-2 hover:bg-primary hover:text-white transition-colors" onClick={() => sendMagicLink.mutate(selectedMember.email)} disabled={!selectedMember.is_active || sendMagicLink.isPending}>
-                      {sendMagicLink.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <MailPlus className="h-5 w-5" />}
-                      <span className="text-xs font-medium">Send Login Link</span>
-                    </Button>
-                    <Button variant="outline" className="h-auto py-4 flex-col gap-2 hover:bg-slate-900 hover:text-white transition-colors" onClick={() => copyToClipboard(selectedMember.email, "Email copied!")}>
-                      <Copy className="h-5 w-5" />
-                      <span className="text-xs font-medium">Copy Email</span>
-                    </Button>
-                    <Button variant="outline" className="h-auto py-4 flex-col gap-2 hover:bg-green-600 hover:text-white transition-colors" onClick={() => window.open(`mailto:${selectedMember.email}`)}>
-                      <Mail className="h-5 w-5" />
-                      <span className="text-xs font-medium">Send Email</span>
-                    </Button>
-                    {selectedMember.phone ? (
-                      <Button variant="outline" className="h-auto py-4 flex-col gap-2 hover:bg-blue-600 hover:text-white transition-colors" onClick={() => window.open(`tel:${selectedMember.phone}`)}>
-                        <PhoneCall className="h-5 w-5" />
-                        <span className="text-xs font-medium">Call Now</span>
-                      </Button>
-                    ) : (
-                      <Button variant="outline" className="h-auto py-4 flex-col gap-2" disabled>
-                        <Phone className="h-5 w-5" />
-                        <span className="text-xs font-medium">No Phone</span>
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Contact */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Contact Information</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 group">
-                        <div className="h-10 w-10 rounded-lg bg-white shadow-sm flex items-center justify-center">
-                          <Mail className="h-4 w-4 text-slate-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{selectedMember.email}</p>
-                          <p className="text-xs text-muted-foreground">Email Address</p>
-                        </div>
-                        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 h-8 w-8" onClick={() => copyToClipboard(selectedMember.email, "Copied!")}>
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                      {selectedMember.phone && (
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 group">
-                          <div className="h-10 w-10 rounded-lg bg-white shadow-sm flex items-center justify-center">
-                            <Phone className="h-4 w-4 text-slate-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">{selectedMember.phone}</p>
-                            <p className="text-xs text-muted-foreground">Phone Number</p>
-                          </div>
-                          <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 h-8 w-8" onClick={() => copyToClipboard(selectedMember.phone!, "Copied!")}>
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Status */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Account Status</h4>
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50">
-                      <div className="flex items-center gap-3">
-                        <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center", selectedMember.is_active ? "bg-green-100" : "bg-slate-200")}>
-                          {selectedMember.is_active ? <UserCheck className="h-5 w-5 text-green-600" /> : <UserX className="h-5 w-5 text-slate-500" />}
-                        </div>
-                        <div>
-                          <p className="font-medium">{selectedMember.is_active ? "Active" : "Inactive"}</p>
-                          <p className="text-xs text-muted-foreground">{selectedMember.is_active ? "Can access the portal" : "Portal access disabled"}</p>
-                        </div>
-                      </div>
-                      <Switch checked={selectedMember.is_active} onCheckedChange={(checked) => toggleActive.mutate({ id: selectedMember.id, is_active: checked })} />
-                    </div>
-                    {/* Login Status */}
-                    {(() => {
-                      const status = getLoginStatus(selectedMember)
-                      const config = LOGIN_STATUS_CONFIG[status]
-                      const StatusIcon = config.icon
-                      return (
-                        <div className={cn("flex items-center gap-3 p-3 rounded-xl mt-2", config.bgColor)}>
-                          {config.pulse ? (
-                            <span className="relative flex h-3 w-3">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
-                            </span>
-                          ) : (
-                            <StatusIcon className={cn("h-4 w-4", config.color)} />
-                          )}
-                          <span className={cn("text-sm font-medium", config.color)}>
-                            {config.label}
-                            {status === "logged_out" && selectedMember.logged_out_at && (
-                              <span className="font-normal"> {formatDistanceToNow(new Date(selectedMember.logged_out_at), { addSuffix: true })}</span>
-                            )}
-                          </span>
-                        </div>
-                      )
-                    })()}
-                  </div>
-
-                  {/* Permissions */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Module Access</h4>
-                    {hasFullAccess ? (
-                      <div className="space-y-3">
-                        <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
-                              <Sparkles className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-emerald-800">Full Access Granted</p>
-                              <p className="text-sm text-emerald-600">Can access all {PERMISSIONS.length} modules</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {PERMISSIONS.map(perm => (
-                            <div key={perm.value} className="flex items-center gap-1.5 p-2 rounded-lg bg-emerald-50/50 border border-emerald-100">
-                              <perm.icon className={cn("h-3.5 w-3.5", perm.color)} />
-                              <span className="text-xs font-medium text-emerald-700">{perm.label}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {/* Accessible modules */}
-                        {selectedPermsArr.length > 0 && (
-                          <div>
-                            <p className="text-xs font-medium text-green-600 mb-1.5 flex items-center gap-1">
-                              <CheckCircle className="h-3 w-3" />
-                              Accessible ({selectedPermsArr.length})
-                            </p>
-                            <div className="grid grid-cols-3 gap-1.5">
-                              {selectedPermsArr.map(p => {
-                                const perm = PERMISSIONS.find(x => x.value === p)
-                                if (!perm) return null
-                                return (
-                                  <div key={p} className={cn("p-2.5 rounded-lg border text-center", perm.bgLight)}>
-                                    <perm.icon className={cn("h-4 w-4 mx-auto mb-0.5", perm.color)} />
-                                    <p className="text-[10px] font-medium">{perm.label}</p>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
-                        {/* Restricted modules */}
-                        {(() => {
-                          const restricted = PERMISSIONS.filter(p => !selectedMember.permissions?.includes(p.value))
-                          if (restricted.length === 0) return null
-                          return (
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
-                                <UserX className="h-3 w-3" />
-                                No Access ({restricted.length})
-                              </p>
-                              <div className="grid grid-cols-3 gap-1.5">
-                                {restricted.map(perm => (
-                                  <div key={perm.value} className="p-2.5 rounded-lg border border-dashed text-center opacity-40">
-                                    <perm.icon className="h-4 w-4 mx-auto mb-0.5 text-muted-foreground" />
-                                    <p className="text-[10px] font-medium text-muted-foreground">{perm.label}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )
-                        })()}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Event Access */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Event Access</h4>
-                    {hasAllEvents ? (
-                      <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg bg-blue-500 flex items-center justify-center">
-                            <Globe className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-blue-800">All Events</p>
-                            <p className="text-sm text-blue-600">Has access to all events</p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (() => {
-                      const memberEvents = events?.filter(e => selectedMember.event_ids?.includes(e.id)) || []
-                      const now = new Date()
-                      const liveEvents = memberEvents.filter(e => {
-                        const endDate = e.end_date ? new Date(e.end_date) : null
-                        return !(e.status === "completed" || e.status === "cancelled" || (endDate && endDate < now))
-                      })
-                      const completedEvents = memberEvents.filter(e => {
-                        const endDate = e.end_date ? new Date(e.end_date) : null
-                        return e.status === "completed" || e.status === "cancelled" || (endDate && endDate < now)
-                      })
-                      return (
-                        <div className="space-y-3">
-                          {liveEvents.length > 0 && (
-                            <div>
-                              <div className="flex items-center gap-1.5 mb-2">
-                                <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                                <span className="text-xs font-semibold text-green-700 uppercase tracking-wider">Live / Upcoming ({liveEvents.length})</span>
-                              </div>
-                              {liveEvents.map(event => (
-                                <div key={event.id} className="flex items-center gap-3 p-3 rounded-xl bg-green-50 mb-1.5">
-                                  <Calendar className="h-4 w-4 text-green-600" />
-                                  <span className="text-sm font-medium">{event.short_name || event.name}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {completedEvents.length > 0 && (
-                            <div>
-                              <div className="flex items-center gap-1.5 mb-2">
-                                <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completed ({completedEvents.length})</span>
-                              </div>
-                              {completedEvents.map(event => (
-                                <div key={event.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 mb-1.5">
-                                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-sm font-medium text-muted-foreground">{event.short_name || event.name}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {memberEvents.length === 0 && (
-                            <p className="text-sm text-muted-foreground">No events assigned</p>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </div>
-
-                  {/* Notes */}
-                  {selectedMember.notes && (
-                    <div>
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Notes</h4>
-                      <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
-                        <p className="text-sm text-amber-900 whitespace-pre-wrap">{selectedMember.notes}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Login Activity */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Login Activity</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 rounded-xl bg-slate-50">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Activity className="h-3.5 w-3.5 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">Last Login</p>
-                        </div>
-                        <p className="text-sm font-medium">
-                          {selectedMember.last_login_at
-                            ? formatDistanceToNow(new Date(selectedMember.last_login_at), { addSuffix: true })
-                            : "Never"}
-                        </p>
-                      </div>
-                      <div className="p-3 rounded-xl bg-slate-50">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Zap className="h-3.5 w-3.5 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">Last Active</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {selectedMember.last_active_at && (new Date().getTime() - new Date(selectedMember.last_active_at).getTime()) < 15 * 60 * 1000 && (
-                            <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                            </span>
-                          )}
-                          <p className="text-sm font-medium">
-                            {selectedMember.last_active_at
-                              ? formatDistanceToNow(new Date(selectedMember.last_active_at), { addSuffix: true })
-                              : "Never"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="p-3 rounded-xl bg-slate-50">
-                        <div className="flex items-center gap-2 mb-1">
-                          <LogOut className="h-3.5 w-3.5 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">Last Logout</p>
-                        </div>
-                        <p className="text-sm font-medium">
-                          {selectedMember.logged_out_at
-                            ? formatDistanceToNow(new Date(selectedMember.logged_out_at), { addSuffix: true })
-                            : "Never"}
-                        </p>
-                      </div>
-                      <div className="p-3 rounded-xl bg-slate-50">
-                        <div className="flex items-center gap-2 mb-1">
-                          <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">Total Logins</p>
-                        </div>
-                        <p className="text-sm font-medium">{selectedMember.login_count ?? 0}</p>
-                      </div>
-                      <div className="p-3 rounded-xl bg-slate-50">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">Member Since</p>
-                        </div>
-                        <p className="text-sm font-medium">{format(new Date(selectedMember.created_at), "MMM d, yyyy")}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Activity Log */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Activity History</h4>
-                    <ActivityLog memberId={selectedMember.id} />
-                  </div>
-
-                  {/* Module Access */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Module Access</h4>
-                    <AccessLogViewer memberId={selectedMember.id} memberEmail={selectedMember.email} />
-                  </div>
-
-                  {/* Meta */}
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span className="font-mono text-xs">{selectedMember.id.slice(0, 8)}</span>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )
-          })()}
-        </ResizableSheetContent>
-      </Sheet>
-
-      {/* Edit Sheet */}
-      <Sheet open={isEditing} onOpenChange={(open) => { if(!open) { setIsEditing(false) } }}>
-        <ResizableSheetContent defaultWidth={512} minWidth={400} maxWidth={800} storageKey="team-edit-sheet-width" className="overflow-y-auto">
-          <SheetHeader className="mb-6">
-            <SheetTitle className="flex items-center gap-2">
-              <Edit className="h-5 w-5" />Edit Team Member
-            </SheetTitle>
-          </SheetHeader>
-
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Name</Label>
-                <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Phone</Label>
-                <Input placeholder="+91 98765 43210" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <Label>Quick Setup</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Pick a role to auto-configure permissions</p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {ROLE_PRESETS.map((preset) => {
-                  const isActive = detectedPreset === preset.value
-                  const PresetIcon = preset.icon
-                  return (
-                    <button
-                      key={preset.value}
-                      type="button"
-                      onClick={() => preset.value !== "custom" ? applyPreset(preset.value) : undefined}
-                      className={cn(
-                        "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center",
-                        isActive
-                          ? `${preset.borderColor} ${preset.bgLight}`
-                          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
-                        preset.value === "custom" && !isActive && "opacity-50 cursor-default"
-                      )}
-                    >
-                      <div className={cn("h-9 w-9 rounded-lg bg-gradient-to-br text-white flex items-center justify-center", preset.gradient)}>
-                        <PresetIcon className="h-4 w-4" />
-                      </div>
-                      <p className="text-xs font-medium leading-tight">{preset.label}</p>
-                      <p className="text-[10px] text-muted-foreground leading-tight">{preset.description}</p>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <details className="group">
-              <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-1">
-                <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
-                Role & Permissions (Advanced)
-              </summary>
-              <div className="mt-3 space-y-4 pl-1">
-
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <div className="space-y-2">
-                {ROLES.map((role) => {
-                  const isSelected = formData.role === role.value
-                  return (
-                    <label key={role.value} className={cn("flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all", isSelected ? `${role.bgLight} ${role.borderColor}` : "border-slate-200 hover:border-slate-300")}>
-                      <input type="radio" name="role" checked={isSelected} onChange={() => setFormData({ ...formData, role: role.value })} className="sr-only" />
-                      <div className={cn("h-10 w-10 rounded-xl bg-gradient-to-br text-white flex items-center justify-center", role.gradient)}>
-                        <role.icon className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{role.label}</p>
-                        <p className="text-xs text-muted-foreground">{role.description}</p>
-                      </div>
-                      {isSelected && <CheckCircle className={cn("h-5 w-5", role.textColor)} />}
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label>Event Access</Label>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Access to all events</span>
-                </div>
-                <Switch checked={formData.all_events} onCheckedChange={(checked) => setFormData({ ...formData, all_events: checked })} />
-              </div>
-              {!formData.all_events && events && (() => {
-                const q = eventSearch.toLowerCase()
-                const filterEvents = (list: Event[]) => q ? list.filter(e => (e.short_name || e.name || "").toLowerCase().includes(q)) : list
-                const filteredLive = filterEvents(categorizedEvents.live)
-                const filteredCompleted = filterEvents(categorizedEvents.completed)
-                const selectedCount = formData.event_ids.length
-                return (
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input placeholder="Search events..." value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} className="pl-8 h-8 text-sm" />
-                    </div>
-                    {selectedCount > 0 && (
-                      <p className="text-xs text-muted-foreground">{selectedCount} event{selectedCount !== 1 ? "s" : ""} selected</p>
-                    )}
-                    <div className="max-h-48 overflow-y-auto space-y-3 p-1">
-                      {filteredLive.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-white py-1">
-                            <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                            <span className="text-xs font-semibold text-green-700 uppercase tracking-wider">Live / Upcoming ({filteredLive.length})</span>
-                          </div>
-                          {filteredLive.map((event) => (
-                            <label key={event.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-green-50 cursor-pointer">
-                              <input type="checkbox" checked={formData.event_ids.includes(event.id)} onChange={(e) => {
-                                setFormData({ ...formData, event_ids: e.target.checked ? [...formData.event_ids, event.id] : formData.event_ids.filter(id => id !== event.id) })
-                              }} className="rounded" />
-                              <span className="text-sm">{event.short_name || event.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                      {filteredCompleted.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-white py-1">
-                            <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completed ({filteredCompleted.length})</span>
-                          </div>
-                          {filteredCompleted.map((event) => (
-                            <label key={event.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-                              <input type="checkbox" checked={formData.event_ids.includes(event.id)} onChange={(e) => {
-                                setFormData({ ...formData, event_ids: e.target.checked ? [...formData.event_ids, event.id] : formData.event_ids.filter(id => id !== event.id) })
-                              }} className="rounded" />
-                              <span className="text-sm text-muted-foreground">{event.short_name || event.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                      {filteredLive.length === 0 && filteredCompleted.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-3">No events found</p>
-                      )}
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-
-            <div className="space-y-3">
-              <Label>Module Permissions</Label>
-              <CategoryPermissionPicker
-                selectedPermissions={formData.permissions}
-                onChange={(perms) => setFormData({ ...formData, permissions: perms })}
-                allAccess={formData.all_permissions}
-                onAllAccessChange={(checked) => setFormData({ ...formData, all_permissions: checked, permissions: checked ? [] : formData.permissions })}
-              />
-            </div>
-
-              </div>
-            </details>
-
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea placeholder="Additional notes..." value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} />
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => setIsEditing(false)}>Cancel</Button>
-              <Button className="flex-1" onClick={() => {
-                if (selectedMember) {
-                  updateMember.mutate({
-                    id: selectedMember.id,
-                    updates: {
-                      name: formData.name, phone: formData.phone || null, role: formData.role, notes: formData.notes || null,
-                      event_ids: formData.all_events ? [] : formData.event_ids,
-                      permissions: formData.all_permissions ? [] : formData.permissions,
-                    },
-                  })
-                }
-              }} disabled={updateMember.isPending}>
-                {updateMember.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        </ResizableSheetContent>
-      </Sheet>
-
-      {/* Add Member Dialog */}
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                <UserPlus className="h-5 w-5 text-white" />
-              </div>
-              Add Team Member
-            </DialogTitle>
-            <DialogDescription>Add a new member and configure their permissions</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-5 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Full Name *</Label>
-                <Input placeholder="John Doe" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Phone</Label>
-                <Input placeholder="+91 98765 43210" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Email Address *</Label>
-              <Input type="email" placeholder="john@company.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-              <p className="text-xs text-muted-foreground">A magic link will be sent to this email for login</p>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <Label>Quick Setup *</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Pick a role to auto-configure permissions</p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {ROLE_PRESETS.map((preset) => {
-                  const isActive = detectedPreset === preset.value
-                  const PresetIcon = preset.icon
-                  return (
-                    <button
-                      key={preset.value}
-                      type="button"
-                      onClick={() => preset.value !== "custom" ? applyPreset(preset.value) : undefined}
-                      className={cn(
-                        "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center",
-                        isActive
-                          ? `${preset.borderColor} ${preset.bgLight}`
-                          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
-                        preset.value === "custom" && !isActive && "opacity-50 cursor-default"
-                      )}
-                    >
-                      <div className={cn("h-9 w-9 rounded-lg bg-gradient-to-br text-white flex items-center justify-center", preset.gradient)}>
-                        <PresetIcon className="h-4 w-4" />
-                      </div>
-                      <p className="text-xs font-medium leading-tight">{preset.label}</p>
-                      <p className="text-[10px] text-muted-foreground leading-tight">{preset.description}</p>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <details className="group">
-              <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-1">
-                <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
-                Role & Permissions (Advanced)
-              </summary>
-              <div className="mt-3 space-y-4 pl-1">
-
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <div className="space-y-2">
-                {ROLES.map((role) => {
-                  const isSelected = formData.role === role.value
-                  return (
-                    <label key={role.value} className={cn("flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all", isSelected ? `${role.bgLight} ${role.borderColor}` : "border-slate-200 hover:border-slate-300")}>
-                      <input type="radio" name="add-role" checked={isSelected} onChange={() => setFormData({ ...formData, role: role.value })} className="sr-only" />
-                      <div className={cn("h-10 w-10 rounded-xl bg-gradient-to-br text-white flex items-center justify-center", role.gradient)}>
-                        <role.icon className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{role.label}</p>
-                        <p className="text-xs text-muted-foreground">{role.description}</p>
-                      </div>
-                      {isSelected && <CheckCircle className={cn("h-5 w-5", role.textColor)} />}
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label>Event Access</Label>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Access to all events</span>
-                </div>
-                <Switch checked={formData.all_events} onCheckedChange={(checked) => setFormData({ ...formData, all_events: checked })} />
-              </div>
-              {!formData.all_events && events && (() => {
-                const q = eventSearch.toLowerCase()
-                const filterEvents = (list: Event[]) => q ? list.filter(e => (e.short_name || e.name || "").toLowerCase().includes(q)) : list
-                const filteredLive = filterEvents(categorizedEvents.live)
-                const filteredCompleted = filterEvents(categorizedEvents.completed)
-                const selectedCount = formData.event_ids.length
-                return (
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input placeholder="Search events..." value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} className="pl-8 h-8 text-sm" />
-                    </div>
-                    {selectedCount > 0 && (
-                      <p className="text-xs text-muted-foreground">{selectedCount} event{selectedCount !== 1 ? "s" : ""} selected</p>
-                    )}
-                    <div className="max-h-48 overflow-y-auto space-y-3 p-1">
-                      {filteredLive.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-white py-1">
-                            <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                            <span className="text-xs font-semibold text-green-700 uppercase tracking-wider">Live / Upcoming ({filteredLive.length})</span>
-                          </div>
-                          {filteredLive.map((event) => (
-                            <label key={event.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-green-50 cursor-pointer">
-                              <input type="checkbox" checked={formData.event_ids.includes(event.id)} onChange={(e) => {
-                                setFormData({ ...formData, event_ids: e.target.checked ? [...formData.event_ids, event.id] : formData.event_ids.filter(id => id !== event.id) })
-                              }} className="rounded" />
-                              <span className="text-sm">{event.short_name || event.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                      {filteredCompleted.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-white py-1">
-                            <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completed ({filteredCompleted.length})</span>
-                          </div>
-                          {filteredCompleted.map((event) => (
-                            <label key={event.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-                              <input type="checkbox" checked={formData.event_ids.includes(event.id)} onChange={(e) => {
-                                setFormData({ ...formData, event_ids: e.target.checked ? [...formData.event_ids, event.id] : formData.event_ids.filter(id => id !== event.id) })
-                              }} className="rounded" />
-                              <span className="text-sm text-muted-foreground">{event.short_name || event.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                      {filteredLive.length === 0 && filteredCompleted.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-3">No events found</p>
-                      )}
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-
-            <div className="space-y-3">
-              <Label>Module Permissions</Label>
-              <CategoryPermissionPicker
-                selectedPermissions={formData.permissions}
-                onChange={(perms) => setFormData({ ...formData, permissions: perms })}
-                allAccess={formData.all_permissions}
-                onAllAccessChange={(checked) => setFormData({ ...formData, all_permissions: checked, permissions: checked ? [] : formData.permissions })}
-              />
-            </div>
-
-              </div>
-            </details>
-
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea placeholder="Any additional information..." value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={2} />
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-            <Button className="flex-1" onClick={() => addMember.mutate(formData)} disabled={!formData.name || !formData.email || addMember.isPending}>
-              {addMember.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
-              Add Member
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Permission Guide Sheet */}
-      <Sheet open={isGuideOpen} onOpenChange={setIsGuideOpen}>
-        <ResizableSheetContent defaultWidth={672} minWidth={500} maxWidth={1000} storageKey="team-activity-sheet-width" className="overflow-y-auto p-0">
-          <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-6">
-            <SheetHeader>
-              <SheetTitle className="text-white flex items-center gap-3 text-xl">
-                <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center">
-                  <BookOpen className="h-5 w-5" />
-                </div>
-                Permission Guide
-              </SheetTitle>
-            </SheetHeader>
-            <p className="text-slate-400 mt-2 text-sm">
-              Understand what each role and permission grants access to
-            </p>
-          </div>
-
-          <div className="p-6 space-y-8">
-            {/* Roles Section */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <Shield className="h-4 w-4 text-purple-600" />
-                </div>
-                <h3 className="text-lg font-semibold">User Roles</h3>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Roles determine the type of user and their general purpose in the system.
-              </p>
-              <div className="space-y-4">
-                {ROLE_DETAILS.map((role) => {
-                  const RoleIcon = role.icon
-                  return (
-                    <div key={role.value} className={cn("rounded-xl border-2 overflow-hidden", role.borderColor)}>
-                      <div className={cn("p-4", role.bgLight)}>
-                        <div className="flex items-center gap-3">
-                          <div className={cn("h-12 w-12 rounded-xl bg-gradient-to-br text-white flex items-center justify-center", role.gradient)}>
-                            <RoleIcon className="h-6 w-6" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-lg">{role.label}</h4>
-                            <p className="text-sm text-muted-foreground">{role.description}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="p-4 bg-white">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Capabilities</p>
-                        <ul className="space-y-1.5">
-                          {role.capabilities.map((cap, i) => (
-                            <li key={i} className="flex items-start gap-2 text-sm">
-                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                              <span>{cap}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="mt-3 pt-3 border-t">
-                          <p className="text-xs text-muted-foreground">
-                            <span className="font-medium">Recommended for:</span> {role.recommended}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Understanding Access Section */}
-            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
-              <div className="flex items-start gap-3">
-                <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                  <Info className="h-4 w-4 text-amber-600" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-amber-900">How Access Works</h4>
-                  <ul className="mt-2 space-y-1 text-sm text-amber-800">
-                    <li className="flex items-start gap-2">
-                      <ArrowRight className="h-4 w-4 mt-0.5 shrink-0" />
-                      <span><strong>Admins</strong> have full access to everything - no permissions needed</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <ArrowRight className="h-4 w-4 mt-0.5 shrink-0" />
-                      <span><strong>Full Access toggle ON</strong> = User can access all modules</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <ArrowRight className="h-4 w-4 mt-0.5 shrink-0" />
-                      <span><strong>Full Access toggle OFF</strong> = User can only access selected modules</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <ArrowRight className="h-4 w-4 mt-0.5 shrink-0" />
-                      <span><strong>Event Access</strong> limits which events the user can see</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Travel Permissions Section */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-8 w-8 rounded-lg bg-cyan-100 flex items-center justify-center">
-                  <Plane className="h-4 w-4 text-cyan-600" />
-                </div>
-                <h3 className="text-lg font-semibold">Travel & Logistics Modules</h3>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Permissions for managing travel arrangements and logistics.
-              </p>
-              <div className="grid gap-3">
-                {TRAVEL_PERMISSIONS.map((perm) => {
-                  const PermIcon = perm.icon
-                  return (
-                    <div key={perm.value} className={cn("rounded-xl border overflow-hidden", perm.bgLight)}>
-                      <div className="p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-white", perm.bg)}>
-                            <PermIcon className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold">{perm.label}</h4>
-                            <p className="text-xs text-muted-foreground">{perm.description}</p>
-                          </div>
-                        </div>
-                        <div className="bg-white rounded-lg p-3 border">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Access Includes</p>
-                          <div className="grid grid-cols-2 gap-1">
-                            {perm.access.map((item, i) => (
-                              <div key={i} className="flex items-center gap-1.5 text-xs">
-                                <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
-                                <span>{item}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="mt-2 pt-2 border-t flex items-center gap-1 text-xs text-muted-foreground">
-                            <MapPin className="h-3 w-3" />
-                            <span className="font-mono">{perm.path}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Event Permissions Section */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                  <Calendar className="h-4 w-4 text-indigo-600" />
-                </div>
-                <h3 className="text-lg font-semibold">Event Management Modules</h3>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Permissions for managing event-related features.
-              </p>
-              <div className="grid gap-3">
-                {EVENT_PERMISSIONS.map((perm) => {
-                  const PermIcon = perm.icon
-                  return (
-                    <div key={perm.value} className={cn("rounded-xl border overflow-hidden", perm.bgLight)}>
-                      <div className="p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-white", perm.bg)}>
-                            <PermIcon className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold">{perm.label}</h4>
-                            <p className="text-xs text-muted-foreground">{perm.description}</p>
-                          </div>
-                        </div>
-                        <div className="bg-white rounded-lg p-3 border">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Access Includes</p>
-                          <div className="grid grid-cols-2 gap-1">
-                            {perm.access.map((item, i) => (
-                              <div key={i} className="flex items-center gap-1.5 text-xs">
-                                <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
-                                <span>{item}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="mt-2 pt-2 border-t flex items-center gap-1 text-xs text-muted-foreground">
-                            <MapPin className="h-3 w-3" />
-                            <span className="font-mono">{perm.path}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Quick Reference Table */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                  <BarChart3 className="h-4 w-4 text-slate-600" />
-                </div>
-                <h3 className="text-lg font-semibold">Quick Reference</h3>
-              </div>
-              <div className="rounded-xl border overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50">
-                      <TableHead className="font-semibold">Permission</TableHead>
-                      <TableHead className="font-semibold">Module Path</TableHead>
-                      <TableHead className="font-semibold text-center">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {PERMISSIONS.map((perm) => {
-                      const PermIcon = perm.icon
-                      return (
-                        <TableRow key={perm.value}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className={cn("h-7 w-7 rounded flex items-center justify-center", perm.bgLight)}>
-                                <PermIcon className={cn("h-3.5 w-3.5", perm.color)} />
-                              </div>
-                              <span className="font-medium">{perm.label}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs text-muted-foreground">{perm.path}</TableCell>
-                          <TableCell className="text-center">{perm.access.length}</TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          </div>
-        </ResizableSheetContent>
-      </Sheet>
-    </div>
+    </>
   )
 }

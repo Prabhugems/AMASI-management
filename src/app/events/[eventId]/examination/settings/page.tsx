@@ -325,7 +325,7 @@ export default function ExamSettingsPage() {
           )}
           {(!formData.exam_ticket_types || formData.exam_ticket_types.length === 0) && (
             <p className="text-xs text-orange-600 mt-2">
-              No ticket types selected — all candidates will be shown in exam pages.
+              No ticket types selected — only ticket types with &quot;exam&quot; in the name will be shown.
             </p>
           )}
         </div>

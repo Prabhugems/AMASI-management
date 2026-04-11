@@ -75,6 +75,7 @@ import {
   CircleDot,
   UserX,
   MessageCircle,
+  Printer,
 } from "lucide-react"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
@@ -496,10 +497,19 @@ export default function EventTeamPage() {
             Manage team members for {event?.short_name || event?.name || "this event"}
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add Team Member
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => window.open(`/api/events/${eventId}/team/handover-pack`, '_blank')}
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            Handover Pack
+          </Button>
+          <Button onClick={openCreateDialog}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add Team Member
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

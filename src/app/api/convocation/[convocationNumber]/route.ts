@@ -27,8 +27,8 @@ export async function GET(
       return NextResponse.json({ error: "Invalid convocation number" }, { status: 404 })
     }
 
-    // Only allow pass results
-    if (reg.exam_result !== "pass") {
+    // Only allow pass or without_exam results
+    if (reg.exam_result !== "pass" && reg.exam_result !== "without_exam") {
       return NextResponse.json({ error: "Result not declared" }, { status: 403 })
     }
 

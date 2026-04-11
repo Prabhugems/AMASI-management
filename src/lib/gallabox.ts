@@ -113,6 +113,19 @@ export async function sendGallaboxText(
   return callGallaboxApi(body)
 }
 
+/**
+ * Send a WhatsApp team invitation message via Gallabox
+ */
+export async function sendWhatsAppTeamInvite(
+  phone: string,
+  name: string,
+  inviteLink: string
+): Promise<{ success: boolean; error?: string }> {
+  const displayName = name || "there"
+  const text = `Hi ${displayName}, you've been invited to join the AMASI Management Portal. Accept your invitation here: ${inviteLink}`
+  return sendGallaboxText(phone, name || "Team Invitee", text)
+}
+
 async function callGallaboxApi(body: Record<string, unknown>): Promise<GallaboxResult> {
   try {
     const response = await fetch(GALLABOX_API_URL, {

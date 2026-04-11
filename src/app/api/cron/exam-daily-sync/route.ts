@@ -21,10 +21,15 @@ async function lookupAmasi(val: string) {
 }
 
 // GET /api/cron/exam-daily-sync - Daily automated sync
-export async function GET() {
-  // Verify cron secret
+export async function GET(request: Request) {
+  // Verify cron secret - Vercel crons send authorization header
   const cronSecret = process.env.CRON_SECRET
-  // Vercel crons don't send auth headers, they just call the endpoint
+  if (cronSecret) {
+    const authHeader = request.headers.get("authorization")
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+  }
 
   try {
     const supabase = await createAdminClient()

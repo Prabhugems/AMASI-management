@@ -51,7 +51,7 @@ export default function ConvocationPortalPage() {
 
     const withheld = all.filter((r) => r.exam_result === "withheld")
     const withoutExam = all.filter(
-      (r) => r.exam_result === "without_exam" || (r.exam_result === "pass" && r.exam_marks?.remarks === "WITHOUT EXAM")
+      (r) => r.exam_result === "without_exam" || (r.exam_result === "pass" && typeof r.exam_marks?.remarks === "string" && r.exam_marks.remarks.trim().toUpperCase() === "WITHOUT EXAM")
     )
 
     const formFilled = all.filter((r) => r.convocation_address).length

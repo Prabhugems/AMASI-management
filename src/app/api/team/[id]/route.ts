@@ -26,7 +26,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { name, role, permissions, event_ids, is_active, notes, phone } = body
+    const { name, role, permissions, event_ids, is_active, notes, phone, mark_reviewed, timezone, tags, backup_member_id } = body
 
     // Use admin client to bypass RLS
     const adminClient = await createAdminClient()
@@ -47,6 +47,47 @@ export async function PATCH(
       )
     }
 
+    // Handle mark_reviewed as a special case
+    if (mark_reviewed === true) {
+      const { data: reviewed, error: reviewError } = await supabase
+        .from('team_members')
+        .update({
+          last_reviewed_at: new Date().toISOString(),
+          needs_review: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (reviewError || !reviewed) {
+        return NextResponse.json(
+          { error: 'Failed to mark as reviewed' },
+          { status: 500 }
+        )
+      }
+
+      await supabase
+        .from('team_activity_logs')
+        .insert({
+          actor_id: user.id,
+          actor_email: user.email,
+          action: 'team_member.reviewed',
+          target_id: id,
+          target_email: existing.email,
+          metadata: {
+            member_name: existing.name,
+            member_email: existing.email,
+          },
+        })
+
+      return NextResponse.json({
+        success: true,
+        member: reviewed,
+        message: 'Team member marked as reviewed',
+      })
+    }
+
     // Build update object with only provided fields
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updates: Record<string, any> = {}
@@ -57,6 +98,9 @@ export async function PATCH(
     if (is_active !== undefined) updates.is_active = is_active
     if (notes !== undefined) updates.notes = notes?.trim() || null
     if (phone !== undefined) updates.phone = phone?.trim() || null
+    if (timezone !== undefined) updates.timezone = timezone
+    if (tags !== undefined) updates.tags = Array.isArray(tags) ? tags : []
+    if (backup_member_id !== undefined) updates.backup_member_id = backup_member_id || null
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
@@ -110,6 +154,21 @@ export async function PATCH(
         },
       })
 
+    // Force sign out all sessions when deactivating
+    if (updates.is_active === false) {
+      try {
+        const { data: authUsers } = await supabase.auth.admin.listUsers()
+        const authUser = authUsers?.users?.find((u: any) =>
+          u.email?.toLowerCase() === existing.email.toLowerCase()
+        )
+        if (authUser) {
+          await supabase.auth.admin.signOut(authUser.id, 'global')
+        }
+      } catch (e) {
+        console.error('Failed to sign out deactivated user:', e)
+      }
+    }
+
     // Log specific changes
     const additionalLogs = []
 
@@ -137,8 +196,40 @@ export async function PATCH(
         metadata: {
           member_email: existing.email,
           member_name: existing.name,
+          ...(is_active === false && { sessions_terminated: true }),
         },
       })
+    }
+
+    if (permissions !== undefined) {
+      const newIsEmpty = !permissions || (Array.isArray(permissions) && permissions.length === 0)
+      const oldIsEmpty = !existing.permissions || (Array.isArray(existing.permissions) && existing.permissions.length === 0)
+
+      if (newIsEmpty && !oldIsEmpty) {
+        additionalLogs.push({
+          actor_id: user.id,
+          actor_email: user.email,
+          action: 'team_member.permissions_changed',
+          target_id: id,
+          target_email: existing.email,
+          metadata: {
+            full_access_granted: true,
+            old_permissions: existing.permissions,
+          },
+        })
+      } else if (!newIsEmpty && oldIsEmpty) {
+        additionalLogs.push({
+          actor_id: user.id,
+          actor_email: user.email,
+          action: 'team_member.permissions_changed',
+          target_id: id,
+          target_email: existing.email,
+          metadata: {
+            full_access_restricted: true,
+            new_permissions: permissions,
+          },
+        })
+      }
     }
 
     if (additionalLogs.length > 0) {

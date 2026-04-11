@@ -449,6 +449,52 @@ export function teamInvitation(vars: {
 }
 
 /**
+ * Express Team Invitation Email (24h expiry, urgent styling)
+ */
+export function teamExpressInvitation(vars: {
+  name: string
+  inviteLink: string
+  invitedBy: string
+  role: string
+}): { subject: string; html: string } {
+  return {
+    subject: "URGENT: You've been added to the AMASICON on-site team",
+    html: `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+  <div style="background: linear-gradient(135deg, #dc2626, #d97706); padding: 24px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 22px;">${COMPANY_CONFIG.name}</h1>
+    <p style="color: #fef3c7; margin: 8px 0 0; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Urgent - On-Site Team Invite</p>
+  </div>
+  <div style="padding: 32px 24px;">
+    <h2 style="color: #1f2937; margin-top: 0;">You've Been Added to the On-Site Team</h2>
+    <p style="color: #374151;">Hi ${vars.name},</p>
+    <p style="color: #374151;">You've been added to the <strong>AMASICON on-site team</strong> by <strong>${vars.invitedBy}</strong>.</p>
+    <p style="color: #374151;"><strong>Role:</strong> ${vars.role}</p>
+    <div style="background-color: #fef3c7; border-left: 4px solid #d97706; padding: 12px 16px; margin: 20px 0; border-radius: 0 6px 6px 0;">
+      <p style="color: #92400e; margin: 0; font-weight: 600;">This invite expires in 24 hours</p>
+    </div>
+    <p style="margin: 24px 0; text-align: center;">
+      <a href="${vars.inviteLink}"
+         style="background: linear-gradient(135deg, #dc2626, #d97706); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: 700;">
+        Accept &amp; Join Now
+      </a>
+    </p>
+    <p style="color: #6b7280; font-size: 14px;">
+      Or copy and paste this link:<br/>
+      <a href="${vars.inviteLink}" style="color: #2563eb;">${vars.inviteLink}</a>
+    </p>
+    <p style="color: #6b7280; font-size: 14px;">For immediate assistance, contact <a href="mailto:connect@amasi.in" style="color: #2563eb;">connect@amasi.in</a></p>
+  </div>
+  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 0;" />
+  <div style="padding: 16px 24px; text-align: center;">
+    <p style="color: #9ca3af; font-size: 12px; margin: 0;">${COMPANY_CONFIG.fullName}</p>
+  </div>
+</div>
+`,
+  }
+}
+
+/**
  * Role Changed Email
  */
 export function teamRoleChanged(vars: {
@@ -482,7 +528,8 @@ export function teamDeactivated(vars: {
       <h2 style="color: #1f2937; margin-top: 0;">Account Deactivated</h2>
       <p style="color: #374151;">Hi ${vars.name},</p>
       <p style="color: #374151;">Your access to the <strong>${vars.org_name}</strong> team platform has been deactivated. You will no longer be able to sign in or access team resources.</p>
-      <p style="color: #6b7280; font-size: 14px;">If you believe this was done in error, please contact your administrator to have your account reactivated.</p>
+      <p style="color: #374151;">Your active sessions have been signed out for security.</p>
+      <p style="color: #6b7280; font-size: 14px;">If you believe this was done in error, please contact connect@amasi.in</p>
     `),
   }
 }

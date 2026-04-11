@@ -91,22 +91,46 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, ...updates } = body
+    const { id, ...rawUpdates } = body
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
+    }
+
+    // Whitelist allowed fields to prevent overwriting arbitrary columns
+    const ALLOWED_FIELDS = ["exam_marks", "exam_result", "exam_total_marks", "convocation_number", "convocation_address"]
+    const updates: Record<string, any> = {}
+    for (const key of ALLOWED_FIELDS) {
+      if (key in rawUpdates) updates[key] = rawUpdates[key]
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
     }
 
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
+    // Check for duplicate convocation number before saving
+    if (updates.convocation_number) {
+      const { data: dup } = await db
+        .from("registrations")
+        .select("id")
+        .eq("convocation_number", updates.convocation_number)
+        .neq("id", id)
+        .maybeSingle()
+      if (dup) {
+        return NextResponse.json({ error: `Convocation number ${updates.convocation_number} is already assigned to another candidate` }, { status: 409 })
+      }
+    }
+
     // Fetch existing row when we need it for either:
     //   (a) convocation_number Airtable sync diff, or
     //   (b) exam_marks JSONB merge so we don't clobber sibling keys
     //       like amasi_number, remarks, fillout_link, etc.
     let oldConvNo: string | null = null
-    const needsExisting = updates.convocation_number || updates.exam_marks
+    const needsExisting = updates.convocation_number !== undefined || updates.exam_marks
     if (needsExisting) {
       const { data: existing } = await db
         .from("registrations")

@@ -105,7 +105,7 @@ async function handleReminder() {
     const { data: regs } = await db
       .from("registrations")
       .select("id, attendee_name, attendee_email, convocation_number, exam_marks, convocation_address, exam_result")
-      .eq("exam_result", "pass")
+      .in("exam_result", ["pass", "without_exam"])
       .not("convocation_number", "is", null)
       .is("convocation_address", null)
 

@@ -104,18 +104,42 @@ export default function ConvocationPage() {
     staleTime: 30_000,
   })
 
+  // Helper: case-insensitive check for "WITHOUT EXAM" remarks
+  const isWithoutExam = (r: Registration) => {
+    const remarks = r.exam_marks?.remarks
+    return typeof remarks === "string" && remarks.trim().toUpperCase() === "WITHOUT EXAM"
+  }
+
   // Split into exam passed and without_exam (only those with AMASI number)
   const examPassed = (allRegistrations || [])
-    .filter((r) => r.exam_result === "pass" && r.exam_marks?.remarks !== "WITHOUT EXAM" && r.amasi_number)
+    .filter((r) => r.exam_result === "pass" && !isWithoutExam(r) && r.amasi_number)
 
   const withoutExam = (allRegistrations || [])
-    .filter((r) => ((r.exam_result === "pass" && r.exam_marks?.remarks === "WITHOUT EXAM") || r.exam_result === "without_exam") && r.amasi_number)
+    .filter((r) => ((r.exam_result === "pass" && isWithoutExam(r)) || r.exam_result === "without_exam") && r.amasi_number)
 
   // Candidates without AMASI should not appear in convocation
   const noAmasi = (allRegistrations || [])
     .filter((r) => (r.exam_result === "pass" || r.exam_result === "without_exam") && !r.amasi_number)
 
   const currentList = activeTab === "exam" ? examPassed : withoutExam
+
+  // Auto-switch tab if search matches candidate in the other tab
+  const matchesSearch = (r: Registration, s: string) =>
+    r.name?.toLowerCase().includes(s) || r.email?.toLowerCase().includes(s) || r.convocation_number?.toLowerCase().includes(s) || r.registration_id?.toLowerCase().includes(s) || r.phone?.includes(s) || String(r.amasi_number || "").includes(s)
+
+  const otherTabHint = (() => {
+    if (!search) return null
+    const s = search.toLowerCase()
+    const inCurrent = currentList.some((r) => matchesSearch(r, s))
+    if (inCurrent) return null
+    const otherList = activeTab === "exam" ? withoutExam : examPassed
+    const count = otherList.filter((r) => matchesSearch(r, s)).length
+    if (count > 0) return { tab: activeTab === "exam" ? "without_exam" : "exam", count }
+    // Also check noAmasi list
+    const noAmasiCount = noAmasi.filter((r) => matchesSearch(r, s)).length
+    if (noAmasiCount > 0) return { tab: "no_amasi", count: noAmasiCount }
+    return null
+  })()
 
   const toggleSort = (col: typeof sortBy) => {
     if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc")
@@ -360,6 +384,11 @@ export default function ConvocationPage() {
                 <p className="font-medium text-yellow-800 dark:text-yellow-200 text-sm">
                   {noAmasi.length} candidate(s) have no AMASI membership — cannot assign convocation numbers until membership is confirmed.
                 </p>
+                <ul className="mt-2 text-xs text-yellow-700 dark:text-yellow-300 space-y-1 max-h-32 overflow-y-auto">
+                  {noAmasi.map((r) => (
+                    <li key={r.id}>{r.name} — {r.email}</li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -372,7 +401,7 @@ export default function ConvocationPage() {
                 </h3>
                 <div className="flex items-center gap-3">
                   <div className="text-sm">
-                    Series: <span className="font-mono font-bold">{currentPrefix}{currentStart}</span> to <span className="font-mono font-bold">{currentPrefix}{currentStart + unassigned - 1}</span>
+                    Series: <span className="font-mono font-bold">{currentPrefix}{currentStart + assigned}</span> to <span className="font-mono font-bold">{currentPrefix}{currentStart + assigned + unassigned - 1}</span>
                   </div>
                   <Button onClick={autoAssignNumbers} disabled={autoAssigning} size="sm" className="gap-2">
                     {autoAssigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hash className="h-4 w-4" />}
@@ -413,6 +442,24 @@ export default function ConvocationPage() {
               </div>
               <p className="text-xs text-muted-foreground">Showing {filtered.length} of {currentList.length}</p>
             </div>
+
+            {/* Cross-tab search hint */}
+            {otherTabHint && (
+              <div className="mb-4">
+                {otherTabHint.tab === "no_amasi" ? (
+                  <p className="text-xs text-orange-600">
+                    {otherTabHint.count} match(es) found in candidates without AMASI membership (see warning above).
+                  </p>
+                ) : (
+                  <button
+                    onClick={() => setActiveTab(otherTabHint.tab)}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    {otherTabHint.count} match(es) found in the &quot;{otherTabHint.tab === "exam" ? "Exam Passed" : "Without Exam"}&quot; tab — click to switch.
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Table */}
             {isLoading ? (

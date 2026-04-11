@@ -1,5 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { Database } from '@/lib/supabase/database.types'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -73,12 +73,51 @@ export async function getApiUser(): Promise<AuthResult> {
 
     // Check if this user is an active team member (invited)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: teamMember } = await (adminClient as any)
+    let { data: teamMember } = await (adminClient as any)
       .from('team_members')
-      .select('name, role')
+      .select('id, name, role, email, user_id')
       .ilike('email', authUser.email || '')
       .eq('is_active', true)
       .maybeSingle()
+
+    // Fallback: if email lookup fails, try by user_id (handles auth email changes)
+    if (!teamMember && authUser.id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: memberByUserId } = await (adminClient as any)
+        .from('team_members')
+        .select('id, name, role, email, user_id')
+        .eq('user_id', authUser.id)
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (memberByUserId) {
+        teamMember = memberByUserId
+
+        // Sync email: auth email changed, update team_members to match
+        if (authUser.email && memberByUserId.email.toLowerCase() !== authUser.email.toLowerCase()) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (adminClient as any)
+            .from('team_members')
+            .update({ email: authUser.email.toLowerCase() })
+            .eq('id', memberByUserId.id)
+
+          // Fire-and-forget audit log
+          try {
+            const { logTeamAction } = await import('@/lib/team-audit')
+            await logTeamAction({
+              actorId: authUser.id,
+              actorEmail: authUser.email,
+              action: 'team_member.email_synced',
+              targetId: memberByUserId.id,
+              targetEmail: authUser.email,
+              metadata: { old_email: memberByUserId.email, new_email: authUser.email.toLowerCase() }
+            })
+          } catch {
+            // Non-critical - don't block login
+          }
+        }
+      }
+    }
 
     if (!teamMember) {
       return {
@@ -146,6 +185,43 @@ export async function getApiUser(): Promise<AuthResult> {
       .is('user_id', null)
   } catch {
     // Non-critical - don't block login if linking fails
+  }
+
+  // Sync email if auth email changed (for already-linked team members)
+  try {
+    const syncClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: linkedMember } = await (syncClient as any)
+      .from('team_members')
+      .select('id, email')
+      .eq('user_id', authUser.id)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (linkedMember && authUser.email && linkedMember.email.toLowerCase() !== authUser.email.toLowerCase()) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (syncClient as any)
+        .from('team_members')
+        .update({ email: authUser.email.toLowerCase() })
+        .eq('id', linkedMember.id)
+
+      // Fire-and-forget audit log
+      try {
+        const { logTeamAction } = await import('@/lib/team-audit')
+        await logTeamAction({
+          actorId: authUser.id,
+          actorEmail: authUser.email,
+          action: 'team_member.email_synced',
+          targetId: linkedMember.id,
+          targetEmail: authUser.email,
+          metadata: { old_email: linkedMember.email, new_email: authUser.email.toLowerCase() }
+        })
+      } catch {
+        // Non-critical
+      }
+    }
+  } catch {
+    // Non-critical - don't block login if sync fails
   }
 
   return {
@@ -468,4 +544,57 @@ export async function getEventIdFromRegistration(registrationId: string): Promis
     .maybeSingle()
 
   return data?.event_id || null
+}
+
+/**
+ * Authenticate a device token from the Authorization header.
+ * Expects: Authorization: Bearer <token>
+ * Returns device info if valid, or null if not a device token / invalid.
+ * Updates last_used_at on successful auth.
+ */
+export async function getDeviceToken(): Promise<{ module: string; event_ids: string[] } | null> {
+  try {
+    const headerStore = await headers()
+    const authHeader = headerStore.get('authorization')
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return null
+    }
+
+    const token = authHeader.slice(7).trim()
+
+    if (!token || token.length < 16) {
+      return null
+    }
+
+    const adminClient = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = adminClient as any
+
+    const { data: deviceToken, error } = await supabase
+      .from('team_device_tokens')
+      .select('id, module, event_ids, status')
+      .eq('token', token)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (error || !deviceToken) {
+      return null
+    }
+
+    // Update last_used_at (fire-and-forget)
+    supabase
+      .from('team_device_tokens')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('id', deviceToken.id)
+      .then(() => {})
+      .catch(() => {})
+
+    return {
+      module: deviceToken.module,
+      event_ids: (deviceToken.event_ids as string[]) || [],
+    }
+  } catch {
+    return null
+  }
 }

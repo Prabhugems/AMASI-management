@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { MailPlus, Trash2, Clock, CheckCircle, XCircle, Loader2, Mail } from "lucide-react"
+import { MailPlus, Trash2, Clock, CheckCircle, XCircle, Loader2, Mail, RefreshCw } from "lucide-react"
 import { formatDistanceToNow, format, isPast } from "date-fns"
 import { cn } from "@/lib/utils"
 
@@ -65,6 +65,13 @@ function getExpiryText(expiresAt: string): { text: string; isExpired: boolean } 
     return { text: "Expired", isExpired: true }
   }
   return { text: `Expires in ${formatDistanceToNow(expiryDate)}`, isExpired: false }
+}
+
+function wasResent(createdAt: string, updatedAt: string): boolean {
+  const created = new Date(createdAt).getTime()
+  const updated = new Date(updatedAt).getTime()
+  // If updated more than 60s after created, it was resent
+  return updated - created > 60_000
 }
 
 export function PendingInvitations({
@@ -130,6 +137,7 @@ export function PendingInvitations({
             const expiry = getExpiryText(invitation.expires_at)
             const canResend = invitation.status === "pending" || invitation.status === "expired"
             const canRevoke = invitation.status === "pending"
+            const resent = wasResent(invitation.created_at, invitation.updated_at)
 
             return (
               <TableRow key={invitation.id} className="hover:bg-slate-50">
@@ -149,10 +157,18 @@ export function PendingInvitations({
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={cn("text-xs gap-1", statusInfo.className)}>
-                    <StatusIcon className="h-3 w-3" />
-                    {statusInfo.label}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className={cn("text-xs gap-1", statusInfo.className)}>
+                      <StatusIcon className="h-3 w-3" />
+                      {statusInfo.label}
+                    </Badge>
+                    {resent && (
+                      <Badge variant="outline" className="text-xs gap-1 bg-amber-50 text-amber-700 border-amber-200">
+                        <RefreshCw className="h-3 w-3" />
+                        Resent
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <TooltipProvider>

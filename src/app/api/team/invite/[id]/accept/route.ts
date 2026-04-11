@@ -1,12 +1,46 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
+// In-memory rate limiter: IP → { count, firstAttempt }
+const rateLimitMap = new Map<string, { count: number; firstAttempt: number }>()
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000 // 15 minutes
+const RATE_LIMIT_MAX_ATTEMPTS = 10
+
+// Cleanup stale entries every 15 minutes
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, entry] of rateLimitMap) {
+    if (now - entry.firstAttempt > RATE_LIMIT_WINDOW_MS) rateLimitMap.delete(key)
+  }
+}, RATE_LIMIT_WINDOW_MS)
+
 // POST - Accept team invitation (public route, no auth required)
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+
+    // Rate limit check
+    const nowMs = Date.now()
+    const entry = rateLimitMap.get(ip)
+    if (entry) {
+      if (nowMs - entry.firstAttempt > RATE_LIMIT_WINDOW_MS) {
+        // Window expired, reset
+        rateLimitMap.set(ip, { count: 1, firstAttempt: nowMs })
+      } else if (entry.count >= RATE_LIMIT_MAX_ATTEMPTS) {
+        return NextResponse.json(
+          { error: 'Too many attempts. Please try again later.' },
+          { status: 429 }
+        )
+      } else {
+        entry.count++
+      }
+    } else {
+      rateLimitMap.set(ip, { count: 1, firstAttempt: nowMs })
+    }
+
     const { id: token } = await params
 
     if (!token) {
@@ -28,6 +62,21 @@ export async function POST(
       .single()
 
     if (fetchError || !invitation) {
+      // Log failed token attempt
+      try {
+        await supabase.from('team_activity_logs').insert({
+          actor_id: '00000000-0000-0000-0000-000000000000',
+          actor_email: 'system',
+          action: 'invite.token_fail',
+          metadata: {
+            ip_address: ip,
+            token_prefix: token.substring(0, 8),
+          },
+        })
+      } catch (logError) {
+        console.error('Failed to log token failure:', logError)
+      }
+
       return NextResponse.json(
         { error: 'Invalid or expired invitation link' },
         { status: 404 }

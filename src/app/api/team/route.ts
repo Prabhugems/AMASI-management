@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     // Parse body
     const body = await request.json()
-    const { email, name, phone, role, permissions, event_ids, notes } = body
+    const { email, name, phone, role, permissions, event_ids, notes, timezone, tags, backup_member_id } = body
 
     // Validate required fields
     if (!email || typeof email !== 'string' || !email.trim()) {
@@ -61,6 +61,9 @@ export async function POST(request: NextRequest) {
         permissions: permissions || null,
         event_ids: event_ids || null,
         notes: notes?.trim() || null,
+        timezone: timezone || 'Asia/Kolkata',
+        tags: Array.isArray(tags) ? tags : [],
+        backup_member_id: backup_member_id || null,
         is_active: true,
       })
       .select()
@@ -87,6 +90,9 @@ export async function POST(request: NextRequest) {
           name: member.name,
           email: member.email,
           role: member.role,
+          ...(!member.permissions || (Array.isArray(member.permissions) && member.permissions.length === 0))
+            ? { full_access_granted: true }
+            : {},
         },
       })
 
