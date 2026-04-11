@@ -130,7 +130,6 @@ const PERMISSION_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 export function InviteDialog({ open, onOpenChange, onComplete }: InviteDialogProps) {
-  const queryClient = useQueryClient()
   const supabase = createClient()
 
   // -- Tab
