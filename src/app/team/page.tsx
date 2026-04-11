@@ -3,13 +3,12 @@
 import { useState, useMemo, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
-import { SkeletonTable, SkeletonCard } from "@/components/ui/skeleton"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Card, CardContent } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -54,7 +53,6 @@ import {
   Trash2,
   CheckCircle,
   Search,
-  Phone,
   Calendar,
   FileText,
   Copy,
@@ -68,16 +66,10 @@ import {
   Link2,
   Award,
   Clock,
-  RefreshCw,
-  MailPlus,
-  Globe,
   MoreHorizontal,
   ChevronRight,
   ChevronLeft,
-  Zap,
   Activity,
-  LayoutGrid,
-  List,
   BookOpen,
   Info,
   ArrowRight,
@@ -102,7 +94,6 @@ import { DeviceTokens } from "@/components/team/device-tokens"
 import { PreviewModal } from "@/components/team/preview-modal"
 import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
-import { CategoryPermissionPicker } from "@/components/team/category-permission-picker"
 import { InviteDialog } from "@/components/team/invite-dialog"
 import { MemberDetailPanel } from "@/components/team/member-detail-panel"
 import { ModulesCoverage } from "@/components/team/modules-coverage"
@@ -142,7 +133,18 @@ type Event = {
   status: string | null
 }
 
-type ActiveView = "overview" | "invitations" | "audit" | "settings"
+type ActiveView =
+  | "dashboard"
+  | "all-members"
+  | "admins"
+  | "coordinators"
+  | "travel"
+  | "pending"
+  | "accepted"
+  | "activity-log"
+  | "access-log"
+  | "permissions-schema"
+  | "role-presets"
 
 const TIMEZONE_OPTIONS = [
   { value: "Asia/Kolkata", label: "Asia/Kolkata (IST)" },
@@ -255,6 +257,49 @@ const getInitials = (name: string) => name.split(" ").map(n => n[0]).join("").to
 const copyToClipboard = (text: string, msg: string) => { navigator.clipboard.writeText(text); toast.success(msg) }
 
 // ---------------------------------------------------------------------------
+// Sidebar Navigation Config
+// ---------------------------------------------------------------------------
+
+const SIDEBAR_SECTIONS: { heading: string; items: { key: ActiveView; label: string; icon: any }[] }[] = [
+  {
+    heading: "Overview",
+    items: [
+      { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { key: "all-members", label: "All Members", icon: Users },
+    ],
+  },
+  {
+    heading: "By Role",
+    items: [
+      { key: "admins", label: "Admins", icon: Shield },
+      { key: "coordinators", label: "Coordinators", icon: UserCog },
+      { key: "travel", label: "Travel", icon: Plane },
+    ],
+  },
+  {
+    heading: "Invitations",
+    items: [
+      { key: "pending", label: "Pending", icon: Clock },
+      { key: "accepted", label: "Accepted", icon: UserCheck },
+    ],
+  },
+  {
+    heading: "Activity",
+    items: [
+      { key: "activity-log", label: "Activity Log", icon: Activity },
+      { key: "access-log", label: "Access Log", icon: Eye },
+    ],
+  },
+  {
+    heading: "Settings",
+    items: [
+      { key: "permissions-schema", label: "Permission Guide", icon: BookOpen },
+      { key: "role-presets", label: "Role Presets", icon: Settings },
+    ],
+  },
+]
+
+// ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
 
@@ -263,7 +308,7 @@ export default function TeamPage() {
   const queryClient = useQueryClient()
 
   // -- View state
-  const [activeView, setActiveView] = useState<ActiveView>("overview")
+  const [activeView, setActiveView] = useState<ActiveView>("dashboard")
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // -- Dialog/sheet state
@@ -278,7 +323,6 @@ export default function TeamPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [tagFilter, setTagFilter] = useState<string>("all")
-  const [viewMode, setViewMode] = useState<"grid" | "table">("table")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -294,7 +338,6 @@ export default function TeamPage() {
   const [auditTo, setAuditTo] = useState("")
   const [auditActionType, setAuditActionType] = useState("")
   const [auditActorEmail, setAuditActorEmail] = useState("")
-
 
   // ---------------------------------------------------------------------------
   // Queries
@@ -423,6 +466,14 @@ export default function TeamPage() {
   // Derived data
   // ---------------------------------------------------------------------------
 
+  // Sync roleFilter when navigating to role-specific sidebar views
+  useEffect(() => {
+    if (activeView === "admins") setRoleFilter("admin")
+    else if (activeView === "coordinators") setRoleFilter("coordinator")
+    else if (activeView === "travel") setRoleFilter("travel")
+    else if (activeView === "dashboard" || activeView === "all-members") setRoleFilter("all")
+  }, [activeView])
+
   const filteredMembers = useMemo(() => {
     return (teamMembers || []).filter(m => {
       const matchesSearch = (m.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || (m.email || "").toLowerCase().includes(searchQuery.toLowerCase())
@@ -457,11 +508,35 @@ export default function TeamPage() {
   const totalMembers = teamMembers?.length || 0
   const activeMembers = teamMembers?.filter(m => m.is_active).length || 0
   const pendingInviteCount = invitations?.filter(i => i.status === 'pending').length || 0
+
   const newThisMonth = useMemo(() => {
     if (!teamMembers) return 0
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
     return teamMembers.filter(m => new Date(m.created_at).getTime() > thirtyDaysAgo).length
   }, [teamMembers])
+
+  const onlineNowCount = useMemo(() => {
+    if (!teamMembers) return 0
+    return teamMembers.filter(m => {
+      if (!m.is_active || !m.last_active_at) return false
+      return Date.now() - new Date(m.last_active_at).getTime() < 15 * 60 * 1000
+    }).length
+  }, [teamMembers])
+
+  const awayCount = useMemo(() => {
+    if (!teamMembers) return 0
+    return teamMembers.filter(m => {
+      if (!m.is_active || !m.last_active_at) return false
+      const diff = Date.now() - new Date(m.last_active_at).getTime()
+      return diff >= 15 * 60 * 1000 && diff < 2 * 60 * 60 * 1000
+    }).length
+  }, [teamMembers])
+
+  const expiringSoonCount = useMemo(() => {
+    if (!invitations) return 0
+    const soon = Date.now() + 48 * 60 * 60 * 1000
+    return invitations.filter(i => i.status === "pending" && new Date(i.expires_at).getTime() < soon).length
+  }, [invitations])
 
   const moduleCoverage = useMemo(() => {
     if (!teamMembers) return { covered: 0, total: PERMISSIONS.length }
@@ -469,7 +544,6 @@ export default function TeamPage() {
     for (const m of teamMembers) {
       if (!m.is_active) continue
       if (!Array.isArray(m.permissions) || m.permissions.length === 0) {
-        // Full access -- all covered
         PERMISSIONS.forEach(p => coveredModules.add(p.value))
       } else {
         m.permissions.forEach(p => coveredModules.add(p))
@@ -507,30 +581,16 @@ export default function TeamPage() {
       .catch(() => toast.error("Audit export failed"))
   }
 
-  // ---------------------------------------------------------------------------
-  // Navigation items
-  // ---------------------------------------------------------------------------
-
-  const NAV_ITEMS: { key: ActiveView; label: string; icon: any; badge?: number }[] = [
-    { key: "overview", label: "Overview", icon: LayoutDashboard, badge: totalMembers },
-    { key: "invitations", label: "Invitations", icon: Mail, badge: pendingInviteCount },
-    { key: "audit", label: "Audit", icon: Shield },
-    { key: "settings", label: "Settings", icon: Settings },
-  ]
-
-  const VIEW_TITLES: Record<ActiveView, string> = {
-    overview: "Team Overview",
-    invitations: "Invitations",
-    audit: "Audit & Activity",
-    settings: "Settings",
-  }
+  // Determine if we should show overview (stats + coverage + table + bottom)
+  const showOverview = activeView === "dashboard" || activeView === "all-members"
+  const showRoleTable = activeView === "admins" || activeView === "coordinators" || activeView === "travel"
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
+    <div className="min-h-screen flex bg-background">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -557,35 +617,48 @@ export default function TeamPage() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 space-y-1">
-          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider px-2 mb-2">Navigation</p>
-          {NAV_ITEMS.map(item => {
-            const Icon = item.icon
-            const isActive = activeView === item.key
-            return (
-              <button
-                key={item.key}
-                onClick={() => { setActiveView(item.key); setSidebarOpen(false) }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
-                  isActive
-                    ? "bg-white/15 border-l-[3px] border-white"
-                    : "hover:bg-white/10 border-l-[3px] border-transparent"
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="flex-1 text-left">{item.label}</span>
-                {item.badge !== undefined && item.badge > 0 && (
-                  <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5 font-medium">{item.badge}</span>
-                )}
-              </button>
-            )
-          })}
+        <nav className="flex-1 px-3 overflow-y-auto space-y-4">
+          {SIDEBAR_SECTIONS.map(section => (
+            <div key={section.heading}>
+              <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider px-2 mb-1.5">{section.heading}</p>
+              <div className="space-y-0.5">
+                {section.items.map(item => {
+                  const Icon = item.icon
+                  const isActive = activeView === item.key
+                  // Badge counts for specific items
+                  let badge: number | undefined
+                  if (item.key === "all-members") badge = totalMembers
+                  else if (item.key === "pending") badge = pendingInviteCount
+                  else if (item.key === "admins") badge = teamMembers?.filter(m => m.role === "admin").length
+                  else if (item.key === "coordinators") badge = teamMembers?.filter(m => m.role === "coordinator").length
+                  else if (item.key === "travel") badge = teamMembers?.filter(m => m.role === "travel").length
+
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => { setActiveView(item.key); setSidebarOpen(false) }}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                        isActive
+                          ? "bg-white/15 border-l-[3px] border-white"
+                          : "hover:bg-white/10 border-l-[3px] border-transparent"
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="flex-1 text-left">{item.label}</span>
+                      {badge !== undefined && badge > 0 && (
+                        <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5 font-medium">{badge}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Quick Actions */}
         <div className="px-3 pb-6 space-y-2">
-          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider px-2 mb-2">Quick Actions</p>
           <button
             onClick={() => { setIsInviteOpen(true); setSidebarOpen(false) }}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-white/30 hover:bg-white/10 transition-colors"
@@ -595,7 +668,7 @@ export default function TeamPage() {
           </button>
           {isSuperAdmin && (
             <button
-              onClick={() => { setActiveView("settings"); setSidebarOpen(false) }}
+              onClick={() => { setActiveView("permissions-schema"); setSidebarOpen(false) }}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-white/30 hover:bg-white/10 transition-colors"
             >
               <Shield className="h-4 w-4" />
@@ -608,41 +681,29 @@ export default function TeamPage() {
       {/* ================================================================= */}
       {/* MAIN CONTENT                                                      */}
       {/* ================================================================= */}
-      <main className="flex-1 min-w-0 overflow-auto">
+      <main className="flex-1 min-w-0 overflow-y-auto">
 
         {/* TOP BAR */}
-        <div className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b px-4 sm:px-6 py-3">
+        <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <button className="lg:hidden p-2 hover:bg-slate-100 rounded-lg" onClick={() => setSidebarOpen(true)}>
+              <button className="lg:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg" onClick={() => setSidebarOpen(true)}>
                 <Menu className="h-5 w-5" />
               </button>
               <div className="min-w-0">
-                <h2 className="text-lg font-bold truncate">{VIEW_TITLES[activeView]}</h2>
+                <h2 className="text-lg font-semibold truncate">Team Management</h2>
                 <p className="text-xs text-muted-foreground truncate">
                   {events?.length || 0} events &middot; {totalMembers} members &middot; {pendingInviteCount} pending invites
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={() => refetch()} className="h-9 w-9">
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Refresh</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
               <Button variant="outline" size="sm" onClick={handleExportCSV} className="hidden sm:flex">
                 <Download className="h-4 w-4 mr-2" />Export CSV
               </Button>
-              {isSuperAdmin && (
-                <Button variant="outline" size="sm" onClick={() => setIsAuditExportOpen(true)} className="hidden sm:flex">
-                  <FileText className="h-4 w-4 mr-2" />Export Audit
-                </Button>
-              )}
+              <Button variant="outline" size="sm" onClick={() => setIsInviteOpen(true)} className="hidden sm:flex">
+                <Users className="h-4 w-4 mr-2" />Bulk Invite
+              </Button>
               <Button size="sm" className="bg-[#185FA5] hover:bg-[#14508c] text-white" onClick={() => setIsInviteOpen(true)}>
                 <UserPlus className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Invite Member</span>
               </Button>
@@ -650,105 +711,124 @@ export default function TeamPage() {
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 max-w-[1400px] mx-auto">
-
-          {/* ============================================================= */}
-          {/* OVERVIEW VIEW                                                  */}
-          {/* ============================================================= */}
-          {activeView === "overview" && (
-            <>
-              {/* Stats Row */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <StatsCard icon={<Users className="h-5 w-5 text-[#185FA5]" />} label="Total Members" value={totalMembers} subtitle={newThisMonth > 0 ? `+${newThisMonth} this month` : "No new this month"} />
-                <StatsCard icon={<UserCheck className="h-5 w-5 text-green-600" />} label="Active Now" value={activeMembers} subtitle={`${totalMembers - activeMembers} inactive`} />
-                <StatsCard icon={<Mail className="h-5 w-5 text-amber-600" />} label="Pending Invites" value={pendingInviteCount} subtitle={pendingInviteCount > 0 ? "Awaiting response" : "All caught up"} />
-                <StatsCard icon={<BarChart3 className="h-5 w-5 text-violet-600" />} label="Module Coverage" value={`${moduleCoverage.covered}/${moduleCoverage.total}`} subtitle={moduleCoverage.covered < moduleCoverage.total ? `${moduleCoverage.total - moduleCoverage.covered} uncovered` : "Fully covered"} />
+        {/* ============================================================= */}
+        {/* OVERVIEW / ALL-MEMBERS VIEW                                    */}
+        {/* ============================================================= */}
+        {(showOverview || showRoleTable) && (
+          <>
+            {/* Stats Row */}
+            {showOverview && (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 px-6 py-4">
+                <StatsCard
+                  label="TOTAL MEMBERS"
+                  value={totalMembers}
+                  delta={newThisMonth > 0 ? `+${newThisMonth} this month` : undefined}
+                  deltaType="positive"
+                />
+                <StatsCard
+                  label="ONLINE NOW"
+                  value={onlineNowCount}
+                  delta={awayCount > 0 ? `${awayCount} away` : undefined}
+                  deltaType="neutral"
+                />
+                <StatsCard
+                  label="PENDING INVITES"
+                  value={pendingInviteCount}
+                  delta={expiringSoonCount > 0 ? `${expiringSoonCount} expiring soon` : undefined}
+                  deltaType="negative"
+                />
+                <StatsCard
+                  label="MODULES COVERED"
+                  value={`${moduleCoverage.covered}/${moduleCoverage.total}`}
+                  delta={moduleCoverage.covered < moduleCoverage.total ? `${moduleCoverage.total - moduleCoverage.covered} uncovered` : undefined}
+                  deltaType={moduleCoverage.covered < moduleCoverage.total ? "negative" : "positive"}
+                />
               </div>
+            )}
 
-              {/* Module Coverage Widget */}
-              <ModulesCoverage
-                members={teamMembers || []}
-                eventId={events?.[0]?.id}
-              />
+            {/* Module Coverage Widget */}
+            {showOverview && (
+              <div className="px-6 pb-4">
+                <ModulesCoverage
+                  members={teamMembers || []}
+                  eventId={events?.[0]?.id}
+                />
+              </div>
+            )}
 
-              {/* Role Filter Chips + Search + Filters */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {[{ value: "all", label: "All", count: totalMembers }, { value: "admin", label: "Admin", count: teamMembers?.filter(m => m.role === "admin").length || 0 }, { value: "coordinator", label: "Coordinator", count: teamMembers?.filter(m => m.role === "coordinator").length || 0 }, { value: "travel", label: "Travel", count: teamMembers?.filter(m => m.role === "travel").length || 0 }].map(chip => (
+            {/* Filter Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 pb-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                {[
+                  { value: "all", label: "All" },
+                  { value: "admin", label: "Admin" },
+                  { value: "coordinator", label: "Coordinator" },
+                  { value: "travel", label: "Travel" },
+                  { value: "inactive", label: "Inactive" },
+                ].map(chip => {
+                  const isInactive = chip.value === "inactive"
+                  const isActive = isInactive
+                    ? statusFilter === "inactive"
+                    : roleFilter === chip.value && statusFilter !== "inactive"
+
+                  return (
                     <button
                       key={chip.value}
-                      onClick={() => { setRoleFilter(chip.value); setStatusFilter("all") }}
+                      onClick={() => {
+                        if (isInactive) {
+                          setStatusFilter(statusFilter === "inactive" ? "all" : "inactive")
+                          setRoleFilter("all")
+                        } else {
+                          setRoleFilter(chip.value)
+                          setStatusFilter("all")
+                        }
+                      }}
                       className={cn(
                         "px-3 py-1.5 rounded-full text-sm font-medium transition-all border",
-                        roleFilter === chip.value
+                        isActive
                           ? "bg-[#185FA5] text-white border-[#185FA5]"
-                          : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#185FA5]/50"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-muted-foreground hover:border-[#185FA5]/50"
                       )}
                     >
                       {chip.label}
-                      <span className="ml-1.5 text-[11px] opacity-70">{chip.count}</span>
                     </button>
-                  ))}
-                  {/* Inactive chip */}
-                  <button
-                    onClick={() => { setStatusFilter(statusFilter === "inactive" ? "all" : "inactive"); setRoleFilter("all") }}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-sm font-medium transition-all border",
-                      statusFilter === "inactive"
-                        ? "bg-slate-700 text-white border-slate-700"
-                        : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400"
-                    )}
-                  >
-                    Inactive
-                    <span className="ml-1.5 text-[11px] opacity-70">{totalMembers - activeMembers}</span>
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className="h-9 px-3 rounded-lg border bg-white dark:bg-slate-800 shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-[#185FA5]/20">
-                    <option value="all">All Tags</option>
-                    {TAG_SUGGESTIONS.map(tag => <option key={tag} value={tag}>{tag.charAt(0).toUpperCase() + tag.slice(1)}</option>)}
-                  </select>
-                  <div className="relative w-56">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search members..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-9 bg-white dark:bg-slate-800 shadow-sm" />
-                  </div>
-                  <div className="hidden sm:flex bg-white dark:bg-slate-800 border rounded-lg shadow-sm p-0.5">
-                    <Button variant={viewMode === "table" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("table")} className="h-8 px-2">
-                      <List className="h-4 w-4" />
-                    </Button>
-                    <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("grid")} className="h-8 px-2">
-                      <LayoutGrid className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  )
+                })}
+              </div>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search members..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9"
+                />
+              </div>
+            </div>
+
+            {/* Bulk Action Bar */}
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-3 mx-6 mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-xl">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800">{selectedIds.size} selected</Badge>
+                <div className="flex items-center gap-2 ml-auto">
+                  <Button variant="outline" size="sm" onClick={() => bulkActivate.mutate(Array.from(selectedIds))} disabled={bulkActivate.isPending}>
+                    <UserCheck className="h-3.5 w-3.5 mr-1.5" />Activate
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => bulkDeactivate.mutate(Array.from(selectedIds))} disabled={bulkDeactivate.isPending}>
+                    <UserX className="h-3.5 w-3.5 mr-1.5" />Deactivate
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => { if (confirm(`Remove ${selectedIds.size} members? This cannot be undone.`)) bulkDelete.mutate(Array.from(selectedIds)) }} disabled={bulkDelete.isPending}>
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />Remove
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
                 </div>
               </div>
+            )}
 
-              {/* Bulk Action Bar */}
-              {selectedIds.size > 0 && (
-                <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-xl">
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">{selectedIds.size} selected</Badge>
-                  <div className="flex items-center gap-2 ml-auto">
-                    <Button variant="outline" size="sm" onClick={() => bulkActivate.mutate(Array.from(selectedIds))} disabled={bulkActivate.isPending}>
-                      <UserCheck className="h-3.5 w-3.5 mr-1.5" />Activate
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => bulkDeactivate.mutate(Array.from(selectedIds))} disabled={bulkDeactivate.isPending}>
-                      <UserX className="h-3.5 w-3.5 mr-1.5" />Deactivate
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => { if (confirm(`Remove ${selectedIds.size} members? This cannot be undone.`)) bulkDelete.mutate(Array.from(selectedIds)) }} disabled={bulkDelete.isPending}>
-                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />Remove
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Member Table / Grid */}
+            {/* Member Table */}
+            <div className="px-6">
               {isLoading ? (
-                viewMode === "table" ? <SkeletonTable rows={5} /> : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-                  </div>
-                )
+                <SkeletonTable rows={5} />
               ) : filteredMembers.length === 0 ? (
                 <div className="text-center py-20">
                   <div className="h-20 w-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
@@ -758,7 +838,7 @@ export default function TeamPage() {
                   <p className="text-muted-foreground mb-6">{searchQuery ? "Try a different search term" : "Add your first team member to get started"}</p>
                   {!searchQuery && <Button onClick={() => setIsInviteOpen(true)} size="lg"><UserPlus className="h-5 w-5 mr-2" />Add First Member</Button>}
                 </div>
-              ) : viewMode === "table" ? (
+              ) : (
                 <MemberTable
                   members={paginatedMembers}
                   allMembers={filteredMembers}
@@ -772,12 +852,6 @@ export default function TeamPage() {
                   onToggleActive={(id, is_active) => toggleActive.mutate({ id, is_active })}
                   onDelete={(id, name) => { if (confirm(`Remove ${name}?`)) deleteMember.mutate(id) }}
                   onPreview={setPreviewMemberId}
-                />
-              ) : (
-                <MemberGrid
-                  members={paginatedMembers}
-                  events={events}
-                  onSelectMember={setSelectedMember}
                 />
               )}
 
@@ -811,15 +885,17 @@ export default function TeamPage() {
                   </div>
                 </div>
               )}
+            </div>
 
-              {/* Bottom Two-Column Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-8">
-                {/* Pending Invitations Summary (60%) */}
+            {/* Bottom Two Columns */}
+            {showOverview && (
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 px-6 py-6">
+                {/* Pending Invitations (60%) */}
                 <div className="lg:col-span-3">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-sm">Pending Invitations</h3>
                     {pendingInviteCount > 0 && (
-                      <button onClick={() => setActiveView("invitations")} className="text-xs text-[#185FA5] hover:underline font-medium flex items-center gap-1">
+                      <button onClick={() => setActiveView("pending")} className="text-xs text-[#185FA5] hover:underline font-medium flex items-center gap-1">
                         View all <ArrowRight className="h-3 w-3" />
                       </button>
                     )}
@@ -836,7 +912,7 @@ export default function TeamPage() {
                 <div className="lg:col-span-2">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-sm">Live Activity</h3>
-                    <button onClick={() => setActiveView("audit")} className="text-xs text-[#185FA5] hover:underline font-medium flex items-center gap-1">
+                    <button onClick={() => setActiveView("activity-log")} className="text-xs text-[#185FA5] hover:underline font-medium flex items-center gap-1">
                       View all <ArrowRight className="h-3 w-3" />
                     </button>
                   </div>
@@ -845,112 +921,193 @@ export default function TeamPage() {
                   </div>
                 </div>
               </div>
-            </>
-          )}
+            )}
+          </>
+        )}
 
-          {/* ============================================================= */}
-          {/* INVITATIONS VIEW                                               */}
-          {/* ============================================================= */}
-          {activeView === "invitations" && (
-            <>
-              {/* Invitation stats */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <StatsCard icon={<Mail className="h-5 w-5 text-blue-600" />} label="Total Sent" value={invitations?.length || 0} subtitle="All time" />
-                <StatsCard icon={<CheckCircle className="h-5 w-5 text-green-600" />} label="Accepted" value={invitations?.filter(i => i.status === 'accepted').length || 0} subtitle="Onboarded" />
-                <StatsCard icon={<Clock className="h-5 w-5 text-red-600" />} label="Expired" value={invitations?.filter(i => i.status === 'expired').length || 0} subtitle="Need resending" />
-                <StatsCard icon={<CircleDot className="h-5 w-5 text-amber-600" />} label="Pending" value={pendingInviteCount} subtitle="Awaiting response" />
-              </div>
-              <PendingInvitations
-                invitations={invitations || []}
-                isLoading={invitationsLoading}
-                onResend={(id) => resendInvite.mutate(id)}
-                onRevoke={(id) => revokeInvite.mutate(id)}
-                isResending={resendInvite.isPending}
-              />
-            </>
-          )}
+        {/* ============================================================= */}
+        {/* PENDING INVITATIONS VIEW                                       */}
+        {/* ============================================================= */}
+        {activeView === "pending" && (
+          <div className="p-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <StatsCard label="TOTAL SENT" value={invitations?.length || 0} delta="All time" deltaType="neutral" />
+              <StatsCard label="ACCEPTED" value={invitations?.filter(i => i.status === 'accepted').length || 0} delta="Onboarded" deltaType="positive" />
+              <StatsCard label="EXPIRED" value={invitations?.filter(i => i.status === 'expired').length || 0} delta="Need resending" deltaType="negative" />
+              <StatsCard label="PENDING" value={pendingInviteCount} delta="Awaiting response" deltaType="neutral" />
+            </div>
+            <PendingInvitations
+              invitations={invitations?.filter(i => i.status === 'pending') || []}
+              isLoading={invitationsLoading}
+              onResend={(id) => resendInvite.mutate(id)}
+              onRevoke={(id) => revokeInvite.mutate(id)}
+              isResending={resendInvite.isPending}
+            />
+          </div>
+        )}
 
-          {/* ============================================================= */}
-          {/* AUDIT VIEW                                                     */}
-          {/* ============================================================= */}
-          {activeView === "audit" && (
-            <>
-              <div className="flex items-center justify-between mb-6">
-                <p className="text-sm text-muted-foreground">Review team activity and access logs</p>
-                {isSuperAdmin && (
-                  <Button variant="outline" size="sm" onClick={() => setIsAuditExportOpen(true)}>
-                    <Download className="h-4 w-4 mr-2" />Export Audit Trail
-                  </Button>
-                )}
-              </div>
-              <div className="space-y-6">
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border overflow-hidden">
-                  <div className="p-4 border-b">
-                    <h3 className="font-semibold text-sm">Live Activity Feed</h3>
-                  </div>
-                  <div style={{ height: 500 }}>
-                    <ActivityFeed onClose={() => {}} />
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
+        {/* ============================================================= */}
+        {/* ACCEPTED INVITATIONS VIEW                                      */}
+        {/* ============================================================= */}
+        {activeView === "accepted" && (
+          <div className="p-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <StatsCard label="TOTAL SENT" value={invitations?.length || 0} delta="All time" deltaType="neutral" />
+              <StatsCard label="ACCEPTED" value={invitations?.filter(i => i.status === 'accepted').length || 0} delta="Onboarded" deltaType="positive" />
+              <StatsCard label="EXPIRED" value={invitations?.filter(i => i.status === 'expired').length || 0} delta="Need resending" deltaType="negative" />
+              <StatsCard label="PENDING" value={pendingInviteCount} delta="Awaiting response" deltaType="neutral" />
+            </div>
+            <PendingInvitations
+              invitations={invitations?.filter(i => i.status === 'accepted') || []}
+              isLoading={invitationsLoading}
+              onResend={(id) => resendInvite.mutate(id)}
+              onRevoke={(id) => revokeInvite.mutate(id)}
+              isResending={resendInvite.isPending}
+            />
+          </div>
+        )}
 
-          {/* ============================================================= */}
-          {/* SETTINGS VIEW                                                  */}
-          {/* ============================================================= */}
-          {activeView === "settings" && (
-            <div className="space-y-6">
-              {/* Permission Guide */}
-              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                      <BookOpen className="h-5 w-5 text-indigo-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Permission Guide</h3>
-                      <p className="text-xs text-muted-foreground">Understand what each role and permission grants access to</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setIsGuideOpen(true)}>
-                    <BookOpen className="h-4 w-4 mr-2" />Open Guide
-                  </Button>
-                </div>
-              </div>
-
-              {/* Portal Link */}
-              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <Link2 className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Team Portal Link</h3>
-                      <p className="text-xs text-muted-foreground">Share this link so team members can log in</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => copyToClipboard(`${window.location.origin}/team-login`, "Portal link copied!")}>
-                    <Copy className="h-4 w-4 mr-2" />Copy Link
-                  </Button>
-                </div>
-              </div>
-
-              {/* Device Tokens (super_admin only) */}
+        {/* ============================================================= */}
+        {/* ACTIVITY LOG VIEW                                              */}
+        {/* ============================================================= */}
+        {activeView === "activity-log" && (
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-sm text-muted-foreground">Review team activity and access logs</p>
               {isSuperAdmin && (
-                <DeviceTokens />
+                <Button variant="outline" size="sm" onClick={() => setIsAuditExportOpen(true)}>
+                  <Download className="h-4 w-4 mr-2" />Export Audit Trail
+                </Button>
               )}
             </div>
-          )}
-        </div>
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border overflow-hidden">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold text-sm">Live Activity Feed</h3>
+              </div>
+              <div style={{ height: 500 }}>
+                <ActivityFeed onClose={() => {}} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* ACCESS LOG VIEW                                                */}
+        {/* ============================================================= */}
+        {activeView === "access-log" && (
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-sm text-muted-foreground">Access log and login history</p>
+              {isSuperAdmin && (
+                <Button variant="outline" size="sm" onClick={() => setIsAuditExportOpen(true)}>
+                  <Download className="h-4 w-4 mr-2" />Export Access Log
+                </Button>
+              )}
+            </div>
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border overflow-hidden">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold text-sm">Access Log</h3>
+              </div>
+              <div style={{ height: 500 }}>
+                <ActivityFeed onClose={() => {}} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* PERMISSIONS SCHEMA VIEW                                        */}
+        {/* ============================================================= */}
+        {activeView === "permissions-schema" && (
+          <div className="p-6 space-y-6">
+            {/* Permission Guide card */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                    <BookOpen className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Permission Guide</h3>
+                    <p className="text-xs text-muted-foreground">Understand what each role and permission grants access to</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setIsGuideOpen(true)}>
+                  <BookOpen className="h-4 w-4 mr-2" />Open Full Guide
+                </Button>
+              </div>
+            </div>
+
+            {/* Portal Link */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <Link2 className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Team Portal Link</h3>
+                    <p className="text-xs text-muted-foreground">Share this link so team members can log in</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(`${window.location.origin}/team-login`, "Portal link copied!")}>
+                  <Copy className="h-4 w-4 mr-2" />Copy Link
+                </Button>
+              </div>
+            </div>
+
+            {/* Device Tokens (super_admin only) */}
+            {isSuperAdmin && <DeviceTokens />}
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* ROLE PRESETS VIEW                                              */}
+        {/* ============================================================= */}
+        {activeView === "role-presets" && (
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                <Settings className="h-4 w-4 text-slate-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Role Presets</h3>
+                <p className="text-xs text-muted-foreground">Pre-configured permission sets for common team roles</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {ROLE_PRESETS.filter(p => p.value !== "custom").map(preset => {
+                const PresetIcon = preset.icon
+                return (
+                  <div key={preset.value} className={cn("rounded-xl border-2 p-4", preset.borderColor, preset.bgLight)}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={cn("h-10 w-10 rounded-xl bg-gradient-to-br text-white flex items-center justify-center", preset.gradient)}>
+                        <PresetIcon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">{preset.label}</h4>
+                        <p className="text-xs text-muted-foreground">{preset.description}</p>
+                      </div>
+                    </div>
+                    <div className="text-xs space-y-1 text-muted-foreground">
+                      <p><span className="font-medium">Role:</span> {preset.role || "Custom"}</p>
+                      <p><span className="font-medium">Permissions:</span> {preset.allPermissions ? "All" : preset.permissions.join(", ") || "None"}</p>
+                      <p><span className="font-medium">Events:</span> {preset.allEvents ? "All Events" : "Assigned only"}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
       </main>
 
       {/* ================================================================= */}
       {/* DIALOGS & SHEETS                                                  */}
       {/* ================================================================= */}
 
-      {/* Member Detail Panel (combined view + edit) */}
+      {/* Member Detail Panel */}
       <MemberDetailPanel
         open={!!selectedMember}
         onClose={() => setSelectedMember(null)}
@@ -960,11 +1117,10 @@ export default function TeamPage() {
         isSuperAdmin={!!isSuperAdmin}
       />
 
-      {/* Permission Diff Confirmation Modal */}
       {/* Preview Access Modal (super_admin only) */}
       <PreviewModal open={!!previewMemberId} onClose={() => setPreviewMemberId(null)} memberId={previewMemberId} />
 
-      {/* Invite Dialog (single + bulk, 4-step wizard) */}
+      {/* Invite Dialog */}
       <InviteDialog
         open={isInviteOpen}
         onOpenChange={setIsInviteOpen}
@@ -1027,17 +1183,26 @@ export default function TeamPage() {
 // Sub-components
 // ===========================================================================
 
-function StatsCard({ icon, label, value, subtitle }: { icon: React.ReactNode; label: string; value: number | string; subtitle: string }) {
+function StatsCard({ label, value, delta, deltaType }: {
+  label: string
+  value: number | string
+  delta?: string
+  deltaType?: "positive" | "negative" | "neutral"
+}) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-4">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0">{icon}</div>
-        <div className="min-w-0">
-          <p className="text-2xl font-bold leading-none">{value}</p>
-          <p className="text-xs text-muted-foreground mt-1">{label}</p>
-        </div>
-      </div>
-      <p className="text-[11px] text-muted-foreground mt-2">{subtitle}</p>
+    <div className="bg-white dark:bg-slate-900 rounded-xl border p-4">
+      <p className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</p>
+      <p className="text-2xl font-medium mt-1">{value}</p>
+      {delta && (
+        <p className={cn(
+          "text-xs mt-1",
+          deltaType === "positive" && "text-green-600",
+          deltaType === "negative" && "text-red-600",
+          deltaType === "neutral" && "text-muted-foreground",
+        )}>
+          {delta}
+        </p>
+      )}
     </div>
   )
 }
@@ -1060,6 +1225,12 @@ function MemberTable({ members, allMembers, events, selectedIds, toggleSelect, t
   onDelete: (id: string, name: string) => void
   onPreview: (id: string) => void
 }) {
+  const avatarColors: Record<string, string> = {
+    admin: "from-purple-500 to-pink-500",
+    coordinator: "from-blue-500 to-indigo-500",
+    travel: "from-cyan-500 to-blue-500",
+  }
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border overflow-x-auto">
       <Table>
@@ -1093,39 +1264,28 @@ function MemberTable({ members, allMembers, events, selectedIds, toggleSelect, t
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <input type="checkbox" checked={selectedIds.has(member.id)} onChange={() => toggleSelect(member.id)} className="rounded" />
                 </TableCell>
+                {/* Member: Avatar + Name + Email */}
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <Avatar className="h-9 w-9">
-                        <AvatarFallback className={cn("text-xs font-semibold bg-gradient-to-br text-white", roleInfo.gradient)}>
-                          {getInitials(member.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-slate-900", member.is_active ? "bg-green-500" : "bg-slate-400")} />
-                    </div>
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className={cn("text-xs font-semibold bg-gradient-to-br text-white", avatarColors[member.role] || avatarColors.coordinator)}>
+                        {getInitials(member.name)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm truncate">{member.name}</p>
-                        {member.needs_review && (
-                          <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-yellow-300 shrink-0">
-                            <Clock className="h-2.5 w-2.5 mr-0.5" />Review
-                          </Badge>
-                        )}
-                      </div>
+                      <p className="font-medium text-sm truncate">{member.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{member.email}</p>
                     </div>
                   </div>
                 </TableCell>
+                {/* Role pill */}
                 <TableCell>
                   <Badge className={cn("text-white text-xs bg-gradient-to-r", roleInfo.gradient)}>
                     <RoleIcon className="h-3 w-3 mr-1" />
                     {roleInfo.label.split(" ")[0]}
                   </Badge>
-                  {(() => {
-                    const preset = detectPresetForMember(member)
-                    return preset ? <p className="text-[10px] text-muted-foreground mt-0.5">{preset.label}</p> : null
-                  })()}
                 </TableCell>
+                {/* Permissions: first 3 badges + "+N more" */}
                 <TableCell>
                   {hasFullAccess ? (
                     <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-0">
@@ -1133,7 +1293,7 @@ function MemberTable({ members, allMembers, events, selectedIds, toggleSelect, t
                     </Badge>
                   ) : (
                     <div className="flex items-center gap-1">
-                      {memberPermsArr.slice(0, 4).map(p => {
+                      {memberPermsArr.slice(0, 3).map(p => {
                         const perm = PERMISSIONS.find(x => x.value === p)
                         if (!perm) return null
                         return (
@@ -1149,10 +1309,11 @@ function MemberTable({ members, allMembers, events, selectedIds, toggleSelect, t
                           </TooltipProvider>
                         )
                       })}
-                      {memberPermsArr.length > 4 && <span className="text-xs text-muted-foreground ml-1">+{memberPermsArr.length - 4}</span>}
+                      {memberPermsArr.length > 3 && <span className="text-xs text-muted-foreground ml-1">+{memberPermsArr.length - 3} more</span>}
                     </div>
                   )}
                 </TableCell>
+                {/* Event Access */}
                 <TableCell>
                   {hasAllEvents ? (
                     <span className="text-xs text-muted-foreground">All Events</span>
@@ -1160,6 +1321,7 @@ function MemberTable({ members, allMembers, events, selectedIds, toggleSelect, t
                     <span className="text-xs text-muted-foreground">{member.event_ids?.length || 0} event{(member.event_ids?.length || 0) !== 1 ? "s" : ""}</span>
                   )}
                 </TableCell>
+                {/* Last Active */}
                 <TableCell>
                   {status === "online" ? (
                     <span className="text-xs text-green-600 font-medium">Active now</span>
@@ -1171,6 +1333,7 @@ function MemberTable({ members, allMembers, events, selectedIds, toggleSelect, t
                     <span className="text-xs text-muted-foreground/50">Never</span>
                   )}
                 </TableCell>
+                {/* Status: dot + label */}
                 <TableCell>
                   <Badge variant="secondary" className={cn("text-xs gap-1", statusConfig.bgColor, statusConfig.color)}>
                     {statusConfig.pulse ? (
@@ -1181,26 +1344,34 @@ function MemberTable({ members, allMembers, events, selectedIds, toggleSelect, t
                     {statusConfig.label}
                   </Badge>
                 </TableCell>
+                {/* Actions dropdown */}
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSelectMember(member) }}><Edit className="h-4 w-4 mr-2" />View Details</DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSendMagicLink(member.email) }} disabled={!member.is_active}><MailPlus className="h-4 w-4 mr-2" />Send Login Link</DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); copyToClipboard(member.email, "Email copied!") }}><Copy className="h-4 w-4 mr-2" />Copy Email</DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSelectMember(member) }}>
+                        <Edit className="h-4 w-4 mr-2" />Edit
+                      </DropdownMenuItem>
                       {isSuperAdmin && (
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onPreview(member.id) }}><Eye className="h-4 w-4 mr-2" />Preview Access</DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onPreview(member.id) }}>
+                          <Eye className="h-4 w-4 mr-2" />Preview
+                        </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onToggleActive(member.id, !member.is_active) }}>
                         {member.is_active ? <UserX className="h-4 w-4 mr-2" /> : <UserCheck className="h-4 w-4 mr-2" />}
                         {member.is_active ? "Deactivate" : "Activate"}
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(member.id, member.name) }}>
-                        <Trash2 className="h-4 w-4 mr-2" />Remove
-                      </DropdownMenuItem>
+                      {isSuperAdmin && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(member.id, member.name) }}>
+                            <Trash2 className="h-4 w-4 mr-2" />Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -1209,106 +1380,6 @@ function MemberTable({ members, allMembers, events, selectedIds, toggleSelect, t
           })}
         </TableBody>
       </Table>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// MemberGrid
-// ---------------------------------------------------------------------------
-
-function MemberGrid({ members, events, onSelectMember }: { members: TeamMember[]; events?: Event[]; onSelectMember: (m: TeamMember) => void }) {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {members.map((member) => {
-        const roleInfo = getRoleInfo(member.role)
-        const RoleIcon = roleInfo.icon
-        const memberPermsArr = Array.isArray(member.permissions) ? member.permissions : []
-        const hasFullAccess = memberPermsArr.length === 0
-        const status = getLoginStatus(member)
-        const statusConfig = LOGIN_STATUS_CONFIG[status]
-        const StatusIcon = statusConfig.icon
-
-        return (
-          <Card key={member.id} className={cn("group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer border-0 shadow-md", !member.is_active && "opacity-70")} onClick={() => onSelectMember(member)}>
-            <div className={cn("absolute top-0 left-0 right-0 h-1 bg-gradient-to-r", roleInfo.gradient)} />
-            <CardContent className="p-5">
-              <div className="flex items-start gap-4">
-                <div className="relative">
-                  <Avatar className={cn("h-14 w-14 ring-2 ring-offset-2", roleInfo.borderColor)}>
-                    <AvatarFallback className={cn("text-lg font-bold bg-gradient-to-br text-white", roleInfo.gradient)}>{getInitials(member.name)}</AvatarFallback>
-                  </Avatar>
-                  <div className={cn(
-                    "absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white",
-                    status === "online" ? "bg-green-500" : status === "away" ? "bg-amber-500" : status === "logged_out" ? "bg-orange-400" : status === "pending" ? "bg-blue-400" : status === "deactivated" ? "bg-red-400" : "bg-slate-400"
-                  )} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-lg truncate">{member.name}</h3>
-                    {member.needs_review && <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-yellow-300 shrink-0"><Clock className="h-2.5 w-2.5 mr-1" />Review Due</Badge>}
-                  </div>
-                  <p className="text-sm text-muted-foreground truncate">{member.email}</p>
-                  <div className="flex flex-wrap items-center gap-2 mt-2">
-                    <Badge className={cn("text-white text-xs bg-gradient-to-r", roleInfo.gradient)}><RoleIcon className="h-3 w-3 mr-1" />{roleInfo.label.split(" ")[0]}</Badge>
-                    {(() => { const preset = detectPresetForMember(member); return preset ? <Badge variant="outline" className="text-[10px]">{preset.label}</Badge> : null })()}
-                    {hasFullAccess && <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-0"><Sparkles className="h-3 w-3 mr-1" />Full Access</Badge>}
-                    {member.event_ids && member.event_ids.length > 0 && (
-                      <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
-                        <Calendar className="h-2.5 w-2.5 mr-1" />{member.event_ids.length} event{member.event_ids.length > 1 ? "s" : ""}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); onSelectMember(member) }}>
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-              </div>
-              <div className="flex items-center gap-4 mt-4 pt-4 border-t">
-                <div className="flex items-center gap-1.5 text-sm">
-                  {statusConfig.pulse ? (
-                    <span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" /><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" /></span>
-                  ) : (
-                    <StatusIcon className={cn("h-3.5 w-3.5", statusConfig.color)} />
-                  )}
-                  <span className={statusConfig.color}>
-                    {status === "online" ? "Online now" :
-                     status === "logged_out" && member.logged_out_at ? `Logged out ${formatDistanceToNow(new Date(member.logged_out_at), { addSuffix: true })}` :
-                     status === "pending" ? "Never logged in" :
-                     member.last_active_at ? formatDistanceToNow(new Date(member.last_active_at), { addSuffix: true }) :
-                     member.last_login_at ? formatDistanceToNow(new Date(member.last_login_at), { addSuffix: true }) :
-                     statusConfig.label}
-                  </span>
-                </div>
-                {(member.login_count ?? 0) > 0 && (
-                  <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-600 ml-auto">{member.login_count} login{member.login_count !== 1 ? "s" : ""}</Badge>
-                )}
-              </div>
-              {!hasFullAccess && memberPermsArr.length > 0 && (
-                <div className="flex items-center gap-1.5 mt-3">
-                  {memberPermsArr.slice(0, 5).map(p => {
-                    const perm = PERMISSIONS.find(x => x.value === p)
-                    if (!perm) return null
-                    return (
-                      <TooltipProvider key={p}>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center border", perm.bgLight)}>
-                              <perm.icon className={cn("h-3.5 w-3.5", perm.color)} />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>{perm.label}</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )
-                  })}
-                  {memberPermsArr.length > 5 && <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-slate-100 text-xs font-medium text-slate-600">+{memberPermsArr.length - 5}</div>}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )
-      })}
     </div>
   )
 }
@@ -1375,20 +1446,22 @@ function PermissionGuideContent() {
           </div>
         </div>
 
-        {/* Travel Permissions */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-8 w-8 rounded-lg bg-cyan-100 flex items-center justify-center"><Plane className="h-4 w-4 text-cyan-600" /></div>
-            <h3 className="text-lg font-semibold">Travel & Logistics Modules</h3>
-          </div>
-          <div className="grid gap-3">
-            {TRAVEL_PERMISSIONS.map((perm) => {
-              const PermIcon = perm.icon
-              return (
+        {/* Permission Sections */}
+        {[
+          { title: "Travel & Logistics Modules", icon: Plane, iconBg: "bg-cyan-100", iconColor: "text-cyan-600", perms: TRAVEL_PERMISSIONS },
+          { title: "Event Management Modules", icon: Calendar, iconBg: "bg-indigo-100", iconColor: "text-indigo-600", perms: EVENT_PERMISSIONS },
+        ].map(section => (
+          <div key={section.title}>
+            <div className="flex items-center gap-2 mb-4">
+              <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", section.iconBg)}><section.icon className={cn("h-4 w-4", section.iconColor)} /></div>
+              <h3 className="text-lg font-semibold">{section.title}</h3>
+            </div>
+            <div className="grid gap-3">
+              {section.perms.map((perm) => (
                 <div key={perm.value} className={cn("rounded-xl border overflow-hidden", perm.bgLight)}>
                   <div className="p-4">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-white", perm.bg)}><PermIcon className="h-5 w-5" /></div>
+                      <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-white", perm.bg)}><perm.icon className="h-5 w-5" /></div>
                       <div><h4 className="font-semibold">{perm.label}</h4><p className="text-xs text-muted-foreground">{perm.description}</p></div>
                     </div>
                     <div className="bg-white dark:bg-slate-900 rounded-lg p-3 border">
@@ -1400,40 +1473,10 @@ function PermissionGuideContent() {
                     </div>
                   </div>
                 </div>
-              )
-            })}
+              ))}
+            </div>
           </div>
-        </div>
-
-        {/* Event Permissions */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center"><Calendar className="h-4 w-4 text-indigo-600" /></div>
-            <h3 className="text-lg font-semibold">Event Management Modules</h3>
-          </div>
-          <div className="grid gap-3">
-            {EVENT_PERMISSIONS.map((perm) => {
-              const PermIcon = perm.icon
-              return (
-                <div key={perm.value} className={cn("rounded-xl border overflow-hidden", perm.bgLight)}>
-                  <div className="p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-white", perm.bg)}><PermIcon className="h-5 w-5" /></div>
-                      <div><h4 className="font-semibold">{perm.label}</h4><p className="text-xs text-muted-foreground">{perm.description}</p></div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 rounded-lg p-3 border">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Access Includes</p>
-                      <div className="grid grid-cols-2 gap-1">
-                        {perm.access.map((item, i) => <div key={i} className="flex items-center gap-1.5 text-xs"><CheckCircle className="h-3 w-3 text-green-500 shrink-0" /><span>{item}</span></div>)}
-                      </div>
-                      <div className="mt-2 pt-2 border-t flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" /><span className="font-mono">{perm.path}</span></div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        ))}
 
         {/* Quick Reference Table */}
         <div>
