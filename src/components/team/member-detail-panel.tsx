@@ -374,15 +374,6 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
     if (pendingUpdates) executeSave(pendingUpdates)
   }, [pendingUpdates, executeSave])
 
-  // -- Close handler with unsaved changes guard
-  const handleClose = useCallback(() => {
-    if (hasChanges) {
-      const confirmed = window.confirm("You have unsaved changes. Discard them?")
-      if (!confirmed) return
-    }
-    onClose()
-  }, [hasChanges, onClose])
-
   // -- Derived
   const hasChanges = useMemo(() => {
     if (!member) return false
@@ -406,6 +397,15 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
       (backupMemberId || "") !== (member.backup_member_id || "")
     )
   }, [member, name, phone, role, notes, permissions, allAccess, eventIds, allEvents, timezone, tags, backupMemberId])
+
+  // -- Close handler with unsaved changes guard
+  const handleClose = useCallback(() => {
+    if (hasChanges) {
+      const confirmed = window.confirm("You have unsaved changes. Discard them?")
+      if (!confirmed) return
+    }
+    onClose()
+  }, [hasChanges, onClose])
 
   const categorizedEvents = useMemo(() => {
     const now = new Date()
