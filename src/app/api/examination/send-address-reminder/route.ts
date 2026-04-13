@@ -62,8 +62,6 @@ export async function GET(request: NextRequest) {
 
   if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
     // Cron trigger - OK
-  } else if (!cronSecret) {
-    console.warn("[send-address-reminder] CRON_SECRET not configured - GET endpoint is unprotected")
   } else {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }

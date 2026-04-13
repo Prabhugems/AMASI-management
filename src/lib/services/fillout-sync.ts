@@ -1,6 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/server"
 
 const FILLOUT_FORM_ID = "gz1eLocmB9us"
+const MAX_PAGINATION_PAGES = 100 // Safety limit: 100 × 150 = 15,000 submissions max
+const RETRY_ATTEMPTS = 3
+const RETRY_BASE_DELAY_MS = 1000
 
 function getFilloutApiKey(): string {
   const key = (process.env.FILLOUT_API_KEY || "").trim()
@@ -30,24 +33,47 @@ function getRecordIdFromSubmission(submission: any): string | null {
   return submission.urlParameters?.find((p: any) => p.id === "id")?.value || null
 }
 
+const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
+
 /**
- * Fetch all Fillout form submissions (paginated).
- * Throws if FILLOUT_API_KEY is missing or API fails.
+ * Fetch with retry and exponential backoff for transient failures.
+ */
+async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
+  for (let attempt = 0; attempt < RETRY_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(url, options)
+      if (res.ok) return res
+      // Don't retry client errors (4xx), only server errors (5xx) and rate limits (429)
+      if (res.status < 500 && res.status !== 429) {
+        throw new Error(`Fillout API returned ${res.status}: ${res.statusText}`)
+      }
+      if (attempt === RETRY_ATTEMPTS - 1) {
+        throw new Error(`Fillout API returned ${res.status} after ${RETRY_ATTEMPTS} attempts`)
+      }
+    } catch (e: any) {
+      if (attempt === RETRY_ATTEMPTS - 1) throw e
+      // Network errors get retried
+      if (e.message?.includes("Fillout API returned 4")) throw e // Don't retry 4xx
+    }
+    await delay(RETRY_BASE_DELAY_MS * Math.pow(2, attempt))
+  }
+  throw new Error("Unreachable")
+}
+
+/**
+ * Fetch all Fillout form submissions (paginated with safety limit and retry).
+ * Throws if FILLOUT_API_KEY is missing or API fails after retries.
  */
 export async function fetchFilloutSubmissions(): Promise<any[]> {
   const apiKey = getFilloutApiKey()
   const allSubmissions: any[] = []
   let offset = 0
 
-  while (true) {
-    const res = await fetch(
+  for (let page = 0; page < MAX_PAGINATION_PAGES; page++) {
+    const res = await fetchWithRetry(
       `https://api.fillout.com/v1/api/forms/${FILLOUT_FORM_ID}/submissions?limit=150&offset=${offset}`,
       { headers: { Authorization: `Bearer ${apiKey}` } }
     )
-
-    if (!res.ok) {
-      throw new Error(`Fillout API returned ${res.status}: ${res.statusText}`)
-    }
 
     const data = await res.json()
     allSubmissions.push(...(data.responses || []))
@@ -82,6 +108,7 @@ export interface SyncResult {
 
 /**
  * Sync addresses from Fillout submissions into Supabase registrations.
+ * Uses the LATEST submission per candidate (not first) so address corrections are respected.
  *
  * @param eventId - The event to sync addresses for
  * @param includeExtraFields - If true, also syncs certificate_name and attending_convocation into exam_marks
@@ -121,17 +148,21 @@ export async function syncAddressesFromFillout({
   // Fetch all Fillout submissions
   const allSubmissions = await fetchFilloutSubmissions()
 
-  let synced = 0
-  let alreadyHas = 0
-  const matched = new Set<string>()
-
+  // Build map of LATEST submission per record ID (last one wins — respects corrections)
+  const latestByRecId = new Map<string, any>()
   for (const sub of allSubmissions) {
     const recId = getRecordIdFromSubmission(sub)
-    if (!recId || matched.has(recId)) continue
+    if (!recId) continue
+    // Fillout returns submissions in creation order; later entries overwrite earlier ones
+    latestByRecId.set(recId, sub)
+  }
 
+  let synced = 0
+  let alreadyHas = 0
+
+  for (const [recId, sub] of latestByRecId) {
     const reg = regByRecId.get(recId)
     if (!reg) continue
-    matched.add(recId)
 
     if (reg.convocation_address) {
       alreadyHas++
