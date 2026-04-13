@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 
+// ===== Fillout Config =====
 const FILLOUT_FORM_ID = "gz1eLocmB9us"
 const MAX_PAGINATION_PAGES = 100 // Safety limit: 100 × 150 = 15,000 submissions max
 const RETRY_ATTEMPTS = 3
@@ -211,5 +212,151 @@ export async function syncAddressesFromFillout({
     alreadyHas,
     notFilled: regByRecId.size - synced - alreadyHas,
     totalSubmissions: allSubmissions.length,
+  }
+}
+
+// ===== Airtable Direct Sync =====
+// For events where candidates fill addresses directly in Airtable (not via Fillout)
+
+const AIRTABLE_CONVOCATION_BASE = "app7TElm0QUruBlZr"
+const AIRTABLE_CONVOCATION_MASTER_TABLE = "tbl9CuIgSFdoNVk9x"
+
+// Airtable Master-FMAS field IDs
+const AT_FIELDS = {
+  convocationNumber: "fldhhci1nlRDeVaYf",
+  email: "fldPEYzaj0B6X9Sxw",
+  flat: "fldBxgxonal2WaQbb",
+  road: "fldp7IyB2tr8J06mI",
+  area: "fldTBUoDMViY7Z2Jh",
+  city: "fldhPpyLIJ9xFbc9g",
+  state: "fldSAb1WuOwPld67M",
+  pincode: "fldWN5x8DyCHavsw5",
+}
+
+function getAirtablePat(): string {
+  const key = (process.env.AIRTABLE_PAT || "").trim()
+  if (!key) throw new Error("AIRTABLE_PAT is not configured")
+  return key
+}
+
+/**
+ * Sync addresses from Airtable Master-FMAS table into Supabase registrations.
+ * Matches by email (case-insensitive) for registrations in the given event
+ * that have a convocation number but no address yet.
+ *
+ * This handles events where candidates fill their address directly in Airtable
+ * (via the FORM button) rather than through the Fillout form.
+ *
+ * @param eventId - The event to sync addresses for
+ * @throws If AIRTABLE_PAT is missing or Airtable API fails
+ */
+export async function syncAddressesFromAirtable({
+  eventId,
+}: {
+  eventId: string
+}): Promise<SyncResult> {
+  const pat = getAirtablePat()
+  const supabase = await createAdminClient()
+  const db = supabase as any
+
+  // Get registrations that need address sync
+  const { data: regs } = await db
+    .from("registrations")
+    .select("id, attendee_email, convocation_number, convocation_address")
+    .eq("event_id", eventId)
+    .in("exam_result", ["pass", "without_exam"])
+    .not("convocation_number", "is", null)
+    .is("convocation_address", null)
+
+  if (!regs || regs.length === 0) {
+    return { synced: 0, alreadyHas: 0, notFilled: 0, totalSubmissions: 0 }
+  }
+
+  // Determine convocation number prefix for this event (e.g. "124AEC")
+  const sampleConvNo = regs[0].convocation_number || ""
+  const prefixMatch = sampleConvNo.match(/^(\d+[A-Z]+)/)
+  if (!prefixMatch) {
+    console.log(`[airtable-sync] No valid convocation prefix found for event ${eventId}, skipping`)
+    return { synced: 0, alreadyHas: 0, notFilled: regs.length, totalSubmissions: 0 }
+  }
+  const prefix = prefixMatch[1]
+
+  // Build email → registration map (case-insensitive)
+  const regByEmail = new Map<string, any>()
+  for (const r of regs) {
+    if (r.attendee_email) {
+      regByEmail.set(r.attendee_email.trim().toLowerCase(), r)
+    }
+  }
+
+  // Fetch Airtable records with this prefix that have city filled
+  const fieldParams = Object.values(AT_FIELDS).map((f) => `fields%5B%5D=${f}`).join("&")
+  const formula = encodeURIComponent(
+    `AND(FIND("${prefix}", {CONVOCATION NUMBER}) = 1, {City/District} != "")`
+  )
+
+  let allRecords: any[] = []
+  let airtableOffset: string | undefined
+
+  for (let page = 0; page < MAX_PAGINATION_PAGES; page++) {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONVOCATION_BASE}/${AIRTABLE_CONVOCATION_MASTER_TABLE}?${fieldParams}&filterByFormula=${formula}&pageSize=100${airtableOffset ? `&offset=${airtableOffset}` : ""}`
+
+    const res = await fetchWithRetry(url, {
+      headers: { Authorization: `Bearer ${pat}` },
+    })
+
+    const data = await res.json()
+    allRecords.push(...(data.records || []))
+    airtableOffset = data.offset
+    if (!airtableOffset) break
+  }
+
+  console.log(`[airtable-sync] Fetched ${allRecords.length} Airtable records with prefix ${prefix}`)
+
+  let synced = 0
+  let alreadyHas = 0
+
+  for (const rec of allRecords) {
+    const fields = rec.cellValuesByFieldId || rec.fields || {}
+    const email = String(fields[AT_FIELDS.email] || "").trim().toLowerCase()
+    if (!email) continue
+
+    const reg = regByEmail.get(email)
+    if (!reg) continue
+
+    if (reg.convocation_address) {
+      alreadyHas++
+      continue
+    }
+
+    const flat = String(fields[AT_FIELDS.flat] || "").trim()
+    const road = String(fields[AT_FIELDS.road] || "").trim()
+    const area = String(fields[AT_FIELDS.area] || "").trim()
+    const city = String(fields[AT_FIELDS.city] || "").trim()
+    const state = String(fields[AT_FIELDS.state] || "").trim()
+    const pincode = String(fields[AT_FIELDS.pincode] || "").trim()
+
+    if (!city) continue
+
+    const address = {
+      address_line1: [flat, road].filter(Boolean).join(", "),
+      address_line2: area,
+      city,
+      state,
+      pincode,
+      country: "India",
+    }
+
+    await db.from("registrations").update({ convocation_address: address }).eq("id", reg.id)
+    // Remove from map so we don't count as "not filled"
+    regByEmail.delete(email)
+    synced++
+  }
+
+  return {
+    synced,
+    alreadyHas,
+    notFilled: regs.length - synced - alreadyHas,
+    totalSubmissions: allRecords.length,
   }
 }

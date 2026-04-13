@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
-import { syncAddressesFromFillout } from "@/lib/services/fillout-sync"
+import { syncAddressesFromFillout, syncAddressesFromAirtable } from "@/lib/services/fillout-sync"
 import { COMPANY_CONFIG } from "@/lib/config"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -109,9 +109,17 @@ async function handleReminder() {
       const eventIds = (eventSettings || []).map((s: any) => s.event_id)
 
       for (const eventId of eventIds) {
+        // Try Fillout first
         const syncResult = await syncAddressesFromFillout({ eventId })
         totalSynced += syncResult.synced
-        console.log(`[send-address-reminder] Pre-sync for event ${eventId}: synced=${syncResult.synced}, notFilled=${syncResult.notFilled}`)
+        // Then try Airtable (for events using Airtable forms directly)
+        try {
+          const atResult = await syncAddressesFromAirtable({ eventId })
+          totalSynced += atResult.synced
+        } catch {
+          // Airtable sync is supplementary — don't abort if it fails
+        }
+        console.log(`[send-address-reminder] Pre-sync for event ${eventId}: totalSynced=${totalSynced}`)
       }
     } catch (syncError) {
       // FAIL CLOSED: Cannot verify who already submitted → send zero emails

@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server"
-import { syncAddressesFromFillout } from "@/lib/services/fillout-sync"
+import { syncAddressesFromFillout, syncAddressesFromAirtable } from "@/lib/services/fillout-sync"
 import { syncRegistrationToAirtable } from "@/lib/services/airtable-sync"
 import { NextResponse } from "next/server"
 
@@ -87,6 +87,18 @@ export async function GET(request: Request) {
         const msg = `Fillout sync failed for event ${eventId}: ${e}`
         console.error(`[exam-daily-sync] ${msg}`)
         results.errors.push(msg)
+      }
+
+      // ===== 2b. SYNC ADDRESSES FROM AIRTABLE (for events using Airtable forms) =====
+      try {
+        const atResult = await syncAddressesFromAirtable({ eventId })
+        results.addressesSynced += atResult.synced
+        if (atResult.synced > 0) {
+          console.log(`[exam-daily-sync] Airtable address sync for event ${eventId}: synced=${atResult.synced}, notFilled=${atResult.notFilled}`)
+        }
+      } catch (e) {
+        // Non-fatal: Airtable sync is supplementary to Fillout
+        console.error(`[exam-daily-sync] Airtable address sync failed for event ${eventId}:`, e)
       }
 
       // ===== 3. CREATE AIRTABLE RECORDS (idempotent) =====
