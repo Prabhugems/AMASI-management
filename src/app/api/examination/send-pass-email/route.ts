@@ -1,55 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { getApiUser } from "@/lib/auth/api-auth"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { syncRegistrationToAirtable } from "@/lib/services/airtable-sync"
 import { COMPANY_CONFIG } from "@/lib/config"
 import { NextRequest, NextResponse } from "next/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
-// Sync convocation record to Airtable and store fillout link back
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function syncToAirtable(reg: any, db: any) {
-  const pat = process.env.AIRTABLE_PAT?.trim()
-  const baseId = process.env.AIRTABLE_CONVOCATION_BASE?.trim()
-  const tableId = process.env.AIRTABLE_CONVOCATION_TABLE?.trim()
-
-  if (!pat || !baseId || !tableId) return
-
-  const ticketName = reg.ticket_type_id
-    ? (await db.from("ticket_types").select("name").eq("id", reg.ticket_type_id).single())?.data?.name
-    : null
-
-  const res = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${pat}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      records: [{
-        fields: {
-          "CONVOCATION NUMBER": reg.convocation_number,
-          "Name": reg.attendee_name,
-          "AMASI Number": reg.exam_marks?.amasi_number || null,
-          "Category": ticketName || "",
-          "Email": reg.attendee_email || "",
-          "MOBILE": reg.attendee_phone || "",
-        },
-      }],
-    }),
-  })
-
-  const result = await res.json()
-  if (result.records?.[0]?.id) {
-    const recordId = result.records[0].id
-    const filloutLink = `https://forms.fillout.com/t/gz1eLocmB9us?id=${recordId}`
-
-    const marks = reg.exam_marks || {}
-    marks.fillout_link = filloutLink
-    await db.from("registrations").update({ exam_marks: marks }).eq("id", reg.id)
-  }
-}
 
 function generatePassEmail(name: string, convocationNumber: string, formLink: string) {
   const cleanName = name.replace(/^(dr\.?\s*)/i, "").trim()
@@ -300,16 +257,18 @@ export async function POST(request: NextRequest) {
     let synced = 0
     for (const r of missingLink) {
       try {
-        await syncToAirtable(r, db)
-        // Re-fetch updated exam_marks after sync
-        const { data: updated } = await db
-          .from("registrations")
-          .select("exam_marks")
-          .eq("id", r.id)
-          .single()
-        if (updated?.exam_marks) {
-          r.exam_marks = updated.exam_marks
-          if (r.exam_marks?.fillout_link) synced++
+        const link = await syncRegistrationToAirtable(r, db)
+        if (link) {
+          // Re-fetch updated exam_marks after sync
+          const { data: updated } = await db
+            .from("registrations")
+            .select("exam_marks")
+            .eq("id", r.id)
+            .single()
+          if (updated?.exam_marks) {
+            r.exam_marks = updated.exam_marks
+            synced++
+          }
         }
       } catch (e) {
         console.error(`Airtable retry sync failed for ${r.attendee_name}:`, e)
@@ -328,6 +287,11 @@ export async function POST(request: NextRequest) {
     const errors: string[] = []
 
     for (const r of eligible) {
+      // Set flag BEFORE sending to prevent duplicates if process crashes after send
+      const marks = { ...r.exam_marks }
+      marks.email_sent_pass = new Date().toISOString()
+      await db.from("registrations").update({ exam_marks: marks }).eq("id", r.id)
+
       const html = generatePassEmail(
         r.attendee_name,
         r.convocation_number,
@@ -342,11 +306,11 @@ export async function POST(request: NextRequest) {
 
       if (result.success) {
         sent++
-        const marks = { ...r.exam_marks }
-        marks.email_sent_pass = new Date().toISOString()
-        await db.from("registrations").update({ exam_marks: marks }).eq("id", r.id)
       } else {
         failed++
+        // Clear the flag so it retries next time
+        marks.email_sent_pass = null
+        await db.from("registrations").update({ exam_marks: marks }).eq("id", r.id)
         errors.push(`${r.attendee_name}: ${result.error}`)
       }
       await delay(250)

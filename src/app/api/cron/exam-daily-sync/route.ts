@@ -1,11 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { syncAddressesFromFillout } from "@/lib/services/fillout-sync"
+import { syncRegistrationToAirtable } from "@/lib/services/airtable-sync"
 import { NextResponse } from "next/server"
 
 const AMASI_API = "https://application.amasi.org/api/member_detail_data"
-const AIRTABLE_PAT = (process.env.AIRTABLE_PAT || "").trim()
-const AIRTABLE_BASE = (process.env.AIRTABLE_CONVOCATION_BASE || "").trim()
-const AIRTABLE_TABLE = (process.env.AIRTABLE_CONVOCATION_TABLE || "").trim()
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
 
@@ -91,50 +89,28 @@ export async function GET(request: Request) {
         results.errors.push(msg)
       }
 
-      // ===== 3. CHECK AIRTABLE RECORDS =====
-      if (AIRTABLE_PAT && AIRTABLE_BASE && AIRTABLE_TABLE) {
-        try {
-          const { data: regsWithConv } = await db
-            .from("registrations")
-            .select("id, registration_number, attendee_name, attendee_email, attendee_phone, convocation_number, exam_marks, ticket_type_id")
-            .eq("event_id", eventId)
-            .in("exam_result", ["pass", "without_exam"])
-            .not("convocation_number", "is", null)
+      // ===== 3. CREATE AIRTABLE RECORDS (idempotent) =====
+      try {
+        const { data: regsWithConv } = await db
+          .from("registrations")
+          .select("id, registration_number, attendee_name, attendee_email, attendee_phone, convocation_number, exam_marks, ticket_type_id")
+          .eq("event_id", eventId)
+          .in("exam_result", ["pass", "without_exam"])
+          .not("convocation_number", "is", null)
 
-          const noFillout = (regsWithConv || []).filter((r: any) => !r.exam_marks?.fillout_link)
+        const noFillout = (regsWithConv || []).filter((r: any) => !r.exam_marks?.fillout_link)
 
-          for (const r of noFillout) {
-            const { data: ticket } = await db.from("ticket_types").select("name").eq("id", r.ticket_type_id).single()
-
-            const atRes = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_TABLE}`, {
-              method: "POST",
-              headers: { Authorization: `Bearer ${AIRTABLE_PAT}`, "Content-Type": "application/json" },
-              body: JSON.stringify({
-                records: [{
-                  fields: {
-                    "CONVOCATION NUMBER": r.convocation_number,
-                    "Name": r.attendee_name,
-                    "AMASI Number": r.exam_marks?.amasi_number || null,
-                    "Category": ticket?.name || "",
-                    "Email": r.attendee_email || "",
-                    "MOBILE": r.attendee_phone || "",
-                  },
-                }],
-              }),
-            })
-            const atData = await atRes.json()
-            if (atData.records?.[0]?.id) {
-              const filloutLink = `https://forms.fillout.com/t/gz1eLocmB9us?id=${atData.records[0].id}`
-              const marks = r.exam_marks || {}
-              marks.fillout_link = filloutLink
-              await db.from("registrations").update({ exam_marks: marks }).eq("id", r.id)
-              results.airtableCreated++
-            }
-            await delay(200)
+        for (const r of noFillout) {
+          try {
+            const link = await syncRegistrationToAirtable(r, db)
+            if (link) results.airtableCreated++
+          } catch (e) {
+            console.error(`[exam-daily-sync] Airtable sync failed for ${r.attendee_name}:`, e)
           }
-        } catch (e) {
-          results.errors.push(`Airtable sync error: ${e}`)
+          await delay(200)
         }
+      } catch (e) {
+        results.errors.push(`Airtable sync error: ${e}`)
       }
     }
 

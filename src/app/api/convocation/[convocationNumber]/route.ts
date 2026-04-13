@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { NextRequest, NextResponse } from "next/server"
 
 // GET /api/convocation/[convocationNumber] - Public lookup by convocation number
@@ -6,6 +7,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ convocationNumber: string }> }
 ) {
+  // Rate limit: 10 requests per minute per IP (strict to prevent enumeration)
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "strict")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
   try {
     const { convocationNumber } = await params
 

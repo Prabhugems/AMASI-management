@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { getApiUser } from "@/lib/auth/api-auth"
+import { syncRegistrationToAirtable } from "@/lib/services/airtable-sync"
 import { NextRequest, NextResponse } from "next/server"
 
 // GET /api/examination/registrations?event_id=xxx
@@ -125,43 +126,53 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // Fetch existing row when we need it for either:
-    //   (a) convocation_number Airtable sync diff, or
-    //   (b) exam_marks JSONB merge so we don't clobber sibling keys
-    //       like amasi_number, remarks, fillout_link, etc.
+    // Fetch existing convocation_number to detect new assignment (for Airtable sync)
     let oldConvNo: string | null = null
-    const needsExisting = updates.convocation_number !== undefined || updates.exam_marks
-    if (needsExisting) {
+    if (updates.convocation_number !== undefined) {
       const { data: existing } = await db
         .from("registrations")
-        .select("convocation_number, exam_marks")
+        .select("convocation_number")
         .eq("id", id)
         .single()
       oldConvNo = existing?.convocation_number ?? null
-
-      // Merge exam_marks: incoming values win, but preserve any existing keys
-      // that aren't in the incoming payload (e.g. amasi_number).
-      if (updates.exam_marks && typeof updates.exam_marks === "object") {
-        updates.exam_marks = { ...(existing?.exam_marks || {}), ...updates.exam_marks }
-      }
     }
 
-    const { data, error } = await db
-      .from("registrations")
-      .update(updates)
-      .eq("id", id)
-      .select()
-      .single()
+    // For exam_marks: use atomic Postgres JSONB merge (||) to avoid read-modify-write race
+    // This ensures concurrent updates to different keys don't clobber each other
+    if (updates.exam_marks && typeof updates.exam_marks === "object") {
+      const marksJson = JSON.stringify(updates.exam_marks)
+      await db.rpc("merge_exam_marks", { reg_id: id, new_marks: marksJson }).maybeSingle()
+      delete updates.exam_marks
+    }
 
-    if (error) {
-      console.error("Error updating registration:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    // Update remaining fields (if any left after extracting exam_marks)
+    let data: any = null
+    if (Object.keys(updates).length > 0) {
+      const { data: updated, error } = await db
+        .from("registrations")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single()
+      if (error) {
+        console.error("Error updating registration:", error)
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+      data = updated
+    } else {
+      // Only exam_marks was updated via RPC, re-fetch the row
+      const { data: fetched } = await db
+        .from("registrations")
+        .select("*")
+        .eq("id", id)
+        .single()
+      data = fetched
     }
 
     // Auto-create Airtable record when convocation number is newly assigned
     if (updates.convocation_number && !oldConvNo && data) {
       try {
-        await syncToAirtable(data, db)
+        await syncRegistrationToAirtable(data, db)
       } catch (e) {
         console.error("Airtable sync failed (non-blocking):", e)
       }
@@ -171,49 +182,5 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     console.error("Error in PATCH /api/examination/registrations:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
-
-// Sync convocation record to Airtable and store fillout link back
-async function syncToAirtable(reg: any, db: any) {
-  const pat = process.env.AIRTABLE_PAT?.trim()
-  const baseId = process.env.AIRTABLE_CONVOCATION_BASE?.trim()
-  const tableId = process.env.AIRTABLE_CONVOCATION_TABLE?.trim()
-
-  if (!pat || !baseId || !tableId) return
-
-  const ticketName = reg.ticket_type_id
-    ? (await db.from("ticket_types").select("name").eq("id", reg.ticket_type_id).single())?.data?.name
-    : null
-
-  const res = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${pat}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      records: [{
-        fields: {
-          "CONVOCATION NUMBER": reg.convocation_number,
-          "Name": reg.attendee_name,
-          "AMASI Number": reg.exam_marks?.amasi_number || null,
-          "Category": ticketName || "",
-          "Email": reg.attendee_email || "",
-          "MOBILE": reg.attendee_phone || "",
-        },
-      }],
-    }),
-  })
-
-  const result = await res.json()
-  if (result.records?.[0]?.id) {
-    const recordId = result.records[0].id
-    const filloutLink = `https://forms.fillout.com/t/gz1eLocmB9us?id=${recordId}`
-
-    // Store fillout link back on registration
-    const marks = reg.exam_marks || {}
-    marks.fillout_link = filloutLink
-    await db.from("registrations").update({ exam_marks: marks }).eq("id", reg.id)
   }
 }

@@ -149,6 +149,12 @@ async function handleReminder() {
     const errors: string[] = []
 
     for (const r of eligible) {
+      // Set flag BEFORE sending to prevent duplicates if process crashes after send
+      const marks = { ...r.exam_marks }
+      marks.last_reminder_sent = new Date().toISOString()
+      marks.reminder_count = (marks.reminder_count || 0) + 1
+      await db.from("registrations").update({ exam_marks: marks }).eq("id", r.id)
+
       const cleanName = r.attendee_name?.replace(/^(dr\.?\s*)/i, "").trim()
       const html = generateReminderEmail(cleanName, r.convocation_number, r.exam_marks.fillout_link)
 
@@ -160,10 +166,6 @@ async function handleReminder() {
 
       if (result.success) {
         sent++
-        const marks = { ...r.exam_marks }
-        marks.last_reminder_sent = new Date().toISOString()
-        marks.reminder_count = (marks.reminder_count || 0) + 1
-        await db.from("registrations").update({ exam_marks: marks }).eq("id", r.id)
       } else {
         failed++
         errors.push(`${r.attendee_name}: ${result.error}`)

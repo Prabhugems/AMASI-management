@@ -77,7 +77,7 @@ export function IntegrationsSection({ eventId }: IntegrationsSectionProps) {
         .maybeSingle()
 
       if (error) throw error
-      return (data?.integrations as Partial<IntegrationsData>) || {}
+      return ((data as any)?.integrations as Partial<IntegrationsData>) || {}
     },
     enabled: !!eventId,
   })
