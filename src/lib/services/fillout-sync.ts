@@ -30,7 +30,10 @@ function extractAddress(submission: any) {
 }
 
 function getRecordIdFromSubmission(submission: any): string | null {
-  return submission.urlParameters?.find((p: any) => p.id === "id")?.value || null
+  // Fillout may use "id", "key", or "name" as the parameter identifier
+  const params = submission.urlParameters || []
+  const param = params.find((p: any) => p.id === "id" || p.key === "id" || p.name === "id")
+  return param?.value || null
 }
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -150,12 +153,24 @@ export async function syncAddressesFromFillout({
 
   // Build map of LATEST submission per record ID (last one wins — respects corrections)
   const latestByRecId = new Map<string, any>()
+  let unmatchedCount = 0
   for (const sub of allSubmissions) {
     const recId = getRecordIdFromSubmission(sub)
-    if (!recId) continue
+    if (!recId) {
+      unmatchedCount++
+      // Log first unmatched submission's urlParameters for debugging
+      if (unmatchedCount === 1) {
+        console.log("[fillout-sync] Sample submission urlParameters:", JSON.stringify(sub.urlParameters))
+      }
+      continue
+    }
     // Fillout returns submissions in creation order; later entries overwrite earlier ones
     latestByRecId.set(recId, sub)
   }
+  if (unmatchedCount > 0) {
+    console.log(`[fillout-sync] ${unmatchedCount} submissions had no record ID match out of ${allSubmissions.length} total`)
+  }
+  console.log(`[fillout-sync] Matched ${latestByRecId.size} unique record IDs from ${allSubmissions.length} submissions`)
 
   let synced = 0
   let alreadyHas = 0
