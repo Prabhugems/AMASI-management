@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ImageUpload } from "@/components/ui/image-upload"
@@ -8,64 +9,166 @@ import { cn } from "@/lib/utils"
 import { type SectionProps } from "./types"
 
 export function BrandingSection({ eventId, formData, updateField }: SectionProps) {
+  const [previewTab, setPreviewTab] = useState<'registration' | 'badge' | 'email'>('registration')
+
   return (
     <div className="space-y-6">
       {/* Live Preview Card */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-border bg-secondary/30">
-          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Live Preview — Registration Page</h3>
-        </div>
-        <div
-          className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900"
-          style={{
-            backgroundImage: formData.banner_url ? `url(${formData.banner_url})` : undefined,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          {!formData.banner_url && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">Banner preview will appear here</p>
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-6">
-            <div className="flex items-end gap-4">
-              {formData.logo_url ? (
-                <img
-                  src={formData.logo_url}
-                  alt="Event logo"
-                  className="h-16 w-16 rounded-xl bg-white object-contain shadow-lg border-2 border-white"
-                />
-              ) : (
-                <div
-                  className="h-16 w-16 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg"
-                  style={{ backgroundColor: formData.primary_color || '#10b981' }}
-                >
-                  {(formData.short_name || formData.name || 'E')[0]}
-                </div>
+        <div className="flex gap-1 px-6 py-3 border-b border-border bg-secondary/30">
+          {[
+            { id: 'registration' as const, label: 'Registration Page' },
+            { id: 'badge' as const, label: 'Badge Preview' },
+            { id: 'email' as const, label: 'Email Header' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setPreviewTab(tab.id)}
+              className={cn(
+                "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                previewTab === tab.id
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-secondary"
               )}
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-white drop-shadow-lg">
-                  {formData.name || 'Event Name'}
-                </h2>
-                <p className="text-white/80 text-sm">
-                  {formData.city ? `${formData.city}, ` : ''}{formData.start_date ? new Date(formData.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Date TBD'}
-                </p>
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Registration Page Preview */}
+        {previewTab === 'registration' && (
+          <div
+            className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900"
+            style={{
+              backgroundImage: formData.banner_url ? `url(${formData.banner_url})` : undefined,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            {!formData.banner_url && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">Banner preview will appear here</p>
               </div>
-              <Button
-                size="sm"
-                className="shadow-lg"
-                style={{
-                  backgroundColor: formData.primary_color || '#10b981',
-                  color: 'white'
-                }}
-              >
-                Register Now
-              </Button>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-6">
+              <div className="flex items-end gap-4">
+                {formData.logo_url ? (
+                  <img
+                    src={formData.logo_url}
+                    alt="Event logo"
+                    className="h-16 w-16 rounded-xl bg-white object-contain shadow-lg border-2 border-white"
+                  />
+                ) : (
+                  <div
+                    className="h-16 w-16 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg"
+                    style={{ backgroundColor: formData.primary_color || '#10b981' }}
+                  >
+                    {(formData.short_name || formData.name || 'E')[0]}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold text-white drop-shadow-lg">
+                    {formData.name || 'Event Name'}
+                  </h2>
+                  <p className="text-white/80 text-sm">
+                    {formData.city ? `${formData.city}, ` : ''}{formData.start_date ? new Date(formData.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Date TBD'}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="shadow-lg"
+                  style={{
+                    backgroundColor: formData.primary_color || '#10b981',
+                    color: 'white'
+                  }}
+                >
+                  Register Now
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Badge Preview */}
+        {previewTab === 'badge' && (
+          <div className="flex items-center justify-center p-8 bg-gray-50 dark:bg-gray-900">
+            <div className="w-[300px] bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border">
+              {/* Color accent strip at top */}
+              <div className="h-2" style={{ backgroundColor: formData.primary_color || '#10b981' }} />
+              <div className="p-6 text-center space-y-3">
+                {/* Logo */}
+                {formData.logo_url ? (
+                  <img src={formData.logo_url} alt="" className="h-12 w-12 rounded-lg mx-auto object-contain" />
+                ) : (
+                  <div
+                    className="h-12 w-12 rounded-lg mx-auto flex items-center justify-center text-white font-bold"
+                    style={{ backgroundColor: formData.primary_color || '#10b981' }}
+                  >
+                    {(formData.short_name || formData.name || 'E')[0]}
+                  </div>
+                )}
+                {/* Event name */}
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                  {formData.short_name || formData.name || 'Event Name'}
+                </p>
+                {/* Delegate name placeholder */}
+                <p className="text-lg font-bold">Dr. Jane Smith</p>
+                <p className="text-sm text-muted-foreground">Delegate</p>
+                {/* QR placeholder */}
+                <div className="h-16 w-16 bg-gray-100 dark:bg-gray-700 rounded-lg mx-auto flex items-center justify-center">
+                  <span className="text-[10px] text-muted-foreground">QR Code</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Email Header Preview */}
+        {previewTab === 'email' && (
+          <div className="flex items-center justify-center p-8 bg-gray-50 dark:bg-gray-900">
+            <div className="w-full max-w-[500px] bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border">
+              {/* Banner */}
+              {formData.banner_url ? (
+                <img src={formData.banner_url} alt="" className="w-full h-32 object-cover" />
+              ) : (
+                <div className="w-full h-32 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600" />
+              )}
+              {/* Logo + event name row */}
+              <div className="p-4 flex items-center gap-3 border-b border-gray-100 dark:border-gray-700">
+                {formData.logo_url ? (
+                  <img src={formData.logo_url} alt="" className="h-10 w-10 rounded-lg object-contain" />
+                ) : (
+                  <div
+                    className="h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
+                    style={{ backgroundColor: formData.primary_color || '#10b981' }}
+                  >
+                    {(formData.short_name || formData.name || 'E')[0]}
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold text-sm">{formData.name || 'Event Name'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.city || 'City'} · {formData.start_date ? new Date(formData.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Date TBD'}
+                  </p>
+                </div>
+              </div>
+              {/* Email body placeholder */}
+              <div className="p-4 space-y-2">
+                <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded w-3/4" />
+                <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded w-full" />
+                <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded w-5/6" />
+                <div
+                  className="h-8 rounded-lg mt-4 w-32"
+                  style={{ backgroundColor: formData.primary_color || '#10b981' }}
+                >
+                  <span className="flex items-center justify-center h-full text-white text-xs font-medium">View Details</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Upload Section */}

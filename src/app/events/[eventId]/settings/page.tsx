@@ -18,6 +18,7 @@ import {
   Users,
   Blocks,
   ChevronLeft,
+  Plug,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -33,6 +34,8 @@ import { LinksSection } from "./links-section"
 import { AdvancedSection } from "./advanced-section"
 import { ModulesSection } from "./modules-section"
 import { AutomationSection } from "./automation-section"
+import { IntegrationsSection } from "./integrations-section"
+import { TeamSection } from "./team-section"
 
 export default function SettingsPage() {
   const params = useParams()
@@ -245,7 +248,9 @@ export default function SettingsPage() {
     location: "Location",
     registration: "Registration",
     modules: "Modules",
+    team: "Team",
     automation: "Automation",
+    integrations: "Integrations",
     branding: "Branding",
     links: "Links & Contact",
     advanced: "Advanced",
@@ -257,7 +262,9 @@ export default function SettingsPage() {
     { id: "location", label: "Location", icon: MapPin },
     { id: "registration", label: "Registration", icon: Users },
     { id: "modules", label: "Modules", icon: Blocks },
+    { id: "team", label: "Team", icon: Users },
     { id: "automation", label: "Automation", icon: Bell },
+    { id: "integrations", label: "Integrations", icon: Plug },
     { id: "branding", label: "Branding", icon: Palette },
     { id: "links", label: "Links & Contact", icon: Link2 },
     { id: "advanced", label: "Advanced", icon: Shield },
@@ -392,8 +399,16 @@ export default function SettingsPage() {
             <ModulesSection eventId={eventId} />
           )}
 
+          {activeSection === "team" && (
+            <TeamSection eventId={eventId} />
+          )}
+
           {activeSection === "automation" && (
             <AutomationSection eventId={eventId} />
+          )}
+
+          {activeSection === "integrations" && (
+            <IntegrationsSection eventId={eventId} />
           )}
 
           {activeSection === "branding" && (
