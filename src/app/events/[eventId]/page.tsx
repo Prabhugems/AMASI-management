@@ -59,6 +59,7 @@ export default function EventDashboardPage() {
     edition: number | null
     scientific_chairman: string | null
     organizing_chairman: string | null
+    signatory_title: string | null
     registration_open: boolean
     razorpay_key_id: string | null
     bank_account_number: string | null
@@ -71,7 +72,7 @@ export default function EventDashboardPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("events")
-        .select("id, name, short_name, slug, status, event_type, city, state, start_date, end_date, venue_name, edition, scientific_chairman, organizing_chairman, registration_open, razorpay_key_id, bank_account_number, payment_methods_enabled")
+        .select("id, name, short_name, slug, status, event_type, city, state, start_date, end_date, venue_name, edition, scientific_chairman, organizing_chairman, signatory_title, registration_open, razorpay_key_id, bank_account_number, payment_methods_enabled")
         .eq("id", eventId)
         .maybeSingle()
 
@@ -978,7 +979,7 @@ export default function EventDashboardPage() {
             )}
             {event.organizing_chairman && (
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground flex-shrink-0">Organizing Chairman</span>
+                <span className="text-muted-foreground flex-shrink-0">{event.signatory_title || "Organizing Chairman"}</span>
                 <span className="font-medium text-right">{event.organizing_chairman}</span>
               </div>
             )}
