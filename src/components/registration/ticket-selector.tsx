@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
-import { Minus, Plus, Clock, Users, Ticket, Check, AlertCircle, Bell, ChevronDown, Star, Flame } from "lucide-react"
+import { Minus, Plus, Clock, Users, Ticket, Check, AlertCircle, Bell, ChevronDown, Star, Flame, Zap } from "lucide-react"
 import { TicketType } from "@/lib/types"
 import { differenceInDays, differenceInHours, isPast } from "date-fns"
 import { WaitlistForm } from "./waitlist-form"
@@ -11,12 +11,12 @@ interface TicketSelectorProps {
   tickets: TicketType[]
   selectedTickets: Map<string, number>
   onSelectionChange: (tickets: Map<string, number>) => void
-  allowMultipleTicketTypes?: boolean // When false, only one ticket type can be selected (radio behavior)
-  eventId?: string // Event ID for waitlist functionality
-  waitlistEnabled?: boolean // When false, hide waitlist button even when sold out
+  allowMultipleTicketTypes?: boolean
+  eventId?: string
+  waitlistEnabled?: boolean
 }
 
-function CountdownBadge({ endDate, isDark }: { endDate: string; isDark: boolean }) {
+function CountdownBadge({ endDate }: { endDate: string; isDark: boolean }) {
   const [timeLeft, setTimeLeft] = useState("")
 
   useEffect(() => {
@@ -42,7 +42,7 @@ function CountdownBadge({ endDate, isDark }: { endDate: string; isDark: boolean 
     }
 
     updateTime()
-    const interval = setInterval(updateTime, 60000) // Update every minute
+    const interval = setInterval(updateTime, 60000)
     return () => clearInterval(interval)
   }, [endDate])
 
@@ -50,11 +50,12 @@ function CountdownBadge({ endDate, isDark }: { endDate: string; isDark: boolean 
 
   return (
     <span
-      className={`
-        inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
-        ${isDark ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-700"}
-        animate-pulse-scale
-      `}
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+      style={{
+        background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.1) 0%, rgba(245, 158, 11, 0.12) 100%)',
+        color: '#B45309',
+        border: '1px solid rgba(217, 119, 6, 0.15)',
+      }}
     >
       <Clock className="w-3 h-3" />
       {timeLeft}
@@ -87,11 +88,10 @@ function TicketCard({
   const [justSelected, setJustSelected] = useState(false)
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), index * 100)
+    const timer = setTimeout(() => setIsVisible(true), index * 80)
     return () => clearTimeout(timer)
   }, [index])
 
-  // Trigger selection animation
   useEffect(() => {
     if (quantity > 0) {
       setJustSelected(true)
@@ -108,73 +108,75 @@ function TicketCard({
     ? ticket.quantity_total - ticket.quantity_sold
     : null
 
-  // Use max_per_order from ticket, default to 10 if not set
   const configuredMax = ticket.max_per_order ?? 10
-  // Also respect min_per_order
   const _minPerOrder = ticket.min_per_order ?? 1
-  // The actual max should be the minimum of: configured max and remaining stock
   const maxPerOrder = remaining !== null ? Math.min(configuredMax, remaining) : configuredMax
 
   const hasEndDate = ticket.sale_end_date && !isPast(new Date(ticket.sale_end_date))
   const isEarlyBird = ticket.name.toLowerCase().includes("early")
   const isPopular = ticket.metadata?.popular === true || ticket.metadata?.recommended === true
   const isLowStock = remaining !== null && remaining > 0 && remaining < 10
-  const hasLongDescription = (ticket.description?.length || 0) > 100
 
   const taxAmount = (ticket.price * ticket.tax_percentage) / 100
   const totalPrice = ticket.price + taxAmount
 
+  const isSelected = quantity > 0
+
   return (
     <div
       className={`
-        relative overflow-hidden rounded-xl transition-all duration-500 group
+        relative overflow-hidden rounded-2xl transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]
         ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}
-        ${quantity > 0
-          ? `ring-2 ring-emerald-500 shadow-lg ${isDark ? "shadow-emerald-500/10" : "shadow-emerald-500/20"}`
-          : `${isDark ? "hover:shadow-lg hover:shadow-white/5" : "hover:shadow-lg hover:shadow-gray-200/80"}`
-        }
-        ${justSelected ? "animate-ticket-select" : ""}
-        ${isDark
-          ? "bg-slate-900 border border-slate-800 hover:border-slate-700"
-          : "bg-white border border-gray-200 hover:border-emerald-200"
-        }
-        ${!isAvailable || isSoldOut ? "opacity-60 hover:opacity-60" : ""}
+        ${justSelected ? "ticket-bounce-select" : ""}
+        ${!isAvailable || isSoldOut ? "opacity-60" : ""}
       `}
-      style={{ transitionDelay: `${index * 100}ms` }}
+      style={{
+        background: isDark ? '#1E293B' : '#FFFFFF',
+        border: isSelected
+          ? '2px solid #166534'
+          : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(28,25,23,0.08)'}`,
+        boxShadow: isSelected
+          ? '0 8px 24px rgba(22, 101, 52, 0.12), 0 0 0 1px rgba(22, 101, 52, 0.08)'
+          : '0 1px 3px rgba(28, 25, 23, 0.04)',
+        transitionDelay: `${index * 80}ms`,
+      }}
     >
-      {/* Popular/Recommended Badge */}
+      {/* ─── Popular Banner ─── */}
       {isPopular && isAvailable && !isSoldOut && (
-        <div className="absolute top-0 left-0 right-0">
-          <div className={`
-            flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold
-            ${isDark ? "bg-gradient-to-r from-amber-600 to-orange-500 text-white" : "bg-gradient-to-r from-amber-500 to-orange-400 text-white"}
-          `}>
-            <Star className="w-3 h-3 fill-current" />
-            MOST POPULAR
-          </div>
+        <div
+          className="flex items-center justify-center gap-2 py-2.5 text-xs font-bold tracking-wider uppercase text-white"
+          style={{
+            background: 'linear-gradient(135deg, #D97706 0%, #F59E0B 50%, #D97706 100%)',
+            letterSpacing: '0.1em',
+          }}
+        >
+          <Star className="w-3.5 h-3.5 fill-current" />
+          Most Popular
         </div>
       )}
 
-      {/* Early Bird Badge */}
-      {isEarlyBird && isAvailable && !isPopular && (
-        <div className="absolute top-0 right-0">
-          <div className="bg-gradient-primary text-white text-xs font-bold px-3 py-1.5 rounded-bl-lg flex items-center gap-1">
-            <Flame className="w-3 h-3" />
-            EARLY BIRD
-          </div>
+      {/* ─── Early Bird Banner ─── */}
+      {isEarlyBird && isAvailable && !isPopular && !isSoldOut && (
+        <div
+          className="flex items-center justify-center gap-2 py-2.5 text-xs font-bold tracking-wider uppercase text-white"
+          style={{
+            background: 'linear-gradient(135deg, #14532D 0%, #166534 40%, #15803D 100%)',
+            letterSpacing: '0.1em',
+          }}
+        >
+          <Zap className="w-3.5 h-3.5 fill-current" />
+          Early Bird Pricing
         </div>
       )}
 
-      <div className={`p-5 ${isPopular ? "pt-10" : ""}`}>
-        <div className="flex items-start justify-between gap-4">
-          {/* Ticket Info */}
+      <div className={`p-5 sm:p-6`}>
+        <div className="flex items-start justify-between gap-4 sm:gap-6">
+          {/* ─── Ticket Info ─── */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-2">
+            <div className="flex items-center gap-2.5 flex-wrap mb-1.5">
               <h3
-                className={`
-                  text-lg font-bold
-                  ${isDark ? "text-white" : "text-gray-900"}
-                `}
+                className="text-lg font-bold"
+                style={{ color: isDark ? '#F8FAFC' : '#1C1917' }}
               >
                 {ticket.name}
               </h3>
@@ -186,113 +188,102 @@ function TicketCard({
             {ticket.description && (
               <div className="mb-3">
                 <p
-                  className={`
-                    text-sm transition-all duration-300
-                    ${isDark ? "text-slate-400" : "text-gray-500"}
-                    ${!showDescription && hasLongDescription ? "line-clamp-2" : ""}
-                  `}
+                  className={`text-sm leading-relaxed transition-all duration-300 ${
+                    !showDescription && (ticket.description?.length || 0) > 100 ? "line-clamp-2" : ""
+                  }`}
+                  style={{ color: isDark ? '#94A3B8' : '#78716C' }}
                 >
                   {ticket.description}
                 </p>
-                {hasLongDescription && (
+                {(ticket.description?.length || 0) > 100 && (
                   <button
                     onClick={() => setShowDescription(!showDescription)}
-                    className={`
-                      text-xs font-medium mt-1 flex items-center gap-0.5 min-h-[44px] sm:min-h-0 py-2 sm:py-0
-                      ${isDark ? "text-emerald-400 hover:text-emerald-300" : "text-emerald-600 hover:text-emerald-700"}
-                      transition-colors
-                    `}
+                    className="text-xs font-semibold mt-1.5 flex items-center gap-0.5 min-h-[44px] sm:min-h-0 py-2 sm:py-0 transition-colors"
+                    style={{ color: '#166534' }}
                   >
                     {showDescription ? "Show less" : "Show more"}
-                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showDescription ? "rotate-180" : ""}`} />
+                    <ChevronDown
+                      className="w-3 h-3 transition-transform duration-200"
+                      style={{ transform: showDescription ? 'rotate(180deg)' : 'rotate(0)' }}
+                    />
                   </button>
                 )}
               </div>
             )}
 
-            {/* Meta info */}
-            <div className="flex items-center gap-3 flex-wrap text-sm">
+            {/* ─── Meta badges ─── */}
+            <div className="flex items-center gap-2.5 flex-wrap mt-2">
               {isLowStock && (
                 <span
-                  className={`
-                    inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
-                    ${isDark ? "bg-red-500/20 text-red-400" : "bg-red-50 text-red-600 border border-red-100"}
-                    animate-pulse
-                  `}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.06)',
+                    color: '#DC2626',
+                    border: '1px solid rgba(239, 68, 68, 0.12)',
+                  }}
                 >
                   <Flame className="w-3 h-3" />
-                  Only {remaining} seats left!
+                  Only {remaining} left!
                 </span>
               )}
               {remaining !== null && remaining > 0 && remaining >= 10 && remaining <= 50 && (
                 <span
-                  className={`
-                    inline-flex items-center gap-1
-                    ${isDark ? "text-amber-400" : "text-amber-600"}
-                  `}
+                  className="inline-flex items-center gap-1.5 text-sm"
+                  style={{ color: isDark ? '#FBBF24' : '#B45309' }}
                 >
-                  <AlertCircle className="w-4 h-4" />
+                  <AlertCircle className="w-3.5 h-3.5" />
                   {remaining} seats remaining
                 </span>
               )}
               {configuredMax <= 5 && !isSoldOut && (
                 <span
-                  className={`
-                    inline-flex items-center gap-1
-                    ${isDark ? "text-slate-400" : "text-gray-500"}
-                  `}
+                  className="inline-flex items-center gap-1.5 text-sm"
+                  style={{ color: isDark ? '#94A3B8' : '#A8A29E' }}
                 >
-                  <Users className="w-4 h-4" />
+                  <Users className="w-3.5 h-3.5" />
                   Max {configuredMax} per order
                 </span>
               )}
               {isSoldOut && (
                 <span
-                  className={`
-                    inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
-                    ${isDark ? "bg-rose-500/20 text-rose-400" : "bg-rose-50 text-rose-600"}
-                  `}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.06)',
+                    color: '#DC2626',
+                  }}
                 >
-                  <Users className="w-4 h-4" />
+                  <Users className="w-3.5 h-3.5" />
                   Sold Out
                 </span>
               )}
               {isExclusivityBlocked && (
                 <span
-                  className={`
-                    inline-flex items-center gap-1
-                    ${isDark ? "text-amber-400" : "text-amber-600"}
-                  `}
+                  className="inline-flex items-center gap-1.5 text-sm"
+                  style={{ color: '#B45309' }}
                 >
-                  <AlertCircle className="w-4 h-4" />
+                  <AlertCircle className="w-3.5 h-3.5" />
                   Already selected: {disabledByTicket}
                 </span>
               )}
             </div>
           </div>
 
-          {/* Price & Quantity */}
+          {/* ─── Price & Quantity ─── */}
           <div className="text-right flex-shrink-0">
             {/* Price */}
             <div className="mb-3">
               <p
-                className={`
-                  text-2xl font-black transition-colors duration-200
-                  ${quantity > 0
-                    ? "text-emerald-600"
-                    : isDark ? "text-white" : "text-gray-900"
-                  }
-                `}
+                className="text-2xl font-black transition-colors duration-200"
+                style={{
+                  color: isSelected
+                    ? '#166534'
+                    : isDark ? '#F8FAFC' : '#1C1917',
+                }}
               >
                 {ticket.price === 0 ? "FREE" : `\u20B9${Math.round(totalPrice).toLocaleString("en-IN")}`}
               </p>
               {ticket.tax_percentage > 0 && ticket.price > 0 && (
-                <p
-                  className={`
-                    text-xs
-                    ${isDark ? "text-slate-500" : "text-gray-400"}
-                  `}
-                >
+                <p className="text-xs mt-0.5" style={{ color: isDark ? '#475569' : '#A8A29E' }}>
                   incl. {ticket.tax_percentage}% GST
                 </p>
               )}
@@ -301,52 +292,45 @@ function TicketCard({
             {/* Quantity Selector */}
             {isAvailable && !isSoldOut ? (
               <div
-                className={`
-                  inline-flex items-center gap-1 p-1 rounded-lg transition-all duration-200
-                  ${isDark ? "bg-slate-800" : "bg-gray-100"}
-                  ${quantity > 0 ? (isDark ? "bg-emerald-500/10" : "bg-emerald-50") : ""}
-                `}
+                className="inline-flex items-center gap-0.5 p-1 rounded-xl transition-all duration-200"
+                style={{
+                  background: isSelected
+                    ? 'rgba(22, 101, 52, 0.06)'
+                    : isDark ? '#1E293B' : 'rgba(28, 25, 23, 0.04)',
+                  border: `1px solid ${isSelected ? 'rgba(22, 101, 52, 0.12)' : 'transparent'}`,
+                }}
               >
                 <button
                   onClick={() => onQuantityChange(Math.max(0, quantity - 1))}
                   disabled={quantity === 0}
-                  className={`
-                    p-2.5 rounded-md transition-all min-w-[44px] min-h-[44px] flex items-center justify-center
-                    active:scale-90
-                    ${quantity === 0
-                      ? "opacity-30 cursor-not-allowed"
-                      : isDark
-                        ? "hover:bg-slate-700 text-white"
-                        : "hover:bg-gray-200 text-gray-700"
-                    }
-                  `}
+                  className="p-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-90"
+                  style={{
+                    opacity: quantity === 0 ? 0.3 : 1,
+                    cursor: quantity === 0 ? 'not-allowed' : 'pointer',
+                    color: isDark ? '#F8FAFC' : '#44403C',
+                  }}
                 >
                   <Minus className="w-4 h-4" />
                 </button>
                 <span
-                  className={`
-                    w-10 text-center font-bold text-lg transition-all duration-200
-                    ${quantity > 0 ? "text-emerald-600 scale-110" : ""}
-                    ${isDark ? "text-white" : "text-gray-900"}
-                  `}
+                  className="w-10 text-center font-bold text-lg transition-all duration-200"
+                  style={{
+                    color: isSelected ? '#166534' : isDark ? '#F8FAFC' : '#1C1917',
+                    transform: isSelected ? 'scale(1.1)' : 'scale(1)',
+                  }}
                 >
                   {quantity}
                 </span>
                 <button
-                  onClick={() =>
-                    onQuantityChange(Math.min(maxPerOrder, quantity + 1))
-                  }
+                  onClick={() => onQuantityChange(Math.min(maxPerOrder, quantity + 1))}
                   disabled={quantity >= maxPerOrder}
-                  className={`
-                    p-2.5 rounded-md transition-all min-w-[44px] min-h-[44px] flex items-center justify-center
-                    active:scale-90
-                    ${quantity >= maxPerOrder
-                      ? "opacity-30 cursor-not-allowed"
-                      : isDark
-                        ? "hover:bg-slate-700 text-white"
-                        : "hover:bg-emerald-100 text-emerald-700"
-                    }
-                  `}
+                  className="p-2.5 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-90"
+                  style={{
+                    opacity: quantity >= maxPerOrder ? 0.3 : 1,
+                    cursor: quantity >= maxPerOrder ? 'not-allowed' : 'pointer',
+                    color: isDark ? '#F8FAFC' : '#166534',
+                    background: quantity >= maxPerOrder ? 'transparent' : 'rgba(22, 101, 52, 0.06)',
+                  }}
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -354,24 +338,23 @@ function TicketCard({
             ) : isSoldOut && eventId && waitlistEnabled ? (
               <button
                 onClick={() => setShowWaitlist(true)}
-                className={`
-                  inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium min-h-[44px]
-                  ${isDark
-                    ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
-                    : "bg-amber-100 text-amber-700 hover:bg-amber-200"
-                  }
-                  transition-colors active:scale-95
-                `}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold min-h-[44px] transition-all active:scale-[0.97]"
+                style={{
+                  background: 'rgba(217, 119, 6, 0.08)',
+                  color: '#B45309',
+                  border: '1px solid rgba(217, 119, 6, 0.12)',
+                }}
               >
                 <Bell className="w-4 h-4" />
                 Join Waitlist
               </button>
             ) : (
               <span
-                className={`
-                  inline-block px-4 py-2.5 rounded-lg text-sm font-medium
-                  ${isDark ? "bg-slate-800 text-slate-500" : "bg-gray-100 text-gray-400"}
-                `}
+                className="inline-block px-4 py-2.5 rounded-xl text-sm font-medium"
+                style={{
+                  background: isDark ? '#1E293B' : 'rgba(28, 25, 23, 0.04)',
+                  color: isDark ? '#475569' : '#A8A29E',
+                }}
               >
                 Unavailable
               </span>
@@ -379,35 +362,36 @@ function TicketCard({
           </div>
         </div>
 
-        {/* Selected indicator */}
-        {quantity > 0 && (
+        {/* ─── Selected indicator ─── */}
+        {isSelected && (
           <div
-            className={`
-              mt-4 pt-4 border-t flex items-center justify-between
-              animate-slide-up-fade
-              ${isDark ? "border-slate-800" : "border-emerald-100"}
-            `}
+            className="mt-5 pt-4 flex items-center justify-between"
+            style={{ borderTop: '1px solid rgba(22, 101, 52, 0.1)' }}
           >
-            <span className="flex items-center gap-2 text-sm font-medium text-emerald-600">
-              <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+            <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#166534' }}>
+              <div
+                className="w-5 h-5 rounded-full flex items-center justify-center"
+                style={{ background: '#166534' }}
+              >
                 <Check className="w-3 h-3 text-white" />
               </div>
               Selected
             </span>
             <span
-              className={`
-                text-sm font-bold
-                ${isDark ? "text-white" : "text-gray-900"}
-              `}
+              className="text-sm font-bold"
+              style={{ color: isDark ? '#F8FAFC' : '#1C1917' }}
             >
               Subtotal: {"\u20B9"}{Math.round(totalPrice * quantity).toLocaleString("en-IN")}
             </span>
           </div>
         )}
 
-        {/* Waitlist Form Modal */}
+        {/* Waitlist Form */}
         {showWaitlist && eventId && (
-          <div className="mt-4 pt-4 border-t border-gray-200 animate-slide-up-fade">
+          <div
+            className="mt-5 pt-4"
+            style={{ borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(28,25,23,0.06)'}` }}
+          >
             <WaitlistForm
               eventId={eventId}
               ticketTypeId={ticket.id}
@@ -425,7 +409,7 @@ export function TicketSelector({
   tickets,
   selectedTickets,
   onSelectionChange,
-  allowMultipleTicketTypes = true, // Default to true for backward compatibility
+  allowMultipleTicketTypes = true,
   eventId,
   waitlistEnabled = true,
 }: TicketSelectorProps) {
@@ -440,21 +424,16 @@ export function TicketSelector({
 
   const handleQuantityChange = (ticketId: string, quantity: number) => {
     const newSelection = new Map(selectedTickets)
-
-    // Find the ticket being changed
     const ticket = tickets.find(t => t.id === ticketId)
 
     if (quantity === 0) {
       newSelection.delete(ticketId)
     } else {
-      // If multiple ticket types NOT allowed, clear all other selections first
       if (!allowMultipleTicketTypes) {
         newSelection.clear()
       }
 
-      // Check for exclusivity group
       if (ticket?.exclusivity_group) {
-        // Remove any other tickets in the same exclusivity group
         tickets.forEach(t => {
           if (t.id !== ticketId && t.exclusivity_group === ticket.exclusivity_group) {
             newSelection.delete(t.id)
@@ -466,12 +445,10 @@ export function TicketSelector({
     onSelectionChange(newSelection)
   }
 
-  // Helper to check if a ticket is disabled due to exclusivity
   const isDisabledByExclusivity = (ticketId: string): string | null => {
     const ticket = tickets.find(t => t.id === ticketId)
     if (!ticket?.exclusivity_group) return null
 
-    // Check if another ticket in the same group is selected
     for (const [selectedId, qty] of selectedTickets) {
       if (qty > 0 && selectedId !== ticketId) {
         const selectedTicket = tickets.find(t => t.id === selectedId)
@@ -483,7 +460,6 @@ export function TicketSelector({
     return null
   }
 
-  // Sort tickets: active first, then by sort_order, then by price
   const sortedTickets = [...tickets].sort((a, b) => {
     if (a.status === "active" && b.status !== "active") return -1
     if (a.status !== "active" && b.status === "active") return 1
@@ -493,20 +469,18 @@ export function TicketSelector({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Ticket className={`w-5 h-5 ${isDark ? "text-primary" : "text-primary"}`} />
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2.5">
+          <Ticket className="w-5 h-5" style={{ color: '#166534' }} />
           <h2
-            className={`
-              text-xl font-bold
-              ${isDark ? "text-white" : "text-gray-900"}
-            `}
+            className="text-xl font-bold"
+            style={{ color: isDark ? '#F8FAFC' : '#1C1917' }}
           >
             Select {allowMultipleTicketTypes ? "Tickets" : "a Ticket"}
           </h2>
         </div>
         {!allowMultipleTicketTypes && (
-          <span className={`text-sm ${isDark ? "text-slate-400" : "text-gray-500"}`}>
+          <span className="text-sm" style={{ color: isDark ? '#94A3B8' : '#A8A29E' }}>
             Choose one option
           </span>
         )}
