@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
+// Map raw DB column names to human-readable labels
+function humanizeField(field: string): string {
+  const labels: Record<string, string> = {
+    name: 'Event Name', short_name: 'Short Name', slug: 'URL Slug', description: 'Description',
+    event_type: 'Event Type', status: 'Status', edition: 'Edition',
+    organized_by: 'Organized By', scientific_chairman: 'Scientific Chairman', organizing_chairman: 'Organizing Chairman',
+    signatory_title: 'Signatory Title', signature_image_url: 'Signature Image', settings: 'Settings',
+    start_date: 'Start Date', end_date: 'End Date', timezone: 'Timezone', registration_deadline: 'Registration Deadline',
+    venue_name: 'Venue Name', venue_address: 'Venue Address', city: 'City', state: 'State', country: 'Country', venue_map_url: 'Maps URL',
+    is_public: 'Public Event', registration_open: 'Registration Open', max_attendees: 'Max Attendees',
+    banner_url: 'Banner Image', logo_url: 'Logo', primary_color: 'Brand Color', favicon_url: 'Favicon',
+    contact_email: 'Contact Email', contact_phone: 'Contact Phone', website_url: 'Website',
+    social_twitter: 'Twitter', social_instagram: 'Instagram', social_linkedin: 'LinkedIn',
+    seo_title: 'SEO Title', seo_description: 'SEO Description',
+  }
+  return labels[field] || field
+}
+
 // Map fields to their settings section for changelog
 function inferSection(fields: string[]): string {
   const sectionMap: Record<string, string> = {
@@ -79,7 +97,7 @@ export async function PATCH(
         event_id: eventId,
         changed_by: user.id,
         section: inferSection(changedFields),
-        summary: `Updated ${changedFields.join(', ')}`,
+        summary: `Updated ${changedFields.map(humanizeField).join(', ')}`,
         snapshot: updateData,
       })
     }

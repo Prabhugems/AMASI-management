@@ -2,6 +2,37 @@ import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/se
 import { NextRequest, NextResponse } from "next/server"
 import { requireEventAccess } from "@/lib/auth/api-auth"
 
+// Map raw DB column names to human-readable labels
+function humanizeSettingKey(key: string): string {
+  const labels: Record<string, string> = {
+    // Module toggles
+    enable_speakers: 'Speakers', enable_program: 'Program', enable_checkin: 'Check-in',
+    enable_badges: 'Badges', enable_certificates: 'Certificates', enable_travel: 'Travel',
+    enable_accommodation: 'Accommodation', enable_meals: 'Meals', enable_sponsors: 'Sponsors',
+    enable_budget: 'Budget', enable_visa: 'Visa', enable_surveys: 'Surveys',
+    enable_delegate_portal: 'Delegate Portal', enable_print_station: 'Print Station',
+    enable_leads: 'Leads', enable_waitlist: 'Waitlist', enable_addons: 'Add-ons',
+    enable_forms: 'Forms', enable_abstracts: 'Abstracts', enable_examination: 'Examination',
+    // Automation
+    auto_send_receipt: 'Auto-send Receipt', auto_generate_badge: 'Auto-generate Badge',
+    auto_email_badge: 'Auto-email Badge', auto_generate_certificate: 'Auto-generate Certificate',
+    auto_email_certificate: 'Auto-email Certificate', auto_send_reminder: 'Auto-send Reminder',
+    reminder_lead_days: 'Reminder Lead Days', auto_waitlist: 'Auto Waitlist',
+    // Registration
+    allow_attendee_login: 'Attendee Login', allow_multiple_ticket_types: 'Multiple Ticket Types',
+    allow_multiple_addons: 'Multiple Add-ons', customize_registration_id: 'Custom Registration ID',
+    registration_prefix: 'Registration Prefix', registration_start_number: 'Registration Start Number',
+    registration_suffix: 'Registration Suffix', allow_buyers: 'Buyers',
+    buyer_form_id: 'Buyer Form', require_approval: 'Require Approval',
+    allow_cancellation: 'Allow Cancellation', cancellation_deadline_hours: 'Cancellation Deadline',
+    send_confirmation_email: 'Confirmation Email', send_reminder_email: 'Reminder Email',
+    confirmation_email_subject: 'Confirmation Subject', confirmation_email_body: 'Confirmation Body',
+    allow_duplicate_email: 'Allow Duplicate Email', show_duplicate_warning: 'Duplicate Warning',
+    integrations: 'Integrations',
+  }
+  return labels[key] || key
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
@@ -197,7 +228,7 @@ export async function POST(request: NextRequest) {
         event_id: body.event_id,
         changed_by: user.id,
         section,
-        summary: `Updated ${changedKeys.join(', ')}`,
+        summary: `Updated ${changedKeys.map(humanizeSettingKey).join(', ')}`,
         snapshot: payload,
       })
     }
