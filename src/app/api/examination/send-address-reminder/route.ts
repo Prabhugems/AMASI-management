@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { syncAddressesFromFillout } from "@/lib/services/fillout-sync"
 import { COMPANY_CONFIG } from "@/lib/config"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -56,14 +57,12 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 // GET /api/examination/send-address-reminder - Cron endpoint (requires CRON_SECRET)
 // POST /api/examination/send-address-reminder - Manual trigger (auth required)
 export async function GET(request: NextRequest) {
-  // Vercel cron sends authorization header with CRON_SECRET
   const authHeader = request.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET
 
   if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
     // Cron trigger - OK
   } else if (!cronSecret) {
-    // No CRON_SECRET configured - allow for backwards compatibility but log warning
     console.warn("[send-address-reminder] CRON_SECRET not configured - GET endpoint is unprotected")
   } else {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -73,14 +72,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Allow manual trigger with auth or cron secret
   const authHeader = request.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET
 
   if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
     // Cron trigger - OK
   } else {
-    // Check user auth
     const { getApiUser } = await import("@/lib/auth/api-auth")
     const user = await getApiUser()
     if (!user) {
@@ -100,8 +97,36 @@ async function handleReminder() {
     const supabase = await createAdminClient()
     const db = supabase as any
 
-    // Get all passed candidates with fillout link but no address filled
-    // (convocation_address is null = not filled yet)
+    // ===== FAIL-SAFE: Sync addresses from Fillout BEFORE sending any reminders =====
+    // This ensures we don't email people who already submitted their address.
+    // If Fillout is unavailable, we abort entirely — better to skip reminders than send false ones.
+    let totalSynced = 0
+    try {
+      // Get all active exam events
+      const { data: eventSettings } = await db
+        .from("event_settings")
+        .select("event_id")
+        .eq("enable_examination", true)
+
+      const eventIds = (eventSettings || []).map((s: any) => s.event_id)
+
+      for (const eventId of eventIds) {
+        const syncResult = await syncAddressesFromFillout({ eventId })
+        totalSynced += syncResult.synced
+        console.log(`[send-address-reminder] Pre-sync for event ${eventId}: synced=${syncResult.synced}, notFilled=${syncResult.notFilled}`)
+      }
+    } catch (syncError) {
+      // FAIL CLOSED: Cannot verify who already submitted → send zero emails
+      console.error("[send-address-reminder] Fillout sync failed, aborting reminder run:", syncError)
+      return NextResponse.json({
+        error: "Cannot verify Fillout submissions — aborting to prevent false reminders",
+        detail: String(syncError),
+        sent: 0,
+        aborted: true,
+      }, { status: 503 })
+    }
+
+    // Now query candidates who STILL have no address after sync
     const { data: regs } = await db
       .from("registrations")
       .select("id, attendee_name, attendee_email, convocation_number, exam_marks, convocation_address, exam_result")
@@ -115,7 +140,6 @@ async function handleReminder() {
 
     const eligible = (regs || []).filter((r: any) => {
       if (!r.exam_marks?.fillout_link || !r.attendee_email) return false
-      // Skip if a reminder was sent within the last 3 days
       const lastReminder = r.exam_marks?.last_reminder_sent
       if (lastReminder && (now - new Date(lastReminder).getTime()) < THREE_DAYS_MS) return false
       return true
@@ -138,7 +162,6 @@ async function handleReminder() {
 
       if (result.success) {
         sent++
-        // Track when the last reminder was sent to prevent spam
         const marks = { ...r.exam_marks }
         marks.last_reminder_sent = new Date().toISOString()
         marks.reminder_count = (marks.reminder_count || 0) + 1
@@ -151,12 +174,13 @@ async function handleReminder() {
     }
 
     return NextResponse.json({
+      addressesSyncedBeforeSending: totalSynced,
       sent,
       failed,
       skipped,
       total: eligible.length,
       errors: errors.length > 0 ? errors : undefined,
-      message: `Sent ${sent} reminders to candidates who haven't filled the address form`,
+      message: `Pre-synced ${totalSynced} addresses, then sent ${sent} reminders to candidates who haven't filled the address form`,
     })
   } catch (error) {
     console.error("Error sending address reminders:", error)

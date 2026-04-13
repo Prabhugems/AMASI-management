@@ -1,8 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/server"
+import { syncAddressesFromFillout } from "@/lib/services/fillout-sync"
 import { NextResponse } from "next/server"
 
 const AMASI_API = "https://application.amasi.org/api/member_detail_data"
-const FILLOUT_KEY = (process.env.FILLOUT_API_KEY || "").trim()
 const AIRTABLE_PAT = (process.env.AIRTABLE_PAT || "").trim()
 const AIRTABLE_BASE = (process.env.AIRTABLE_CONVOCATION_BASE || "").trim()
 const AIRTABLE_TABLE = (process.env.AIRTABLE_CONVOCATION_TABLE || "").trim()
@@ -81,64 +81,14 @@ export async function GET(request: Request) {
       }
 
       // ===== 2. SYNC ADDRESSES FROM FILLOUT =====
-      if (FILLOUT_KEY) {
-        try {
-          const { data: regs } = await db
-            .from("registrations")
-            .select("id, convocation_number, convocation_address, exam_marks")
-            .eq("event_id", eventId)
-            .in("exam_result", ["pass", "without_exam"])
-            .not("convocation_number", "is", null)
-            .is("convocation_address", null)
-
-          // Build map of fillout link record IDs
-          const regByRecId = new Map()
-          for (const r of regs || []) {
-            const link = r.exam_marks?.fillout_link
-            const match = link?.match(/id=(rec[A-Za-z0-9]+)/)
-            if (match) regByRecId.set(match[1], r)
-          }
-
-          if (regByRecId.size > 0) {
-            // Fetch Fillout submissions
-            let allSubs: any[] = []
-            let offset = 0
-            while (true) {
-              const res = await fetch(
-                `https://api.fillout.com/v1/api/forms/gz1eLocmB9us/submissions?limit=150&offset=${offset}`,
-                { headers: { Authorization: `Bearer ${FILLOUT_KEY}` } }
-              )
-              const data = await res.json()
-              allSubs = allSubs.concat(data.responses || [])
-              if (allSubs.length >= data.totalResponses) break
-              offset += 150
-            }
-
-            for (const sub of allSubs) {
-              const recId = sub.urlParameters?.find((p: any) => p.id === "id")?.value
-              if (!recId) continue
-              const reg = regByRecId.get(recId)
-              if (!reg || reg.convocation_address) continue
-
-              const getQ = (name: string) => sub.questions?.find((q: any) => q.name === name)?.value || ""
-              const address = {
-                address_line1: [getQ("Flat/Door/Block No"), getQ("Road/Street/Lane")].filter(Boolean).join(", "),
-                address_line2: getQ("Area/Locality"),
-                city: getQ("City/District"),
-                state: getQ("State"),
-                pincode: String(getQ("POSTAL/PIN  CODE") || ""),
-                country: "India",
-              }
-
-              if (address.city) {
-                await db.from("registrations").update({ convocation_address: address }).eq("id", reg.id)
-                results.addressesSynced++
-              }
-            }
-          }
-        } catch (e) {
-          results.errors.push(`Fillout sync error: ${e}`)
-        }
+      try {
+        const syncResult = await syncAddressesFromFillout({ eventId })
+        results.addressesSynced += syncResult.synced
+        console.log(`[exam-daily-sync] Fillout sync for event ${eventId}: synced=${syncResult.synced}, notFilled=${syncResult.notFilled}, submissions=${syncResult.totalSubmissions}`)
+      } catch (e) {
+        const msg = `Fillout sync failed for event ${eventId}: ${e}`
+        console.error(`[exam-daily-sync] ${msg}`)
+        results.errors.push(msg)
       }
 
       // ===== 3. CHECK AIRTABLE RECORDS =====
