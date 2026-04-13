@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -34,10 +34,17 @@ import {
   FileText,
   Trash2,
   Blocks,
-  BookOpen,
   ChevronLeft,
   GraduationCap,
   Mic,
+  Phone,
+  Globe,
+  Search,
+  Clock,
+  Download,
+  Upload,
+  History,
+  AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -54,6 +61,7 @@ interface EventSettings {
   start_date: string | null
   end_date: string | null
   venue_name: string | null
+  venue_address: string | null
   city: string | null
   state: string | null
   country: string
@@ -62,6 +70,7 @@ interface EventSettings {
   registration_open: boolean
   max_attendees: number | null
   contact_email: string | null
+  contact_phone: string | null
   website_url: string | null
   banner_url: string | null
   logo_url: string | null
@@ -72,6 +81,14 @@ interface EventSettings {
   organized_by: string | null
   signatory_title: string | null
   signature_image_url: string | null
+  registration_deadline: string | null
+  venue_map_url: string | null
+  favicon_url: string | null
+  social_twitter: string | null
+  social_instagram: string | null
+  social_linkedin: string | null
+  seo_title: string | null
+  seo_description: string | null
   settings: {
     speaker_invitation?: {
       signer_name: string
@@ -80,6 +97,12 @@ interface EventSettings {
     }
     [key: string]: any
   } | null
+}
+
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"]
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
 export default function SettingsPage() {
@@ -92,6 +115,21 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState<Partial<EventSettings>>({})
   const [hasChanges, setHasChanges] = useState(false)
   const [activeSection, setActiveSection] = useState("general")
+
+  // Slug availability state
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
+  const [slugChecking, setSlugChecking] = useState(false)
+  const [slugSuggestion, setSlugSuggestion] = useState<string | null>(null)
+  const slugCheckTimer = useRef<NodeJS.Timeout>()
+
+  // Delete confirmation state
+  const [deleteInput, setDeleteInput] = useState("")
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
+  // Clone state
+  const [cloning, setCloning] = useState(false)
+  const [showCloneDialog, setShowCloneDialog] = useState(false)
+  const [cloneData, setCloneData] = useState({ name: "", start_date: "", end_date: "" })
 
   // Fetch event settings
   const { data: event, isLoading } = useQuery({
@@ -110,6 +148,40 @@ export default function SettingsPage() {
     staleTime: 0,
   })
 
+  // Fetch registration count for capacity bar
+  const { data: regCount } = useQuery({
+    queryKey: ["registration-count", eventId],
+    queryFn: async () => {
+      const res = await fetch(`/api/events/${eventId}/registrations?count_only=true`)
+      if (!res.ok) {
+        // Fallback: try direct count
+        const { count } = await supabase
+          .from("registrations")
+          .select("*", { count: "exact", head: true })
+          .eq("event_id", eventId)
+        return count || 0
+      }
+      const data = await res.json()
+      return data.count || 0
+    },
+    enabled: !!eventId && !!formData.max_attendees,
+  })
+
+  // Fetch settings changelog
+  const { data: changelog } = useQuery({
+    queryKey: ["settings-changelog", eventId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("event_settings_log" as any)
+        .select("*")
+        .eq("event_id", eventId)
+        .order("changed_at", { ascending: false })
+        .limit(20)
+      return (data || []) as any[]
+    },
+    enabled: !!eventId && activeSection === "advanced",
+  })
+
   // Initialize form data when event loads
   useEffect(() => {
     if (event) {
@@ -124,6 +196,43 @@ export default function SettingsPage() {
       setHasChanges(changed)
     }
   }, [formData, event])
+
+  // Navigation guard - warn before leaving with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasChanges) {
+        e.preventDefault()
+        e.returnValue = ""
+      }
+    }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [hasChanges])
+
+  // Slug availability check with debounce
+  const checkSlug = useCallback((slug: string) => {
+    clearTimeout(slugCheckTimer.current)
+    setSlugSuggestion(null)
+    if (!slug) {
+      setSlugAvailable(null)
+      setSlugChecking(false)
+      return
+    }
+    setSlugChecking(true)
+    slugCheckTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/events/check-slug?slug=${slug}&exclude_id=${eventId}`)
+        const data = await res.json()
+        setSlugAvailable(data.available)
+        if (!data.available && data.suggestion) {
+          setSlugSuggestion(data.suggestion)
+        }
+      } catch {
+        setSlugAvailable(null)
+      }
+      setSlugChecking(false)
+    }, 500)
+  }, [eventId])
 
   // Save settings mutation
   const saveSettings = useMutation({
@@ -142,13 +251,16 @@ export default function SettingsPage() {
       return res.json()
     },
     onSuccess: async () => {
-      // Reset all event queries to force fresh fetch
       await queryClient.resetQueries({ queryKey: ["event-settings", eventId] })
       await queryClient.resetQueries({ queryKey: ["event", eventId] })
       await queryClient.resetQueries({ queryKey: ["event-details", eventId] })
-      // Dispatch custom event to trigger sidebar refetch
+      await queryClient.invalidateQueries({ queryKey: ["settings-changelog", eventId] })
       window.dispatchEvent(new CustomEvent("event-settings-saved"))
       setHasChanges(false)
+      toast.success("Settings saved successfully")
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to save settings")
     },
   })
 
@@ -158,6 +270,90 @@ export default function SettingsPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
+    toast.success("Copied to clipboard")
+  }
+
+  const handleSectionChange = (sectionId: string) => {
+    if (hasChanges) {
+      const confirmed = window.confirm("You have unsaved changes. Discard them?")
+      if (!confirmed) return
+      if (event) setFormData(event)
+    }
+    setActiveSection(sectionId)
+  }
+
+  // Clone event handler
+  const handleClone = async () => {
+    setCloning(true)
+    try {
+      const res = await fetch(`/api/events/${eventId}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cloneData),
+      })
+      if (!res.ok) throw new Error("Failed to clone event")
+      const data = await res.json()
+      toast.success("Event cloned successfully!")
+      setShowCloneDialog(false)
+      if (data.event?.id) {
+        router.push(`/events/${data.event.id}/settings`)
+      }
+    } catch {
+      toast.error("Failed to clone event")
+    }
+    setCloning(false)
+  }
+
+  // Export settings as JSON
+  const exportSettings = () => {
+    const exportData = { ...formData }
+    delete (exportData as any).id
+    delete (exportData as any).created_at
+    delete (exportData as any).updated_at
+    delete (exportData as any).created_by
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `event-settings-${formData.slug || eventId}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success("Settings exported")
+  }
+
+  // Import settings from JSON
+  const importSettings = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const imported = JSON.parse(ev.target?.result as string)
+        // Merge imported settings but keep id and meta fields
+        setFormData((prev) => ({
+          ...prev,
+          ...imported,
+          id: prev.id,
+        }))
+        toast.success("Settings imported — review and save")
+      } catch {
+        toast.error("Invalid JSON file")
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ""
+  }
+
+  const sectionLabels: Record<string, string> = {
+    general: "General",
+    datetime: "Date & Time",
+    location: "Location",
+    registration: "Registration",
+    modules: "Modules",
+    automation: "Automation",
+    branding: "Branding",
+    links: "Links & Contact",
+    advanced: "Advanced",
   }
 
   const sections = [
@@ -188,7 +384,7 @@ export default function SettingsPage() {
         Back
       </button>
 
-      {/* Tito-style Header */}
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Event Settings</h1>
@@ -215,11 +411,13 @@ export default function SettingsPage() {
         </Button>
       </div>
 
-      {/* Sticky Save Bar - always visible at bottom when there are changes */}
+      {/* Sticky Save Bar */}
       {hasChanges && (
         <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-6 py-3">
           <div className="flex items-center justify-between max-w-screen-xl mx-auto">
-            <p className="text-sm text-muted-foreground">You have unsaved changes</p>
+            <p className="text-sm text-muted-foreground">
+              Unsaved changes in <strong>{sectionLabels[activeSection]}</strong>
+            </p>
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -251,22 +449,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Success/Error Messages */}
-      {saveSettings.isSuccess && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 text-success border border-success/20">
-          <CheckCircle2 className="h-4 w-4" />
-          <span className="text-sm">Settings saved successfully!</span>
-        </div>
-      )}
-
-      {saveSettings.isError && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
-          <AlertCircle className="h-4 w-4" />
-          <span className="text-sm">Failed to save settings. Please try again.</span>
-        </div>
-      )}
-
-      {/* Tito-style Two Column Layout */}
+      {/* Two Column Layout */}
       <div className="flex gap-6">
         {/* Sidebar Navigation */}
         <div className="w-56 flex-shrink-0">
@@ -276,7 +459,7 @@ export default function SettingsPage() {
               return (
                 <button
                   key={section.id}
-                  onClick={() => setActiveSection(section.id)}
+                  onClick={() => handleSectionChange(section.id)}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-all",
                     activeSection === section.id
@@ -294,7 +477,8 @@ export default function SettingsPage() {
 
         {/* Main Content */}
         <div className="flex-1 space-y-6">
-          {/* General Section */}
+
+          {/* ==================== GENERAL SECTION ==================== */}
           {activeSection === "general" && (
             <div className="space-y-6">
               <div className="bg-card border border-border rounded-xl p-6 space-y-6">
@@ -315,6 +499,7 @@ export default function SettingsPage() {
                       value={formData.name || ""}
                       onChange={(e) => updateField("name", e.target.value)}
                       placeholder={`${COMPANY_CONFIG.name} Annual Conference 2026`}
+                      maxLength={120}
                       className="mt-1.5"
                     />
                   </div>
@@ -326,6 +511,7 @@ export default function SettingsPage() {
                         value={formData.short_name || ""}
                         onChange={(e) => updateField("short_name", e.target.value)}
                         placeholder={`${COMPANY_CONFIG.name} 2026`}
+                        maxLength={40}
                         className="mt-1.5"
                       />
                       <p className="text-xs text-muted-foreground mt-1">Used in navigation</p>
@@ -339,20 +525,38 @@ export default function SettingsPage() {
                         placeholder="42"
                         className="mt-1.5"
                       />
-                      <p className="text-xs text-muted-foreground mt-1">e.g., 42nd Annual</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formData.edition ? `${ordinal(formData.edition)} Annual` : "e.g., 42nd Annual"}
+                      </p>
                     </div>
                   </div>
 
+                  {/* Slug with live availability check */}
                   <div>
                     <label className="text-sm font-medium text-foreground">URL Slug</label>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className="text-sm text-muted-foreground">/register/</span>
-                      <Input
-                        value={formData.slug || ""}
-                        onChange={(e) => updateField("slug", e.target.value.toLowerCase().replace(/\s+/g, "-"))}
-                        placeholder="amasi-2026"
-                        className="flex-1"
-                      />
+                      <div className="relative flex-1">
+                        <Input
+                          value={formData.slug || ""}
+                          onChange={(e) => {
+                            const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-")
+                            updateField("slug", slug)
+                            checkSlug(slug)
+                          }}
+                          placeholder="amasi-2026"
+                          className={cn(
+                            "pr-8",
+                            slugAvailable === true && "border-green-500 focus-visible:ring-green-500",
+                            slugAvailable === false && "border-destructive focus-visible:ring-destructive"
+                          )}
+                        />
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                          {slugChecking && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                          {!slugChecking && slugAvailable === true && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                          {!slugChecking && slugAvailable === false && <AlertCircle className="h-4 w-4 text-destructive" />}
+                        </div>
+                      </div>
                       <Button
                         variant="outline"
                         size="icon"
@@ -361,7 +565,25 @@ export default function SettingsPage() {
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Public registration URL</p>
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-xs text-muted-foreground">
+                        {formData.slug ? `${window.location.origin}/register/${formData.slug}` : "Public registration URL"}
+                      </p>
+                      {slugAvailable === false && slugSuggestion && (
+                        <button
+                          className="text-xs text-primary hover:underline"
+                          onClick={() => {
+                            updateField("slug", slugSuggestion)
+                            checkSlug(slugSuggestion)
+                          }}
+                        >
+                          Try &quot;{slugSuggestion}&quot;
+                        </button>
+                      )}
+                    </div>
+                    {slugAvailable === false && (
+                      <p className="text-xs text-destructive mt-0.5">This URL is already taken</p>
+                    )}
                   </div>
 
                   <div>
@@ -371,8 +593,12 @@ export default function SettingsPage() {
                       onChange={(e) => updateField("description", e.target.value)}
                       placeholder="Describe your event..."
                       rows={3}
+                      maxLength={1000}
                       className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {(formData.description || "").length}/1000 characters
+                    </p>
                   </div>
 
                   <div className="space-y-4">
@@ -425,7 +651,6 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* Custom Event Type Input - Shows when "Other" is selected or custom value exists */}
                     {(formData.event_type === "" || !['conference', 'workshop', 'seminar', 'webinar', 'symposium', 'meetup', 'summit', 'congress'].includes(formData.event_type || '')) && (
                       <div>
                         <label className="text-sm font-medium text-foreground">Custom Event Type</label>
@@ -447,6 +672,7 @@ export default function SettingsPage() {
                       value={formData.organized_by || ""}
                       onChange={(e) => updateField("organized_by", e.target.value)}
                       placeholder={`${COMPANY_CONFIG.name}, Department of Surgery, BJ Medical College`}
+                      maxLength={120}
                       className="mt-1.5"
                     />
                     <p className="text-xs text-muted-foreground mt-1">Used in invitation letters as &quot;organized by ...&quot;</p>
@@ -459,6 +685,7 @@ export default function SettingsPage() {
                         value={formData.scientific_chairman || ""}
                         onChange={(e) => updateField("scientific_chairman", e.target.value)}
                         placeholder="Dr. John Doe"
+                        maxLength={100}
                         className="mt-1.5"
                       />
                     </div>
@@ -468,6 +695,7 @@ export default function SettingsPage() {
                         value={formData.organizing_chairman || ""}
                         onChange={(e) => updateField("organizing_chairman", e.target.value)}
                         placeholder="Dr. Jane Smith"
+                        maxLength={100}
                         className="mt-1.5"
                       />
                     </div>
@@ -479,6 +707,7 @@ export default function SettingsPage() {
                       value={formData.signatory_title || ""}
                       onChange={(e) => updateField("signatory_title", e.target.value)}
                       placeholder="Course Convenor"
+                      maxLength={80}
                       className="mt-1.5"
                     />
                     <p className="text-xs text-muted-foreground mt-1">Title shown below the signatory name in invitations (e.g., Course Convenor, Organizing Secretary)</p>
@@ -587,7 +816,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* Date & Time Section */}
+          {/* ==================== DATE & TIME SECTION ==================== */}
           {activeSection === "datetime" && (
             <div className="bg-card border border-border rounded-xl p-6 space-y-6">
               <div className="flex items-center gap-3 pb-4 border-b border-border">
@@ -619,7 +848,32 @@ export default function SettingsPage() {
                       onChange={(e) => updateField("end_date", e.target.value)}
                       className="mt-1.5"
                     />
+                    {formData.end_date && formData.start_date && formData.end_date < formData.start_date && (
+                      <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        End date must be after start date
+                      </p>
+                    )}
                   </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground">Registration Deadline</label>
+                  <Input
+                    type="datetime-local"
+                    value={formData.registration_deadline?.slice(0, 16) || ""}
+                    onChange={(e) => updateField("registration_deadline", e.target.value ? new Date(e.target.value).toISOString() : null)}
+                    className="mt-1.5"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Optional. Registration auto-closes at this date/time regardless of the Registration Open toggle.
+                  </p>
+                  {formData.registration_deadline && new Date(formData.registration_deadline) < new Date() && (
+                    <p className="text-xs text-warning mt-1 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Deadline has already passed — registration is effectively closed
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -632,11 +886,17 @@ export default function SettingsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Asia/Kolkata">India Standard Time (IST)</SelectItem>
-                      <SelectItem value="UTC">UTC</SelectItem>
+                      <SelectItem value="Asia/Kolkata">India Standard Time (IST, UTC+5:30)</SelectItem>
+                      <SelectItem value="Asia/Singapore">Singapore Time (SGT, UTC+8:00)</SelectItem>
+                      <SelectItem value="Asia/Dubai">Gulf Standard Time (GST, UTC+4:00)</SelectItem>
+                      <SelectItem value="Asia/Colombo">Sri Lanka Time (SLST, UTC+5:30)</SelectItem>
+                      <SelectItem value="Asia/Kuala_Lumpur">Malaysia Time (MYT, UTC+8:00)</SelectItem>
+                      <SelectItem value="Asia/Bangkok">Indochina Time (ICT, UTC+7:00)</SelectItem>
+                      <SelectItem value="Australia/Sydney">Australian Eastern (AEST, UTC+10:00)</SelectItem>
+                      <SelectItem value="Europe/London">British Time (GMT/BST)</SelectItem>
                       <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
                       <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
-                      <SelectItem value="Europe/London">British Time (GMT/BST)</SelectItem>
+                      <SelectItem value="UTC">UTC</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -644,7 +904,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* Location Section */}
+          {/* ==================== LOCATION SECTION ==================== */}
           {activeSection === "location" && (
             <div className="bg-card border border-border rounded-xl p-6 space-y-6">
               <div className="flex items-center gap-3 pb-4 border-b border-border">
@@ -668,6 +928,17 @@ export default function SettingsPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="text-sm font-medium text-foreground">Venue Address</label>
+                  <Input
+                    value={formData.venue_address || ""}
+                    onChange={(e) => updateField("venue_address", e.target.value)}
+                    placeholder="123 Main Street, Near City Mall"
+                    className="mt-1.5"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Street address used in travel emails and invitation letters</p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-foreground">City</label>
@@ -679,7 +950,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">State</label>
+                    <label className="text-sm font-medium text-foreground">State / Province</label>
                     <Input
                       value={formData.state || ""}
                       onChange={(e) => updateField("state", e.target.value)}
@@ -692,8 +963,18 @@ export default function SettingsPage() {
                 <div>
                   <label className="text-sm font-medium text-foreground">Country</label>
                   <Select
-                    value={formData.country || "India"}
-                    onValueChange={(value) => updateField("country", value)}
+                    value={
+                      ["India", "United States", "United Kingdom", "Singapore", "UAE", "Malaysia", "Sri Lanka", "Bangladesh", "Nepal", "Thailand", "Australia", "Canada", "Germany", "France"].includes(formData.country || "")
+                        ? formData.country
+                        : formData.country ? "Other" : "India"
+                    }
+                    onValueChange={(value) => {
+                      if (value === "Other") {
+                        updateField("country", "")
+                      } else {
+                        updateField("country", value)
+                      }
+                    }}
                   >
                     <SelectTrigger className="mt-1.5">
                       <SelectValue />
@@ -704,14 +985,50 @@ export default function SettingsPage() {
                       <SelectItem value="United Kingdom">United Kingdom</SelectItem>
                       <SelectItem value="Singapore">Singapore</SelectItem>
                       <SelectItem value="UAE">UAE</SelectItem>
+                      <SelectItem value="Malaysia">Malaysia</SelectItem>
+                      <SelectItem value="Sri Lanka">Sri Lanka</SelectItem>
+                      <SelectItem value="Bangladesh">Bangladesh</SelectItem>
+                      <SelectItem value="Nepal">Nepal</SelectItem>
+                      <SelectItem value="Thailand">Thailand</SelectItem>
+                      <SelectItem value="Australia">Australia</SelectItem>
+                      <SelectItem value="Canada">Canada</SelectItem>
+                      <SelectItem value="Germany">Germany</SelectItem>
+                      <SelectItem value="France">France</SelectItem>
+                      <SelectItem value="Other">Other...</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Custom country input when Other is selected */}
+                {formData.country !== undefined && !["India", "United States", "United Kingdom", "Singapore", "UAE", "Malaysia", "Sri Lanka", "Bangladesh", "Nepal", "Thailand", "Australia", "Canada", "Germany", "France"].includes(formData.country || "India") && (
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Country Name</label>
+                    <Input
+                      value={formData.country || ""}
+                      onChange={(e) => updateField("country", e.target.value)}
+                      placeholder="Enter country name"
+                      className="mt-1.5"
+                      autoFocus
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-sm font-medium text-foreground">Google Maps URL</label>
+                  <Input
+                    type="url"
+                    value={formData.venue_map_url || ""}
+                    onChange={(e) => updateField("venue_map_url", e.target.value)}
+                    placeholder="https://maps.google.com/..."
+                    className="mt-1.5"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Paste a Google Maps share link. Shown on registration page and in emails.</p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Registration Section */}
+          {/* ==================== REGISTRATION SECTION ==================== */}
           {activeSection === "registration" && (
             <div className="bg-card border border-border rounded-xl p-6 space-y-6">
               <div className="flex items-center gap-3 pb-4 border-b border-border">
@@ -724,17 +1041,23 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Conflict warning */}
+              {!(formData.is_public ?? true) && (formData.registration_open ?? true) && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Event is private but registration is open. Only users with a direct link can register.
+                  </p>
+                </div>
+              )}
+
               <div className="grid gap-5">
                 <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border">
                   <div className="flex-1 pr-4">
                     <p className="font-medium">Public Event</p>
                     <p className="text-sm text-muted-foreground mt-1">
                       When enabled, your event registration page will be visible to anyone with the link.
-                      They can browse ticket types and complete registration.
                     </p>
-                    <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-                      <strong>OFF:</strong> Only admins can access the registration page. Use this for invite-only events.
-                    </div>
                   </div>
                   <Switch
                     checked={formData.is_public ?? true}
@@ -746,12 +1069,8 @@ export default function SettingsPage() {
                   <div className="flex-1 pr-4">
                     <p className="font-medium">Registration Open</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Controls whether new registrations are accepted. Turn off to stop accepting new attendees
-                      while keeping the event page visible.
+                      Controls whether new registrations are accepted.
                     </p>
-                    <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-                      <strong>OFF:</strong> Shows "Registration Closed" message. Existing registrations are not affected.
-                    </div>
                   </div>
                   <Switch
                     checked={formData.registration_open ?? true}
@@ -769,31 +1088,63 @@ export default function SettingsPage() {
                     className="mt-1.5"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Total capacity across all ticket types. Registration will close automatically when this limit is reached.
-                    Leave empty for unlimited registrations.
+                    Registration will close automatically when this limit is reached.
                   </p>
+
+                  {/* Capacity bar */}
+                  {formData.max_attendees && formData.max_attendees > 0 && (
+                    <div className="mt-3 space-y-1.5">
+                      {(() => {
+                        const count = regCount || 0
+                        const max = formData.max_attendees!
+                        const pct = Math.min(Math.round((count / max) * 100), 100)
+                        const color = pct >= 95 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-green-500"
+                        return (
+                          <>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                {count.toLocaleString()} / {max.toLocaleString()} registered
+                              </span>
+                              <span className={cn(
+                                "font-medium",
+                                pct >= 95 ? "text-red-600" : pct >= 80 ? "text-amber-600" : "text-green-600"
+                              )}>
+                                {pct}% capacity
+                              </span>
+                            </div>
+                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                              <div className={cn("h-full rounded-full transition-all", color)} style={{ width: `${pct}%` }} />
+                            </div>
+                            {pct >= 100 && (
+                              <p className="text-xs text-red-600 font-medium">Registration closed — limit reached</p>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Modules Section */}
+          {/* ==================== MODULES SECTION ==================== */}
           {activeSection === "modules" && (
             <ModulesSection eventId={eventId} />
           )}
 
-          {/* Automation Section */}
+          {/* ==================== AUTOMATION SECTION ==================== */}
           {activeSection === "automation" && (
             <AutomationSection eventId={eventId} />
           )}
 
-          {/* Branding Section */}
+          {/* ==================== BRANDING SECTION ==================== */}
           {activeSection === "branding" && (
             <div className="space-y-6">
               {/* Live Preview Card */}
               <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-border bg-secondary/30">
-                  <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Live Preview</h3>
+                  <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Live Preview — Registration Page</h3>
                 </div>
                 <div
                   className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900"
@@ -849,7 +1200,7 @@ export default function SettingsPage() {
               </div>
 
               {/* Upload Section */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-3 gap-6">
                 {/* Logo Upload */}
                 <div className="bg-card border border-border rounded-xl p-5">
                   <div className="flex items-center gap-2 mb-4">
@@ -858,7 +1209,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h4 className="font-medium text-sm">Event Logo</h4>
-                      <p className="text-xs text-muted-foreground">Square, 200×200px</p>
+                      <p className="text-xs text-muted-foreground">Square, 200x200px</p>
                     </div>
                   </div>
                   <ImageUpload
@@ -878,7 +1229,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h4 className="font-medium text-sm">Banner Image</h4>
-                      <p className="text-xs text-muted-foreground">Wide, 1200×400px</p>
+                      <p className="text-xs text-muted-foreground">Wide, 1200x400px</p>
                     </div>
                   </div>
                   <ImageUpload
@@ -887,6 +1238,26 @@ export default function SettingsPage() {
                     eventId={eventId}
                     folder={`events/${eventId}/banner`}
                     aspectRatio="banner"
+                  />
+                </div>
+
+                {/* Favicon Upload */}
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                      <Globe className="h-4 w-4 text-orange-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm">Favicon</h4>
+                      <p className="text-xs text-muted-foreground">Square, 32x32px ICO/PNG</p>
+                    </div>
+                  </div>
+                  <ImageUpload
+                    value={formData.favicon_url || ""}
+                    onChange={(url) => updateField("favicon_url", url)}
+                    eventId={eventId}
+                    folder={`events/${eventId}/favicon`}
+                    aspectRatio="square"
                   />
                 </div>
               </div>
@@ -904,7 +1275,6 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Preset Colors */}
                   <div>
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 block">Quick Select</label>
                     <div className="flex flex-wrap gap-2">
@@ -936,7 +1306,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Custom Color */}
                   <div>
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 block">Custom Color</label>
                     <div className="flex items-center gap-3">
@@ -973,72 +1342,331 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* Links & Contact Section */}
+          {/* ==================== LINKS & CONTACT SECTION ==================== */}
           {activeSection === "links" && (
-            <div className="bg-card border border-border rounded-xl p-6 space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b border-border">
-                <div className="h-10 w-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                  <Link2 className="h-5 w-5 text-cyan-500" />
+            <div className="space-y-6">
+              {/* Contact Info */}
+              <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="h-10 w-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                    <Link2 className="h-5 w-5 text-cyan-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Contact Information</h3>
+                    <p className="text-sm text-muted-foreground">Displayed to attendees on registration page</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold">Links & Contact</h3>
-                  <p className="text-sm text-muted-foreground">External links and contact information</p>
+
+                <div className="grid gap-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Contact Email</label>
+                      <Input
+                        type="email"
+                        value={formData.contact_email || ""}
+                        onChange={(e) => updateField("contact_email", e.target.value)}
+                        placeholder="contact@example.com"
+                        className="mt-1.5"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Also used as reply-to in automated emails</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Contact Phone</label>
+                      <Input
+                        type="tel"
+                        value={formData.contact_phone || ""}
+                        onChange={(e) => updateField("contact_phone", e.target.value)}
+                        placeholder="+91 98765 43210"
+                        className="mt-1.5"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Event Website</label>
+                    <Input
+                      type="url"
+                      value={formData.website_url || ""}
+                      onChange={(e) => updateField("website_url", e.target.value)}
+                      placeholder="https://example.com"
+                      className="mt-1.5"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid gap-5">
-                <div>
-                  <label className="text-sm font-medium text-foreground">Contact Email</label>
-                  <Input
-                    type="email"
-                    value={formData.contact_email || ""}
-                    onChange={(e) => updateField("contact_email", e.target.value)}
-                    placeholder="contact@example.com"
-                    className="mt-1.5"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Displayed to attendees for support</p>
+              {/* Social Media */}
+              <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="h-10 w-10 rounded-lg bg-pink-500/10 flex items-center justify-center">
+                    <Globe className="h-5 w-5 text-pink-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Social Media</h3>
+                    <p className="text-sm text-muted-foreground">Linked from registration page footer and emails</p>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium text-foreground">Event Website</label>
-                  <Input
-                    value={formData.website_url || ""}
-                    onChange={(e) => updateField("website_url", e.target.value)}
-                    placeholder="https://example.com"
-                    className="mt-1.5"
-                  />
+                <div className="grid gap-5">
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Twitter / X</label>
+                    <Input
+                      type="url"
+                      value={formData.social_twitter || ""}
+                      onChange={(e) => updateField("social_twitter", e.target.value)}
+                      placeholder="https://twitter.com/yourhandle"
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Instagram</label>
+                    <Input
+                      type="url"
+                      value={formData.social_instagram || ""}
+                      onChange={(e) => updateField("social_instagram", e.target.value)}
+                      placeholder="https://instagram.com/yourhandle"
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground">LinkedIn</label>
+                    <Input
+                      type="url"
+                      value={formData.social_linkedin || ""}
+                      onChange={(e) => updateField("social_linkedin", e.target.value)}
+                      placeholder="https://linkedin.com/company/yourorg"
+                      className="mt-1.5"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SEO */}
+              <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <Search className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">SEO & Social Sharing</h3>
+                    <p className="text-sm text-muted-foreground">Controls how your event appears in search results and social media cards</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-5">
+                  <div>
+                    <label className="text-sm font-medium text-foreground">SEO Title</label>
+                    <Input
+                      value={formData.seo_title || ""}
+                      onChange={(e) => updateField("seo_title", e.target.value)}
+                      placeholder={formData.name || "Event name (defaults to event name)"}
+                      maxLength={70}
+                      className="mt-1.5"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {(formData.seo_title || "").length}/70 — Browser tab title and og:title
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground">SEO Description</label>
+                    <textarea
+                      value={formData.seo_description || ""}
+                      onChange={(e) => updateField("seo_description", e.target.value)}
+                      placeholder="Brief description for search engines and social sharing cards"
+                      maxLength={160}
+                      rows={2}
+                      className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {(formData.seo_description || "").length}/160 — Meta description for search engines
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Advanced Section */}
+          {/* ==================== ADVANCED SECTION ==================== */}
           {activeSection === "advanced" && (
             <div className="space-y-6">
+              {/* Clone Event */}
+              <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <Copy className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Clone Event</h3>
+                    <p className="text-sm text-muted-foreground">Create a copy with all settings but no registrations or financial data</p>
+                  </div>
+                </div>
+
+                {!showCloneDialog ? (
+                  <Button variant="outline" onClick={() => {
+                    setCloneData({
+                      name: `${event?.name || ""} (Copy)`,
+                      start_date: "",
+                      end_date: "",
+                    })
+                    setShowCloneDialog(true)
+                  }}>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Clone This Event
+                  </Button>
+                ) : (
+                  <div className="space-y-4 p-4 bg-secondary/30 rounded-xl border border-border">
+                    <div>
+                      <label className="text-sm font-medium">New Event Name</label>
+                      <Input
+                        value={cloneData.name}
+                        onChange={(e) => setCloneData(prev => ({ ...prev, name: e.target.value }))}
+                        className="mt-1.5"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Start Date</label>
+                        <Input
+                          type="date"
+                          value={cloneData.start_date}
+                          onChange={(e) => setCloneData(prev => ({ ...prev, start_date: e.target.value }))}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">End Date</label>
+                        <Input
+                          type="date"
+                          value={cloneData.end_date}
+                          onChange={(e) => setCloneData(prev => ({ ...prev, end_date: e.target.value }))}
+                          className="mt-1.5"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={handleClone} disabled={cloning || !cloneData.name} className="gap-2">
+                        {cloning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+                        {cloning ? "Cloning..." : "Create Clone"}
+                      </Button>
+                      <Button variant="outline" onClick={() => setShowCloneDialog(false)}>Cancel</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Export / Import Settings */}
+              <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-violet-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Export / Import Settings</h3>
+                    <p className="text-sm text-muted-foreground">Download or apply settings as JSON</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={exportSettings} className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Export Settings
+                  </Button>
+                  <div className="relative">
+                    <Button variant="outline" className="gap-2" onClick={() => document.getElementById('import-settings')?.click()}>
+                      <Upload className="h-4 w-4" />
+                      Import Settings
+                    </Button>
+                    <input
+                      id="import-settings"
+                      type="file"
+                      accept=".json"
+                      onChange={importSettings}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Settings Changelog */}
+              <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <History className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Settings Changelog</h3>
+                    <p className="text-sm text-muted-foreground">Recent changes to event settings</p>
+                  </div>
+                </div>
+
+                {changelog && changelog.length > 0 ? (
+                  <div className="space-y-2">
+                    {changelog.map((entry: any) => (
+                      <div key={entry.id} className="flex items-start gap-3 p-3 bg-secondary/30 rounded-lg text-sm">
+                        <History className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{entry.summary}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {entry.section} section &middot; {new Date(entry.changed_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No settings changes recorded yet.</p>
+                )}
+              </div>
+
+              {/* Danger Zone - Delete Event */}
               <div className="bg-card border border-border rounded-xl p-6 space-y-6">
                 <div className="flex items-center gap-3 pb-4 border-b border-border">
                   <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
                     <Shield className="h-5 w-5 text-destructive" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">Advanced Settings</h3>
-                    <p className="text-sm text-muted-foreground">Danger zone - proceed with caution</p>
+                    <h3 className="font-semibold">Danger Zone</h3>
+                    <p className="text-sm text-muted-foreground">Irreversible actions</p>
                   </div>
                 </div>
 
-                <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-medium text-destructive">Delete Event</h4>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Permanently delete this event and all associated data. This action cannot be undone.
-                      </p>
-                    </div>
-                    <Button variant="destructive" size="sm" className="gap-2">
+                <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-xl space-y-4">
+                  <div>
+                    <h4 className="font-medium text-destructive">Delete Event</h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Permanently delete this event and all associated data. This action cannot be undone.
+                    </p>
+                  </div>
+                  {!showDeleteDialog ? (
+                    <Button variant="destructive" size="sm" className="gap-2" onClick={() => setShowDeleteDialog(true)}>
                       <Trash2 className="h-4 w-4" />
                       Delete Event
                     </Button>
-                  </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm">Type <strong>&quot;{event?.name}&quot;</strong> to confirm:</p>
+                      <Input
+                        value={deleteInput}
+                        onChange={(e) => setDeleteInput(e.target.value)}
+                        placeholder={event?.name || ""}
+                        className="border-destructive/50"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={deleteInput !== event?.name}
+                          className="gap-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Permanently Delete
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => { setShowDeleteDialog(false); setDeleteInput("") }}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1049,19 +1677,18 @@ export default function SettingsPage() {
   )
 }
 
-// Automation Section Component
+// ==================== AUTOMATION SECTION ====================
 function AutomationSection({ eventId }: { eventId: string }) {
   const supabase = createClient()
   const queryClient = useQueryClient()
   const [saving, setSaving] = useState(false)
 
-  // Fetch event settings
   const { data: settings, isLoading } = useQuery({
     queryKey: ["event-automation-settings", eventId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("event_settings")
-        .select("auto_send_receipt, auto_generate_badge, auto_email_badge, auto_generate_certificate, auto_email_certificate")
+        .select("auto_send_receipt, auto_generate_badge, auto_email_badge, auto_generate_certificate, auto_email_certificate, auto_send_reminder, reminder_lead_days")
         .eq("event_id", eventId)
         .maybeSingle()
 
@@ -1072,12 +1699,13 @@ function AutomationSection({ eventId }: { eventId: string }) {
         auto_email_badge: false,
         auto_generate_certificate: false,
         auto_email_certificate: false,
+        auto_send_reminder: false,
+        reminder_lead_days: 3,
       }
     },
     enabled: !!eventId,
   })
 
-  // Check if default badge template exists (use API to bypass RLS)
   const { data: hasDefaultBadgeTemplate } = useQuery({
     queryKey: ["default-badge-template", eventId],
     queryFn: async () => {
@@ -1089,7 +1717,6 @@ function AutomationSection({ eventId }: { eventId: string }) {
     enabled: !!eventId,
   })
 
-  // Check if default certificate template exists (use API to bypass RLS)
   const { data: hasDefaultCertTemplate } = useQuery({
     queryKey: ["default-certificate-template", eventId],
     queryFn: async () => {
@@ -1107,6 +1734,8 @@ function AutomationSection({ eventId }: { eventId: string }) {
     auto_email_badge: false,
     auto_generate_certificate: false,
     auto_email_certificate: false,
+    auto_send_reminder: false,
+    reminder_lead_days: 3,
   })
 
   useEffect(() => {
@@ -1117,6 +1746,8 @@ function AutomationSection({ eventId }: { eventId: string }) {
         auto_email_badge: settings.auto_email_badge ?? false,
         auto_generate_certificate: settings.auto_generate_certificate ?? false,
         auto_email_certificate: settings.auto_email_certificate ?? false,
+        auto_send_reminder: (settings as any).auto_send_reminder ?? false,
+        reminder_lead_days: (settings as any).reminder_lead_days ?? 3,
       })
     }
   }, [settings])
@@ -1131,8 +1762,10 @@ function AutomationSection({ eventId }: { eventId: string }) {
       })
       if (!res.ok) throw new Error("Failed to save")
       await queryClient.invalidateQueries({ queryKey: ["event-automation-settings", eventId] })
+      toast.success("Automation settings saved")
     } catch (error) {
       console.error("Failed to save automation settings:", error)
+      toast.error("Failed to save automation settings")
     }
     setSaving(false)
   }
@@ -1157,7 +1790,6 @@ function AutomationSection({ eventId }: { eventId: string }) {
         </div>
       </div>
 
-      {/* Info Box */}
       <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-xl">
         <p className="text-sm text-blue-800 dark:text-blue-200">
           <strong>How Automation Works:</strong> These settings trigger automatically when a payment is completed.
@@ -1172,14 +1804,11 @@ function AutomationSection({ eventId }: { eventId: string }) {
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-muted-foreground" />
               <p className="font-medium">Auto-send Receipt</p>
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Recommended</span>
+              <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">Recommended</span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              Sends a confirmation email with registration details immediately after payment is completed.
+              Sends a confirmation email with registration details immediately after payment.
             </p>
-            <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-              <strong>Email contains:</strong> Registration number, attendee name, ticket details, payment summary, and event information.
-            </div>
           </div>
           <Switch
             checked={formData.auto_send_receipt}
@@ -1187,25 +1816,53 @@ function AutomationSection({ eventId }: { eventId: string }) {
           />
         </div>
 
+        {/* Auto Send Reminder */}
+        <div className="flex items-start justify-between p-4 bg-secondary/30 rounded-xl border border-border">
+          <div className="flex-1 pr-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <p className="font-medium">Auto-send Reminder</p>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Send a reminder email to registered attendees before the event starts.
+            </p>
+            {formData.auto_send_reminder && (
+              <div className="mt-3 flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground">Days before event:</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={formData.reminder_lead_days}
+                  onChange={(e) => setFormData(prev => ({ ...prev, reminder_lead_days: parseInt(e.target.value) || 3 }))}
+                  className="w-20 h-8 text-sm"
+                />
+              </div>
+            )}
+          </div>
+          <Switch
+            checked={formData.auto_send_reminder}
+            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, auto_send_reminder: checked }))}
+          />
+        </div>
+
+        <div className="border-t border-border my-2" />
+
         {/* Auto Generate Badge */}
         <div className="flex items-start justify-between p-4 bg-secondary/30 rounded-xl border border-border">
           <div className="flex-1 pr-4">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
               <p className="font-medium">Auto-generate Badge</p>
-              {!hasDefaultBadgeTemplate && (
-                <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded-full">
-                  Requires default template
-                </span>
+              {hasDefaultBadgeTemplate ? (
+                <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">Template ready</span>
+              ) : (
+                <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded-full">No default template</span>
               )}
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               Creates a personalized badge PDF using your default badge template when registration is confirmed.
             </p>
-            <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-              <strong>Setup required:</strong> Go to Badges → Templates → Create a template and mark it as "Default".
-              {!hasDefaultBadgeTemplate && <span className="text-warning ml-1">No default template found!</span>}
-            </div>
           </div>
           <Switch
             checked={formData.auto_generate_badge}
@@ -1232,9 +1889,6 @@ function AutomationSection({ eventId }: { eventId: string }) {
             <p className="text-sm text-muted-foreground mt-1">
               Emails the generated badge to the attendee with a download link.
             </p>
-            <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-              <strong>Tip:</strong> Enable this so attendees can print their badges before arriving at the venue.
-            </div>
           </div>
           <Switch
             checked={formData.auto_email_badge}
@@ -1243,7 +1897,6 @@ function AutomationSection({ eventId }: { eventId: string }) {
           />
         </div>
 
-        {/* Divider */}
         <div className="border-t border-border my-2" />
 
         {/* Auto Generate Certificate */}
@@ -1252,19 +1905,15 @@ function AutomationSection({ eventId }: { eventId: string }) {
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
               <p className="font-medium">Auto-generate Certificate</p>
-              {!hasDefaultCertTemplate && (
-                <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded-full">
-                  Requires default template
-                </span>
+              {hasDefaultCertTemplate ? (
+                <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">Template ready</span>
+              ) : (
+                <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded-full">No default template</span>
               )}
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               Creates a participation certificate using your default certificate template.
             </p>
-            <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-              <strong>Note:</strong> Certificates are usually issued post-event. Enable only if you want instant certificates upon registration.
-              {!hasDefaultCertTemplate && <span className="text-warning ml-1">No default template found!</span>}
-            </div>
           </div>
           <Switch
             checked={formData.auto_generate_certificate}
@@ -1279,7 +1928,7 @@ function AutomationSection({ eventId }: { eventId: string }) {
 
         {/* Auto Email Certificate */}
         <div className={cn(
-          "flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border",
+          "flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border ml-6",
           !formData.auto_generate_certificate && "opacity-50"
         )}>
           <div>
@@ -1318,18 +1967,16 @@ function AutomationSection({ eventId }: { eventId: string }) {
   )
 }
 
-// Module definitions for the settings UI
+// ==================== MODULE DEFINITIONS ====================
 const MODULE_DEFS = [
-  // Category: Event Operations
   { category: "Event Operations", modules: [
     { key: "enable_speakers", label: "Speakers", icon: "Mic", description: "Manage speakers, invitations, portal links, travel & accommodation", defaultOn: true },
     { key: "enable_program", label: "Program", icon: "Calendar", description: "Build event schedule with sessions, tracks, and speaker assignments", defaultOn: true },
     { key: "enable_checkin", label: "Checkin Hub", icon: "QrCode", description: "QR-based check-in, session tracking, and attendance reports", defaultOn: true },
-    { key: "enable_badges", label: "Badges", icon: "BadgeCheck", description: "Design and print attendee badges with templates", defaultOn: true },
+    { key: "enable_badges", label: "Badges", icon: "BadgeCheck", description: "Design and print attendee badges with templates", defaultOn: true, dependsOn: "enable_checkin" },
     { key: "enable_certificates", label: "Certificates", icon: "Award", description: "Generate and email certificates to attendees", defaultOn: true },
-    { key: "enable_print_station", label: "Print Station", icon: "Printer", description: "Kiosk mode for on-site badge printing", defaultOn: true },
+    { key: "enable_print_station", label: "Print Station", icon: "Printer", description: "Kiosk mode for on-site badge printing", defaultOn: true, dependsOn: "enable_badges" },
   ]},
-  // Category: Registration & Forms
   { category: "Registration & Forms", modules: [
     { key: "enable_addons", label: "Addons", icon: "Package", description: "Optional add-on items for registration (meals, kits, etc.)", defaultOn: true },
     { key: "enable_waitlist", label: "Waitlist", icon: "ListOrdered", description: "Manage waitlist when tickets are sold out", defaultOn: true },
@@ -1338,26 +1985,29 @@ const MODULE_DEFS = [
     { key: "enable_surveys", label: "Surveys", icon: "ClipboardList", description: "Post-event feedback and surveys", defaultOn: true },
     { key: "enable_leads", label: "Leads", icon: "UserPlus", description: "Capture and manage potential attendee leads", defaultOn: true },
   ]},
-  // Category: Travel & Logistics
   { category: "Travel & Logistics", modules: [
     { key: "enable_travel", label: "Travel", icon: "Plane", description: "Manage flight bookings and transfers for speakers/delegates", defaultOn: true },
     { key: "enable_accommodation", label: "Accommodation", icon: "Hotel", description: "Manage hotel bookings and room allocations", defaultOn: true },
     { key: "enable_meals", label: "Meals", icon: "UtensilsCrossed", description: "Meal preferences, dietary requirements, and meal tracking", defaultOn: true },
     { key: "enable_visa", label: "Visa Letters", icon: "Stamp", description: "Generate visa invitation letters for international delegates", defaultOn: true },
   ]},
-  // Category: Finance & Sponsors
   { category: "Finance & Sponsors", modules: [
     { key: "enable_sponsors", label: "Sponsors", icon: "Building2", description: "Manage event sponsors, tiers, and sponsorship packages", defaultOn: true },
     { key: "enable_budget", label: "Budget", icon: "IndianRupee", description: "Track event budget, expenses, and financial reports", defaultOn: true },
   ]},
-  // Category: Advanced Modules (default off)
   { category: "Advanced Modules", modules: [
     { key: "enable_abstracts", label: "Abstract Management", icon: "BookOpen", description: "Abstract submission, review workflow, accept/reject decisions", defaultOn: false },
     { key: "enable_examination", label: "Examination (FMAS / MMAS)", icon: "GraduationCap", description: "Marks entry, results, convocation numbering, address collection", defaultOn: false },
   ]},
 ] as const
 
-// Modules Section Component
+// Dependency map: if you disable a key, dependents should also be disabled
+const MODULE_DEPS: Record<string, string[]> = {
+  enable_checkin: ["enable_badges", "enable_print_station"],
+  enable_badges: ["enable_print_station"],
+}
+
+// ==================== MODULES SECTION ====================
 function ModulesSection({ eventId }: { eventId: string }) {
   const supabase = createClient()
   const queryClient = useQueryClient()
@@ -1366,7 +2016,6 @@ function ModulesSection({ eventId }: { eventId: string }) {
   const ALL_MODULE_KEYS = MODULE_DEFS.flatMap(c => c.modules.map(m => m.key))
   const MODULE_FIELDS = ALL_MODULE_KEYS.join(", ")
 
-  // Fetch event settings
   const { data: settings, isLoading } = useQuery({
     queryKey: ["event-module-settings", eventId],
     queryFn: async () => {
@@ -1401,34 +2050,8 @@ function ModulesSection({ eventId }: { eventId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings])
 
-  const [savingCategory, setSavingCategory] = useState<string | null>(null)
-
-  const handleSaveCategory = async (category: typeof MODULE_DEFS[number]) => {
-    setSavingCategory(category.category)
-    try {
-      const categoryData: Record<string, boolean> = {}
-      for (const mod of category.modules) {
-        categoryData[mod.key] = formData[mod.key] ?? mod.defaultOn
-      }
-      const res = await fetch("/api/event-settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event_id: eventId, ...categoryData }),
-      })
-      if (!res.ok) throw new Error("Failed to save")
-      await queryClient.invalidateQueries({ queryKey: ["event-module-settings", eventId] })
-      await queryClient.invalidateQueries({ queryKey: ["event-setup-status", eventId] })
-      window.dispatchEvent(new CustomEvent("event-settings-saved"))
-      toast.success(`${category.category} saved`)
-    } catch (error) {
-      console.error("Failed to save module settings:", error)
-      toast.error(`Failed to save ${category.category}`)
-    }
-    setSavingCategory(null)
-  }
-
   const handleSaveAll = async () => {
-    setSavingCategory("all")
+    setSaving(true)
     try {
       const res = await fetch("/api/event-settings", {
         method: "POST",
@@ -1444,11 +2067,36 @@ function ModulesSection({ eventId }: { eventId: string }) {
       console.error("Failed to save module settings:", error)
       toast.error("Failed to save modules")
     }
-    setSavingCategory(null)
+    setSaving(false)
   }
 
   const toggleModule = (key: string) => {
-    setFormData(prev => ({ ...prev, [key]: !prev[key] }))
+    const newVal = !formData[key]
+    const updates: Record<string, boolean> = { [key]: newVal }
+
+    // If disabling, also disable dependents
+    if (!newVal && MODULE_DEPS[key]) {
+      for (const dep of MODULE_DEPS[key]) {
+        updates[dep] = false
+      }
+    }
+
+    setFormData(prev => ({ ...prev, ...updates }))
+
+    // Show toast about cascaded disables
+    if (!newVal && MODULE_DEPS[key]) {
+      const disabledDeps = MODULE_DEPS[key].filter(d => formData[d])
+      if (disabledDeps.length > 0) {
+        const labels = disabledDeps.map(d => {
+          for (const cat of MODULE_DEFS) {
+            const mod = cat.modules.find(m => m.key === d)
+            if (mod) return mod.label
+          }
+          return d
+        })
+        toast.info(`Also disabled: ${labels.join(", ")} (dependency)`)
+      }
+    }
   }
 
   const enableAll = () => {
@@ -1493,7 +2141,6 @@ function ModulesSection({ eventId }: { eventId: string }) {
         </div>
       </div>
 
-      {/* Info Box */}
       <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-xl">
         <p className="text-sm text-blue-800 dark:text-blue-200">
           Toggle modules to show or hide them from the sidebar. Core items like Dashboard, Tickets,
@@ -1503,7 +2150,6 @@ function ModulesSection({ eventId }: { eventId: string }) {
 
       {MODULE_DEFS.map((category) => {
         const categoryEnabledCount = category.modules.filter(m => formData[m.key] ?? m.defaultOn).length
-        const isSavingThis = savingCategory === category.category
         return (
           <div key={category.category} className="space-y-3">
             <div className="flex items-center justify-between">
@@ -1513,24 +2159,23 @@ function ModulesSection({ eventId }: { eventId: string }) {
                   ({categoryEnabledCount}/{category.modules.length})
                 </span>
               </h4>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleSaveCategory(category)}
-                disabled={!!savingCategory}
-                className="gap-1.5 h-7 text-xs"
-              >
-                {isSavingThis ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Save className="h-3 w-3" />
-                )}
-                Save
-              </Button>
             </div>
+
+            {category.category === "Advanced Modules" && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  These modules are specialized. Enable only if your event requires abstract submission or examination components.
+                </p>
+              </div>
+            )}
+
             <div className="grid gap-2">
               {category.modules.map((mod) => {
                 const isEnabled = formData[mod.key] ?? mod.defaultOn
+                // Check if this module's dependency is disabled
+                const dep = (mod as any).dependsOn as string | undefined
+                const depDisabled = dep ? !(formData[dep] ?? true) : false
+
                 return (
                   <div
                     key={mod.key}
@@ -1555,6 +2200,11 @@ function ModulesSection({ eventId }: { eventId: string }) {
                           {isEnabled && (
                             <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded-full">On</span>
                           )}
+                          {depDisabled && isEnabled && (
+                            <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
+                              Requires {dep?.replace("enable_", "")}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground truncate">{mod.description}</p>
                       </div>
@@ -1573,8 +2223,8 @@ function ModulesSection({ eventId }: { eventId: string }) {
       })}
 
       <div className="flex justify-end pt-4 border-t border-border">
-        <Button onClick={handleSaveAll} disabled={!!savingCategory} className="gap-2">
-          {savingCategory === "all" ? (
+        <Button onClick={handleSaveAll} disabled={saving} className="gap-2">
+          {saving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
               Saving...
@@ -1582,7 +2232,7 @@ function ModulesSection({ eventId }: { eventId: string }) {
           ) : (
             <>
               <Save className="h-4 w-4" />
-              Save All Modules
+              Save Modules
             </>
           )}
         </Button>

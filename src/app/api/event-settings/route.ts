@@ -64,6 +64,10 @@ export async function GET(request: NextRequest) {
         auto_email_badge: false,
         auto_generate_certificate: false,
         auto_email_certificate: false,
+        auto_send_reminder: false,
+        reminder_lead_days: 3,
+        auto_waitlist: false,
+        integrations: {},
         // Registration control
         allow_duplicate_email: true, // Allow same email to register multiple times
         show_duplicate_warning: true, // Show warning when email already registered
@@ -114,7 +118,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { error: eventAuthError } = await requireEventAccess(body.event_id)
+    const { user, error: eventAuthError } = await requireEventAccess(body.event_id)
     if (eventAuthError) return eventAuthError
 
     // Use admin client to bypass RLS for saves
@@ -150,6 +154,13 @@ export async function POST(request: NextRequest) {
     // Registration control
     if (body.allow_duplicate_email !== undefined) payload.allow_duplicate_email = body.allow_duplicate_email
     if (body.show_duplicate_warning !== undefined) payload.show_duplicate_warning = body.show_duplicate_warning
+    // Automation: reminder settings
+    if (body.auto_send_reminder !== undefined) payload.auto_send_reminder = body.auto_send_reminder
+    if (body.reminder_lead_days !== undefined) payload.reminder_lead_days = body.reminder_lead_days || 3
+    // Registration: auto waitlist
+    if (body.auto_waitlist !== undefined) payload.auto_waitlist = body.auto_waitlist
+    // Integrations
+    if (body.integrations !== undefined) payload.integrations = body.integrations
     // Module toggles
     const moduleKeys = [
       "enable_abstracts", "enable_examination", "enable_speakers", "enable_program",
@@ -174,6 +185,21 @@ export async function POST(request: NextRequest) {
         { error: "Failed to save settings" },
         { status: 500 }
       )
+    }
+
+    // Log the change
+    const changedKeys = Object.keys(payload).filter(k => k !== 'event_id')
+    if (changedKeys.length > 0 && user) {
+      const hasModules = changedKeys.some(k => k.startsWith('enable_'))
+      const hasAutomation = changedKeys.some(k => k.startsWith('auto_') || k === 'reminder_lead_days')
+      const section = hasModules && hasAutomation ? 'modules, automation' : hasModules ? 'modules' : hasAutomation ? 'automation' : 'registration'
+      await adminClient.from("event_settings_log").insert({
+        event_id: body.event_id,
+        changed_by: user.id,
+        section,
+        summary: `Updated ${changedKeys.join(', ')}`,
+        snapshot: payload,
+      })
     }
 
     return NextResponse.json(data)

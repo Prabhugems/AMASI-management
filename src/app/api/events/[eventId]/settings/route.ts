@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
+// Map fields to their settings section for changelog
+function inferSection(fields: string[]): string {
+  const sectionMap: Record<string, string> = {
+    name: 'general', short_name: 'general', slug: 'general', description: 'general',
+    event_type: 'general', status: 'general', edition: 'general', organized_by: 'general',
+    scientific_chairman: 'general', organizing_chairman: 'general',
+    signatory_title: 'general', signature_image_url: 'general', settings: 'general',
+    start_date: 'date', end_date: 'date', timezone: 'date', registration_deadline: 'date',
+    venue_name: 'location', venue_address: 'location', city: 'location',
+    state: 'location', country: 'location', venue_map_url: 'location',
+    is_public: 'registration', registration_open: 'registration', max_attendees: 'registration',
+    banner_url: 'branding', logo_url: 'branding', primary_color: 'branding', favicon_url: 'branding',
+    contact_email: 'links', website_url: 'links', contact_phone: 'links',
+    social_twitter: 'links', social_instagram: 'links', social_linkedin: 'links',
+    seo_title: 'links', seo_description: 'links',
+  }
+  const sections = [...new Set(fields.map(f => sectionMap[f] || 'general'))]
+  return sections.length === 1 ? sections[0] : sections.join(', ')
+}
+
 // PATCH /api/events/[eventId]/settings - Update event settings
 export async function PATCH(
   request: NextRequest,
@@ -10,13 +30,10 @@ export async function PATCH(
   try {
     const { eventId } = await params
 
-    const { error: authError } = await requireEventAndPermission(eventId, 'events')
+    const { user, error: authError } = await requireEventAndPermission(eventId, 'events')
     if (authError) return authError
 
     const body = await request.json()
-
-    console.log("Saving event settings for:", eventId)
-    console.log("Data:", JSON.stringify(body, null, 2))
 
     const supabase = await createAdminClient()
 
@@ -31,7 +48,10 @@ export async function PATCH(
       'timezone', 'is_public', 'registration_open', 'max_attendees',
       'contact_email', 'website_url', 'banner_url', 'logo_url', 'primary_color',
       'edition', 'scientific_chairman', 'organizing_chairman',
-      'organized_by', 'signatory_title', 'signature_image_url', 'settings'
+      'organized_by', 'signatory_title', 'signature_image_url', 'settings',
+      'registration_deadline', 'venue_address', 'venue_map_url', 'favicon_url',
+      'contact_phone', 'social_twitter', 'social_instagram', 'social_linkedin',
+      'seo_title', 'seo_description'
     ]
 
     for (const field of allowedFields) {
@@ -39,8 +59,6 @@ export async function PATCH(
         updateData[field] = body[field]
       }
     }
-
-    console.log("Update data:", updateData)
 
     const { data, error } = await (supabase as any)
       .from("events")
@@ -52,6 +70,18 @@ export async function PATCH(
     if (error) {
       console.error("Error updating event settings:", error)
       return NextResponse.json({ error: "Failed to update event settings" }, { status: 500 })
+    }
+
+    // Log the change to event_settings_log
+    const changedFields = Object.keys(updateData).filter(k => k !== 'updated_at')
+    if (changedFields.length > 0 && user) {
+      await (supabase as any).from("event_settings_log").insert({
+        event_id: eventId,
+        changed_by: user.id,
+        section: inferSection(changedFields),
+        summary: `Updated ${changedFields.join(', ')}`,
+        snapshot: updateData,
+      })
     }
 
     return NextResponse.json({ success: true, data })

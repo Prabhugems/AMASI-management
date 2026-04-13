@@ -122,6 +122,14 @@ export interface Database {
           total_delegates: number
           visibility: string | null
           settings: Json | null
+          registration_deadline: string | null
+          venue_map_url: string | null
+          favicon_url: string | null
+          social_twitter: string | null
+          social_instagram: string | null
+          social_linkedin: string | null
+          seo_title: string | null
+          seo_description: string | null
           created_by: string | null
           created_at: string
           updated_at: string
@@ -170,6 +178,14 @@ export interface Database {
           total_delegates?: number
           visibility?: string | null
           settings?: Json | null
+          registration_deadline?: string | null
+          venue_map_url?: string | null
+          favicon_url?: string | null
+          social_twitter?: string | null
+          social_instagram?: string | null
+          social_linkedin?: string | null
+          seo_title?: string | null
+          seo_description?: string | null
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -218,6 +234,14 @@ export interface Database {
           total_delegates?: number
           visibility?: string | null
           settings?: Json | null
+          registration_deadline?: string | null
+          venue_map_url?: string | null
+          favicon_url?: string | null
+          social_twitter?: string | null
+          social_instagram?: string | null
+          social_linkedin?: string | null
+          seo_title?: string | null
+          seo_description?: string | null
           created_by?: string | null
           created_at?: string
           updated_at?: string
