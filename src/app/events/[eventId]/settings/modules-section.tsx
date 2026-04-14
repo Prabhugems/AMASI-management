@@ -40,6 +40,7 @@ const MODULE_DEFS = [
   { category: "Advanced Modules", modules: [
     { key: "enable_abstracts", label: "Abstract Management", icon: "BookOpen", description: "Abstract submission, review workflow, accept/reject decisions", defaultOn: false },
     { key: "enable_examination", label: "Examination (FMAS / MMAS)", icon: "GraduationCap", description: "Marks entry, results, convocation numbering, address collection", defaultOn: false },
+    { key: "enable_convocation", label: "Convocation Process", icon: "ScrollText", description: "Built-in address collection, certificate dispatch tracking, convocation ceremony management", defaultOn: false },
   ]},
 ] as const
 

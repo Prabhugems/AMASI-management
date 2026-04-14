@@ -199,6 +199,7 @@ export async function POST(request: NextRequest) {
       "enable_accommodation", "enable_meals", "enable_sponsors", "enable_budget",
       "enable_visa", "enable_surveys", "enable_delegate_portal", "enable_print_station",
       "enable_leads", "enable_waitlist", "enable_addons", "enable_forms",
+      "enable_convocation",
     ]
     for (const key of moduleKeys) {
       if (body[key] !== undefined) payload[key] = body[key]

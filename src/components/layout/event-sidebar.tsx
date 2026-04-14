@@ -41,6 +41,7 @@ import {
   IndianRupee,
   ClipboardList,
   GraduationCap,
+  ScrollText,
   HelpCircle,
   LogOut,
   ChevronDown,
@@ -103,6 +104,7 @@ type ModuleSettings = {
   enable_waitlist: boolean
   enable_addons: boolean
   enable_forms: boolean
+  enable_convocation: boolean
 }
 
 const navItems: NavItem[] = [
@@ -115,6 +117,7 @@ const navItems: NavItem[] = [
   { label: "Forms", href: "/forms", icon: FileText, moduleKey: "enable_forms" },
   { label: "Abstracts", href: "/abstracts", icon: BookOpen, statusKey: "abstracts", moduleKey: "enable_abstracts", sectionStart: "Content" },
   { label: "Examination", href: "/examination", icon: GraduationCap, moduleKey: "enable_examination" },
+  { label: "Convocation", href: "/convocation-process", icon: ScrollText, moduleKey: "enable_convocation" },
   { label: "Speakers", href: "/speakers", icon: Mic, moduleKey: "enable_speakers" },
   { label: "Program", href: "/program", icon: Calendar, moduleKey: "enable_program" },
   { label: "Checkin Hub", href: "/checkin", icon: QrCode, moduleKey: "enable_checkin", sectionStart: "On-site" },
