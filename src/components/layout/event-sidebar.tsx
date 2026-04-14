@@ -312,6 +312,7 @@ export function EventSidebar({ onNavigate, mobileOpen, onMobileClose }: { onNavi
         enable_waitlist: s?.enable_waitlist ?? true,
         enable_addons: s?.enable_addons ?? true,
         enable_forms: s?.enable_forms ?? true,
+        enable_convocation: s?.enable_convocation ?? false,
       }
     },
     enabled: !!eventId,
