@@ -41,6 +41,12 @@ export type ExamSettings = {
   without_exam_start?: number
   exam_ticket_types?: string[]
   examiner_tokens?: ExaminerToken[]
+  // Address collection config
+  address_source?: "fillout" | "airtable" | "both"
+  fillout_form_id?: string
+  airtable_address_base_id?: string
+  airtable_address_table_id?: string
+  webhook_secret?: string
 }
 
 const FMAS_DEFAULTS: MarkColumn[] = [
@@ -151,6 +157,13 @@ export default function ExamSettingsPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
+      // Auto-generate webhook secret if not set
+      const saveData = { ...formData }
+      if (!saveData.webhook_secret) {
+        saveData.webhook_secret = crypto.randomUUID()
+        setFormData(saveData)
+      }
+
       const { data: event } = await (supabase as any)
         .from("events")
         .select("settings")
@@ -162,7 +175,7 @@ export default function ExamSettingsPage() {
       const { error } = await (supabase as any)
         .from("events")
         .update({
-          settings: { ...currentSettings, examination: formData },
+          settings: { ...currentSettings, examination: saveData },
         })
         .eq("id", eventId)
 
@@ -551,6 +564,147 @@ export default function ExamSettingsPage() {
             No examiner links generated yet. Click the button above to create one.
           </p>
         )}
+      </div>
+      {/* Address Collection Section */}
+      <div className="bg-card border rounded-xl p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Address Collection
+          </h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Configure how candidate addresses are collected for certificate dispatch.
+          </p>
+        </div>
+
+        {/* Address Source */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Address Source</label>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: "both" as const, label: "Both (Fillout + Airtable)" },
+              { key: "fillout" as const, label: "Fillout Form Only" },
+              { key: "airtable" as const, label: "Airtable Form Only" },
+            ].map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setFormData(prev => ({ ...prev, address_source: opt.key }))}
+                className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
+                  (formData.address_source || "both") === opt.key
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary/30 hover:bg-secondary/60 border-border"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Fillout Config */}
+        {(formData.address_source || "both") !== "airtable" && (
+          <div>
+            <label className="text-sm font-medium">Fillout Form ID</label>
+            <Input
+              value={formData.fillout_form_id || "gz1eLocmB9us"}
+              onChange={(e) => setFormData(prev => ({ ...prev, fillout_form_id: e.target.value }))}
+              className="mt-1.5 max-w-md font-mono text-sm"
+              placeholder="gz1eLocmB9us"
+            />
+          </div>
+        )}
+
+        {/* Airtable Config */}
+        {(formData.address_source || "both") !== "fillout" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium">Airtable Base ID</label>
+              <Input
+                value={formData.airtable_address_base_id || ""}
+                onChange={(e) => setFormData(prev => ({ ...prev, airtable_address_base_id: e.target.value }))}
+                className="mt-1.5 font-mono text-sm"
+                placeholder="appXXXXXXXXXXXXXXX"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Airtable Table ID</label>
+              <Input
+                value={formData.airtable_address_table_id || ""}
+                onChange={(e) => setFormData(prev => ({ ...prev, airtable_address_table_id: e.target.value }))}
+                className="mt-1.5 font-mono text-sm"
+                placeholder="tblXXXXXXXXXXXXXXX"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Webhook URLs */}
+        <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+          <label className="text-sm font-medium block">Webhook URLs (for real-time sync)</label>
+          <p className="text-xs text-muted-foreground">
+            Paste these URLs in your Fillout/Airtable automation settings. When a candidate submits their address, it syncs to your database instantly.
+          </p>
+          {(formData.address_source || "both") !== "airtable" && (
+            <div>
+              <label className="text-xs text-muted-foreground">Fillout Webhook</label>
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  readOnly
+                  value={formData.webhook_secret
+                    ? `${typeof window !== "undefined" ? window.location.origin : "https://collegeofmas.org.in"}/api/webhooks/fillout-address?event_id=${eventId}&secret=${formData.webhook_secret}`
+                    : "Save settings first to generate webhook URL"
+                  }
+                  className="font-mono text-xs bg-background"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0 shrink-0"
+                  disabled={!formData.webhook_secret}
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}/api/webhooks/fillout-address?event_id=${eventId}&secret=${formData.webhook_secret}`
+                    )
+                    setCopiedTokenId("fillout-wh")
+                    setTimeout(() => setCopiedTokenId(null), 2000)
+                  }}
+                >
+                  {copiedTokenId === "fillout-wh" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            </div>
+          )}
+          {(formData.address_source || "both") !== "fillout" && (
+            <div>
+              <label className="text-xs text-muted-foreground">Airtable Webhook</label>
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  readOnly
+                  value={formData.webhook_secret
+                    ? `${typeof window !== "undefined" ? window.location.origin : "https://collegeofmas.org.in"}/api/webhooks/airtable-address?event_id=${eventId}&secret=${formData.webhook_secret}`
+                    : "Save settings first to generate webhook URL"
+                  }
+                  className="font-mono text-xs bg-background"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0 shrink-0"
+                  disabled={!formData.webhook_secret}
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}/api/webhooks/airtable-address?event_id=${eventId}&secret=${formData.webhook_secret}`
+                    )
+                    setCopiedTokenId("airtable-wh")
+                    setTimeout(() => setCopiedTokenId(null), 2000)
+                  }}
+                >
+                  {copiedTokenId === "airtable-wh" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

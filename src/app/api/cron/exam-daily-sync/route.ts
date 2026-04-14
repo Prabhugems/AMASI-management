@@ -78,27 +78,38 @@ export async function GET(request: Request) {
         await delay(500)
       }
 
-      // ===== 2. SYNC ADDRESSES FROM FILLOUT =====
-      try {
-        const syncResult = await syncAddressesFromFillout({ eventId })
-        results.addressesSynced += syncResult.synced
-        console.log(`[exam-daily-sync] Fillout sync for event ${eventId}: synced=${syncResult.synced}, notFilled=${syncResult.notFilled}, submissions=${syncResult.totalSubmissions}`)
-      } catch (e) {
-        const msg = `Fillout sync failed for event ${eventId}: ${e}`
-        console.error(`[exam-daily-sync] ${msg}`)
-        results.errors.push(msg)
+      // ===== 2. SYNC ADDRESSES (uses event-level config) =====
+      const { data: eventData } = await db.from("events").select("settings").eq("id", eventId).single()
+      const examConfig = eventData?.settings?.examination
+      const addressSource = examConfig?.address_source || "both"
+      const filloutFormId = examConfig?.fillout_form_id
+      const airtableBaseId = examConfig?.airtable_address_base_id
+      const airtableTableId = examConfig?.airtable_address_table_id
+
+      // 2a. Fillout sync
+      if (addressSource === "fillout" || addressSource === "both") {
+        try {
+          const syncResult = await syncAddressesFromFillout({ eventId, filloutFormId })
+          results.addressesSynced += syncResult.synced
+          console.log(`[exam-daily-sync] Fillout sync for event ${eventId}: synced=${syncResult.synced}, notFilled=${syncResult.notFilled}`)
+        } catch (e) {
+          const msg = `Fillout sync failed for event ${eventId}: ${e}`
+          console.error(`[exam-daily-sync] ${msg}`)
+          results.errors.push(msg)
+        }
       }
 
-      // ===== 2b. SYNC ADDRESSES FROM AIRTABLE (for events using Airtable forms) =====
-      try {
-        const atResult = await syncAddressesFromAirtable({ eventId })
-        results.addressesSynced += atResult.synced
-        if (atResult.synced > 0) {
-          console.log(`[exam-daily-sync] Airtable address sync for event ${eventId}: synced=${atResult.synced}, notFilled=${atResult.notFilled}`)
+      // 2b. Airtable sync
+      if (addressSource === "airtable" || addressSource === "both") {
+        try {
+          const atResult = await syncAddressesFromAirtable({ eventId, airtableBaseId, airtableTableId })
+          results.addressesSynced += atResult.synced
+          if (atResult.synced > 0) {
+            console.log(`[exam-daily-sync] Airtable address sync for event ${eventId}: synced=${atResult.synced}`)
+          }
+        } catch (e) {
+          console.error(`[exam-daily-sync] Airtable address sync failed for event ${eventId}:`, e)
         }
-      } catch (e) {
-        // Non-fatal: Airtable sync is supplementary to Fillout
-        console.error(`[exam-daily-sync] Airtable address sync failed for event ${eventId}:`, e)
       }
 
       // ===== 3. CREATE AIRTABLE RECORDS (idempotent) =====

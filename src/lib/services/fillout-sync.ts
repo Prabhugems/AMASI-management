@@ -1,7 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/server"
 
-// ===== Fillout Config =====
-const FILLOUT_FORM_ID = "gz1eLocmB9us"
+// ===== Defaults (used when event has no custom config) =====
+export const DEFAULT_FILLOUT_FORM_ID = "gz1eLocmB9us"
+export const DEFAULT_AIRTABLE_CONVOCATION_BASE = "app7TElm0QUruBlZr"
+export const DEFAULT_AIRTABLE_CONVOCATION_TABLE = "tbl9CuIgSFdoNVk9x"
 const MAX_PAGINATION_PAGES = 100 // Safety limit: 100 × 150 = 15,000 submissions max
 const RETRY_ATTEMPTS = 3
 const RETRY_BASE_DELAY_MS = 1000
@@ -68,14 +70,15 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
  * Fetch all Fillout form submissions (paginated with safety limit and retry).
  * Throws if FILLOUT_API_KEY is missing or API fails after retries.
  */
-export async function fetchFilloutSubmissions(): Promise<any[]> {
+export async function fetchFilloutSubmissions(formId?: string): Promise<any[]> {
   const apiKey = getFilloutApiKey()
+  const effectiveFormId = formId || DEFAULT_FILLOUT_FORM_ID
   const allSubmissions: any[] = []
   let offset = 0
 
   for (let page = 0; page < MAX_PAGINATION_PAGES; page++) {
     const res = await fetchWithRetry(
-      `https://api.fillout.com/v1/api/forms/${FILLOUT_FORM_ID}/submissions?limit=150&offset=${offset}`,
+      `https://api.fillout.com/v1/api/forms/${effectiveFormId}/submissions?limit=150&offset=${offset}`,
       { headers: { Authorization: `Bearer ${apiKey}` } }
     )
 
@@ -121,9 +124,11 @@ export interface SyncResult {
 export async function syncAddressesFromFillout({
   eventId,
   includeExtraFields = false,
+  filloutFormId,
 }: {
   eventId: string
   includeExtraFields?: boolean
+  filloutFormId?: string
 }): Promise<SyncResult> {
   const supabase = await createAdminClient()
   const db = supabase as any
@@ -150,7 +155,7 @@ export async function syncAddressesFromFillout({
   }
 
   // Fetch all Fillout submissions
-  const allSubmissions = await fetchFilloutSubmissions()
+  const allSubmissions = await fetchFilloutSubmissions(filloutFormId)
 
   // Build map of LATEST submission per record ID (last one wins — respects corrections)
   const latestByRecId = new Map<string, any>()
@@ -218,8 +223,7 @@ export async function syncAddressesFromFillout({
 // ===== Airtable Direct Sync =====
 // For events where candidates fill addresses directly in Airtable (not via Fillout)
 
-const AIRTABLE_CONVOCATION_BASE = "app7TElm0QUruBlZr"
-const AIRTABLE_CONVOCATION_MASTER_TABLE = "tbl9CuIgSFdoNVk9x"
+// These are now defaults — events can override via settings
 
 // Airtable Master-FMAS field IDs
 const AT_FIELDS = {
@@ -252,8 +256,12 @@ function getAirtablePat(): string {
  */
 export async function syncAddressesFromAirtable({
   eventId,
+  airtableBaseId,
+  airtableTableId,
 }: {
   eventId: string
+  airtableBaseId?: string
+  airtableTableId?: string
 }): Promise<SyncResult> {
   const pat = getAirtablePat()
   const supabase = await createAdminClient()
@@ -291,6 +299,9 @@ export async function syncAddressesFromAirtable({
 
   // Fetch Airtable records with this prefix that have city filled
   const fieldParams = Object.values(AT_FIELDS).map((f) => `fields%5B%5D=${f}`).join("&")
+  const effectiveBase = airtableBaseId || DEFAULT_AIRTABLE_CONVOCATION_BASE
+  const effectiveTable = airtableTableId || DEFAULT_AIRTABLE_CONVOCATION_TABLE
+
   const formula = encodeURIComponent(
     `AND(FIND("${prefix}", {CONVOCATION NUMBER}) = 1, {City/District} != "")`
   )
@@ -299,7 +310,7 @@ export async function syncAddressesFromAirtable({
   let airtableOffset: string | undefined
 
   for (let page = 0; page < MAX_PAGINATION_PAGES; page++) {
-    const url = `https://api.airtable.com/v0/${AIRTABLE_CONVOCATION_BASE}/${AIRTABLE_CONVOCATION_MASTER_TABLE}?${fieldParams}&filterByFormula=${formula}&pageSize=100${airtableOffset ? `&offset=${airtableOffset}` : ""}`
+    const url = `https://api.airtable.com/v0/${effectiveBase}/${effectiveTable}?${fieldParams}&filterByFormula=${formula}&pageSize=100${airtableOffset ? `&offset=${airtableOffset}` : ""}`
 
     const res = await fetchWithRetry(url, {
       headers: { Authorization: `Bearer ${pat}` },
