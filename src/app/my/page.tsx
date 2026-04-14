@@ -42,6 +42,8 @@ import {
   Timer,
   PartyPopper,
   Truck,
+  Stethoscope,
+  ArrowLeft,
 } from "lucide-react"
 import { toast } from "sonner"
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion"
@@ -444,14 +446,11 @@ export default function DelegatePortalPage() {
           })
 
           if (verifyRes.ok) {
-            alert("Payment successful! Your registration is confirmed.")
+            toast.success("Payment successful! Your registration is confirmed.")
             // Refresh registration data
-            const form = document.createElement("form")
-            form.style.display = "none"
-            document.body.appendChild(form)
-            window.location.reload()
+            setTimeout(() => window.location.reload(), 1500)
           } else {
-            alert("Payment verification failed. Please contact support.")
+            toast.error("Payment verification failed. Please contact support.")
           }
         },
         modal: {
@@ -467,7 +466,7 @@ export default function DelegatePortalPage() {
       const razorpay = new window.Razorpay(options)
       razorpay.open()
     } catch (err: any) {
-      alert(err.message || "Failed to initiate payment")
+      toast.error(err.message || "Failed to initiate payment")
       setPaymentLoading(false)
     }
   }
@@ -533,7 +532,7 @@ export default function DelegatePortalPage() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setDownloadingBadge(false)
     }
@@ -578,7 +577,7 @@ export default function DelegatePortalPage() {
         document.body.removeChild(a)
       }
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setDownloadingCert(false)
     }
@@ -607,7 +606,7 @@ export default function DelegatePortalPage() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setDownloadingReceipt(false)
     }
@@ -636,7 +635,7 @@ export default function DelegatePortalPage() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setDownloadingInvitation(false)
     }
@@ -664,185 +663,88 @@ export default function DelegatePortalPage() {
   // Search/Entry View
   if (registrations.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Ambient background orbs */}
-        <div className="absolute top-20 -left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse-slow pointer-events-none" />
-        <div className="absolute bottom-20 -right-20 w-72 h-72 bg-indigo-500/20 rounded-full blur-3xl animate-pulse-slower pointer-events-none" />
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Subtle dot grid pattern */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.03]"
+          style={{
+            backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)",
+            backgroundSize: "24px 24px",
+          }}
+        />
+        {/* Warm accent glow — subtle, single, positioned */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-teal-500/8 rounded-full blur-[100px] pointer-events-none" />
 
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
           className="w-full max-w-md relative z-10"
         >
-          {/* Logo/Header */}
+          {/* Branded Header */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.15, duration: 0.4 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
             className="text-center mb-8"
           >
-            <div className="w-20 h-20 bg-white/10 backdrop-blur-lg rounded-2xl flex items-center justify-center mx-auto mb-4 ring-1 ring-white/20 shadow-lg shadow-indigo-500/10">
-              <User className="w-10 h-10 text-white" />
+            <div className="w-16 h-16 border border-white/15 rounded-full flex items-center justify-center mx-auto mb-5 bg-white/5 backdrop-blur-sm">
+              <Stethoscope className="w-7 h-7 text-teal-400" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Delegate Portal</h1>
-            <p className="text-white/70">Access your badge, certificate & event details</p>
+            <div className="mb-1">
+              <span className="text-[0.7rem] font-semibold tracking-[0.35em] uppercase text-teal-400/90">
+                AMASI
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              Delegate Portal
+            </h1>
+            <p className="text-white/50 text-sm mt-2">
+              Access your badge, certificate & event details
+            </p>
           </motion.div>
 
-          {/* Search Form */}
+          {/* Search Form — clean, focused */}
           <motion.form
             onSubmit={handleSearch}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-            className="bg-white rounded-2xl shadow-2xl p-6 ring-1 ring-black/5"
+            transition={{ delay: 0.25, duration: 0.4 }}
+            className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-6 ring-1 ring-white/10"
           >
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Enter your Email, Phone, or Registration Number
+            <label className="block text-sm font-medium text-gray-600 mb-2">
+              Email, Phone, or Registration Number
             </label>
             <div className="relative mb-4">
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  if (error) setError(null)
+                }}
                 placeholder="email@example.com or 9876543210"
-                className="w-full px-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all text-center"
+                inputMode={/^\d/.test(searchQuery) ? "tel" : "email"}
+                className="w-full px-4 py-3.5 text-base border border-gray-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-center bg-gray-50/50"
                 autoFocus
               />
             </div>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm text-center">
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm text-center flex items-center justify-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
-              </div>
-            )}
-
-            {/* Show pending payments if registration not found */}
-            {pendingPayments.length > 0 && (
-              <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                <div className="flex items-center gap-2 text-amber-700 font-medium mb-2">
-                  <Clock className="w-4 h-4" />
-                  Payment Pending
-                </div>
-                <p className="text-sm text-amber-600 mb-3">
-                  We found {pendingPayments.length} incomplete payment(s). Your payment may not have completed successfully.
-                </p>
-                {pendingPayments.map((p) => (
-                  <div key={p.id} className="text-xs bg-white p-3 rounded-lg border border-amber-100 mb-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">{p.events?.name || "Event"}</span>
-                      <span className="font-medium">₹{p.amount.toLocaleString("en-IN")}</span>
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-gray-500">
-                        {new Date(p.created_at).toLocaleDateString("en-IN")}
-                      </span>
-                      <span className="text-gray-500">{p.payment_number}</span>
-                    </div>
-                    <div className="mt-1">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                        <XCircle className="w-3 h-3" />
-                        {p.status === "failed" ? "Failed" : "Pending"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Verify Payment Section */}
-                {!showVerifyForm ? (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs text-amber-600">
-                      If money was deducted from your account, you can verify your payment:
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setShowVerifyForm(true)}
-                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <ShieldCheck className="w-4 h-4" />
-                      Verify My Payment
-                    </button>
-                  </div>
-                ) : (
-                  <div className="mt-3 p-3 bg-white rounded-lg border border-amber-200 space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Razorpay Payment ID
-                      </label>
-                      <input
-                        type="text"
-                        value={verifyRpId}
-                        onChange={(e) => setVerifyRpId(e.target.value)}
-                        placeholder="pay_XXXXXXXXXXXXXX"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Check your UPI app, bank SMS, or email for this ID. Leave blank to auto-check.
-                      </p>
-                    </div>
-
-                    {/* Verify Result */}
-                    {verifyResult && (
-                      <div className={`p-3 rounded-lg text-sm ${
-                        verifyResult.status === "verified"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : verifyResult.status === "already_completed"
-                          ? "bg-blue-50 text-blue-700 border border-blue-200"
-                          : "bg-red-50 text-red-700 border border-red-200"
-                      }`}>
-                        <div className="flex items-start gap-2">
-                          {verifyResult.status === "verified" ? (
-                            <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                          ) : verifyResult.status === "already_completed" ? (
-                            <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                          ) : (
-                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                          )}
-                          <p>{verifyResult.message}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowVerifyForm(false)
-                          setVerifyResult(null)
-                          setVerifyRpId("")
-                        }}
-                        className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleVerifyPayment}
-                        disabled={isVerifying}
-                        className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        {isVerifying ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Checking...
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck className="w-4 h-4" />
-                            Submit
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              </motion.div>
             )}
 
             <button
               type="submit"
               disabled={loading || !searchQuery.trim()}
-              className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-lg flex items-center justify-center gap-2 hover:from-indigo-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-xl font-semibold text-base flex items-center justify-center gap-2 hover:from-teal-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-teal-600/20"
             >
               {loading ? (
                 <>
@@ -857,10 +759,127 @@ export default function DelegatePortalPage() {
               )}
             </button>
 
-            <p className="text-center text-sm text-gray-500 mt-4">
+            <p className="text-center text-xs text-gray-400 mt-3">
               Use the email or phone you registered with
             </p>
           </motion.form>
+
+          {/* Pending Payments — separate card, only shown when relevant */}
+          {pendingPayments.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.4 }}
+              className="mt-4 bg-amber-50 border border-amber-200/80 rounded-2xl p-5 shadow-lg"
+            >
+              <div className="flex items-center gap-2 text-amber-800 font-semibold text-sm mb-2">
+                <Clock className="w-4 h-4" />
+                {pendingPayments.length} Incomplete Payment{pendingPayments.length > 1 ? "s" : ""} Found
+              </div>
+              <p className="text-xs text-amber-700/80 mb-3">
+                Your payment may not have completed successfully. You can verify below.
+              </p>
+              {pendingPayments.map((p) => (
+                <div key={p.id} className="text-xs bg-white p-3 rounded-lg border border-amber-100 mb-2 last:mb-0">
+                  <div className="flex justify-between">
+                    <span className="text-gray-700 font-medium">{p.events?.name || "Event"}</span>
+                    <span className="font-semibold text-gray-900">₹{p.amount.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between mt-1.5">
+                    <span className="text-gray-500">
+                      {new Date(p.created_at).toLocaleDateString("en-IN")}
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-700">
+                      <XCircle className="w-3 h-3" />
+                      {p.status === "failed" ? "Failed" : "Pending"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {/* Verify Payment Section */}
+              {!showVerifyForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowVerifyForm(true)}
+                  className="w-full mt-3 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Verify My Payment
+                </button>
+              ) : (
+                <div className="mt-3 p-4 bg-white rounded-xl border border-amber-200 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Razorpay Payment ID
+                    </label>
+                    <input
+                      type="text"
+                      value={verifyRpId}
+                      onChange={(e) => setVerifyRpId(e.target.value)}
+                      placeholder="pay_XXXXXXXXXXXXXX"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Check your UPI app, bank SMS, or email for this ID. Leave blank to auto-check.
+                    </p>
+                  </div>
+
+                  {/* Verify Result */}
+                  {verifyResult && (
+                    <div className={`p-3 rounded-lg text-sm ${
+                      verifyResult.status === "verified"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : verifyResult.status === "already_completed"
+                        ? "bg-blue-50 text-blue-700 border border-blue-200"
+                        : "bg-red-50 text-red-700 border border-red-200"
+                    }`}>
+                      <div className="flex items-start gap-2">
+                        {verifyResult.status === "verified" || verifyResult.status === "already_completed" ? (
+                          <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        )}
+                        <p>{verifyResult.message}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowVerifyForm(false)
+                        setVerifyResult(null)
+                        setVerifyRpId("")
+                      }}
+                      className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleVerifyPayment}
+                      disabled={isVerifying}
+                      className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {isVerifying ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Checking...
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-4 h-4" />
+                          Verify
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
         </motion.div>
       </div>
     )
@@ -868,9 +887,51 @@ export default function DelegatePortalPage() {
 
   // Multiple Events Selection View
   if (registrations.length > 1 && !selectedRegistration) {
+    // Compute event temporal status for each registration
+    const getEventStatus = (reg: Registration) => {
+      if (!reg.event?.start_date) return { label: "TBA", color: "gray" as const }
+      const now = new Date()
+      const start = new Date(reg.event.start_date)
+      const end = reg.event.end_date ? new Date(reg.event.end_date) : start
+      const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+      const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+      if (today >= startDay && today <= endDay) return { label: "Today", color: "amber" as const }
+      if (endDay < today) return { label: "Completed", color: "slate" as const }
+      const daysUntil = Math.ceil((startDay.getTime() - today.getTime()) / 86400000)
+      if (daysUntil <= 7) return { label: `In ${daysUntil}d`, color: "emerald" as const }
+      return { label: "Upcoming", color: "teal" as const }
+    }
+
+    const statusStyles = {
+      amber:   { badge: "bg-amber-100 text-amber-700", border: "border-l-amber-500" },
+      emerald: { badge: "bg-emerald-100 text-emerald-700", border: "border-l-emerald-500" },
+      teal:    { badge: "bg-teal-50 text-teal-700", border: "border-l-teal-400" },
+      slate:   { badge: "bg-gray-100 text-gray-500", border: "border-l-gray-300" },
+      gray:    { badge: "bg-gray-100 text-gray-500", border: "border-l-gray-300" },
+    }
+
+    // Sort: today first, then by proximity (nearest upcoming), then past
+    const sortedRegistrations = [...registrations].sort((a, b) => {
+      const sa = getEventStatus(a)
+      const sb = getEventStatus(b)
+      const order = { amber: 0, emerald: 1, teal: 2, slate: 3, gray: 4 }
+      if (order[sa.color] !== order[sb.color]) return order[sa.color] - order[sb.color]
+      const da = a.event?.start_date ? new Date(a.event.start_date).getTime() : Infinity
+      const db = b.event?.start_date ? new Date(b.event.start_date).getTime() : Infinity
+      return da - db
+    })
+
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4 py-8 relative overflow-hidden">
-        <div className="absolute top-10 -right-20 w-60 h-60 bg-purple-500/15 rounded-full blur-3xl animate-pulse-slow pointer-events-none" />
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-4 py-8 relative overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.03]"
+          style={{
+            backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)",
+            backgroundSize: "24px 24px",
+          }}
+        />
         <motion.div
           initial="hidden"
           animate="show"
@@ -885,87 +946,93 @@ export default function DelegatePortalPage() {
               setRegistrations([])
               setSearchQuery("")
             }}
-            className="text-white/70 hover:text-white flex items-center gap-2 text-sm mb-4 transition-colors"
+            className="text-white/50 hover:text-white flex items-center gap-2 text-sm mb-4 transition-colors"
           >
-            <ArrowRight className="w-4 h-4 rotate-180" />
-            Search again
+            <ArrowLeft className="w-4 h-4" />
+            Back
           </motion.button>
 
           {/* Header */}
-          <motion.div variants={itemVariants} className="text-center mb-6">
-            <div className="w-16 h-16 bg-white/10 backdrop-blur-lg rounded-2xl flex items-center justify-center mx-auto mb-4 ring-1 ring-white/20">
-              <Calendar className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">
-              Welcome, {registrations[0].attendee_name}!
+          <motion.div variants={itemVariants} className="mb-6">
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">
+              Welcome, {registrations[0].attendee_name.split(" ")[0]}
             </h1>
-            <p className="text-white/70">You have {registrations.length} event registrations</p>
+            <p className="text-white/50 text-sm">{registrations.length} event registrations</p>
           </motion.div>
 
-          {/* Event List */}
+          {/* Event List — sorted with status indicators */}
           <div className="space-y-3">
-            {registrations.map((reg, index) => (
-              <motion.button
-                key={reg.id}
-                variants={itemVariants}
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => { haptic("light"); setSelectedRegistration(reg) }}
-                className="w-full bg-white rounded-xl p-4 text-left shadow-lg hover:shadow-xl transition-shadow group"
-              >
-                <div className="flex items-center gap-4">
-                  {reg.event?.logo_url ? (
-                    <img
-                      src={reg.event.logo_url}
-                      alt={reg.event.name}
-                      className="w-14 h-14 rounded-lg object-contain bg-gray-100"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl">
-                      {(reg.event?.short_name || reg.event?.name || "E")[0]}
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                      {reg.event?.short_name || reg.event?.name}
-                    </h3>
-                    <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {reg.event?.start_date ? formatDate(reg.event.start_date) : "TBA"}
-                      </span>
-                      {reg.event?.city && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {reg.event.city}
+            {sortedRegistrations.map((reg) => {
+              const status = getEventStatus(reg)
+              const styles = statusStyles[status.color]
+              return (
+                <motion.button
+                  key={reg.id}
+                  variants={itemVariants}
+                  whileHover={{ scale: 1.01, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => { haptic("light"); setSelectedRegistration(reg) }}
+                  className={`w-full bg-white rounded-xl p-4 text-left shadow-lg hover:shadow-xl transition-shadow group border-l-4 ${styles.border}`}
+                >
+                  <div className="flex items-center gap-3.5">
+                    {reg.event?.logo_url ? (
+                      <img
+                        src={reg.event.logo_url}
+                        alt={reg.event.name}
+                        className="w-12 h-12 rounded-lg object-contain bg-gray-50"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-lg">
+                        {(reg.event?.short_name || reg.event?.name || "E")[0]}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h3 className="font-semibold text-gray-900 truncate group-hover:text-teal-700 transition-colors">
+                          {reg.event?.short_name || reg.event?.name}
+                        </h3>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold flex-shrink-0 ${styles.badge}`}>
+                          {status.label}
                         </span>
-                      )}
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {reg.event?.start_date ? formatDate(reg.event.start_date) : "TBA"}
+                        </span>
+                        {reg.event?.city && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {reg.event.city}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[0.65rem] text-gray-400 font-mono mt-0.5">{reg.registration_number}</p>
                     </div>
-                    <p className="text-xs text-gray-400 font-mono mt-1">{reg.registration_number}</p>
+                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-teal-600 transition-colors flex-shrink-0" />
                   </div>
-                  <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
-                </div>
-              </motion.button>
-            ))}
+                </motion.button>
+              )
+            })}
           </div>
 
           {/* Pending Payments */}
           {pendingPayments.length > 0 && (
-            <motion.div variants={itemVariants} className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-4">
-              <div className="flex items-center gap-2 text-amber-700 font-medium mb-2">
+            <motion.div variants={itemVariants} className="bg-amber-50 border border-amber-200/80 rounded-xl p-4 mt-4">
+              <div className="flex items-center gap-2 text-amber-800 font-semibold text-sm mb-2">
                 <Clock className="w-4 h-4" />
                 {pendingPayments.length} Pending Payment{pendingPayments.length > 1 ? "s" : ""}
               </div>
-              <p className="text-xs text-amber-600 mb-3">
+              <p className="text-xs text-amber-700/80 mb-3">
                 These payments were not completed. Select a registration above to verify.
               </p>
               {pendingPayments.map((p) => (
                 <div key={p.id} className="text-xs bg-white p-3 rounded-lg border border-amber-100 mb-2 last:mb-0">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">{p.events?.name || "Event"}</span>
-                    <span className="font-medium">Rs.{p.amount.toLocaleString("en-IN")}</span>
+                    <span className="text-gray-700 font-medium">{p.events?.name || "Event"}</span>
+                    <span className="font-semibold text-gray-900">Rs.{p.amount.toLocaleString("en-IN")}</span>
                   </div>
-                  <div className="flex justify-between mt-1">
+                  <div className="flex justify-between mt-1.5">
                     <span className="text-gray-500 font-mono">{p.payment_number}</span>
                     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-medium ${
                       p.status === "failed" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
@@ -1015,12 +1082,21 @@ export default function DelegatePortalPage() {
     }, 400)
   }
 
+  // Ref for scrolling to cert button from gating hint
+  const certActionRef = useRef<HTMLDivElement>(null)
+  const feedbackSectionRef = useRef<HTMLDivElement>(null)
+
   return (
     <PullToRefresh onRefresh={refreshRegistration}>
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4 py-8 relative overflow-hidden">
-      {/* Ambient background */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse-slow pointer-events-none" />
-      <div className="absolute bottom-20 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl animate-pulse-slower pointer-events-none" />
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-4 py-8 relative overflow-hidden">
+      {/* Subtle dot grid */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.03]"
+        style={{
+          backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      />
 
       <motion.div
         initial="hidden"
@@ -1041,17 +1117,17 @@ export default function DelegatePortalPage() {
               setSearchQuery("")
             }
           }}
-          className="text-white/70 hover:text-white flex items-center gap-2 text-sm transition-colors"
+          className="text-white/50 hover:text-white flex items-center gap-2 text-sm transition-colors"
         >
-          <ArrowRight className="w-4 h-4 rotate-180" />
-          {registrations.length > 1 ? "Back to my events" : "Search another registration"}
+          <ArrowLeft className="w-4 h-4" />
+          {registrations.length > 1 ? "My events" : "Back"}
         </button>
         <button
           onClick={() => { haptic("light"); refreshRegistration() }}
           disabled={refreshing}
-          className="text-white/70 hover:text-white flex items-center gap-2 text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 backdrop-blur-sm"
+          className="text-white/50 hover:text-white flex items-center gap-2 text-sm bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 border border-white/10"
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
           {refreshing ? "Refreshing..." : "Refresh"}
         </button>
         </motion.div>
@@ -1060,28 +1136,28 @@ export default function DelegatePortalPage() {
         {countdown && (
           <motion.div
             variants={itemVariants}
-            className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 backdrop-blur-sm rounded-2xl p-4 border border-white/10"
+            className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10"
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-white/80">
-                <Timer className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-white/70">
+                <Timer className="w-4 h-4 text-teal-400" />
                 <span className="text-sm font-medium">Event starts in</span>
               </div>
             </div>
-            <div className="flex items-center justify-center gap-4 mt-3">
+            <div className="flex items-center justify-center gap-6 mt-3">
               <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums">{countdown.days}</div>
-                <div className="text-xs text-white/60 uppercase tracking-wider">days</div>
+                <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums leading-none">{countdown.days}</div>
+                <div className="text-[0.6rem] text-white/40 uppercase tracking-widest mt-1">days</div>
               </div>
-              <div className="text-lg sm:text-xl text-white/40 font-light">:</div>
+              <div className="text-xl text-white/20 font-light leading-none pb-3">:</div>
               <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums">{countdown.hours}</div>
-                <div className="text-xs text-white/60 uppercase tracking-wider">hours</div>
+                <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums leading-none">{countdown.hours}</div>
+                <div className="text-[0.6rem] text-white/40 uppercase tracking-widest mt-1">hours</div>
               </div>
-              <div className="text-lg sm:text-xl text-white/40 font-light">:</div>
+              <div className="text-xl text-white/20 font-light leading-none pb-3">:</div>
               <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums">{countdown.minutes}</div>
-                <div className="text-xs text-white/60 uppercase tracking-wider">mins</div>
+                <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums leading-none">{countdown.minutes}</div>
+                <div className="text-[0.6rem] text-white/40 uppercase tracking-widest mt-1">mins</div>
               </div>
             </div>
           </motion.div>
@@ -1092,19 +1168,25 @@ export default function DelegatePortalPage() {
           <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-xl overflow-hidden">
             {event.banner_url ? (
               <div
-                className="h-20 sm:h-28 bg-cover bg-center"
+                className="h-28 sm:h-36 bg-cover bg-center"
                 style={{ backgroundImage: `url(${event.banner_url})` }}
               />
             ) : (
-              <div className="h-20 sm:h-28 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGMzLjg2NyAwIDcuNDQ3LTEuMjIgMTAuMzgyLTMuMjk0IiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiIHN0cm9rZS13aWR0aD0iMiIvPjwvZz48L3N2Zz4=')] opacity-30" />
-                <h2 className="text-white/10 text-4xl font-black tracking-widest select-none relative">
+              <div className="h-28 sm:h-36 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden">
+                <div
+                  className="absolute inset-0 opacity-[0.04]"
+                  style={{
+                    backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)",
+                    backgroundSize: "16px 16px",
+                  }}
+                />
+                <h2 className="text-white/[0.06] text-4xl font-black tracking-widest select-none relative">
                   {(event.short_name || event.name).toUpperCase()}
                 </h2>
               </div>
             )}
             <div className="px-5 py-4">
-              <div className="flex items-center gap-4 -mt-12 relative z-20">
+              <div className="flex items-center gap-4 -mt-10 relative z-20">
                 {event.logo_url ? (
                   <img
                     src={event.logo_url}
@@ -1112,7 +1194,7 @@ export default function DelegatePortalPage() {
                     className="w-14 h-14 rounded-xl bg-white shadow-lg object-contain border-2 border-white flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-xl bg-indigo-600 shadow-lg flex items-center justify-center text-white text-xl font-bold border-2 border-white flex-shrink-0">
+                  <div className="w-14 h-14 rounded-xl bg-slate-700 shadow-lg flex items-center justify-center text-white text-xl font-bold border-2 border-white flex-shrink-0">
                     {(event.short_name || event.name)[0]}
                   </div>
                 )}
@@ -1133,6 +1215,70 @@ export default function DelegatePortalPage() {
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {/* Quick Actions Bar — most-used downloads at the top */}
+        {registration.status === "confirmed" && (
+          <motion.div variants={itemVariants} className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {portalSettings.show_badge && (
+              <button
+                onClick={handleDownloadBadge}
+                disabled={downloadingBadge}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl shadow-md text-sm font-medium text-gray-700 hover:shadow-lg transition-all disabled:opacity-50 flex-shrink-0"
+              >
+                {downloadingBadge ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4 text-teal-600" />}
+                Badge
+              </button>
+            )}
+            {portalSettings.show_certificate && (
+              <button
+                onClick={() => {
+                  if (certGatedByFeedback || !registration.checked_in) {
+                    // Scroll to feedback section
+                    feedbackSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+                    toast.error(!registration.checked_in ? "Check in at the venue first" : "Please submit feedback first")
+                  } else if (registration.certificate_generated_at) {
+                    handleDownloadCertificate()
+                  } else {
+                    toast("Certificate not yet available", { icon: "⏳" })
+                  }
+                }}
+                disabled={downloadingCert}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-md text-sm font-medium transition-all disabled:opacity-50 flex-shrink-0 ${
+                  !registration.checked_in || certGatedByFeedback || !registration.certificate_generated_at
+                    ? "bg-gray-50 text-gray-400 shadow-sm"
+                    : "bg-white text-gray-700 hover:shadow-lg"
+                }`}
+              >
+                {downloadingCert ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                  !registration.checked_in || certGatedByFeedback
+                    ? <Lock className="w-4 h-4 text-amber-500" />
+                    : <Award className="w-4 h-4 text-amber-600" />
+                )}
+                Certificate
+              </button>
+            )}
+            {portalSettings.show_receipt && (
+              <button
+                onClick={handleDownloadReceipt}
+                disabled={downloadingReceipt}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl shadow-md text-sm font-medium text-gray-700 hover:shadow-lg transition-all disabled:opacity-50 flex-shrink-0"
+              >
+                {downloadingReceipt ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4 text-emerald-600" />}
+                Receipt
+              </button>
+            )}
+            {portalSettings.show_invitation && (
+              <button
+                onClick={handleDownloadInvitation}
+                disabled={downloadingInvitation}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl shadow-md text-sm font-medium text-gray-700 hover:shadow-lg transition-all disabled:opacity-50 flex-shrink-0"
+              >
+                {downloadingInvitation ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScrollText className="w-4 h-4 text-blue-600" />}
+                Invitation
+              </button>
+            )}
           </motion.div>
         )}
 
@@ -1374,16 +1520,24 @@ export default function DelegatePortalPage() {
         />
 
         {/* Feedback Forms Section */}
-        <EventFeedbackForms
-          eventId={event?.id}
-          email={registration.attendee_email}
-          attendeeName={registration.attendee_name}
-          checkedIn={registration.checked_in}
-          onCertGateChange={setCertGatedByFeedback}
-        />
+        <div ref={feedbackSectionRef}>
+          <EventFeedbackForms
+            eventId={event?.id}
+            email={registration.attendee_email}
+            attendeeName={registration.attendee_name}
+            checkedIn={registration.checked_in}
+            onCertGateChange={setCertGatedByFeedback}
+            onSubmitComplete={() => {
+              // After feedback submit, scroll to cert button area
+              setTimeout(() => {
+                certActionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+              }, 600)
+            }}
+          />
+        </div>
 
         {/* Download Buttons */}
-        <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <motion.div ref={certActionRef} variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {/* Invitation Download */}
           {portalSettings.show_invitation && (
           <button
@@ -1429,16 +1583,40 @@ export default function DelegatePortalPage() {
           {/* Certificate Download */}
           {portalSettings.show_certificate && (
           <button
-            onClick={handleDownloadCertificate}
-            disabled={downloadingCert || !registration.certificate_generated_at || certGatedByFeedback || !registration.checked_in}
-            className="bg-white rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group relative"
+            onClick={() => {
+              if (!registration.checked_in) {
+                toast.error("You need to check in at the venue first")
+                return
+              }
+              if (certGatedByFeedback) {
+                // Scroll to feedback section with visual hint
+                feedbackSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+                toast("Please complete the feedback form to unlock your certificate", { icon: "📋" })
+                return
+              }
+              if (!registration.certificate_generated_at) {
+                toast("Certificate is not yet available", { icon: "⏳" })
+                return
+              }
+              handleDownloadCertificate()
+            }}
+            disabled={downloadingCert}
+            className={`rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 group relative ${
+              !registration.checked_in || certGatedByFeedback
+                ? "bg-amber-50/80 cursor-pointer"
+                : "bg-white disabled:cursor-not-allowed"
+            }`}
           >
             {(!registration.checked_in || certGatedByFeedback) && (
               <div className="absolute top-2 right-2">
                 <Lock className="w-3.5 h-3.5 text-amber-500" />
               </div>
             )}
-            <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:bg-amber-200 transition-colors">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-2 transition-colors ${
+              !registration.checked_in || certGatedByFeedback
+                ? "bg-amber-100"
+                : "bg-amber-100 group-hover:bg-amber-200"
+            }`}>
               {downloadingCert ? (
                 <RefreshCw className="w-6 h-6 text-amber-600 animate-spin" />
               ) : (
@@ -1447,9 +1625,9 @@ export default function DelegatePortalPage() {
             </div>
             <h3 className="font-semibold text-gray-900 text-sm mb-1">Certificate</h3>
             {!registration.checked_in ? (
-              <p className="text-xs text-amber-600">Check in first</p>
+              <p className="text-xs text-amber-600">Tap to learn more</p>
             ) : certGatedByFeedback ? (
-              <p className="text-xs text-amber-600">Submit feedback first</p>
+              <p className="text-xs text-amber-600">Tap to unlock ↑</p>
             ) : registration.certificate_generated_at ? (
               <p className="text-xs text-green-600">Ready</p>
             ) : (
@@ -2103,12 +2281,14 @@ function EventFeedbackForms({
   attendeeName,
   checkedIn,
   onCertGateChange,
+  onSubmitComplete,
 }: {
   eventId?: string
   email: string
   attendeeName: string
   checkedIn: boolean
   onCertGateChange: (gated: boolean) => void
+  onSubmitComplete?: () => void
 }) {
   const [forms, setForms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -2201,6 +2381,8 @@ function EventFeedbackForms({
       setFormDetail(null)
       // Refresh forms list to update submission status
       await fetchForms()
+      // Notify parent to scroll to cert if this was a gating form
+      onSubmitComplete?.()
     } catch (error: any) {
       toast.error(error.message || "Failed to submit form")
     } finally {
