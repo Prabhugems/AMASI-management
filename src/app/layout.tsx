@@ -6,6 +6,7 @@ import { ThemeScript } from "@/components/providers/theme-script"
 import { QueryProvider } from "@/components/providers/query-provider"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { ConfirmProvider } from "@/components/confirm-dialog"
+import { PWARegister } from "@/components/pwa-register"
 import { Toaster } from "sonner"
 import { COMPANY_CONFIG } from "@/lib/config"
 
@@ -40,12 +41,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${inter.variable}`}>
       <head>
         <ThemeScript />
-        <link rel="manifest" href="/manifest.json" />
+        <link rel="manifest" href="/app-manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content={COMPANY_CONFIG.name} />
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-        <meta name="theme-color" content="#7c3aed" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+        <meta name="theme-color" content="#2563eb" />
       </head>
       <body className="font-poppins antialiased overflow-x-hidden">
         <QueryProvider>
@@ -61,6 +62,7 @@ export default function RootLayout({
             </ConfirmProvider>
             <Toaster position="top-right" richColors closeButton />
           </ThemeProvider>
+          <PWARegister />
         </QueryProvider>
       </body>
     </html>
