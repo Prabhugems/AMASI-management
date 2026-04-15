@@ -135,6 +135,32 @@
       opacity: 0.85;
     }
 
+    .nav-btn-outline {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--cyan);
+      text-decoration: none;
+      background: transparent;
+      padding: 0.42rem 1.1rem;
+      border-radius: 6px;
+      letter-spacing: 0.02em;
+      border: 1.5px solid var(--cyan);
+      transition: background 0.15s, color 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .nav-btn-outline:hover {
+      background: var(--cyan);
+      color: #05050a;
+    }
+
+    .nav-btn-outline svg {
+      width: 14px;
+      height: 14px;
+    }
+
     .nav-mob {
       display: none;
       flex-direction: column;
@@ -1308,7 +1334,8 @@
     @media (max-width: 700px) {
 
       .nav-center,
-      .nav-btn {
+      .nav-btn,
+      .nav-btn-outline {
         display: none;
       }
 
@@ -2664,6 +2691,10 @@
       <li><a href="#venue">Contact Us</a></li>
     </ul>
     <div class="nav-right">
+      <a href="technosurg-brochure.pdf" download class="nav-btn-outline">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3v10M6 9l4 4 4-4M4 15h12"/></svg>
+        Brochure
+      </a>
       <a href="https://technosurg.gemhospitals.com/register/technosurg2026-mmvs3874" target="_blank"
         class="nav-btn">Register →</a>
       <button class="nav-mob" id="mobBtn" aria-label="Menu">
@@ -2678,6 +2709,9 @@
     <a href="#schedule" class="mob-link">Schedule</a>
     <!-- <a href="#">Faculty</a> -->
     <a href="#venue">Contact Us</a>
+    <a href="technosurg-brochure.pdf" download
+      class="mob-register" style="background:transparent;border:1.5px solid var(--cyan);color:var(--cyan);margin-top:0.75rem;">
+      ↓ Download Brochure</a>
     <a href="https://technosurg.gemhospitals.com/register/technosurg2026-mmvs3874" target="_blank"
       class="mob-register">Register →</a>
   </div>
@@ -2697,11 +2731,17 @@
         <span class="c" style="color:#39FF14;">Fluorescence</span><br>
         in Surgery.
       </h1>
-      <div class="hero-actions">
+      <div class="hero-actions" style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
         <a href="https://technosurg.gemhospitals.com/register/technosurg2026-mmvs3874" target="_blank" class="btn-pill">
           Register Now
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M4 10h12M10 4l6 6-6 6" />
+          </svg>
+        </a>
+        <a href="technosurg-brochure.pdf" download class="btn-pill" style="background:transparent;color:#fff;border:2px solid #fff;">
+          Download Brochure
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M10 3v10M6 9l4 4 4-4M4 15h12"/>
           </svg>
         </a>
       </div>
