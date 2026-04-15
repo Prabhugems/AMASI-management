@@ -1,3 +1,5 @@
+"use client"
+
 import { WifiOff } from "lucide-react"
 import { COMPANY_CONFIG } from "@/lib/config"
 
