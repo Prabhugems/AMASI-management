@@ -251,7 +251,7 @@ export function InviteDialog({ open, onOpenChange, onComplete }: InviteDialogPro
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || "Failed to send invitation")
+        throw new Error(err.detail || err.error || "Failed to send invitation")
       }
 
       const data = await res.json()

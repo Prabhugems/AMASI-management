@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       console.error('Failed to create team invitation:', insertError)
       return NextResponse.json(
-        { error: 'Failed to create invitation' },
+        { error: 'Failed to create invitation', detail: insertError.message, code: insertError.code },
         { status: 500 }
       )
     }
