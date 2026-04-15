@@ -80,7 +80,7 @@ function AcceptInviteContent() {
 
         // Redirect to team-login after 2 seconds
         setTimeout(() => {
-          router.push("/team-login")
+          router.push("/login")
         }, 2000)
       } else if (res.status === 410) {
         setState({
@@ -256,7 +256,7 @@ function AcceptInviteContent() {
                 </p>
                 {state.type === "already_accepted" && (
                   <Button
-                    onClick={() => router.push("/team-login")}
+                    onClick={() => router.push("/login")}
                     variant="outline"
                     className="w-full"
                   >
