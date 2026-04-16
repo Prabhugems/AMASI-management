@@ -40,6 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${inter.variable}`}>
       <head>
+        <meta name="google-site-verification" content="n0cN-HdYdZjJdPG8wOxiB07MlJ17toA-T26o-qGiSX4" />
         <ThemeScript />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
