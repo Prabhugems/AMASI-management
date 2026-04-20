@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { syncAddressesFromFillout, syncAddressesFromAirtable } from "@/lib/services/fillout-sync"
 import { syncRegistrationToAirtable } from "@/lib/services/airtable-sync"
+import { logCronRun } from "@/lib/services/cron-logger"
 import { NextResponse } from "next/server"
 
 const AMASI_API = "https://application.amasi.org/api/member_detail_data"
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
     }
   }
 
+  const run = await logCronRun("exam-daily-sync")
   try {
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -137,6 +139,7 @@ export async function GET(request: Request) {
       }
     }
 
+    await run.ok({ syncedCount: results.addressesSynced, metadata: results })
     return NextResponse.json({
       message: "Daily exam sync completed",
       results,
@@ -144,6 +147,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error("Cron exam-daily-sync error:", error)
+    await run.err(error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

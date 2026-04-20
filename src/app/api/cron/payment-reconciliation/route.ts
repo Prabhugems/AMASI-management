@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { getNextRegistrationNumber } from "@/lib/services/registration-number"
 import { sendPaymentAlert } from "@/lib/services/payment-alerts"
+import { logCronRun } from "@/lib/services/cron-logger"
 import { NextRequest, NextResponse } from "next/server"
 
 // Razorpay API base
@@ -105,6 +106,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const run = await logCronRun("payment-reconciliation")
   const summary: ReconciliationSummary = {
     razorpay_payments_fetched: 0,
     missing_in_db: 0,
@@ -603,6 +605,18 @@ export async function GET(request: NextRequest) {
 
     console.log("[RECON] Reconciliation completed:", JSON.stringify(summary, null, 2))
 
+    await run.ok({
+      syncedCount: summary.auto_created + summary.pending_updated,
+      metadata: {
+        razorpay_payments_fetched: summary.razorpay_payments_fetched,
+        already_synced: summary.already_synced,
+        missing_in_db: summary.missing_in_db,
+        auto_created: summary.auto_created,
+        orphans_logged: summary.orphans_logged,
+        pending_updated: summary.pending_updated,
+        errors_count: summary.errors.length,
+      },
+    })
     return NextResponse.json({
       message: "Payment reconciliation completed",
       summary: {
@@ -620,6 +634,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("[RECON] Payment reconciliation error:", error)
+    await run.err(error)
     return NextResponse.json(
       { error: "Payment reconciliation failed", message: error.message },
       { status: 500 },

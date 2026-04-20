@@ -30,6 +30,7 @@ import { StatCard } from "@/components/dashboard/stat-card"
 import { RecentFacultyTable } from "@/components/dashboard/recent-faculty-table"
 import { HealthWidget } from "@/components/dashboard/health-widget"
 import { TeamWidget } from "@/components/dashboard/team-widget"
+import { CronStatusWidget } from "@/components/dashboard/cron-status-widget"
 
 function StatCardSkeleton() {
   return (
@@ -241,6 +242,9 @@ export default function Home() {
         <div className="space-y-6">
           {/* System Health Widget */}
           <HealthWidget />
+
+          {/* Cron Jobs Widget */}
+          <CronStatusWidget />
 
           {/* Team Widget */}
           <TeamWidget />

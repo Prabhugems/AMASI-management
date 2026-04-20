@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { logCronRun } from "@/lib/services/cron-logger"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const run = await logCronRun("reviewer-reminders")
   const supabase: SupabaseClient = await createAdminClient()
   const now = new Date()
   const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
@@ -74,10 +76,12 @@ export async function GET(request: Request) {
 
     if (assignmentsError) {
       console.error("Cron reviewer-reminders: failed to fetch assignments:", assignmentsError)
+      await run.err(assignmentsError)
       return NextResponse.json({ error: assignmentsError.message }, { status: 500 })
     }
 
     if (!staleAssignments || staleAssignments.length === 0) {
+      await run.ok({ syncedCount: 0 })
       return NextResponse.json({
         message: "No stale assignments found",
         reminders_sent: 0
@@ -92,6 +96,7 @@ export async function GET(request: Request) {
     })
 
     if (assignmentsNeedingReminder.length === 0) {
+      await run.ok({ syncedCount: 0 })
       return NextResponse.json({
         message: "No assignments need reminders (all reminded recently)",
         reminders_sent: 0
@@ -184,6 +189,13 @@ export async function GET(request: Request) {
       console.log(`Cron reviewer-reminders: marked ${overdueIds.length} assignment(s) as overdue`)
     }
 
+    await run.ok({
+      syncedCount: remindersSent,
+      metadata: {
+        total_stale_assignments: staleAssignments.length,
+        overdue_marked: overdueAssignments?.length || 0,
+      },
+    })
     return NextResponse.json({
       message: `Sent ${remindersSent} reminder(s) to reviewers`,
       reminders_sent: remindersSent,
@@ -193,6 +205,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error("Cron reviewer-reminders: unexpected error:", error)
+    await run.err(error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

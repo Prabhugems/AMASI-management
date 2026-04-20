@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/email"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { logCronRun } from "@/lib/services/cron-logger"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const run = await logCronRun("event-reminders")
   const supabase: SupabaseClient = await createAdminClient()
   const now = new Date()
   const todayStr = now.toISOString().split("T")[0]
@@ -174,6 +176,10 @@ export async function GET(request: Request) {
       totalSkipped += skipped
     }
 
+    await run.ok({
+      syncedCount: totalSent,
+      metadata: { totalSent, totalSkipped, totalFailed, events_processed: events.length },
+    })
     return NextResponse.json({
       message: `Event reminders processed: ${totalSent} sent, ${totalSkipped} skipped, ${totalFailed} failed`,
       reminders_sent: totalSent,
@@ -184,6 +190,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error("Cron event-reminders: unexpected error:", error)
+    await run.err(error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

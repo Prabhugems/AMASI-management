@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { logCronRun } from "@/lib/services/cron-logger"
 
 export async function GET(request: Request) {
   // Verify cron secret to prevent unauthorized access
@@ -8,6 +9,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const run = await logCronRun("auto-complete-events")
+  try {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
   const today = new Date().toISOString().split("T")[0]
@@ -22,10 +25,12 @@ export async function GET(request: Request) {
 
   if (fetchError) {
     console.error("Failed to fetch past events:", fetchError)
+    await run.err(fetchError)
     return NextResponse.json({ error: fetchError.message }, { status: 500 })
   }
 
   if (!pastEvents || pastEvents.length === 0) {
+    await run.ok({ syncedCount: 0 })
     return NextResponse.json({ message: "No events to auto-complete", updated: 0 })
   }
 
@@ -38,6 +43,7 @@ export async function GET(request: Request) {
 
   if (updateError) {
     console.error("Failed to auto-complete events:", updateError)
+    await run.err(updateError)
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
@@ -109,10 +115,19 @@ export async function GET(request: Request) {
     }
   }
 
+  await run.ok({
+    syncedCount: eventIds.length,
+    metadata: { events: names, facultySync: facultySyncResults },
+  })
   return NextResponse.json({
     message: `Auto-completed ${eventIds.length} events`,
     updated: eventIds.length,
     events: names,
     facultySync: facultySyncResults,
   })
+  } catch (error) {
+    console.error("auto-complete-events error:", error)
+    await run.err(error)
+    return NextResponse.json({ error: "Internal error" }, { status: 500 })
+  }
 }

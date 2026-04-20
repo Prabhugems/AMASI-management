@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server"
+import { logCronRun } from "@/lib/services/cron-logger"
 import { NextResponse } from "next/server"
 
 /**
@@ -16,6 +17,7 @@ export async function GET(request: Request) {
     }
   }
 
+  const run = await logCronRun("team-review-check")
   try {
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,10 +33,12 @@ export async function GET(request: Request) {
 
     if (fetchError) {
       console.error("[team-review-check] Failed to query stale members:", fetchError)
+      await run.err(fetchError)
       return NextResponse.json({ error: "Query failed" }, { status: 500 })
     }
 
     if (!staleMembers || staleMembers.length === 0) {
+      await run.ok({ syncedCount: 0 })
       return NextResponse.json({ flagged: 0, message: "No members need review" })
     }
 
@@ -47,13 +51,16 @@ export async function GET(request: Request) {
 
     if (updateError) {
       console.error("[team-review-check] Failed to flag members:", updateError)
+      await run.err(updateError)
       return NextResponse.json({ error: "Update failed" }, { status: 500 })
     }
 
     console.log(`[team-review-check] Flagged ${ids.length} members for review`)
+    await run.ok({ syncedCount: ids.length })
     return NextResponse.json({ flagged: ids.length, ids })
   } catch (error) {
     console.error("[team-review-check] Error:", error)
+    await run.err(error)
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }
