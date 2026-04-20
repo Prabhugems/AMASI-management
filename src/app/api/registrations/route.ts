@@ -8,6 +8,7 @@ import { DEFAULTS } from "@/lib/config"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 import { isQikchatEnabled, sendQikchatText } from "@/lib/qikchat"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
+import { internalSecretHeaders } from "@/lib/env"
 
 // GET - List registrations (with optional filters)
 export async function GET(request: NextRequest) {
@@ -497,10 +498,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
     const _emailPromise = fetch(`${baseUrl}/api/email/registration-confirmation`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-secret": process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "",
-      },
+      headers: internalSecretHeaders(),
       body: JSON.stringify({
         registration_id: registration.id,
         registration_number: registrationNumber,
@@ -600,10 +598,7 @@ export async function POST(request: NextRequest) {
 
     // Trigger auto-actions (badge, certificate) for confirmed registrations
     if (initialStatus === "confirmed" && event_id) {
-      const internalHeaders = {
-        "Content-Type": "application/json",
-        "x-internal-secret": process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "",
-      }
+      const internalHeaders = internalSecretHeaders()
 
       // Check event settings for auto-actions
       const { data: eventSettings } = await (supabase as any)

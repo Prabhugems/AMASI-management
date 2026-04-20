@@ -98,6 +98,18 @@ export function getOptionalEnv(name: string, defaultValue: string = ''): string 
 }
 
 /**
+ * Build the headers used to authenticate internal-to-internal API calls.
+ * Centralises the SUPABASE_SERVICE_ROLE_KEY trim so any future env-hygiene
+ * fix lands in one place. Use as: `headers: internalSecretHeaders()`.
+ */
+export function internalSecretHeaders(): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "x-internal-secret": getOptionalEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  }
+}
+
+/**
  * Check if a feature is enabled based on its required env vars being set
  */
 export function isFeatureEnabled(feature: 'razorpay' | 'email' | 'gallabox' | 'qikchat' | 'ai'): boolean {

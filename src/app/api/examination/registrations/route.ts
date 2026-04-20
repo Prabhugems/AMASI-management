@@ -1,22 +1,20 @@
 import { createAdminClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAccess, getEventIdFromRegistration } from "@/lib/auth/api-auth"
 import { syncRegistrationToAirtable } from "@/lib/services/airtable-sync"
 import { NextRequest, NextResponse } from "next/server"
 
 // GET /api/examination/registrations?event_id=xxx
 export async function GET(request: NextRequest) {
   try {
-    const user = await getApiUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
 
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
+
+    const { error: accessError } = await requireEventAccess(eventId)
+    if (accessError) return accessError
 
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,8 +50,13 @@ export async function GET(request: NextRequest) {
       .in("status", ["confirmed", "attended", "completed", "checked_in"])
       .order("attendee_name")
 
+    // Restrict to exam ticket types BUT always keep candidates who already
+    // have an exam_result on record — their ticket may have been entered as
+    // a non-exam SKU (e.g. "Skill Course Only") even though they took the
+    // exam, and silently hiding them costs us a convocation certificate.
     if (filterTicketIds && filterTicketIds.length > 0) {
-      query = query.in("ticket_type_id", filterTicketIds)
+      const ticketList = filterTicketIds.map((id) => `"${id}"`).join(",")
+      query = query.or(`ticket_type_id.in.(${ticketList}),exam_result.not.is.null`)
     }
 
     const { data, error } = await query
@@ -86,17 +89,21 @@ export async function GET(request: NextRequest) {
 // PATCH /api/examination/registrations - Update exam marks/result
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await getApiUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const body = await request.json()
     const { id, ...rawUpdates } = body
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
     }
+
+    // Resolve event_id from the registration so the caller can't bypass
+    // event-scoped access by editing rows in another event.
+    const eventId = await getEventIdFromRegistration(id)
+    if (!eventId) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+    const { error: accessError } = await requireEventAccess(eventId)
+    if (accessError) return accessError
 
     // Whitelist allowed fields to prevent overwriting arbitrary columns
     const ALLOWED_FIELDS = ["exam_marks", "exam_result", "exam_total_marks", "convocation_number", "convocation_address"]

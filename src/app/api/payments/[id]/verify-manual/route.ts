@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { fetchPayment, getRazorpayForEvent, RazorpayCredentials } from "@/lib/services/razorpay"
+import { internalSecretHeaders } from "@/lib/env"
 import { requireAdmin } from "@/lib/auth/api-auth"
 
 // POST /api/payments/[id]/verify-manual - Manually verify a payment with Razorpay
@@ -199,10 +200,7 @@ export async function POST(
 
         await fetch(`${baseUrl}/api/email/registration-confirmation`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-internal-secret": process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "",
-          },
+          headers: internalSecretHeaders(),
           body: JSON.stringify({
             registration_id: newReg.id,
             registration_number: registrationNumber,

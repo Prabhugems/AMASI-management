@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 
 const AMASI_API = "https://application.amasi.org/api/member_detail_data"
@@ -29,11 +29,11 @@ async function lookupMember(emailOrPhone: string) {
 // POST /api/examination/check-withheld - Check membership for withheld candidates only
 export async function POST(request: NextRequest) {
   try {
-    const user = await getApiUser()
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
     const { event_id } = await request.json()
     if (!event_id) return NextResponse.json({ error: "event_id is required" }, { status: 400 })
+
+    const { error: accessError } = await requireEventAccess(event_id)
+    if (accessError) return accessError
 
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

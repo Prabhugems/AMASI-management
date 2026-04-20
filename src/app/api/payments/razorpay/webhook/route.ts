@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyWebhookSignature } from "@/lib/services/razorpay"
 import { createAdminClient } from "@/lib/supabase/server"
+import { internalSecretHeaders } from "@/lib/env"
 import { getNextRegistrationNumber } from "@/lib/services/registration-number"
 import { sendPaymentAlert } from "@/lib/services/payment-alerts"
 
@@ -867,10 +868,7 @@ async function triggerAutoActions(supabase: any, registrationId: string, eventId
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000")
-    const internalHeaders = {
-      "Content-Type": "application/json",
-      "x-internal-secret": process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "",
-    }
+    const internalHeaders = internalSecretHeaders()
 
     // Auto-send receipt
     if (eventSettings?.auto_send_receipt !== false) {

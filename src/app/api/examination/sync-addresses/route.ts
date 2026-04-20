@@ -1,19 +1,17 @@
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 import { syncAddressesFromFillout, syncAddressesFromAirtable } from "@/lib/services/fillout-sync"
 import { NextRequest, NextResponse } from "next/server"
 
 // POST /api/examination/sync-addresses - Sync addresses from Fillout + Airtable
 export async function POST(request: NextRequest) {
   try {
-    const user = await getApiUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const { event_id } = await request.json()
     if (!event_id) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
+
+    const { error: accessError } = await requireEventAccess(event_id)
+    if (accessError) return accessError
 
     let totalSynced = 0
     let totalAlreadyHas = 0
