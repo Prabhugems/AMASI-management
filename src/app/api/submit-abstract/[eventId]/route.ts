@@ -551,16 +551,27 @@ export async function GET(
   }
 }
 
-// Helper function to generate abstract number
+// Helper function to generate abstract number. Uses MAX(existing_number)+1
+// rather than COUNT+1 so deleted abstracts don't leave a gap that would
+// cause the next insert to collide with an earlier abstract.
 async function generateAbstractNumber(supabase: ReturnType<typeof createAdminClient> extends Promise<infer T> ? T : never, eventId: string): Promise<string> {
   const year = new Date().getFullYear()
+  const prefix = `ABS-${year}-`
 
-  // Get count of existing abstracts
-  const { count } = await (supabase as any)
+  const { data: existing } = await (supabase as any)
     .from("abstracts")
-    .select("id", { count: "exact", head: true })
+    .select("abstract_number")
     .eq("event_id", eventId)
+    .ilike("abstract_number", `${prefix}%`)
 
-  const nextNumber = (count || 0) + 1
-  return `ABS-${year}-${nextNumber.toString().padStart(3, "0")}`
+  let maxNumber = 0
+  for (const row of (existing || []) as Array<{ abstract_number: string | null }>) {
+    const match = row.abstract_number?.match(/(\d+)$/)
+    if (!match) continue
+    const n = parseInt(match[1], 10)
+    if (!isNaN(n) && n > maxNumber) maxNumber = n
+  }
+
+  const nextNumber = maxNumber + 1
+  return `${prefix}${nextNumber.toString().padStart(3, "0")}`
 }

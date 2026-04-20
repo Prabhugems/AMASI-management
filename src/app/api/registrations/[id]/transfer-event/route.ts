@@ -115,22 +115,24 @@ export async function POST(
       )
     }
 
-    // Generate new registration number for the new event
-    const { data: lastReg } = await (supabase as any)
+    // Generate new registration number for the new event. Scan every existing
+    // registration number in the target event and take MAX(trailing digits)+1,
+    // so a row created out of order (or a future deletion) can't collide with
+    // an earlier registration number.
+    const eventPrefix = newEvent.short_name || newEvent.name?.substring(0, 4).toUpperCase() || "EVT"
+    const { data: existingRegs } = await (supabase as any)
       .from("registrations")
       .select("registration_number")
       .eq("event_id", new_event_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single()
 
     let nextNumber = 1
-    if (lastReg?.registration_number) {
-      const match = lastReg.registration_number.match(/(\d+)$/)
-      if (match) nextNumber = parseInt(match[1]) + 1
+    for (const row of (existingRegs || []) as Array<{ registration_number: string | null }>) {
+      const match = row.registration_number?.match(/(\d+)$/)
+      if (!match) continue
+      const n = parseInt(match[1], 10)
+      if (!isNaN(n) && n >= nextNumber) nextNumber = n + 1
     }
 
-    const eventPrefix = newEvent.short_name || newEvent.name?.substring(0, 4).toUpperCase() || "EVT"
     const newRegNumber = `${eventPrefix}-${String(nextNumber).padStart(4, "0")}`
 
     // Calculate new pricing
