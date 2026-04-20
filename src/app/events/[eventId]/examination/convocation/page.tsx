@@ -219,19 +219,36 @@ export default function ConvocationPage() {
     setAutoAssigning(true)
     try {
       const unassignedRegs = currentList.filter(r => !r.convocation_number)
+      // Compute the next available number across the WHOLE event (any tab/prefix
+      // in use) so manual assignments and out-of-order numbering can't cause
+      // 409 collisions. Start from currentStart, then skip any number already taken.
+      const usedNumbers = new Set<number>()
+      for (const r of allRegistrations || []) {
+        if (!r.convocation_number) continue
+        if (!r.convocation_number.startsWith(currentPrefix)) continue
+        const n = parseInt(r.convocation_number.slice(currentPrefix.length), 10)
+        if (!isNaN(n)) usedNumbers.add(n)
+      }
+      let next = currentStart
       for (let i = 0; i < unassignedRegs.length; i++) {
-        const num = currentStart + assigned + i
-        const convNum = `${currentPrefix}${num}`
+        while (usedNumbers.has(next)) next++
+        const convNum = `${currentPrefix}${next}`
+        usedNumbers.add(next)
         const res = await fetch("/api/examination/registrations", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: unassignedRegs[i].id, convocation_number: convNum }),
         })
-        if (!res.ok) throw new Error("Failed to assign")
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.error || `Failed to assign ${convNum}`)
+        }
+        next++
       }
       await queryClient.invalidateQueries({ queryKey: ["exam-convocation", eventId] })
     } catch (error) {
       console.error("Failed to auto-assign:", error)
+      alert(`Auto-assign failed: ${(error as Error).message}`)
     }
     setAutoAssigning(false)
   }
