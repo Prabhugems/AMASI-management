@@ -267,27 +267,33 @@ export async function syncAddressesFromAirtable({
   const supabase = await createAdminClient()
   const db = supabase as any
 
-  // Get registrations that need address sync
+  // Get registrations that need address sync. Email is the join key — do NOT
+  // exclude rows with a NULL convocation_number, otherwise candidates whose
+  // number was assigned later in Airtable can never sync.
   const { data: regs } = await db
     .from("registrations")
     .select("id, attendee_email, convocation_number, convocation_address")
     .eq("event_id", eventId)
     .in("exam_result", ["pass", "without_exam"])
-    .not("convocation_number", "is", null)
     .is("convocation_address", null)
 
   if (!regs || regs.length === 0) {
+    console.log(`[airtable-sync] No regs need address sync for event ${eventId}`)
     return { synced: 0, alreadyHas: 0, notFilled: 0, totalSubmissions: 0 }
   }
 
-  // Determine convocation number prefix for this event (e.g. "124AEC")
-  const sampleConvNo = regs[0].convocation_number || ""
-  const prefixMatch = sampleConvNo.match(/^(\d+[A-Z]+)/)
-  if (!prefixMatch) {
+  // Collect ALL distinct convocation prefixes present in the pending cohort
+  // (e.g. an event can have both "122AEC" and "122WEC" — picking only the first
+  // sample row silently drops every other prefix from the Airtable filter).
+  const prefixes = new Set<string>()
+  for (const r of regs) {
+    const m = (r.convocation_number || "").match(/^(\d+[A-Z]+)/)
+    if (m) prefixes.add(m[1])
+  }
+  if (prefixes.size === 0) {
     console.log(`[airtable-sync] No valid convocation prefix found for event ${eventId}, skipping`)
     return { synced: 0, alreadyHas: 0, notFilled: regs.length, totalSubmissions: 0 }
   }
-  const prefix = prefixMatch[1]
 
   // Build email → registration map (case-insensitive)
   const regByEmail = new Map<string, any>()
@@ -302,8 +308,11 @@ export async function syncAddressesFromAirtable({
   const effectiveBase = airtableBaseId || DEFAULT_AIRTABLE_CONVOCATION_BASE
   const effectiveTable = airtableTableId || DEFAULT_AIRTABLE_CONVOCATION_TABLE
 
+  const prefixClauses = Array.from(prefixes)
+    .map((p) => `FIND("${p}", {CONVOCATION NUMBER}) = 1`)
+    .join(", ")
   const formula = encodeURIComponent(
-    `AND(FIND("${prefix}", {CONVOCATION NUMBER}) = 1, {City/District} != "")`
+    `AND(OR(${prefixClauses}), {City/District} != "")`
   )
 
   let allRecords: any[] = []
@@ -322,7 +331,7 @@ export async function syncAddressesFromAirtable({
     if (!airtableOffset) break
   }
 
-  console.log(`[airtable-sync] Fetched ${allRecords.length} Airtable records with prefix ${prefix}`)
+  console.log(`[airtable-sync] Fetched ${allRecords.length} Airtable records for prefixes [${Array.from(prefixes).join(", ")}]`)
 
   let synced = 0
   let alreadyHas = 0
