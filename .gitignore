@@ -41,3 +41,7 @@ next-env.d.ts
 *.amasi-backup
 technosurg-vercel-env.txt
 .playwright-mcp/
+
+# build artifacts
+*.zip
+public/*.zip
