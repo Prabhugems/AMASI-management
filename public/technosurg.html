@@ -66,6 +66,7 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="icon" type="image/x-icon" href="https://technosurg.gemhospitals.com/landing/technosurg-logo.png">
   <link
     href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&family=Inter:wght@300;400;500;600&display=swap"
     rel="stylesheet" />
@@ -187,37 +188,41 @@
       padding: 0.42rem 1.1rem;
       border-radius: 6px;
       letter-spacing: 0.02em;
-      transition: opacity 0.15s;
+      transition: opacity 0.15s, background 0.15s, color 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.38rem;
     }
 
     .nav-btn:hover {
       opacity: 0.85;
     }
 
-    .nav-btn-outline {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--cyan);
-      text-decoration: none;
+    /* Outline style — Submit Abstract */
+    .nav-btn--outline {
       background: transparent;
-      padding: 0.42rem 1.1rem;
-      border-radius: 6px;
-      letter-spacing: 0.02em;
-      border: 1.5px solid var(--cyan);
-      transition: background 0.15s, color 0.15s;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
+      color: var(--cyan);
+      border: 1px solid rgba(34, 211, 238, 0.45);
     }
 
-    .nav-btn-outline:hover {
-      background: var(--cyan);
-      color: #05050a;
+    .nav-btn--outline:hover {
+      opacity: 1;
+      background: rgba(34, 211, 238, 0.1);
+      border-color: var(--cyan);
     }
 
-    .nav-btn-outline svg {
-      width: 14px;
-      height: 14px;
+    /* Ghost style — Brochure */
+    .nav-btn--ghost {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.8);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .nav-btn--ghost:hover {
+      opacity: 1;
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.22);
+      color: #fff;
     }
 
     .nav-mob {
@@ -343,6 +348,31 @@
     .btn-pill svg {
       width: 14px;
       height: 14px;
+    }
+
+    .btn-pill--outline {
+      background: transparent;
+      color: #fff;
+      border: 1.5px solid rgba(255, 255, 255, 0.45);
+    }
+
+    .btn-pill--outline:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.8);
+      box-shadow: 0 8px 28px rgba(255, 255, 255, 0.08);
+    }
+
+    .btn-pill--ghost {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.85);
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+    }
+
+    .btn-pill--ghost:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      box-shadow: 0 8px 28px rgba(255, 255, 255, 0.06);
     }
 
     /* Countdown */
@@ -1389,12 +1419,60 @@
       border-bottom: none;
     }
 
+    .mob-action-row {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .mob-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex: 1;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 0.65rem 0.75rem !important;
+      border-radius: 8px;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      border-bottom: none !important;
+    }
+
+    .mob-action-btn--outline {
+      color: var(--cyan);
+      border: 1px solid rgba(34, 211, 238, 0.4);
+      background: rgba(34, 211, 238, 0.06);
+    }
+
+    .mob-action-btn--outline:hover {
+      background: rgba(34, 211, 238, 0.14);
+      border-color: var(--cyan);
+    }
+
+    .mob-action-btn--ghost {
+      color: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .mob-action-btn--ghost:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+
     /* ─── RESPONSIVE ─── */
     @media (max-width: 700px) {
 
       .nav-center,
-      .nav-btn,
-      .nav-btn-outline {
+      .nav-btn {
+        display: none;
+      }
+
+      .nav-btn--outline,
+      .nav-btn--ghost {
         display: none;
       }
 
@@ -2750,10 +2828,26 @@
       <li><a href="#venue">Contact Us</a></li>
     </ul>
     <div class="nav-right">
-      <a href="technosurg-brochure.pdf" download class="nav-btn-outline">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3v10M6 9l4 4 4-4M4 15h12"/></svg>
+      <!-- Submit Abstract -->
+      <a href="https://forms.gle/Ur1MPJKKfKv3xfx57" target="_blank" class="nav-btn nav-btn--outline">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        Submit Abstract
+      </a>
+      <!-- Brochure -->
+      <a href="https://technosurg.gemhospitals.com/technosurg-brochure.pdf" target="_blank" class="nav-btn nav-btn--ghost">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
         Brochure
       </a>
+      <!-- Register -->
       <a href="https://technosurg.gemhospitals.com/register/technosurg2026-mmvs3874" target="_blank"
         class="nav-btn">Register →</a>
       <button class="nav-mob" id="mobBtn" aria-label="Menu">
@@ -2768,9 +2862,25 @@
     <a href="#schedule" class="mob-link">Schedule</a>
     <!-- <a href="#">Faculty</a> -->
     <a href="#venue">Contact Us</a>
-    <a href="technosurg-brochure.pdf" download
-      class="mob-register" style="background:transparent;border:1.5px solid var(--cyan);color:var(--cyan);margin-top:0.75rem;">
-      ↓ Download Brochure</a>
+    <div class="mob-action-row">
+      <a href="https://forms.gle/Ur1MPJKKfKv3xfx57" target="_blank" class="mob-action-btn mob-action-btn--outline">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        Submit Abstract
+      </a>
+      <a href="https://technosurg.gemhospitals.com/technosurg-brochure.pdf" target="_blank" class="mob-action-btn mob-action-btn--ghost">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Brochure
+      </a>
+    </div>
     <a href="https://technosurg.gemhospitals.com/register/technosurg2026-mmvs3874" target="_blank"
       class="mob-register">Register →</a>
   </div>
@@ -2797,11 +2907,22 @@
             <path d="M4 10h12M10 4l6 6-6 6" />
           </svg>
         </a>
-        <a href="technosurg-brochure.pdf" download class="btn-pill" style="background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,0.5);">
-          Download Brochure
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M10 3v10M6 9l4 4 4-4M4 15h12"/>
+        <a href="https://forms.gle/Ur1MPJKKfKv3xfx57" target="_blank" class="btn-pill btn-pill--outline">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
           </svg>
+          Submit Abstract
+        </a>
+        <a href="https://technosurg.gemhospitals.com/technosurg-brochure.pdf" target="_blank" class="btn-pill btn-pill--ghost">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Brochure
         </a>
       </div>
       <div class="countdown">
@@ -2973,6 +3094,164 @@
 
     </section>
   </section>
+
+  <!-- ══ VIDEO SECTION ══════════════════════════════════════════════ -->
+  <section class="promo-video-section fi" id="promo-video">
+    <div class="promo-video-inner">
+      <div class="eyebrow" style="text-align:center; margin-bottom:0.75rem;">Watch Our Story</div>
+      <h2 class="promo-video-title">Experience <span class="c">GEM TechnoSurg 2026</span></h2>
+      <p class="promo-video-sub">A glimpse into the future of surgery — AI, Robotics, and Fluorescence-guided innovation.</p>
+      <div class="promo-video-frame">
+        <div class="promo-video-glow"></div>
+        <div class="promo-video-wrapper">
+          <video id="promoVideo" muted loop playsinline>
+            <source src="/landing/promo-video.mp4" type="video/mp4">
+          </video>
+          <button class="unmute-btn" id="unmuteBtn" onclick="toggleMute()">
+            <svg id="muteIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <line x1="23" y1="9" x2="17" y2="15"/>
+              <line x1="17" y1="9" x2="23" y2="15"/>
+            </svg>
+            <svg id="unmuteIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+            <span id="muteLbl">Tap to Unmute</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    /* ── PROMO VIDEO SECTION ── */
+    .promo-video-section {
+      position: relative;
+      background: #05050a;
+      padding: 5.5rem var(--pad);
+      overflow: hidden;
+    }
+
+    .promo-video-section::before {
+      content: '';
+      position: absolute;
+      top: -180px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(ellipse at center, rgba(34, 211, 238, 0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .promo-video-inner {
+      position: relative;
+      z-index: 2;
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .promo-video-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(1.9rem, 3.8vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+
+    .promo-video-title .c {
+      color: var(--cyan);
+    }
+
+    .promo-video-sub {
+      font-size: 0.95rem;
+      line-height: 1.75;
+      color: rgba(255, 255, 255, 0.48);
+      max-width: 560px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .promo-video-frame {
+      position: relative;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(34, 211, 238, 0.18);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 32px 80px rgba(0,0,0,0.55);
+    }
+
+    .promo-video-glow {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      border-radius: 18px;
+      box-shadow: inset 0 0 60px rgba(34, 211, 238, 0.08);
+      pointer-events: none;
+    }
+
+    .promo-video-wrapper {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%; /* 16:9 aspect ratio */
+      height: 0;
+      background: #0a0a12;
+    }
+
+    .promo-video-wrapper video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 18px;
+      object-fit: cover;
+    }
+
+    .unmute-btn {
+      position: absolute;
+      bottom: 1.2rem;
+      right: 1.2rem;
+      z-index: 10;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: rgba(5, 5, 10, 0.75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(34, 211, 238, 0.35);
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 0.45rem 1rem;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .unmute-btn:hover {
+      background: rgba(34, 211, 238, 0.15);
+      border-color: rgba(34, 211, 238, 0.7);
+    }
+
+    .promo-video-wrapper iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 18px;
+    }
+
+    @media (max-width: 600px) {
+      .promo-video-section {
+        padding: 3.5rem var(--pad);
+      }
+    }
+  </style>
 
   <!-- ══ SCHEDULE ═══════════════════════════════════════════════════ -->
 
@@ -4055,9 +4334,13 @@
       © 2026 <a href="https://gemhospitals.com" target="_blank" rel="noopener">GEM Hospital &amp; Research Centre</a>.
       All rights reserved.
     </div>
-    <nav class="ft-links">
-      <a href="/login">Admin Login</a>
-    </nav>
+    <!-- <nav class="ft-links">
+      <a href="#about">About</a>
+      <a href="#faculty">Faculty</a>
+      <a href="#schedule">Schedule</a>
+      <a href="#register">Register</a>
+      <a href="#venue">Venue</a>
+    </nav> -->
   </footer>
 
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
@@ -4113,6 +4396,41 @@
       { threshold: 0.1 }
     );
     document.querySelectorAll('.fi').forEach(el => obs.observe(el));
+  </script>
+  <script>
+    // ── PROMO VIDEO AUTOPLAY + UNMUTE ──
+    var promoVideo = document.getElementById("promoVideo");
+    if (promoVideo) {
+      promoVideo.muted = true;
+      var playPromise = promoVideo.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(function() {
+          // Autoplay blocked - play on first user interaction
+          document.addEventListener("click", function onFirstClick() {
+            promoVideo.play();
+            document.removeEventListener("click", onFirstClick);
+          }, { once: true });
+        });
+      }
+    }
+
+    function toggleMute() {
+      var v = document.getElementById("promoVideo");
+      var muteIcon = document.getElementById("muteIcon");
+      var unmuteIcon = document.getElementById("unmuteIcon");
+      var lbl = document.getElementById("muteLbl");
+      if (v.muted) {
+        v.muted = false;
+        muteIcon.style.display = "none";
+        unmuteIcon.style.display = "block";
+        lbl.textContent = "Mute";
+      } else {
+        v.muted = true;
+        muteIcon.style.display = "block";
+        unmuteIcon.style.display = "none";
+        lbl.textContent = "Tap to Unmute";
+      }
+    }
   </script>
 </body>
 
