@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
 import { sendEmail } from "@/lib/email"
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit"
 import { logActivityFromRequest } from "@/lib/activity-logger"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { createAdminClient } from "@/lib/supabase/server"
 
 function getMagicLinkEmailHtml(loginUrl: string): string {
   const year = new Date().getFullYear()
@@ -264,22 +264,16 @@ export async function POST(request: NextRequest) {
       : `${appUrl}/auth/callback`
 
     // Generate magic link using Supabase Admin API
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let adminClient: any
+    try {
+      adminClient = await createAdminClient()
+    } catch {
       return NextResponse.json(
         { error: "Auth service not configured" },
         { status: 500 }
       )
     }
-
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
 
     // Security: Only allow login for known users or team members
     const [userResult, teamResult] = await Promise.all([

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
 import { requireAdmin } from "@/lib/auth/api-auth"
+import { createAdminClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   const { error: authError } = await requireAdmin()
@@ -11,11 +11,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "eventId required" }, { status: 400 })
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
-    process.env.SUPABASE_SERVICE_ROLE_KEY!.trim(),
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+  const supabase = await createAdminClient()
 
   const [eventRes, regsRes] = await Promise.all([
     supabase

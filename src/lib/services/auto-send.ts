@@ -1,10 +1,7 @@
-import { createClient } from "@supabase/supabase-js"
 import { sendEmail } from "@/lib/email"
 import { isGallaboxEnabled, sendGallaboxText } from "@/lib/gallabox"
 import { isQikchatEnabled, sendQikchatText } from "@/lib/qikchat"
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim()
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
+import { createAdminClient } from "@/lib/supabase/server"
 
 type TriggerType = "on_registration" | "on_payment" | "on_checkin" | "on_certificate_ready" | "days_before_event"
 
@@ -28,7 +25,8 @@ interface TriggerContext {
 
 // Get templates that should be auto-sent for a trigger
 async function getAutoSendTemplates(eventId: string, triggerType: TriggerType, triggerValue?: number) {
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = (await createAdminClient()) as any
 
   let query = supabase
     .from("message_templates")
@@ -83,7 +81,8 @@ async function logMessage(
   providerMessageId?: string,
   errorMessage?: string
 ) {
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = (await createAdminClient()) as any
 
   await supabase.from("message_logs").insert({
     event_id: eventId,
