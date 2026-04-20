@@ -499,6 +499,113 @@ function Marquee({ items }: { items: string[] }) {
 }
 
 
+function PromoVideoSection() {
+  const sectionRef = useRef<HTMLElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [visible, setVisible] = useState(false)
+  const [muted, setMuted] = useState(true)
+
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          obs.disconnect()
+        }
+      },
+      { rootMargin: "200px", threshold: 0.01 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!visible) return
+    const v = videoRef.current
+    if (!v) return
+    const tryPlay = v.play()
+    if (tryPlay !== undefined) {
+      tryPlay.catch(() => {
+        const onFirstClick = () => {
+          v.play().catch(() => {})
+          document.removeEventListener("click", onFirstClick)
+        }
+        document.addEventListener("click", onFirstClick, { once: true })
+      })
+    }
+  }, [visible])
+
+  const toggleMute = () => {
+    const v = videoRef.current
+    if (!v) return
+    v.muted = !v.muted
+    setMuted(v.muted)
+  }
+
+  return (
+    <section ref={sectionRef} id="promo-video" className="relative bg-[#05050a] py-16 sm:py-22 overflow-hidden px-6">
+      <div className="absolute left-1/2 -top-44 -translate-x-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(ellipse at center, rgba(34,211,238,0.07) 0%, transparent 70%)" }} />
+      <div className="relative z-10 max-w-[900px] mx-auto text-center">
+        <Reveal>
+          <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400 mb-3">Watch Our Story</p>
+        </Reveal>
+        <Reveal delay={100}>
+          <h2 className="font-light tracking-tighter leading-[1.2] mb-4" style={{ fontSize: "clamp(1.9rem, 3.8vw, 3rem)" }}>
+            Experience <span className="text-cyan-400">GEM TechnoSurg 2026</span>
+          </h2>
+        </Reveal>
+        <Reveal delay={200}>
+          <p className="text-[0.95rem] leading-[1.75] text-white/50 max-w-[560px] mx-auto mb-10">
+            A glimpse into the future of surgery — AI, Robotics, and Fluorescence-guided innovation.
+          </p>
+        </Reveal>
+        <Reveal delay={300}>
+          <div className="relative rounded-[18px] overflow-hidden border border-cyan-400/20 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_32px_80px_rgba(0,0,0,0.55)]">
+            <div className="absolute inset-0 rounded-[18px] pointer-events-none z-0"
+              style={{ boxShadow: "inset 0 0 60px rgba(34,211,238,0.08)" }} />
+            <div className="relative w-full pb-[56.25%] h-0 bg-[#0a0a12]">
+              <video
+                ref={videoRef}
+                muted
+                loop
+                playsInline
+                preload={visible ? "auto" : "none"}
+                className="absolute inset-0 w-full h-full object-cover rounded-[18px]"
+              >
+                {visible && <source src="/landing/promo-video.mp4" type="video/mp4" />}
+              </video>
+              <button
+                onClick={toggleMute}
+                className="absolute bottom-5 right-5 z-10 inline-flex items-center gap-1.5 bg-[#05050a]/75 backdrop-blur-md border border-cyan-400/35 text-white text-[0.75rem] font-semibold tracking-[0.04em] px-4 py-1.5 rounded-full cursor-pointer hover:bg-cyan-400/15 hover:border-cyan-400/70 transition-colors"
+                aria-label={muted ? "Unmute video" : "Mute video"}
+              >
+                {muted ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <line x1="23" y1="9" x2="17" y2="15"/>
+                    <line x1="17" y1="9" x2="23" y2="15"/>
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                  </svg>
+                )}
+                <span>{muted ? "Tap to Unmute" : "Mute"}</span>
+              </button>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+
 /* ─────────────────────────────────────
    MAIN PAGE
    ───────────────────────────────────── */
@@ -571,12 +678,41 @@ export default function LandingPage() {
               transition={{ duration: 0.3 }}
             />
           </button>
-          <MagneticButton
-            href={REGISTER_URL}
-            className="hidden md:inline-flex text-[13px] text-cyan-400 hover:text-cyan-300 transition-colors font-medium"
-          >
-            Register &rarr;
-          </MagneticButton>
+          <div className="hidden md:flex items-center gap-2.5">
+            <a
+              href="https://forms.gle/Ur1MPJKKfKv3xfx57"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-cyan-400 border border-cyan-400/45 rounded-md px-3 py-1.5 hover:bg-cyan-400/10 hover:border-cyan-400 transition-colors"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
+              Submit Abstract
+            </a>
+            <a
+              href="/technosurg-brochure.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-white/80 bg-white/[0.06] border border-white/10 rounded-md px-3 py-1.5 hover:bg-white/[0.12] hover:border-white/25 hover:text-white transition-colors"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Brochure
+            </a>
+            <MagneticButton
+              href={REGISTER_URL}
+              className="inline-flex text-[13px] text-cyan-400 hover:text-cyan-300 transition-colors font-medium ml-1"
+            >
+              Register &rarr;
+            </MagneticButton>
+          </div>
         </div>
       </motion.nav>
 
@@ -615,6 +751,43 @@ export default function LandingPage() {
             >
               Register &rarr;
             </motion.a>
+            <motion.div
+              className="flex gap-3 mt-2 px-6"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ delay: (navLinks.length + 1) * 0.06, duration: 0.3 }}
+            >
+              <a
+                href="https://forms.gle/Ur1MPJKKfKv3xfx57"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 flex-1 text-sm font-semibold text-cyan-400 border border-cyan-400/40 bg-cyan-400/[0.06] rounded-lg px-4 py-2.5 hover:bg-cyan-400/15 hover:border-cyan-400 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+                Submit Abstract
+              </a>
+              <a
+                href="/technosurg-brochure.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 flex-1 text-sm font-semibold text-white/75 border border-white/12 bg-white/[0.05] rounded-lg px-4 py-2.5 hover:bg-white/10 hover:text-white transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Brochure
+              </a>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -686,7 +859,7 @@ export default function LandingPage() {
             </div>
 
             <motion.div
-              className="flex flex-col sm:flex-row sm:items-center gap-8 mt-12"
+              className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 mt-12"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 1.5 }}
@@ -703,6 +876,33 @@ export default function LandingPage() {
                   transition={{ duration: 0.4 }}
                 />
               </MagneticButton>
+              <a
+                href="https://forms.gle/Ur1MPJKKfKv3xfx57"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 h-14 px-7 rounded-full bg-transparent text-white border border-white/45 text-[15px] font-medium hover:bg-white/[0.08] hover:border-white/80 hover:shadow-[0_8px_28px_rgba(255,255,255,0.08)] transition-all"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+                Submit Abstract
+              </a>
+              <a
+                href="/technosurg-brochure.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 h-14 px-7 rounded-full bg-white/[0.08] text-white/85 border border-white/15 backdrop-blur-md text-[15px] font-medium hover:bg-white/[0.14] hover:text-white hover:shadow-[0_8px_28px_rgba(255,255,255,0.06)] transition-all"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Brochure
+              </a>
               <Countdown />
             </motion.div>
 
@@ -827,6 +1027,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── PROMO VIDEO ── */}
+      <PromoVideoSection />
 
       {/* ── SCHEDULE ── */}
       <section id="schedule" className="bg-[#fafafa] text-zinc-900">
