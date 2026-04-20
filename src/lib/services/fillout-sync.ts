@@ -310,7 +310,7 @@ export async function syncAddressesFromAirtable({
   let airtableOffset: string | undefined
 
   for (let page = 0; page < MAX_PAGINATION_PAGES; page++) {
-    const url = `https://api.airtable.com/v0/${effectiveBase}/${effectiveTable}?${fieldParams}&filterByFormula=${formula}&pageSize=100${airtableOffset ? `&offset=${airtableOffset}` : ""}`
+    const url = `https://api.airtable.com/v0/${effectiveBase}/${effectiveTable}?${fieldParams}&filterByFormula=${formula}&pageSize=100&returnFieldsByFieldId=true${airtableOffset ? `&offset=${airtableOffset}` : ""}`
 
     const res = await fetchWithRetry(url, {
       headers: { Authorization: `Bearer ${pat}` },
