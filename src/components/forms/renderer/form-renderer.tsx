@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { Form, FormField, ConditionalLogic } from "@/lib/types"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -68,6 +68,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
     error?: string
     memberFound?: boolean
     memberData?: Record<string, unknown>
+    lookupPending?: boolean
   }>>(() => {
     if (!preVerifiedEmail) return {}
     const emailField = fields.find(f => f.field_type === 'email')
@@ -215,10 +216,27 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
   }
 
   const lookupMember = async (email: string, emailFieldId: string) => {
+    // Mark lookup in-flight so strict-membership forms can't be submitted
+    // during the race window between email-verified and member-lookup-complete.
+    setEmailVerificationState(prev => ({
+      ...prev,
+      [emailFieldId]: { ...prev[emailFieldId], lookupPending: true }
+    }))
     try {
       const response = await fetch(`/api/members/amasi-lookup?email=${encodeURIComponent(email)}`)
       if (!response.ok) {
         console.error("Member lookup API error:", response.status)
+        // Fail closed for strict forms: treat lookup failure as non-member
+        // so the blocker fires instead of silently letting them through.
+        setEmailVerificationState(prev => ({
+          ...prev,
+          [emailFieldId]: {
+            ...prev[emailFieldId],
+            memberFound: false,
+            memberData: undefined,
+            lookupPending: false,
+          }
+        }))
         return
       }
       const data = await response.json()
@@ -241,7 +259,8 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
           [emailFieldId]: {
             ...prev[emailFieldId],
             memberFound: true,
-            memberData: member
+            memberData: member,
+            lookupPending: false,
           }
         }))
 
@@ -354,7 +373,8 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
           [emailFieldId]: {
             ...prev[emailFieldId],
             memberFound: false,
-            memberData: undefined
+            memberData: undefined,
+            lookupPending: false,
           }
         }))
 
@@ -374,8 +394,34 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
       }
     } catch (error) {
       console.error("Member lookup error:", error)
+      // Fail closed on network/unexpected errors too.
+      setEmailVerificationState(prev => ({
+        ...prev,
+        [emailFieldId]: {
+          ...prev[emailFieldId],
+          memberFound: false,
+          memberData: undefined,
+          lookupPending: false,
+        }
+      }))
     }
   }
+
+  // When the form is rendered with an already-verified email (e.g. the
+  // /my and /f/<slug> flows that skip OTP), OTP-based lookupMember never
+  // runs. For member-gated forms that means the blocker cannot fire.
+  // Trigger the lookup once on mount for those flows.
+  const preVerifiedLookupDoneRef = useRef(false)
+  useEffect(() => {
+    if (preVerifiedLookupDoneRef.current) return
+    if (!preVerifiedEmail) return
+    if (!FEATURES.membership) return
+    const emailField = fields.find(f => f.field_type === 'email')
+    if (!emailField) return
+    preVerifiedLookupDoneRef.current = true
+    void lookupMember(preVerifiedEmail, emailField.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preVerifiedEmail, fields])
 
   const updateOTP = (fieldId: string, otp: string) => {
     const cleanOtp = otp.replace(/\D/g, '').slice(0, 6)
@@ -445,22 +491,19 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
       return label.includes("member of amasi") || label.includes("are you member") || label.includes("amasi member")
     })
 
-    if (!memberQuestionField) return { fieldId: null, isNonMember: false }
+    const explicitNo = memberQuestionField
+      ? String(responses[memberQuestionField.id] || "").toLowerCase() === "no"
+      : false
 
-    const value = String(responses[memberQuestionField.id] || "").toLowerCase()
-    const isNonMember = value === "no"
-
-    // Check if email verification found no member in local DB
+    // Local DB is the source of truth — if email OTP verified but no matching
+    // member row, treat as non-member and trigger the blocker.
     const emailVerified = Object.values(emailVerificationState).find(s => s.status === 'verified')
     const memberNotFound = emailVerified?.memberFound === false
 
-    // Only block if user explicitly selected "No" for membership question
-    // Don't block just because the member isn't in the local database —
-    // they may exist in the main AMASI system but not be synced yet
     return {
-      fieldId: memberQuestionField.id,
-      isNonMember: isNonMember,
-      memberNotFound
+      fieldId: memberQuestionField?.id ?? null,
+      isNonMember: explicitNo || memberNotFound,
+      memberNotFound,
     }
   }, [fields, responses, emailVerificationState])
 
@@ -655,6 +698,25 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Hard gate: never accept a submission on a strict member-gated form
+    // when the blocker is active or while the member lookup is still in flight.
+    // The button is hidden in this state, but a keyboard Enter on a focused
+    // input would otherwise bypass the UI guard.
+    if (showMembershipBlocker) {
+      toast.error(`${COMPANY_CONFIG.name} membership is required to submit this form.`)
+      return
+    }
+    if (
+      FEATURES.membership &&
+      isMembershipRequired &&
+      isStrictMembershipRequired &&
+      Object.values(emailVerificationState).some(s => s.lookupPending)
+    ) {
+      toast.info("Verifying your membership, please wait…")
+      return
+    }
+
     if (validateForm()) {
       const verifiedEmails: Record<string, string> = {}
       Object.entries(emailVerificationState).forEach(([fieldId, state]) => {
@@ -1437,9 +1499,17 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
             <p className="text-sm text-blue-800">
-              <strong>Already a member?</strong> Make sure you verify with the same email registered with your {COMPANY_CONFIG.name} membership. If you need help, contact <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="underline">{COMPANY_CONFIG.supportEmail}</a>
+              <strong>Already a member but not recognised?</strong> Email{" "}
+              <a href="mailto:amasi.india@gmail.com" className="underline font-medium">
+                amasi.india@gmail.com
+              </a>{" "}
+              with your {COMPANY_CONFIG.name} number and details. The admin will verify and
+              either reply or update your registered email — then you can apply here again.
+            </p>
+            <p className="text-xs text-blue-700">
+              Tip: make sure you used the same email registered with your {COMPANY_CONFIG.name} membership.
             </p>
           </div>
 
@@ -1638,7 +1708,13 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
         <div className="pt-4 space-y-3">
           <Button
             type="submit"
-            disabled={isSubmitting || !isFormComplete}
+            disabled={
+              isSubmitting ||
+              !isFormComplete ||
+              (isMembershipRequired &&
+                isStrictMembershipRequired &&
+                Object.values(emailVerificationState).some(s => s.lookupPending))
+            }
             className={cn(
               "w-full h-12 text-base font-semibold text-white rounded-lg transition-all shadow-lg",
               isFormComplete

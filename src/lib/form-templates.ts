@@ -20,6 +20,8 @@ export interface FormTemplateDefinition {
   form_type: FormType
   icon: string // lucide icon name
   fields: TemplateField[]
+  is_member_form?: boolean
+  membership_required_strict?: boolean
 }
 
 export const FORM_TEMPLATES: FormTemplateDefinition[] = [
@@ -1328,6 +1330,8 @@ export const FORM_TEMPLATES: FormTemplateDefinition[] = [
     category: "event_registration",
     form_type: "event_registration",
     icon: "GraduationCap",
+    is_member_form: true,
+    membership_required_strict: true,
     fields: [
       {
         field_type: "select",

@@ -149,6 +149,8 @@ export async function POST(request: NextRequest) {
       notification_emails: body.notification_emails || [],
       max_submissions: body.max_submissions,
       submission_deadline: body.submission_deadline,
+      is_member_form: body.is_member_form ?? false,
+      membership_required_strict: body.membership_required_strict ?? true,
       created_by: user.id,
     }
 

@@ -125,7 +125,13 @@ export default function FormsPage() {
 
   // Create form mutation
   const createForm = useMutation({
-    mutationFn: async (data: typeof newFormData & { template_fields?: TemplateField[] }) => {
+    mutationFn: async (
+      data: typeof newFormData & {
+        template_fields?: TemplateField[]
+        is_member_form?: boolean
+        membership_required_strict?: boolean
+      }
+    ) => {
       const response = await fetch("/api/forms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -207,6 +213,12 @@ export default function FormsPage() {
     createForm.mutate({
       ...newFormData,
       ...(templateFields ? { template_fields: templateFields } : {}),
+      ...(selectedTemplate?.is_member_form !== undefined
+        ? { is_member_form: selectedTemplate.is_member_form }
+        : {}),
+      ...(selectedTemplate?.membership_required_strict !== undefined
+        ? { membership_required_strict: selectedTemplate.membership_required_strict }
+        : {}),
     })
   }
 
