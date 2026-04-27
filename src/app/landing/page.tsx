@@ -1159,7 +1159,13 @@ export default function LandingPage() {
           <a href="mailto:technosurg@geminstitute.in" className="hover:text-cyan-400 transition-colors">
             technosurg@geminstitute.in
           </a>
-          <span>&copy; {new Date().getFullYear()} GEM Hospital &amp; Research Centre</span>
+          <div className="flex items-center gap-4">
+            <span>&copy; {new Date().getFullYear()} GEM Hospital &amp; Research Centre</span>
+            <span className="text-white/10">·</span>
+            <a href="/login" className="hover:text-cyan-400 transition-colors">
+              Admin
+            </a>
+          </div>
         </div>
       </footer>
     </div>
