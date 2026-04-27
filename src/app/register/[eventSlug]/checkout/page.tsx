@@ -35,6 +35,68 @@ import { usePageTracking } from "@/hooks/usePageTracking"
 import { toast } from "sonner"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 
+// Map form-builder field responses (keyed by field UUID) to dedicated
+// registration columns by matching field labels. Without this, a field
+// labeled "Institution / Organization" lands in custom_fields keyed by
+// UUID and never reaches `attendee_institution`, so CSV exports show blanks.
+function extractAttendeeFieldsFromForm(
+  fields: FormField[],
+  responses: Record<string, unknown>,
+): {
+  attendee_name?: string
+  attendee_email?: string
+  attendee_phone?: string
+  attendee_institution?: string
+  attendee_designation?: string
+  attendee_city?: string
+  attendee_state?: string
+  attendee_country?: string
+  dietary_preference?: string
+  tshirt_size?: string
+} {
+  const result: Record<string, string> = {}
+  const matchByLabel = (...needles: string[]) => {
+    for (const f of fields) {
+      const label = (f.label || "").toLowerCase()
+      if (needles.some(n => label.includes(n))) {
+        const val = responses[f.id]
+        if (val != null && String(val).trim() !== "") return String(val).trim()
+      }
+    }
+    return undefined
+  }
+  const matchByType = (type: string) => {
+    const f = fields.find(f => f.field_type === type)
+    if (!f) return undefined
+    const val = responses[f.id]
+    if (val != null && String(val).trim() !== "") return String(val).trim()
+    return undefined
+  }
+
+  const email = matchByType("email") || matchByLabel("email")
+  const phone = matchByType("phone") || matchByLabel("phone", "mobile", "contact number")
+  const name = matchByLabel("full name", "name")
+  const institution = matchByLabel("institution", "organization", "organisation", "hospital", "college", "affiliation", "company")
+  const designation = matchByLabel("designation", "title", "role", "position")
+  const city = matchByLabel("city", "town")
+  const state = matchByLabel("state", "province")
+  const country = matchByLabel("country")
+  const dietary = matchByLabel("dietary", "meal", "food preference")
+  const tshirt = matchByLabel("t-shirt", "tshirt", "shirt size")
+
+  if (email) result.attendee_email = email
+  if (phone) result.attendee_phone = phone
+  if (name) result.attendee_name = name
+  if (institution) result.attendee_institution = institution
+  if (designation) result.attendee_designation = designation
+  if (city) result.attendee_city = city
+  if (state) result.attendee_state = state
+  if (country) result.attendee_country = country
+  if (dietary) result.dietary_preference = dietary
+  if (tshirt) result.tshirt_size = tshirt
+  return result
+}
+
 declare global {
   interface Window {
     Razorpay: any
@@ -746,6 +808,36 @@ export default function CheckoutPage() {
         return
       }
 
+      // Build registration_data so payment metadata carries attendee details
+      // through to webhook AND verify, regardless of which arrives first.
+      const orderAttendeeName = formData.salutation
+        ? `${formData.salutation} ${formData.first_name} ${formData.last_name}`.trim()
+        : `${formData.first_name} ${formData.last_name}`.trim()
+      const orderRegistrationData = {
+        attendee_name: orderAttendeeName || formData.email,
+        attendee_email: formData.email,
+        attendee_phone: formData.phone,
+        attendee_institution: formData.institution || null,
+        attendee_designation: formData.designation || null,
+        attendee_city: formData.city || null,
+        attendee_state: formData.state || null,
+        attendee_country: formData.country || null,
+        custom_fields: hasCustomForm
+          ? {
+              ...customFormResponses,
+              form_id: primaryTicketFormId,
+              verified_emails: customFormVerifiedEmails,
+            }
+          : {
+              salutation: formData.salutation,
+              first_name: formData.first_name,
+              last_name: formData.last_name,
+              dietary_preference: formData.dietary_preference,
+              tshirt_size: formData.tshirt_size,
+              special_requirements: formData.special_requirements,
+            },
+      }
+
       const orderResponse = await fetch("/api/payments/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -765,6 +857,9 @@ export default function CheckoutPage() {
           // Send addons for server-side price calculation
           addons: checkoutData?.addonsSelection,
           discount_code: discountApplied?.code,
+          // Persist attendee details into payment metadata so webhook can read
+          // them without depending on the verify call winning the race.
+          registration_data: orderRegistrationData,
           metadata: {
             tickets: selectedTicketsDetails,
             addons: checkoutData?.addonsSelection,
@@ -822,11 +917,25 @@ export default function CheckoutPage() {
                   attendee_name: attendeeName,
                   attendee_email: currentEmail,
                   attendee_phone: currentFormData.phone,
-                  custom_fields: hasCustomForm ? currentCustomFormResponses : {
-                    salutation: currentFormData.salutation,
-                    first_name: currentFormData.first_name,
-                    last_name: currentFormData.last_name,
-                  },
+                  attendee_institution: currentFormData.institution || null,
+                  attendee_designation: currentFormData.designation || null,
+                  attendee_city: currentFormData.city || null,
+                  attendee_state: currentFormData.state || null,
+                  attendee_country: currentFormData.country || null,
+                  custom_fields: hasCustomForm
+                    ? {
+                        ...currentCustomFormResponses,
+                        form_id: primaryTicketFormId,
+                        verified_emails: customFormVerifiedEmails,
+                      }
+                    : {
+                        salutation: currentFormData.salutation,
+                        first_name: currentFormData.first_name,
+                        last_name: currentFormData.last_name,
+                        dietary_preference: currentFormData.dietary_preference,
+                        tshirt_size: currentFormData.tshirt_size,
+                        special_requirements: currentFormData.special_requirements,
+                      },
                 },
               }),
             })
@@ -1003,25 +1112,25 @@ export default function CheckoutPage() {
                       setCustomFormResponses(responses)
                       setCustomFormVerifiedEmails(verifiedEmails || {})
                       setIsCustomFormValid(true)
-                      // Extract email and name from responses if available
-                      const emailField = ticketForm.fields.find(f => f.field_type === 'email')
-                      const nameField = ticketForm.fields.find(f => (f.label || "").toLowerCase().includes('name'))
-                      const phoneField = ticketForm.fields.find(f => f.field_type === 'phone')
 
-                      if (emailField && responses[emailField.id]) {
-                        setFormData(prev => ({ ...prev, email: String(responses[emailField.id]) }))
-                      }
-                      if (nameField && responses[nameField.id]) {
-                        const name = String(responses[nameField.id]).split(' ')
-                        setFormData(prev => ({
-                          ...prev,
-                          first_name: name[0] || '',
-                          last_name: name.slice(1).join(' ') || '',
-                        }))
-                      }
-                      if (phoneField && responses[phoneField.id]) {
-                        setFormData(prev => ({ ...prev, phone: String(responses[phoneField.id]) }))
-                      }
+                      // Map form responses (UUID-keyed) to attendee_* columns by label
+                      const mapped = extractAttendeeFieldsFromForm(ticketForm.fields, responses)
+                      const fullName = mapped.attendee_name || ""
+                      const nameParts = fullName.split(/\s+/).filter(Boolean)
+                      setFormData(prev => ({
+                        ...prev,
+                        email: mapped.attendee_email || prev.email,
+                        phone: mapped.attendee_phone || prev.phone,
+                        first_name: nameParts[0] || prev.first_name,
+                        last_name: nameParts.slice(1).join(" ") || prev.last_name,
+                        institution: mapped.attendee_institution || prev.institution,
+                        designation: mapped.attendee_designation || prev.designation,
+                        city: mapped.attendee_city || prev.city,
+                        state: mapped.attendee_state || prev.state,
+                        country: mapped.attendee_country || prev.country,
+                        dietary_preference: mapped.dietary_preference || prev.dietary_preference,
+                        tshirt_size: mapped.tshirt_size || prev.tshirt_size,
+                      }))
                       setCheckoutStep(3)
                     }}
                     isSubmitting={false}

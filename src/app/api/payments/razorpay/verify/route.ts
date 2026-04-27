@@ -275,22 +275,54 @@ export async function POST(request: NextRequest) {
     // Check if registration already exists for this payment
     const { data: existingRegistration } = await supabase
       .from("registrations")
-      .select("id, registration_number, status")
+      .select("id, registration_number, status, attendee_name, attendee_institution, attendee_designation, attendee_city, attendee_state, attendee_country, custom_fields")
       .eq("payment_id", paymentData.id)
       .single()
 
     let finalRegistration: any = existingRegistration
 
     if (existingRegistration) {
-      // Registration exists - just update status if needed
+      // Registration exists (often created by the webhook racing ahead of
+      // verify). Backfill any attendee_* columns the webhook left empty using
+      // fresh data from the verify request body.
+      const fresh = body.registration_data || {}
+      const patch: Record<string, unknown> = {}
       if (existingRegistration.status !== "confirmed") {
+        patch.status = "confirmed"
+        patch.payment_status = "completed"
+        patch.confirmed_at = new Date().toISOString()
+      }
+      const fillIfEmpty = (col: string, val: unknown) => {
+        if (val == null || String(val).trim() === "") return
+        const current = (existingRegistration as any)[col]
+        if (current == null || String(current).trim() === "") {
+          patch[col] = String(val).trim()
+        }
+      }
+      fillIfEmpty("attendee_institution", fresh.attendee_institution)
+      fillIfEmpty("attendee_designation", fresh.attendee_designation)
+      fillIfEmpty("attendee_city", fresh.attendee_city)
+      fillIfEmpty("attendee_state", fresh.attendee_state)
+      fillIfEmpty("attendee_country", fresh.attendee_country)
+      const existingName = (existingRegistration as any).attendee_name
+      if (
+        fresh.attendee_name &&
+        (!existingName ||
+          existingName === "Pending Verification" ||
+          String(existingName).trim() === "")
+      ) {
+        patch.attendee_name = fresh.attendee_name
+      }
+      if (fresh.custom_fields && Object.keys(fresh.custom_fields).length > 0) {
+        patch.custom_fields = {
+          ...(existingRegistration as any).custom_fields,
+          ...fresh.custom_fields,
+        }
+      }
+      if (Object.keys(patch).length > 0) {
         await supabase
           .from("registrations")
-          .update({
-            status: "confirmed",
-            payment_status: "completed",
-            confirmed_at: new Date().toISOString(),
-          })
+          .update(patch)
           .eq("id", existingRegistration.id)
       }
       console.log(`[VERIFY] Updated existing registration: ${existingRegistration.registration_number}`)
@@ -569,6 +601,11 @@ async function createRegistrationFromPayment(supabase: any, paymentData: any, me
       attendee_name: ticketDetails?.attendee_name || regData.attendee_name || paymentData.payer_name || "Pending Verification",
       attendee_email: ticketDetails?.attendee_email || regData.attendee_email || paymentData.payer_email,
       attendee_phone: ticketDetails?.attendee_phone || regData.attendee_phone || paymentData.payer_phone,
+      attendee_institution: regData.attendee_institution || null,
+      attendee_designation: regData.attendee_designation || null,
+      attendee_city: regData.attendee_city || null,
+      attendee_state: regData.attendee_state || null,
+      attendee_country: regData.attendee_country || null,
       quantity: ticketDetails?.quantity || 1,
       unit_price: ticketDetails?.price || paymentData.amount,
       total_amount: ticketDetails?.total_price || paymentData.amount,
