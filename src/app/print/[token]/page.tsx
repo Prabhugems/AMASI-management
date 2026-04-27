@@ -27,6 +27,8 @@ import {
   Wifi,
   Clock,
   Power,
+  Usb,
+  Unplug,
   Volume2,
   VolumeX,
   Maximize,
@@ -53,7 +55,7 @@ interface PrintStation {
     paper_size: string
     orientation: string
     rotation?: number
-    printer_type?: "browser" | "zebra" | "thermal"
+    printer_type?: "browser" | "zebra" | "thermal" | "usb"
     printer_ip?: string
     printer_port?: number
     margins: { top: number; right: number; bottom: number; left: number }
@@ -152,7 +154,7 @@ function PrintStationKioskPage() {
     scale: 1,
     copies: 1,
     margins: { top: 0, right: 0, bottom: 0, left: 0 },
-    printer_type: "browser" as "browser" | "zebra" | "thermal",
+    printer_type: "browser" as "browser" | "zebra" | "thermal" | "usb",
     printer_ip: "",
     printer_port: 9100,
     auto_print: false,
@@ -162,6 +164,12 @@ function PrintStationKioskPage() {
   const [testingThermal, setTestingThermal] = useState(false)
   const [proxyOnline, setProxyOnline] = useState(false)
   const [proxyPrinters, setProxyPrinters] = useState<{ name: string; usb: boolean }[]>([])
+  const [usbConnected, setUsbConnected] = useState(false)
+  const [usbPrinterName, setUsbPrinterName] = useState<string | null>(null)
+  const [usbConnecting, setUsbConnecting] = useState(false)
+  const [usbPrinting, setUsbPrinting] = useState(false)
+  const [usbStatus, setUsbStatus] = useState<{ success: boolean; message: string } | null>(null)
+  const [testingUsb, setTestingUsb] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -349,8 +357,26 @@ function PrintStationKioskPage() {
         return
       }
 
+      // USB printer auto-print path
+      const isUsbPrinter = station?.print_settings?.printer_type === "usb"
+      if (isUsbPrinter && (station?.auto_print || isPrinting)) {
+        const printData = {
+          registration: data.registration,
+          station: {
+            id: station?.id,
+            name: station?.name,
+            print_mode: station?.print_mode,
+            print_settings: station?.print_settings,
+            events: station?.events
+          },
+          badge_template: station?.badge_templates
+        }
+        triggerUsbPrint(printData)
+        return
+      }
+
       // Local USB print or browser print path (no network Zebra)
-      if (!hasDirectPrinter && !isThermalPrinter && (station?.auto_print || isPrinting)) {
+      if (!hasDirectPrinter && !isThermalPrinter && !isUsbPrinter && (station?.auto_print || isPrinting)) {
         const printData = {
           registration: data.registration,
           station: {
@@ -621,6 +647,42 @@ function PrintStationKioskPage() {
     const interval = setInterval(check, 15000)
     return () => { active = false; clearInterval(interval) }
   }, [station?.print_settings?.printer_ip, station?.print_settings?.printer_type, station?.print_settings?.printer_port])
+
+  // USB printer auto-reconnect and disconnect listener
+  useEffect(() => {
+    const printerType = station?.print_settings?.printer_type
+    if (printerType !== "usb") return
+
+    let cleanup: (() => void) | undefined
+
+    const init = async () => {
+      const { reconnectUsbPrinter, onUsbDisconnect, isUsbPrinterConnected, getUsbPrinterName } = await import("@/lib/usb-printer")
+
+      // Try reconnecting to a previously paired device
+      if (!isUsbPrinterConnected()) {
+        const result = await reconnectUsbPrinter()
+        if (result.success) {
+          setUsbConnected(true)
+          setUsbPrinterName(result.name || null)
+          setPrinterOnline(true)
+        }
+      } else {
+        setUsbConnected(true)
+        setUsbPrinterName(getUsbPrinterName())
+        setPrinterOnline(true)
+      }
+
+      // Listen for disconnect
+      cleanup = onUsbDisconnect(() => {
+        setUsbConnected(false)
+        setUsbPrinterName(null)
+        setPrinterOnline(false)
+      })
+    }
+
+    init()
+    return () => { cleanup?.() }
+  }, [station?.print_settings?.printer_type])
 
   // Register service worker for PWA
   useEffect(() => {
@@ -1005,9 +1067,97 @@ function PrintStationKioskPage() {
     setThermalPrinting(false)
   }
 
+  // Direct USB print (Decode DC 400 Pro and similar thermal printers via WebUSB)
+  const triggerUsbPrint = async (data: any) => {
+    setUsbPrinting(true)
+    setUsbStatus(null)
+
+    try {
+      const { isUsbPrinterConnected, printBadgeViaUsb } = await import("@/lib/usb-printer")
+      const html2canvas = (await import("html2canvas")).default
+
+      if (!isUsbPrinterConnected()) {
+        setUsbStatus({ success: false, message: "USB printer not connected. Tap Connect Printer first." })
+        if (soundEnabled) playErrorSound()
+        setUsbPrinting(false)
+        return
+      }
+
+      // Pre-generate QR codes
+      const badgeTemplate = data.badge_template || station?.badge_templates
+      if (badgeTemplate?.template_data?.elements) {
+        for (const el of badgeTemplate.template_data.elements) {
+          if (el.type === "qr_code") {
+            const qrValue = replacePlaceholders(el.content || "", data.registration)
+            if (qrValue) {
+              try {
+                el._qrDataUrl = await QRCode.toDataURL(qrValue, {
+                  width: Math.min(el.width, el.height) * 2,
+                  margin: 1,
+                  errorCorrectionLevel: "M",
+                })
+              } catch (_e) { /* ignore */ }
+            }
+          }
+        }
+      }
+
+      // Generate the badge HTML
+      const printContent = generatePrintContent(data)
+
+      // Render HTML to a temporary container
+      const container = document.createElement("div")
+      container.style.position = "absolute"
+      container.style.left = "-9999px"
+      container.style.top = "0"
+      const bodyMatch = printContent.match(/<body[^>]*>([\s\S]*)<\/body>/)
+      if (bodyMatch) {
+        container.innerHTML = bodyMatch[1]
+      } else {
+        container.innerHTML = printContent
+      }
+      document.body.appendChild(container)
+
+      // Wait for fonts/images to load
+      await new Promise(resolve => setTimeout(resolve, 800))
+
+      // Render to canvas
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      })
+
+      document.body.removeChild(container)
+
+      // Send via USB
+      const result = await printBadgeViaUsb(
+        canvas,
+        station?.print_settings?.paper_size || "4x6"
+      )
+
+      if (result.success) {
+        setUsbStatus({ success: true, message: "Printed!" })
+        if (soundEnabled) playSuccessSound()
+        setPrintSuccess(true)
+        setTimeout(() => resetScan(), 1500)
+      } else {
+        setUsbStatus({ success: false, message: result.error || "Print failed" })
+        if (soundEnabled) playErrorSound()
+      }
+    } catch (err: any) {
+      setUsbStatus({ success: false, message: err.message || "Print failed" })
+      if (soundEnabled) playErrorSound()
+    }
+
+    setUsbPrinting(false)
+  }
+
   // Check if direct ZPL printing is available
-  const hasZplPrinter = !!station?.print_settings?.printer_ip && station?.print_settings?.printer_type !== "thermal"
+  const hasZplPrinter = !!station?.print_settings?.printer_ip && station?.print_settings?.printer_type !== "thermal" && station?.print_settings?.printer_type !== "usb"
   const hasThermalPrinter = station?.print_settings?.printer_type === "thermal" && !!station?.print_settings?.printer_ip
+  const hasUsbPrinter = station?.print_settings?.printer_type === "usb"
 
   // Replace placeholders in text with registration data
   const replacePlaceholders = (text: string, reg: any) => {
@@ -1761,7 +1911,7 @@ function PrintStationKioskPage() {
                 <label className="text-sm font-medium text-muted-foreground">Printer Type</label>
                 <Select
                   value={settingsForm.printer_type}
-                  onValueChange={(v) => setSettingsForm({ ...settingsForm, printer_type: v as "browser" | "zebra" | "thermal" })}
+                  onValueChange={(v) => setSettingsForm({ ...settingsForm, printer_type: v as "browser" | "zebra" | "thermal" | "usb" })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -1770,12 +1920,13 @@ function PrintStationKioskPage() {
                     <SelectItem value="browser">Browser (default)</SelectItem>
                     <SelectItem value="zebra">Zebra (ZPL)</SelectItem>
                     <SelectItem value="thermal">Thermal (ESC/POS + Auto-Cut)</SelectItem>
+                    <SelectItem value="usb">USB Printer (Decode / Thermal)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Printer IP - shown for Zebra and Thermal */}
-              {settingsForm.printer_type !== "browser" && (
+              {/* Printer IP - shown for Zebra and Thermal (not USB) */}
+              {settingsForm.printer_type !== "browser" && settingsForm.printer_type !== "usb" && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-muted-foreground">
                     Printer IP {settingsForm.printer_type === "zebra" ? "(Zebra/ZPL)" : "(Thermal/ESC-POS)"}
@@ -1789,8 +1940,8 @@ function PrintStationKioskPage() {
                 </div>
               )}
 
-              {/* Printer Port - shown if IP is set and type is not browser */}
-              {settingsForm.printer_type !== "browser" && settingsForm.printer_ip && (
+              {/* Printer Port - shown if IP is set and type is not browser/usb */}
+              {settingsForm.printer_type !== "browser" && settingsForm.printer_type !== "usb" && settingsForm.printer_ip && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-muted-foreground">Printer Port</label>
                   <Input
@@ -1800,6 +1951,113 @@ function PrintStationKioskPage() {
                     value={settingsForm.printer_port}
                     onChange={(e) => setSettingsForm({ ...settingsForm, printer_port: parseInt(e.target.value) || 9100 })}
                   />
+                </div>
+              )}
+
+              {/* USB Printer connect/test buttons */}
+              {settingsForm.printer_type === "usb" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">USB Printer</label>
+                  <div className="flex items-center gap-2">
+                    {usbConnected ? (
+                      <>
+                        <div className="flex items-center gap-2 flex-1 px-3 py-2 bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                          <Usb className="w-4 h-4 text-emerald-600" />
+                          <span className="text-emerald-700 dark:text-emerald-400 truncate">{usbPrinterName || "Connected"}</span>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            const { disconnectUsbPrinter } = await import("@/lib/usb-printer")
+                            await disconnectUsbPrinter()
+                            setUsbConnected(false)
+                            setUsbPrinterName(null)
+                            setPrinterOnline(false)
+                          }}
+                          className="px-3 py-2 bg-red-100 dark:bg-red-950 text-red-600 rounded-lg text-sm hover:bg-red-200 dark:hover:bg-red-900 transition-colors"
+                          title="Disconnect printer"
+                        >
+                          <Unplug className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          setUsbConnecting(true)
+                          try {
+                            const { connectUsbPrinter } = await import("@/lib/usb-printer")
+                            const result = await connectUsbPrinter()
+                            if (result.success) {
+                              setUsbConnected(true)
+                              setUsbPrinterName(result.name || null)
+                              setPrinterOnline(true)
+                              setUsbStatus({ success: true, message: `Connected to ${result.name || "printer"}` })
+                              if (soundEnabled) playSuccessSound()
+                            } else {
+                              setUsbStatus({ success: false, message: result.error || "Connection failed" })
+                              if (soundEnabled) playErrorSound()
+                            }
+                          } catch (err: any) {
+                            setUsbStatus({ success: false, message: err.message || "Connection failed" })
+                            if (soundEnabled) playErrorSound()
+                          }
+                          setUsbConnecting(false)
+                          setTimeout(() => setUsbStatus(null), 4000)
+                        }}
+                        disabled={usbConnecting}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+                      >
+                        {usbConnecting ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Usb className="w-4 h-4" />
+                        )}
+                        {usbConnecting ? "Connecting..." : "Connect Printer"}
+                      </button>
+                    )}
+                  </div>
+                  {/* Test print button */}
+                  {usbConnected && (
+                    <button
+                      onClick={async () => {
+                        setTestingUsb(true)
+                        try {
+                          const { testUsbPrinter } = await import("@/lib/usb-printer")
+                          const result = await testUsbPrinter()
+                          if (result.success) {
+                            setUsbStatus({ success: true, message: "Test print sent!" })
+                            if (soundEnabled) playSuccessSound()
+                          } else {
+                            setUsbStatus({ success: false, message: result.error || "Test failed" })
+                            if (soundEnabled) playErrorSound()
+                          }
+                        } catch (err: any) {
+                          setUsbStatus({ success: false, message: err.message || "Test failed" })
+                          if (soundEnabled) playErrorSound()
+                        }
+                        setTestingUsb(false)
+                        setTimeout(() => setUsbStatus(null), 4000)
+                      }}
+                      disabled={testingUsb}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 transition-colors disabled:opacity-50"
+                    >
+                      {testingUsb ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Printer className="w-4 h-4" />
+                      )}
+                      {testingUsb ? "Sending..." : "Test Print"}
+                    </button>
+                  )}
+                  {usbStatus && (
+                    <div className={`flex items-center gap-2 text-sm ${usbStatus.success ? "text-emerald-600" : "text-red-600"}`}>
+                      {usbStatus.success ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                      {usbStatus.message}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Connect your Decode DC 400 Pro (or any USB thermal printer) via USB cable. Chrome will ask you to select the device.
+                  </p>
                 </div>
               )}
 
@@ -2277,6 +2535,53 @@ function PrintStationKioskPage() {
                     </button>
                   )}
 
+                  {/* Show USB Direct Print button if USB printer is configured */}
+                  {hasUsbPrinter && (
+                    <button
+                      onClick={() => {
+                        if (!usbConnected) {
+                          setUsbStatus({ success: false, message: "Connect printer first via Settings" })
+                          setTimeout(() => setUsbStatus(null), 3000)
+                          return
+                        }
+                        if (scannedRegistration) {
+                          const printData = {
+                            registration: scannedRegistration,
+                            station: {
+                              id: station.id,
+                              name: station.name,
+                              print_mode: station.print_mode,
+                              print_settings: station.print_settings,
+                              events: station.events
+                            },
+                            badge_template: station.badge_templates
+                          }
+                          triggerUsbPrint(printData)
+                        }
+                      }}
+                      disabled={usbPrinting}
+                      className={`w-full flex items-center justify-center gap-2 px-5 py-4 bg-gradient-to-r ${getPrintModeColor(station.print_mode)} text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg disabled:opacity-50`}
+                    >
+                      {usbPrinting ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Sending to Printer...
+                        </>
+                      ) : (
+                        <>
+                          <Usb className="w-5 h-5" />
+                          Print via USB {usbPrinterName ? `(${usbPrinterName})` : ""}
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {usbStatus && hasUsbPrinter && (
+                    <div className={`flex items-center justify-center gap-2 text-sm ${usbStatus.success ? "text-emerald-600" : "text-red-600"}`}>
+                      {usbStatus.success ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                      {usbStatus.message}
+                    </div>
+                  )}
+
                   {/* Show ZPL Direct Print button if Zebra printer IP is configured */}
                   {hasZplPrinter && (
                     <button
@@ -2337,7 +2642,7 @@ function PrintStationKioskPage() {
                       <Eye className="w-5 h-5" />
                       Preview / Save PDF
                     </button>
-                    {!hasZplPrinter && !hasThermalPrinter && (
+                    {!hasZplPrinter && !hasThermalPrinter && !hasUsbPrinter && (
                       <button
                         onClick={() => {
                           // Browser print dialog
@@ -2433,19 +2738,31 @@ function PrintStationKioskPage() {
             <span className="text-muted-foreground">
               {station.print_settings?.paper_size} • {station.print_settings?.orientation}
             </span>
-            {(hasZplPrinter || hasThermalPrinter) && (
+            {(hasZplPrinter || hasThermalPrinter || hasUsbPrinter) && (
               <>
                 <span className="text-muted-foreground">•</span>
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    printerOnline === null ? "bg-gray-400" : printerOnline ? "bg-emerald-500" : "bg-red-500"
+                    hasUsbPrinter
+                      ? (usbConnected ? "bg-emerald-500" : "bg-red-500")
+                      : (printerOnline === null ? "bg-gray-400" : printerOnline ? "bg-emerald-500" : "bg-red-500")
                   }`} />
-                  <Printer className="w-4 h-4" />
-                  <span className={printerOnline ? "text-emerald-600" : printerOnline === false ? "text-red-600" : "text-muted-foreground"}>
-                    {printerOnline === null ? "Checking..." : printerOnline ? "Printer Online" : "Printer Offline"}
+                  {hasUsbPrinter ? <Usb className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
+                  <span className={
+                    hasUsbPrinter
+                      ? (usbConnected ? "text-emerald-600" : "text-red-600")
+                      : (printerOnline ? "text-emerald-600" : printerOnline === false ? "text-red-600" : "text-muted-foreground")
+                  }>
+                    {hasUsbPrinter
+                      ? (usbConnected ? "USB Connected" : "USB Disconnected")
+                      : (printerOnline === null ? "Checking..." : printerOnline ? "Printer Online" : "Printer Offline")
+                    }
                   </span>
                   <span className="text-muted-foreground text-xs">
-                    ({hasThermalPrinter ? "Thermal" : "Zebra"} {station.print_settings?.printer_ip})
+                    {hasUsbPrinter
+                      ? (usbPrinterName || "Decode")
+                      : `(${hasThermalPrinter ? "Thermal" : "Zebra"} ${station.print_settings?.printer_ip})`
+                    }
                   </span>
                 </div>
               </>
