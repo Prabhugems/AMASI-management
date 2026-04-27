@@ -83,10 +83,19 @@ export async function GET(request: NextRequest) {
 }
 
 // PATCH /api/print-stations/queue - Update job status (called by print agent after printing)
+// Requires the same `token` query param as GET. The token must resolve to an
+// active print station, and the job must belong to that station — otherwise
+// any caller could mark arbitrary jobs as completed/failed.
 export async function PATCH(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const token = searchParams.get("token")
     const body = await request.json()
     const { job_id, status, error_message, agent_id, zpl_data } = body
+
+    if (!token) {
+      return NextResponse.json({ error: "token is required" }, { status: 401 })
+    }
 
     if (!job_id || !status) {
       return NextResponse.json({ error: "job_id and status are required" }, { status: 400 })
@@ -98,6 +107,17 @@ export async function PATCH(request: NextRequest) {
 
     const supabase = await createAdminClient()
     const db = supabase as any
+
+    // Verify station token
+    const { data: station } = await db
+      .from("print_stations")
+      .select("id, is_active")
+      .eq("access_token", token)
+      .maybeSingle()
+
+    if (!station || !station.is_active) {
+      return NextResponse.json({ error: "Invalid or inactive station token" }, { status: 401 })
+    }
 
     const updateData: any = {
       status,
@@ -119,16 +139,22 @@ export async function PATCH(request: NextRequest) {
       updateData.zpl_data = zpl_data
     }
 
+    // Scope the update to this station so an agent can't mutate other stations' jobs
     const { data, error } = await db
       .from("print_jobs")
       .update(updateData)
       .eq("id", job_id)
+      .eq("print_station_id", station.id)
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error("Queue update error:", error)
       return NextResponse.json({ error: "Failed to update job" }, { status: 500 })
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "Job not found for this station" }, { status: 404 })
     }
 
     return NextResponse.json({ success: true, job: data })

@@ -42,6 +42,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No abstracts found to assign" }, { status: 404 })
     }
 
+    // Fetch co-authors for all abstracts — a reviewer must not be assigned
+    // to an abstract they (co-)authored. Without this, only the presenting
+    // author was checked for COI.
+    const abstractIds = abstracts.map((a: any) => a.id)
+    const { data: authorRows } = await (supabase as any)
+      .from("abstract_authors")
+      .select("abstract_id, email")
+      .in("abstract_id", abstractIds)
+    const coAuthorEmailsByAbstract: Record<string, Set<string>> = {}
+    for (const row of authorRows || []) {
+      if (!row.email) continue
+      if (!coAuthorEmailsByAbstract[row.abstract_id]) {
+        coAuthorEmailsByAbstract[row.abstract_id] = new Set()
+      }
+      coAuthorEmailsByAbstract[row.abstract_id].add(String(row.email).toLowerCase())
+    }
+
     // Fetch all active reviewers with their specialties and current load
     const { data: reviewers } = await (supabase as any)
       .from("abstract_reviewers")
@@ -102,6 +119,16 @@ export async function POST(request: NextRequest) {
       // Check for conflicts (return -1 to skip)
       const authorEmail = abstract.presenting_author_email?.toLowerCase()
       const authorInstitution = abstract.presenting_author_affiliation?.toLowerCase()
+      const reviewerEmail = reviewer.email ? String(reviewer.email).toLowerCase() : null
+
+      // Reviewer is a (co-)author of this abstract = conflict
+      const coAuthors = coAuthorEmailsByAbstract[abstract.id]
+      if (reviewerEmail && coAuthors && coAuthors.has(reviewerEmail)) {
+        return -1
+      }
+      if (reviewerEmail && authorEmail && reviewerEmail === authorEmail) {
+        return -1
+      }
 
       // Same institution = conflict
       if (reviewer.institution && authorInstitution &&

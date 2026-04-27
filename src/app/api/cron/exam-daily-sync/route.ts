@@ -21,13 +21,15 @@ async function lookupAmasi(val: string) {
 
 // GET /api/cron/exam-daily-sync - Daily automated sync
 export async function GET(request: Request) {
-  // Verify cron secret - Vercel crons send authorization header
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret) {
-    const authHeader = request.headers.get("authorization")
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+  // Verify cron secret - Vercel crons send authorization header.
+  // CRON_SECRET is REQUIRED. Missing env => endpoint is locked down.
+  const cronSecret = process.env.CRON_SECRET?.trim()
+  if (!cronSecret) {
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 })
+  }
+  const authHeader = request.headers.get("authorization")
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const run = await logCronRun("exam-daily-sync")

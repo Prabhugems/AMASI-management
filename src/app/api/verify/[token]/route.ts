@@ -28,6 +28,19 @@ export async function GET(
   // Determine if this is a checkin_token (long) or registration_number (short)
   const isSecureToken = token.length >= 20
 
+  // Optional event_id query param. REQUIRED for short registration_number
+  // lookups — otherwise the same number across two events could resolve to
+  // the wrong registration.
+  const { searchParams } = new URL(request.url)
+  const scopedEventId = searchParams.get("event_id")
+
+  if (!isSecureToken && !scopedEventId) {
+    return NextResponse.json(
+      { valid: false, error: "event_id is required when verifying by registration number" },
+      { status: 400 }
+    )
+  }
+
   // Look up registration by checkin_token or registration_number
   let query = (supabase as any)
     .from("registrations")
@@ -59,8 +72,8 @@ export async function GET(
   if (isSecureToken) {
     query = query.eq("checkin_token", token)
   } else {
-    // Look up by registration number (case insensitive)
-    query = query.ilike("registration_number", token)
+    // Look up by registration number (case insensitive), scoped to event
+    query = query.ilike("registration_number", token).eq("event_id", scopedEventId)
   }
 
   const { data: registration, error } = await query.maybeSingle()
