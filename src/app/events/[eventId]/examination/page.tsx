@@ -625,6 +625,9 @@ export default function MarksheetPage() {
                         <p className="text-xs text-muted-foreground">
                           <HighlightText text={reg.registration_id} search={search} />
                         </p>
+                        <p className="text-xs text-muted-foreground">
+                          {reg.phone || "-"} | <HighlightText text={reg.email} search={search} />
+                        </p>
                       </TableCell>
                       <TableCell>
                         <span className="text-xs bg-secondary px-2 py-1 rounded">{reg.ticket_type_name || "-"}</span>
