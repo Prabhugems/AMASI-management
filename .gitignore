@@ -45,3 +45,6 @@ technosurg-vercel-env.txt
 # build artifacts
 *.zip
 public/*.zip
+
+# Sentry Config File
+.env.sentry-build-plugin
