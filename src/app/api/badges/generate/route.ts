@@ -555,6 +555,18 @@ export async function POST(request: NextRequest) {
     // Generate PDF bytes
     const pdfBytes = await pdfDoc.save()
 
+    // Surface missing-data so admins notice rows that will print blank.
+    // Without this, badges/certificates render empty institution/designation
+    // silently — exactly what bit TechnoSurg's first 36 registrations.
+    const missingInstitution = registrations.filter((r: any) => !r.attendee_institution).map((r: any) => r.registration_number)
+    const missingDesignation = registrations.filter((r: any) => !r.attendee_designation).map((r: any) => r.registration_number)
+    if (missingInstitution.length > 0) {
+      console.warn(`[badges/generate] ${missingInstitution.length}/${registrations.length} badges have NO institution. Sample: ${missingInstitution.slice(0, 5).join(", ")}`)
+    }
+    if (missingDesignation.length > 0) {
+      console.warn(`[badges/generate] ${missingDesignation.length}/${registrations.length} badges have NO designation. Sample: ${missingDesignation.slice(0, 5).join(", ")}`)
+    }
+
     // Lock template if not already locked (first generation locks it)
     if (!template.is_locked) {
       await (supabase as any)
@@ -576,7 +588,11 @@ export async function POST(request: NextRequest) {
         .eq("id", template_id)
     }
 
-    // Store badges if requested (for single badge generation)
+    // Store badges if requested (for single badge generation).
+    // Track whether upload succeeded — if it didn't, we must NOT mark
+    // badge_generated_at later, otherwise we end up with a row that says
+    // "badge generated" but has no badge_url, with no recovery path.
+    let singleBadgeUploadFailed = false
     if (store_badges && single_registration_id) {
       try {
         const fileName = `badges/${event_id}/${single_registration_id}.pdf`
@@ -604,8 +620,12 @@ export async function POST(request: NextRequest) {
               badge_template_id: template_id,
             })
             .eq("id", single_registration_id)
+        } else {
+          singleBadgeUploadFailed = true
+          console.error("Badge storage upload failed:", uploadError)
         }
       } catch (storageError) {
+        singleBadgeUploadFailed = true
         console.error("Failed to store badge:", storageError)
         // Continue - don't fail the whole request
       }
@@ -650,6 +670,12 @@ export async function POST(request: NextRequest) {
     if (regIds?.length > 0) {
       // Update each registration with the correct template based on their ticket type
       for (const reg of registrations) {
+        // Skip the single-registration row whose storage upload failed —
+        // marking badge_generated_at without badge_url leaves it stuck.
+        if (singleBadgeUploadFailed && reg.id === single_registration_id) {
+          console.warn(`Skipping badge_generated_at for ${reg.id} - storage upload failed`)
+          continue
+        }
         const correctTemplateId = findCorrectTemplateId(reg.ticket_type_id)
         const { error: updateError } = await (supabase as any)
           .from("registrations")

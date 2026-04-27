@@ -333,6 +333,16 @@ export async function POST(request: NextRequest) {
     // Generate PDF bytes
     const pdfBytes = await pdfDoc.save()
 
+    // Surface missing-data so admins notice rows that will print blank.
+    const missingInstitution = registrations.filter((r: any) => !r.attendee_institution).map((r: any) => r.registration_number)
+    const missingDesignation = registrations.filter((r: any) => !r.attendee_designation).map((r: any) => r.registration_number)
+    if (missingInstitution.length > 0) {
+      console.warn(`[certificates/generate] ${missingInstitution.length}/${registrations.length} certs have NO institution. Sample: ${missingInstitution.slice(0, 5).join(", ")}`)
+    }
+    if (missingDesignation.length > 0) {
+      console.warn(`[certificates/generate] ${missingDesignation.length}/${registrations.length} certs have NO designation. Sample: ${missingDesignation.slice(0, 5).join(", ")}`)
+    }
+
     // Log activity
     logActivityFromRequest(request, {
       action: registrations.length === 1 ? "generate_certificate" : "bulk_action",

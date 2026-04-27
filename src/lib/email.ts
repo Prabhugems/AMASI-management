@@ -25,21 +25,24 @@ type SendResult = {
   error?: string
 }
 
-// Get active email provider from environment
+// Get active email provider from environment.
+// All env reads use .trim() — Vercel can append newlines to env vars and a
+// trailing whitespace makes truthy checks pass while every API call still
+// fails authentication (documented gotcha in CLAUDE.md).
 function getProvider(): "blastable" | "resend" | null {
-  if (process.env.BLASTABLE_API_KEY) return "blastable"
-  if (process.env.RESEND_API_KEY) return "resend"
+  if (process.env.BLASTABLE_API_KEY?.trim()) return "blastable"
+  if (process.env.RESEND_API_KEY?.trim()) return "resend"
   return null
 }
 
 // Send email via Blastable API
 async function sendViaBlastable(options: EmailOptions): Promise<SendResult> {
-  const apiKey = process.env.BLASTABLE_API_KEY
+  const apiKey = process.env.BLASTABLE_API_KEY?.trim()
   if (!apiKey) {
     return { success: false, error: "BLASTABLE_API_KEY not configured" }
   }
 
-  const fromEmail = options.from || process.env.BLASTABLE_FROM_EMAIL || process.env.RESEND_FROM_EMAIL
+  const fromEmail = options.from || process.env.BLASTABLE_FROM_EMAIL?.trim() || process.env.RESEND_FROM_EMAIL?.trim()
   if (!fromEmail) {
     return { success: false, error: "Blastable: No from email configured. Set BLASTABLE_FROM_EMAIL or RESEND_FROM_EMAIL." }
   }
@@ -86,12 +89,12 @@ async function sendViaBlastable(options: EmailOptions): Promise<SendResult> {
 
 // Send email via Resend API
 async function sendViaResend(options: EmailOptions): Promise<SendResult> {
-  const apiKey = process.env.RESEND_API_KEY
+  const apiKey = process.env.RESEND_API_KEY?.trim()
   if (!apiKey) {
     return { success: false, error: "RESEND_API_KEY not configured" }
   }
 
-  const fromEmail = options.from || process.env.RESEND_FROM_EMAIL || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`
+  const fromEmail = options.from || process.env.RESEND_FROM_EMAIL?.trim() || `${COMPANY_CONFIG.name} Events <noreply@resend.dev>`
 
   try {
     console.log(`[Resend] Sending from "${fromEmail}" to "${options.to}" subject="${options.subject}"`)
@@ -152,7 +155,7 @@ export async function sendEmail(options: EmailOptions): Promise<SendResult> {
   if (provider === "blastable") {
     const result = await sendViaBlastable(options)
     // If Blastable fails and Resend is also configured, try Resend as fallback
-    if (!result.success && process.env.RESEND_API_KEY) {
+    if (!result.success && process.env.RESEND_API_KEY?.trim()) {
       console.log(`[Email] Blastable failed (${result.error}), falling back to Resend...`)
       const resendResult = await sendViaResend(options)
       if (resendResult.success) {

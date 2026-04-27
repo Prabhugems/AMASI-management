@@ -84,7 +84,7 @@ async function logMessage(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
 
-  await supabase.from("message_logs").insert({
+  const { error: logErr } = await supabase.from("message_logs").insert({
     event_id: eventId,
     registration_id: registrationId,
     template_id: templateId,
@@ -98,6 +98,14 @@ async function logMessage(
     error_message: errorMessage,
     sent_at: status === "sent" ? new Date().toISOString() : null,
   })
+  // Log failures so callers don't silently drop the audit trail. The send
+  // itself already succeeded by this point — we only fail the log row.
+  if (logErr) {
+    console.error(
+      `[auto-send] message_logs insert failed (event=${eventId} reg=${registrationId} channel=${channel} status=${status}):`,
+      logErr,
+    )
+  }
 }
 
 // Send email using template

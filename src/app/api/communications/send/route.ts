@@ -223,17 +223,18 @@ export async function POST(request: NextRequest) {
         if (sendResult.success) {
           results.sent++
 
-          // Log message
-          await (supabase as any).from("message_logs").insert({
+          // Log message (capture insert errors so silent log loss is visible)
+          const logProvider = channel === "email"
+            ? (settings?.email_provider || "default")
+            : channel === "whatsapp"
+            ? (settings?.whatsapp_provider || null)
+            : (settings?.sms_provider || null)
+          const { error: logErr } = await (supabase as any).from("message_logs").insert({
             event_id,
             registration_id: reg.id,
             template_id: template_id || null,
             channel,
-            provider: channel === "email"
-              ? (settings?.email_provider || "default")
-              : channel === "whatsapp"
-              ? settings?.whatsapp_provider
-              : settings?.sms_provider,
+            provider: logProvider,
             recipient,
             recipient_name: reg.attendee_name,
             subject: personalizedSubject,
@@ -242,8 +243,13 @@ export async function POST(request: NextRequest) {
             provider_message_id: sendResult.messageId,
             sent_at: new Date().toISOString(),
           })
+          if (logErr) {
+            console.error(`[communications/send] message_logs insert failed for ${recipient}:`, logErr)
+          }
 
-          // Send to webhook if enabled
+          // Send to webhook if enabled. Fire-and-forget is intentional (don't
+          // block the per-recipient loop on slow webhooks), but we surface
+          // failures rather than swallowing them silently.
           if (settings?.webhook_enabled && settings.webhook_url) {
             const webhookPayload = buildCommunicationPayload("message.sent", {
               eventId: event_id,
@@ -257,11 +263,30 @@ export async function POST(request: NextRequest) {
               messageId: sendResult.messageId,
             })
 
-            // Fire and forget webhook
             sendWebhook(
               { url: settings.webhook_url, secret: settings.webhook_secret, headers: settings.webhook_headers },
               webhookPayload
-            ).catch((err) => console.error("Webhook error:", err))
+            ).catch(async (err) => {
+              console.error("[communications/send] Webhook delivery failed:", err)
+              // Record the webhook failure as a message_log row so admins can
+              // see it without scraping server logs.
+              await (supabase as any).from("message_logs").insert({
+                event_id,
+                registration_id: reg.id,
+                template_id: template_id || null,
+                channel: "webhook",
+                provider: "webhook",
+                recipient: settings.webhook_url,
+                recipient_name: reg.attendee_name,
+                subject: `webhook delivery failed (${channel})`,
+                message_body: JSON.stringify(webhookPayload).slice(0, 4000),
+                status: "failed",
+                error_message: String(err?.message || err).slice(0, 1000),
+                failed_at: new Date().toISOString(),
+              }).then(() => undefined).catch((logErr: any) => {
+                console.error("[communications/send] Could not log webhook failure:", logErr)
+              })
+            })
           }
         } else {
           results.failed++
