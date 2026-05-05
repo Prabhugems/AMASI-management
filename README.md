@@ -42,6 +42,7 @@ Used in production for AMASI **skill courses** — hands-on training programmes 
 - **Spreadsheets**: `csv-parse`, `papaparse`, `xlsx`
 - **Charts**: Recharts
 - **AI**: `@anthropic-ai/sdk`
+- **Observability**: Sentry (`@sentry/nextjs`) for error tracking and performance monitoring
 
 > Note: `three`, `@react-three/fiber` and `@react-three/drei` are present in `package.json` but not imported. They will be removed in a future cleanup commit.
 
@@ -58,6 +59,7 @@ Used in production for AMASI **skill courses** — hands-on training programmes 
 - **AirLabs / AviationStack** — flight lookup for the travel module.
 - **Fillout** — form integration.
 - **Boostspace** — outbound webhook destination.
+- **Sentry** — error tracking and performance monitoring.
 - **Vercel** — hosting and cron jobs.
 
 ## The shared Supabase relationship
