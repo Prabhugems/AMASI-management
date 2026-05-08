@@ -1162,8 +1162,8 @@ export default function LandingPage() {
           <div className="flex items-center gap-4">
             <span>&copy; {new Date().getFullYear()} GEM Hospital &amp; Research Centre</span>
             <span className="text-white/10">·</span>
-            <a href="/login" className="hover:text-cyan-400 transition-colors">
-              Admin
+            <a href="/login" className="text-white/50 hover:text-cyan-400 transition-colors">
+              Admin Login
             </a>
           </div>
         </div>
