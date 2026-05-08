@@ -427,16 +427,30 @@ function EventDetailsPage() {
         return []
       }
 
-      const addonsWithLinks = await Promise.all(
-        (data || []).map(async (addon: Addon) => {
-          const { data: links } = await (supabase as any)
+      // Batch fetch all addon_ticket_links in a single query (fixes N+1)
+      const addonIds = (data || []).map((addon: Addon) => addon.id)
+      const { data: allLinks } = addonIds.length > 0
+        ? await (supabase as any)
             .from("addon_ticket_links")
-            .select("ticket_type_id")
-            .eq("addon_id", addon.id)
-          addon.linked_ticket_ids = (links || []).map((l: any) => l.ticket_type_id)
-          return addon
-        })
+            .select("addon_id, ticket_type_id")
+            .in("addon_id", addonIds)
+        : { data: [] }
+
+      // Group links by addon_id
+      const linksByAddonId = (allLinks || []).reduce(
+        (acc: Record<string, string[]>, link: { addon_id: string; ticket_type_id: string }) => {
+          if (!acc[link.addon_id]) acc[link.addon_id] = []
+          acc[link.addon_id].push(link.ticket_type_id)
+          return acc
+        },
+        {} as Record<string, string[]>
       )
+
+      // Assign linked_ticket_ids to each addon
+      const addonsWithLinks = (data || []).map((addon: Addon) => ({
+        ...addon,
+        linked_ticket_ids: linksByAddonId[addon.id] || [],
+      }))
 
       return addonsWithLinks as Addon[]
     },
