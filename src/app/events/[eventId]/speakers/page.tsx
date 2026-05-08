@@ -47,7 +47,7 @@ export default function SpeakersOverviewPage() {
     const confirmed = speakers.filter((s: any) => s.custom_fields?.invitation_status === "confirmed").length
     const pending = speakers.filter((s: any) => !s.custom_fields?.invitation_status || s.custom_fields?.invitation_status === "pending").length
     const travelBooked = speakers.filter((s: any) => s.custom_fields?.booking?.onward_status === "booked" || s.custom_fields?.booking?.onward_status === "confirmed").length
-    const hotelBooked = speakers.filter((s: any) => s.custom_fields?.accommodation?.status === "booked" || s.custom_fields?.accommodation?.status === "confirmed").length
+    const hotelBooked = speakers.filter((s: any) => s.custom_fields?.booking?.hotel_status === "booked" || s.custom_fields?.booking?.hotel_status === "confirmed").length
     const docsSubmitted = speakers.filter((s: any) => s.custom_fields?.documents_submitted).length
 
     return {

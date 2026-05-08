@@ -57,8 +57,8 @@ export default function SpeakerReportsPage() {
       s.custom_fields?.booking?.onward_status === "confirmed"
     ).length
     const hotelBooked = speakers.filter((s: any) =>
-      s.custom_fields?.accommodation?.status === "booked" ||
-      s.custom_fields?.accommodation?.status === "confirmed"
+      s.custom_fields?.booking?.hotel_status === "booked" ||
+      s.custom_fields?.booking?.hotel_status === "confirmed"
     ).length
     const docsComplete = speakers.filter((s: any) =>
       s.custom_fields?.bio_submitted && s.custom_fields?.photo_submitted
@@ -95,7 +95,7 @@ export default function SpeakerReportsPage() {
       s.status || "",
       s.custom_fields?.invitation_status || "pending",
       s.custom_fields?.booking?.onward_status === "booked" || s.custom_fields?.booking?.onward_status === "confirmed" ? "Yes" : "No",
-      s.custom_fields?.accommodation?.status === "booked" || s.custom_fields?.accommodation?.status === "confirmed" ? "Yes" : "No",
+      s.custom_fields?.booking?.hotel_status === "booked" || s.custom_fields?.booking?.hotel_status === "confirmed" ? "Yes" : "No",
     ])
 
     const csv = [headers, ...rows].map(row => row.join(",")).join("\n")

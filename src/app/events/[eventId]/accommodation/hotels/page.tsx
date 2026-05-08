@@ -140,7 +140,7 @@ export default function HotelsPage() {
   // Delete hotel
   const deleteHotel = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/hotels?id=${id}`, { method: "DELETE" })
+      const response = await fetch(`/api/hotels?id=${id}&event_id=${eventId}`, { method: "DELETE" })
       if (!response.ok) throw new Error("Failed to delete hotel")
       return response.json()
     },
