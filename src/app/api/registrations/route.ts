@@ -317,7 +317,10 @@ export async function POST(request: NextRequest) {
             attendee_city: attendee_city || undefined,
             attendee_state: attendee_state || undefined,
             attendee_country: attendee_country || undefined,
-            custom_fields: custom_fields || existingReg.custom_fields,
+            custom_fields: {
+              ...(existingReg.custom_fields || {}),
+              ...(custom_fields || {}),
+            },
             ticket_type_id: ticket_type_id,
             participation_mode,
           })
