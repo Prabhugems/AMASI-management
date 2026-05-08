@@ -212,26 +212,31 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error("Error saving event settings:", error.message, error.details, error.hint)
+      console.error("Error saving event settings:", error.message, error.details, error.hint, error.code)
       return NextResponse.json(
-        { error: "Failed to save settings" },
+        { error: `Failed to save settings: ${error.message}` },
         { status: 500 }
       )
     }
 
-    // Log the change
+    // Log the change (optional - don't fail if logging fails)
     const changedKeys = Object.keys(payload).filter(k => k !== 'event_id')
     if (changedKeys.length > 0 && user) {
-      const hasModules = changedKeys.some(k => k.startsWith('enable_'))
-      const hasAutomation = changedKeys.some(k => k.startsWith('auto_') || k === 'reminder_lead_days')
-      const section = hasModules && hasAutomation ? 'modules, automation' : hasModules ? 'modules' : hasAutomation ? 'automation' : 'registration'
-      await adminClient.from("event_settings_log").insert({
-        event_id: body.event_id,
-        changed_by: user.id,
-        section,
-        summary: `Updated ${changedKeys.map(humanizeSettingKey).join(', ')}`,
-        snapshot: payload,
-      })
+      try {
+        const hasModules = changedKeys.some(k => k.startsWith('enable_'))
+        const hasAutomation = changedKeys.some(k => k.startsWith('auto_') || k === 'reminder_lead_days')
+        const section = hasModules && hasAutomation ? 'modules, automation' : hasModules ? 'modules' : hasAutomation ? 'automation' : 'registration'
+        await adminClient.from("event_settings_log").insert({
+          event_id: body.event_id,
+          changed_by: user.id,
+          section,
+          summary: `Updated ${changedKeys.map(humanizeSettingKey).join(', ')}`,
+          snapshot: payload,
+        })
+      } catch (logError) {
+        // Don't fail the save if logging fails
+        console.warn("Failed to log event settings change:", logError)
+      }
     }
 
     return NextResponse.json(data)

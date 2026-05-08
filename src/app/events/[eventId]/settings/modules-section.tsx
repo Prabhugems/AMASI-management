@@ -100,14 +100,17 @@ export function ModulesSection({ eventId }: { eventId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ event_id: eventId, ...formData }),
       })
-      if (!res.ok) throw new Error("Failed to save")
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || "Failed to save")
+      }
       await queryClient.invalidateQueries({ queryKey: ["event-module-settings", eventId] })
       await queryClient.invalidateQueries({ queryKey: ["event-setup-status", eventId] })
       window.dispatchEvent(new CustomEvent("event-settings-saved"))
       toast.success("All modules saved")
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save module settings:", error)
-      toast.error("Failed to save modules")
+      toast.error(error.message || "Failed to save modules")
     }
     setSaving(false)
   }
