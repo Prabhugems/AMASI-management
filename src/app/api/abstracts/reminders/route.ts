@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
 import { sendGallaboxTemplate, isGallaboxEnabled } from "@/lib/gallabox"
+import { getRequiredAppUrl } from "@/lib/tenant"
 
 // POST /api/abstracts/reminders - Send deadline reminders
 export async function POST(request: NextRequest) {
@@ -213,7 +214,7 @@ export async function POST(request: NextRequest) {
           }
 
           if (channel === "whatsapp" && isGallaboxEnabled() && abstract.presenting_author_phone) {
-            const revisionUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "https://collegeofmas.org.in"}/submit-abstract/${event_id}?revision=${abstract.id}&email=${encodeURIComponent(abstract.presenting_author_email)}`
+            const revisionUrl = `${getRequiredAppUrl()}/submit-abstract/${event_id}?revision=${abstract.id}&email=${encodeURIComponent(abstract.presenting_author_email)}`
 
             const result = await sendGallaboxTemplate(
               abstract.presenting_author_phone,

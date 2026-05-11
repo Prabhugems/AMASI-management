@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { getTenant } from "@/lib/tenant"
 
 interface PublicEvent {
   id: string
@@ -355,9 +356,9 @@ export default function RegisterPage() {
 
   const supabase = createClient()
 
-  // Fetch events with registration open
+  // Fetch events with registration open (scoped to current tenant)
   const { data: events, isLoading } = useQuery({
-    queryKey: ["public-events", search],
+    queryKey: ["public-events", getTenant(), search],
     queryFn: async () => {
       let query = supabase
         .from("events")
@@ -365,6 +366,7 @@ export default function RegisterPage() {
           id, name, short_name, slug, tagline, description, event_type,
           start_date, end_date, city, state, venue_name, banner_url, logo_url, status
         `)
+        .eq("tenant", getTenant())
         .in("status", ["registration_open", "planning", "ongoing"])
         .order("start_date", { ascending: true })
 

@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { FEATURES } from "@/lib/config"
+import { getTenant } from "@/lib/tenant"
 
 // Skeleton card for loading state
 function EventCardSkeleton() {
@@ -129,13 +130,15 @@ export default function EventsPage() {
     faculty_assignments: { count: number }[]
   }
 
-  // Fetch events with filters
+  // Fetch events with filters (scoped to current tenant)
+  const tenant = getTenant()
   const { data: events, isLoading, refetch } = useQuery({
-    queryKey: ["events", debouncedSearch, statusFilter, typeFilter],
+    queryKey: ["events", tenant, debouncedSearch, statusFilter, typeFilter],
     queryFn: async () => {
       let query = supabase
         .from("events")
         .select("*, registrations(count), faculty_assignments(count)")
+        .eq("tenant", tenant)
         .order("start_date", { ascending: false })
 
       if (debouncedSearch) {
@@ -164,14 +167,14 @@ export default function EventsPage() {
     }
   }, [events, router])
 
-  // Fetch stats (parallel queries)
+  // Fetch stats (parallel queries, scoped to current tenant)
   const { data: stats } = useQuery({
-    queryKey: ["events-stats"],
+    queryKey: ["events-stats", tenant],
     queryFn: async () => {
       const [totalResult, activeResult, completedResult] = await Promise.all([
-        supabase.from("events").select("*", { count: "exact", head: true }),
-        supabase.from("events").select("*", { count: "exact", head: true }).in("status", ["setup", "draft", "active", "ongoing"]),
-        supabase.from("events").select("*", { count: "exact", head: true }).eq("status", "completed"),
+        supabase.from("events").select("*", { count: "exact", head: true }).eq("tenant", tenant),
+        supabase.from("events").select("*", { count: "exact", head: true }).eq("tenant", tenant).in("status", ["setup", "draft", "active", "ongoing"]),
+        supabase.from("events").select("*", { count: "exact", head: true }).eq("tenant", tenant).eq("status", "completed"),
       ])
       return {
         total: totalResult.count || 0,

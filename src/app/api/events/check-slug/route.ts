@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { getApiUser } from "@/lib/auth/api-auth"
+import { getTenant } from "@/lib/tenant"
 
 // GET /api/events/check-slug?slug=xxx&exclude_id=xxx
+//
+// Uniqueness is scoped to (slug, tenant), not just slug. The same slug can
+// exist for both tenants — the public /register/[eventSlug] handler resolves
+// the slug within the current tenant, so collisions across tenants are safe.
 export async function GET(request: NextRequest) {
   try {
     const { error: authError } = await getApiUser()
@@ -17,11 +22,13 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createAdminClient()
+    const tenant = getTenant()
 
     let query = supabase
       .from("events")
       .select("id, slug")
       .eq("slug", slug)
+      .eq("tenant", tenant)
 
     if (excludeId) {
       query = query.neq("id", excludeId)
@@ -38,13 +45,14 @@ export async function GET(request: NextRequest) {
 
     let suggestion: string | undefined
     if (!available) {
-      // Find an available suggestion
+      // Find an available suggestion within the current tenant.
       for (let i = 2; i <= 10; i++) {
         const candidate = `${slug}-${i}`
         const { data: check } = await supabase
           .from("events")
           .select("id")
           .eq("slug", candidate)
+          .eq("tenant", tenant)
           .maybeSingle()
 
         if (!check) {

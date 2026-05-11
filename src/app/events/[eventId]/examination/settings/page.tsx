@@ -656,7 +656,7 @@ export default function ExamSettingsPage() {
                 <Input
                   readOnly
                   value={formData.webhook_secret
-                    ? `${typeof window !== "undefined" ? window.location.origin : "https://collegeofmas.org.in"}/api/webhooks/fillout-address?event_id=${eventId}&secret=${formData.webhook_secret}`
+                    ? `${typeof window !== "undefined" ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || ""}/api/webhooks/fillout-address?event_id=${eventId}&secret=${formData.webhook_secret}`
                     : "Save settings first to generate webhook URL"
                   }
                   className="font-mono text-xs bg-background"
@@ -686,7 +686,7 @@ export default function ExamSettingsPage() {
                 <Input
                   readOnly
                   value={formData.webhook_secret
-                    ? `${typeof window !== "undefined" ? window.location.origin : "https://collegeofmas.org.in"}/api/webhooks/airtable-address?event_id=${eventId}&secret=${formData.webhook_secret}`
+                    ? `${typeof window !== "undefined" ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || ""}/api/webhooks/airtable-address?event_id=${eventId}&secret=${formData.webhook_secret}`
                     : "Save settings first to generate webhook URL"
                   }
                   className="font-mono text-xs bg-background"

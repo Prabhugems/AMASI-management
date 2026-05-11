@@ -10,11 +10,10 @@
 
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { getRequiredAppUrl } from "@/lib/tenant"
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.NEXT_PUBLIC_APP_URL ||
-  "https://collegeofmas.org.in"
+// Resolved lazily — getRequiredAppUrl() throws on missing env, and importing
+// this module at top-level shouldn't fail just because the file is loaded.
 
 /**
  * Notify the first waitlisted person that a spot has opened up.
@@ -96,7 +95,7 @@ export async function notifyWaitlist(
 
     // 3. Build registration link
     const eventCode = event?.code || eventId
-    const registerUrl = `${SITE_URL}/register/${eventCode}`
+    const registerUrl = `${getRequiredAppUrl()}/register/${eventCode}`
 
     // 4. Send notification email
     const emailResult = await sendEmail({

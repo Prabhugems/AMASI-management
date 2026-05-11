@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
+import { getTenant } from "@/lib/tenant"
 
 declare global {
   interface Window {
@@ -129,6 +130,7 @@ export default function GroupRegistrationPage() {
       let query = supabase
         .from("events")
         .select(`*, ticket_types (*)`)
+        .eq("tenant", getTenant())
 
       if (isUuid) {
         query = query.eq("id", eventSlug)

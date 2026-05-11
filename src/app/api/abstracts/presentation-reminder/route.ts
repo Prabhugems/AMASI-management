@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { getRequiredAppUrl } from "@/lib/tenant"
 
 // POST /api/abstracts/presentation-reminder - Send presentation upload reminder
 export async function POST(request: NextRequest) {
@@ -51,7 +52,9 @@ export async function POST(request: NextRequest) {
     }
 
     const eventName = abstract.events?.short_name || abstract.events?.name || "the event"
-    const uploadUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "https://collegeofmas.org.in"}/upload-presentation/${abstract.id}?email=${encodeURIComponent(abstract.presenting_author_email)}`
+    // Crash-loudly: a missing NEXT_PUBLIC_APP_URL in production would silently
+    // send abstract authors a link to the wrong domain. Throw instead.
+    const uploadUrl = `${getRequiredAppUrl()}/upload-presentation/${abstract.id}?email=${encodeURIComponent(abstract.presenting_author_email)}`
 
     // Send email reminder
     if (isEmailEnabled()) {

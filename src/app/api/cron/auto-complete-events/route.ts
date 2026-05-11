@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { logCronRun } from "@/lib/services/cron-logger"
+import { getTenant } from "@/lib/tenant"
 
 export async function GET(request: Request) {
   // Verify cron secret to prevent unauthorized access
@@ -16,10 +17,13 @@ export async function GET(request: Request) {
   const today = new Date().toISOString().split("T")[0]
 
   // Find events where end_date (or start_date if no end_date) has passed
-  // and status is not already completed/cancelled/archived
+  // and status is not already completed/cancelled/archived.
+  // Scoped to current tenant — each deployment runs its own cron, so this
+  // never marks another tenant's events as completed.
   const { data: pastEvents, error: fetchError } = await supabase
     .from("events")
     .select("id, short_name, status, start_date, end_date")
+    .eq("tenant", getTenant())
     .not("status", "in", '("completed","archived")')
     .or(`end_date.lt.${today},and(end_date.is.null,start_date.lt.${today})`)
 

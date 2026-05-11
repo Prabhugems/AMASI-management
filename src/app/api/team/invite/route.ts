@@ -5,6 +5,7 @@ import { sendEmail, isEmailEnabled } from '@/lib/email'
 import { sendWhatsAppTeamInvite } from '@/lib/gallabox'
 import { COMPANY_CONFIG } from '@/lib/config'
 import { teamInvitation, teamExpressInvitation } from '@/lib/email-templates'
+import { getRequiredAppUrl } from '@/lib/tenant'
 
 // POST - Send team invitation
 export async function POST(request: NextRequest) {
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send invitation email
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://collegeofmas.org.in'
+    const appUrl = getRequiredAppUrl()
     const inviteLink = `${appUrl}/team/accept-invite?token=${invitation.token}`
 
     if (isEmailEnabled()) {

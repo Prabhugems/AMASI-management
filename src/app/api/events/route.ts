@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/api-auth"
 import { eventCreateSchema, formatZodError } from "@/lib/schemas"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { FEATURES } from "@/lib/config"
+import { getTenant, withTenant } from "@/lib/tenant"
 
 /**
  * POST /api/events - Create a new event
@@ -26,12 +27,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Single event mode: check if an event already exists
+    // Single event mode: check if an event already exists *for this tenant*.
+    // Without the tenant scope, an AMASI deployment in single-event mode
+    // would refuse to create its first event because the College tenant has
+    // 15 events visible in the shared DB.
     if (!FEATURES.multipleEvents) {
       const adminClient = await createAdminClient()
       const { count } = await (adminClient as any)
         .from("events")
         .select("id", { count: "exact", head: true })
+        .eq("tenant", getTenant())
       if (count && count > 0) {
         return NextResponse.json(
           { error: "Only one event is allowed in this deployment" },
@@ -60,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     const { data: event, error: createError } = await (adminClient as any)
       .from("events")
-      .insert({
+      .insert(withTenant({
         name,
         short_name,
         slug,
@@ -82,7 +87,7 @@ export async function POST(request: NextRequest) {
         pending_faculty: 0,
         total_sessions: 0,
         total_delegates: 0,
-      })
+      }))
       .select()
       .single()
 

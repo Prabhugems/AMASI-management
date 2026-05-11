@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
+import { getTenant, withTenant } from "@/lib/tenant"
 
 /**
  * POST /api/events/[eventId]/duplicate
@@ -26,11 +27,13 @@ export async function POST(
       venue,
     } = body
 
-    // 1. Fetch the original event
+    // 1. Fetch the original event — scoped to the current tenant so an admin
+    //    in one deployment can't reach the other tenant's events by ID.
     const { data: originalEvent, error: eventError } = await supabase
       .from("events")
       .select("*")
       .eq("id", eventId)
+      .eq("tenant", getTenant())
       .single()
 
     if (eventError || !originalEvent) {
@@ -73,7 +76,7 @@ export async function POST(
 
     const { data: newEvent, error: createError } = await supabase
       .from("events")
-      .insert(newEventData)
+      .insert(withTenant(newEventData))
       .select()
       .single()
 

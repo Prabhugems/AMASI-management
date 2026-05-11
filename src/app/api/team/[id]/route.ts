@@ -4,6 +4,7 @@ import { requireAdmin, requireSuperAdmin } from '@/lib/auth/api-auth'
 import { sendEmail, isEmailEnabled } from '@/lib/email'
 import { COMPANY_CONFIG } from '@/lib/config'
 import { teamRoleChanged, teamDeactivated, teamActivated } from '@/lib/email-templates'
+import { getRequiredAppUrl } from '@/lib/tenant'
 
 /**
  * PATCH /api/team/[id] - Update a team member
@@ -240,7 +241,7 @@ export async function PATCH(
 
     // Send notification emails (fire-and-forget)
     if (isEmailEnabled() && existing.email) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://collegeofmas.org.in'
+      const appUrl = getRequiredAppUrl()
       const memberName = existing.name || existing.email
 
       try {

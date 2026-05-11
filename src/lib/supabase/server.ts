@@ -4,8 +4,23 @@ import { cookies } from 'next/headers'
 import type { Database } from './database.types'
 import { getRequiredEnv } from '@/lib/env'
 
+/**
+ * Optional cookie domain. Set to e.g. ".amasi.org" on the AMASI deployment so
+ * a session at membership.amasi.org persists to events.amasi.org. Leave unset
+ * on the College deployment to keep host-only cookies (current behavior).
+ *
+ * Explicit env var rather than auto-deriving from NEXT_PUBLIC_APP_URL — preview
+ * builds and future *.amasi.org subdomains that shouldn't share cookies need to
+ * be reviewable, not invisible.
+ */
+function getCookieDomain(): string | undefined {
+  const v = process.env.NEXT_PUBLIC_COOKIE_DOMAIN?.trim()
+  return v && v !== '' ? v : undefined
+}
+
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies()
+  const cookieDomain = getCookieDomain()
 
   return createServerClient<Database>(
     getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL'),
@@ -17,9 +32,12 @@ export async function createServerSupabaseClient() {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
+            cookiesToSet.forEach(({ name, value, options }) => {
+              const mergedOptions = cookieDomain
+                ? { ...options, domain: cookieDomain }
+                : options
+              cookieStore.set(name, value, mergedOptions)
+            })
           } catch {
             // The `setAll` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing sessions.
