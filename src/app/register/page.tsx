@@ -357,8 +357,9 @@ export default function RegisterPage() {
   const supabase = createClient()
 
   // Fetch events with registration open (scoped to current tenant)
+  const tenant = getTenant()
   const { data: events, isLoading } = useQuery({
-    queryKey: ["public-events", getTenant(), search],
+    queryKey: ["public-events", tenant, search],
     queryFn: async () => {
       let query = supabase
         .from("events")
@@ -366,7 +367,7 @@ export default function RegisterPage() {
           id, name, short_name, slug, tagline, description, event_type,
           start_date, end_date, city, state, venue_name, banner_url, logo_url, status
         `)
-        .eq("tenant", getTenant())
+        .eq("tenant", tenant)
         .in("status", ["registration_open", "planning", "ongoing"])
         .order("start_date", { ascending: true })
 

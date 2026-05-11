@@ -1,5 +1,4 @@
 import { getRequiredEnv } from "@/lib/env"
-import type { SupabaseClient } from "@supabase/supabase-js"
 
 export type Tenant = "amasi" | "college"
 
@@ -42,20 +41,31 @@ export function getRequiredAppUrl(): string {
  *     .eq("status", "active")
  *     .order("start_date")
  */
-export function selectEventsForTenant(
-  supabase: SupabaseClient,
-  columns: string = "*",
-) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function selectEventsForTenant(supabase: any, columns: string = "*") {
+  // `any` on `supabase` is deliberate: most callers cast `createAdminClient()`
+  // result to `any` already (the codebase's existing convention — see the
+  // `(supabase as any)` casts in src/app/api/events/route.ts etc.) and a
+  // strictly-typed SupabaseClient here would force every call site to add
+  // back casts on the returned row shape. The DB-side CHECK constraint and
+  // the explicit columns string are the real safety boundaries.
   return supabase.from("events").select(columns).eq("tenant", getTenant())
 }
 
 /**
  * Decorate an event insert payload with the current tenant. Callers must NOT
  * pass `tenant` themselves — it's always derived from env so two deployments
- * sharing the same DB can never mis-tag a new event.
+ * sharing the same DB can never mis-tag a new event. Throws if `tenant` is
+ * already present on the payload — silent overwrite would hide caller bugs
+ * (someone thinking they could override the deployment's tenant from code).
  */
 export function withTenant<T extends Record<string, unknown>>(
   payload: T,
 ): T & { tenant: Tenant } {
+  if ("tenant" in payload) {
+    throw new Error(
+      "withTenant: payload already has 'tenant' field; do not set it manually.",
+    )
+  }
   return { ...payload, tenant: getTenant() }
 }

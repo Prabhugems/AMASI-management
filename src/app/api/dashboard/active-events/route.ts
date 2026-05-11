@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getApiUser } from "@/lib/auth/api-auth"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getTenant } from "@/lib/tenant"
+import { selectEventsForTenant } from "@/lib/tenant"
 
 export async function GET() {
   const { error: authError } = await getApiUser()
@@ -12,10 +12,10 @@ export async function GET() {
 
   // Fetch active events with registration counts via Supabase's built-in count.
   // Scoped to current tenant so admin dashboards never show the other org's events.
-  const { data: events, error } = await supabase
-    .from("events")
-    .select("id, name, short_name, event_type, city, state, start_date, status, registrations(count)")
-    .eq("tenant", getTenant())
+  const { data: events, error } = await selectEventsForTenant(
+    supabase,
+    "id, name, short_name, event_type, city, state, start_date, status, registrations(count)",
+  )
     .not("status", "in", '("completed","archived")')
     .or(`start_date.gte.${today},status.eq.ongoing`)
     .order("start_date", { ascending: true })
