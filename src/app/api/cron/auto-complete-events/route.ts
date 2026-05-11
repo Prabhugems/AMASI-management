@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { logCronRun } from "@/lib/services/cron-logger"
+import { getTenant, selectEventsForTenant } from "@/lib/tenant"
 
 export async function GET(request: Request) {
   // Verify cron secret to prevent unauthorized access
@@ -16,10 +17,13 @@ export async function GET(request: Request) {
   const today = new Date().toISOString().split("T")[0]
 
   // Find events where end_date (or start_date if no end_date) has passed
-  // and status is not already completed/cancelled/archived
-  const { data: pastEvents, error: fetchError } = await supabase
-    .from("events")
-    .select("id, short_name, status, start_date, end_date")
+  // and status is not already completed/cancelled/archived.
+  // Scoped to current tenant — each deployment runs its own cron, so this
+  // never marks another tenant's events as completed.
+  const { data: pastEvents, error: fetchError } = await selectEventsForTenant(
+    supabase,
+    "id, short_name, status, start_date, end_date",
+  )
     .not("status", "in", '("completed","archived")')
     .or(`end_date.lt.${today},and(end_date.is.null,start_date.lt.${today})`)
 
@@ -36,10 +40,14 @@ export async function GET(request: Request) {
 
   const eventIds = pastEvents.map((e: { id: string }) => e.id)
 
+  // Defense in depth: the eventIds are already tenant-scoped from the SELECT
+  // above, but re-asserting tenant on the UPDATE guards against a future
+  // refactor that might widen the SELECT without realising the UPDATE trusts it.
   const { error: updateError } = await supabase
     .from("events")
     .update({ status: "completed" })
     .in("id", eventIds)
+    .eq("tenant", getTenant())
 
   if (updateError) {
     console.error("Failed to auto-complete events:", updateError)

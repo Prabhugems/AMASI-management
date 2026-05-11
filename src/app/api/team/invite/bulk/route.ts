@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail, isEmailEnabled } from '@/lib/email'
 import { COMPANY_CONFIG } from '@/lib/config'
 import { teamInvitation } from '@/lib/email-templates'
+import { getRequiredAppUrl } from '@/lib/tenant'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_INVITES_PER_REQUEST = 50
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClientRaw as any
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://collegeofmas.org.in'
+    const appUrl = getRequiredAppUrl()
     const emailEnabled = isEmailEnabled()
     const results: InviteResult[] = []
 

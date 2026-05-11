@@ -5,6 +5,7 @@ import { sendEmail, isEmailEnabled } from '@/lib/email'
 import { sendWhatsAppTeamInvite, isGallaboxEnabled } from '@/lib/gallabox'
 import { COMPANY_CONFIG } from '@/lib/config'
 import { teamInvitation } from '@/lib/email-templates'
+import { getRequiredAppUrl } from '@/lib/tenant'
 import crypto from 'crypto'
 
 // POST - Resend team invitation with regenerated token
@@ -71,7 +72,7 @@ export async function POST(
     }
 
     // Build invite link with the NEW token
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://collegeofmas.org.in'
+    const appUrl = getRequiredAppUrl()
     const inviteLink = `${appUrl}/team/accept-invite?token=${newToken}`
 
     // Send invitation email using the template
