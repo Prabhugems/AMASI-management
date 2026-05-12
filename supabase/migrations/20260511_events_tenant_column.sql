@@ -26,7 +26,7 @@ begin
   ) then
     alter table public.events
       add constraint events_tenant_check
-      check (tenant in ('amasi', 'college'));
+      check (tenant in ('amasi', 'college', 'technosurg'));
   end if;
 end $$;
 

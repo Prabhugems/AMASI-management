@@ -13,7 +13,7 @@ describe("getTenant", () => {
 
   it("throws when NEXT_PUBLIC_TENANT is not one of the allowed values", () => {
     vi.stubEnv("NEXT_PUBLIC_TENANT", "fictional-org")
-    expect(() => getTenant()).toThrow(/must be one of amasi, college/)
+    expect(() => getTenant()).toThrow(/must be one of amasi, college, technosurg/)
   })
 
   it("lowercases input — accepts 'AMASI' as 'amasi'", () => {
