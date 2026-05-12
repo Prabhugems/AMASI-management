@@ -368,7 +368,10 @@ export default function RegisterPage() {
           start_date, end_date, city, state, venue_name, banner_url, logo_url, status
         `)
         .eq("tenant", tenant)
-        .in("status", ["registration_open", "planning", "ongoing"])
+        // 'planning' is not in the event_status enum (real values: draft, setup,
+        // registration_open, active, ongoing, completed, archived). Including
+        // it caused Supabase to reject every public events query with 400.
+        .in("status", ["registration_open", "active", "ongoing"])
         .order("start_date", { ascending: true })
 
       if (search) {
