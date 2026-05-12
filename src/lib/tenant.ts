@@ -1,8 +1,25 @@
-import { getRequiredEnv } from "@/lib/env"
-
 export type Tenant = "amasi" | "college"
 
 const ALLOWED_TENANTS: readonly Tenant[] = ["amasi", "college"] as const
+
+/**
+ * Read a NEXT_PUBLIC_* env var that must be inlined into the client bundle.
+ *
+ * Critical: Next.js (and Turbopack) inline `NEXT_PUBLIC_*` env vars ONLY when
+ * they are referenced as a *direct property access* on `process.env`. Passing
+ * the name through a helper that does `process.env[name]` loses the static
+ * trace, and the browser bundle ends up with `undefined` — even when the var
+ * is set in the Vercel project. Caused 4+ hours of false "missing env"
+ * debugging on the AMASI deployment rollout (2026-05-12). Don't refactor
+ * the literal accesses below back into a `getRequiredEnv()` call.
+ */
+function requireValue(name: string, value: string | undefined): string {
+  const trimmed = value?.trim()
+  if (!trimmed || trimmed.includes("placeholder")) {
+    throw new Error(`Missing required environment variable: ${name}`)
+  }
+  return trimmed
+}
 
 /**
  * Tenant slug for the current deployment. Throws on missing / invalid env —
@@ -10,7 +27,11 @@ const ALLOWED_TENANTS: readonly Tenant[] = ["amasi", "college"] as const
  * send wrong-org links in member emails. Both are worse than a startup error.
  */
 export function getTenant(): Tenant {
-  const raw = getRequiredEnv("NEXT_PUBLIC_TENANT").toLowerCase()
+  // Direct literal access so Next.js inlines this into the client bundle.
+  const raw = requireValue(
+    "NEXT_PUBLIC_TENANT",
+    process.env.NEXT_PUBLIC_TENANT,
+  ).toLowerCase()
   if (!ALLOWED_TENANTS.includes(raw as Tenant)) {
     throw new Error(
       `NEXT_PUBLIC_TENANT must be one of ${ALLOWED_TENANTS.join(", ")}; got "${raw}"`,
@@ -26,7 +47,11 @@ export function getTenant(): Tenant {
  * crash, which gets noticed in minutes.
  */
 export function getRequiredAppUrl(): string {
-  return getRequiredEnv("NEXT_PUBLIC_APP_URL").replace(/\/$/, "")
+  // Direct literal access so Next.js inlines this into the client bundle.
+  return requireValue(
+    "NEXT_PUBLIC_APP_URL",
+    process.env.NEXT_PUBLIC_APP_URL,
+  ).replace(/\/$/, "")
 }
 
 /**
