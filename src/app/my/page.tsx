@@ -335,6 +335,8 @@ export default function DelegatePortalPage() {
 
   // Help section scroll ref (must be called unconditionally before any early returns)
   const helpRef = useRef<HTMLDivElement>(null)
+  const certActionRef = useRef<HTMLDivElement>(null)
+  const feedbackSectionRef = useRef<HTMLDivElement>(null)
 
   // Payment verification
   const [showVerifyForm, setShowVerifyForm] = useState(false)
@@ -1081,10 +1083,6 @@ export default function DelegatePortalPage() {
       btn?.click()
     }, 400)
   }
-
-  // Ref for scrolling to cert button from gating hint
-  const certActionRef = useRef<HTMLDivElement>(null)
-  const feedbackSectionRef = useRef<HTMLDivElement>(null)
 
   return (
     <PullToRefresh onRefresh={refreshRegistration}>
