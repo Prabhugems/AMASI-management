@@ -1,6 +1,10 @@
-export type Tenant = "amasi" | "college"
+export type Tenant = "amasi" | "college" | "technosurg"
 
-const ALLOWED_TENANTS: readonly Tenant[] = ["amasi", "college"] as const
+const ALLOWED_TENANTS: readonly Tenant[] = [
+  "amasi",
+  "college",
+  "technosurg",
+] as const
 
 /**
  * Read a NEXT_PUBLIC_* env var that must be inlined into the client bundle.
