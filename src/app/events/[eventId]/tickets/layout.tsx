@@ -15,10 +15,12 @@ import {
   Loader2,
   Calendar,
   MapPin,
+  Tag,
 } from "lucide-react"
 
 const sidebarItems = [
   { title: "Manage Tickets", href: "", icon: Ticket, description: "Create and manage ticket types" },
+  { title: "Discount Codes", href: "/discounts", icon: Tag, description: "Promo codes & coupons" },
   { title: "Settings", href: "/settings", icon: Settings, description: "Ticket settings & defaults" },
   { title: "Instructions", href: "/instructions", icon: BookOpen, description: "How to use tickets" },
 ]

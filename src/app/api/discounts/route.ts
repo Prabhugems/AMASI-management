@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
@@ -15,13 +15,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Check authorization
     const { error: authError } = await requireEventAndPermission(eventId, 'registrations')
     if (authError) return authError
 
-    const supabase = await createServerSupabaseClient()
+    const client = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = client as any
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("discount_codes")
       .select("*")
       .eq("event_id", eventId)
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ data })
-  } catch (error: any) {
+  } catch {
     return NextResponse.json({ error: "Failed to process discount request" }, { status: 500 })
   }
 }
@@ -64,13 +65,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check authorization
     const { error: authError } = await requireEventAndPermission(event_id, 'registrations')
     if (authError) return authError
 
-    const supabase = await createServerSupabaseClient()
+    const client = await createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = client as any
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("discount_codes")
       .insert({
         event_id,
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data })
-  } catch (error: any) {
+  } catch {
     return NextResponse.json({ error: "Failed to process discount request" }, { status: 500 })
   }
 }
