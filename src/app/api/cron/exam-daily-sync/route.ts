@@ -2,22 +2,10 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { syncAddressesFromFillout, syncAddressesFromAirtable } from "@/lib/services/fillout-sync"
 import { syncRegistrationToAirtable } from "@/lib/services/airtable-sync"
 import { logCronRun } from "@/lib/services/cron-logger"
+import { lookupAmasiMember } from "@/lib/services/amasi-member-lookup"
 import { NextResponse } from "next/server"
 
-const AMASI_API = "https://application.amasi.org/api/member_detail_data"
-
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
-
-async function lookupAmasi(val: string) {
-  try {
-    const fd = new FormData()
-    fd.append("email_or_phone", val)
-    const res = await fetch(AMASI_API, { method: "POST", body: fd })
-    const data = await res.json()
-    if (data.status && data.data?.[0]) return data.data[0].membership_no
-    return null
-  } catch { return null }
-}
 
 // GET /api/cron/exam-daily-sync - Daily automated sync
 export async function GET(request: Request) {
@@ -66,20 +54,18 @@ export async function GET(request: Request) {
         .eq("exam_result", "withheld")
 
       for (const r of withheld || []) {
-        let amasiNo = r.attendee_email ? await lookupAmasi(r.attendee_email) : null
-        if (!amasiNo && r.attendee_phone) {
-          const phone = String(r.attendee_phone).replace(/[^0-9]/g, "").slice(-10)
-          if (phone.length === 10) amasiNo = await lookupAmasi(phone)
-        }
+        const member = await lookupAmasiMember(
+          { email: r.attendee_email, phone: r.attendee_phone },
+          db,
+        )
 
-        if (amasiNo) {
+        if (member?.amasi_number) {
           const marks = r.exam_marks || {}
-          marks.amasi_number = amasiNo
+          marks.amasi_number = member.amasi_number
           await db.from("registrations").update({ exam_result: "pass", exam_marks: marks }).eq("id", r.id)
           results.membershipFound++
         }
         results.membershipChecked++
-        await delay(500)
       }
 
       // ===== 2. SYNC ADDRESSES (uses event-level config) =====

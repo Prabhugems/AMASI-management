@@ -1,30 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAccess } from "@/lib/auth/api-auth"
+import { lookupAmasiMember } from "@/lib/services/amasi-member-lookup"
 import { NextRequest, NextResponse } from "next/server"
-
-const AMASI_API = "https://application.amasi.org/api/member_detail_data"
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
-async function lookupMember(emailOrPhone: string) {
-  try {
-    const formData = new FormData()
-    formData.append("email_or_phone", emailOrPhone)
-    const res = await fetch(AMASI_API, { method: "POST", body: formData })
-    const data = await res.json()
-    if (data.status && data.data?.length > 0) {
-      const m = data.data[0]
-      return {
-        amasi_number: m.membership_no,
-        name: [m.first_name, m.middle_name, m.last_name].filter(Boolean).join(" "),
-        phone: m.mobile,
-        email: m.email,
-      }
-    }
-    return null
-  } catch {
-    return null
-  }
-}
 
 // POST /api/examination/check-withheld - Check membership for withheld candidates only
 export async function POST(request: NextRequest) {
@@ -55,15 +32,12 @@ export async function POST(request: NextRequest) {
     const declaredList: string[] = []
 
     for (const r of regs) {
-      let member = r.attendee_email ? await lookupMember(r.attendee_email) : null
-
-      if (!member && r.attendee_phone) {
-        const phone = String(r.attendee_phone).replace(/[^0-9]/g, "").slice(-10)
-        if (phone.length === 10) member = await lookupMember(phone)
-      }
+      const member = await lookupAmasiMember(
+        { email: r.attendee_email, phone: r.attendee_phone },
+        db,
+      )
 
       if (member?.amasi_number) {
-        // Found membership — declare result as pass
         const marks = r.exam_marks || {}
         marks.amasi_number = member.amasi_number
 
@@ -78,30 +52,11 @@ export async function POST(request: NextRequest) {
 
         await db.from("registrations").update(updateData).eq("id", r.id)
 
-        // Upsert to members table
-        const { data: existing } = await db
-          .from("members")
-          .select("id")
-          .eq("amasi_number", member.amasi_number)
-          .maybeSingle()
-
-        if (!existing) {
-          await db.from("members").insert({
-            amasi_number: member.amasi_number,
-            name: member.name,
-            email: member.email,
-            phone: member.phone ? parseInt(member.phone.replace(/[^0-9]/g, "")) : null,
-            status: "active",
-          })
-        }
-
         declaredList.push(`${r.attendee_name} → AMASI ${member.amasi_number} → PASS`)
         declared++
       } else {
         stillWithheld.push(r.attendee_name)
       }
-
-      await delay(500) // Rate limit
     }
 
     return NextResponse.json({

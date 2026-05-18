@@ -517,7 +517,7 @@ export default function MarksheetPage() {
               {withheld} candidates withheld — check if they got AMASI membership
             </p>
             <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5">
-              Checks live AMASI API and auto-declares result for those with membership
+              Checks local members table and auto-declares result for those with membership
             </p>
           </div>
           <Button
