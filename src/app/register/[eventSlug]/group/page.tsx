@@ -694,7 +694,7 @@ export default function GroupRegistrationPage() {
                           {index + 1}. {attendee.name}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {attendee.ticketType.name} • ₹{attendee.ticketType.price.toLocaleString()}
+                          {attendee.ticketType.name} • ₹{attendee.ticketType.price.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                         </p>
                         <p className="text-xs text-gray-400">
                           {attendee.email}
@@ -702,7 +702,7 @@ export default function GroupRegistrationPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <p className="font-semibold text-gray-900">
-                          ₹{calculateAttendeeTotal(attendee).toLocaleString()}
+                          ₹{calculateAttendeeTotal(attendee).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                         </p>
                         <button
                           onClick={() => handleEditAttendee(attendee)}
@@ -750,7 +750,7 @@ export default function GroupRegistrationPage() {
                           {index + 1}. {attendee.name}
                         </span>
                         <span className="text-gray-900">
-                          ₹{calculateAttendeeTotal(attendee).toLocaleString()}
+                          ₹{calculateAttendeeTotal(attendee).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                     ))}
@@ -784,7 +784,7 @@ export default function GroupRegistrationPage() {
                         {discountApplied && (
                           <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
                             <CheckCircle className="w-4 h-4" />
-                            Discount applied: -₹{discountApplied.amount.toLocaleString()}
+                            Discount applied: -₹{discountApplied.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                           </p>
                         )}
                         {discountError && (
@@ -798,24 +798,24 @@ export default function GroupRegistrationPage() {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Subtotal ({totals.count} attendees)</span>
                         <span className="text-gray-900">
-                          ₹{totals.subtotal.toLocaleString()}
+                          ₹{totals.subtotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">GST</span>
                         <span className="text-gray-900">
-                          ₹{totals.tax.toLocaleString()}
+                          ₹{totals.tax.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                       {totals.discount > 0 && (
                         <div className="flex justify-between text-sm">
                           <span className="text-green-600">Discount</span>
-                          <span className="text-green-600">-₹{totals.discount.toLocaleString()}</span>
+                          <span className="text-green-600">-₹{totals.discount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
                         </div>
                       )}
                       <div className="flex justify-between text-lg font-bold pt-4 border-t border-gray-200">
                         <span className="text-gray-900">Grand Total</span>
-                        <span className="text-emerald-600">₹{totals.total.toLocaleString()}</span>
+                        <span className="text-emerald-600">₹{totals.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
                       </div>
                     </div>
                   </>
@@ -839,7 +839,7 @@ export default function GroupRegistrationPage() {
                   ) : (
                     <>
                       <Shield className="w-5 h-5 mr-2" />
-                      Pay ₹{totals.total.toLocaleString()}
+                      Pay ₹{totals.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                     </>
                   )}
                 </Button>
@@ -873,7 +873,7 @@ export default function GroupRegistrationPage() {
                 <option value="">Select Ticket</option>
                 {availableTickets.map((ticket: TicketType) => (
                   <option key={ticket.id} value={ticket.id}>
-                    {ticket.name} - ₹{ticket.price.toLocaleString()}
+                    {ticket.name} - ₹{ticket.price.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                   </option>
                 ))}
               </select>

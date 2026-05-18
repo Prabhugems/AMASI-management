@@ -1433,11 +1433,11 @@ export default function CheckoutPage() {
                         {ticket.name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {"\u20B9"}{ticket.price.toLocaleString()} x {ticket.quantity}
+                        {"\u20B9"}{ticket.price.toLocaleString("en-IN", { maximumFractionDigits: 0 })} x {ticket.quantity}
                       </p>
                     </div>
                     <span className="font-medium text-gray-900">
-                      {"\u20B9"}{ticket.subtotal.toLocaleString()}
+                      {"\u20B9"}{ticket.subtotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                 ))}
@@ -1459,11 +1459,11 @@ export default function CheckoutPage() {
                               {variant && ` (${variant.name})`}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {"\u20B9"}{addon.unitPrice.toLocaleString()} x {addon.quantity}
+                              {"\u20B9"}{addon.unitPrice.toLocaleString("en-IN", { maximumFractionDigits: 0 })} x {addon.quantity}
                             </p>
                           </div>
                           <span className="font-medium text-gray-900">
-                            {"\u20B9"}{addon.totalPrice.toLocaleString()}
+                            {"\u20B9"}{addon.totalPrice.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                           </span>
                         </div>
                       )
@@ -1500,7 +1500,7 @@ export default function CheckoutPage() {
                     {discountApplied && (
                       <p className="text-sm text-green-600 mt-2 flex items-center gap-1 animate-slide-up-fade">
                         <CheckCircle className="w-4 h-4" />
-                        Discount applied: -{"\u20B9"}{discountApplied.amount.toLocaleString()}
+                        Discount applied: -{"\u20B9"}{discountApplied.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                       </p>
                     )}
                     {discountError && (
@@ -1517,13 +1517,13 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Tickets Subtotal</span>
                     <span className="text-gray-900">
-                      {"\u20B9"}{totals.subtotal.toLocaleString()}
+                      {"\u20B9"}{totals.subtotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Tickets GST</span>
                     <span className="text-gray-900">
-                      {"\u20B9"}{totals.tax.toLocaleString()}
+                      {"\u20B9"}{totals.tax.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                   {totals.addonsTotal > 0 && (
@@ -1531,13 +1531,13 @@ export default function CheckoutPage() {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Add-ons Subtotal</span>
                         <span className="text-gray-900">
-                          {"\u20B9"}{totals.addonsTotal.toLocaleString()}
+                          {"\u20B9"}{totals.addonsTotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Add-ons GST</span>
                         <span className="text-gray-900">
-                          {"\u20B9"}{totals.addonsTax.toLocaleString()}
+                          {"\u20B9"}{totals.addonsTax.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                     </>
@@ -1545,12 +1545,12 @@ export default function CheckoutPage() {
                   {totals.discount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-green-600">Discount</span>
-                      <span className="text-green-600">-{"\u20B9"}{totals.discount.toLocaleString()}</span>
+                      <span className="text-green-600">-{"\u20B9"}{totals.discount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-bold pt-4 border-t border-gray-200">
                     <span className="text-gray-900">Total</span>
-                    <span className="text-emerald-600">{"\u20B9"}{totals.total.toLocaleString()}</span>
+                    <span className="text-emerald-600">{"\u20B9"}{totals.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
                   </div>
                 </div>
               </div>
@@ -1699,7 +1699,7 @@ export default function CheckoutPage() {
                   ) : (
                     <>
                       <Shield className="w-5 h-5" />
-                      Pay {"\u20B9"}{totals.total.toLocaleString()}
+                      Pay {"\u20B9"}{totals.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                     </>
                   )}
                 </button>
