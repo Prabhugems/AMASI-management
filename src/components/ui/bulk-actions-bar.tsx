@@ -48,15 +48,16 @@ export function BulkActionsBar({
   return (
     <div
       className={cn(
-        "fixed bottom-6 left-1/2 -translate-x-1/2 z-50",
-        "bg-primary text-primary-foreground rounded-full shadow-lg",
-        "px-4 py-2 flex items-center gap-3",
+        "fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50",
+        "bg-primary text-primary-foreground rounded-2xl sm:rounded-full shadow-lg",
+        "px-3 sm:px-4 py-2 flex flex-wrap items-center gap-2 sm:gap-3 justify-center",
+        "max-w-[calc(100vw-1rem)] w-max",
         "animate-in slide-in-from-bottom-4 fade-in duration-200",
         className
       )}
     >
-      <div className="flex items-center gap-2 pr-3 border-r border-primary-foreground/20">
-        <span className="font-medium">{selectedCount} selected</span>
+      <div className="flex items-center gap-2 sm:pr-3 sm:border-r sm:border-primary-foreground/20">
+        <span className="font-medium text-sm whitespace-nowrap">{selectedCount} selected</span>
         <Button
           variant="ghost"
           size="icon"
@@ -67,7 +68,7 @@ export function BulkActionsBar({
         </Button>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1 justify-center">
         {actions.map((action, index) => (
           <Button
             key={index}

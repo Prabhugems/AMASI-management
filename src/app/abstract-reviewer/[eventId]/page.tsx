@@ -635,7 +635,7 @@ export default function AbstractReviewerPortal() {
           <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 border border-primary/20 p-5 hover:shadow-lg hover:shadow-primary/10 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-4xl font-bold text-primary">{stats.total}</p>
+                <p className="text-3xl sm:text-4xl font-bold text-primary">{stats.total}</p>
                 <p className="text-sm text-muted-foreground mt-1">Total Abstracts</p>
               </div>
               <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -648,7 +648,7 @@ export default function AbstractReviewerPortal() {
           <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-5 hover:shadow-lg hover:shadow-amber-500/10 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-4xl font-bold text-amber-600">{stats.pending}</p>
+                <p className="text-3xl sm:text-4xl font-bold text-amber-600">{stats.pending}</p>
                 <p className="text-sm text-muted-foreground mt-1">Pending Review</p>
               </div>
               <div className="h-12 w-12 rounded-xl bg-amber-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -666,7 +666,7 @@ export default function AbstractReviewerPortal() {
           <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 p-5 hover:shadow-lg hover:shadow-emerald-500/10 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-4xl font-bold text-emerald-600">{stats.reviewedByMe}</p>
+                <p className="text-3xl sm:text-4xl font-bold text-emerald-600">{stats.reviewedByMe}</p>
                 <p className="text-sm text-muted-foreground mt-1">Reviewed by Me</p>
               </div>
               <div className="h-12 w-12 rounded-xl bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -679,7 +679,7 @@ export default function AbstractReviewerPortal() {
           <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 p-5 hover:shadow-lg hover:shadow-blue-500/10 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-4xl font-bold text-blue-600">{stats.avgScore || "—"}</p>
+                <p className="text-3xl sm:text-4xl font-bold text-blue-600">{stats.avgScore || "—"}</p>
                 <p className="text-sm text-muted-foreground mt-1">Average Score</p>
               </div>
               <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -795,7 +795,7 @@ export default function AbstractReviewerPortal() {
               {/* Add new conflict form */}
               {addingCoi ? (
                 <div className="p-4 bg-purple-50 rounded-xl border border-purple-200 space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-sm font-medium mb-1.5 block">Conflict Type</label>
                       <Select value={newCoiType} onValueChange={(v: "institution" | "co_author" | "personal" | "other") => setNewCoiType(v)}>
@@ -908,7 +908,7 @@ export default function AbstractReviewerPortal() {
           </div>
           <div className="flex items-center gap-3">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px] h-11 bg-white border-purple-100 rounded-xl">
+              <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white border-purple-100 rounded-xl">
                 <Filter className="h-4 w-4 mr-2 text-purple-400" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -922,7 +922,7 @@ export default function AbstractReviewerPortal() {
             </Select>
             {categories.length > 0 && (
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[180px] h-11 bg-white border-purple-100 rounded-xl">
+                <SelectTrigger className="w-full sm:w-[180px] h-11 bg-white border-purple-100 rounded-xl">
                   <Tag className="h-4 w-4 mr-2 text-purple-400" />
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
@@ -1211,7 +1211,7 @@ export default function AbstractReviewerPortal() {
                               ))}
                             </div>
                           ) : (
-                          <div className="grid grid-cols-4 gap-2 text-xs">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                             {[
                               { label: "Originality", score: review.score_originality },
                               { label: "Methodology", score: review.score_methodology },
@@ -1282,7 +1282,7 @@ export default function AbstractReviewerPortal() {
                                             [criterion.label]: parseInt(e.target.value),
                                           })
                                         }
-                                        className="w-32 accent-primary"
+                                        className="flex-1 max-w-[8rem] sm:w-32 sm:flex-none accent-primary"
                                       />
                                       <span className={cn(
                                         "w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm",
@@ -1336,7 +1336,7 @@ export default function AbstractReviewerPortal() {
                                         [criterion.key]: parseInt(e.target.value),
                                       })
                                     }
-                                    className="w-32 accent-primary"
+                                    className="flex-1 max-w-[8rem] sm:w-32 sm:flex-none accent-primary"
                                   />
                                   <span className={cn(
                                     "w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm",

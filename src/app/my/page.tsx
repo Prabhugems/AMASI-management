@@ -1535,7 +1535,7 @@ export default function DelegatePortalPage() {
         </div>
 
         {/* Download Buttons */}
-        <motion.div ref={certActionRef} variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <motion.div ref={certActionRef} variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {/* Invitation Download */}
           {portalSettings.show_invitation && (
           <button

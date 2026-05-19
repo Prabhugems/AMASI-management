@@ -719,7 +719,7 @@ export default function HallControlDashboard() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
             <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-2xl p-4 border border-white/10">
               <div className="flex items-center justify-between mb-2">
                 <Target className="h-5 w-5 text-blue-400" />
@@ -825,7 +825,7 @@ export default function HallControlDashboard() {
               </div>
 
               {/* Quick Actions */}
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {[
                   { status: "in_progress", icon: PlayCircle, label: "Live", color: "green" },
                   { status: "delayed", icon: Timer, label: "Delayed", color: "amber" },
@@ -864,7 +864,7 @@ export default function HallControlDashboard() {
             <h2 className="text-xl font-bold text-white mb-4">{nextSession.session_name}</h2>
 
             {/* Checklist */}
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
               {CHECKLIST_ITEMS.map(({ key, label, icon: Icon, color }) => {
                 const checked = nextSession.coordinator_checklist?.[key]
                 return (

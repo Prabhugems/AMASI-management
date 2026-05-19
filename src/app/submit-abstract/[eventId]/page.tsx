@@ -846,7 +846,7 @@ export default function SubmitAbstractPage() {
                   </p>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="name">Full Name *</Label>
                     <Input
@@ -1028,7 +1028,7 @@ export default function SubmitAbstractPage() {
                         </Button>
                       </div>
 
-                      <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                         <div className="space-y-2">
                           <Label>Name *</Label>
                           <Input
@@ -1296,7 +1296,7 @@ export default function SubmitAbstractPage() {
                 {/* File Upload Section */}
                 {uploadMode === "file" && (
                   <>
-                    <div className="border-2 border-dashed rounded-lg p-4 sm:p-6 md:p-8 text-center">
+                    <div className="border-2 border-dashed rounded-lg p-3 sm:p-6 md:p-8 text-center">
                       <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <p className="text-muted-foreground mb-2">
                         Drag and drop your file here, or click to browse

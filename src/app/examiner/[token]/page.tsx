@@ -491,7 +491,7 @@ export default function ExaminerPortalPage() {
 
       <div className="max-w-lg mx-auto px-4 py-4 space-y-4">
         {/* Stats Bar */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-white rounded-xl p-3 text-center shadow-sm border transition-all duration-300 hover:shadow-md">
             <Users className="h-5 w-5 text-blue-600 mx-auto mb-1" />
             <p className="text-2xl font-bold text-gray-900 tabular-nums">{stats.total}</p>
@@ -512,7 +512,7 @@ export default function ExaminerPortalPage() {
         {/* Search / Scan Area */}
         {!selectedCandidate && (
           <>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input

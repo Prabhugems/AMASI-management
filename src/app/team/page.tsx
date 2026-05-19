@@ -602,7 +602,7 @@ export default function TeamPage() {
       {/* SIDEBAR                                                           */}
       {/* ================================================================= */}
       <aside className={cn(
-        "fixed lg:sticky top-0 left-0 z-50 lg:z-auto h-screen w-[220px] flex-shrink-0 bg-[#185FA5] text-white flex flex-col transition-transform duration-300",
+        "fixed lg:sticky top-0 left-0 z-50 lg:z-auto h-screen w-[85vw] max-w-[280px] lg:w-[220px] flex-shrink-0 bg-[#185FA5] text-white flex flex-col transition-transform duration-300",
         sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         {/* Back + Logo area */}

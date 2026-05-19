@@ -732,7 +732,7 @@ export default function TravelAgentPortal() {
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <button
             onClick={() => setStatusFilter("all")}
             className={cn(
@@ -1075,7 +1075,7 @@ export default function TravelAgentPortal() {
                       </span>
                     </div>
                     {extractionResult.onward.matched ? (
-                      <div className="grid grid-cols-4 gap-2 text-xs">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                         <div><span className="text-gray-500">PNR:</span> <span className="font-mono font-medium">{extractionResult.onward.pnr || "-"}</span></div>
                         <div><span className="text-gray-500">Flight:</span> <span className="font-medium">{extractionResult.onward.flight_number || "-"}</span></div>
                         <div><span className="text-gray-500">From:</span> <span className="font-medium">{extractionResult.onward.departure_airport || extractionResult.onward.departure_city || "-"}</span></div>
@@ -1121,7 +1121,7 @@ export default function TravelAgentPortal() {
                       </span>
                     </div>
                     {extractionResult.return.matched ? (
-                      <div className="grid grid-cols-4 gap-2 text-xs">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                         <div><span className="text-gray-500">PNR:</span> <span className="font-mono font-medium">{extractionResult.return.pnr || "-"}</span></div>
                         <div><span className="text-gray-500">Flight:</span> <span className="font-medium">{extractionResult.return.flight_number || "-"}</span></div>
                         <div><span className="text-gray-500">From:</span> <span className="font-medium">{extractionResult.return.departure_airport || extractionResult.return.departure_city || "-"}</span></div>
@@ -1165,7 +1165,7 @@ export default function TravelAgentPortal() {
                       <span className="text-orange-600 text-xs font-normal">(Connecting)</span>
                     )}
                   </h4>
-                  <div className="grid grid-cols-6 gap-3 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-sm">
                     <div>
                       <span className="text-blue-600 text-xs">From</span>
                       <p className="text-blue-900 font-semibold">{editingSpeaker.custom_fields.travel_details.onward_from_city || "-"}</p>
@@ -1214,7 +1214,7 @@ export default function TravelAgentPortal() {
                       <span className="text-orange-600 text-xs font-normal">(Connecting)</span>
                     )}
                   </h4>
-                  <div className="grid grid-cols-6 gap-3 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-sm">
                     <div>
                       <span className="text-purple-600 text-xs">From</span>
                       <p className="text-purple-900 font-semibold">{editingSpeaker.custom_fields.travel_details.return_from_city || "-"}</p>
@@ -1316,7 +1316,7 @@ export default function TravelAgentPortal() {
 
           {/* Booking Form Tabs */}
           <Tabs defaultValue="onward" className="mt-4">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
               <TabsTrigger value="onward" className="flex items-center gap-1.5">
                 <PlaneTakeoff className="h-4 w-4" />
                 Onward

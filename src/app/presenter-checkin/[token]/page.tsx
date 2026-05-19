@@ -380,7 +380,7 @@ export default function PresenterCheckinPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-6">
           <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-2xl p-4 border border-white/10">
             <div className="flex items-center justify-between mb-2">
               <FileText className="h-5 w-5 text-blue-400" />

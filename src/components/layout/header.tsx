@@ -201,7 +201,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
             className="search-btn relative flex-1 flex items-center w-full h-10 pl-10 pr-4 rounded-xl bg-secondary/50 border border-transparent text-sm text-muted-foreground hover:bg-secondary transition-colors cursor-pointer text-left"
           >
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <span>Search events, registrations...</span>
+            <span className="truncate">Search...</span>
             <kbd className="kbd-hint absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
               <span className="text-xs">⌘</span>K
             </kbd>

@@ -248,7 +248,7 @@ export default function MembershipApplyPage() {
                 <CardDescription>Enter your personal details</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label>Full Name *</Label>
                     <Input
@@ -267,7 +267,7 @@ export default function MembershipApplyPage() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label>Date of Birth</Label>
                     <Input
@@ -293,7 +293,7 @@ export default function MembershipApplyPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label>Nationality</Label>
                     <Input
@@ -404,7 +404,7 @@ export default function MembershipApplyPage() {
                     onChange={(e) => handleChange("street_address_2", e.target.value)}
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label>City</Label>
                     <Input value={formData.city} onChange={(e) => handleChange("city", e.target.value)} />
@@ -414,7 +414,7 @@ export default function MembershipApplyPage() {
                     <Input value={formData.state} onChange={(e) => handleChange("state", e.target.value)} />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label>Country</Label>
                     <Input value={formData.country} onChange={(e) => handleChange("country", e.target.value)} />
@@ -437,7 +437,7 @@ export default function MembershipApplyPage() {
               <CardContent className="space-y-6">
                 <div>
                   <p className="text-sm font-semibold text-muted-foreground mb-3">Undergraduate</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <Label>College</Label>
                       <Input value={formData.ug_college} onChange={(e) => handleChange("ug_college", e.target.value)} />
@@ -454,7 +454,7 @@ export default function MembershipApplyPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-muted-foreground mb-3">Postgraduate</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <Label>Degree</Label>
                       <Input value={formData.pg_degree} onChange={(e) => handleChange("pg_degree", e.target.value)} placeholder="e.g., MS, MCh" />
@@ -464,7 +464,7 @@ export default function MembershipApplyPage() {
                       <Input value={formData.pg_college} onChange={(e) => handleChange("pg_college", e.target.value)} />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-4">
                     <div className="space-y-2">
                       <Label>University</Label>
                       <Input value={formData.pg_university} onChange={(e) => handleChange("pg_university", e.target.value)} />
@@ -486,7 +486,7 @@ export default function MembershipApplyPage() {
                 <CardDescription>Your professional registrations and memberships</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label>MCI/NMC Council Number</Label>
                     <Input value={formData.mci_council_number} onChange={(e) => handleChange("mci_council_number", e.target.value)} />
@@ -500,7 +500,7 @@ export default function MembershipApplyPage() {
                   <Label>IMR Registration No</Label>
                   <Input value={formData.imr_registration_no} onChange={(e) => handleChange("imr_registration_no", e.target.value)} />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label>ASI Membership No</Label>
                     <Input value={formData.asi_membership_no} onChange={(e) => handleChange("asi_membership_no", e.target.value)} />
@@ -510,7 +510,7 @@ export default function MembershipApplyPage() {
                     <Input value={formData.asi_state} onChange={(e) => handleChange("asi_state", e.target.value)} />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label>Other International Organization</Label>
                     <Input value={formData.other_intl_org} onChange={(e) => handleChange("other_intl_org", e.target.value)} />

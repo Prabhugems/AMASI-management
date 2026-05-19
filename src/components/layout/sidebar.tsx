@@ -214,7 +214,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           "transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
           collapsed ? "lg:w-[72px]" : "lg:w-64",
           // Mobile: hidden by default, slide in when open
-          mobileOpen ? "w-64 translate-x-0" : "-translate-x-full lg:translate-x-0"
+          mobileOpen ? "w-[85vw] max-w-[300px] translate-x-0" : "w-64 -translate-x-full lg:translate-x-0"
         )}
       >
       {/* Logo / Brand Area */}

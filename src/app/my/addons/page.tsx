@@ -397,7 +397,7 @@ function PurchaseAddonsContent() {
               <div className="divide-y divide-gray-100">
                 {addons.map(addon => (
                   <div key={addon.id} className="p-4">
-                    <div className="flex items-start gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
                       {addon.image_url ? (
                         <img
                           src={addon.image_url}

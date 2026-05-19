@@ -1,7 +1,7 @@
 import { withSentryConfig } from '@sentry/nextjs';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Security headers
+  devIndicators: false,
   async headers() {
     const commonHeaders = [
       {

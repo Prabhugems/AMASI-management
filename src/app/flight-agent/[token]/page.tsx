@@ -396,7 +396,7 @@ export default function FlightAgentPortal() {
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <button onClick={() => setStatusFilter("all")} className={cn("bg-white rounded-lg border p-4 text-left hover:shadow-md", statusFilter === "all" && "ring-2 ring-blue-500")}>
             <div className="flex items-center gap-2"><Plane className="h-5 w-5 text-blue-500" /><span className="text-sm text-muted-foreground">Total Flights</span></div>
             <p className="text-3xl font-bold mt-2">{stats.total}</p>

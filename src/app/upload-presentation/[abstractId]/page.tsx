@@ -235,7 +235,7 @@ function UploadPresentationPage() {
 
         {/* Abstract Info */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <div className="flex items-start gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
               <Presentation className="w-6 h-6 text-blue-600" />
             </div>
@@ -297,7 +297,7 @@ function UploadPresentationPage() {
                 Upload File
               </Label>
               <div
-                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                className={`border-2 border-dashed rounded-xl p-4 sm:p-8 text-center transition-colors ${
                   selectedFile
                     ? "border-blue-300 bg-blue-50"
                     : "border-gray-300 hover:border-gray-400"

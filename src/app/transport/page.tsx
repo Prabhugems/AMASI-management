@@ -211,7 +211,7 @@ export default function TransportPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
             <p className="text-3xl font-bold text-primary">{stats.total}</p>
             <p className="text-sm text-muted-foreground">Total Requests</p>

@@ -282,7 +282,7 @@ export default function TrainAgentPortal() {
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <button onClick={() => setStatusFilter("all")} className={cn("bg-white rounded-lg border p-4 text-left hover:shadow-md", statusFilter === "all" && "ring-2 ring-orange-500")}>
             <div className="flex items-center gap-2"><Train className="h-5 w-5 text-orange-500" /><span className="text-sm text-muted-foreground">Total</span></div>
             <p className="text-3xl font-bold mt-2">{stats.total}</p>
@@ -428,7 +428,7 @@ export default function TrainAgentPortal() {
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                   <Label>Status</Label>
                   <Select value={trainForm.status} onValueChange={(v) => setTrainForm({ ...trainForm, status: v })}>
-                    <SelectTrigger className="w-[130px] bg-white"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-[130px] bg-white"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="booked">Booked</SelectItem>

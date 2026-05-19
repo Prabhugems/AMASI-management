@@ -308,7 +308,7 @@ export default function EventTravelDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           <div className="paper-card p-4">
             <p className="text-xs text-muted-foreground">Total Guests</p>
             <p className="text-2xl font-bold text-foreground">{stats.total}</p>

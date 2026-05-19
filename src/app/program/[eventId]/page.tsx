@@ -232,7 +232,7 @@ export default function ProgramPage() {
           </div>
           {dates.length > 1 && (
             <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-[180px] h-10">
+              <SelectTrigger className="w-full sm:w-[180px] h-10">
                 <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
                 <SelectValue placeholder="All Dates" />
               </SelectTrigger>
@@ -247,7 +247,7 @@ export default function ProgramPage() {
             </Select>
           )}
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[140px] h-10">
+            <SelectTrigger className="w-full sm:w-[140px] h-10">
               <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="All Types" />
             </SelectTrigger>

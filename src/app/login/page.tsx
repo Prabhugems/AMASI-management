@@ -170,7 +170,7 @@ function LoginForm() {
               <span className="text-xl font-bold text-white">{COMPANY_CONFIG.name.charAt(0)}</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">{COMPANY_CONFIG.name}</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-foreground">{COMPANY_CONFIG.name}</h1>
               <p className="text-muted-foreground text-xs">{FEATURES.membership ? "Command Center" : "Event Management"}</p>
             </div>
           </div>

@@ -525,7 +525,7 @@ export default function PublicProgramPage() {
                   placeholder="Search sessions, speakers..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-48 md:w-64"
+                  className="pl-10 w-full sm:w-48 md:w-64"
                 />
                 {searchQuery && (
                   <button
@@ -674,7 +674,7 @@ export default function PublicProgramPage() {
                         >
                           <div className="flex items-start gap-4">
                             {/* Time */}
-                            <div className="text-sm text-gray-500 min-w-[80px]">
+                            <div className="text-sm text-gray-500 min-w-[60px] sm:min-w-[80px]">
                               <p className="font-medium">{formatTime(session.start_time)}</p>
                               <p>{formatTime(session.end_time)}</p>
                             </div>
@@ -750,7 +750,7 @@ export default function PublicProgramPage() {
                         >
                           <div className="flex items-start gap-4">
                             {/* Time */}
-                            <div className="text-sm text-gray-500 min-w-[80px]">
+                            <div className="text-sm text-gray-500 min-w-[60px] sm:min-w-[80px]">
                               <p className="font-medium">{formatTime(session.start_time)}</p>
                               <p>{formatTime(session.end_time)}</p>
                             </div>

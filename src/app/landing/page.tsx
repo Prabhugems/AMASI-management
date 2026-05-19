@@ -546,7 +546,7 @@ function PromoVideoSection() {
 
   return (
     <section ref={sectionRef} id="promo-video" className="relative bg-[#05050a] py-16 sm:py-22 overflow-hidden px-6">
-      <div className="absolute left-1/2 -top-44 -translate-x-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
+      <div className="hidden sm:block absolute left-1/2 -top-44 -translate-x-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
         style={{ background: "radial-gradient(ellipse at center, rgba(34,211,238,0.07) 0%, transparent 70%)" }} />
       <div className="relative z-10 max-w-[900px] mx-auto text-center">
         <Reveal>
@@ -949,7 +949,7 @@ export default function LandingPage() {
             </p>
           </Reveal>
 
-          <div ref={statsRef} className="mt-24 grid grid-cols-2 sm:grid-cols-4 gap-8">
+          <div ref={statsRef} className="mt-24 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               { v: 500, s: "+", l: "Delegates" },
               { v: 50, s: "+", l: "Expert Faculty" },
@@ -1078,7 +1078,7 @@ export default function LandingPage() {
           />
         </div>
         {/* Subtle radial glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-cyan-500/[0.04] blur-[100px] pointer-events-none" />
+        <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-cyan-500/[0.04] blur-[100px] pointer-events-none" />
 
         <div className="relative max-w-[1200px] mx-auto px-6 py-32 sm:py-44 text-center">
           <Reveal>

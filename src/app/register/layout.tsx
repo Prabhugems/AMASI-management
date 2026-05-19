@@ -107,7 +107,7 @@ export default function RegisterLayout({
               <p className="text-[13px]" style={{ color: '#A8A29E' }}>
                 &copy; {new Date().getFullYear()} {COMPANY_CONFIG.fullName}
               </p>
-              <div className="flex items-center gap-8">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-8">
                 {[
                   { label: 'Terms', href: '#' },
                   { label: 'Privacy', href: '#' },

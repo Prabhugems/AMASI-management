@@ -273,7 +273,7 @@ export default function CabAgentPortal() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="mt-6 grid grid-cols-3 gap-4">
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="bg-white rounded-lg border p-4">
               <div className="flex items-center gap-2"><Car className="h-5 w-5 text-green-500" /><span className="text-sm text-muted-foreground">Total</span></div>
               <p className="text-3xl font-bold mt-2">{activeTab === "pickup" ? stats.pickup.total : stats.drop.total}</p>

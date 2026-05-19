@@ -229,7 +229,7 @@ function StatusPageContent() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Enter your Email or Registration Number
           </label>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Input
               type="text"
               placeholder="email@example.com or REG-12345"
@@ -377,7 +377,7 @@ function StatusPageContent() {
             {registration.status === "confirmed" && (registration.badge_url || registration.certificate_url) && (
               <div className="p-6 bg-gray-50 border-t">
                 <h4 className="font-medium text-gray-900 mb-3">Downloads</h4>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   {registration.badge_url && (
                     <a
                       href={registration.badge_url}

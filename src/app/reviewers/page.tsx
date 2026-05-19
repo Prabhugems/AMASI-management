@@ -60,6 +60,7 @@ import { COMPANY_CONFIG } from "@/lib/config"
 import { CSVImportDynamic } from "@/components/ui/csv-import-dynamic"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
 
 type Reviewer = {
@@ -577,16 +578,19 @@ export default function ReviewersPoolPage() {
       </header>
 
       {/* Main Content */}
-      <div className="max-w-[1600px] mx-auto flex" style={{ height: "calc(100vh - 160px)" }}>
+      <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row" style={{ height: "calc(100vh - 160px)" }}>
         {/* List Panel */}
         <div
-          className="bg-white/60 backdrop-blur-sm border-r border-slate-200/60 flex flex-col relative"
+          className={cn(
+            "bg-white/60 backdrop-blur-sm lg:border-r border-slate-200/60 flex-col relative max-lg:!w-full",
+            selectedReviewer ? "hidden lg:flex" : "flex"
+          )}
           style={{ width: sidebarWidth }}
         >
           {/* Resize Handle */}
           <div
             onMouseDown={startResizing}
-            className={`absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 transition-colors ${
+            className={`absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 transition-colors hidden lg:block ${
               isResizing ? "bg-blue-500" : "hover:bg-blue-400"
             }`}
           />

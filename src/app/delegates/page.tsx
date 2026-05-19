@@ -200,7 +200,7 @@ export default function GlobalAttendeesPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <div className="bg-secondary/30 rounded-xl p-4 border border-border">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -251,7 +251,7 @@ export default function GlobalAttendeesPage() {
           {/* Search & Filters */}
           <div className="p-4 border-b border-border bg-secondary/20">
             <div className="flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[200px] max-w-md">
+              <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by name, email, or reg ID..."
@@ -261,7 +261,7 @@ export default function GlobalAttendeesPage() {
                 />
               </div>
               <Select value={eventFilter} onValueChange={setEventFilter}>
-                <SelectTrigger className="w-[180px] bg-background">
+                <SelectTrigger className="w-full sm:w-[180px] bg-background">
                   <SelectValue placeholder="All Events" />
                 </SelectTrigger>
                 <SelectContent>
@@ -274,7 +274,7 @@ export default function GlobalAttendeesPage() {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px] bg-background">
+                <SelectTrigger className="w-full sm:w-[140px] bg-background">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -285,7 +285,7 @@ export default function GlobalAttendeesPage() {
                 </SelectContent>
               </Select>
               <Select value={checkinFilter} onValueChange={setCheckinFilter}>
-                <SelectTrigger className="w-[140px] bg-background">
+                <SelectTrigger className="w-full sm:w-[140px] bg-background">
                   <SelectValue placeholder="Check-in" />
                 </SelectTrigger>
                 <SelectContent>

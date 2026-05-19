@@ -158,7 +158,7 @@ export default function TravelDashboardPage() {
             <p className="text-muted-foreground">Events will appear here when speakers request travel assistance</p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {eventsData.map((event) => (
               <div
                 key={event.id}

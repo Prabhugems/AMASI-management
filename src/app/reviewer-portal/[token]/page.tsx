@@ -1102,7 +1102,7 @@ export default function ReviewerPortalPage() {
                 </CardDescription>
               </DialogHeader>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-6 mt-4">
                 {/* Left - Abstract Details */}
                 <div className="space-y-4">
                   <div>

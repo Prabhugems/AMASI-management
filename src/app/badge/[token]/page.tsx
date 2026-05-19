@@ -167,7 +167,7 @@ export default function BadgeDownloadPage() {
         <div className="p-6">
           {/* Attendee Info */}
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">{registration.attendee_name}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 break-words">{registration.attendee_name}</h2>
             {registration.attendee_designation && (
               <p className="text-gray-600">{registration.attendee_designation}</p>
             )}
