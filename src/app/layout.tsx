@@ -53,7 +53,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
         <meta name="theme-color" content="#2563eb" />
       </head>
-      <body className="font-poppins antialiased overflow-x-hidden">
+      <body suppressHydrationWarning className="font-poppins antialiased overflow-x-hidden">
         <QueryProvider>
           <ThemeProvider
             attribute="class"

@@ -106,12 +106,16 @@ const ResizableSheetContent = React.forwardRef<
 
   // Load saved width from localStorage
   React.useEffect(() => {
-    const saved = localStorage.getItem(storageKey)
-    if (saved) {
-      const parsed = parseInt(saved)
-      if (parsed >= minWidth && parsed <= maxWidth) {
-        setWidth(parsed)
+    try {
+      const saved = localStorage.getItem(storageKey)
+      if (saved) {
+        const parsed = parseInt(saved)
+        if (parsed >= minWidth && parsed <= maxWidth) {
+          setWidth(parsed)
+        }
       }
+    } catch {
+      // localStorage blocked — keep default width
     }
   }, [storageKey, minWidth, maxWidth])
 
@@ -132,7 +136,11 @@ const ResizableSheetContent = React.forwardRef<
 
       if (newWidth >= minWidth && newWidth <= maxWidth) {
         setWidth(newWidth)
-        localStorage.setItem(storageKey, newWidth.toString())
+        try {
+          localStorage.setItem(storageKey, newWidth.toString())
+        } catch {
+          // localStorage blocked — width still applies in-memory
+        }
       }
     }
 

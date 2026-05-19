@@ -16,4 +16,10 @@ Sentry.init({
   // Enable sending user PII (Personally Identifiable Information)
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
+
+  // Filter out benign client-disconnect noise from the HTTP server
+  ignoreErrors: [
+    "Error: aborted",
+    "ECONNRESET",
+  ],
 });

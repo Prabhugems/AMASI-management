@@ -6,25 +6,31 @@ import { useSearchParams, usePathname } from "next/navigation"
 // Generate a unique visitor ID (persisted in localStorage)
 function getVisitorId(): string {
   if (typeof window === "undefined") return ""
-
-  let visitorId = localStorage.getItem("_vid")
-  if (!visitorId) {
-    visitorId = "v_" + Math.random().toString(36).substring(2) + Date.now().toString(36)
-    localStorage.setItem("_vid", visitorId)
+  try {
+    let visitorId = localStorage.getItem("_vid")
+    if (!visitorId) {
+      visitorId = "v_" + Math.random().toString(36).substring(2) + Date.now().toString(36)
+      localStorage.setItem("_vid", visitorId)
+    }
+    return visitorId
+  } catch {
+    return "v_" + Math.random().toString(36).substring(2) + Date.now().toString(36)
   }
-  return visitorId
 }
 
 // Generate a session ID (persisted in sessionStorage)
 function getSessionId(): string {
   if (typeof window === "undefined") return ""
-
-  let sessionId = sessionStorage.getItem("_sid")
-  if (!sessionId) {
-    sessionId = "s_" + Math.random().toString(36).substring(2) + Date.now().toString(36)
-    sessionStorage.setItem("_sid", sessionId)
+  try {
+    let sessionId = sessionStorage.getItem("_sid")
+    if (!sessionId) {
+      sessionId = "s_" + Math.random().toString(36).substring(2) + Date.now().toString(36)
+      sessionStorage.setItem("_sid", sessionId)
+    }
+    return sessionId
+  } catch {
+    return "s_" + Math.random().toString(36).substring(2) + Date.now().toString(36)
   }
-  return sessionId
 }
 
 interface UsePageTrackingOptions {

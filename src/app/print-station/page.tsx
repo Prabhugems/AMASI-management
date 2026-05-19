@@ -1,11 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Download, Monitor, Apple, CheckCircle, Printer, ScanLine, Settings, HelpCircle } from "lucide-react"
 import { COMPANY_CONFIG } from "@/lib/config"
 
 export default function PrintStationDownloadPage() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
+  const [serverUrl, setServerUrl] = useState("https://your-domain.com")
+  useEffect(() => {
+    setServerUrl(window.location.origin)
+  }, [])
 
   // Update these URLs after uploading to GitHub Releases
   // For now, files are in: print-station-app/dist/
@@ -50,7 +54,7 @@ export default function PrintStationDownloadPage() {
     },
     {
       question: "What is the Server URL?",
-      answer: `This is your ${COMPANY_CONFIG.name} event management website URL (e.g., ${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}). This is where the app fetches registration data from.`
+      answer: `This is your ${COMPANY_CONFIG.name} event management website URL (e.g., ${serverUrl}). This is where the app fetches registration data from.`
     },
     {
       question: "Can I use a USB barcode scanner?",
@@ -217,7 +221,7 @@ export default function PrintStationDownloadPage() {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-slate-800/50 rounded-lg p-4">
               <div className="text-slate-400 text-sm mb-1">Server URL</div>
-              <div className="text-white font-mono text-sm">{typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}</div>
+              <div className="text-white font-mono text-sm">{serverUrl}</div>
               <div className="text-slate-500 text-xs mt-1">Your event management website</div>
             </div>
             <div className="bg-slate-800/50 rounded-lg p-4">

@@ -28,15 +28,31 @@ export function useThemeColor() {
   return context
 }
 
+function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // localStorage blocked (privacy mode, cookie blocked, etc.) — ignore
+  }
+}
+
 // Helper to get initial value from localStorage (client-side only)
 function getStoredThemeColor(): ThemeColor {
   if (typeof window === "undefined") return "violet"
-  return (localStorage.getItem("theme-color") as ThemeColor) || "violet"
+  return (safeGetItem("theme-color") as ThemeColor) || "violet"
 }
 
 function getStoredSidebarColor(): SidebarColor {
   if (typeof window === "undefined") return "brown"
-  return (localStorage.getItem("sidebar-color") as SidebarColor) || "brown"
+  return (safeGetItem("sidebar-color") as SidebarColor) || "brown"
 }
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
@@ -48,8 +64,8 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   React.useEffect(() => {
     setMounted(true)
     // Sync state with localStorage on mount (classes already applied by ThemeScript)
-    const savedColor = localStorage.getItem("theme-color") as ThemeColor
-    const savedSidebarColor = localStorage.getItem("sidebar-color") as SidebarColor
+    const savedColor = safeGetItem("theme-color") as ThemeColor
+    const savedSidebarColor = safeGetItem("sidebar-color") as SidebarColor
 
     if (savedColor) {
       setColorState(savedColor)
@@ -61,13 +77,13 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
 
   const setColor = React.useCallback((newColor: ThemeColor) => {
     setColorState(newColor)
-    localStorage.setItem("theme-color", newColor)
+    safeSetItem("theme-color", newColor)
     applyThemeColor(newColor)
   }, [])
 
   const setSidebarColor = React.useCallback((newColor: SidebarColor) => {
     setSidebarColorState(newColor)
-    localStorage.setItem("sidebar-color", newColor)
+    safeSetItem("sidebar-color", newColor)
     applySidebarColor(newColor)
   }, [])
 
