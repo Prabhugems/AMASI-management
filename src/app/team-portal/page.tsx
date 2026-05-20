@@ -183,55 +183,55 @@ export default function TeamPortalPage() {
     <div className="min-h-screen bg-slate-100">
       {/* Header */}
       <header className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
-        <div className="max-w-5xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Users className="h-6 w-6 text-primary" />
+        <div className="max-w-5xl mx-auto px-4 py-4 sm:py-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Users className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold">Team Portal</h1>
-                <p className="text-slate-400 text-sm">{COMPANY_CONFIG.name} Event Management</p>
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-xl font-bold leading-tight">Team Portal</h1>
+                <p className="text-slate-400 text-xs sm:text-sm truncate">{COMPANY_CONFIG.name} Event Management</p>
               </div>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="text-slate-300 hover:text-white hover:bg-white/10"
+              className="text-slate-300 hover:text-white hover:bg-white/10 flex-shrink-0 px-2.5 sm:px-3"
             >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              <LogOut className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
         {/* User Profile Card */}
-        <div className="bg-white rounded-xl border shadow-sm p-6 mb-8">
+        <div className="bg-white rounded-xl border shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+              <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-xl sm:text-2xl font-bold text-primary">
                   {teamMember?.name?.charAt(0).toUpperCase()}
                 </span>
               </div>
-              <div>
-                <h2 className="text-xl font-semibold">{teamMember?.name}</h2>
-                <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Mail className="h-4 w-4" />
-                    {teamMember?.email}
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg sm:text-xl font-semibold truncate">{teamMember?.name}</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1 min-w-0">
+                    <Mail className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{teamMember?.email}</span>
                   </span>
                   {teamMember?.phone && (
                     <span className="flex items-center gap-1">
-                      <Phone className="h-4 w-4" />
+                      <Phone className="h-4 w-4 flex-shrink-0" />
                       {teamMember.phone}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
                   <Badge variant="secondary" className="capitalize">
                     <Shield className="h-3 w-3 mr-1" />
                     {teamMember?.role}

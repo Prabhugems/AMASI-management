@@ -218,23 +218,23 @@ function UploadPresentationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-6 sm:py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <button
             onClick={() => router.back()}
-            className="flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-3 min-h-[44px] -ml-1 px-1"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back to My Page
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">Upload Presentation</h1>
-          <p className="text-gray-600">Upload your presentation file for your accepted abstract</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Upload Presentation</h1>
+          <p className="text-gray-600 text-sm sm:text-base mt-1">Upload your presentation file for your accepted abstract</p>
         </div>
 
         {/* Abstract Info */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
               <Presentation className="w-6 h-6 text-blue-600" />
@@ -263,13 +263,13 @@ function UploadPresentationPage() {
 
         {/* Upload Section */}
         {!abstract.presentation_url && (
-          <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
             <h3 className="font-semibold text-gray-900 mb-4">Select File</h3>
 
             {/* File Type Selection */}
             <div className="mb-4">
               <Label className="text-sm text-gray-700 mb-2 block">Presentation Type</Label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   { value: "slides", label: "Slides", icon: FileText },
                   { value: "video", label: "Video", icon: Video },
@@ -278,13 +278,13 @@ function UploadPresentationPage() {
                   <button
                     key={value}
                     onClick={() => setPresentationType(value as any)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                    className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2.5 rounded-lg border text-sm transition-colors min-h-[44px] ${
                       presentationType === value
                         ? "bg-blue-50 border-blue-300 text-blue-700"
                         : "border-gray-200 text-gray-600 hover:border-gray-300"
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4 flex-shrink-0" />
                     {label}
                   </button>
                 ))}
@@ -305,16 +305,17 @@ function UploadPresentationPage() {
               >
                 {selectedFile ? (
                   <div className="flex items-center justify-center gap-3">
-                    <FileText className="w-8 h-8 text-blue-600" />
-                    <div className="text-left">
-                      <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                      <p className="text-sm text-gray-500">
+                    <FileText className="w-8 h-8 text-blue-600 flex-shrink-0" />
+                    <div className="text-left min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 break-all text-sm sm:text-base">{selectedFile.name}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">
                         {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
                     <button
                       onClick={() => setSelectedFile(null)}
-                      className="ml-4 p-1 hover:bg-gray-200 rounded"
+                      className="ml-2 p-2 hover:bg-gray-200 rounded flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                      aria-label="Remove file"
                     >
                       <X className="w-4 h-4 text-gray-500" />
                     </button>

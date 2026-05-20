@@ -255,7 +255,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                 <button
                   onClick={() => !collapsed && toggleMenu(item.name)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 nav-item-hover",
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-3 lg:py-2.5 text-sm transition-all duration-200 nav-item-hover",
                     isActive
                       ? "bg-sidebar-primary/15 text-sidebar-foreground font-semibold"
                       : "text-sidebar-muted hover:text-sidebar-foreground",
@@ -296,7 +296,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                             href={child.href}
                             onClick={onMobileClose}
                             className={cn(
-                              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
+                              "flex items-center gap-3 rounded-lg px-3 py-2.5 lg:py-2 text-sm transition-all duration-200",
                               childActive
                                 ? "bg-sidebar-primary text-white font-medium shadow-md shadow-sidebar-primary/20"
                                 : "text-sidebar-muted hover:text-sidebar-foreground hover:bg-white/5",
@@ -340,7 +340,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                   href={item.href}
                   onClick={onMobileClose}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 nav-item-hover",
+                    "flex items-center gap-3 rounded-xl px-3 py-3 lg:py-2.5 text-sm transition-all duration-200 nav-item-hover",
                     isActive
                       ? "bg-sidebar-primary text-white font-medium shadow-md shadow-sidebar-primary/20"
                       : "text-sidebar-muted hover:text-sidebar-foreground",

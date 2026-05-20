@@ -1535,13 +1535,13 @@ export default function DelegatePortalPage() {
         </div>
 
         {/* Download Buttons */}
-        <motion.div ref={certActionRef} variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <motion.div ref={certActionRef} variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {/* Invitation Download */}
           {portalSettings.show_invitation && (
           <button
             onClick={handleDownloadInvitation}
             disabled={downloadingInvitation || registration.status !== "confirmed"}
-            className="bg-white rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+            className="bg-white rounded-2xl shadow-xl p-4 sm:p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group min-h-[44px]"
           >
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-200 transition-colors">
               {downloadingInvitation ? (
@@ -1560,7 +1560,7 @@ export default function DelegatePortalPage() {
           <button
             onClick={handleDownloadBadge}
             disabled={downloadingBadge || registration.status !== "confirmed"}
-            className="bg-white rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+            className="bg-white rounded-2xl shadow-xl p-4 sm:p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group min-h-[44px]"
           >
             <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:bg-indigo-200 transition-colors">
               {downloadingBadge ? (
@@ -1599,7 +1599,7 @@ export default function DelegatePortalPage() {
               handleDownloadCertificate()
             }}
             disabled={downloadingCert}
-            className={`rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 group relative ${
+            className={`rounded-2xl shadow-xl p-4 sm:p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 group relative min-h-[44px] ${
               !registration.checked_in || certGatedByFeedback
                 ? "bg-amber-50/80 cursor-pointer"
                 : "bg-white disabled:cursor-not-allowed"
@@ -1640,7 +1640,7 @@ export default function DelegatePortalPage() {
             whileHover={{ scale: 1.05, y: -4 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => { haptic("medium"); window.open(`/convocation?c=${registration.convocation_number}`, "_blank") }}
-            className="relative bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 rounded-2xl shadow-xl shadow-green-500/20 p-5 text-center hover:shadow-2xl transition-all group overflow-hidden"
+            className="relative bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 rounded-2xl shadow-xl shadow-green-500/20 p-4 sm:p-5 text-center hover:shadow-2xl transition-all group overflow-hidden min-h-[44px]"
           >
             {/* Celebration sparkle effect */}
             <div className="absolute inset-0 pointer-events-none">
@@ -1663,7 +1663,7 @@ export default function DelegatePortalPage() {
           <button
             onClick={handleDownloadReceipt}
             disabled={downloadingReceipt || registration.status !== "confirmed"}
-            className="bg-white rounded-2xl shadow-xl p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+            className="bg-white rounded-2xl shadow-xl p-4 sm:p-5 text-center hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group min-h-[44px]"
           >
             <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:bg-green-200 transition-colors">
               {downloadingReceipt ? (

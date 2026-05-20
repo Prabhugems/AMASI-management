@@ -162,20 +162,20 @@ function LoginForm() {
       </div>
 
       {/* Right Panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
-        <div className="w-full max-w-md">
+      <div className="flex-1 flex items-start sm:items-center justify-center px-5 pt-12 pb-8 sm:p-6 md:p-8">
+        <div className="w-full max-w-sm sm:max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
-              <span className="text-xl font-bold text-white">{COMPANY_CONFIG.name.charAt(0)}</span>
+          <div className="lg:hidden flex items-center gap-3 mb-6 sm:mb-8 justify-center">
+            <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-primary flex items-center justify-center">
+              <span className="text-lg sm:text-xl font-bold text-white">{COMPANY_CONFIG.name.charAt(0)}</span>
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-foreground">{COMPANY_CONFIG.name}</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-foreground leading-tight">{COMPANY_CONFIG.name}</h1>
               <p className="text-muted-foreground text-xs">{FEATURES.membership ? "Command Center" : "Event Management"}</p>
             </div>
           </div>
 
-          <div className="paper-card p-4 sm:p-6 md:p-8">
+          <div className="paper-card p-5 sm:p-6 md:p-8">
             {!supabaseConfigured ? (
               <div className="text-center">
                 <div className="h-16 w-16 rounded-full bg-warning/20 flex items-center justify-center mx-auto mb-4">
@@ -224,11 +224,11 @@ function LoginForm() {
               </div>
             ) : (
               <>
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl font-semibold text-foreground mb-2">
+                <div className="text-center mb-6 sm:mb-8">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-1.5 sm:mb-2">
                     Welcome back
                   </h2>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm sm:text-base text-muted-foreground">
                     Sign in to your account to continue
                   </p>
                 </div>
@@ -251,7 +251,7 @@ function LoginForm() {
                         placeholder="you@example.com"
                         required
                         className={cn(
-                          "w-full h-12 pl-11 pr-4 rounded-xl bg-secondary/50 border text-foreground",
+                          "w-full h-12 pl-11 pr-4 rounded-xl bg-secondary/50 border text-base text-foreground",
                           "placeholder:text-muted-foreground",
                           "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
                           "transition-all duration-200",
@@ -291,7 +291,7 @@ function LoginForm() {
             )}
           </div>
 
-          <p className="mt-8 text-center text-xs text-muted-foreground">
+          <p className="mt-6 sm:mt-8 px-4 text-center text-xs text-muted-foreground leading-relaxed">
             {COMPANY_CONFIG.fullName}
           </p>
         </div>

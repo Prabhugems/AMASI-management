@@ -149,20 +149,20 @@ function TeamLoginForm() {
       </div>
 
       {/* Right Panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
-        <div className="w-full max-w-md">
+      <div className="flex-1 flex items-start sm:items-center justify-center px-5 pt-12 pb-8 sm:p-6 md:p-8">
+        <div className="w-full max-w-sm sm:max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="h-12 w-12 rounded-xl bg-sidebar flex items-center justify-center">
-              <Users className="h-6 w-6 text-white" />
+          <div className="lg:hidden flex items-center gap-3 mb-6 sm:mb-8 justify-center">
+            <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-sidebar flex items-center justify-center">
+              <Users className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">{COMPANY_CONFIG.name} Team</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-foreground leading-tight">{COMPANY_CONFIG.name} Team</h1>
               <p className="text-muted-foreground text-xs">Management Portal</p>
             </div>
           </div>
 
-          <div className="paper-card p-4 sm:p-6 md:p-8">
+          <div className="paper-card p-5 sm:p-6 md:p-8">
             {sent ? (
               <div className="text-center">
                 <div className="h-16 w-16 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-4">
@@ -190,11 +190,11 @@ function TeamLoginForm() {
               </div>
             ) : (
               <>
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl font-semibold text-foreground mb-2">
+                <div className="text-center mb-6 sm:mb-8">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-1.5 sm:mb-2">
                     Team Login
                   </h2>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm sm:text-base text-muted-foreground">
                     Enter your email to receive a magic link
                   </p>
                 </div>
@@ -211,7 +211,7 @@ function TeamLoginForm() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@example.com"
                         required
-                        className={cn("pl-11", error && "border-destructive")}
+                        className={cn("h-12 pl-11 text-base", error && "border-destructive")}
                       />
                     </div>
                     {error && (
@@ -248,7 +248,7 @@ function TeamLoginForm() {
             )}
           </div>
 
-          <p className="mt-8 text-center text-xs text-muted-foreground">
+          <p className="mt-6 sm:mt-8 px-4 text-center text-xs text-muted-foreground leading-relaxed">
             {COMPANY_CONFIG.fullName}
           </p>
         </div>

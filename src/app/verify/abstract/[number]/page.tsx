@@ -109,10 +109,10 @@ export default async function VerifyAbstractPage({ params }: Props) {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
         {/* Verification Status Card */}
         <div
-          className={`rounded-2xl border-2 p-6 mb-6 ${
+          className={`rounded-2xl border-2 p-4 sm:p-6 mb-4 sm:mb-6 ${
             isValid
               ? hasPresented
                 ? "bg-emerald-50 border-emerald-200"
@@ -120,9 +120,9 @@ export default async function VerifyAbstractPage({ params }: Props) {
               : "bg-red-50 border-red-200"
           }`}
         >
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-3 sm:gap-4">
             <div
-              className={`p-3 rounded-full ${
+              className={`p-2.5 sm:p-3 rounded-full flex-shrink-0 ${
                 isValid
                   ? hasPresented
                     ? "bg-emerald-500"
@@ -131,14 +131,14 @@ export default async function VerifyAbstractPage({ params }: Props) {
               }`}
             >
               {isValid ? (
-                <CheckCircle className="h-8 w-8 text-white" />
+                <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
               ) : (
-                <XCircle className="h-8 w-8 text-white" />
+                <XCircle className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
               )}
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <h1
-                className={`text-2xl font-bold ${
+                className={`text-xl sm:text-2xl font-bold ${
                   isValid
                     ? hasPresented
                       ? "text-emerald-800"
@@ -153,7 +153,7 @@ export default async function VerifyAbstractPage({ params }: Props) {
                   : "Not Found"}
               </h1>
               <p
-                className={`text-sm mt-1 ${
+                className={`text-sm mt-1 break-words ${
                   isValid
                     ? hasPresented
                       ? "text-emerald-600"
@@ -174,24 +174,24 @@ export default async function VerifyAbstractPage({ params }: Props) {
         {isValid && abstract && (
           <>
             {/* Presenter Info */}
-            <div className="bg-white rounded-2xl border shadow-sm p-6 mb-4">
+            <div className="bg-white rounded-2xl border shadow-sm p-4 sm:p-6 mb-4">
               <div className="flex items-center gap-2 text-slate-500 text-sm mb-4">
                 <Award className="h-4 w-4" />
                 <span>Certificate Details</span>
               </div>
 
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+              <div className="flex items-center gap-3 sm:gap-4 mb-6">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl sm:text-2xl font-bold flex-shrink-0">
                   {abstract.presenting_author_name?.charAt(0) || "?"}
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-800">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-800 break-words">
                     {abstract.presenting_author_name}
                   </h2>
                   {abstract.presenting_author_affiliation && (
-                    <p className="text-slate-500 text-sm flex items-center gap-1 mt-0.5">
-                      <Building2 className="h-3.5 w-3.5" />
-                      {abstract.presenting_author_affiliation}
+                    <p className="text-slate-500 text-sm flex items-start gap-1 mt-0.5 break-words">
+                      <Building2 className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                      <span>{abstract.presenting_author_affiliation}</span>
                     </p>
                   )}
                 </div>
@@ -241,7 +241,7 @@ export default async function VerifyAbstractPage({ params }: Props) {
 
             {/* Event Info */}
             {event && (
-              <div className="bg-white rounded-2xl border shadow-sm p-6 mb-4">
+              <div className="bg-white rounded-2xl border shadow-sm p-4 sm:p-6 mb-4">
                 <div className="flex items-center gap-2 text-slate-500 text-sm mb-4">
                   <Calendar className="h-4 w-4" />
                   <span>Event Information</span>
@@ -323,12 +323,12 @@ export default async function VerifyAbstractPage({ params }: Props) {
 
         {/* Not Found State */}
         {!isValid && (
-          <div className="bg-white rounded-2xl border shadow-sm p-8 text-center">
+          <div className="bg-white rounded-2xl border shadow-sm p-6 sm:p-8 text-center">
             <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
             <h2 className="text-lg font-semibold text-slate-800 mb-2">
               Certificate Not Found
             </h2>
-            <p className="text-sm text-slate-500 max-w-md mx-auto">
+            <p className="text-sm text-slate-500 max-w-md mx-auto break-words">
               The abstract number "{number}" was not found in our system or has not
               been accepted. Please check the number and try again.
             </p>

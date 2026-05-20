@@ -646,7 +646,7 @@ function EventDetailsPage() {
 
   /* ─── Main View ─── */
   return (
-    <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <ProgressIndicator currentStep={currentStep} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
@@ -797,7 +797,7 @@ function EventDetailsPage() {
 
           {/* Description */}
           {(event.description || event.welcome_message) && (
-            <div className="p-5 sm:p-6 rounded-2xl" style={cardStyle}>
+            <div className="p-4 sm:p-5 lg:p-6 rounded-2xl" style={cardStyle}>
               <h2 className="reg-serif text-lg font-bold mb-4" style={{ color: C.text }}>
                 About This Event
               </h2>
@@ -829,7 +829,7 @@ function EventDetailsPage() {
 
           {/* Contact Info */}
           {(event.contact_email || event.contact_phone || event.website_url) && (
-            <div className="p-5 sm:p-6 rounded-2xl" style={cardStyle}>
+            <div className="p-4 sm:p-5 lg:p-6 rounded-2xl" style={cardStyle}>
               <h2 className="reg-serif text-lg font-bold mb-4" style={{ color: C.text }}>
                 Contact Information
               </h2>
@@ -902,7 +902,7 @@ function EventDetailsPage() {
 
           {/* Registration Type Selector */}
           {allowBuyers && !registrationType && (
-            <div className="p-5 sm:p-6 rounded-2xl" style={cardStyle}>
+            <div className="p-4 sm:p-5 lg:p-6 rounded-2xl" style={cardStyle}>
               <RegistrationTypeSelector
                 allowBuyers={allowBuyers}
                 onSelect={handleRegistrationTypeSelect}
@@ -913,7 +913,7 @@ function EventDetailsPage() {
 
           {/* Ticket Selection */}
           {event.ticket_types && event.ticket_types.length > 0 && (!allowBuyers || registrationType) && (
-            <div ref={ticketSectionRef} className="p-5 sm:p-6 rounded-2xl" style={cardStyle}>
+            <div ref={ticketSectionRef} className="p-4 sm:p-5 lg:p-6 rounded-2xl" style={cardStyle}>
               {allowBuyers && registrationType && (
                 <div className="mb-4 flex items-center justify-between">
                   <span
@@ -948,7 +948,7 @@ function EventDetailsPage() {
 
           {/* Addons Selection */}
           {addons && addons.length > 0 && totals.count > 0 && (
-            <div className="p-5 sm:p-6 rounded-2xl" style={cardStyle}>
+            <div className="p-4 sm:p-5 lg:p-6 rounded-2xl" style={cardStyle}>
               <AddonsSelector
                 addons={addons}
                 selectedAddons={selectedAddons}
@@ -970,14 +970,14 @@ function EventDetailsPage() {
             }}
           >
             {/* Header */}
-            <div className="p-5" style={{ borderBottom: `1px solid ${C.border}` }}>
+            <div className="p-4 sm:p-5" style={{ borderBottom: `1px solid ${C.border}` }}>
               <h3 className="reg-serif text-lg font-bold" style={{ color: C.text }}>
                 Order Summary
               </h3>
             </div>
 
             {/* Content */}
-            <div className="p-5 space-y-4">
+            <div className="p-4 sm:p-5 space-y-4">
               <EmailCheckWidget eventId={event.id} />
 
               {totals.count === 0 ? (
@@ -1079,7 +1079,7 @@ function EventDetailsPage() {
             </div>
 
             {/* CTA Button */}
-            <div className="p-5 pt-0">
+            <div className="p-4 sm:p-5 pt-0">
               <button
                 onClick={handleProceedToCheckout}
                 disabled={totals.count === 0}

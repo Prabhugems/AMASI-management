@@ -187,21 +187,23 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
         sidebarCollapsed ? "lg:left-[72px]" : "lg:left-64"
       )}
     >
-      <div className="flex h-full items-center justify-between px-3 sm:px-6">
+      <div className="flex h-full items-center justify-between gap-2 px-3 sm:px-6">
         {/* Mobile menu button + Search */}
-        <div className="flex items-center gap-2 sm:gap-4 flex-1 max-w-xl">
+        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 max-w-xl">
           <button
             onClick={onMobileMenuToggle}
-            className="flex lg:hidden h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors flex-shrink-0"
+            aria-label="Open menu"
+            className="flex lg:hidden h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors flex-shrink-0 -ml-1"
           >
             <Menu className="h-5 w-5" />
           </button>
           <button
             onClick={() => setCommandPaletteOpen(true)}
-            className="search-btn relative flex-1 flex items-center w-full h-10 pl-10 pr-4 rounded-xl bg-secondary/50 border border-transparent text-sm text-muted-foreground hover:bg-secondary transition-colors cursor-pointer text-left"
+            aria-label="Open search"
+            className="search-btn relative flex-1 flex items-center w-full h-10 pl-10 pr-3 sm:pr-4 rounded-xl bg-secondary/50 border border-transparent text-sm text-muted-foreground hover:bg-secondary transition-colors cursor-pointer text-left min-w-0"
           >
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <span className="truncate">Search...</span>
+            <span className="truncate">Search</span>
             <kbd className="kbd-hint absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
               <span className="text-xs">⌘</span>K
             </kbd>
@@ -210,7 +212,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {/* Theme Toggle */}
           <div className="relative">
             <button
@@ -219,7 +221,8 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
                 setShowUserMenu(false)
                 setShowNotifications(false)
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+              aria-label="Theme settings"
+              className="flex h-11 w-11 sm:h-10 sm:w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
             >
               <Palette className="h-5 w-5" />
             </button>
@@ -298,7 +301,8 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
                 setShowThemeMenu(false)
                 setShowUserMenu(false)
               }}
-              className="relative flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+              aria-label="Notifications"
+              className="relative flex h-11 w-11 sm:h-10 sm:w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -376,16 +380,17 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
           </div>
 
           {/* User Menu */}
-          <div className="relative ml-2">
+          <div className="relative ml-1 sm:ml-2">
             <button
               onClick={() => {
                 setShowUserMenu(!showUserMenu)
                 setShowThemeMenu(false)
                 setShowNotifications(false)
               }}
-              className="flex items-center gap-3 rounded-xl bg-secondary/50 pl-1 pr-3 py-1 hover:bg-secondary transition-colors"
+              aria-label="User menu"
+              className="flex items-center gap-2 sm:gap-3 rounded-xl bg-secondary/50 p-1 sm:pl-1 sm:pr-3 sm:py-1 hover:bg-secondary transition-colors"
             >
-              <Avatar className="h-8 w-8">
+              <Avatar className="h-9 w-9 sm:h-8 sm:w-8">
                 <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground text-sm font-medium">
                   {getInitials(userName || quickName || userEmail || quickEmail || "U")}
                 </AvatarFallback>

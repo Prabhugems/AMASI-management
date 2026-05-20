@@ -199,7 +199,7 @@ function EventCard({ event, index }: { event: PublicEvent; index: number }) {
         </div>
 
         {/* Content */}
-        <div className="p-5 pb-6">
+        <div className="p-4 sm:p-5 pb-5 sm:pb-6">
           <h3
             className="reg-serif text-[17px] font-bold leading-snug mb-2 line-clamp-2 transition-colors duration-300"
             style={{ color: isHovered ? '#166534' : '#1C1917' }}
@@ -473,7 +473,7 @@ export default function RegisterPage() {
   }, [events, eventType, dateFilter, priceFilter, sortBy])
 
   return (
-    <div className="max-w-7xl mx-auto px-5 sm:px-8 pt-16 pb-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 pb-12">
       {/* ─── Hero ─── */}
       <div className="text-center mb-16">
         {/* Decorative line */}

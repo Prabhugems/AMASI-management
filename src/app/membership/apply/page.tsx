@@ -187,39 +187,39 @@ export default function MembershipApplyPage() {
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background">
       {/* Header */}
       <div className="bg-white border-b">
-        <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="max-w-3xl mx-auto px-4 py-4 sm:py-6">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
               <span className="text-lg font-bold text-white">A</span>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">{COMPANY_CONFIG.name} Membership Application</h1>
-              <p className="text-sm text-muted-foreground">{COMPANY_CONFIG.fullName}</p>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-xl font-bold text-foreground leading-tight">{COMPANY_CONFIG.name} Membership Application</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 leading-tight">{COMPANY_CONFIG.fullName}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
         {/* Step Indicator */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
           {STEPS.map((s, i) => (
-            <div key={s.id} className="flex items-center flex-1">
+            <div key={s.id} className="flex items-center flex-1 last:flex-initial">
               <div className="flex flex-col items-center">
                 <div
                   className={cn(
-                    "h-10 w-10 rounded-full flex items-center justify-center transition-all",
+                    "h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center transition-all flex-shrink-0",
                     step === s.id
-                      ? "bg-primary text-white"
+                      ? "bg-primary text-white shadow-md shadow-primary/30 ring-4 ring-primary/10"
                       : step > s.id
                       ? "bg-green-100 text-green-600"
                       : "bg-secondary text-muted-foreground"
                   )}
                 >
                   {step > s.id ? (
-                    <CheckCircle2 className="h-5 w-5" />
+                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
                   ) : (
-                    <s.icon className="h-5 w-5" />
+                    <s.icon className="h-4 w-4 sm:h-5 sm:w-5" />
                   )}
                 </div>
                 <span className={cn(
@@ -231,13 +231,18 @@ export default function MembershipApplyPage() {
               </div>
               {i < STEPS.length - 1 && (
                 <div className={cn(
-                  "flex-1 h-0.5 mx-2",
-                  step > s.id ? "bg-green-200" : "bg-border"
+                  "flex-1 h-0.5 mx-1.5 sm:mx-2 rounded-full",
+                  step > s.id ? "bg-green-300" : "bg-border"
                 )} />
               )}
             </div>
           ))}
         </div>
+
+        {/* Mobile-only current step title */}
+        <p className="sm:hidden text-xs uppercase tracking-wider text-muted-foreground text-center mb-4">
+          Step {step} of {STEPS.length} &middot; {STEPS[step - 1].title}
+        </p>
 
         {/* Step Content */}
         <Card>
@@ -533,23 +538,24 @@ export default function MembershipApplyPage() {
         )}
 
         {/* Navigation */}
-        <div className="flex items-center justify-between mt-6">
+        <div className="flex items-center justify-between gap-3 mt-6">
           <Button
             variant="outline"
             onClick={handleBack}
             disabled={step === 1}
+            className="h-11 px-5 sm:px-6"
           >
-            <ChevronLeft className="h-4 w-4 mr-2" />
+            <ChevronLeft className="h-4 w-4 mr-1.5" />
             Back
           </Button>
 
           {step < 5 ? (
-            <Button onClick={handleNext}>
+            <Button onClick={handleNext} className="h-11 px-6 sm:px-7 flex-1 sm:flex-initial">
               Next
-              <ChevronRight className="h-4 w-4 ml-2" />
+              <ChevronRight className="h-4 w-4 ml-1.5" />
             </Button>
           ) : (
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="h-11 px-5 sm:px-7 flex-1 sm:flex-initial">
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

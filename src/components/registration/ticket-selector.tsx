@@ -169,13 +169,13 @@ function TicketCard({
         </div>
       )}
 
-      <div className={`p-5 sm:p-6`}>
-        <div className="flex items-start justify-between gap-4 sm:gap-6">
+      <div className={`p-4 sm:p-5 lg:p-6`}>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
           {/* ─── Ticket Info ─── */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap mb-1.5">
               <h3
-                className="text-lg font-bold"
+                className="text-[17px] sm:text-lg font-bold leading-snug break-words"
                 style={{ color: isDark ? '#F8FAFC' : '#1C1917' }}
               >
                 {ticket.name}
@@ -269,11 +269,11 @@ function TicketCard({
           </div>
 
           {/* ─── Price & Quantity ─── */}
-          <div className="text-right flex-shrink-0">
+          <div className="flex sm:block items-center justify-between sm:text-right flex-shrink-0 gap-3">
             {/* Price */}
-            <div className="mb-3">
+            <div className="sm:mb-3">
               <p
-                className="text-2xl font-black transition-colors duration-200"
+                className="text-xl sm:text-2xl font-black transition-colors duration-200 leading-tight"
                 style={{
                   color: isSelected
                     ? '#166534'

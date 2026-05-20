@@ -28,23 +28,23 @@ export default function VerifyPage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-12">
+      <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12">
         {/* Hero */}
-        <div className="text-center mb-10">
-          <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-            <Award className="h-10 w-10 text-white" />
+        <div className="text-center mb-8 sm:mb-10">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
+            <Award className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-3">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2 sm:mb-3">
             Verify Certificate
           </h1>
-          <p className="text-slate-500 max-w-md mx-auto">
+          <p className="text-slate-500 max-w-md mx-auto text-sm sm:text-base">
             Enter the abstract number from the certificate to verify its authenticity.
           </p>
         </div>
 
         {/* Search Card */}
-        <div className="bg-white rounded-2xl border shadow-sm p-6 mb-8">
-          <div className="flex items-center gap-2 text-slate-500 text-sm mb-4">
+        <div className="bg-white rounded-2xl border shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="flex items-center gap-2 text-slate-500 text-sm mb-3 sm:mb-4">
             <Search className="h-4 w-4" />
             <span>Enter Abstract Number</span>
           </div>
@@ -57,13 +57,15 @@ export default function VerifyPage() {
                 onChange={(e) => setAbstractNumber(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleVerify()}
                 placeholder="e.g., ABS-001 or 2024-0042"
-                className="pl-10 h-12 text-lg"
+                className="pl-10 h-12 text-base sm:text-lg"
+                inputMode="text"
+                autoCapitalize="characters"
               />
             </div>
             <Button
               onClick={handleVerify}
               disabled={!abstractNumber.trim()}
-              className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700"
+              className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto"
             >
               Verify
             </Button>

@@ -217,15 +217,15 @@ function StatusPageContent() {
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200">
       {/* Header */}
       <div className="bg-white border-b">
-        <div className="max-w-2xl mx-auto px-4 py-6">
-          <h1 className="text-2xl font-bold text-gray-900">Registration Status</h1>
-          <p className="text-gray-600 mt-1">Check your registration status and payment details</p>
+        <div className="max-w-2xl mx-auto px-4 py-5 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Registration Status</h1>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">Check your registration status and payment details</p>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
         {/* Search Box */}
-        <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6 mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Enter your Email or Registration Number
           </label>
@@ -236,9 +236,9 @@ function StatusPageContent() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && searchRegistration()}
-              className="flex-1"
+              className="flex-1 h-11"
             />
-            <Button onClick={searchRegistration} disabled={loading}>
+            <Button onClick={searchRegistration} disabled={loading} className="w-full sm:w-auto h-11 min-h-[44px]">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               <span className="ml-2">Search</span>
             </Button>
@@ -247,10 +247,10 @@ function StatusPageContent() {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6 text-center">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mb-6 text-center">
             <XCircle className="h-12 w-12 text-red-400 mx-auto mb-3" />
             <h3 className="font-semibold text-red-800 mb-1">Registration Not Found</h3>
-            <p className="text-red-600 text-sm">{error}</p>
+            <p className="text-red-600 text-sm break-words">{error}</p>
           </div>
         )}
 
@@ -262,16 +262,16 @@ function StatusPageContent() {
               const statusConfig = getStatusConfig(registration.status)
               const StatusIcon = statusConfig.icon
               return (
-                <div className={`${statusConfig.bg} px-6 py-4 flex items-center justify-between`}>
-                  <div className="flex items-center gap-3">
-                    <StatusIcon className={`h-6 w-6 ${statusConfig.color}`} />
-                    <div>
+                <div className={`${statusConfig.bg} px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <StatusIcon className={`h-6 w-6 flex-shrink-0 ${statusConfig.color}`} />
+                    <div className="min-w-0">
                       <p className={`font-semibold ${statusConfig.color}`}>{statusConfig.label}</p>
-                      <p className="text-sm text-gray-600">Reg #{registration.registration_number}</p>
+                      <p className="text-sm text-gray-600 break-all">Reg #{registration.registration_number}</p>
                     </div>
                   </div>
                   {canRetryPayment && (
-                    <Button onClick={handleRetryPayment} disabled={paymentLoading} size="sm">
+                    <Button onClick={handleRetryPayment} disabled={paymentLoading} size="sm" className="min-h-[40px]">
                       {paymentLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                       ) : (
@@ -285,29 +285,29 @@ function StatusPageContent() {
             })()}
 
             {/* Attendee Info */}
-            <div className="p-6 border-b">
-              <h3 className="font-semibold text-lg text-gray-900 mb-4">{registration.attendee_name}</h3>
+            <div className="p-4 sm:p-6 border-b">
+              <h3 className="font-semibold text-lg text-gray-900 mb-4 break-words">{registration.attendee_name}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Mail className="h-4 w-4" />
-                  <span>{registration.attendee_email}</span>
+                <div className="flex items-start gap-2 text-gray-600 min-w-0">
+                  <Mail className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span className="break-all">{registration.attendee_email}</span>
                 </div>
                 {registration.attendee_phone && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Phone className="h-4 w-4" />
-                    <span>{registration.attendee_phone}</span>
+                  <div className="flex items-center gap-2 text-gray-600 min-w-0">
+                    <Phone className="h-4 w-4 flex-shrink-0" />
+                    <span className="break-all">{registration.attendee_phone}</span>
                   </div>
                 )}
                 {registration.attendee_designation && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <User className="h-4 w-4" />
-                    <span>{registration.attendee_designation}</span>
+                  <div className="flex items-start gap-2 text-gray-600 min-w-0">
+                    <User className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <span className="break-words">{registration.attendee_designation}</span>
                   </div>
                 )}
                 {registration.attendee_institution && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Building2 className="h-4 w-4" />
-                    <span>{registration.attendee_institution}</span>
+                  <div className="flex items-start gap-2 text-gray-600 min-w-0">
+                    <Building2 className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <span className="break-words">{registration.attendee_institution}</span>
                   </div>
                 )}
               </div>
@@ -315,19 +315,19 @@ function StatusPageContent() {
 
             {/* Event Info */}
             {registration.event && (
-              <div className="p-6 border-b bg-gray-50">
-                <h4 className="font-medium text-gray-900 mb-3">{registration.event.name}</h4>
-                <div className="flex flex-wrap gap-2 sm:gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>
+              <div className="p-4 sm:p-6 border-b bg-gray-50">
+                <h4 className="font-medium text-gray-900 mb-3 break-words">{registration.event.name}</h4>
+                <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Calendar className="h-4 w-4 flex-shrink-0" />
+                    <span className="break-words">
                       {formatDate(registration.event.start_date)} - {formatDate(registration.event.end_date)}
                     </span>
                   </div>
                   {(registration.event.venue || registration.event.city) && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{registration.event.venue || registration.event.city}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPin className="h-4 w-4 flex-shrink-0" />
+                      <span className="break-words">{registration.event.venue || registration.event.city}</span>
                     </div>
                   )}
                 </div>
@@ -335,7 +335,7 @@ function StatusPageContent() {
             )}
 
             {/* Ticket & Payment Info */}
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between py-3 border-b">
                 <div className="flex items-center gap-2 text-gray-600">
                   <Ticket className="h-4 w-4" />
@@ -375,15 +375,15 @@ function StatusPageContent() {
 
             {/* Downloads */}
             {registration.status === "confirmed" && (registration.badge_url || registration.certificate_url) && (
-              <div className="p-6 bg-gray-50 border-t">
+              <div className="p-4 sm:p-6 bg-gray-50 border-t">
                 <h4 className="font-medium text-gray-900 mb-3">Downloads</h4>
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   {registration.badge_url && (
                     <a
                       href={registration.badge_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg text-sm hover:bg-gray-50"
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border rounded-lg text-sm hover:bg-gray-50 min-h-[44px]"
                     >
                       <Download className="h-4 w-4" />
                       Download Badge
@@ -394,7 +394,7 @@ function StatusPageContent() {
                       href={registration.certificate_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg text-sm hover:bg-gray-50"
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border rounded-lg text-sm hover:bg-gray-50 min-h-[44px]"
                     >
                       <Download className="h-4 w-4" />
                       Download Certificate
@@ -406,15 +406,15 @@ function StatusPageContent() {
 
             {/* Retry Payment CTA */}
             {canRetryPayment && (
-              <div className="p-6 bg-amber-50 border-t">
+              <div className="p-4 sm:p-6 bg-amber-50 border-t">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-amber-800">Payment Required</h4>
                     <p className="text-sm text-amber-700 mt-1">
                       Your registration is not yet confirmed. Please complete the payment to confirm your spot.
                     </p>
-                    <Button onClick={handleRetryPayment} disabled={paymentLoading} className="mt-3">
+                    <Button onClick={handleRetryPayment} disabled={paymentLoading} className="mt-3 w-full sm:w-auto min-h-[44px]">
                       {paymentLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                       ) : (

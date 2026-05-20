@@ -461,33 +461,33 @@ export default function HelpPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-card">
-        <div className="max-w-5xl mx-auto px-6 py-12">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-              <HelpCircle className="w-8 h-8 text-primary" />
+            <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary/10 mb-4">
+              <HelpCircle className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold">Help Center</h1>
-            <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
+            <h1 className="text-2xl sm:text-3xl font-bold">Help Center</h1>
+            <p className="text-muted-foreground mt-2 max-w-xl mx-auto text-sm sm:text-base px-2">
               Everything you need to know to manage your events successfully.
               Find answers, learn best practices, and become a pro admin.
             </p>
           </div>
 
           {/* Search */}
-          <div className="mt-8 max-w-xl mx-auto relative">
+          <div className="mt-6 sm:mt-8 max-w-xl mx-auto relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search for help articles..."
-              className="pl-12 h-12 text-base"
+              className="pl-12 h-12 text-base w-full"
             />
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {selectedArticle ? (
           // Article View
           <div>
@@ -499,9 +499,9 @@ export default function HelpPage() {
               Back to Help Center
             </button>
 
-            <div className="bg-card border rounded-xl p-8">
-              <h2 className="text-2xl font-bold">{selectedArticle.title}</h2>
-              <p className="text-muted-foreground mt-2">{selectedArticle.description}</p>
+            <div className="bg-card border rounded-xl p-4 sm:p-8">
+              <h2 className="text-xl sm:text-2xl font-bold break-words">{selectedArticle.title}</h2>
+              <p className="text-muted-foreground mt-2 text-sm sm:text-base">{selectedArticle.description}</p>
 
               <div className="mt-8 space-y-4">
                 <h3 className="font-semibold text-lg">Steps</h3>
@@ -628,15 +628,15 @@ export default function HelpPage() {
             </div>
 
             {/* Still Need Help */}
-            <div className="mt-8 p-6 bg-primary/5 border border-primary/20 rounded-xl text-center">
+            <div className="mt-8 p-4 sm:p-6 bg-primary/5 border border-primary/20 rounded-xl text-center">
               <h3 className="font-semibold text-lg">Still need help?</h3>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                 Can't find what you're looking for? Contact our support team.
               </p>
-              <div className="mt-4 flex items-center justify-center gap-4">
+              <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-4">
                 <a
                   href={`mailto:${COMPANY_CONFIG.supportEmail}`}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 min-h-[44px]"
                 >
                   <Mail className="w-4 h-4" />
                   Email Support
@@ -645,7 +645,7 @@ export default function HelpPage() {
                   href="https://wa.me/918056536384"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 min-h-[44px]"
                 >
                   <MessageSquare className="w-4 h-4" />
                   WhatsApp

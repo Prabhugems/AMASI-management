@@ -96,7 +96,7 @@ function SuccessContent() {
   const eventInfo = registration?.events as { name: string; short_name: string; start_date: string; city: string } | null
 
   return (
-    <div className="container mx-auto px-4 py-12">
+    <div className="container mx-auto px-4 py-8 sm:py-12">
       {/* CSS Confetti Celebration */}
       <div className="confetti-celebration" aria-hidden="true">
         {Array.from({ length: 40 }, (_, i) => {
@@ -155,7 +155,7 @@ function SuccessContent() {
         </p>
 
         {/* Registration Card with QR Code */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-8">
           <div className="flex flex-col md:flex-row gap-6">
             {/* QR Code */}
             {qrCodeUrl && (

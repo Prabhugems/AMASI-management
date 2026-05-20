@@ -560,7 +560,7 @@ export default function GroupRegistrationPage() {
         strategy="lazyOnload"
       />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
         {/* Back Button */}
         <Link
           href={`/register/${eventSlug}?type=group`}
@@ -574,7 +574,7 @@ export default function GroupRegistrationPage() {
           {/* Form Section */}
           <div className="lg:col-span-2 space-y-6">
             {/* Header */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                   <Users className="w-5 h-5 text-amber-600" />
@@ -598,7 +598,7 @@ export default function GroupRegistrationPage() {
             )}
 
             {/* Buyer Details */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
                 <User className="w-5 h-5 text-emerald-600" />
                 Your Details (Coordinator/Buyer)
@@ -659,18 +659,18 @@ export default function GroupRegistrationPage() {
             </div>
 
             {/* Attendees Section */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div className="min-w-0">
                   <h2 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                    <Users className="w-5 h-5 text-emerald-600" />
+                    <Users className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                     Attendees ({attendees.length} added)
                   </h2>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 mt-1">
                     Add details for each person attending
                   </p>
                 </div>
-                <Button onClick={() => setIsAddingAttendee(true)}>
+                <Button onClick={() => setIsAddingAttendee(true)} className="w-full sm:w-auto min-h-[44px]">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Attendee
                 </Button>
@@ -727,16 +727,16 @@ export default function GroupRegistrationPage() {
           {/* Order Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm sticky top-24 overflow-hidden">
-              <div className="p-5 border-b border-gray-200">
+              <div className="p-4 sm:p-5 border-b border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900">
                   Order Summary
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 mt-0.5 break-words">
                   {event?.name}
                 </p>
               </div>
 
-              <div className="p-5 space-y-4">
+              <div className="p-4 sm:p-5 space-y-4">
                 {attendees.length === 0 ? (
                   <p className="text-center py-8 text-gray-500">
                     Add attendees to see order summary
@@ -823,7 +823,7 @@ export default function GroupRegistrationPage() {
               </div>
 
               {/* Pay Button */}
-              <div className="p-5 pt-0">
+              <div className="p-4 sm:p-5 pt-0">
                 <Button
                   onClick={handlePayment}
                   disabled={isSubmitting || attendees.length === 0}

@@ -279,13 +279,13 @@ function PurchaseAddonsContent() {
   if (error && !registration) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 max-w-md text-center">
+        <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 mb-4 text-sm sm:text-base break-words">{error}</p>
           <a
             href="/my"
-            className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700"
+            className="inline-flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-700 min-h-[44px] py-2 px-4 rounded-lg hover:bg-indigo-50 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Delegate Portal
@@ -298,12 +298,12 @@ function PurchaseAddonsContent() {
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 max-w-md text-center">
+        <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Add-ons Purchased!</h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 mb-6 text-sm sm:text-base break-words">
             Your add-ons have been added to registration {registration?.registration_number}.
           </p>
           <a
@@ -357,15 +357,15 @@ function PurchaseAddonsContent() {
                   </div>
                 </div>
                 {registration.event && (
-                  <div className="mt-3 pt-3 border-t border-gray-200 flex items-center gap-4 text-sm text-gray-600">
-                    <span className="flex items-center gap-1">
-                      <Ticket className="w-4 h-4" />
-                      {registration.event.short_name || registration.event.name}
+                  <div className="mt-3 pt-3 border-t border-gray-200 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600">
+                    <span className="flex items-center gap-1 min-w-0">
+                      <Ticket className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{registration.event.short_name || registration.event.name}</span>
                     </span>
                     {registration.event.city && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                        {registration.event.city}
+                      <span className="flex items-center gap-1 min-w-0">
+                        <MapPin className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{registration.event.city}</span>
                       </span>
                     )}
                   </div>
@@ -431,19 +431,20 @@ function PurchaseAddonsContent() {
                           return (
                             <div
                               key={variant.id}
-                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                              className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg"
                             >
-                              <div>
-                                <span className="font-medium">{variant.name}</span>
-                                <span className="text-sm text-gray-500 ml-2">
+                              <div className="min-w-0 flex-1">
+                                <span className="font-medium block sm:inline truncate">{variant.name}</span>
+                                <span className="text-sm text-gray-500 sm:ml-2 block sm:inline">
                                   Rs.{finalPrice.toLocaleString("en-IN")}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-shrink-0">
                                 <button
                                   onClick={() => handleQuantityChange(addon, -1, variant.id)}
-                                  className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                                  className="w-11 h-11 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition disabled:opacity-50"
                                   disabled={!selected?.quantity}
+                                  aria-label="Decrease quantity"
                                 >
                                   <Minus className="w-4 h-4" />
                                 </button>
@@ -452,7 +453,8 @@ function PurchaseAddonsContent() {
                                 </span>
                                 <button
                                   onClick={() => handleQuantityChange(addon, 1, variant.id)}
-                                  className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700"
+                                  className="w-11 h-11 rounded-lg bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 active:scale-95 transition"
+                                  aria-label="Increase quantity"
                                 >
                                   <Plus className="w-4 h-4" />
                                 </button>
@@ -465,8 +467,9 @@ function PurchaseAddonsContent() {
                       <div className="mt-4 flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleQuantityChange(addon, -1)}
-                          className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200"
+                          className="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:scale-95 transition disabled:opacity-50"
                           disabled={!selectedAddons.get(addon.id)?.quantity}
+                          aria-label="Decrease quantity"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
@@ -475,7 +478,8 @@ function PurchaseAddonsContent() {
                         </span>
                         <button
                           onClick={() => handleQuantityChange(addon, 1)}
-                          className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700"
+                          className="w-11 h-11 rounded-lg bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 active:scale-95 transition"
+                          aria-label="Increase quantity"
                         >
                           <Plus className="w-4 h-4" />
                         </button>

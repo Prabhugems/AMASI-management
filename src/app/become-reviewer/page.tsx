@@ -167,21 +167,21 @@ export default function BecomeReviewerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background py-6 sm:py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Award className="h-8 w-8 text-primary" />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <Award className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Become a Reviewer</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Become a Reviewer</h1>
+          <p className="text-sm sm:text-base text-muted-foreground px-2">
             Register to review abstracts and videos for {COMPANY_CONFIG.name} events
           </p>
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 space-y-6">
+        <div className="bg-white rounded-2xl shadow-lg p-5 sm:p-6 md:p-8 space-y-5 sm:space-y-6">
           {/* Event Selection */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">Select Event *</Label>
@@ -271,21 +271,23 @@ export default function BecomeReviewerPage() {
           <div className="space-y-3">
             <Label className="text-base font-semibold">Specialty Interests</Label>
             <p className="text-sm text-muted-foreground">Select all areas you can review</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
               {SPECIALTIES.map((specialty) => (
-                <div key={specialty} className="flex items-center space-x-2">
+                <label
+                  key={specialty}
+                  htmlFor={specialty}
+                  className="flex items-start gap-2.5 py-2 px-1 -mx-1 rounded-md cursor-pointer hover:bg-secondary/50 transition-colors"
+                >
                   <Checkbox
                     id={specialty}
                     checked={form.specialties.includes(specialty)}
                     onCheckedChange={() => toggleSpecialty(specialty)}
+                    className="mt-0.5"
                   />
-                  <label
-                    htmlFor={specialty}
-                    className="text-sm cursor-pointer leading-tight"
-                  >
+                  <span className="text-sm leading-snug select-none">
                     {specialty}
-                  </label>
-                </div>
+                  </span>
+                </label>
               ))}
             </div>
             <div className="space-y-2 pt-2">
@@ -340,7 +342,7 @@ export default function BecomeReviewerPage() {
 
           {/* Submit */}
           <Button
-            className="w-full h-12 text-lg"
+            className="w-full h-12 sm:h-12 text-base sm:text-lg"
             onClick={() => submitMutation.mutate()}
             disabled={!form.name || !form.email || !form.eventId || submitMutation.isPending}
           >
@@ -357,7 +359,7 @@ export default function BecomeReviewerPage() {
             )}
           </Button>
 
-          <p className="text-xs text-center text-muted-foreground">
+          <p className="text-xs text-center text-muted-foreground px-2 leading-relaxed">
             By submitting, you agree to review abstracts/videos assigned to you in a timely manner.
           </p>
         </div>

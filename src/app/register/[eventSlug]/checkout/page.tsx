@@ -1052,7 +1052,7 @@ export default function CheckoutPage() {
 
       {showConfetti && <ConfettiEffect />}
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
         {/* Progress Indicator */}
         <ProgressIndicator currentStep={checkoutStep} />
 
@@ -1415,16 +1415,16 @@ export default function CheckoutPage() {
           {/* Order Summary */}
           <div className="lg:col-span-1 animate-slide-in-right" ref={paymentSectionRef}>
             <div className="bg-white rounded-xl shadow-sm lg:sticky lg:top-24 overflow-hidden transition-shadow duration-300 hover:shadow-md">
-              <div className="p-5 border-b border-gray-200">
+              <div className="p-4 sm:p-5 border-b border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900">
                   Order Summary
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 mt-0.5 break-words">
                   {event?.name}
                 </p>
               </div>
 
-              <div className="p-5 space-y-4">
+              <div className="p-4 sm:p-5 space-y-4">
                 {/* Selected Tickets */}
                 {selectedTicketsDetails.map((ticket: any) => (
                   <div key={ticket.id} className="flex justify-between text-sm">

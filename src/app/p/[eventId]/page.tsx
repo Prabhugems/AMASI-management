@@ -405,30 +405,30 @@ export default function PublicProgramPage() {
     <div className={cn("min-h-screen", themeConfig.page)}>
       {/* Hero Header */}
       <header className={themeConfig.header}>
-        <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8 md:py-12">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
+            <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
               {event?.logo_url && (
-                <img src={event.logo_url} alt="" className="h-16 w-16 rounded-lg bg-white p-1" />
+                <img src={event.logo_url} alt="" className="h-14 w-14 sm:h-16 sm:w-16 rounded-lg bg-white p-1 flex-shrink-0" />
               )}
-              <div>
-                <h1 className="text-2xl md:text-4xl font-bold">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl md:text-4xl font-bold break-words">
                   {event?.short_name || event?.name || "Conference Program"}
                 </h1>
                 {event?.tagline && (
-                  <p className={cn("mt-1", themeConfig.headerText)}>{event.tagline}</p>
+                  <p className={cn("mt-1 text-sm sm:text-base break-words", themeConfig.headerText)}>{event.tagline}</p>
                 )}
-                <div className={cn("flex flex-wrap items-center gap-4 mt-3 text-sm", themeConfig.headerText)}>
+                <div className={cn("flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 sm:mt-3 text-xs sm:text-sm", themeConfig.headerText)}>
                   {event?.start_date && event?.end_date && (
                     <span className="flex items-center gap-1.5">
-                      <Calendar className="h-4 w-4" />
-                      {formatDateRange(event.start_date, event.end_date)}
+                      <Calendar className="h-4 w-4 flex-shrink-0" />
+                      <span className="break-words">{formatDateRange(event.start_date, event.end_date)}</span>
                     </span>
                   )}
                   {event?.venue_name && (
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4" />
-                      {event.venue_name}{event.city ? `, ${event.city}` : ""}
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <MapPin className="h-4 w-4 flex-shrink-0" />
+                      <span className="break-words">{event.venue_name}{event.city ? `, ${event.city}` : ""}</span>
                     </span>
                   )}
                 </div>
@@ -437,7 +437,7 @@ export default function PublicProgramPage() {
 
             <div className="flex items-center gap-3">
               <Button
-                className="bg-white text-gray-900 hover:bg-gray-100 font-semibold"
+                className="bg-white text-gray-900 hover:bg-gray-100 font-semibold w-full md:w-auto min-h-[44px]"
                 asChild
               >
                 <a href={`/register/${event?.slug || eventId}`}>
@@ -497,40 +497,44 @@ export default function PublicProgramPage() {
       {/* Day Tabs & Filters */}
       <div className={cn("sticky top-0 z-40", themeConfig.nav)}>
         <div className="max-w-7xl mx-auto px-4">
-          {/* Day tabs */}
-          <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide">
-            {dates.map((date, index) => (
-              <button
-                key={date}
-                onClick={() => setSelectedDay(date)}
-                className={cn(
-                  "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-                  selectedDay === date
-                    ? "bg-blue-600 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                )}
-              >
-                Day {index + 1}
-                <span className="ml-1.5 text-xs opacity-75">{formatDate(date)}</span>
-              </button>
-            ))}
+          {/* Day tabs + filters - stack on mobile, single row on desktop */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-2 py-3">
+            {/* Day tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
+              {dates.map((date, index) => (
+                <button
+                  key={date}
+                  onClick={() => setSelectedDay(date)}
+                  className={cn(
+                    "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all min-h-[44px] flex items-center",
+                    selectedDay === date
+                      ? "bg-blue-600 text-white shadow-lg"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  )}
+                >
+                  Day {index + 1}
+                  <span className="ml-1.5 text-xs opacity-75">{formatDate(date)}</span>
+                </button>
+              ))}
+            </div>
 
-            <div className="flex-1" />
+            <div className="hidden lg:block flex-1" />
 
             {/* Search & Filter */}
-            <div className="flex items-center gap-2">
-              <div className="relative">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 lg:flex-initial min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Search sessions, speakers..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-full sm:w-48 md:w-64"
+                  className="pl-10 w-full lg:w-64"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2"
+                    aria-label="Clear search"
                   >
                     <X className="h-4 w-4 text-gray-400" />
                   </button>
@@ -541,7 +545,7 @@ export default function PublicProgramPage() {
                 <button
                   onClick={() => setGroupBy("track")}
                   className={cn(
-                    "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                    "px-3 py-2 text-xs font-medium rounded-md transition-all min-h-[36px]",
                     groupBy === "track" ? "bg-white shadow text-blue-600" : "text-gray-500 hover:text-gray-700"
                   )}
                 >
@@ -550,7 +554,7 @@ export default function PublicProgramPage() {
                 <button
                   onClick={() => setGroupBy("hall")}
                   className={cn(
-                    "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                    "px-3 py-2 text-xs font-medium rounded-md transition-all min-h-[36px]",
                     groupBy === "hall" ? "bg-white shadow text-blue-600" : "text-gray-500 hover:text-gray-700"
                   )}
                 >
@@ -561,7 +565,7 @@ export default function PublicProgramPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
-                className={cn(selectedHalls.length > 0 && "border-blue-500 text-blue-600")}
+                className={cn("min-h-[36px]", selectedHalls.length > 0 && "border-blue-500 text-blue-600")}
               >
                 <Filter className="h-4 w-4 mr-1" />
                 Halls

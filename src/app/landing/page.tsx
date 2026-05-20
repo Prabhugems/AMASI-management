@@ -359,18 +359,18 @@ function Countdown() {
     return () => clearInterval(id)
   }, [])
   return (
-    <div className="flex gap-6 tabular-nums">
+    <div className="flex gap-5 sm:gap-6 tabular-nums">
       {(["d", "h", "m", "s"] as const).map((k) => (
-        <div key={k}>
+        <div key={k} className="text-center sm:text-left min-w-[2.25rem]">
           <motion.span
             key={t[k]}
             initial={{ y: -10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="block text-2xl sm:text-3xl font-light text-white/90"
+            className="block text-xl sm:text-3xl font-light text-white/90 leading-none"
           >
             {String(t[k]).padStart(2, "0")}
           </motion.span>
-          <span className="text-[9px] uppercase tracking-[0.3em] text-white/20 block mt-1">
+          <span className="text-[9px] uppercase tracking-[0.25em] text-white/30 block mt-1.5">
             {k === "d" ? "days" : k === "h" ? "hrs" : k === "m" ? "min" : "sec"}
           </span>
         </div>
@@ -545,7 +545,7 @@ function PromoVideoSection() {
   }
 
   return (
-    <section ref={sectionRef} id="promo-video" className="relative bg-[#05050a] py-16 sm:py-22 overflow-hidden px-6">
+    <section ref={sectionRef} id="promo-video" className="relative bg-[#05050a] py-14 sm:py-22 overflow-hidden px-5 sm:px-6">
       <div className="hidden sm:block absolute left-1/2 -top-44 -translate-x-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
         style={{ background: "radial-gradient(ellipse at center, rgba(34,211,238,0.07) 0%, transparent 70%)" }} />
       <div className="relative z-10 max-w-[900px] mx-auto text-center">
@@ -809,6 +809,8 @@ export default function LandingPage() {
           {/* Dark overlay for text readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#050a14] via-[#050a14]/80 to-[#050a14]/40" />
           <div className="absolute inset-0 bg-[#050a14]/30" />
+          {/* Mobile-only text backdrop (bottom 65%) */}
+          <div className="absolute inset-x-0 bottom-0 top-[35%] bg-gradient-to-t from-[#050a14] via-[#050a14]/85 to-transparent sm:hidden" />
         </motion.div>
 
         {/* Particle overlay */}
@@ -829,8 +831,8 @@ export default function LandingPage() {
               June 19–20, 2026 &middot; ITC Grand Chola, Chennai
             </motion.p>
 
-            <div className="mb-8">
-              <h1 className="text-4xl sm:text-6xl lg:text-[6.5rem] font-light leading-[0.9] tracking-tighter">
+            <div className="mb-6 sm:mb-8">
+              <h1 className="text-[2.5rem] sm:text-6xl lg:text-[6.5rem] font-light leading-[0.95] sm:leading-[0.9] tracking-tighter">
                 <motion.span
                   className="block text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]"
                   initial={{ opacity: 0, y: 30 }}
@@ -859,51 +861,55 @@ export default function LandingPage() {
             </div>
 
             <motion.div
-              className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 mt-12"
+              className="mt-10 sm:mt-12"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 1.5 }}
             >
-              <MagneticButton
-                href={REGISTER_URL}
-                className="group relative inline-flex items-center justify-center h-14 px-10 rounded-full bg-white text-[#050a14] text-[15px] font-medium overflow-hidden"
-              >
-                <span className="relative z-10">Register Now</span>
-                <motion.div
-                  className="absolute inset-0 bg-cyan-400"
-                  initial={{ x: "-100%" }}
-                  whileHover={{ x: "0%" }}
-                  transition={{ duration: 0.4 }}
-                />
-              </MagneticButton>
-              <a
-                href="https://forms.gle/Ur1MPJKKfKv3xfx57"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 h-14 px-7 rounded-full bg-transparent text-white border border-white/45 text-[15px] font-medium hover:bg-white/[0.08] hover:border-white/80 hover:shadow-[0_8px_28px_rgba(255,255,255,0.08)] transition-all"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="12" y1="18" x2="12" y2="12"/>
-                  <line x1="9" y1="15" x2="15" y2="15"/>
-                </svg>
-                Submit Abstract
-              </a>
-              <a
-                href="/technosurg-brochure.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 h-14 px-7 rounded-full bg-white/[0.08] text-white/85 border border-white/15 backdrop-blur-md text-[15px] font-medium hover:bg-white/[0.14] hover:text-white hover:shadow-[0_8px_28px_rgba(255,255,255,0.06)] transition-all"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                Brochure
-              </a>
-              <Countdown />
+              <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-3 sm:gap-5">
+                <MagneticButton
+                  href={REGISTER_URL}
+                  className="group relative inline-flex items-center justify-center w-full sm:w-auto h-12 sm:h-14 px-8 sm:px-10 rounded-full bg-white text-[#050a14] text-[15px] font-medium overflow-hidden"
+                >
+                  <span className="relative z-10">Register Now</span>
+                  <motion.div
+                    className="absolute inset-0 bg-cyan-400"
+                    initial={{ x: "-100%" }}
+                    whileHover={{ x: "0%" }}
+                    transition={{ duration: 0.4 }}
+                  />
+                </MagneticButton>
+                <a
+                  href="https://forms.gle/Ur1MPJKKfKv3xfx57"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-7 rounded-full bg-transparent text-white border border-white/45 text-[14px] sm:text-[15px] font-medium hover:bg-white/[0.08] hover:border-white/80 hover:shadow-[0_8px_28px_rgba(255,255,255,0.08)] transition-all"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <line x1="9" y1="15" x2="15" y2="15"/>
+                  </svg>
+                  Submit Abstract
+                </a>
+                <a
+                  href="/technosurg-brochure.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-7 rounded-full bg-white/[0.08] text-white/85 border border-white/15 backdrop-blur-md text-[14px] sm:text-[15px] font-medium hover:bg-white/[0.14] hover:text-white hover:shadow-[0_8px_28px_rgba(255,255,255,0.06)] transition-all"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Brochure
+                </a>
+              </div>
+              <div className="mt-8 sm:mt-6 pt-6 sm:pt-0 sm:border-t-0 border-t border-white/10 sm:inline-block">
+                <Countdown />
+              </div>
             </motion.div>
 
           </div>
@@ -931,25 +937,25 @@ export default function LandingPage() {
           <LazyVideo src="/landing/about-video.mp4" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/50" />
         </div>
-        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-16 sm:py-40">
           <Reveal>
             <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400 mb-6">About the Conference</p>
           </Reveal>
           <Reveal delay={100}>
-            <h2 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-light tracking-tighter leading-[1.05] max-w-3xl text-white">
+            <h2 className="text-3xl sm:text-5xl lg:text-[3.5rem] font-light tracking-tighter leading-[1.1] sm:leading-[1.05] max-w-3xl text-white">
               Where surgical technology meets{" "}
               <span className="text-cyan-400">clinical excellence.</span>
             </h2>
           </Reveal>
           <Reveal delay={200}>
-            <p className="mt-8 text-lg font-light text-white/70 leading-relaxed max-w-[58ch]">
+            <p className="mt-6 sm:mt-8 text-base sm:text-lg font-light text-white/70 leading-relaxed max-w-[58ch]">
               India&apos;s most anticipated surgical technology summit bringing together 500+ surgeons,
               AI researchers, and medtech innovators for two transformative days of live robotic procedures,
               fluorescence-guided surgery, and hands-on workshops at the iconic ITC Grand Chola, Chennai.
             </p>
           </Reveal>
 
-          <div ref={statsRef} className="mt-24 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div ref={statsRef} className="mt-12 sm:mt-24 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
             {[
               { v: 500, s: "+", l: "Delegates" },
               { v: 50, s: "+", l: "Expert Faculty" },
@@ -958,13 +964,13 @@ export default function LandingPage() {
             ].map((stat, i) => (
               <Reveal key={stat.l} delay={i * 100}>
                 <FloatingOrb delay={i * 0.8}>
-                  <div className="relative bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/10 text-center group hover:bg-white/15 hover:border-cyan-400/30 transition-all duration-700">
+                  <div className="relative bg-white/10 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-white/10 text-center group hover:bg-white/15 hover:border-cyan-400/30 transition-all duration-700">
                     {/* Subtle glow */}
-                    <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-cyan-500/0 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                    <span className="relative text-5xl sm:text-6xl font-light text-white tabular-nums block">
+                    <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-gradient-to-b from-cyan-500/0 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                    <span className="relative text-4xl sm:text-6xl font-light text-white tabular-nums block leading-none">
                       <Counter value={stat.v} suffix={stat.s} go={statsGo} />
                     </span>
-                    <span className="relative block text-xs uppercase tracking-[0.2em] text-white/40 mt-4">{stat.l}</span>
+                    <span className="relative block text-[10px] sm:text-xs uppercase tracking-[0.2em] text-white/40 mt-3 sm:mt-4">{stat.l}</span>
                   </div>
                 </FloatingOrb>
               </Reveal>
@@ -979,27 +985,27 @@ export default function LandingPage() {
         <div className="absolute inset-0 z-0">
           <LazyVideo src="/landing/Section-video.mp4" className="w-full h-full object-cover opacity-[0.08]" />
         </div>
-        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-16 sm:py-40">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 items-center">
             {/* Left side - Content */}
             <div>
               <Reveal>
-                <h2 className="text-4xl sm:text-5xl font-light tracking-tighter mb-8 text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]">
+                <h2 className="text-3xl sm:text-5xl font-light tracking-tighter mb-6 sm:mb-8 leading-[1.1] sm:leading-tight text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]">
                   Learn from the pioneers.
                 </h2>
               </Reveal>
               <Reveal delay={100}>
-                <p className="text-base sm:text-lg text-white/70 font-light leading-relaxed mb-6">
+                <p className="text-[15px] sm:text-lg text-white/70 font-light leading-relaxed mb-5 sm:mb-6">
                   TECHNOSURG 2026 represents our continued commitment to advancing surgical excellence through innovation. Over the years, our academic platforms have brought together some of the finest minds in minimally invasive surgery.
                 </p>
               </Reveal>
               <Reveal delay={200}>
-                <p className="text-base sm:text-lg text-white/70 font-light leading-relaxed mb-6">
+                <p className="text-[15px] sm:text-lg text-white/70 font-light leading-relaxed mb-5 sm:mb-6">
                   With the rapid evolution of AI, robotics, and fluorescence-guided surgery, the way we operate is being redefined. This conference will serve as a platform to explore these advancements through live surgeries, interactive sessions, and global collaboration.
                 </p>
               </Reveal>
               <Reveal delay={300}>
-                <p className="text-base sm:text-lg text-white/70 font-light leading-relaxed mb-8">
+                <p className="text-[15px] sm:text-lg text-white/70 font-light leading-relaxed mb-6 sm:mb-8">
                   We invite you to be part of this transformative journey and help shape the future of surgery.
                 </p>
               </Reveal>
@@ -1012,8 +1018,8 @@ export default function LandingPage() {
             </div>
             {/* Right side - Image */}
             <Reveal delay={200}>
-              <div className="relative">
-                <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-white/5">
+              <div className="relative order-first lg:order-last">
+                <div className="aspect-[3/4] sm:aspect-[4/5] rounded-2xl overflow-hidden bg-white/5 max-w-sm mx-auto lg:max-w-none">
                   <img
                     src="/landing/dr-palanivelu.jpg"
                     alt="Prof. C. Palanivelu"
@@ -1033,18 +1039,18 @@ export default function LandingPage() {
 
       {/* ── SCHEDULE ── */}
       <section id="schedule" className="bg-[#fafafa] text-zinc-900">
-        <div className="max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
+        <div className="max-w-[1200px] mx-auto px-6 py-16 sm:py-40">
           <div className="text-center">
             <Reveal>
               <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-600 mb-6">Programme</p>
             </Reveal>
             <Reveal delay={100}>
-              <h2 className="text-4xl sm:text-5xl font-light tracking-tighter mb-8">
+              <h2 className="text-3xl sm:text-5xl font-light tracking-tighter mb-6 sm:mb-8 leading-[1.1]">
                 Two days. Boundless learning.
               </h2>
             </Reveal>
             <Reveal delay={200}>
-              <p className="text-xl text-zinc-500 font-light">
+              <p className="text-base sm:text-xl text-zinc-500 font-light">
                 Will be updated soon.
               </p>
             </Reveal>
@@ -1080,22 +1086,22 @@ export default function LandingPage() {
         {/* Subtle radial glow */}
         <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-cyan-500/[0.04] blur-[100px] pointer-events-none" />
 
-        <div className="relative max-w-[1200px] mx-auto px-6 py-32 sm:py-44 text-center">
+        <div className="relative max-w-[1200px] mx-auto px-6 py-20 sm:py-44 text-center">
           <Reveal>
             <h2 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tighter leading-[0.95] text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]">
               Secure your seat.
             </h2>
           </Reveal>
           <Reveal delay={150}>
-            <p className="mt-8 text-base sm:text-lg text-white/60 font-light">
+            <p className="mt-6 sm:mt-8 text-sm sm:text-lg text-white/60 font-light px-2">
               Delegate ₹7,000 &ensp;&middot;&ensp; PG ₹5,000 &ensp;&middot;&ensp; (incl. GST)
             </p>
           </Reveal>
           <Reveal delay={300}>
-            <div className="mt-14">
+            <div className="mt-10 sm:mt-14 px-4 sm:px-0">
               <MagneticButton
                 href={REGISTER_URL}
-                className="group relative inline-flex items-center justify-center h-16 px-14 rounded-full border border-white/20 text-white text-[15px] font-medium overflow-hidden hover:border-cyan-500/40 transition-colors duration-500"
+                className="group relative inline-flex items-center justify-center h-14 sm:h-16 w-full sm:w-auto px-10 sm:px-14 rounded-full border border-white/20 text-white text-[15px] font-medium overflow-hidden hover:border-cyan-500/40 transition-colors duration-500"
               >
                 <span className="relative z-10 group-hover:text-[#050a14] transition-colors duration-500">Register Now</span>
                 <motion.div
@@ -1108,7 +1114,7 @@ export default function LandingPage() {
             </div>
           </Reveal>
           <Reveal delay={400}>
-            <p className="mt-8 text-sm text-white/40">Special early bird price still available until April 30th.</p>
+            <p className="mt-6 sm:mt-8 text-xs sm:text-sm text-white/40 px-4">Special early bird price still available until April 30th.</p>
           </Reveal>
         </div>
       </section>
@@ -1120,12 +1126,12 @@ export default function LandingPage() {
           <LazyVideo src="/landing/venue-video.mp4" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/50" />
         </div>
-        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-28 sm:py-40">
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-16 sm:py-40">
           <Reveal>
             <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400/60 mb-6">Venue</p>
           </Reveal>
           <Reveal delay={100}>
-            <h2 className="text-4xl sm:text-5xl font-light tracking-tighter text-white">
+            <h2 className="text-3xl sm:text-5xl font-light tracking-tighter leading-[1.1] text-white">
               ITC Grand Chola
             </h2>
           </Reveal>
@@ -1154,14 +1160,14 @@ export default function LandingPage() {
 
       {/* ── FOOTER ── */}
       <footer className="bg-[#050a14] border-t border-white/[0.04]">
-        <div className="max-w-[1200px] mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[13px] text-white/20">
+        <div className="max-w-[1200px] mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-5 sm:gap-4 text-[13px] text-white/20 text-center sm:text-left">
           <img src="/landing/technosurg-logo.png" alt="GEM TechnoSurg 2026" className="h-6 w-auto" />
           <a href="mailto:technosurg@geminstitute.in" className="hover:text-cyan-400 transition-colors">
             technosurg@geminstitute.in
           </a>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
             <span>&copy; {new Date().getFullYear()} GEM Hospital &amp; Research Centre</span>
-            <span className="text-white/10">·</span>
+            <span className="hidden sm:inline text-white/10">·</span>
             <a href="/login" className="text-white/50 hover:text-cyan-400 transition-colors">
               Admin Login
             </a>

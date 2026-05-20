@@ -204,18 +204,18 @@ export default function PublicFormPage() {
   // Error
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-rose-50 to-orange-50">
-        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-10 mx-4 max-w-md text-center border border-red-200">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center mx-auto mb-6 shadow-lg">
-            <AlertCircle className="w-10 h-10 text-white" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-rose-50 to-orange-50 p-4">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-10 w-full max-w-md text-center border border-red-200">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
+            <AlertCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-black text-gray-800 mb-3">Form Not Found</h1>
-          <p className="text-gray-600 mb-8 text-lg">
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-800 mb-2 sm:mb-3">Form Not Found</h1>
+          <p className="text-gray-600 mb-6 sm:mb-8 text-base sm:text-lg break-words">
             {(error as Error).message || "The form you are looking for does not exist."}
           </p>
           <Button
             onClick={() => router.push("/")}
-            className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg"
+            className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg min-h-[44px] w-full sm:w-auto"
           >
             Go Home
           </Button>
@@ -240,18 +240,18 @@ export default function PublicFormPage() {
   if (isDeadlinePassed || isMaxSubmissionsReached) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
+        className="min-h-screen flex items-center justify-center p-4"
         style={{ backgroundColor: form.background_color || "#F5F3FF" }}
       >
-        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-10 mx-4 max-w-md text-center border border-amber-200">
+        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-10 w-full max-w-md text-center border border-amber-200">
           {form.logo_url && (
-            <img src={form.logo_url} alt="Logo" className="max-h-16 mx-auto mb-6 object-contain" />
+            <img src={form.logo_url} alt="Logo" className="max-h-16 mx-auto mb-4 sm:mb-6 object-contain" />
           )}
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
-            <AlertCircle className="w-10 h-10 text-white" />
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
+            <AlertCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-black text-gray-800 mb-3">Form Closed</h1>
-          <p className="text-gray-600 mb-8 text-lg">
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-800 mb-2 sm:mb-3">Form Closed</h1>
+          <p className="text-gray-600 mb-6 sm:mb-8 text-base sm:text-lg">
             {isDeadlinePassed
               ? "This form has passed its submission deadline"
               : "This form has reached its maximum number of submissions"}
@@ -259,7 +259,7 @@ export default function PublicFormPage() {
           <Button
             variant="outline"
             onClick={() => router.push("/")}
-            className="border-2 border-amber-300 hover:bg-amber-50 font-bold px-8 py-3 rounded-xl"
+            className="border-2 border-amber-300 hover:bg-amber-50 font-bold px-8 py-3 rounded-xl min-h-[44px] w-full sm:w-auto"
           >
             Go Home
           </Button>
@@ -289,13 +289,13 @@ export default function PublicFormPage() {
               </div>
             )}
             <h1
-              className="text-2xl font-black mb-2"
+              className="text-2xl sm:text-3xl font-black mb-2 break-words"
               style={{ color: form.primary_color || "#8B5CF6" }}
             >
               {form.name}
             </h1>
             {form.description && (
-              <p className="text-gray-600 text-sm">{form.description}</p>
+              <p className="text-gray-600 text-sm break-words">{form.description}</p>
             )}
           </div>
 
