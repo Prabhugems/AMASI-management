@@ -1,209 +1,256 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Download, Monitor, Apple, CheckCircle, Printer, ScanLine, Settings, HelpCircle } from "lucide-react"
+import {
+  Download,
+  Monitor,
+  Apple,
+  CheckCircle,
+  Printer,
+  ScanLine,
+  Settings,
+  HelpCircle,
+  AlertTriangle,
+} from "lucide-react"
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion"
+import { Button } from "@/components/ui/button"
 import { COMPANY_CONFIG } from "@/lib/config"
 
 export default function PrintStationDownloadPage() {
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
   const [serverUrl, setServerUrl] = useState("https://your-domain.com")
   useEffect(() => {
     setServerUrl(window.location.origin)
   }, [])
 
-  // Update these URLs after uploading to GitHub Releases
-  // For now, files are in: print-station-app/dist/
-  const _DOWNLOAD_URLS = {
-    mac: "#mac-download",  // Will be updated after GitHub upload
-    windows: "#windows-download"  // Will be updated after GitHub upload
-  }
-
-  const [_showInstructions, _setShowInstructions] = useState(false)
-
   const steps = [
     {
       icon: Download,
-      title: "Download & Install",
-      description: "Download the app for your operating system and install it"
+      title: "Download & install",
+      description: "Download the app for your operating system and install it.",
     },
     {
       icon: Settings,
-      title: "Configure Settings",
-      description: "Enter your server URL and printer IP address in Settings tab"
+      title: "Configure settings",
+      description: "Enter your server URL and printer IP address in the Settings tab.",
     },
     {
       icon: ScanLine,
-      title: "Scan QR Codes",
-      description: "Use a USB barcode scanner or type registration codes"
+      title: "Scan QR codes",
+      description: "Use a USB barcode scanner or type registration codes directly.",
     },
     {
       icon: Printer,
-      title: "Print Badges",
-      description: "Click Print Badge to send directly to your Zebra printer"
-    }
+      title: "Print badges",
+      description: "Click Print Badge to send directly to your Zebra printer.",
+    },
   ]
 
   const faqs = [
     {
       question: "What printer do I need?",
-      answer: "You need a Zebra thermal printer (ZD230, ZD420, or similar) connected to your network. The printer must have a network IP address (e.g., 10.0.1.12)."
+      answer:
+        "You need a Zebra thermal printer (ZD230, ZD420, or similar) connected to your network. The printer must have a network IP address (e.g., 10.0.1.12).",
     },
     {
       question: "How do I find my printer's IP address?",
-      answer: "Print a configuration label from your Zebra printer (hold the feed button for 2 seconds). The IP address will be listed under 'Network Configuration'. Or ask your IT team."
+      answer:
+        "Print a configuration label from your Zebra printer (hold the feed button for 2 seconds). The IP address will be listed under 'Network Configuration'. Or ask your IT team.",
     },
     {
       question: "What is the Server URL?",
-      answer: `This is your ${COMPANY_CONFIG.name} event management website URL (e.g., ${serverUrl}). This is where the app fetches registration data from.`
+      answer: `This is your ${COMPANY_CONFIG.name} event management website URL (e.g., ${serverUrl}). This is where the app fetches registration data from.`,
     },
     {
       question: "Can I use a USB barcode scanner?",
-      answer: "Yes! USB barcode scanners work like keyboards - just scan the QR code and it will automatically type the code into the app."
+      answer:
+        "Yes. USB barcode scanners work like keyboards — just scan the QR code and it will automatically type the code into the app.",
     },
     {
       question: "The printer is not connecting?",
-      answer: "1. Make sure your laptop is on the same network as the printer. 2. Check the printer IP is correct. 3. Try pinging the printer from terminal/command prompt. 4. Contact IT if the issue persists."
-    }
+      answer:
+        "1. Make sure your laptop is on the same network as the printer. 2. Check the printer IP is correct. 3. Try pinging the printer from terminal/command prompt. 4. Contact IT if the issue persists.",
+    },
   ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
-      <div className="bg-slate-800/50 border-b border-slate-700">
-        <div className="max-w-5xl mx-auto px-6 py-8">
-          <div className="flex items-center gap-3 mb-2">
+      <div className="bg-gray-800/50 border-b border-white/10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+          <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center">
               <Printer className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">{COMPANY_CONFIG.name} Print Station</h1>
-              <p className="text-slate-400">On-spot Badge Printing Application</p>
+              <h1 className="text-2xl font-bold text-white">
+                {COMPANY_CONFIG.name} Print Station
+              </h1>
+              <p className="text-sm text-gray-400">On-spot badge printing application</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-12">
-        {/* Download Section */}
-        <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-8 mb-12">
-          <h2 className="text-xl font-semibold text-white mb-6 text-center">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 space-y-12">
+        {/* IT Admin notice — action-panel pattern */}
+        <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-5">
+          <div className="sm:flex sm:items-start sm:gap-4">
+            <div className="size-10 flex-none rounded-full bg-amber-500/15 outline outline-1 -outline-offset-1 outline-amber-500/30 flex items-center justify-center text-amber-300">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div className="mt-3 sm:mt-0 flex-1">
+              <h3 className="text-base font-semibold text-white">For IT Admin</h3>
+              <p className="mt-1 text-sm text-gray-400">
+                The installer file is located at{" "}
+                <code className="bg-white/5 px-1.5 py-0.5 rounded text-xs text-gray-300">
+                  print-station-app/dist/
+                </code>
+                . Upload to GitHub Releases or share via Google Drive with your staff.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Download cards — action-panel per OS */}
+        <div>
+          <h2 className="text-xl font-semibold text-white">
             Download for your operating system
           </h2>
-
-          {/* Notice for Admin */}
-          <div className="bg-amber-900/30 border border-amber-700/50 rounded-xl p-4 mb-6 max-w-2xl mx-auto">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <HelpCircle className="w-5 h-5 text-amber-400" />
-              </div>
-              <div>
-                <p className="text-amber-200 font-medium text-sm">For IT Admin</p>
-                <p className="text-amber-300/70 text-sm mt-1">
-                  The installer file is located at: <code className="bg-slate-800 px-2 py-0.5 rounded">print-station-app/dist/</code>
-                </p>
-                <p className="text-amber-300/70 text-sm mt-1">
-                  Upload to GitHub Releases or share via Google Drive with your staff.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            {/* Mac Download */}
-            <div
-              className="flex items-center gap-4 p-6 bg-slate-700/50 rounded-xl border border-slate-600 group"
-            >
-              <div className="w-14 h-14 bg-slate-600 rounded-xl flex items-center justify-center">
-                <Apple className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <div className="text-white font-semibold text-lg">Mac App</div>
-                <div className="text-slate-400 text-sm">{COMPANY_CONFIG.name} Print Station-1.0.0-arm64.dmg</div>
-                <div className="text-emerald-400 text-xs mt-1">✓ Built and ready</div>
-              </div>
-            </div>
-
-            {/* Windows Download */}
-            <div
-              className="flex items-center gap-4 p-6 bg-slate-700/50 rounded-xl border border-slate-600 group"
-            >
-              <div className="w-14 h-14 bg-slate-600 rounded-xl flex items-center justify-center">
-                <Monitor className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <div className="text-white font-semibold text-lg">Windows App</div>
-                <div className="text-slate-400 text-sm">.exe installer</div>
-                <div className="text-slate-500 text-xs mt-1">Run: npm run build:win</div>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-center text-slate-500 text-sm mt-6">
-            Version 1.0.0 • Requires macOS 10.15+ or Windows 10+
+          <p className="mt-1 text-sm text-gray-400">
+            Version 1.0.0 · Requires macOS 10.15+ or Windows 10+
           </p>
+
+          <div className="mt-6 grid sm:grid-cols-2 gap-4">
+            {/* Mac */}
+            <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-5">
+              <div className="flex items-start gap-4">
+                <div className="size-12 flex-none rounded-xl bg-white/5 outline outline-1 -outline-offset-1 outline-white/10 flex items-center justify-center">
+                  <Apple className="w-7 h-7 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-semibold text-white">Mac App</h3>
+                  <p className="mt-0.5 text-xs text-gray-400 truncate">
+                    {COMPANY_CONFIG.name} Print Station-1.0.0-arm64.dmg
+                  </p>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <div className="size-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-xs font-medium text-emerald-300">
+                      Built and ready
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                disabled
+                className="w-full mt-5 bg-white/10 hover:bg-white/15 text-white disabled:opacity-60"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Coming soon
+              </Button>
+            </div>
+
+            {/* Windows */}
+            <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-5">
+              <div className="flex items-start gap-4">
+                <div className="size-12 flex-none rounded-xl bg-white/5 outline outline-1 -outline-offset-1 outline-white/10 flex items-center justify-center">
+                  <Monitor className="w-7 h-7 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-semibold text-white">Windows App</h3>
+                  <p className="mt-0.5 text-xs text-gray-400">.exe installer</p>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <div className="size-1.5 rounded-full bg-white/30" />
+                    <span className="text-xs font-medium text-gray-400">
+                      Run{" "}
+                      <code className="bg-white/5 px-1 py-0.5 rounded">
+                        npm run build:win
+                      </code>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                disabled
+                className="w-full mt-5 bg-white/10 hover:bg-white/15 text-white disabled:opacity-60"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Coming soon
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* How It Works */}
-        <div className="mb-12">
-          <h2 className="text-xl font-semibold text-white mb-6">How It Works</h2>
-
-          <div className="grid md:grid-cols-4 gap-6">
+        <div>
+          <h2 className="text-xl font-semibold text-white mb-6">How it works</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {steps.map((step, index) => (
-              <div key={index} className="relative">
-                <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
-                  <div className="w-10 h-10 bg-indigo-600/20 rounded-lg flex items-center justify-center mb-4">
-                    <step.icon className="w-5 h-5 text-indigo-400" />
-                  </div>
-                  <div className="text-xs text-indigo-400 font-medium mb-1">Step {index + 1}</div>
-                  <h3 className="text-white font-medium mb-2">{step.title}</h3>
-                  <p className="text-slate-400 text-sm">{step.description}</p>
+              <div
+                key={index}
+                className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-5"
+              >
+                <div className="size-10 rounded-lg bg-indigo-500/15 outline outline-1 -outline-offset-1 outline-indigo-500/30 flex items-center justify-center text-indigo-300">
+                  <step.icon className="w-5 h-5" />
                 </div>
-                {index < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-1/2 -right-3 w-6 h-0.5 bg-slate-700" />
-                )}
+                <p className="mt-4 text-xs font-semibold text-indigo-300 uppercase tracking-wide">
+                  Step {index + 1}
+                </p>
+                <h3 className="mt-1 text-sm font-semibold text-white">{step.title}</h3>
+                <p className="mt-2 text-xs text-gray-400 leading-relaxed">
+                  {step.description}
+                </p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Requirements */}
-        <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-8 mb-12">
+        <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-6 sm:p-8">
           <h2 className="text-xl font-semibold text-white mb-6">Requirements</h2>
-
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid sm:grid-cols-2 gap-8">
             <div>
-              <h3 className="text-white font-medium mb-3 flex items-center gap-2">
-                <Printer className="w-4 h-4 text-indigo-400" />
+              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <Printer className="w-4 h-4 text-indigo-300" />
                 Printer
               </h3>
               <ul className="space-y-2">
                 {[
                   "Zebra thermal printer (ZD230, ZD420, etc.)",
                   "Connected to network with IP address",
-                  "Port 9100 accessible (default ZPL port)"
+                  "Port 9100 accessible (default ZPL port)",
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-slate-300 text-sm">
-                    <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                    {item}
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-sm text-gray-300"
+                  >
+                    <CheckCircle className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <span>{item}</span>
                   </li>
                 ))}
               </ul>
             </div>
-
             <div>
-              <h3 className="text-white font-medium mb-3 flex items-center gap-2">
-                <Monitor className="w-4 h-4 text-indigo-400" />
+              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <Monitor className="w-4 h-4 text-indigo-300" />
                 Computer
               </h3>
               <ul className="space-y-2">
                 {[
                   "macOS 10.15+ or Windows 10+",
                   "Connected to same network as printer",
-                  "USB barcode scanner (optional)"
+                  "USB barcode scanner (optional)",
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-slate-300 text-sm">
-                    <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                    {item}
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-sm text-gray-300"
+                  >
+                    <CheckCircle className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <span>{item}</span>
                   </li>
                 ))}
               </ul>
@@ -211,23 +258,26 @@ export default function PrintStationDownloadPage() {
           </div>
         </div>
 
-        {/* Settings Info */}
-        <div className="bg-indigo-900/30 rounded-2xl border border-indigo-800/50 p-8 mb-12">
+        {/* Settings */}
+        <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-6 sm:p-8">
           <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-            <Settings className="w-5 h-5 text-indigo-400" />
-            Settings You'll Need
+            <Settings className="w-5 h-5 text-indigo-300" />
+            Settings you&apos;ll need
           </h2>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-slate-800/50 rounded-lg p-4">
-              <div className="text-slate-400 text-sm mb-1">Server URL</div>
-              <div className="text-white font-mono text-sm">{serverUrl}</div>
-              <div className="text-slate-500 text-xs mt-1">Your event management website</div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="bg-white/5 outline outline-1 -outline-offset-1 outline-white/5 rounded-md p-4">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                Server URL
+              </p>
+              <p className="mt-1.5 text-sm text-white font-mono break-all">{serverUrl}</p>
+              <p className="mt-1 text-xs text-gray-500">Your event management website</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-4">
-              <div className="text-slate-400 text-sm mb-1">Printer IP (Example)</div>
-              <div className="text-white font-mono text-sm">10.0.1.12</div>
-              <div className="text-slate-500 text-xs mt-1">Ask IT or check printer config label</div>
+            <div className="bg-white/5 outline outline-1 -outline-offset-1 outline-white/5 rounded-md p-4">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                Printer IP (example)
+              </p>
+              <p className="mt-1.5 text-sm text-white font-mono">10.0.1.12</p>
+              <p className="mt-1 text-xs text-gray-500">Ask IT or check printer config label</p>
             </div>
           </div>
         </div>
@@ -235,38 +285,41 @@ export default function PrintStationDownloadPage() {
         {/* FAQ */}
         <div>
           <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-indigo-400" />
-            Frequently Asked Questions
+            <HelpCircle className="w-5 h-5 text-indigo-300" />
+            Frequently asked questions
           </h2>
 
-          <div className="space-y-3">
+          <Accordion
+            type="single"
+            collapsible
+            className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg overflow-hidden divide-y divide-white/5"
+          >
             {faqs.map((faq, index) => (
-              <div
+              <AccordionItem
                 key={index}
-                className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden"
+                value={`item-${index}`}
+                className="border-0 px-5"
               >
-                <button
-                  onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                  className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-slate-700/50 transition-colors"
-                >
-                  <span className="text-white font-medium">{faq.question}</span>
-                  <span className="text-slate-400 text-xl">
-                    {expandedFaq === index ? "−" : "+"}
-                  </span>
-                </button>
-                {expandedFaq === index && (
-                  <div className="px-6 pb-4 text-slate-300 text-sm">
-                    {faq.answer}
-                  </div>
-                )}
-              </div>
+                <AccordionTrigger className="text-white hover:no-underline text-sm font-medium [&_svg]:text-gray-400 py-4">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-gray-300 leading-relaxed pb-4">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         </div>
 
         {/* Support */}
-        <div className="mt-12 text-center text-slate-500 text-sm">
-          Need help? Contact support at <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-indigo-400 hover:underline">{COMPANY_CONFIG.supportEmail}</a>
+        <div className="text-center text-sm text-gray-500">
+          Need help? Contact support at{" "}
+          <a
+            href={`mailto:${COMPANY_CONFIG.supportEmail}`}
+            className="text-indigo-300 hover:text-indigo-200 hover:underline"
+          >
+            {COMPANY_CONFIG.supportEmail}
+          </a>
         </div>
       </div>
     </div>
