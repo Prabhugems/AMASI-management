@@ -102,8 +102,6 @@ export async function middleware(request: NextRequest) {
     '/api/travel-agent',   // Travel agent APIs (used by agent portals)
     '/abstract-reviewer',  // Abstract reviewer portal (token-based)
     '/api/abstract-reviewer', // Abstract reviewer APIs
-    '/membership',          // Public membership application form
-    '/api/membership/apply', // Public membership application API
     '/api/travel/flights-print', // Public flights print data API
     '/examiner',            // Examiner portal (token-based)
     '/api/examination/examiner', // Examiner portal API (token-based)

@@ -68,7 +68,6 @@ const mainNavItems: NavItem[] = [
     superAdminOnly: true,
     children: [
       { name: "All Members", href: "/members" },
-      { name: "Applications", href: "/members/applications" },
       { name: "Add Member", href: "/members/new" },
       { name: "Import", href: "/members/import" },
     ],

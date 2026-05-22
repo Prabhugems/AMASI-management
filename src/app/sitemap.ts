@@ -1,5 +1,4 @@
 import type { MetadataRoute } from "next"
-import { FEATURES } from "@/lib/config"
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = (
@@ -30,15 +29,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.5,
     },
   ]
-
-  if (FEATURES.membership) {
-    entries.push({
-      url: `${baseUrl}/membership/apply`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    })
-  }
 
   return entries
 }
