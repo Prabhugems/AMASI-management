@@ -735,119 +735,165 @@ export default function SpeakerPortalPage() {
         {/* STEP 1: Session Confirmation */}
         {step === "confirm" && (
           <>
-            {/* Quick Actions */}
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1 border-green-500/30 text-green-400 hover:bg-green-500/10"
-                onClick={confirmAll}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Confirm All Topics
-              </Button>
+            {/* Quick Action — Confirm all (action-panel pattern) */}
+            <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg">
+              <div className="p-5 sm:flex sm:items-start sm:justify-between sm:gap-6">
+                <div>
+                  <h3 className="text-base font-semibold text-white">Confirm all topics</h3>
+                  <p className="mt-2 max-w-xl text-sm text-gray-400">
+                    Save time by confirming all {assignments.length} assigned {assignments.length === 1 ? "topic" : "topics"} in one click. You can still change individual responses below.
+                  </p>
+                </div>
+                <div className="mt-5 sm:mt-0 sm:shrink-0 sm:flex sm:items-center">
+                  <Button
+                    onClick={confirmAll}
+                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Confirm All
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            {/* Assignments List */}
-            <div className="space-y-4">
-              {assignments.map((assignment, index) => (
-                <Card
-                  key={assignment.id}
-                  className={cn(
-                    "bg-white/10 backdrop-blur border-white/20 transition-colors",
-                    responses[assignment.id] === "confirmed" && "border-green-500/40 bg-green-500/5",
-                    responses[assignment.id] === "declined" && "border-red-500/40 bg-red-500/5",
-                    responses[assignment.id] === "change_requested" && "border-amber-500/40 bg-amber-500/5"
-                  )}
-                >
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-start gap-3 mb-3">
-                      <span className="bg-white/10 text-white/70 text-sm font-medium px-2 py-1 rounded">
-                        {index + 1}
-                      </span>
-                      <div className="flex-1">
-                        <p className="font-medium text-white">{assignment.session_name}</p>
-                        {assignment.topic_title && (
-                          <p className="text-sm text-white/60 mt-0.5">{assignment.topic_title}</p>
+            {/* Assignments List — action-panel styled per session */}
+            <ul role="list" className="space-y-3">
+              {assignments.map((assignment) => {
+                const response = responses[assignment.id]
+                const statusMeta =
+                  response === "confirmed"
+                    ? { dot: "bg-emerald-400", label: "Confirmed", text: "text-emerald-300", ring: "outline-emerald-500/40", iconBg: "bg-emerald-500/15", iconText: "text-emerald-300" }
+                    : response === "declined"
+                    ? { dot: "bg-red-400", label: "Declined", text: "text-red-300", ring: "outline-red-500/40", iconBg: "bg-red-500/15", iconText: "text-red-300" }
+                    : response === "change_requested"
+                    ? { dot: "bg-amber-400", label: "Change requested", text: "text-amber-300", ring: "outline-amber-500/40", iconBg: "bg-amber-500/15", iconText: "text-amber-300" }
+                    : { dot: "", label: "", text: "", ring: "outline-white/10", iconBg: "bg-white/5", iconText: "text-white/50" }
+
+                return (
+                  <li
+                    key={assignment.id}
+                    className={cn(
+                      "bg-gray-800/50 outline outline-1 -outline-offset-1 rounded-lg p-5 transition-colors",
+                      statusMeta.ring
+                    )}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={cn(
+                          "size-12 flex-none rounded-full flex items-center justify-center outline outline-1 -outline-offset-1 outline-white/5",
+                          statusMeta.iconBg,
+                          statusMeta.iconText
                         )}
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/50 mt-1">
-                          <span className="flex items-center gap-1">
+                      >
+                        <Mic className="h-5 w-5" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-white leading-6">
+                              {assignment.session_name}
+                            </p>
+                            {assignment.topic_title && (
+                              <p className="mt-0.5 text-sm text-gray-400 leading-6">
+                                {assignment.topic_title}
+                              </p>
+                            )}
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className="capitalize shrink-0 text-white/70 border-white/20 bg-transparent"
+                          >
+                            {assignment.role}
+                          </Badge>
+                        </div>
+
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                          <span className="flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5" />
                             {formatDate(assignment.session_date)}
                           </span>
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1.5">
                             <Clock className="h-3.5 w-3.5" />
-                            {formatTime(assignment.start_time)} - {formatTime(assignment.end_time)}
+                            {formatTime(assignment.start_time)} – {formatTime(assignment.end_time)}
                           </span>
-                          <span className="flex items-center gap-1">
-                            <Building2 className="h-3.5 w-3.5" />
-                            {assignment.hall}
-                          </span>
+                          {assignment.hall && (
+                            <span className="flex items-center gap-1.5">
+                              <Building2 className="h-3.5 w-3.5" />
+                              {assignment.hall}
+                            </span>
+                          )}
                         </div>
+
+                        {statusMeta.label && (
+                          <div className="mt-3 flex items-center gap-1.5">
+                            <div className={cn("size-1.5 rounded-full", statusMeta.dot)} />
+                            <span className={cn("text-xs font-medium", statusMeta.text)}>
+                              {statusMeta.label}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <Badge variant="outline" className="capitalize shrink-0 text-white/70 border-white/30">
-                        {assignment.role}
-                      </Badge>
                     </div>
 
                     {/* Response buttons */}
-                    <div className="flex flex-wrap gap-2 mt-3">
+                    <div className="mt-5 flex flex-wrap gap-2">
                       <Button
                         size="sm"
-                        variant={responses[assignment.id] === "confirmed" ? "default" : "outline"}
+                        variant={response === "confirmed" ? "default" : "outline"}
                         className={cn(
-                          "flex-1",
-                          responses[assignment.id] === "confirmed"
-                            ? "bg-green-600 hover:bg-green-700"
-                            : "border-green-500/30 text-green-400 hover:bg-green-500/10"
+                          "flex-1 sm:flex-none",
+                          response === "confirmed"
+                            ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                            : "bg-transparent border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200"
                         )}
                         onClick={() => setIndividualResponse(assignment.id, "confirmed")}
                       >
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        <CheckCircle2 className="h-4 w-4 mr-1.5" />
                         Confirm
                       </Button>
                       <Button
                         size="sm"
-                        variant={responses[assignment.id] === "change_requested" ? "default" : "outline"}
+                        variant={response === "change_requested" ? "default" : "outline"}
                         className={cn(
-                          "flex-1",
-                          responses[assignment.id] === "change_requested"
-                            ? "bg-amber-600 hover:bg-amber-700"
-                            : "border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                          "flex-1 sm:flex-none",
+                          response === "change_requested"
+                            ? "bg-amber-600 hover:bg-amber-500 text-white"
+                            : "bg-transparent border-amber-500/30 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"
                         )}
                         onClick={() => setIndividualResponse(assignment.id, "change_requested")}
                         title="Request change in date/time/topic"
                       >
-                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        <AlertTriangle className="h-4 w-4 mr-1.5" />
                         Change
                       </Button>
                       <Button
                         size="sm"
-                        variant={responses[assignment.id] === "declined" ? "default" : "outline"}
+                        variant={response === "declined" ? "default" : "outline"}
                         className={cn(
-                          "flex-1",
-                          responses[assignment.id] === "declined"
-                            ? "bg-red-600 hover:bg-red-700"
-                            : "border-red-500/30 text-red-400 hover:bg-red-500/10"
+                          "flex-1 sm:flex-none",
+                          response === "declined"
+                            ? "bg-red-600 hover:bg-red-500 text-white"
+                            : "bg-transparent border-red-500/30 text-red-300 hover:bg-red-500/10 hover:text-red-200"
                         )}
                         onClick={() => setIndividualResponse(assignment.id, "declined")}
                       >
-                        <XCircle className="h-4 w-4 mr-1" />
+                        <XCircle className="h-4 w-4 mr-1.5" />
                         Decline
                       </Button>
                     </div>
 
-                    {/* Notes field */}
-                    {(responses[assignment.id] === "declined" ||
-                      responses[assignment.id] === "change_requested") && (
-                      <div className="mt-3 pt-3 border-t border-white/10">
+                    {/* Notes field — inline when declined or change requested */}
+                    {(response === "declined" || response === "change_requested") && (
+                      <div className="mt-5 pt-5 border-t border-white/10">
                         <Label className="text-sm font-medium text-white/80">
-                          {responses[assignment.id] === "change_requested"
+                          {response === "change_requested"
                             ? "What changes do you need?"
                             : "Reason for declining"}{" "}
                           <span className="text-red-400">*</span>
                         </Label>
-                        {responses[assignment.id] === "change_requested" && (
-                          <p className="text-xs text-white/50 mt-1">
+                        {response === "change_requested" && (
+                          <p className="mt-1 text-xs text-gray-500">
                             Specify: change in date/time, topic title, venue, etc.
                           </p>
                         )}
@@ -855,43 +901,44 @@ export default function SpeakerPortalPage() {
                           value={notes[assignment.id] || ""}
                           onChange={(e) => setNoteForAssignment(assignment.id, e.target.value)}
                           placeholder={
-                            responses[assignment.id] === "change_requested"
+                            response === "change_requested"
                               ? "E.g., Please change to 29th Aug afternoon due to travel conflict..."
                               : "Please provide reason..."
                           }
                           rows={2}
-                          className="mt-2 bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                          className="mt-2 bg-white/5 border-white/10 text-white placeholder:text-white/40"
                         />
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  </li>
+                )
+              })}
+            </ul>
 
             {/* Summary */}
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="py-4">
-                <h4 className="font-medium text-white mb-2">Response Summary</h4>
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-green-400 flex items-center gap-1">
-                    <CheckCircle2 className="h-4 w-4" />
-                    {confirmedCount} confirmed
+            <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-5">
+              <h4 className="text-sm font-semibold text-white">Response summary</h4>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                <span className="flex items-center gap-1.5 text-emerald-300">
+                  <div className="size-1.5 rounded-full bg-emerald-400" />
+                  {confirmedCount} confirmed
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-300">
+                  <div className="size-1.5 rounded-full bg-amber-400" />
+                  {changeCount} change
+                </span>
+                <span className="flex items-center gap-1.5 text-red-300">
+                  <div className="size-1.5 rounded-full bg-red-400" />
+                  {declinedCount} declined
+                </span>
+                {pendingCount > 0 && (
+                  <span className="flex items-center gap-1.5 text-gray-400">
+                    <div className="size-1.5 rounded-full bg-white/30" />
+                    {pendingCount} pending
                   </span>
-                  <span className="text-amber-400 flex items-center gap-1">
-                    <AlertTriangle className="h-4 w-4" />
-                    {changeCount} change
-                  </span>
-                  <span className="text-red-400 flex items-center gap-1">
-                    <XCircle className="h-4 w-4" />
-                    {declinedCount} declined
-                  </span>
-                  {pendingCount > 0 && (
-                    <span className="text-white/50">{pendingCount} pending</span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                )}
+              </div>
+            </div>
 
             {/* Submit Button */}
             <Button
