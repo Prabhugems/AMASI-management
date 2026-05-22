@@ -3,10 +3,10 @@
 import * as React from "react"
 import { Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Mail, Loader2, CheckCircle2, AlertTriangle, Calendar, Users, BarChart3, Shield, Lock, ArrowRight } from "lucide-react"
+import { Mail, Loader2, CheckCircle2, AlertTriangle, Calendar, Users, BarChart3, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useAuth } from "@/hooks/use-auth"
-import { cn } from "@/lib/utils"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 
 // Check if Supabase is properly configured
@@ -162,136 +162,113 @@ function LoginForm() {
       </div>
 
       {/* Right Panel - Login Form */}
-      <div className="flex-1 flex items-start sm:items-center justify-center px-5 pt-12 pb-8 sm:p-6 md:p-8">
-        <div className="w-full max-w-sm sm:max-w-md">
+      <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:px-12 xl:px-16">
+        <div className="mx-auto w-full max-w-sm lg:w-96">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-6 sm:mb-8 justify-center">
-            <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-primary flex items-center justify-center">
-              <span className="text-lg sm:text-xl font-bold text-white">{COMPANY_CONFIG.name.charAt(0)}</span>
+          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
+            <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
+              <span className="text-xl font-bold text-white">{COMPANY_CONFIG.name.charAt(0)}</span>
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-foreground leading-tight">{COMPANY_CONFIG.name}</h1>
+              <h1 className="text-xl font-bold text-foreground leading-tight">{COMPANY_CONFIG.name}</h1>
               <p className="text-muted-foreground text-xs">{FEATURES.membership ? "Command Center" : "Event Management"}</p>
             </div>
           </div>
 
-          <div className="paper-card p-5 sm:p-6 md:p-8">
-            {!supabaseConfigured ? (
-              <div className="text-center">
-                <div className="h-16 w-16 rounded-full bg-warning/20 flex items-center justify-center mx-auto mb-4">
-                  <AlertTriangle className="h-8 w-8 text-warning" />
-                </div>
-                <h2 className="text-xl font-semibold text-foreground mb-2">
-                  Development Mode
-                </h2>
-                <p className="text-muted-foreground mb-6">
-                  Supabase is not configured. Authentication is disabled.
-                </p>
-                <p className="text-sm text-muted-foreground mb-6">
-                  To enable authentication, add your Supabase credentials to <code className="bg-secondary px-1 py-0.5 rounded">.env.local</code>
-                </p>
-                <Button
-                  onClick={() => router.push('/')}
-                  className="w-full"
-                >
-                  Continue to Dashboard
-                </Button>
+          {!supabaseConfigured ? (
+            <>
+              <div className="h-12 w-12 rounded-full bg-warning/15 flex items-center justify-center mb-6">
+                <AlertTriangle className="h-6 w-6 text-warning" />
               </div>
-            ) : sent ? (
-              <div className="text-center">
-                <div className="h-16 w-16 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-4">
-                  <Mail className="h-8 w-8 text-success" />
-                </div>
-                <h2 className="text-xl font-semibold text-foreground mb-2">
-                  Check your email
-                </h2>
-                <p className="text-muted-foreground mb-6">
-                  We sent a magic link to <strong>{email}</strong>
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Click the link in the email to sign in to your account.
-                </p>
-                <Button
-                  variant="ghost"
-                  className="mt-6"
-                  onClick={() => {
-                    setSent(false)
-                    setEmail("")
-                  }}
-                >
-                  Use a different email
-                </Button>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground leading-9">
+                Development Mode
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Supabase is not configured. To enable authentication, add your credentials to <code className="bg-secondary px-1 py-0.5 rounded text-xs">.env.local</code>.
+              </p>
+              <Button onClick={() => router.push('/')} className="w-full mt-10">
+                Continue to Dashboard
+              </Button>
+            </>
+          ) : sent ? (
+            <>
+              <div className="h-12 w-12 rounded-full bg-success/15 flex items-center justify-center mb-6">
+                <Mail className="h-6 w-6 text-success" />
               </div>
-            ) : (
-              <>
-                <div className="text-center mb-6 sm:mb-8">
-                  <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-1.5 sm:mb-2">
-                    Welcome back
-                  </h2>
-                  <p className="text-sm sm:text-base text-muted-foreground">
-                    Sign in to your account to continue
-                  </p>
-                </div>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground leading-9">
+                Check your email
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                We sent a magic link to <strong className="text-foreground">{email}</strong>. Click the link to sign in.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full mt-10"
+                onClick={() => {
+                  setSent(false)
+                  setEmail("")
+                }}
+              >
+                Use a different email
+              </Button>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground leading-9">
+                Sign in to your account
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                We&apos;ll email you a secure magic link — no password needed.
+              </p>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block text-sm font-medium text-foreground mb-2"
-                    >
-                      Email address
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com"
-                        required
-                        className={cn(
-                          "w-full h-12 pl-11 pr-4 rounded-xl bg-secondary/50 border text-base text-foreground",
-                          "placeholder:text-muted-foreground",
-                          "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
-                          "transition-all duration-200",
-                          error ? "border-destructive" : "border-transparent"
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  {error && (
-                    <p className="text-sm text-destructive">{error}</p>
-                  )}
-
-                  <Button
-                    type="submit"
-                    className="w-full h-12"
-                    disabled={loading || !email}
+              <form onSubmit={handleSubmit} className="mt-10 space-y-6">
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium leading-6 text-foreground"
                   >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Sending login link...
-                      </>
-                    ) : (
-                      <>
-                        <Mail className="h-4 w-4 mr-2" />
-                        Send login link
-                      </>
-                    )}
-                  </Button>
+                    Email address
+                  </label>
+                  <div className="mt-2">
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      required
+                      autoComplete="email"
+                      aria-invalid={!!error}
+                    />
+                  </div>
+                </div>
 
-                  <p className="text-xs text-muted-foreground text-center mt-3">
-                    We&apos;ll send a secure login link to your email. No password needed.
-                  </p>
-                </form>
-              </>
-            )}
-          </div>
+                {error && (
+                  <p className="text-sm text-destructive">{error}</p>
+                )}
 
-          <p className="mt-6 sm:mt-8 px-4 text-center text-xs text-muted-foreground leading-relaxed">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading || !email}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sending login link...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4 mr-2" />
+                      Send login link
+                    </>
+                  )}
+                </Button>
+              </form>
+            </>
+          )}
+
+          <p className="mt-10 text-center text-xs text-muted-foreground leading-relaxed">
             {COMPANY_CONFIG.fullName}
           </p>
         </div>
