@@ -971,86 +971,105 @@ export default function SpeakerPortalPage() {
         {/* STEP 2: Travel Details */}
         {step === "travel" && (
           <>
-            {/* Session Confirmation Summary */}
-            <Card className="bg-white/10 backdrop-blur border-white/20 print:hidden">
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-white flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-400" />
-                    Sessions Confirmed
-                  </h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-white/60 hover:text-white hover:bg-white/10"
-                    onClick={() => {
-                      const allPreviouslyResponded = assignments.every(
-                        (a) => a.status !== "pending" && a.status !== "invited"
-                      )
-                      if (!allPreviouslyResponded) {
-                        setStep("confirm")
-                      }
-                    }}
-                  >
-                    View Details
-                  </Button>
+            {/* Session Confirmation Summary — stacked-list pattern */}
+            <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg overflow-hidden print:hidden">
+              <div className="px-5 py-4 sm:flex sm:items-center sm:justify-between border-b border-white/10">
+                <div>
+                  <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                    Your session responses
+                  </h3>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                    {confirmedCount > 0 && (
+                      <span className="flex items-center gap-1.5 text-emerald-300">
+                        <div className="size-1.5 rounded-full bg-emerald-400" />
+                        {confirmedCount} confirmed
+                      </span>
+                    )}
+                    {changeCount > 0 && (
+                      <span className="flex items-center gap-1.5 text-amber-300">
+                        <div className="size-1.5 rounded-full bg-amber-400" />
+                        {changeCount} change
+                      </span>
+                    )}
+                    {declinedCount > 0 && (
+                      <span className="flex items-center gap-1.5 text-red-300">
+                        <div className="size-1.5 rounded-full bg-red-400" />
+                        {declinedCount} declined
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-3 flex-wrap">
-                  {confirmedCount > 0 && (
-                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                      {confirmedCount} Confirmed
-                    </Badge>
-                  )}
-                  {declinedCount > 0 && (
-                    <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
-                      {declinedCount} Declined
-                    </Badge>
-                  )}
-                  {changeCount > 0 && (
-                    <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
-                      {changeCount} Change Requested
-                    </Badge>
-                  )}
-                </div>
-                <div className="space-y-1.5 mt-3 max-h-48 overflow-y-auto">
-                  {assignments.map((a, i) => (
-                    <div key={a.id} className="flex items-center gap-2 text-sm">
-                      <span className="text-white/40 w-5">{i + 1}.</span>
-                      <span className="flex-1 text-white/80 truncate">{a.session_name}</span>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs",
-                          (responses[a.id] || a.status) === "confirmed" && "text-green-400 border-green-500/30",
-                          (responses[a.id] || a.status) === "declined" && "text-red-400 border-red-500/30",
-                          (responses[a.id] || a.status) === "change_requested" && "text-amber-400 border-amber-500/30"
-                        )}
-                      >
-                        {(responses[a.id] || a.status) === "confirmed" && "Confirmed"}
-                        {(responses[a.id] || a.status) === "declined" && "Declined"}
-                        {(responses[a.id] || a.status) === "change_requested" && "Change"}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-3 sm:mt-0 text-white/60 hover:text-white hover:bg-white/10"
+                  onClick={() => {
+                    const allPreviouslyResponded = assignments.every(
+                      (a) => a.status !== "pending" && a.status !== "invited"
+                    )
+                    if (!allPreviouslyResponded) {
+                      setStep("confirm")
+                    }
+                  }}
+                >
+                  View details
+                </Button>
+              </div>
 
-            {/* Download Invitation Letter */}
+              <ul role="list" className="divide-y divide-white/5 max-h-72 overflow-y-auto">
+                {assignments.map((a) => {
+                  const status = (responses[a.id] || a.status) as string
+                  const statusMeta =
+                    status === "confirmed"
+                      ? { dot: "bg-emerald-400", label: "Confirmed", text: "text-emerald-300", iconBg: "bg-emerald-500/15", iconText: "text-emerald-300" }
+                      : status === "declined"
+                      ? { dot: "bg-red-400", label: "Declined", text: "text-red-300", iconBg: "bg-red-500/15", iconText: "text-red-300" }
+                      : status === "change_requested"
+                      ? { dot: "bg-amber-400", label: "Change", text: "text-amber-300", iconBg: "bg-amber-500/15", iconText: "text-amber-300" }
+                      : { dot: "bg-white/30", label: "Pending", text: "text-gray-400", iconBg: "bg-white/5", iconText: "text-white/40" }
+
+                  return (
+                    <li key={a.id} className="flex items-center gap-x-4 px-5 py-3.5">
+                      <div className={cn("size-9 flex-none rounded-full flex items-center justify-center outline outline-1 -outline-offset-1 outline-white/5", statusMeta.iconBg, statusMeta.iconText)}>
+                        <Mic className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white truncate">{a.session_name}</p>
+                        <p className="mt-0.5 text-xs text-gray-400">
+                          {formatDate(a.session_date)} · {formatTime(a.start_time)}
+                        </p>
+                      </div>
+                      <div className="hidden sm:flex sm:items-center sm:gap-1.5 shrink-0">
+                        <div className={cn("size-1.5 rounded-full", statusMeta.dot)} />
+                        <span className={cn("text-xs font-medium", statusMeta.text)}>{statusMeta.label}</span>
+                      </div>
+                      <div className={cn("sm:hidden size-2 rounded-full shrink-0", statusMeta.dot)} />
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+
+            {/* Download Invitation Letter — action-panel pattern */}
             {confirmedCount > 0 && event?.id && (
-              <Card className="bg-gradient-to-r from-blue-600/20 to-indigo-600/20 backdrop-blur border-blue-500/30">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-white flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-blue-400" />
-                        Invitation Letter
-                      </h4>
-                      <p className="text-sm text-white/60 mt-1">Download for your institution / travel approval</p>
+              <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-5">
+                <div className="sm:flex sm:items-start sm:justify-between sm:gap-6">
+                  <div className="flex items-start gap-3">
+                    <div className="size-10 flex-none rounded-full bg-blue-500/15 outline outline-1 -outline-offset-1 outline-blue-500/30 flex items-center justify-center text-blue-300">
+                      <FileText className="h-5 w-5" />
                     </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-white">Invitation letter</h3>
+                      <p className="mt-1 max-w-xl text-sm text-gray-400">
+                        Download a formal PDF for your institution or travel approval.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-5 sm:mt-0 sm:shrink-0 sm:flex sm:items-center">
                     <Button
                       variant="outline"
-                      className="border-blue-400/50 text-blue-300 hover:bg-blue-500/20"
+                      className="w-full sm:w-auto bg-transparent border-white/15 text-white hover:bg-white/10"
                       onClick={() => {
                         window.open(`/api/events/${event.id}/invitation-pdf?type=speaker&name=${encodeURIComponent(faculty?.name || "")}&email=${encodeURIComponent(faculty?.email || "")}`, "_blank")
                       }}
@@ -1059,8 +1078,8 @@ export default function SpeakerPortalPage() {
                       Download PDF
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
 
             {/* Journey Itinerary (if booking exists) */}
@@ -1074,49 +1093,47 @@ export default function SpeakerPortalPage() {
 
             {/* Travel Form */}
             {hasAnyConfirmed && registration && (
-              <Card className="bg-white/10 backdrop-blur border-white/20 print:hidden">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+              <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg overflow-hidden print:hidden">
+                <div className="px-5 py-4 border-b border-white/10">
+                  <h3 className="text-base font-semibold text-white flex items-center gap-2">
                     <Plane className="h-5 w-5" />
-                    Travel & Accommodation
-                  </CardTitle>
-                  <CardDescription className="text-white/70">
-                    Let us know your travel requirements so we can book your tickets
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
+                    Travel &amp; accommodation
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Let us know your travel requirements so we can book your tickets.
+                  </p>
+                </div>
+                <div className="p-5">
                   <TravelForm
                     token={token}
                     apiEndpoint="/api/speaker"
                     customFields={registration.custom_fields}
                     queryKey={["speaker-portal", token]}
                   />
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
 
             {/* No registration yet - waiting message */}
             {hasAnyConfirmed && !registration && (
-              <Card className="bg-white/10 backdrop-blur border-white/20">
-                <CardContent className="py-8 text-center">
-                  <Loader2 className="h-8 w-8 text-white/50 animate-spin mx-auto mb-3" />
-                  <p className="text-white/70">Setting up your travel portal...</p>
-                  <p className="text-sm text-white/50 mt-1">Please refresh the page in a moment.</p>
-                </CardContent>
-              </Card>
+              <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-8 text-center">
+                <Loader2 className="h-8 w-8 text-white/50 animate-spin mx-auto mb-3" />
+                <p className="text-sm font-medium text-white/80">Setting up your travel portal…</p>
+                <p className="text-xs text-gray-400 mt-1">Please refresh the page in a moment.</p>
+              </div>
             )}
 
             {/* All declined - no travel needed */}
             {!hasAnyConfirmed && (
-              <Card className="bg-white/10 backdrop-blur border-white/20">
-                <CardContent className="py-8 text-center">
-                  <XCircle className="h-12 w-12 text-white/30 mx-auto mb-3" />
-                  <p className="text-white/70">No sessions confirmed</p>
-                  <p className="text-sm text-white/50 mt-1">
-                    Travel arrangements are not needed since no sessions were confirmed.
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-8 text-center">
+                <div className="size-12 mx-auto rounded-full bg-white/5 outline outline-1 -outline-offset-1 outline-white/10 flex items-center justify-center mb-3">
+                  <XCircle className="h-6 w-6 text-white/40" />
+                </div>
+                <p className="text-sm font-medium text-white/80">No sessions confirmed</p>
+                <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+                  Travel arrangements are not needed since no sessions were confirmed.
+                </p>
+              </div>
             )}
           </>
         )}
