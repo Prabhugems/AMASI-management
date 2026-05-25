@@ -8,7 +8,6 @@ import { createClient } from "@/lib/supabase/client"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import {
   BarChart3,
-  Activity,
   GraduationCap,
   Award,
   Users,
@@ -34,21 +33,17 @@ import { CronStatusWidget } from "@/components/dashboard/cron-status-widget"
 
 function StatCardSkeleton() {
   return (
-    <div className="relative overflow-hidden rounded-2xl p-6 bg-white border border-gray-200/80 dark:bg-slate-800/50 dark:border-slate-700/50 animate-pulse">
-      <div className="flex items-start justify-between mb-6">
-        <div className="p-3.5 rounded-xl bg-gray-200 dark:bg-slate-700 w-[52px] h-[52px]" />
-        <div className="w-16 h-6 rounded-full bg-gray-200 dark:bg-slate-700" />
+    <div className="rounded-2xl p-4 sm:p-5 bg-white border border-gray-200/60 dark:bg-gray-800/80 dark:border-gray-700/50 animate-pulse">
+      <div className="flex items-start justify-between mb-4 sm:mb-5">
+        <div className="p-2.5 rounded-lg bg-gray-200 dark:bg-gray-700 w-10 h-10" />
       </div>
-      <div className="w-24 h-4 rounded bg-gray-200 dark:bg-slate-700 mb-2" />
-      <div className="w-20 h-10 rounded bg-gray-200 dark:bg-slate-700 mb-4" />
-      <div className="pt-4 border-t border-gray-200/80 dark:border-slate-700/50">
-        <div className="w-32 h-3 rounded bg-gray-200 dark:bg-slate-700" />
-      </div>
+      <div className="w-20 h-3 rounded bg-gray-200 dark:bg-gray-700 mb-2" />
+      <div className="w-24 h-8 rounded bg-gray-200 dark:bg-gray-700 mb-2" />
+      <div className="w-28 h-3 rounded bg-gray-100 dark:bg-gray-700/60 mt-3" />
     </div>
   )
 }
 
-// Last Updated Timestamp
 function LastUpdatedBadge({ lastUpdated, onRefresh }: { lastUpdated: Date | null; onRefresh: () => void }) {
   const [timeAgo, setTimeAgo] = useState("")
 
@@ -70,12 +65,12 @@ function LastUpdatedBadge({ lastUpdated, onRefresh }: { lastUpdated: Date | null
   }, [lastUpdated])
 
   return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+    <div className="flex items-center gap-2 text-[11px] text-gray-400">
       <Clock className="h-3 w-3" />
-      <span>Updated {timeAgo || "..."}</span>
+      <span>{timeAgo || "..."}</span>
       <button
         onClick={onRefresh}
-        className="p-1 rounded-md hover:bg-secondary transition-colors"
+        className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         title="Refresh dashboard"
       >
         <RefreshCw className="h-3 w-3" />
@@ -191,14 +186,14 @@ export default function Home() {
   return (
     <DashboardLayout>
       <div className={`transition-all duration-500 ease-out ${pageReady ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-      {/* Welcome Header - Paper Dashboard Style */}
-      <div className="mb-6">
+      {/* Welcome Header */}
+      <div className="mb-6 sm:mb-8">
         <div className="flex items-start justify-between">
           <div>
-            <h4 className="text-lg text-muted-foreground font-normal">
-              {getGreeting()}, {userName || quickName || (permissionsLoading ? <span className="inline-block w-24 h-5 rounded bg-gray-200 dark:bg-slate-700 animate-pulse align-middle" /> : "Admin")}
-            </h4>
-            <p className="text-sm text-muted-foreground/70">Here&apos;s your {COMPANY_CONFIG.name} dashboard overview</p>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+              {getGreeting()}, {userName || quickName || (permissionsLoading ? <span className="inline-block w-20 h-6 rounded bg-gray-200 dark:bg-gray-700 animate-pulse align-middle" /> : "Admin")}
+            </h1>
+            <p className="text-sm text-gray-400 mt-0.5">Here&apos;s your {COMPANY_CONFIG.name} dashboard overview</p>
           </div>
           <LastUpdatedBadge lastUpdated={lastUpdated} onRefresh={handleRefresh} />
         </div>
@@ -254,43 +249,39 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Quick Actions - Paper Dashboard Style */}
-      <div className="paper-card card-animated">
-        <div className="p-5 border-b border-border">
-          <h5 className="text-base font-semibold text-foreground mb-1">Quick Actions</h5>
-          <p className="text-sm text-muted-foreground">Common tasks at your fingertips</p>
+      {/* Quick Actions */}
+      <div className="rounded-2xl bg-white border border-gray-200/60 dark:bg-gray-800/80 dark:border-gray-700/50 overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700/50">
+          <h5 className="text-sm font-bold text-gray-900 dark:text-white">Quick Actions</h5>
+          <p className="text-xs text-gray-400 mt-0.5">Common tasks at your fingertips</p>
         </div>
-        <div className="p-5">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Link href="/faculty" className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
-                <Download className="h-5 w-5 text-primary" />
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Link href="/faculty" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors group">
+              <div className="h-10 w-10 rounded-full bg-gray-200/60 dark:bg-gray-600/40 flex items-center justify-center group-hover:bg-cyan-100 dark:group-hover:bg-cyan-500/10 transition-colors">
+                <Download className="h-4 w-4 text-gray-500 dark:text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors" />
               </div>
-              <span className="text-sm font-medium text-foreground">Import CSV</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Import CSV</span>
             </Link>
-            <Link href="/events" className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
-              <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center group-hover:bg-success/20 group-hover:scale-110 transition-all duration-300">
-                <Mail className="h-5 w-5 text-success" />
+            <Link href="/events" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors group">
+              <div className="h-10 w-10 rounded-full bg-gray-200/60 dark:bg-gray-600/40 flex items-center justify-center group-hover:bg-cyan-100 dark:group-hover:bg-cyan-500/10 transition-colors">
+                <Mail className="h-4 w-4 text-gray-500 dark:text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors" />
               </div>
-              <span className="text-sm font-medium text-foreground">Bulk Email</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Bulk Email</span>
             </Link>
-            <Link href="/events" className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
-              <div className="h-12 w-12 rounded-full bg-info/10 flex items-center justify-center group-hover:bg-info/20 group-hover:scale-110 transition-all duration-300">
-                <BarChart3 className="h-5 w-5 text-info" />
+            <Link href="/events" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors group">
+              <div className="h-10 w-10 rounded-full bg-gray-200/60 dark:bg-gray-600/40 flex items-center justify-center group-hover:bg-cyan-100 dark:group-hover:bg-cyan-500/10 transition-colors">
+                <BarChart3 className="h-4 w-4 text-gray-500 dark:text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors" />
               </div>
-              <span className="text-sm font-medium text-foreground">Reports</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Reports</span>
             </Link>
-            <Link href="/events" className="flex flex-col items-center gap-3 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-300 group btn-press hover:-translate-y-1">
-              <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 group-hover:scale-110 transition-all duration-300">
-                <Award className="h-5 w-5 text-warning" />
+            <Link href="/events" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors group">
+              <div className="h-10 w-10 rounded-full bg-gray-200/60 dark:bg-gray-600/40 flex items-center justify-center group-hover:bg-cyan-100 dark:group-hover:bg-cyan-500/10 transition-colors">
+                <Award className="h-4 w-4 text-gray-500 dark:text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors" />
               </div>
-              <span className="text-sm font-medium text-foreground">Certificates</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Certificates</span>
             </Link>
           </div>
-        </div>
-        <div className="card-stats-footer px-5 pb-4">
-          <Activity className="h-4 w-4 inline-block mr-1 text-muted-foreground" />
-          <span>Quick links to common tasks</span>
         </div>
       </div>
       </div>
