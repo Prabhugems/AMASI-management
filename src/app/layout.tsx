@@ -51,14 +51,14 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content={COMPANY_CONFIG.name} />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-        <meta name="theme-color" content="#2563eb" />
+        <meta name="theme-color" content="#181b20" />
       </head>
       <body suppressHydrationWarning className="font-poppins antialiased overflow-x-hidden">
         <QueryProvider>
           <ThemeProvider
             attribute="class"
-            defaultTheme="light"
-            enableSystem
+            defaultTheme="dark"
+            enableSystem={false}
           >
             <ConfirmProvider>
               <ErrorBoundary>
