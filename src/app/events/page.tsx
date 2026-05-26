@@ -528,7 +528,7 @@ export default function EventsPage() {
                 </div>
 
                 {/* Quick Action Buttons - visible on hover */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-border opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-1 group-hover:translate-y-0">
+                <div className="grid grid-cols-1 gap-2 mt-3 pt-3 border-t border-border opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-1 group-hover:translate-y-0">
                   <Button
                     variant="outline"
                     size="sm"

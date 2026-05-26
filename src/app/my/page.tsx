@@ -712,9 +712,9 @@ export default function DelegatePortalPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25, duration: 0.4 }}
-            className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-6 ring-1 ring-white/10"
+            className="bg-gray-900/80 backdrop-blur-sm rounded-2xl shadow-2xl shadow-black/30 p-6 ring-1 ring-white/10"
           >
-            <label className="block text-sm font-medium text-gray-600 mb-2">
+            <label className="block text-sm font-medium text-white/70 mb-2">
               Email, Phone, or Registration Number
             </label>
             <div className="relative mb-4">
@@ -727,7 +727,7 @@ export default function DelegatePortalPage() {
                 }}
                 placeholder="email@example.com or 9876543210"
                 inputMode={/^\d/.test(searchQuery) ? "tel" : "email"}
-                className="w-full px-4 py-3.5 text-base border border-gray-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-center bg-gray-50/50"
+                className="w-full px-4 py-3.5 text-base border border-white/15 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all text-center bg-white/10 text-white placeholder:text-white/40"
                 autoFocus
               />
             </div>
@@ -736,7 +736,7 @@ export default function DelegatePortalPage() {
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm text-center flex items-center justify-center gap-2"
+                className="mb-4 p-3 bg-red-500/15 border border-red-500/20 rounded-xl text-red-400 text-sm text-center flex items-center justify-center gap-2"
               >
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
@@ -761,7 +761,7 @@ export default function DelegatePortalPage() {
               )}
             </button>
 
-            <p className="text-center text-xs text-gray-400 mt-3">
+            <p className="text-center text-xs text-white/40 mt-3">
               Use the email or phone you registered with
             </p>
           </motion.form>
