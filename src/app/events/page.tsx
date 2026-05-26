@@ -528,43 +528,43 @@ export default function EventsPage() {
                 </div>
 
                 {/* Quick Action Buttons - visible on hover */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-border opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-1 group-hover:translate-y-0">
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-1 group-hover:translate-y-0">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 text-xs w-full"
+                    className="h-8 text-xs whitespace-nowrap"
                     onClick={(e) => {
                       e.preventDefault()
                       router.push(`/events/${event.id}/registrations`)
                     }}
                   >
                     <UserCheck className="h-3 w-3 mr-1 shrink-0" />
-                    <span className="truncate">Registrations</span>
+                    Registrations
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 text-xs w-full"
+                    className="h-8 text-xs whitespace-nowrap"
                     onClick={(e) => {
                       e.preventDefault()
                       router.push(`/events/${event.id}/checkin`)
                     }}
                   >
                     <ScanLine className="h-3 w-3 mr-1 shrink-0" />
-                    <span className="truncate">Check-in</span>
+                    Check-in
                   </Button>
                   {event.slug && (
                     <Button
                       variant="outline"
                       size="sm"
-                      className="col-span-2 sm:col-span-1 h-8 text-xs w-full"
+                      className="h-8 text-xs whitespace-nowrap"
                       onClick={(e) => {
                         e.preventDefault()
                         window.open(`/register/${event.slug}`, '_blank')
                       }}
                     >
                       <Eye className="h-3 w-3 mr-1 shrink-0" />
-                      <span className="truncate">Delegate View</span>
+                      Delegate View
                     </Button>
                   )}
                 </div>
