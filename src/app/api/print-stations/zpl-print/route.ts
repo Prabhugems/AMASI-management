@@ -103,6 +103,8 @@ function generateTestZPL(): string {
 ^XA
 ^CI28
 ^MNM
+^MMC
+^LT-30
 ^POI
 ^FO50,50^A0N,40,40^FDZebra Test Print^FS
 ^FO50,100^A0N,30,30^FDConnection Successful!^FS
@@ -139,6 +141,8 @@ function generateDefaultZPL(registration: any, station: any): string {
 ^XA
 ^CI28
 ^MNM
+^MMC
+^LT-30
 ${rotationCmd}
 ^LH0,0
 ^LL${dimensions.height}
@@ -247,8 +251,8 @@ function generateZPLFromTemplate(
 ~SD30
 ^CI28
 ^MNM
-^MMT
-^LT0
+^MMC
+^LT-30
 ^LS0
 ${rotationCmd}
 ^LH0,0
