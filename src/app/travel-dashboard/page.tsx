@@ -79,42 +79,47 @@ export default function TravelDashboardPage() {
         .select("id, name, short_name, start_date, end_date, venue_name, city")
         .order("start_date", { ascending: false })
 
-      if (!events) return []
+      if (!events || events.length === 0) return []
 
-      // For each event, get travel stats
-      const eventsWithStats = await Promise.all(
-        (events as Event[]).map(async (event) => {
-          const { data: registrations } = await (supabase as any)
-            .from("registrations")
-            .select("custom_fields")
-            .eq("event_id", event.id)
+      // One query for all registrations across all events, grouped client-side.
+      // Previous shape: Promise.all over events, one query per event — N+1
+      // flagged by Sentry as AMASI-MANAGEMENT-D.
+      const eventIds = (events as Event[]).map(e => e.id)
+      const { data: registrations } = await (supabase as any)
+        .from("registrations")
+        .select("event_id, custom_fields")
+        .in("event_id", eventIds)
 
-          const speakers = (registrations || []).filter(
-            (r: any) => r.custom_fields?.needs_travel
-          )
+      const speakersByEvent = new Map<string, any[]>()
+      for (const r of (registrations || [])) {
+        if (!r.custom_fields?.needs_travel) continue
+        const bucket = speakersByEvent.get(r.event_id)
+        if (bucket) bucket.push(r)
+        else speakersByEvent.set(r.event_id, [r])
+      }
 
-          const stats: TravelStats = {
-            total: speakers.length,
-            pending: speakers.filter((s: any) => {
-              const status = s.custom_fields?.booking?.onward_status
-              return !status || status === "pending"
-            }).length,
-            booked: speakers.filter((s: any) => {
-              const status = s.custom_fields?.booking?.onward_status
-              return status === "booked" || status === "confirmed"
-            }).length,
-            hotelRequired: speakers.filter((s: any) =>
-              s.custom_fields?.travel_details?.hotel_required
-            ).length,
-            transfersRequired: speakers.filter((s: any) =>
-              s.custom_fields?.travel_details?.pickup_required ||
-              s.custom_fields?.travel_details?.drop_required
-            ).length,
-          }
-
-          return { ...event, stats }
-        })
-      )
+      const eventsWithStats = (events as Event[]).map(event => {
+        const speakers = speakersByEvent.get(event.id) || []
+        const stats: TravelStats = {
+          total: speakers.length,
+          pending: speakers.filter((s: any) => {
+            const status = s.custom_fields?.booking?.onward_status
+            return !status || status === "pending"
+          }).length,
+          booked: speakers.filter((s: any) => {
+            const status = s.custom_fields?.booking?.onward_status
+            return status === "booked" || status === "confirmed"
+          }).length,
+          hotelRequired: speakers.filter((s: any) =>
+            s.custom_fields?.travel_details?.hotel_required
+          ).length,
+          transfersRequired: speakers.filter((s: any) =>
+            s.custom_fields?.travel_details?.pickup_required ||
+            s.custom_fields?.travel_details?.drop_required
+          ).length,
+        }
+        return { ...event, stats }
+      })
 
       // Filter to only events with travel requirements
       return eventsWithStats.filter(e => e.stats.total > 0)
