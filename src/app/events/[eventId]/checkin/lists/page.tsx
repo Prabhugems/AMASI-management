@@ -147,20 +147,24 @@ export default function CheckinListsPage() {
         starts_at: data.starts_at || null,
         ends_at: data.ends_at || null,
       }
+      // Go through the API route — checkin_lists has an RLS policy that
+      // blocks browser-session inserts; the API uses the admin client.
       if (data.id) {
-        const { error } = await (supabase as any)
-          .from("checkin_lists")
-          .update(payload)
-          .eq("id", data.id)
-        if (error) throw error
+        const res = await fetch("/api/checkin-lists", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: data.id, ...payload }),
+        })
+        if (!res.ok) throw new Error((await res.json()).error || "Update failed")
+        return res.json()
       } else {
-        const { data: newList, error } = await (supabase as any)
-          .from("checkin_lists")
-          .insert({ ...payload, event_id: eventId })
-          .select()
-          .single()
-        if (error) throw error
-        return newList
+        const res = await fetch("/api/checkin-lists", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ event_id: eventId, ...payload }),
+        })
+        if (!res.ok) throw new Error((await res.json()).error || "Create failed")
+        return res.json()
       }
     },
     onSuccess: (newList) => {
@@ -191,11 +195,10 @@ export default function CheckinListsPage() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from("checkin_lists")
-        .delete()
-        .eq("id", id)
-      if (error) throw error
+      const res = await fetch(`/api/checkin-lists?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) throw new Error((await res.json()).error || "Delete failed")
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["checkin-lists-manage", eventId] })
