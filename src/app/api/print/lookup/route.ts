@@ -22,58 +22,65 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Sanitize code to prevent injection via .or() filter
+    // Sanitize code to prevent injection via .or() / .ilike() filter
     const sanitizedCode = code.replace(/[^a-zA-Z0-9\-_]/g, "")
 
-    // Try to find registration by QR code, registration ID, or registration number (exact match only)
-    const { data: registration, error } = await supabase
-      .from("registrations")
-      .select(`
-        *,
-        events (
-          id,
-          name,
-          slug
-        ),
-        ticket_types (
-          id,
-          name
-        )
-      `)
-      .or(`qr_code.eq.${sanitizedCode},id.eq.${sanitizedCode},registration_number.eq.${sanitizedCode}`)
-      .maybeSingle()
+    // Short codes (4-6 chars) — suffix match on registration_number so AMASI
+    // print station can scan just the trailing sequence (e.g. "1043" → "127A1043").
+    // Optional event_id scopes the suffix search to one event for uniqueness.
+    // Longer codes — exact match on qr_code / id / registration_number.
+    const eventId = searchParams.get("event_id")
+    const isShort = sanitizedCode.length <= 6
 
-    if (error || !registration) {
-      // Try exact match on registration number (no partial/wildcard matching)
-      const { data: exactMatch } = await supabase
+    const select = `
+      *,
+      events (id, name, slug),
+      ticket_types (id, name)
+    `
+
+    let query
+    if (isShort) {
+      query = supabase
         .from("registrations")
-        .select(`
-          *,
-          events (
-            id,
-            name,
-            slug
-          )
-        `)
-        .eq("registration_number", code)
-        .maybeSingle()
+        .select(select)
+        .ilike("registration_number", `%${sanitizedCode}`)
+      if (eventId) query = query.eq("event_id", eventId)
+    } else {
+      query = supabase
+        .from("registrations")
+        .select(select)
+        .or(`qr_code.eq.${sanitizedCode},id.eq.${sanitizedCode},registration_number.eq.${sanitizedCode}`)
+    }
 
-      if (exactMatch) {
-        return NextResponse.json({
-          success: true,
-          registration: formatRegistration(exactMatch)
-        })
-      }
+    const { data: matches, error } = await query.limit(5)
 
+    if (error) {
+      console.error("Print lookup query error:", error)
+      return NextResponse.json(
+        { success: false, error: "Server error" },
+        { status: 500 }
+      )
+    }
+
+    if (!matches || matches.length === 0) {
       return NextResponse.json(
         { success: false, error: "Registration not found" },
         { status: 404 }
       )
     }
 
+    if (matches.length > 1) {
+      return NextResponse.json({
+        success: false,
+        multiple_results: true,
+        error: `Multiple registrations match "${code}". Enter more digits.`,
+        results: matches.map(formatRegistration),
+      }, { status: 409 })
+    }
+
     return NextResponse.json({
       success: true,
-      registration: formatRegistration(registration)
+      registration: formatRegistration(matches[0]),
     })
   } catch (error) {
     console.error("Print lookup error:", error)
