@@ -245,8 +245,8 @@ export default function AwardsPage() {
       </div>
 
       {/* Legend */}
-      <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-xl">
-        <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+      <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+        <p className="text-sm text-blue-800 mb-2">
           <strong>Award Assignment Rules:</strong>
         </p>
         <div className="flex gap-4 text-sm">

@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { StatCard } from "@/components/dashboard/stat-card"
+import { MetricCard, MetricPanel } from "@/components/dashboard/metric-card"
 import { FEATURES } from "@/lib/config"
 import { getTenant } from "@/lib/tenant"
 
@@ -55,22 +55,22 @@ function EventCardSkeleton() {
       <div className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <div className="w-16 h-5 rounded-full bg-gray-200 dark:bg-slate-700 mb-2" />
-            <div className="w-40 h-5 rounded bg-gray-200 dark:bg-slate-700 mb-1" />
-            <div className="w-56 h-4 rounded bg-gray-200 dark:bg-slate-700" />
+            <div className="w-16 h-5 rounded-full bg-muted mb-2" />
+            <div className="w-40 h-5 rounded bg-muted mb-1" />
+            <div className="w-56 h-4 rounded bg-muted" />
           </div>
-          <div className="w-8 h-8 rounded bg-gray-200 dark:bg-slate-700" />
+          <div className="w-8 h-8 rounded bg-muted" />
         </div>
         <div className="space-y-2">
-          <div className="w-32 h-4 rounded bg-gray-200 dark:bg-slate-700" />
-          <div className="w-28 h-4 rounded bg-gray-200 dark:bg-slate-700" />
+          <div className="w-32 h-4 rounded bg-muted" />
+          <div className="w-28 h-4 rounded bg-muted" />
         </div>
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
           <div className="flex gap-4">
-            <div className="w-12 h-4 rounded bg-gray-200 dark:bg-slate-700" />
-            <div className="w-12 h-4 rounded bg-gray-200 dark:bg-slate-700" />
+            <div className="w-12 h-4 rounded bg-muted" />
+            <div className="w-12 h-4 rounded bg-muted" />
           </div>
-          <div className="w-4 h-4 rounded bg-gray-200 dark:bg-slate-700" />
+          <div className="w-4 h-4 rounded bg-muted" />
         </div>
       </div>
     </div>
@@ -220,19 +220,20 @@ export default function EventsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "ongoing":
-        return "bg-success/20 text-success"
+        return "bg-[#e1f0e6] text-[#0f6e56]"
       case "active":
-        return "bg-info/20 text-info"
+      case "registration_open":
+        return "bg-[#e1f0e6] text-[#0f6e56]"
       case "setup":
-        return "bg-warning/20 text-warning"
+        return "bg-[#faedd3] text-[#8a5e10]"
       case "draft":
-        return "bg-secondary text-secondary-foreground"
+        return "bg-[#ece8dd] text-[#6b6f78]"
       case "completed":
-        return "bg-muted text-muted-foreground"
+        return "bg-[#ece8dd] text-[#6b6f78]"
       case "archived":
         return "bg-destructive/20 text-destructive"
       default:
-        return "bg-secondary text-secondary-foreground"
+        return "bg-[#ece8dd] text-[#6b6f78]"
     }
   }
 
@@ -260,35 +261,11 @@ export default function EventsPage() {
       </div>
 
       {/* Animated Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <StatCard
-          icon={Calendar}
-          value={stats?.total || 0}
-          label="Total Events"
-          subtext="All time"
-          trend={null}
-          color="rose"
-          delay={0}
-        />
-        <StatCard
-          icon={CalendarCheck}
-          value={stats?.active || 0}
-          label="Active Events"
-          subtext="Planning/Ongoing"
-          trend={null}
-          color="teal"
-          delay={100}
-        />
-        <StatCard
-          icon={CalendarX}
-          value={stats?.completed || 0}
-          label="Completed"
-          subtext="Successfully held"
-          trend={null}
-          color="violet"
-          delay={200}
-        />
-      </div>
+      <MetricPanel columns={3} className="mb-6">
+        <MetricCard icon={<Calendar className="w-5 h-5" />} label="Total Events" value={stats?.total || 0} tone="mint" />
+        <MetricCard icon={<CalendarCheck className="w-5 h-5" />} label="Active Events" value={stats?.active || 0} tone="mint" />
+        <MetricCard icon={<CalendarX className="w-5 h-5" />} label="Completed" value={stats?.completed || 0} tone="gold" />
+      </MetricPanel>
 
       {/* Search & Filters */}
       <div className="paper-card card-animated mb-6">

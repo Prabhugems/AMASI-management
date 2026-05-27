@@ -28,7 +28,7 @@ export function SearchHighlight({
   text,
   query,
   className,
-  highlightClassName = "bg-yellow-200 dark:bg-yellow-800 rounded px-0.5",
+  highlightClassName = "bg-yellow-200 rounded px-0.5",
 }: SearchHighlightProps) {
   if (!query.trim()) {
     return <span className={className}>{text}</span>
@@ -87,7 +87,7 @@ export function SearchHighlightMulti({
   text,
   queries,
   className,
-  highlightClassName = "bg-yellow-200 dark:bg-yellow-800 rounded px-0.5",
+  highlightClassName = "bg-yellow-200 rounded px-0.5",
 }: {
   text: string
   queries: string[]

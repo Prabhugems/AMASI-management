@@ -518,14 +518,14 @@ export default function HelpPage() {
               </div>
 
               {selectedArticle.tips && selectedArticle.tips.length > 0 && (
-                <div className="mt-8 p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-xl">
+                <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-xl">
                   <div className="flex items-center gap-2 mb-3">
                     <Lightbulb className="w-5 h-5 text-green-600" />
-                    <h4 className="font-semibold text-green-800 dark:text-green-200">Pro Tips</h4>
+                    <h4 className="font-semibold text-green-800">Pro Tips</h4>
                   </div>
                   <ul className="space-y-2">
                     {selectedArticle.tips.map((tip, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-green-700 dark:text-green-300">
+                      <li key={i} className="flex items-start gap-2 text-sm text-green-700">
                         <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
                         <span>{tip}</span>
                       </li>
@@ -535,14 +535,14 @@ export default function HelpPage() {
               )}
 
               {selectedArticle.warnings && selectedArticle.warnings.length > 0 && (
-                <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl">
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                   <div className="flex items-center gap-2 mb-3">
                     <AlertCircle className="w-5 h-5 text-amber-600" />
-                    <h4 className="font-semibold text-amber-800 dark:text-amber-200">Important</h4>
+                    <h4 className="font-semibold text-amber-800">Important</h4>
                   </div>
                   <ul className="space-y-2">
                     {selectedArticle.warnings.map((warning, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300">
+                      <li key={i} className="flex items-start gap-2 text-sm text-amber-700">
                         <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                         <span>{warning}</span>
                       </li>

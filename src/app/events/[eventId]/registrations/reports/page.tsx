@@ -561,7 +561,7 @@ export default function RegistrationReportsPage() {
                 <TrendingUp className="h-4 w-4" />
                 <span className="text-sm">Net Revenue</span>
               </div>
-              <p className="text-xl font-bold mt-1 text-green-700 dark:text-green-400">
+              <p className="text-xl font-bold mt-1 text-green-700">
                 {fmtAmt(revenueStats.netRevenue)}
               </p>
             </div>
@@ -605,7 +605,7 @@ export default function RegistrationReportsPage() {
                             {fmtAmt(t.totalRevenue)}
                           </TableCell>
                           <TableCell className="text-right">
-                            <span className="inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-950/40 px-2 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-300">
+                            <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
                               {pct}%
                             </span>
                           </TableCell>
@@ -781,13 +781,13 @@ export default function RegistrationReportsPage() {
           <div className="p-4 space-y-4">
             {/* Overall counts */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900">
+              <div className="text-center p-3 rounded-lg bg-green-50 border border-green-200">
                 <p className="text-sm text-muted-foreground">Veg</p>
-                <p className="text-2xl font-bold text-green-700 dark:text-green-400">{foodStats.overall["Veg"]}</p>
+                <p className="text-2xl font-bold text-green-700">{foodStats.overall["Veg"]}</p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900">
+              <div className="text-center p-3 rounded-lg bg-red-50 border border-red-200">
                 <p className="text-sm text-muted-foreground">Non-Veg</p>
-                <p className="text-2xl font-bold text-red-700 dark:text-red-400">{foodStats.overall["Non-Veg"]}</p>
+                <p className="text-2xl font-bold text-red-700">{foodStats.overall["Non-Veg"]}</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-muted/50 border">
                 <p className="text-sm text-muted-foreground">Not Specified</p>

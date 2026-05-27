@@ -47,11 +47,11 @@ import {
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { cls: string; icon: typeof CheckCircle; label: string }> = {
-    confirmed: { cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400", icon: CheckCircle, label: "Confirmed" },
-    active: { cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400", icon: CheckCircle, label: "Active" },
-    pending: { cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400", icon: Clock, label: "Pending" },
-    declined: { cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400", icon: XCircle, label: "Declined" },
-    inactive: { cls: "bg-gray-100 text-gray-500 dark:bg-gray-700/50 dark:text-gray-400", icon: XCircle, label: "Inactive" },
+    confirmed: { cls: "bg-emerald-50 text-emerald-700", icon: CheckCircle, label: "Confirmed" },
+    active: { cls: "bg-emerald-50 text-emerald-700", icon: CheckCircle, label: "Active" },
+    pending: { cls: "bg-amber-50 text-amber-700", icon: Clock, label: "Pending" },
+    declined: { cls: "bg-rose-50 text-rose-700", icon: XCircle, label: "Declined" },
+    inactive: { cls: "bg-muted text-muted-foreground", icon: XCircle, label: "Inactive" },
   }
   const c = config[status] || config.pending
   const Icon = c.icon
@@ -117,8 +117,8 @@ function FacultyRow({ faculty, index, isLast }: { faculty: FacultyMember; index:
       className={`
         group transition-all duration-400 ease-out
         ${isVisible ? "opacity-100" : "opacity-0 translate-y-2"}
-        hover:bg-gray-50 dark:hover:bg-gray-700/30
-        ${!isLast ? "border-b border-gray-100 dark:border-gray-700/50" : ""}
+        hover:bg-accent
+        ${!isLast ? "border-b border-border" : ""}
       `}
       style={{ transitionDelay: `${index * 80}ms` }}
       onMouseLeave={() => setShowMenu(false)}
@@ -128,9 +128,9 @@ function FacultyRow({ faculty, index, isLast }: { faculty: FacultyMember; index:
           <Avatar name={faculty.name} color={color} />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate">{faculty.name}</h3>
+              <h3 className="font-semibold text-sm text-foreground truncate">{faculty.name}</h3>
               {faculty.isNew && (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400">
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-cyan-50 text-cyan-700">
                   New
                 </span>
               )}
@@ -143,7 +143,7 @@ function FacultyRow({ faculty, index, isLast }: { faculty: FacultyMember; index:
       <td className="py-3.5 px-4">
         <a
           href={`mailto:${faculty.email}`}
-          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-cyan-600 transition-colors"
         >
           <Mail className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate max-w-[160px]">{faculty.email}</span>
@@ -161,21 +161,21 @@ function FacultyRow({ faculty, index, isLast }: { faculty: FacultyMember; index:
       <td className="py-3.5 px-4">
         <div className="relative flex items-center gap-1">
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button className="p-1.5 rounded-lg text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <button className="p-1.5 rounded-lg text-muted-foreground hover:text-cyan-600 hover:bg-muted transition-colors">
               <Send className="w-3.5 h-3.5" />
             </button>
-            <button className="p-1.5 rounded-lg text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <button className="p-1.5 rounded-lg text-muted-foreground hover:text-cyan-600 hover:bg-muted transition-colors">
               <Eye className="w-3.5 h-3.5" />
             </button>
           </div>
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors opacity-0 group-hover:opacity-100"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
           {showMenu && (
-            <div className="absolute right-0 top-full mt-1 w-44 rounded-xl overflow-hidden z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
+            <div className="absolute right-0 top-full mt-1 w-44 rounded-xl overflow-hidden z-50 bg-card border border-border shadow-xl">
               {[
                 { icon: Eye, label: "View Profile" },
                 { icon: Send, label: "Send Reminder" },
@@ -186,8 +186,8 @@ function FacultyRow({ faculty, index, isLast }: { faculty: FacultyMember; index:
               ].map((item, i) => (
                 <button
                   key={i}
-                  className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/60 hover:text-gray-900 dark:hover:text-white transition-colors ${
-                    item.label === "Remove" ? "hover:text-rose-600 dark:hover:text-rose-400" : ""
+                  className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors ${
+                    item.label === "Remove" ? "hover:text-rose-600" : ""
                   }`}
                 >
                   <item.icon className="w-4 h-4" />
@@ -204,22 +204,22 @@ function FacultyRow({ faculty, index, isLast }: { faculty: FacultyMember; index:
 
 function SectionHeader({ totalCount }: { totalCount: number }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700/50">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 border-b border-border">
       <div className="flex items-center gap-3">
-        <div className="p-2 sm:p-2.5 rounded-lg bg-gray-100 dark:bg-gray-700/60">
-          <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-600 dark:text-cyan-400" />
+        <div className="p-2 sm:p-2.5 rounded-lg bg-muted">
+          <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-600" />
         </div>
         <div>
-          <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">Recent Faculty</h2>
+          <h2 className="text-sm sm:text-base font-bold text-foreground">Recent Faculty</h2>
           <p className="text-xs text-gray-400">{totalCount} total members</p>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:border-border transition-colors">
           <Download className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Export</span>
         </button>
-        <button className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold bg-cyan-500 hover:bg-cyan-400 text-gray-900 transition-colors shadow-sm">
+        <button className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-sm">
           <Send className="w-3.5 h-3.5" />
           <span className="whitespace-nowrap">Send Reminders</span>
         </button>
@@ -230,9 +230,9 @@ function SectionHeader({ totalCount }: { totalCount: number }) {
 
 function StatsRow({ counts }: { counts: { active: number; pending: number; inactive: number } }) {
   const stats = [
-    { label: "Active", value: counts.active, cls: "bg-emerald-50 border-emerald-200/60 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400", icon: CheckCircle, iconCls: "text-emerald-500 dark:text-emerald-400" },
-    { label: "Pending", value: counts.pending, cls: "bg-amber-50 border-amber-200/60 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400", icon: Clock, iconCls: "text-amber-500 dark:text-amber-400" },
-    { label: "Inactive", value: counts.inactive, cls: "bg-rose-50 border-rose-200/60 text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400", icon: XCircle, iconCls: "text-rose-500 dark:text-rose-400" },
+    { label: "Active", value: counts.active, cls: "bg-emerald-50 border-emerald-200/60 text-emerald-700", icon: CheckCircle, iconCls: "text-emerald-500" },
+    { label: "Pending", value: counts.pending, cls: "bg-amber-50 border-amber-200/60 text-amber-700", icon: Clock, iconCls: "text-amber-500" },
+    { label: "Inactive", value: counts.inactive, cls: "bg-rose-50 border-rose-200/60 text-rose-700", icon: XCircle, iconCls: "text-rose-500" },
   ]
 
   return (
@@ -256,27 +256,27 @@ function SearchFilterBar({ onAddClick }: { onAddClick: () => void }) {
       <div
         className={`flex-1 flex items-center gap-2.5 px-3.5 py-2 rounded-lg border transition-colors ${
           isFocused
-            ? "border-cyan-400/50 ring-2 ring-cyan-400/10 dark:ring-cyan-400/5"
-            : "border-gray-200 dark:border-gray-700"
-        } bg-white dark:bg-gray-800/50`}
+            ? "border-cyan-400/50 ring-2 ring-cyan-400/10"
+            : "border-border"
+        } bg-card`}
       >
         <Search className="w-4 h-4 shrink-0 text-gray-400" />
         <input
           type="text"
           placeholder="Search faculty..."
-          className="flex-1 bg-transparent outline-none text-sm min-w-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+          className="flex-1 bg-transparent outline-none text-sm min-w-0 text-foreground placeholder-muted-foreground"
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
         />
       </div>
       <div className="flex items-center gap-2">
-        <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+        <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:border-border transition-colors">
           <Filter className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Filter</span>
         </button>
         <button
           onClick={onAddClick}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-cyan-500 hover:bg-cyan-400 text-gray-900 transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-sm"
         >
           <UserPlus className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Add Faculty</span>
@@ -368,7 +368,7 @@ export function RecentFacultyTable() {
   ]
 
   return (
-    <div className="rounded-2xl overflow-hidden bg-white border border-gray-200/60 dark:bg-gray-800/80 dark:border-gray-700/50">
+    <div className="rounded-2xl overflow-hidden bg-card border border-border">
       <SectionHeader totalCount={totalCount || faculty.length} />
       <StatsRow counts={facultyCounts} />
       <SearchFilterBar onAddClick={() => setIsAddModalOpen(true)} />
@@ -376,7 +376,7 @@ export function RecentFacultyTable() {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-100 dark:border-gray-700/50">
+            <tr className="border-b border-border">
               {headers.map((header, i) => (
                 <th
                   key={i}
@@ -390,35 +390,35 @@ export function RecentFacultyTable() {
           <tbody>
             {isFacultyLoading ? (
               [1, 2, 3, 4].map((i) => (
-                <tr key={i} className="animate-pulse border-b border-gray-100 dark:border-gray-700/50">
+                <tr key={i} className="animate-pulse border-b border-border">
                   <td className="py-3.5 px-5">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-gray-200 dark:bg-gray-700" />
+                      <div className="w-9 h-9 rounded-lg bg-muted" />
                       <div className="space-y-2">
-                        <div className="w-28 h-4 rounded bg-gray-200 dark:bg-gray-700" />
-                        <div className="w-20 h-3 rounded bg-gray-100 dark:bg-gray-700/60" />
+                        <div className="w-28 h-4 rounded bg-muted" />
+                        <div className="w-20 h-3 rounded bg-muted/60" />
                       </div>
                     </div>
                   </td>
-                  <td className="py-3.5 px-4"><div className="w-32 h-4 rounded bg-gray-200 dark:bg-gray-700" /></td>
-                  <td className="py-3.5 px-4"><div className="w-24 h-4 rounded bg-gray-200 dark:bg-gray-700" /></td>
-                  <td className="py-3.5 px-4"><div className="w-16 h-5 rounded-full bg-gray-200 dark:bg-gray-700" /></td>
-                  <td className="py-3.5 px-4"><div className="w-12 h-6 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                  <td className="py-3.5 px-4"><div className="w-32 h-4 rounded bg-muted" /></td>
+                  <td className="py-3.5 px-4"><div className="w-24 h-4 rounded bg-muted" /></td>
+                  <td className="py-3.5 px-4"><div className="w-16 h-5 rounded-full bg-muted" /></td>
+                  <td className="py-3.5 px-4"><div className="w-12 h-6 rounded bg-muted" /></td>
                 </tr>
               ))
             ) : faculty.length === 0 ? (
               <tr>
                 <td colSpan={5} className="py-16 text-center">
-                  <div className="inline-flex p-5 rounded-full mb-4 bg-gray-100 dark:bg-gray-700/60">
-                    <GraduationCap className="w-10 h-10 text-gray-400" />
+                  <div className="inline-flex p-5 rounded-full mb-4 bg-muted">
+                    <GraduationCap className="w-10 h-10 text-muted-foreground" />
                   </div>
-                  <p className="font-semibold text-lg text-gray-700 dark:text-gray-300">No faculty added yet</p>
+                  <p className="font-semibold text-lg text-foreground">No faculty added yet</p>
                   <p className="text-sm mt-1 max-w-xs mx-auto text-gray-400">
                     Add faculty members to your database to manage them across events
                   </p>
                   <button
                     onClick={() => setIsAddModalOpen(true)}
-                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 text-gray-900 transition-colors shadow-sm"
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-sm"
                   >
                     <UserPlus className="w-4 h-4" />
                     Add First Faculty
@@ -434,13 +434,13 @@ export function RecentFacultyTable() {
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-gray-100 dark:border-gray-700/50">
+      <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-border">
         <p className="text-xs text-gray-400">
           Showing {faculty.length} of {totalCount || faculty.length}
         </p>
         <Link
           href="/faculty"
-          className="flex items-center gap-1.5 text-sm font-semibold text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 transition-colors"
+          className="flex items-center gap-1.5 text-sm font-semibold text-cyan-600 hover:text-cyan-500 transition-colors"
         >
           View all faculty
           <ChevronRight className="w-4 h-4" />

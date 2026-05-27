@@ -158,8 +158,8 @@ export default function LeadsPipeline({
             key={status}
             className={cn(
               "flex-shrink-0 w-72 sm:w-80 flex flex-col rounded-xl border transition-all duration-200",
-              "bg-muted/30 dark:bg-muted/10",
-              isDropping && "border-blue-400 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900/50"
+              "bg-muted/30",
+              isDropping && "border-blue-400 ring-2 ring-blue-200"
             )}
             onDragEnter={(e) => handleDragEnter(e, status)}
             onDragLeave={(e) => handleDragLeave(e, status)}
@@ -193,7 +193,7 @@ export default function LeadsPipeline({
                     "flex items-center justify-center h-32 rounded-lg border-2 border-dashed",
                     "text-muted-foreground text-sm",
                     isDropping
-                      ? "border-blue-300 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-950/20"
+                      ? "border-blue-300 bg-blue-50/50"
                       : "border-muted"
                   )}
                 >

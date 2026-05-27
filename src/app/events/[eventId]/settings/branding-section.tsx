@@ -39,7 +39,7 @@ export function BrandingSection({ eventId, formData, updateField }: SectionProps
         {/* Registration Page Preview */}
         {previewTab === 'registration' && (
           <div
-            className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900"
+            className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200"
             style={{
               backgroundImage: formData.banner_url ? `url(${formData.banner_url})` : undefined,
               backgroundSize: 'cover',
@@ -93,8 +93,8 @@ export function BrandingSection({ eventId, formData, updateField }: SectionProps
 
         {/* Badge Preview */}
         {previewTab === 'badge' && (
-          <div className="flex items-center justify-center p-8 bg-gray-50 dark:bg-gray-900">
-            <div className="w-[300px] bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border">
+          <div className="flex items-center justify-center p-8 bg-muted">
+            <div className="w-[300px] bg-card rounded-xl shadow-lg overflow-hidden border">
               {/* Color accent strip at top */}
               <div className="h-2" style={{ backgroundColor: formData.primary_color || '#10b981' }} />
               <div className="p-6 text-center space-y-3">
@@ -117,7 +117,7 @@ export function BrandingSection({ eventId, formData, updateField }: SectionProps
                 <p className="text-lg font-bold">Dr. Jane Smith</p>
                 <p className="text-sm text-muted-foreground">Delegate</p>
                 {/* QR placeholder */}
-                <div className="h-16 w-16 bg-gray-100 dark:bg-gray-700 rounded-lg mx-auto flex items-center justify-center">
+                <div className="h-16 w-16 bg-muted rounded-lg mx-auto flex items-center justify-center">
                   <span className="text-[10px] text-muted-foreground">QR Code</span>
                 </div>
               </div>
@@ -127,16 +127,16 @@ export function BrandingSection({ eventId, formData, updateField }: SectionProps
 
         {/* Email Header Preview */}
         {previewTab === 'email' && (
-          <div className="flex items-center justify-center p-8 bg-gray-50 dark:bg-gray-900">
-            <div className="w-full max-w-[500px] bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border">
+          <div className="flex items-center justify-center p-8 bg-muted">
+            <div className="w-full max-w-[500px] bg-card rounded-xl shadow-lg overflow-hidden border">
               {/* Banner */}
               {formData.banner_url ? (
                 <img src={formData.banner_url} alt="" className="w-full h-32 object-cover" />
               ) : (
-                <div className="w-full h-32 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600" />
+                <div className="w-full h-32 bg-gradient-to-r from-gray-200 to-gray-300" />
               )}
               {/* Logo + event name row */}
-              <div className="p-4 flex items-center gap-3 border-b border-gray-100 dark:border-gray-700">
+              <div className="p-4 flex items-center gap-3 border-b border-border">
                 {formData.logo_url ? (
                   <img src={formData.logo_url} alt="" className="h-10 w-10 rounded-lg object-contain" />
                 ) : (
@@ -156,9 +156,9 @@ export function BrandingSection({ eventId, formData, updateField }: SectionProps
               </div>
               {/* Email body placeholder */}
               <div className="p-4 space-y-2">
-                <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded w-3/4" />
-                <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded w-full" />
-                <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded w-5/6" />
+                <div className="h-3 bg-muted rounded w-3/4" />
+                <div className="h-3 bg-muted rounded w-full" />
+                <div className="h-3 bg-muted rounded w-5/6" />
                 <div
                   className="h-8 rounded-lg mt-4 w-32"
                   style={{ backgroundColor: formData.primary_color || '#10b981' }}

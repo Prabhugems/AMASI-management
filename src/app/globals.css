@@ -59,24 +59,25 @@
   }
 
   .dark {
-    --background: 220 14% 10%;
-    --foreground: 210 20% 96%;
-    --card: 220 13% 14%;
-    --card-foreground: 210 20% 96%;
-    --popover: 220 13% 14%;
-    --popover-foreground: 210 20% 96%;
+    /* Light mint/champagne palette — redefining dark-mode vars */
+    --background: 42 25% 91%;          /* #ebe6d8 warmer, more distinct from white cards */
+    --foreground: 0 0% 16%;            /* #2a2a2a near-black */
+    --card: 0 0% 100%;                 /* #ffffff white */
+    --card-foreground: 0 0% 16%;       /* #2a2a2a */
+    --popover: 0 0% 100%;             /* white */
+    --popover-foreground: 0 0% 16%;
 
-    --primary: 187 92% 48%;
-    --primary-foreground: 220 14% 10%;
+    --primary: 38 66% 37%;             /* #9c7320 champagne gold */
+    --primary-foreground: 0 0% 100%;   /* white on gold */
 
-    --secondary: 220 13% 18%;
-    --secondary-foreground: 210 20% 96%;
+    --secondary: 45 25% 91%;           /* #ebe7d9 soft champagne */
+    --secondary-foreground: 0 0% 16%;
 
-    --muted: 220 13% 18%;
-    --muted-foreground: 218 11% 55%;
+    --muted: 45 20% 93%;               /* #efece3 very soft warm grey */
+    --muted-foreground: 222 5% 45%;    /* #6b6f78 medium grey */
 
-    --accent: 220 13% 20%;
-    --accent-foreground: 210 20% 96%;
+    --accent: 45 25% 91%;              /* same as secondary */
+    --accent-foreground: 0 0% 16%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
@@ -87,22 +88,22 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
 
-    --info: 187 92% 48%;
+    --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    --border: 220 13% 20%;
-    --input: 220 13% 20%;
-    --ring: 187 92% 48%;
+    --border: 38 27% 74%;              /* #d4c9a8 darker champagne-grey */
+    --input: 38 27% 74%;
+    --ring: 38 66% 37%;                /* matches primary gold */
 
-    --sidebar-background: 220 14% 8%;
-    --sidebar-foreground: 210 20% 96%;
-    --sidebar-primary: 187 92% 48%;
-    --sidebar-primary-foreground: 220 14% 10%;
-    --sidebar-accent: 220 13% 14%;
-    --sidebar-accent-foreground: 210 20% 96%;
-    --sidebar-border: 220 13% 16%;
-    --sidebar-ring: 187 92% 48%;
-    --sidebar-muted: 218 11% 55%;
+    --sidebar-background: 45 36% 89%;  /* #efeada warm panel */
+    --sidebar-foreground: 0 0% 16%;    /* dark text */
+    --sidebar-primary: 38 66% 37%;     /* gold accent */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 45 30% 85%;      /* slightly deeper warm */
+    --sidebar-accent-foreground: 0 0% 16%;
+    --sidebar-border: 38 27% 70%;      /* slightly deeper than border */
+    --sidebar-ring: 38 66% 37%;
+    --sidebar-muted: 222 5% 45%;       /* medium grey */
   }
 
   /* Theme Color: Blue */
@@ -112,9 +113,9 @@
     --sidebar-primary: 200 65% 55%;
   }
   .dark.theme-blue {
-    --primary: 200 70% 50%;
-    --ring: 200 70% 50%;
-    --sidebar-primary: 200 70% 50%;
+    --primary: 200 65% 40%;
+    --ring: 200 65% 40%;
+    --sidebar-primary: 200 65% 40%;
   }
 
   /* Theme Color: Green */
@@ -124,9 +125,9 @@
     --sidebar-primary: 145 40% 48%;
   }
   .dark.theme-green {
-    --primary: 145 45% 45%;
-    --ring: 145 45% 45%;
-    --sidebar-primary: 145 45% 45%;
+    --primary: 145 40% 38%;
+    --ring: 145 40% 38%;
+    --sidebar-primary: 145 40% 38%;
   }
 
   /* Theme Color: Rose/Danger */
@@ -136,9 +137,9 @@
     --sidebar-primary: 18 82% 54%;
   }
   .dark.theme-rose {
-    --primary: 18 75% 50%;
-    --ring: 18 75% 50%;
-    --sidebar-primary: 18 75% 50%;
+    --primary: 18 82% 48%;
+    --ring: 18 82% 48%;
+    --sidebar-primary: 18 82% 48%;
   }
 
   /* Theme Color: Amber/Warning */
@@ -149,9 +150,10 @@
     --sidebar-primary: 42 88% 55%;
   }
   .dark.theme-amber {
-    --primary: 42 85% 50%;
-    --ring: 42 85% 50%;
-    --sidebar-primary: 42 85% 50%;
+    --primary: 42 88% 45%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 42 88% 45%;
+    --sidebar-primary: 42 88% 45%;
   }
 
   /* Theme Color: Cyan/Info */
@@ -161,21 +163,22 @@
     --sidebar-primary: 195 55% 55%;
   }
   .dark.theme-cyan {
-    --primary: 195 60% 50%;
-    --ring: 195 60% 50%;
-    --sidebar-primary: 195 60% 50%;
+    --primary: 195 55% 40%;
+    --ring: 195 55% 40%;
+    --sidebar-primary: 195 55% 40%;
   }
 
-  /* Theme Color: Violet */
+  /* Theme Color: Violet (default) */
   .theme-violet {
     --primary: 270 50% 60%;
     --ring: 270 50% 60%;
     --sidebar-primary: 270 50% 60%;
   }
   .dark.theme-violet {
-    --primary: 270 55% 55%;
-    --ring: 270 55% 55%;
-    --sidebar-primary: 270 55% 55%;
+    --primary: 38 66% 37%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 38 66% 37%;
+    --sidebar-primary: 38 66% 37%;
   }
 
   /* Theme Color: Orange */
@@ -185,64 +188,24 @@
     --sidebar-primary: 28 90% 55%;
   }
   .dark.theme-orange {
-    --primary: 28 85% 50%;
-    --ring: 28 85% 50%;
-    --sidebar-primary: 28 85% 50%;
+    --primary: 28 90% 45%;
+    --ring: 28 90% 45%;
+    --sidebar-primary: 28 90% 45%;
   }
 
-  /* Sidebar Colors - High Contrast Variants */
-  .sidebar-dark {
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-muted: 215 20% 65%;
-  }
-
-  .sidebar-blue {
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-muted: 215 20% 65%;
-  }
-
-  .sidebar-slate {
-    --sidebar-background: 215 28% 17%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-accent: 215 25% 23%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 215 25% 23%;
-    --sidebar-muted: 215 20% 65%;
-  }
-
-  .sidebar-gray {
-    --sidebar-background: 220 13% 18%;
-    --sidebar-foreground: 220 13% 95%;
-    --sidebar-accent: 220 13% 25%;
-    --sidebar-accent-foreground: 220 13% 95%;
-    --sidebar-border: 220 13% 25%;
-    --sidebar-muted: 220 10% 60%;
-  }
-
-  .sidebar-zinc {
-    --sidebar-background: 240 6% 10%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-accent: 240 5% 17%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 5% 17%;
-    --sidebar-muted: 240 4% 55%;
-  }
-
+  /* Sidebar Colors - Light warm variants */
+  .sidebar-dark,
+  .sidebar-blue,
+  .sidebar-slate,
+  .sidebar-gray,
+  .sidebar-zinc,
   .sidebar-neutral {
-    --sidebar-background: 0 0% 9%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-muted: 0 0% 55%;
+    --sidebar-background: 45 36% 89%;
+    --sidebar-foreground: 0 0% 16%;
+    --sidebar-accent: 45 30% 85%;
+    --sidebar-accent-foreground: 0 0% 16%;
+    --sidebar-border: 38 27% 70%;
+    --sidebar-muted: 222 5% 45%;
   }
 }
 
@@ -285,14 +248,20 @@
 @layer components {
   /* Paper Dashboard Card Style */
   .paper-card {
-    @apply bg-card rounded-xl border-0 shadow-sm min-w-0;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    @apply bg-card rounded-xl border-2 border-border min-w-0;
+    box-shadow: 0 1px 3px rgba(60,45,10,0.10);
+    transition: all 0.25s ease;
   }
 
   .paper-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 6px 16px rgba(120,90,20,0.12);
+  }
+
+  .paper-card.hover-lift:hover {
+    transform: translateY(-5px);
+    border-color: #c9a44a;
+    box-shadow: 0 8px 20px rgba(120,90,20,0.18);
   }
 
   /* Icon Big - Paper Dashboard Style */
@@ -403,6 +372,15 @@
   .stagger-item:nth-child(6) { animation-delay: 250ms; }
   .stagger-item:nth-child(7) { animation-delay: 300ms; }
   .stagger-item:nth-child(8) { animation-delay: 350ms; }
+
+  /* Gentle page-level fade-in */
+  .page-fade-in {
+    animation: pageFade 0.3s ease both;
+  }
+  @keyframes pageFade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
   @keyframes fade-in-up {
     from {
@@ -1672,3 +1650,20 @@
   visibility: visible;
   opacity: 1;
 }
+
+/* Metallic stat cards — mint + champagne */
+.metal-panel{background:linear-gradient(110deg,#aedcc8 0%,#dcf0e6 24%,#ffffff 52%,#f1e9d6 76%,#d6c181 100%) !important;border-radius:18px;padding:22px;gap:16px;}
+.metal-card{border-radius:14px;padding:2px;opacity:0;transform:translateY(14px);animation:cardIn .4s ease forwards;transition:transform .3s ease,box-shadow .3s ease;box-shadow:0 2px 6px rgba(60,45,10,0.12);}
+.metal-card:hover{transform:translateY(-5px);box-shadow:0 8px 22px rgba(120,90,20,.18);}
+.metal-card.mint{background:linear-gradient(150deg,#5dbf9c,#cdeede) !important;}
+.metal-card.gold{background:linear-gradient(150deg,#c8a44a,#f3e6b0) !important;}
+.metal-card .inner{border-radius:12px;padding:18px;height:100%;background:linear-gradient(160deg,#fff,#fbfaf6) !important;position:relative;overflow:hidden;}
+.metal-card .inner::before{content:"";position:absolute;top:0;left:-70%;width:55%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.85),transparent);transform:skewX(-18deg);animation:shimmer 4.2s ease-in-out infinite;}
+.metal-card:nth-child(1){animation-delay:0s;}.metal-card:nth-child(2){animation-delay:.12s;}.metal-card:nth-child(3){animation-delay:.24s;}.metal-card:nth-child(4){animation-delay:.36s;}.metal-card:nth-child(5){animation-delay:.48s;}.metal-card:nth-child(6){animation-delay:.6s;}
+.stat-label{font-size:11px;letter-spacing:.06em;font-weight:500;}
+.stat-value{font-size:26px;font-weight:500;margin-top:3px;color:#2a2a2a !important;}
+.stat-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+.mint .stat-label{color:#0d5e49 !important;}.mint .stat-icon{background:rgba(15,110,86,.1) !important;color:#0f6e56 !important;}
+.gold .stat-label{color:#8a6313 !important;}.gold .stat-icon{background:rgba(170,119,28,.12) !important;color:#9c7320 !important;}
+@keyframes cardIn{to{opacity:1;transform:translateY(0);}}
+@keyframes shimmer{0%{left:-70%;}45%{left:140%;}100%{left:140%;}}

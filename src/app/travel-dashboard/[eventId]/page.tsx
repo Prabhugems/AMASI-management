@@ -40,10 +40,13 @@ import {
   Calendar,
   MapPin,
   Car,
+  Users,
+  AlertCircle,
 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { MetricCard, MetricPanel } from "@/components/dashboard/metric-card"
 
 type Speaker = {
   id: string
@@ -308,32 +311,14 @@ export default function EventTravelDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-          <div className="paper-card p-4">
-            <p className="text-xs text-muted-foreground">Total Guests</p>
-            <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-          </div>
-          <div className="paper-card p-4">
-            <p className="text-xs text-muted-foreground">Onward Pending</p>
-            <p className="text-2xl font-bold text-warning">{stats.onwardPending}</p>
-          </div>
-          <div className="paper-card p-4">
-            <p className="text-xs text-muted-foreground">Return Pending</p>
-            <p className="text-2xl font-bold text-warning">{stats.returnPending}</p>
-          </div>
-          <div className="paper-card p-4">
-            <p className="text-xs text-muted-foreground">Need Hotel</p>
-            <p className="text-2xl font-bold text-info">{stats.hotelRequired}</p>
-          </div>
-          <div className="paper-card p-4">
-            <p className="text-xs text-muted-foreground">Need Pickup</p>
-            <p className="text-2xl font-bold text-destructive">{stats.pickupRequired}</p>
-          </div>
-          <div className="paper-card p-4">
-            <p className="text-xs text-muted-foreground">Need Drop</p>
-            <p className="text-2xl font-bold text-destructive">{stats.dropRequired}</p>
-          </div>
-        </div>
+        <MetricPanel columns={6}>
+          <MetricCard icon={<Users className="w-5 h-5" />} label="Total Guests" value={stats.total} tone="mint" />
+          <MetricCard icon={<AlertCircle className="w-5 h-5" />} label="Onward Pending" value={stats.onwardPending} tone="gold" />
+          <MetricCard icon={<AlertCircle className="w-5 h-5" />} label="Return Pending" value={stats.returnPending} tone="gold" />
+          <MetricCard icon={<Hotel className="w-5 h-5" />} label="Need Hotel" value={stats.hotelRequired} tone="mint" />
+          <MetricCard icon={<Car className="w-5 h-5" />} label="Need Pickup" value={stats.pickupRequired} tone="gold" />
+          <MetricCard icon={<Car className="w-5 h-5" />} label="Need Drop" value={stats.dropRequired} tone="gold" />
+        </MetricPanel>
 
         {/* Search */}
         <div className="flex items-center gap-4">

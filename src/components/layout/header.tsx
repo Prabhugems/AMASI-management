@@ -448,7 +448,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
                       <div className="mt-3 p-2 rounded-lg bg-blue-500/10 text-xs flex items-center gap-2">
                         <Clock className="h-3 w-3 text-blue-500" />
                         <div>
-                          <p className="text-blue-600 dark:text-blue-400 font-medium">
+                          <p className="text-blue-600 font-medium">
                             Logged in {formatDistanceToNow(loginTime, { addSuffix: true })}
                           </p>
                           <p className="text-blue-500/70 text-[10px]">
@@ -466,7 +466,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
                     )}
                     {!isEventScoped && hasFullAccess && (
                       <div className="mt-2 p-2 rounded-lg bg-emerald-500/10 text-xs">
-                        <p className="text-emerald-600 dark:text-emerald-400">Full access to all events & modules</p>
+                        <p className="text-emerald-600">Full access to all events & modules</p>
                       </div>
                     )}
                     {!isEventScoped && !hasFullAccess && permissions.length > 0 && (

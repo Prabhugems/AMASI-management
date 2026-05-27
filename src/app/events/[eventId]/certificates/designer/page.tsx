@@ -1389,11 +1389,11 @@ function CertificateDesignerPage() {
               </div>
 
               {/* Tip */}
-              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
                 <div className="flex gap-2">
                   <Lightbulb className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
-                    <strong>Tip:</strong> Use <code className="px-1 py-0.5 rounded bg-amber-100 dark:bg-amber-900">{"{{name}}"}</code> placeholders for dynamic content that changes per certificate.
+                  <p className="text-xs text-amber-700">
+                    <strong>Tip:</strong> Use <code className="px-1 py-0.5 rounded bg-amber-100">{"{{name}}"}</code> placeholders for dynamic content that changes per certificate.
                   </p>
                 </div>
               </div>

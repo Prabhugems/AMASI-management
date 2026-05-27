@@ -84,16 +84,16 @@ export function StatCard({
     <div
       className={cn(
         'group relative rounded-2xl p-4 sm:p-5 overflow-hidden',
-        'bg-white border border-gray-200/60 dark:bg-gray-800/80 dark:border-gray-700/50',
+        'bg-card border border-border',
         'transition-all duration-500 ease-out',
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4',
-        'hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-cyan-950/20 dark:hover:border-gray-600/50',
+        'hover:shadow-lg hover:shadow-black/5',
       )}
       style={{ transitionDelay: isVisible ? '0ms' : `${delay}ms` }}
     >
       <div className="flex items-start justify-between mb-4 sm:mb-5">
-        <div className="rounded-lg bg-gray-100 dark:bg-gray-700/60 p-2 sm:p-2.5">
-          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-600 dark:text-cyan-400" strokeWidth={2} />
+        <div className="rounded-lg bg-muted p-2 sm:p-2.5">
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-600" strokeWidth={2} />
         </div>
 
         {trend !== null && (
@@ -101,8 +101,8 @@ export function StatCard({
             className={cn(
               'flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold',
               trend >= 0
-                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
-                : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
+                ? 'bg-emerald-50 text-emerald-600'
+                : 'bg-rose-50 text-rose-600'
             )}
           >
             {trend >= 0 ? <TrendingUp className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
@@ -116,7 +116,7 @@ export function StatCard({
       </p>
 
       <div className="flex items-end justify-between gap-2">
-        <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tabular-nums tracking-tight">
+        <p className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums tracking-tight">
           {count.toLocaleString()}
         </p>
 
@@ -125,7 +125,7 @@ export function StatCard({
         )}
       </div>
 
-      <p className="mt-2 sm:mt-3 text-[11px] sm:text-xs text-gray-400 dark:text-gray-500">
+      <p className="mt-2 sm:mt-3 text-[11px] sm:text-xs text-muted-foreground">
         {subtext}
       </p>
     </div>

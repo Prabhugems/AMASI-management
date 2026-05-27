@@ -441,7 +441,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
           {/* ----------------------------------------------------------------- */}
           {/* 1. HEADER                                                         */}
           {/* ----------------------------------------------------------------- */}
-          <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b px-6 pt-6 pb-4">
+          <div className="sticky top-0 z-10 bg-card border-b px-6 pt-6 pb-4">
             <div className="flex items-start gap-4">
               {/* Avatar */}
               <Avatar className="h-14 w-14 flex-shrink-0">
@@ -510,8 +510,8 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
 
             {/* Review due banner */}
             {member.needs_review && (
-              <div className="mt-3 flex items-center justify-between bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 rounded-lg px-3 py-2">
-                <span className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
+              <div className="mt-3 flex items-center justify-between bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                <span className="text-xs font-medium text-yellow-800">
                   Permissions haven&apos;t been reviewed in 90+ days
                 </span>
                 <Button
@@ -555,7 +555,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                           "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all",
                           role === r.value
                             ? "border-[#185FA5] bg-[#185FA5]/5 text-[#185FA5] ring-1 ring-[#185FA5]/20"
-                            : "border-slate-200 dark:border-slate-700 text-muted-foreground hover:border-slate-300"
+                            : "border-border text-muted-foreground hover:border-slate-300"
                         )}
                       >
                         <Icon className="h-3.5 w-3.5" />
@@ -568,9 +568,9 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
 
               {/* Full access banner */}
               {allAccess && (
-                <div className="mb-3 flex items-center gap-2 bg-green-50 dark:bg-green-950/20 border border-green-200 rounded-lg px-3 py-2">
+                <div className="mb-3 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                   <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                  <span className="text-xs font-medium text-green-700 dark:text-green-300">
+                  <span className="text-xs font-medium text-green-700">
                     Full Access — this member can access all modules
                   </span>
                 </div>
@@ -605,7 +605,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                     <>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1 pt-1">Live Events</p>
                       {categorizedEvents.live.map((event) => (
-                        <label key={event.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm">
+                        <label key={event.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
                           <input
                             type="checkbox"
                             checked={eventIds.includes(event.id)}
@@ -624,7 +624,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                     <>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1 pt-2">Past Events</p>
                       {categorizedEvents.completed.map((event) => (
-                        <label key={event.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm text-muted-foreground">
+                        <label key={event.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm text-muted-foreground">
                           <input
                             type="checkbox"
                             checked={eventIds.includes(event.id)}
@@ -658,7 +658,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                 <select
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm"
                 >
                   {TIMEZONE_OPTIONS.map((tz) => (
                     <option key={tz.value} value={tz.value}>{tz.label}</option>
@@ -672,7 +672,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                 <select
                   value={backupMemberId}
                   onChange={(e) => setBackupMemberId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm"
                 >
                   <option value="">No backup assigned</option>
                   {allMembers
@@ -797,10 +797,10 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                       <div key={log.id} className="flex gap-3">
                         {/* Timeline line + dot */}
                         <div className="flex flex-col items-center">
-                          <div className={cn("flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex-shrink-0")}>
+                          <div className={cn("flex items-center justify-center w-7 h-7 rounded-full bg-muted flex-shrink-0")}>
                             <Icon className={cn("h-3.5 w-3.5", actionCfg.color)} />
                           </div>
-                          {!isLast && <div className="w-px flex-1 bg-slate-200 dark:bg-slate-700 my-1" />}
+                          {!isLast && <div className="w-px flex-1 bg-border my-1" />}
                         </div>
 
                         {/* Content */}
@@ -834,7 +834,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
           {/* ----------------------------------------------------------------- */}
           {/* STICKY SAVE FOOTER                                                */}
           {/* ----------------------------------------------------------------- */}
-          <div className="sticky bottom-0 z-10 bg-white dark:bg-slate-900 border-t px-6 py-3 flex items-center gap-2">
+          <div className="sticky bottom-0 z-10 bg-card border-t px-6 py-3 flex items-center gap-2">
             <Button
               variant="outline"
               className="flex-1"
@@ -876,7 +876,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
               <div className="space-y-4 pt-2">
                 {/* Role change */}
                 {diff.roleChanged && (
-                  <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-3">
+                  <div className="flex items-center gap-3 bg-muted rounded-lg px-4 py-3">
                     <span className="text-sm font-medium text-muted-foreground">Role:</span>
                     <Badge variant="outline" className={getRoleColor(member.role)}>{getRoleLabel(member.role)}</Badge>
                     <ArrowRight className="h-4 w-4 text-[#185FA5]" />
@@ -891,12 +891,12 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
 
                     {/* Full access transitions */}
                     {diff.oldPerms.length === 0 && diff.newPerms.length > 0 && (
-                      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
                         <p className="text-xs font-medium text-amber-700">Restricting from Full Access to specific modules</p>
                       </div>
                     )}
                     {diff.oldPerms.length > 0 && diff.newPerms.length === 0 && (
-                      <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 rounded-lg px-3 py-2 mb-2">
+                      <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-2">
                         <p className="text-xs font-medium text-green-700">Upgrading to Full Access (all modules)</p>
                       </div>
                     )}
@@ -960,7 +960,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                   <div>
                     <p className="text-sm font-medium mb-2">Event Access</p>
                     {diff.oldAllEvents !== diff.newAllEvents && (
-                      <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-2 mb-2">
+                      <div className="flex items-center gap-3 bg-muted rounded-lg px-4 py-2 mb-2">
                         <span className="text-xs">{diff.oldAllEvents ? "All Events" : "Specific Events"}</span>
                         <ArrowRight className="h-3 w-3 text-[#185FA5]" />
                         <span className="text-xs">{diff.newAllEvents ? "All Events" : "Specific Events"}</span>
@@ -1019,8 +1019,8 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
           </DialogHeader>
 
           <div className="space-y-4 pt-2">
-            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-800 dark:text-red-200">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm text-red-800">
                 You are about to permanently delete <strong>{member.name}</strong> ({member.email}).
               </p>
             </div>

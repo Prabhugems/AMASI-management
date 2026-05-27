@@ -107,7 +107,7 @@ export function ModulesCoverage({ members, eventId }: ModulesCoverageProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border shadow-sm p-4 mb-4">
+    <div className="bg-card rounded-xl border shadow-sm p-4 mb-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div>
@@ -145,9 +145,9 @@ export function ModulesCoverage({ members, eventId }: ModulesCoverageProps) {
                       <div
                         className={cn(
                           "inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border cursor-default transition-colors",
-                          mod.status === "covered" && "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800",
-                          mod.status === "at_risk" && "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
-                          mod.status === "uncovered" && "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
+                          mod.status === "covered" && "bg-green-50 text-green-700 border-green-200",
+                          mod.status === "at_risk" && "bg-amber-50 text-amber-700 border-amber-200",
+                          mod.status === "uncovered" && "bg-red-50 text-red-700 border-red-200",
                         )}
                       >
                         {mod.status === "covered" && <Check className="h-3 w-3" />}
@@ -171,7 +171,7 @@ export function ModulesCoverage({ members, eventId }: ModulesCoverageProps) {
 
       {/* Coverage progress bar */}
       <div className="mt-3 pt-3 border-t">
-        <div className="flex h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+        <div className="flex h-2 rounded-full overflow-hidden bg-muted">
           {coverage.covered > 0 && (
             <div
               className="bg-green-500 transition-all duration-500"

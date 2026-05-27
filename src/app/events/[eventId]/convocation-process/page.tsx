@@ -54,11 +54,11 @@ export default function ConvocationProcessPage() {
       </div>
 
       {/* Under Construction Banner */}
-      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-6 flex items-start gap-4">
-        <Construction className="h-6 w-6 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 flex items-start gap-4">
+        <Construction className="h-6 w-6 text-amber-600 mt-0.5 shrink-0" />
         <div>
-          <h3 className="font-semibold text-amber-900 dark:text-amber-200">Module Under Development</h3>
-          <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+          <h3 className="font-semibold text-amber-900">Module Under Development</h3>
+          <p className="text-sm text-amber-700 mt-1">
             This module will replace the current address collection workflow with a fully built-in solution.
             No more dependency on external forms (Fillout/Airtable). Currently, address collection continues
             to work via the existing Examination &rarr; Address Collection page.
@@ -81,8 +81,8 @@ export default function ConvocationProcessPage() {
                 </div>
                 <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                   feature.status === "Coming Soon"
-                    ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                    : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-gray-100 text-gray-600"
                 }`}>
                   {feature.status}
                 </span>

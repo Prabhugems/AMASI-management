@@ -22,13 +22,13 @@ const statusBadgeVariants = cva(
     variants: {
       variant: {
         default: "bg-primary/10 text-primary",
-        success: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-        warning: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-        error: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-        info: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-        neutral: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
-        purple: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-        orange: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+        success: "bg-[#e1f0e6] text-[#0f6e56]",
+        warning: "bg-[#faedd3] text-[#8a5e10]",
+        error: "bg-red-100 text-red-800",
+        info: "bg-blue-100 text-blue-800",
+        neutral: "bg-[#ece8dd] text-[#6b6f78]",
+        purple: "bg-purple-100 text-purple-800",
+        orange: "bg-orange-100 text-orange-800",
       },
       size: {
         sm: "text-[10px] px-2 py-0.5",

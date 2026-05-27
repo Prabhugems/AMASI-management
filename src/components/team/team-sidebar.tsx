@@ -60,7 +60,7 @@ export function TeamSidebar({
           id: "all-members",
           label: "All Members",
           icon: Users,
-          badge: { count: memberCounts.total, color: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300" },
+          badge: { count: memberCounts.total, color: "bg-secondary text-secondary-foreground" },
         },
       ],
     },
@@ -71,19 +71,19 @@ export function TeamSidebar({
           id: "admins",
           label: "Admins",
           icon: Shield,
-          badge: { count: memberCounts.admin, color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
+          badge: { count: memberCounts.admin, color: "bg-blue-100 text-blue-700" },
         },
         {
           id: "coordinators",
           label: "Coordinators",
           icon: UserCog,
-          badge: { count: memberCounts.coordinator, color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
+          badge: { count: memberCounts.coordinator, color: "bg-green-100 text-green-700" },
         },
         {
           id: "travel-desk",
           label: "Travel Desk",
           icon: Plane,
-          badge: { count: memberCounts.travel, color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
+          badge: { count: memberCounts.travel, color: "bg-amber-100 text-amber-700" },
         },
       ],
     },
@@ -94,7 +94,7 @@ export function TeamSidebar({
           id: "pending",
           label: "Pending",
           icon: Clock,
-          badge: { count: pendingInviteCount, color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
+          badge: { count: pendingInviteCount, color: "bg-amber-100 text-amber-700" },
         },
         { id: "accepted", label: "Accepted", icon: CheckCircle },
       ],
@@ -126,7 +126,7 @@ export function TeamSidebar({
         {/* Mobile close button */}
         <button
           onClick={onSidebarClose}
-          className="rounded-md p-1 hover:bg-slate-200 dark:hover:bg-slate-700 lg:hidden"
+          className="rounded-md p-1 hover:bg-accent lg:hidden"
         >
           <X className="h-4 w-4" />
         </button>
@@ -154,8 +154,8 @@ export function TeamSidebar({
                       className={cn(
                         "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
                         isActive
-                          ? "border-l-2 border-[#185FA5] bg-white font-medium text-foreground shadow-sm dark:bg-slate-800"
-                          : "text-muted-foreground hover:bg-white hover:text-foreground dark:hover:bg-slate-800"
+                          ? "border-l-2 border-[#185FA5] bg-card font-medium text-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-card hover:text-foreground"
                       )}
                     >
                       <Icon className="h-4 w-4 shrink-0" />
@@ -184,7 +184,7 @@ export function TeamSidebar({
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden h-full w-[220px] shrink-0 border-r bg-slate-50 dark:bg-slate-900 lg:block">
+      <aside className="hidden h-full w-[220px] shrink-0 border-r bg-muted lg:block">
         {sidebarContent}
       </aside>
 
@@ -197,7 +197,7 @@ export function TeamSidebar({
             onClick={onSidebarClose}
           />
           {/* Sidebar panel */}
-          <aside className="relative h-full w-[220px] bg-slate-50 dark:bg-slate-900 shadow-xl">
+          <aside className="relative h-full w-[220px] bg-muted shadow-xl">
             {sidebarContent}
           </aside>
         </div>

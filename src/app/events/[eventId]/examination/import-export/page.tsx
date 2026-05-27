@@ -416,9 +416,9 @@ export default function ImportExportPage() {
           <h2 className="font-semibold text-lg flex items-center gap-2">
             <Upload className="h-5 w-5 text-green-600" />Import Marks
           </h2>
-          <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
-            <p className="text-sm text-blue-800 dark:text-blue-200"><strong>Instructions:</strong></p>
-            <ul className="text-xs text-blue-700 dark:text-blue-300 mt-2 space-y-1 list-disc pl-4">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800"><strong>Instructions:</strong></p>
+            <ul className="text-xs text-blue-700 mt-2 space-y-1 list-disc pl-4">
               <li>Download the marks template first</li>
               <li>Fill in marks (leave blank to skip)</li>
               <li>Columns: {examSettings?.mark_columns.map(c => `${c.label}(max ${c.max})`).join(", ")}</li>
@@ -434,8 +434,8 @@ export default function ImportExportPage() {
               <div className={cn(
                 "p-4 rounded-lg border",
                 importResult.errors.length > 0
-                  ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200"
-                  : "bg-green-50 dark:bg-green-950/20 border-green-200"
+                  ? "bg-amber-50 border-amber-200"
+                  : "bg-green-50 border-green-200"
               )}>
                 <div className="flex items-center gap-2 mb-2">
                   {importResult.errors.length > 0 ? <AlertCircle className="h-4 w-4 text-amber-600" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />}
@@ -526,9 +526,9 @@ export default function ImportExportPage() {
         )}
 
         {ocrError && (
-          <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 rounded-lg flex items-start gap-2">
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-700 dark:text-red-300">{ocrError}</p>
+            <p className="text-sm text-red-700">{ocrError}</p>
           </div>
         )}
 
@@ -586,8 +586,8 @@ export default function ImportExportPage() {
                         key={idx}
                         className={cn(
                           "border-t",
-                          lowConf && "bg-amber-50 dark:bg-amber-950/10",
-                          noMatch && "bg-red-50 dark:bg-red-950/10"
+                          lowConf && "bg-amber-50",
+                          noMatch && "bg-red-50"
                         )}
                       >
                         <td className="p-2">
@@ -665,8 +665,8 @@ export default function ImportExportPage() {
                 className={cn(
                   "p-4 rounded-lg border",
                   ocrResult.errors.length > 0
-                    ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200"
-                    : "bg-green-50 dark:bg-green-950/20 border-green-200"
+                    ? "bg-amber-50 border-amber-200"
+                    : "bg-green-50 border-green-200"
                 )}
               >
                 <div className="flex items-center gap-2 mb-2">

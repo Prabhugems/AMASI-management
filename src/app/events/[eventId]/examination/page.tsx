@@ -511,12 +511,12 @@ export default function MarksheetPage() {
 
       {/* Check Membership - shown when Withheld filter active */}
       {resultFilter === "withheld" && withheld > 0 && (
-        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-xl p-4 flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
           <div>
-            <p className="font-medium text-yellow-800 dark:text-yellow-200 text-sm">
+            <p className="font-medium text-yellow-800 text-sm">
               {withheld} candidates withheld — check if they got AMASI membership
             </p>
-            <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5">
+            <p className="text-xs text-yellow-600 mt-0.5">
               Checks local members table and auto-declares result for those with membership
             </p>
           </div>
@@ -613,7 +613,7 @@ export default function MarksheetPage() {
                       key={reg.id}
                       className={cn(
                         "transition-colors duration-150",
-                        isEditing && "bg-blue-50 dark:bg-blue-950/20 shadow-inner",
+                        isEditing && "bg-blue-50 shadow-inner",
                         !isEditing && "hover:bg-muted/50"
                       )}
                     >

@@ -105,7 +105,7 @@ export default function DelegatePortalOverviewPage() {
       title: "Badge Downloads",
       icon: BadgeCheck,
       color: "text-blue-600",
-      bgColor: "bg-blue-50 dark:bg-blue-950/30",
+      bgColor: "bg-blue-50",
       value: stats?.badgesDownloaded || 0,
       total: stats?.badgesGenerated || 0,
       label: "delegates downloaded their badge",
@@ -116,7 +116,7 @@ export default function DelegatePortalOverviewPage() {
       title: "Certificate Downloads",
       icon: Award,
       color: "text-green-600",
-      bgColor: "bg-green-50 dark:bg-green-950/30",
+      bgColor: "bg-green-50",
       value: stats?.certsDownloaded || 0,
       total: stats?.certsIssued || 0,
       label: "delegates downloaded their certificate",
@@ -127,7 +127,7 @@ export default function DelegatePortalOverviewPage() {
       title: "Feedback Submitted",
       icon: MessageSquare,
       color: "text-purple-600",
-      bgColor: "bg-purple-50 dark:bg-purple-950/30",
+      bgColor: "bg-purple-50",
       value: feedbackForms?.totalSubmissions || 0,
       total: stats?.total || 0,
       label: "feedback submissions",
@@ -138,7 +138,7 @@ export default function DelegatePortalOverviewPage() {
       title: "Help Requests",
       icon: HelpCircle,
       color: "text-red-600",
-      bgColor: "bg-red-50 dark:bg-red-950/30",
+      bgColor: "bg-red-50",
       value: Array.isArray(helpRequests) ? helpRequests.filter((r: any) => r.status === "open").length : 0,
       total: Array.isArray(helpRequests) ? helpRequests.length : 0,
       label: "open requests",
@@ -154,9 +154,9 @@ export default function DelegatePortalOverviewPage() {
         <p className="text-muted-foreground">Track delegate self-service activity: badge downloads, certificate downloads, and feedback submissions.</p>
       </div>
 
-      <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm">
+      <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
         <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-        <span className="text-amber-800 dark:text-amber-200">
+        <span className="text-amber-800">
           Download tracking started when this feature was deployed. Historical downloads before that point are not included in the counts.
         </span>
       </div>
@@ -214,7 +214,7 @@ export default function DelegatePortalOverviewPage() {
                     <span className={`text-3xl font-bold ${card.color}`}>{card.value}</span>
                     <span className="text-sm text-muted-foreground">/ {card.total}</span>
                   </div>
-                  <div className="h-2 bg-white/60 dark:bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-2 bg-white/60 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
                         card.color.includes("blue") ? "bg-blue-500" :

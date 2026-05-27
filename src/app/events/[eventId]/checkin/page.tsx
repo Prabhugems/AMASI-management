@@ -834,8 +834,8 @@ export default function CheckinHubPage() {
                 <div className="flex gap-3">
                   <Users className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-blue-700 dark:text-blue-300">No login required!</p>
-                    <p className="text-xs text-blue-600/80 dark:text-blue-400/80 mt-1">
+                    <p className="text-sm font-medium text-blue-700">No login required!</p>
+                    <p className="text-xs text-blue-600/80 mt-1">
                       Share this link with volunteers. They can open it on their phone and start checking people in immediately.
                     </p>
                   </div>

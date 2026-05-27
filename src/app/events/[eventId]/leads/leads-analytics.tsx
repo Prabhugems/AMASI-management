@@ -108,15 +108,15 @@ export default function LeadsAnalytics({ eventId }: { eventId: string }) {
           icon={<Users className="w-5 h-5" />}
           label="Total Leads"
           value={total.toLocaleString()}
-          iconBg="bg-blue-50 dark:bg-blue-950/50"
-          iconColor="text-blue-600 dark:text-blue-400"
+          iconBg="bg-blue-50"
+          iconColor="text-blue-600"
         />
         <SummaryCard
           icon={<Target className="w-5 h-5" />}
           label="Conversion Rate"
           value={`${conversionRate.toFixed(1)}%`}
-          iconBg="bg-emerald-50 dark:bg-emerald-950/50"
-          iconColor="text-emerald-600 dark:text-emerald-400"
+          iconBg="bg-emerald-50"
+          iconColor="text-emerald-600"
           extra={
             <Badge
               variant={
@@ -141,15 +141,15 @@ export default function LeadsAnalytics({ eventId }: { eventId: string }) {
           label="Top Source"
           value={topSourceLabel}
           subtitle={topSource ? `${topSource[1]} leads` : undefined}
-          iconBg="bg-purple-50 dark:bg-purple-950/50"
-          iconColor="text-purple-600 dark:text-purple-400"
+          iconBg="bg-purple-50"
+          iconColor="text-purple-600"
         />
         <SummaryCard
           icon={<BarChart3 className="w-5 h-5" />}
           label="Leads This Week"
           value={leadsThisWeek.toLocaleString()}
-          iconBg="bg-amber-50 dark:bg-amber-950/50"
-          iconColor="text-amber-600 dark:text-amber-400"
+          iconBg="bg-amber-50"
+          iconColor="text-amber-600"
         />
       </div>
 
@@ -343,14 +343,14 @@ export default function LeadsAnalytics({ eventId }: { eventId: string }) {
           </div>
           <div className="flex items-center gap-2 ml-auto">
             {velocityChange > 0 ? (
-              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+              <div className="flex items-center gap-1.5 text-emerald-600">
                 <TrendingUp className="w-5 h-5" />
                 <span className="text-sm font-semibold">
                   +{velocityChange.toFixed(0)}%
                 </span>
               </div>
             ) : velocityChange < 0 ? (
-              <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
+              <div className="flex items-center gap-1.5 text-red-600">
                 <TrendingDown className="w-5 h-5" />
                 <span className="text-sm font-semibold">
                   {velocityChange.toFixed(0)}%

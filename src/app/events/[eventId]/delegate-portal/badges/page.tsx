@@ -300,9 +300,9 @@ export default function DelegatePortalBadgesPage() {
         </div>
       </div>
 
-      <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm">
+      <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
         <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-        <span className="text-amber-800 dark:text-amber-200">
+        <span className="text-amber-800">
           Download tracking started when this feature was deployed. Historical downloads before that point are not included.
         </span>
       </div>
@@ -399,9 +399,9 @@ export default function DelegatePortalBadgesPage() {
 
       {/* Sending Progress */}
       {sendingState && (
-        <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-          <span className="text-sm text-blue-800 dark:text-blue-200">
+          <span className="text-sm text-blue-800">
             Sending emails {sendingState.sent}/{sendingState.total}...
           </span>
         </div>
@@ -409,9 +409,9 @@ export default function DelegatePortalBadgesPage() {
 
       {/* WhatsApp Sending Progress */}
       {whatsappSendingState && (
-        <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+        <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
           <Loader2 className="h-4 w-4 animate-spin text-green-600" />
-          <span className="text-sm text-green-800 dark:text-green-200">
+          <span className="text-sm text-green-800">
             Sending WhatsApp {whatsappSendingState.sent}/{whatsappSendingState.total}...
           </span>
         </div>

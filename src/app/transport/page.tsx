@@ -32,8 +32,12 @@ import {
   Calendar,
   Plane,
   Download,
+  CheckCircle,
+  AlertCircle,
+  Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MetricCard, MetricPanel } from "@/components/dashboard/metric-card"
 
 type TransportRequest = {
   id: string
@@ -211,24 +215,12 @@ export default function TransportPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-          <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-            <p className="text-3xl font-bold text-primary">{stats.total}</p>
-            <p className="text-sm text-muted-foreground">Total Requests</p>
-          </div>
-          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <p className="text-3xl font-bold text-amber-600">{stats.pending}</p>
-            <p className="text-sm text-muted-foreground">Pending</p>
-          </div>
-          <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-            <p className="text-3xl font-bold text-blue-600">{stats.assigned}</p>
-            <p className="text-sm text-muted-foreground">Assigned</p>
-          </div>
-          <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-            <p className="text-3xl font-bold text-green-600">{stats.completed}</p>
-            <p className="text-sm text-muted-foreground">Completed</p>
-          </div>
-        </div>
+        <MetricPanel>
+          <MetricCard icon={<Users className="w-5 h-5" />} label="Total Requests" value={stats.total} tone="mint" />
+          <MetricCard icon={<AlertCircle className="w-5 h-5" />} label="Pending" value={stats.pending} tone="mint" />
+          <MetricCard icon={<Car className="w-5 h-5" />} label="Assigned" value={stats.assigned} tone="gold" />
+          <MetricCard icon={<CheckCircle className="w-5 h-5" />} label="Completed" value={stats.completed} tone="gold" />
+        </MetricPanel>
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">

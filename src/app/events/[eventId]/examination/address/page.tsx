@@ -339,7 +339,7 @@ export default function AddressPage() {
                   key={reg.id}
                   className={cn(
                     "transition-colors duration-150 hover:bg-muted/50",
-                    reg.convocation_address && "bg-green-50/30 dark:bg-green-950/10"
+                    reg.convocation_address && "bg-green-50/30"
                   )}
                 >
                   <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
@@ -372,11 +372,11 @@ export default function AddressPage() {
                   </TableCell>
                   <TableCell className="text-center">
                     {reg.convocation_address ? (
-                      <span className="inline-flex items-center gap-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-full">
+                      <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">
                         <CheckCircle2 className="h-3 w-3" />Collected
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-2.5 py-1 rounded-full">
+                      <span className="inline-flex items-center gap-1 text-xs bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full">
                         <AlertCircle className="h-3 w-3" />Pending
                       </span>
                     )}

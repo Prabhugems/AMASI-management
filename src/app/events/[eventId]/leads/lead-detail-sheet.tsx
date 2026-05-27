@@ -302,7 +302,7 @@ export function LeadDetailSheet({ lead, eventId, open, onClose, onUpdate }: Lead
               {leadDetail.converted_at && (
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Converted</span>
-                  <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                  <span className="text-sm text-emerald-600 font-medium">
                     {new Date(leadDetail.converted_at).toLocaleDateString("en-IN", {
                       month: "short",
                       day: "numeric",

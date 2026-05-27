@@ -50,6 +50,7 @@ import {
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { toast } from "sonner"
+import { MetricCard, MetricPanel } from "@/components/dashboard/metric-card"
 import {
   SlideOver,
   SlideOverSection,
@@ -383,37 +384,11 @@ export default function FacultyPage() {
             </div>
 
             {/* Stats Bar */}
-            <div className="flex items-center gap-4 sm:gap-6 mb-4 overflow-x-auto">
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <GraduationCap className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-foreground">{stats?.total || 0}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</p>
-                </div>
-              </div>
-              <div className="h-8 w-px bg-border flex-shrink-0" />
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
-                  <UserCheck className="h-4 w-4 text-success" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-foreground">{stats?.active || 0}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Active</p>
-                </div>
-              </div>
-              <div className="h-8 w-px bg-border flex-shrink-0" />
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                  <Award className="h-4 w-4 text-violet-500" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-foreground">{stats?.reviewers || 0}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Reviewers</p>
-                </div>
-              </div>
-            </div>
+            <MetricPanel columns={3} className="mb-4">
+              <MetricCard icon={<GraduationCap className="w-5 h-5" />} label="Total" value={stats?.total || 0} tone="mint" />
+              <MetricCard icon={<UserCheck className="w-5 h-5" />} label="Active" value={stats?.active || 0} tone="mint" />
+              <MetricCard icon={<Award className="w-5 h-5" />} label="Reviewers" value={stats?.reviewers || 0} tone="gold" />
+            </MetricPanel>
 
             {/* Search & Filters */}
             <div className="flex flex-wrap items-center gap-3">

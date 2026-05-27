@@ -299,7 +299,7 @@ export default function ConflictsPage() {
 
         <Card
           className={cn(
-            "cursor-pointer transition-all border-red-200 dark:border-red-800",
+            "cursor-pointer transition-all border-red-200",
             filter === "faculty" && "ring-2 ring-red-500"
           )}
           onClick={() => setFilter("faculty")}
@@ -316,7 +316,7 @@ export default function ConflictsPage() {
 
         <Card
           className={cn(
-            "cursor-pointer transition-all border-amber-200 dark:border-amber-800",
+            "cursor-pointer transition-all border-amber-200",
             filter === "overlap" && "ring-2 ring-amber-500"
           )}
           onClick={() => setFilter("overlap")}
@@ -344,15 +344,15 @@ export default function ConflictsPage() {
       </div>
 
       {totalIssues === 0 ? (
-        <Card className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20">
+        <Card className="border-green-200 bg-green-50/50">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-full">
-                <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+              <div className="p-3 bg-green-100 rounded-full">
+                <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-green-800 dark:text-green-200">No Conflicts Found!</h2>
-                <p className="text-green-700 dark:text-green-300">Your schedule has no timing conflicts.</p>
+                <h2 className="text-xl font-bold text-green-800">No Conflicts Found!</h2>
+                <p className="text-green-700">Your schedule has no timing conflicts.</p>
               </div>
             </div>
           </CardContent>
@@ -361,9 +361,9 @@ export default function ConflictsPage() {
         <>
           {/* Faculty Conflicts */}
           {(filter === "all" || filter === "faculty") && filteredFacultyConflicts.length > 0 && (
-            <Card className="border-red-200 dark:border-red-800">
+            <Card className="border-red-200">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                <CardTitle className="flex items-center gap-2 text-red-700">
                   <Users className="h-5 w-5" />
                   Faculty Conflicts ({filteredFacultyConflicts.length})
                 </CardTitle>
@@ -373,7 +373,7 @@ export default function ConflictsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {filteredFacultyConflicts.map((conflict, idx) => (
-                  <div key={idx} className="border rounded-lg p-4 bg-red-50/50 dark:bg-red-950/20">
+                  <div key={idx} className="border rounded-lg p-4 bg-red-50/50">
                     <div className="flex items-center gap-2 mb-3">
                       <User className="h-5 w-5 text-red-600" />
                       <span className="font-semibold text-lg">{conflict.facultyName}</span>
@@ -384,7 +384,7 @@ export default function ConflictsPage() {
                       {conflict.sessions.map((session, _sIdx) => (
                         <div
                           key={session.id}
-                          className="flex items-center gap-4 p-2 bg-white dark:bg-gray-900 rounded border"
+                          className="flex items-center gap-4 p-2 bg-card rounded border"
                         >
                           <div className="flex items-center gap-1 text-sm text-muted-foreground min-w-[100px]">
                             <Calendar className="h-3 w-3" />
@@ -410,9 +410,9 @@ export default function ConflictsPage() {
 
           {/* Hall Overlaps */}
           {(filter === "all" || filter === "overlap") && filteredHallOverlaps.length > 0 && (
-            <Card className="border-amber-200 dark:border-amber-800">
+            <Card className="border-amber-200">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <CardTitle className="flex items-center gap-2 text-amber-700">
                   <Clock className="h-5 w-5" />
                   Hall Overlaps ({filteredHallOverlaps.length})
                 </CardTitle>
@@ -434,7 +434,7 @@ export default function ConflictsPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredHallOverlaps.slice(0, 50).map((overlap, idx) => (
-                      <TableRow key={idx} className="bg-amber-50/50 dark:bg-amber-950/20">
+                      <TableRow key={idx} className="bg-amber-50/50">
                         <TableCell className="font-medium">{overlap.date}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">

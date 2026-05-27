@@ -213,21 +213,21 @@ export function IntegrationsSection({ eventId }: IntegrationsSectionProps) {
               <h4 className="font-medium">Payment &mdash; Razorpay</h4>
             </div>
             {razorpayConfigured ? (
-              <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2.5 py-1 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">
                 <CheckCircle2 className="h-3 w-3" />
                 Configured
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 px-2.5 py-1 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">
                 Not configured
               </span>
             )}
           </div>
 
           {formData.razorpay.payment_mode === "test" && (
-            <div className="flex items-center gap-2 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900 rounded-lg">
+            <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
               <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
-              <p className="text-sm text-orange-700 dark:text-orange-300">
+              <p className="text-sm text-orange-700">
                 <strong>TEST MODE</strong> &mdash; no real payments will be processed
               </p>
             </div>

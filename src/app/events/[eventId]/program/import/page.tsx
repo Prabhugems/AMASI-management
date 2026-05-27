@@ -1035,10 +1035,10 @@ export default function ProgramImportPage() {
               </CardContent>
             </Card>
             {stats.hasContactInfo && (
-              <Card className="border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+              <Card className="border-purple-200 bg-purple-50/50">
                 <CardContent className="pt-4">
-                  <p className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.facultyWithContact}</p>
-                  <p className="text-sm text-purple-600/70 dark:text-purple-400/70 flex items-center gap-1">
+                  <p className="text-2xl sm:text-3xl font-bold text-purple-600">{stats.facultyWithContact}</p>
+                  <p className="text-sm text-purple-600/70 flex items-center gap-1">
                     <Phone className="h-3 w-3" /> With Contact
                   </p>
                 </CardContent>
@@ -1048,14 +1048,14 @@ export default function ProgramImportPage() {
 
           {/* Faculty contact info detected */}
           {stats.hasContactInfo && (
-            <Card className={stats.invalidEmails > 0 ? "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20" : "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20"}>
+            <Card className={stats.invalidEmails > 0 ? "border-amber-200 bg-amber-50/50" : "border-green-200 bg-green-50/50"}>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${stats.invalidEmails > 0 ? "bg-amber-100 dark:bg-amber-900/50" : "bg-green-100 dark:bg-green-900/50"}`}>
-                    <Mail className={`h-5 w-5 ${stats.invalidEmails > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`} />
+                  <div className={`p-2 rounded-lg ${stats.invalidEmails > 0 ? "bg-amber-100" : "bg-green-100"}`}>
+                    <Mail className={`h-5 w-5 ${stats.invalidEmails > 0 ? "text-amber-600" : "text-green-600"}`} />
                   </div>
                   <div>
-                    <p className={`font-medium ${stats.invalidEmails > 0 ? "text-amber-900 dark:text-amber-200" : "text-green-900 dark:text-green-200"}`}>
+                    <p className={`font-medium ${stats.invalidEmails > 0 ? "text-amber-900" : "text-green-900"}`}>
                       Email &amp; Phone Detected
                     </p>
                     <p className="text-sm text-muted-foreground">
@@ -1335,15 +1335,15 @@ export default function ProgramImportPage() {
       {step === "importing" && importResult && (
         <div className="space-y-6">
           {/* Success Header */}
-          <Card className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20">
+          <Card className="border-green-200 bg-green-50/50">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-full">
-                  <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
+                <div className="p-3 bg-green-100 rounded-full">
+                  <Check className="h-8 w-8 text-green-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-green-900 dark:text-green-200">Import Complete!</h2>
-                  <p className="text-green-700 dark:text-green-300">{importResult.message}</p>
+                  <h2 className="text-xl sm:text-2xl font-bold text-green-900">Import Complete!</h2>
+                  <p className="text-green-700">{importResult.message}</p>
                 </div>
               </div>
             </CardContent>

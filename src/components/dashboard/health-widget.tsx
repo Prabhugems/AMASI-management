@@ -22,24 +22,24 @@ interface HealthResponse {
 
 const STATUS_CONFIG: Record<ServiceStatus, { color: string; label: string; dotClass: string }> = {
   healthy: {
-    color: "text-emerald-600 dark:text-emerald-400",
+    color: "text-emerald-600",
     label: "Healthy",
     dotClass: "bg-emerald-500",
   },
   degraded: {
-    color: "text-amber-600 dark:text-amber-400",
+    color: "text-amber-600",
     label: "Degraded",
     dotClass: "bg-amber-500",
   },
   down: {
-    color: "text-red-600 dark:text-red-400",
+    color: "text-red-600",
     label: "Down",
     dotClass: "bg-red-500",
   },
   not_configured: {
-    color: "text-gray-400 dark:text-slate-500",
+    color: "text-muted-foreground",
     label: "Not configured",
-    dotClass: "bg-gray-400 dark:bg-slate-500",
+    dotClass: "bg-muted-foreground",
   },
 }
 
