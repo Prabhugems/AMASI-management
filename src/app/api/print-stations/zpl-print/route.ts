@@ -246,20 +246,23 @@ function generateZPLFromTemplate(
     }
   }
 
+  // ~SD30 and ^PQ1,0,1,Y removed — they wedge the 4BARCODE 4B-2054TG's ZPL
+  // emulation silently (CUPS accepts the job, printer drops it). The same
+  // printer prints cleanly with ^MD15 + ^MMC, validated against the
+  // convocation Electron ZPL.
   return `
 ^XA
-~SD30
 ^CI28
 ^MNM
 ^MMC
 ^LT-30
+^MD15
 ^LS0
 ${rotationCmd}
 ^LH0,0
 ^LL${dimensions.height}
 ^PW${dimensions.width}
 ${zplElements}
-^PQ1,0,1,Y
 ^XZ
 `.trim()
 }
