@@ -78,7 +78,7 @@ export default function EventLayout({
       />
       <div className="lg:pl-16 transition-all duration-300 print:pl-0">
         <Header sidebarCollapsed={false} onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
-        <main className="px-4 sm:px-6 pt-16 print:p-0 print:pt-0">
+        <main className="px-4 sm:px-6 lg:px-8 pt-16 print:p-0 print:pt-0 overflow-x-hidden">
           {requiredPermission ? (
             <PermissionGate permission={requiredPermission} eventId={eventId}>
               {children}

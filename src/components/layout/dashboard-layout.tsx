@@ -31,7 +31,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           sidebarCollapsed ? "lg:pl-[72px]" : "lg:pl-64"
         )}
       >
-        <div className="p-3 sm:p-6 min-w-0">{children}</div>
+        <div className="px-4 py-3 sm:px-6 sm:py-6 lg:px-8 min-w-0 overflow-x-hidden">{children}</div>
       </main>
     </div>
   )
