@@ -343,9 +343,9 @@ export default function DelegatePortalFeedbackPage() {
 
       {/* Sending Progress */}
       {sendingState && (
-        <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg">
+        <div className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
           <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
-          <span className="text-sm text-purple-800 dark:text-purple-200">
+          <span className="text-sm text-purple-800">
             Sending {sendingState.sent}/{sendingState.total}...
           </span>
         </div>

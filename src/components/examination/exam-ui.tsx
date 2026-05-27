@@ -54,7 +54,7 @@ export const HighlightText = memo(function HighlightText({ text, search }: { tex
     <>
       {parts.map((part, i) =>
         regex.test(part) ? (
-          <mark key={i} className="bg-yellow-200 dark:bg-yellow-800 text-inherit rounded-sm px-0.5">
+          <mark key={i} className="bg-yellow-200 text-inherit rounded-sm px-0.5">
             {part}
           </mark>
         ) : (
@@ -123,7 +123,7 @@ export function EmptyState({ icon, title, description }: EmptyStateProps) {
 export const ResultBadge = memo(function ResultBadge({ result }: { result: string | null }) {
   if (result === "pass") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-full animate-in fade-in duration-300">
+      <span className="inline-flex items-center gap-1 text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full animate-in fade-in duration-300">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
@@ -134,7 +134,7 @@ export const ResultBadge = memo(function ResultBadge({ result }: { result: strin
   }
   if (result === "fail") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2.5 py-1 rounded-full animate-in fade-in duration-300">
+      <span className="inline-flex items-center gap-1 text-xs font-medium bg-red-100 text-red-700 px-2.5 py-1 rounded-full animate-in fade-in duration-300">
         <span className="relative flex h-2 w-2">
           <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
         </span>
@@ -144,12 +144,12 @@ export const ResultBadge = memo(function ResultBadge({ result }: { result: strin
   }
   if (result === "absent") {
     return (
-      <span className="text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-2.5 py-1 rounded-full">Absent</span>
+      <span className="text-xs font-medium bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full">Absent</span>
     )
   }
   if (result === "withheld") {
     return (
-      <span className="text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 px-2.5 py-1 rounded-full">Withheld</span>
+      <span className="text-xs font-medium bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full">Withheld</span>
     )
   }
   return <span className="text-xs text-muted-foreground">Pending</span>

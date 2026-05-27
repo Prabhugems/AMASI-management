@@ -78,7 +78,7 @@ export function RichTextDisplay({
 
   return (
     <div
-      className={cn("prose prose-sm max-w-none dark:prose-invert", className)}
+      className={cn("prose prose-sm max-w-none prose-neutral", className)}
       dangerouslySetInnerHTML={{ __html: sanitizedContent }}
     />
   )
@@ -100,7 +100,7 @@ export function MarkdownDisplay({
 
   return (
     <div
-      className={cn("prose prose-sm max-w-none dark:prose-invert", className)}
+      className={cn("prose prose-sm max-w-none prose-neutral", className)}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )

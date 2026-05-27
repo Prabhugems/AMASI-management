@@ -305,15 +305,15 @@ export default function ImportRegistrationsPage() {
 
       {/* Delete Imported - only show if there are imported registrations */}
       {importedCount > 0 && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
               <div>
-                <p className="font-medium text-amber-900 dark:text-amber-100">
+                <p className="font-medium text-amber-900">
                   {importedCount} imported registrations found
                 </p>
-                <p className="text-sm text-amber-700 dark:text-amber-300">
+                <p className="text-sm text-amber-700">
                   Delete these to re-import with correct settings
                 </p>
               </div>
@@ -368,11 +368,11 @@ export default function ImportRegistrationsPage() {
       </div>
 
       {/* Info Box */}
-      <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-        <h4 className="font-medium text-sm text-blue-900 dark:text-blue-100 mb-2">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <h4 className="font-medium text-sm text-blue-900 mb-2">
           How Custom Fields Work
         </h4>
-        <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+        <ul className="text-sm text-blue-800 space-y-1">
           <li>• <strong>Standard fields</strong> (Name, Email, Phone, Status) are stored in main columns</li>
           <li>• <strong>Custom fields</strong> ({COMPANY_CONFIG.name} Membership, Food Preference, etc.) are stored in form_responses</li>
           <li>• <strong>Registration numbers</strong> can be imported from CSV, or auto-generated as {registrationPrefix || "PREFIX"}A1001, {registrationPrefix || "PREFIX"}A1002, ...</li>

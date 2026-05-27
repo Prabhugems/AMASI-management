@@ -186,8 +186,8 @@ export function ModulesSection({ eventId }: { eventId: string }) {
         </div>
       </div>
 
-      <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-xl">
-        <p className="text-sm text-blue-800 dark:text-blue-200">
+      <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+        <p className="text-sm text-blue-800">
           Toggle modules to show or hide them from the sidebar. Core items like Dashboard, Tickets,
           Attendees, Orders, Team, Communications, and Settings are always visible.
         </p>
@@ -207,8 +207,8 @@ export function ModulesSection({ eventId }: { eventId: string }) {
             </div>
 
             {category.category === "Advanced Modules" && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-                <p className="text-xs text-amber-700 dark:text-amber-300">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-700">
                   These modules are specialized. Enable only if your event requires abstract submission or examination components.
                 </p>
               </div>
@@ -243,10 +243,10 @@ export function ModulesSection({ eventId }: { eventId: string }) {
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-sm">{mod.label}</p>
                           {isEnabled && (
-                            <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded-full">On</span>
+                            <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">On</span>
                           )}
                           {depDisabled && isEnabled && (
-                            <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
+                            <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
                               Requires {dep?.replace("enable_", "")}
                             </span>
                           )}

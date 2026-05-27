@@ -701,7 +701,7 @@ export default function AbstractSettingsPage() {
               </div>
 
               {formData.auto_reminders_enabled && (
-                <div className="ml-8 p-4 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                <div className="ml-8 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
                   <label className="text-sm font-medium mb-2 block">Send reminders X days before deadline</label>
                   <div className="flex flex-wrap gap-2">
                     {[1, 3, 5, 7, 14].map((days) => {

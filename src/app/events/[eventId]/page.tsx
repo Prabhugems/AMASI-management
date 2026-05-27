@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { StatCard } from "@/components/dashboard/stat-card"
+import { MetricCard, MetricPanel } from "@/components/dashboard/metric-card"
 import {
   Users,
   GraduationCap,
@@ -766,60 +766,13 @@ export default function EventDashboardPage() {
       )}
 
       {/* Animated Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 animate-stagger">
-        <StatCard
-          icon={GraduationCap}
-          value={facultyStats?.total || 0}
-          label="Faculty"
-          subtext={`${facultyStats?.confirmed || 0}/${facultyStats?.total || 0} confirmed`}
-          trend={null}
-          color="rose"
-          delay={0}
-        />
-        <StatCard
-          icon={Users}
-          value={attendeeStats?.total || 0}
-          label="Attendees"
-          subtext={`${attendeeStats?.checkedIn || 0} checked in`}
-          trend={attendeeStats?.total ? Math.round((attendeeStats.checkedIn || 0) / attendeeStats.total * 100) : null}
-          color="teal"
-          delay={100}
-          sparklineData={registrationTrend}
-        />
-        <StatCard
-          icon={Calendar}
-          value={sessionsStats?.total || 0}
-          label="Sessions"
-          subtext="Scheduled"
-          trend={null}
-          color="amber"
-          delay={200}
-        />
-        <StatCard
-          icon={Ticket}
-          value={ticketsAndAddonsStats?.tickets || 0}
-          label="Ticket Types"
-          subtext={
-            (ticketsAndAddonsStats?.activeTickets || 0) > 0
-              ? `${ticketsAndAddonsStats?.activeTickets} active`
-              : (ticketsAndAddonsStats?.tickets || 0) > 0
-                ? "All paused"
-                : "None created"
-          }
-          trend={null}
-          color="indigo"
-          delay={300}
-        />
-        <StatCard
-          icon={Package}
-          value={ticketsAndAddonsStats?.addons || 0}
-          label="Addons"
-          subtext="Available"
-          trend={null}
-          color="violet"
-          delay={400}
-        />
-      </div>
+      <MetricPanel columns={5} className="mb-6">
+        <MetricCard icon={<GraduationCap className="w-5 h-5" />} label="Faculty" value={facultyStats?.total || 0} tone="mint" href={`/events/${eventId}/speakers`} />
+        <MetricCard icon={<Users className="w-5 h-5" />} label="Attendees" value={attendeeStats?.total || 0} tone="mint" href={`/events/${eventId}/registrations`} />
+        <MetricCard icon={<Calendar className="w-5 h-5" />} label="Sessions" value={sessionsStats?.total || 0} tone="gold" href={`/events/${eventId}/program`} />
+        <MetricCard icon={<Ticket className="w-5 h-5" />} label="Ticket Types" value={ticketsAndAddonsStats?.tickets || 0} tone="gold" href={`/events/${eventId}/tickets`} />
+        <MetricCard icon={<Package className="w-5 h-5" />} label="Addons" value={ticketsAndAddonsStats?.addons || 0} tone="gold" href={`/events/${eventId}/tickets`} />
+      </MetricPanel>
 
       {/* Context-Aware Priority Actions */}
       {contextActions.length > 0 && (

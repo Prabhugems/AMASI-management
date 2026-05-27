@@ -25,7 +25,7 @@ import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 // Dashboard components
 import { WhosOnlineWidget } from "@/components/dashboard/whos-online-widget"
 import { EventsTable } from "@/components/dashboard/events-table"
-import { StatCard } from "@/components/dashboard/stat-card"
+import { MetricCard, MetricPanel } from "@/components/dashboard/metric-card"
 import { RecentFacultyTable } from "@/components/dashboard/recent-faculty-table"
 import { HealthWidget } from "@/components/dashboard/health-widget"
 import { TeamWidget } from "@/components/dashboard/team-widget"
@@ -33,13 +33,13 @@ import { CronStatusWidget } from "@/components/dashboard/cron-status-widget"
 
 function StatCardSkeleton() {
   return (
-    <div className="rounded-2xl p-4 sm:p-5 bg-white border border-gray-200/60 dark:bg-gray-800/80 dark:border-gray-700/50 animate-pulse">
+    <div className="rounded-2xl p-4 sm:p-5 bg-card border border-border animate-pulse">
       <div className="flex items-start justify-between mb-4 sm:mb-5">
-        <div className="p-2.5 rounded-lg bg-gray-200 dark:bg-gray-700 w-10 h-10" />
+        <div className="p-2.5 rounded-lg bg-muted w-10 h-10" />
       </div>
-      <div className="w-20 h-3 rounded bg-gray-200 dark:bg-gray-700 mb-2" />
-      <div className="w-24 h-8 rounded bg-gray-200 dark:bg-gray-700 mb-2" />
-      <div className="w-28 h-3 rounded bg-gray-100 dark:bg-gray-700/60 mt-3" />
+      <div className="w-20 h-3 rounded bg-muted mb-2" />
+      <div className="w-24 h-8 rounded bg-muted mb-2" />
+      <div className="w-28 h-3 rounded bg-muted/60 mt-3" />
     </div>
   )
 }
@@ -70,7 +70,7 @@ function LastUpdatedBadge({ lastUpdated, onRefresh }: { lastUpdated: Date | null
       <span>{timeAgo || "..."}</span>
       <button
         onClick={onRefresh}
-        className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="p-1 rounded-md hover:bg-muted transition-colors"
         title="Refresh dashboard"
       >
         <RefreshCw className="h-3 w-3" />
@@ -185,13 +185,13 @@ export default function Home() {
 
   return (
     <DashboardLayout>
-      <div className={`transition-all duration-500 ease-out ${pageReady ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+      <div className={`transition-all duration-500 ease-out max-w-full overflow-x-hidden ${pageReady ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
       {/* Welcome Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-              {getGreeting()}, {userName || quickName || (permissionsLoading ? <span className="inline-block w-20 h-6 rounded bg-gray-200 dark:bg-gray-700 animate-pulse align-middle" /> : "Admin")}
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              {getGreeting()}, {userName || quickName || (permissionsLoading ? <span className="inline-block w-20 h-6 rounded bg-muted animate-pulse align-middle" /> : "Admin")}
             </h1>
             <p className="text-sm text-gray-400 mt-0.5">Here&apos;s your {COMPANY_CONFIG.name} dashboard overview</p>
           </div>
@@ -199,33 +199,28 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Animated Stats Cards */}
-      {(() => {
-        const cards = []
-        if (FEATURES.membership) cards.push(
-          <StatCard key="members" icon={Users} value={stats?.members || 0} label="Total Members" subtext="Live from database" trend={null} color="rose" delay={0} sparklineData={stats?.membersTrend} />
-        )
-        if (FEATURES.faculty) cards.push(
-          <StatCard key="faculty" icon={GraduationCap} value={stats?.faculty || 0} label="Faculty Database" subtext="Master database" trend={null} color="amber" delay={100} sparklineData={stats?.facultyTrend} />
-        )
-        cards.push(
-          <StatCard key="events" icon={Calendar} value={stats?.activeEvents || 0} label="Active Events" subtext="Planning/Ongoing" trend={null} color="teal" delay={200} />
-        )
-        cards.push(
-          <StatCard key="attendees" icon={Award} value={stats?.delegates || 0} label="Total Attendees" subtext="All events" trend={null} color="violet" delay={300} sparklineData={stats?.delegatesTrend} />
-        )
-        const cols = cards.length <= 2 ? "lg:grid-cols-2" : cards.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4"
-        return (
-          <div className={`grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 ${cols} gap-3 sm:gap-4 md:gap-6 mb-6`}>
-            {statsLoading ? cards.map((_, i) => <StatCardSkeleton key={i} />) : cards}
-          </div>
-        )
-      })()}
+      {/* Animated Stats Cards — metallic mint + champagne */}
+      {statsLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full mb-6">
+          {[0, 1, 2, 3].map((i) => <StatCardSkeleton key={i} />)}
+        </div>
+      ) : (
+        <MetricPanel className="mb-6">
+          {FEATURES.membership && (
+            <MetricCard icon={<Users className="w-5 h-5" />} label="Total Members" value={stats?.members || 0} tone="mint" href="/members" />
+          )}
+          {FEATURES.faculty && (
+            <MetricCard icon={<GraduationCap className="w-5 h-5" />} label="Faculty Database" value={stats?.faculty || 0} tone="mint" href="/faculty" />
+          )}
+          <MetricCard icon={<Calendar className="w-5 h-5" />} label="Active Events" value={stats?.activeEvents || 0} tone="gold" href="/events" />
+          <MetricCard icon={<Award className="w-5 h-5" />} label="Total Attendees" value={stats?.delegates || 0} tone="gold" href="/attendees" />
+        </MetricPanel>
+      )}
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full mb-6">
         {/* Left Column - 2/3 width */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 min-w-0 space-y-6">
           {/* Events Table */}
           <EventsTable />
 
@@ -234,7 +229,7 @@ export default function Home() {
         </div>
 
         {/* Right Column - 1/3 width */}
-        <div className="space-y-6">
+        <div className="lg:col-span-1 min-w-0 space-y-6">
           {/* System Health Widget */}
           <HealthWidget />
 
@@ -250,36 +245,36 @@ export default function Home() {
       </div>
 
       {/* Quick Actions */}
-      <div className="rounded-2xl bg-white border border-gray-200/60 dark:bg-gray-800/80 dark:border-gray-700/50 overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700/50">
-          <h5 className="text-sm font-bold text-gray-900 dark:text-white">Quick Actions</h5>
+      <div className="rounded-2xl bg-card border border-border overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-border">
+          <h5 className="text-sm font-bold text-foreground">Quick Actions</h5>
           <p className="text-xs text-gray-400 mt-0.5">Common tasks at your fingertips</p>
         </div>
         <div className="p-4 sm:p-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Link href="/faculty" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors group">
-              <div className="h-10 w-10 rounded-full bg-gray-200/60 dark:bg-gray-600/40 flex items-center justify-center group-hover:bg-cyan-100 dark:group-hover:bg-cyan-500/10 transition-colors">
-                <Download className="h-4 w-4 text-gray-500 dark:text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors" />
+            <Link href="/faculty" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-secondary hover:bg-accent transition-colors group">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center group-hover:bg-cyan-100 transition-colors">
+                <Download className="h-4 w-4 text-muted-foreground group-hover:text-cyan-600 transition-colors" />
               </div>
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Import CSV</span>
+              <span className="text-xs font-medium text-muted-foreground">Import CSV</span>
             </Link>
-            <Link href="/events" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors group">
-              <div className="h-10 w-10 rounded-full bg-gray-200/60 dark:bg-gray-600/40 flex items-center justify-center group-hover:bg-cyan-100 dark:group-hover:bg-cyan-500/10 transition-colors">
-                <Mail className="h-4 w-4 text-gray-500 dark:text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors" />
+            <Link href="/events" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-secondary hover:bg-accent transition-colors group">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center group-hover:bg-cyan-100 transition-colors">
+                <Mail className="h-4 w-4 text-muted-foreground group-hover:text-cyan-600 transition-colors" />
               </div>
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Bulk Email</span>
+              <span className="text-xs font-medium text-muted-foreground">Bulk Email</span>
             </Link>
-            <Link href="/events" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors group">
-              <div className="h-10 w-10 rounded-full bg-gray-200/60 dark:bg-gray-600/40 flex items-center justify-center group-hover:bg-cyan-100 dark:group-hover:bg-cyan-500/10 transition-colors">
-                <BarChart3 className="h-4 w-4 text-gray-500 dark:text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors" />
+            <Link href="/events" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-secondary hover:bg-accent transition-colors group">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center group-hover:bg-cyan-100 transition-colors">
+                <BarChart3 className="h-4 w-4 text-muted-foreground group-hover:text-cyan-600 transition-colors" />
               </div>
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Reports</span>
+              <span className="text-xs font-medium text-muted-foreground">Reports</span>
             </Link>
-            <Link href="/events" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors group">
-              <div className="h-10 w-10 rounded-full bg-gray-200/60 dark:bg-gray-600/40 flex items-center justify-center group-hover:bg-cyan-100 dark:group-hover:bg-cyan-500/10 transition-colors">
-                <Award className="h-4 w-4 text-gray-500 dark:text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors" />
+            <Link href="/events" className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-secondary hover:bg-accent transition-colors group">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center group-hover:bg-cyan-100 transition-colors">
+                <Award className="h-4 w-4 text-muted-foreground group-hover:text-cyan-600 transition-colors" />
               </div>
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Certificates</span>
+              <span className="text-xs font-medium text-muted-foreground">Certificates</span>
             </Link>
           </div>
         </div>

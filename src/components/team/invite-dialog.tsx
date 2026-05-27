@@ -367,17 +367,17 @@ export function InviteDialog({ open, onOpenChange, onComplete }: InviteDialogPro
 
         {/* Tab switcher */}
         <div className="px-6 pt-4">
-          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+          <div className="flex bg-muted rounded-lg p-1">
             <button
               onClick={() => { setActiveTab("single"); resetBulk() }}
-              className={cn("flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all", activeTab === "single" ? "bg-white dark:bg-slate-700 shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+              className={cn("flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all", activeTab === "single" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
             >
               <Mail className="h-4 w-4" />
               Single Invite
             </button>
             <button
               onClick={() => { setActiveTab("bulk"); resetSingle() }}
-              className={cn("flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all", activeTab === "bulk" ? "bg-white dark:bg-slate-700 shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+              className={cn("flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all", activeTab === "bulk" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
             >
               <Users className="h-4 w-4" />
               Bulk Invite
@@ -420,7 +420,7 @@ export function InviteDialog({ open, onOpenChange, onComplete }: InviteDialogPro
         </div>
 
         {/* Footer */}
-        <div className="border-t px-6 py-4 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
+        <div className="border-t px-6 py-4 flex items-center justify-between bg-muted">
           {activeTab === "single" ? (
             <>
               <div className="flex items-center gap-2">
@@ -433,7 +433,7 @@ export function InviteDialog({ open, onOpenChange, onComplete }: InviteDialogPro
                       "w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all",
                       step === s ? "bg-[#185FA5] text-white" :
                       step > s ? "bg-[#185FA5]/20 text-[#185FA5]" :
-                      "bg-slate-200 dark:bg-slate-700 text-muted-foreground"
+                      "bg-muted text-muted-foreground"
                     )}
                   >
                     {step > s ? <Check className="h-3.5 w-3.5" /> : s}
@@ -573,7 +573,7 @@ function SingleInviteFlow({
                       "relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center",
                       role === r.value
                         ? "border-[#185FA5] bg-[#185FA5]/5"
-                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
+                        : "border-border hover:border-slate-300"
                     )}
                   >
                     <div className={cn("w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white", r.color)}>
@@ -592,12 +592,12 @@ function SingleInviteFlow({
           </div>
 
           {/* Express toggle */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-200">
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-600" />
               <div>
-                <span className="text-sm font-medium text-amber-900 dark:text-amber-200">Express invite (24h)</span>
-                <p className="text-xs text-amber-600 dark:text-amber-400">On-site team — urgent email</p>
+                <span className="text-sm font-medium text-amber-900">Express invite (24h)</span>
+                <p className="text-xs text-amber-600">On-site team — urgent email</p>
               </div>
             </div>
             <Switch checked={express} onCheckedChange={setExpress} />
@@ -625,7 +625,7 @@ function SingleInviteFlow({
                       "flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-all text-left",
                       isActive
                         ? `${preset.bgLight} ${preset.borderColor} border-2`
-                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
+                        : "border-border hover:border-slate-300"
                     )}
                   >
                     <Icon className="h-3.5 w-3.5 flex-shrink-0" />
@@ -667,7 +667,7 @@ function SingleInviteFlow({
                 <>
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-2 pt-1">Live Events</p>
                   {categorizedEvents.live.map((event) => (
-                    <label key={event.id} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                    <label key={event.id} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-accent cursor-pointer">
                       <input
                         type="checkbox"
                         checked={eventIds.includes(event.id)}
@@ -689,7 +689,7 @@ function SingleInviteFlow({
                 <>
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-2 pt-2">Past Events</p>
                   {categorizedEvents.completed.slice(0, 5).map((event) => (
-                    <label key={event.id} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-muted-foreground">
+                    <label key={event.id} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-accent cursor-pointer text-muted-foreground">
                       <input
                         type="checkbox"
                         checked={eventIds.includes(event.id)}
@@ -718,9 +718,9 @@ function SingleInviteFlow({
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Review & Send</h3>
 
           {/* Summary card */}
-          <div className="rounded-xl border bg-white dark:bg-slate-800 overflow-hidden">
+          <div className="rounded-xl border bg-card overflow-hidden">
             {/* Header */}
-            <div className="p-4 border-b bg-slate-50 dark:bg-slate-900">
+            <div className="p-4 border-b bg-muted">
               <div className="flex items-center gap-3">
                 <div className={cn("w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-sm", getRoleInfo(role).color)}>
                   {name.trim() ? name.trim().split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) : "?"}
@@ -793,7 +793,7 @@ function SingleInviteFlow({
                 onClick={() => setSendMode("email")}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm transition-all",
-                  sendMode === "email" ? "border-[#185FA5] bg-[#185FA5]/5" : "border-slate-200 dark:border-slate-700"
+                  sendMode === "email" ? "border-[#185FA5] bg-[#185FA5]/5" : "border-border"
                 )}
               >
                 <Mail className="h-4 w-4" />
@@ -803,7 +803,7 @@ function SingleInviteFlow({
                 onClick={() => phone.trim() ? setSendMode("email_whatsapp") : toast.error("Add phone number first")}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm transition-all",
-                  sendMode === "email_whatsapp" ? "border-[#185FA5] bg-[#185FA5]/5" : "border-slate-200 dark:border-slate-700",
+                  sendMode === "email_whatsapp" ? "border-[#185FA5] bg-[#185FA5]/5" : "border-border",
                   !phone.trim() && "opacity-50 cursor-not-allowed"
                 )}
               >
@@ -837,7 +837,7 @@ function BulkInviteFlow({
       <div className="space-y-4 animate-in fade-in duration-200">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Paste CSV Data</h3>
         <p className="text-xs text-muted-foreground">
-          Columns: <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px]">Name, Email, Role, Preset</code> (header row optional)
+          Columns: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">Name, Email, Role, Preset</code> (header row optional)
         </p>
         <Textarea
           placeholder={`John Doe, john@hospital.com, coordinator, registration-manager\nJane Smith, jane@hospital.com, travel, travel-manager`}
@@ -876,7 +876,7 @@ function BulkInviteFlow({
             </TableHeader>
             <TableBody>
               {parsedRows.map((row, i) => (
-                <TableRow key={i} className={cn(!row.valid && "bg-red-50 dark:bg-red-950/20")}>
+                <TableRow key={i} className={cn(!row.valid && "bg-red-50")}>
                   <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
                   <TableCell className="text-sm">{row.name}</TableCell>
                   <TableCell className="text-sm font-mono">{row.email}</TableCell>

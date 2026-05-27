@@ -129,8 +129,8 @@ export function AutomationSection({ eventId }: { eventId: string }) {
         </div>
       </div>
 
-      <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-xl">
-        <p className="text-sm text-blue-800 dark:text-blue-200">
+      <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+        <p className="text-sm text-blue-800">
           <strong>How Automation Works:</strong> These settings trigger automatically when a payment is completed.
           The system will perform the enabled actions in order: Receipt → Badge → Certificate.
         </p>
@@ -143,7 +143,7 @@ export function AutomationSection({ eventId }: { eventId: string }) {
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-muted-foreground" />
               <p className="font-medium">Auto-send Receipt</p>
-              <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">Recommended</span>
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Recommended</span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               Sends a confirmation email with registration details immediately after payment.
@@ -194,7 +194,7 @@ export function AutomationSection({ eventId }: { eventId: string }) {
               <FileText className="h-4 w-4 text-muted-foreground" />
               <p className="font-medium">Auto-generate Badge</p>
               {hasDefaultBadgeTemplate ? (
-                <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">Template ready</span>
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Template ready</span>
               ) : (
                 <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded-full">No default template</span>
               )}
@@ -245,7 +245,7 @@ export function AutomationSection({ eventId }: { eventId: string }) {
               <FileText className="h-4 w-4 text-muted-foreground" />
               <p className="font-medium">Auto-generate Certificate</p>
               {hasDefaultCertTemplate ? (
-                <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">Template ready</span>
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Template ready</span>
               ) : (
                 <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded-full">No default template</span>
               )}

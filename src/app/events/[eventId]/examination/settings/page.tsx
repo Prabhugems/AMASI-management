@@ -642,7 +642,7 @@ export default function ExamSettingsPage() {
         <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
           <label className="text-sm font-medium block">Webhook URLs (for real-time sync)</label>
           {!formData.webhook_secret && (
-            <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 px-2 py-1.5 rounded">
+            <p className="text-xs text-amber-700 bg-amber-100 px-2 py-1.5 rounded">
               Save these settings once to generate your webhook secret. The URLs below will populate after the first save.
             </p>
           )}

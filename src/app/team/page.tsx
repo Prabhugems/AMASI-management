@@ -696,7 +696,7 @@ export default function TeamPage() {
         <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <button className="lg:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg" onClick={() => setSidebarOpen(true)}>
+              <button className="lg:hidden p-2 hover:bg-accent rounded-lg" onClick={() => setSidebarOpen(true)}>
                 <Menu className="h-5 w-5" />
               </button>
               <div className="min-w-0">
@@ -796,7 +796,7 @@ export default function TeamPage() {
                         "px-3 py-1.5 rounded-full text-sm font-medium transition-all border",
                         isActive
                           ? "bg-[#185FA5] text-white border-[#185FA5]"
-                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-muted-foreground hover:border-[#185FA5]/50"
+                          : "bg-card border-border text-muted-foreground hover:border-[#185FA5]/50"
                       )}
                     >
                       {chip.label}
@@ -817,7 +817,7 @@ export default function TeamPage() {
 
             {/* Bulk Action Bar */}
             {selectedIds.size > 0 && (
-              <div className="flex items-center gap-3 mx-6 mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-xl">
+              <div className="flex items-center gap-3 mx-6 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800">{selectedIds.size} selected</Badge>
                 <div className="flex items-center gap-2 ml-auto">
                   <Button variant="outline" size="sm" onClick={() => bulkActivate.mutate(Array.from(selectedIds))} disabled={bulkActivate.isPending}>
@@ -840,7 +840,7 @@ export default function TeamPage() {
                 <SkeletonTable rows={5} />
               ) : filteredMembers.length === 0 ? (
                 <div className="text-center py-20">
-                  <div className="h-20 w-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                  <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
                     <Users className="h-10 w-10 text-slate-400" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2">{searchQuery ? "No matching members" : "No team members yet"}</h3>
@@ -925,7 +925,7 @@ export default function TeamPage() {
                       View all <ArrowRight className="h-3 w-3" />
                     </button>
                   </div>
-                  <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border overflow-hidden" style={{ height: 360 }}>
+                  <div className="bg-card rounded-xl shadow-sm border overflow-hidden" style={{ height: 360 }}>
                     <ActivityFeed onClose={() => {}} />
                   </div>
                 </div>
@@ -989,7 +989,7 @@ export default function TeamPage() {
                 </Button>
               )}
             </div>
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border overflow-hidden">
+            <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
               <div className="p-4 border-b">
                 <h3 className="font-semibold text-sm">Live Activity Feed</h3>
               </div>
@@ -1013,7 +1013,7 @@ export default function TeamPage() {
                 </Button>
               )}
             </div>
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border overflow-hidden">
+            <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
               <div className="p-4 border-b">
                 <h3 className="font-semibold text-sm">Access Log</h3>
               </div>
@@ -1030,7 +1030,7 @@ export default function TeamPage() {
         {activeView === "permissions-schema" && (
           <div className="p-6 space-y-6">
             {/* Permission Guide card */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-6">
+            <div className="bg-card rounded-xl shadow-sm border p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">
@@ -1048,7 +1048,7 @@ export default function TeamPage() {
             </div>
 
             {/* Portal Link */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-6">
+            <div className="bg-card rounded-xl shadow-sm border p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -1199,7 +1199,7 @@ function StatsCard({ label, value, delta, deltaType }: {
   deltaType?: "positive" | "negative" | "neutral"
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border p-4">
+    <div className="bg-card rounded-xl border p-4">
       <p className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</p>
       <p className="text-2xl font-medium mt-1">{value}</p>
       {delta && (
@@ -1241,10 +1241,10 @@ function MemberTable({ members, allMembers, events, selectedIds, toggleSelect, t
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border overflow-x-auto">
+    <div className="bg-card rounded-xl shadow-sm border overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+          <TableRow className="bg-muted hover:bg-accent">
             <TableHead className="w-[40px]">
               <input type="checkbox" checked={selectedIds.size === allMembers.length && allMembers.length > 0} onChange={toggleSelectAll} className="rounded" />
             </TableHead>
@@ -1269,7 +1269,7 @@ function MemberTable({ members, allMembers, events, selectedIds, toggleSelect, t
             const StatusIcon = statusConfig.icon
 
             return (
-              <TableRow key={member.id} className={cn("cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50", !member.is_active && "opacity-60")} onClick={() => onSelectMember(member)}>
+              <TableRow key={member.id} className={cn("cursor-pointer hover:bg-accent", !member.is_active && "opacity-60")} onClick={() => onSelectMember(member)}>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <input type="checkbox" checked={selectedIds.has(member.id)} onChange={() => toggleSelect(member.id)} className="rounded" />
                 </TableCell>
@@ -1426,7 +1426,7 @@ function PermissionGuideContent() {
                       <div><h4 className="font-semibold text-lg">{role.label}</h4><p className="text-sm text-muted-foreground">{role.description}</p></div>
                     </div>
                   </div>
-                  <div className="p-4 bg-white dark:bg-slate-900">
+                  <div className="p-4 bg-card">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Capabilities</p>
                     <ul className="space-y-1.5">
                       {role.capabilities.map((cap, i) => <li key={i} className="flex items-start gap-2 text-sm"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /><span>{cap}</span></li>)}
@@ -1473,7 +1473,7 @@ function PermissionGuideContent() {
                       <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-white", perm.bg)}><perm.icon className="h-5 w-5" /></div>
                       <div><h4 className="font-semibold">{perm.label}</h4><p className="text-xs text-muted-foreground">{perm.description}</p></div>
                     </div>
-                    <div className="bg-white dark:bg-slate-900 rounded-lg p-3 border">
+                    <div className="bg-card rounded-lg p-3 border">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Access Includes</p>
                       <div className="grid grid-cols-2 gap-1">
                         {perm.access.map((item, i) => <div key={i} className="flex items-center gap-1.5 text-xs"><CheckCircle className="h-3 w-3 text-green-500 shrink-0" /><span>{item}</span></div>)}
@@ -1496,7 +1496,7 @@ function PermissionGuideContent() {
           <div className="rounded-xl border overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-slate-50 dark:bg-slate-800">
+                <TableRow className="bg-muted">
                   <TableHead className="font-semibold">Permission</TableHead>
                   <TableHead className="font-semibold">Module Path</TableHead>
                   <TableHead className="font-semibold text-center">Actions</TableHead>

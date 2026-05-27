@@ -47,11 +47,11 @@ const ROLES = [
 ] as const
 
 const ROLE_COLORS: Record<string, string> = {
-  owner: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  admin: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  editor: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  viewer: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
-  checkin_staff: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  owner: "bg-purple-100 text-purple-700",
+  admin: "bg-blue-100 text-blue-700",
+  editor: "bg-green-100 text-green-700",
+  viewer: "bg-muted text-muted-foreground",
+  checkin_staff: "bg-amber-100 text-amber-700",
 }
 
 const ROLE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -251,7 +251,7 @@ export function TeamSection({ eventId }: { eventId: string }) {
                 <div className={cn(
                   "h-9 w-9 rounded-full flex items-center justify-center text-sm font-medium shrink-0",
                   isOwner
-                    ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                    ? "bg-purple-100 text-purple-700"
                     : "bg-secondary text-muted-foreground"
                 )}>
                   {member.name
@@ -272,11 +272,11 @@ export function TeamSection({ eventId }: { eventId: string }) {
                 {/* Status */}
                 <div className="shrink-0">
                   {isPending ? (
-                    <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
                       Pending
                     </span>
                   ) : (
-                    <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                       Active
                     </span>
                   )}

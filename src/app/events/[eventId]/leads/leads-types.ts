@@ -29,11 +29,11 @@ export interface LeadNote {
 }
 
 export const LEAD_STATUSES: { value: LeadStatus; label: string; color: string; bgColor: string }[] = [
-  { value: "new", label: "New", color: "text-blue-700 dark:text-blue-400", bgColor: "bg-blue-50 dark:bg-blue-950/50" },
-  { value: "contacted", label: "Contacted", color: "text-amber-700 dark:text-amber-400", bgColor: "bg-amber-50 dark:bg-amber-950/50" },
-  { value: "qualified", label: "Qualified", color: "text-purple-700 dark:text-purple-400", bgColor: "bg-purple-50 dark:bg-purple-950/50" },
-  { value: "converted", label: "Converted", color: "text-emerald-700 dark:text-emerald-400", bgColor: "bg-emerald-50 dark:bg-emerald-950/50" },
-  { value: "unsubscribed", label: "Unsubscribed", color: "text-gray-500 dark:text-gray-400", bgColor: "bg-gray-100 dark:bg-gray-800" },
+  { value: "new", label: "New", color: "text-blue-700", bgColor: "bg-blue-50" },
+  { value: "contacted", label: "Contacted", color: "text-amber-700", bgColor: "bg-amber-50" },
+  { value: "qualified", label: "Qualified", color: "text-purple-700", bgColor: "bg-purple-50" },
+  { value: "converted", label: "Converted", color: "text-emerald-700", bgColor: "bg-emerald-50" },
+  { value: "unsubscribed", label: "Unsubscribed", color: "text-muted-foreground", bgColor: "bg-muted" },
 ]
 
 export const LEAD_SOURCES = [

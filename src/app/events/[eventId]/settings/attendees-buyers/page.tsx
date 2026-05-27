@@ -261,8 +261,8 @@ export default function AttendeesBuyersSettingsPage() {
                 <p className="text-sm text-muted-foreground mt-1">
                   If enabled, attendees can purchase various types of tickets
                 </p>
-                <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-md text-sm">
-                  <p className="text-amber-800 dark:text-amber-200">
+                <div className="mt-2 p-3 bg-amber-50 rounded-md text-sm">
+                  <p className="text-amber-800">
                     <strong>Note:</strong> This is rarely needed. Usually each person buys only one ticket type.
                   </p>
                 </div>
@@ -284,8 +284,8 @@ export default function AttendeesBuyersSettingsPage() {
                 <p className="text-sm text-muted-foreground mt-1">
                   If enabled, attendees can purchase various types of add-ons
                 </p>
-                <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md text-sm">
-                  <p className="text-blue-800 dark:text-blue-200">
+                <div className="mt-2 p-3 bg-blue-50 rounded-md text-sm">
+                  <p className="text-blue-800">
                     <strong>Example:</strong> Attendee can select Workshop + Accommodation + Gala Dinner together.
                   </p>
                 </div>
@@ -520,9 +520,9 @@ export default function AttendeesBuyersSettingsPage() {
                   </SelectContent>
                 </Select>
 
-                <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md">
+                <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-md">
                   <Info className="h-4 w-4 text-blue-500 mt-0.5" />
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <p className="text-sm text-blue-700">
                     If no form is selected, only <span className="font-semibold">name</span> and{" "}
                     <span className="font-semibold">email address</span> will be collected from the buyer by default.
                   </p>

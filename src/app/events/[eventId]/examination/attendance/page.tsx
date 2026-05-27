@@ -320,7 +320,7 @@ export default function AttendancePage() {
                         key={reg.id}
                         className={cn(
                           "transition-colors duration-150 hover:bg-muted/50",
-                          reg.checked_in && "bg-green-50/30 dark:bg-green-950/10"
+                          reg.checked_in && "bg-green-50/30"
                         )}
                       >
                         <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
@@ -340,11 +340,11 @@ export default function AttendancePage() {
                         </TableCell>
                         <TableCell className="text-center">
                           {reg.checked_in ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full">
                               <UserCheck className="h-3 w-3" />Present
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-2.5 py-1 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full">
                               <UserX className="h-3 w-3" />Absent
                             </span>
                           )}

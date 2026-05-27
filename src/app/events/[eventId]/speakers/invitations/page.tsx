@@ -512,7 +512,7 @@ export default function SpeakerInvitationsPage() {
 
       {/* Last send result details */}
       {lastSendResult && (lastSendResult.failed > 0 || lastSendResult.skipped > 0) && (
-        <div className={`rounded-lg border p-4 ${lastSendResult.failed > 0 ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800" : "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800"}`}>
+        <div className={`rounded-lg border p-4 ${lastSendResult.failed > 0 ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"}`}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <AlertCircle className={`h-5 w-5 mt-0.5 shrink-0 ${lastSendResult.failed > 0 ? "text-red-600" : "text-amber-600"}`} />
@@ -626,9 +626,9 @@ export default function SpeakerInvitationsPage() {
 
       {/* Actions */}
       {selectedSpeakers.size > 0 && (
-        <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-950/20 dark:border-blue-800">
+        <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <Send className="h-5 w-5 text-blue-600" />
-          <span className="font-medium text-blue-800 dark:text-blue-300">{selectedSpeakers.size} selected</span>
+          <span className="font-medium text-blue-800">{selectedSpeakers.size} selected</span>
           <div className="flex-1" />
           <Button size="sm" variant="outline" onClick={() => setSelectedSpeakers(new Set())}>
             Clear
@@ -637,7 +637,7 @@ export default function SpeakerInvitationsPage() {
             {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
             {sending ? "Sending..." : "Send Email"}
           </Button>
-          <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/20" onClick={sendWhatsAppInvitations} disabled={sending || sendingWhatsApp}>
+          <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50" onClick={sendWhatsAppInvitations} disabled={sending || sendingWhatsApp}>
             {sendingWhatsApp ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MessageCircle className="h-4 w-4 mr-2" />}
             {sendingWhatsApp ? "Sending..." : "Send WhatsApp"}
           </Button>
@@ -932,7 +932,7 @@ export default function SpeakerInvitationsPage() {
                   {selectedSpeaker.attendee_phone && (
                     <Button
                       variant="outline"
-                      className="w-full border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/20"
+                      className="w-full border-green-300 text-green-700 hover:bg-green-50"
                       onClick={() => resendWhatsApp(selectedSpeaker)}
                       disabled={resendingWhatsApp || !selectedSpeaker.custom_fields?.portal_token}
                     >

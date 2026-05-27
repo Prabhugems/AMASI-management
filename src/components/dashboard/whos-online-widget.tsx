@@ -101,14 +101,14 @@ function Avatar({
         ${isPrimary ? "bg-gradient-primary" : `bg-gradient-to-br ${colors[color] || ""}`}
         flex items-center justify-center
         font-bold text-white
-        ring-2 ${isDark ? "ring-slate-800" : "ring-white"}
+        ring-2 ring-background
       `}
       >
         {initials}
       </div>
 
       {status && (
-        <div className={`absolute -bottom-0.5 -right-0.5 p-0.5 rounded-full ${isDark ? "bg-slate-900" : "bg-white"}`}>
+        <div className="absolute -bottom-0.5 -right-0.5 p-0.5 rounded-full bg-card">
           <StatusIndicator status={status} size="sm" />
         </div>
       )}
@@ -149,7 +149,7 @@ function TeamMemberRow({
         group flex items-center gap-3 p-3 rounded-xl cursor-pointer
         transition-all duration-500 ease-out
         ${isVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"}
-        ${isDark ? "hover:bg-slate-800/80" : "hover:bg-gray-100"}
+        hover:bg-accent
       `}
       style={{ transitionDelay: `${index * 80}ms` }}
       onMouseEnter={() => setIsHovered(true)}
@@ -158,12 +158,12 @@ function TeamMemberRow({
       <Avatar name={member.name} color={member.color} size="sm" status={member.status} isDark={isDark} />
 
       <div className="flex-1 min-w-0">
-        <p className={`font-semibold text-sm truncate ${isDark ? "text-white" : "text-gray-900"}`}>{member.name}</p>
-        <p className={`text-xs truncate ${isDark ? "text-slate-500" : "text-gray-500"}`}>{member.role}</p>
+        <p className="font-semibold text-sm truncate text-foreground">{member.name}</p>
+        <p className="text-xs truncate text-muted-foreground">{member.role}</p>
         {/* Permission badges */}
         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
           {(!Array.isArray(member.permissions) || member.permissions.length === 0) ? (
-            <span className={`inline-flex items-center px-1.5 py-0 rounded-full text-[10px] font-medium leading-4 ${isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700"}`}>
+            <span className="inline-flex items-center px-1.5 py-0 rounded-full text-[10px] font-medium leading-4 bg-emerald-100 text-emerald-700">
               Full Access
             </span>
           ) : (
@@ -173,14 +173,14 @@ function TeamMemberRow({
                 return (
                   <span
                     key={permId}
-                    className={`inline-flex items-center px-1.5 py-0 rounded-full text-[10px] font-medium leading-4 ${isDark ? "bg-slate-700 text-slate-300" : "bg-gray-100 text-gray-600"}`}
+                    className="inline-flex items-center px-1.5 py-0 rounded-full text-[10px] font-medium leading-4 bg-muted text-muted-foreground"
                   >
                     {permDef?.label ?? permId}
                   </span>
                 )
               })}
               {member.permissions.length > 3 && (
-                <span className={`text-[10px] font-medium ${isDark ? "text-slate-500" : "text-gray-400"}`}>
+                <span className="text-[10px] font-medium text-muted-foreground">
                   +{member.permissions.length - 3}
                 </span>
               )}
@@ -197,7 +197,7 @@ function TeamMemberRow({
       `}
       >
         <button
-          className={`p-1.5 rounded-lg transition-colors ${isDark ? "hover:bg-slate-700 text-slate-400" : "hover:bg-gray-200 text-gray-500"}`}
+          className="p-1.5 rounded-lg transition-colors hover:bg-accent text-muted-foreground"
         >
           <MessageCircle className="w-4 h-4" />
         </button>
@@ -208,10 +208,10 @@ function TeamMemberRow({
         className={`
         text-xs transition-all duration-300
         ${member.time === "Never logged in"
-          ? (isDark ? "text-amber-400/80" : "text-amber-600")
+          ? "text-amber-600"
           : member.status === "logged_out"
-            ? (isDark ? "text-orange-400/80" : "text-orange-600")
-            : (isDark ? "text-slate-500" : "text-gray-400")}
+            ? "text-orange-600"
+            : "text-muted-foreground"}
         ${isHovered ? "opacity-0" : "opacity-100"}
       `}
       >
@@ -253,8 +253,8 @@ function OnlineAvatarsRow({ members, isDark }: { members: TeamMemberWidget[]; is
       className={`
         flex items-center gap-3 mx-4 mb-3 p-3 rounded-xl
         transition-all duration-300
-        ${isDark ? "bg-slate-800/30" : "bg-gray-50"}
-        ${isHovered ? (isDark ? "bg-slate-800/50" : "bg-gray-100") : ""}
+        bg-muted
+        ${isHovered ? "bg-accent" : ""}
       `}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -274,7 +274,7 @@ function OnlineAvatarsRow({ members, isDark }: { members: TeamMemberWidget[]; is
           <div
             className={`
             w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
-            ${isDark ? "bg-slate-700 text-white ring-2 ring-slate-800" : "bg-gray-200 text-gray-600 ring-2 ring-white"}
+            bg-secondary text-muted-foreground ring-2 ring-background
           `}
           >
             +{members.filter((m) => m.status === "online").length - 5}
@@ -284,10 +284,10 @@ function OnlineAvatarsRow({ members, isDark }: { members: TeamMemberWidget[]; is
 
       {/* Status Text */}
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium ${isDark ? "text-white" : "text-gray-900"}`}>
+        <p className="text-sm font-medium text-foreground">
           {members.filter((m) => m.status === "online").length} online
         </p>
-        <p className={`text-xs ${isDark ? "text-slate-500" : "text-gray-500"}`}>Logged in right now</p>
+        <p className="text-xs text-muted-foreground">Logged in right now</p>
       </div>
 
       {/* Manage Team Link */}
@@ -420,12 +420,12 @@ export function WhosOnlineWidget() {
       <div
         className={`
         rounded-2xl overflow-hidden p-8
-        ${isDark ? "bg-slate-900/50 border border-slate-800 backdrop-blur-sm" : "bg-white border border-gray-200 shadow-xl shadow-gray-200/50"}
+        bg-card border border-border shadow-sm
       `}
       >
         <div className="flex flex-col items-center justify-center gap-3">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <p className={`text-sm ${isDark ? "text-slate-400" : "text-gray-500"}`}>Loading team...</p>
+          <p className={`text-sm text-muted-foreground`}>Loading team...</p>
         </div>
       </div>
     )
@@ -436,12 +436,12 @@ export function WhosOnlineWidget() {
       <div
         className={`
         rounded-2xl overflow-hidden p-8
-        ${isDark ? "bg-slate-900/50 border border-slate-800 backdrop-blur-sm" : "bg-white border border-gray-200 shadow-xl shadow-gray-200/50"}
+        bg-card border border-border shadow-sm
       `}
       >
         <div className="flex flex-col items-center justify-center gap-3">
-          <Users className={`h-8 w-8 ${isDark ? "text-slate-600" : "text-gray-400"}`} />
-          <p className={`text-sm ${isDark ? "text-slate-400" : "text-gray-500"}`}>No team members yet</p>
+          <Users className={`h-8 w-8 text-muted-foreground`} />
+          <p className={`text-sm text-muted-foreground`}>No team members yet</p>
           <Link href="/team" className="text-sm text-primary hover:underline">
             Add team members
           </Link>
@@ -454,35 +454,35 @@ export function WhosOnlineWidget() {
     <div
       className={`
       rounded-2xl overflow-hidden
-      ${isDark ? "bg-slate-900/50 border border-slate-800 backdrop-blur-sm" : "bg-white border border-gray-200 shadow-xl shadow-gray-200/50"}
+      bg-card border border-border shadow-sm
     `}
     >
       {/* Header */}
-      <div className={`flex items-center justify-between p-4 ${isDark ? "bg-slate-800/50" : "bg-gray-50"}`}>
+      <div className="flex items-center justify-between p-4 bg-muted/50">
         <div className="flex items-start gap-3">
           <div
             className={`
             relative p-2.5 rounded-xl
-            ${isDark ? "bg-emerald-500/20" : "bg-emerald-100"}
+            bg-emerald-100
           `}
           >
             {onlineCount > 0 && <div className="absolute inset-0 rounded-xl bg-emerald-500/30 animate-ping-slow" />}
-            <Users className={`relative w-5 h-5 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
+            <Users className="relative w-5 h-5 text-emerald-600" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className={`font-bold ${isDark ? "text-white" : "text-gray-900"}`}>Team Members</h3>
+              <h3 className="font-bold text-foreground">Team Members</h3>
               <div
                 className={`
                 flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
-                ${isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700"}
+                bg-emerald-100 text-emerald-700
               `}
               >
                 <Activity className="w-3 h-3" />
                 {teamMembers.length}
               </div>
             </div>
-            <p className={`text-xs ${isDark ? "text-slate-500" : "text-gray-500"}`}>
+            <p className="text-xs text-muted-foreground">
               {loggedInCount}/{teamMembers.length} logged in{onlineCount > 0 ? ` • ${onlineCount} online now` : ""}{neverLoggedInCount > 0 ? ` • ${neverLoggedInCount} pending` : ""}
             </p>
           </div>
@@ -504,7 +504,7 @@ export function WhosOnlineWidget() {
         className={`
         flex items-center justify-center p-4
         border-t cursor-pointer transition-all duration-300
-        ${isDark ? "border-slate-700/50 hover:bg-slate-800/50" : "border-gray-100 hover:bg-gray-50"}
+        border-border hover:bg-accent
       `}
       >
         <Link

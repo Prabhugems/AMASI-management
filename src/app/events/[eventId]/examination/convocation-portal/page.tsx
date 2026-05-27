@@ -97,7 +97,7 @@ export default function ConvocationPortalPage() {
       title: "Result Email Sent",
       icon: Mail,
       color: "text-blue-600",
-      bgColor: "bg-blue-50 dark:bg-blue-950/30",
+      bgColor: "bg-blue-50",
       barColor: "bg-blue-500",
       value: stats?.emailsSentPass || 0,
       total: stats?.totalPassed || 0,
@@ -108,7 +108,7 @@ export default function ConvocationPortalPage() {
       title: "Convocation Form Filled",
       icon: FileText,
       color: "text-green-600",
-      bgColor: "bg-green-50 dark:bg-green-950/30",
+      bgColor: "bg-green-50",
       barColor: "bg-green-500",
       value: stats?.formFilled || 0,
       total: stats?.totalPassed || 0,
@@ -119,7 +119,7 @@ export default function ConvocationPortalPage() {
       title: "Address Collected",
       icon: MapPin,
       color: "text-purple-600",
-      bgColor: "bg-purple-50 dark:bg-purple-950/30",
+      bgColor: "bg-purple-50",
       barColor: "bg-purple-500",
       value: stats?.addressCollected || 0,
       total: stats?.totalPassed || 0,
@@ -130,7 +130,7 @@ export default function ConvocationPortalPage() {
       title: "AMASICON Registration",
       icon: Users,
       color: "text-orange-600",
-      bgColor: "bg-orange-50 dark:bg-orange-950/30",
+      bgColor: "bg-orange-50",
       barColor: "bg-orange-500",
       value: 0,
       total: stats?.totalPassed || 0,
@@ -199,7 +199,7 @@ export default function ConvocationPortalPage() {
                     <span className={`text-3xl font-bold ${card.color}`}>{card.value}</span>
                     <span className="text-sm text-muted-foreground">/ {card.total}</span>
                   </div>
-                  <div className="h-2 bg-white/60 dark:bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${card.barColor}`}
                       style={{ width: `${Math.min(parseFloat(pct), 100)}%` }}
@@ -218,11 +218,11 @@ export default function ConvocationPortalPage() {
       {/* Withheld Section */}
       {stats && stats.withheld.length > 0 && (
         <div className="space-y-3">
-          <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-xl p-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                <h3 className="font-semibold text-yellow-800">
                   Withheld Candidates ({stats.withheld.length})
                 </h3>
               </div>
@@ -235,7 +235,7 @@ export default function ConvocationPortalPage() {
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {stats.withheld.map((r) => (
-                <div key={r.id} className="flex items-center justify-between py-1.5 px-2 bg-white/50 dark:bg-white/5 rounded text-sm">
+                <div key={r.id} className="flex items-center justify-between py-1.5 px-2 bg-muted/50 rounded text-sm">
                   <div>
                     <span className="font-medium">{r.name}</span>
                     <span className="text-muted-foreground ml-2">{r.email}</span>
@@ -251,11 +251,11 @@ export default function ConvocationPortalPage() {
       {/* Without Exam Section */}
       {stats && stats.withoutExam.length > 0 && (
         <div className="space-y-3">
-          <div className="bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="bg-muted border border-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <GraduationCap className="h-5 w-5 text-slate-600" />
-                <h3 className="font-semibold text-slate-800 dark:text-slate-200">
+                <GraduationCap className="h-5 w-5 text-muted-foreground" />
+                <h3 className="font-semibold text-foreground">
                   Without Exam ({stats.withoutExam.length})
                 </h3>
               </div>
@@ -268,7 +268,7 @@ export default function ConvocationPortalPage() {
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {stats.withoutExam.map((r) => (
-                <div key={r.id} className="flex items-center justify-between py-1.5 px-2 bg-white/50 dark:bg-white/5 rounded text-sm">
+                <div key={r.id} className="flex items-center justify-between py-1.5 px-2 bg-muted/50 rounded text-sm">
                   <div>
                     <span className="font-medium">{r.name}</span>
                     {r.convocation_number && (

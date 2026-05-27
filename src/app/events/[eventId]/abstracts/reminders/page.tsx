@@ -162,7 +162,7 @@ export default function RemindersPage() {
                     className={cn(
                       "w-full p-4 rounded-xl border-2 text-left transition-all",
                       selectedType === type.value
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                        ? "border-blue-500 bg-blue-50"
                         : "border-border hover:border-blue-300"
                     )}
                   >
@@ -192,7 +192,7 @@ export default function RemindersPage() {
                     className={cn(
                       "flex-1 p-4 rounded-xl border-2 transition-all",
                       selectedChannel === channel.value
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                        ? "border-blue-500 bg-blue-50"
                         : "border-border hover:border-blue-300",
                       channel.value === "whatsapp" && "opacity-50 cursor-not-allowed"
                     )}
@@ -281,12 +281,12 @@ export default function RemindersPage() {
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "h-10 w-10 rounded-lg flex items-center justify-center",
-                    reminder.reminder_type === "review_deadline" ? "bg-blue-100 dark:bg-blue-900/30" : "bg-amber-100 dark:bg-amber-900/30"
+                    reminder.reminder_type === "review_deadline" ? "bg-blue-100" : "bg-amber-100"
                   )}>
                     {reminder.reminder_type === "review_deadline" ? (
-                      <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      <Users className="h-5 w-5 text-blue-600" />
                     ) : (
-                      <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                      <FileText className="h-5 w-5 text-amber-600" />
                     )}
                   </div>
                   <div>

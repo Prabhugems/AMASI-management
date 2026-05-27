@@ -638,7 +638,7 @@ export default function TicketsPage() {
                   <Zap className="h-4 w-4 text-amber-500" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-amber-600 dark:text-amber-400">No tickets on sale</h3>
+                  <h3 className="font-semibold text-amber-600">No tickets on sale</h3>
                   <p className="text-sm text-muted-foreground mt-1">
                     You have {stats.totalTickets} ticket type{stats.totalTickets > 1 ? "s" : ""} but none are currently on sale.
                     To start selling tickets:
@@ -661,7 +661,7 @@ export default function TicketsPage() {
                   <Ticket className="h-4 w-4 text-blue-500" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-blue-600 dark:text-blue-400">Create your first ticket</h3>
+                  <h3 className="font-semibold text-blue-600">Create your first ticket</h3>
                   <p className="text-sm text-muted-foreground mt-1">
                     Start by creating ticket types for your event. Each ticket type can have different prices, quantities, and availability dates.
                   </p>

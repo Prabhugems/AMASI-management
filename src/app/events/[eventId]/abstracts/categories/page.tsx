@@ -483,8 +483,8 @@ export default function CategoriesPage() {
       </div>
 
       {/* Info Box */}
-      <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-xl">
-        <p className="text-sm text-blue-800 dark:text-blue-200">
+      <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+        <p className="text-sm text-blue-800">
           <strong>Specialities</strong> help organize abstract submissions by medical speciality (e.g., Bariatric Surgery, Robotic Surgery).
           Common examples: Free Paper, Video, Poster, Young Investigator, Case Report.
           You can set a maximum number of submissions per category if needed.

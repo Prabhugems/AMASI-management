@@ -484,7 +484,7 @@ export function CSVImportDynamic({
                           "w-full px-3 py-2 rounded-md border text-sm",
                           "bg-background focus:outline-none focus:ring-2 focus:ring-primary",
                           isSkipped && "text-muted-foreground",
-                          isCustom && "text-amber-600 dark:text-amber-400",
+                          isCustom && "text-amber-600",
                           isStandard && "text-success"
                         )}
                       >
@@ -562,7 +562,7 @@ export function CSVImportDynamic({
               <p className="text-xs text-muted-foreground">Standard Fields</p>
             </div>
             <div className="bg-amber-500/10 rounded-lg p-3 text-center">
-              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+              <p className="text-2xl font-bold text-amber-600">
                 {Object.values(columnMappings).filter(v => v.startsWith("custom:")).length}
               </p>
               <p className="text-xs text-muted-foreground">Custom Fields</p>
@@ -597,7 +597,7 @@ export function CSVImportDynamic({
                       const isCustom = mapping?.startsWith("custom:")
                       return (
                         <th key={header} className="px-3 py-2 text-left font-medium">
-                          <span className={isCustom ? "text-amber-600 dark:text-amber-400" : "text-success"}>
+                          <span className={isCustom ? "text-amber-600" : "text-success"}>
                             {isCustom ? mapping.replace("custom:", "") : standardFields.find(f => f.key === mapping)?.label || header}
                           </span>
                         </th>

@@ -253,8 +253,8 @@ export function ThumbsRating({
         onClick={() => onChange?.(value === "up" ? null : "up")}
         className={cn(
           "p-2 rounded-full transition-all",
-          "hover:bg-green-100 dark:hover:bg-green-900/30",
-          value === "up" && "bg-green-100 dark:bg-green-900/30 text-green-600"
+          "hover:bg-green-100",
+          value === "up" && "bg-green-100 text-green-600"
         )}
       >
         👍
@@ -264,8 +264,8 @@ export function ThumbsRating({
         onClick={() => onChange?.(value === "down" ? null : "down")}
         className={cn(
           "p-2 rounded-full transition-all",
-          "hover:bg-red-100 dark:hover:bg-red-900/30",
-          value === "down" && "bg-red-100 dark:bg-red-900/30 text-red-600"
+          "hover:bg-red-100",
+          value === "down" && "bg-red-100 text-red-600"
         )}
       >
         👎

@@ -55,28 +55,28 @@ export default function InstructionsPage() {
           Abstract Workflow
         </h2>
         <div className="space-y-4">
-          <div className="flex items-start gap-4 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+          <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-lg">
             <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">1</div>
             <div>
               <h3 className="font-semibold">Submitted</h3>
               <p className="text-sm text-muted-foreground">Author submits abstract through the public form. They receive a confirmation email with their abstract number.</p>
             </div>
           </div>
-          <div className="flex items-start gap-4 p-4 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg">
+          <div className="flex items-start gap-4 p-4 bg-yellow-50 rounded-lg">
             <div className="w-8 h-8 rounded-full bg-yellow-500 text-white flex items-center justify-center font-bold">2</div>
             <div>
               <h3 className="font-semibold">Under Review</h3>
               <p className="text-sm text-muted-foreground">Reviewers score the abstract on criteria like Originality, Methodology, Relevance, and Clarity (1-10 scale).</p>
             </div>
           </div>
-          <div className="flex items-start gap-4 p-4 bg-green-50 dark:bg-green-950/30 rounded-lg">
+          <div className="flex items-start gap-4 p-4 bg-green-50 rounded-lg">
             <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">3</div>
             <div>
               <h3 className="font-semibold">Decision</h3>
               <p className="text-sm text-muted-foreground">Scientific committee reviews scores and makes final decision: Accept (as oral/poster/video), Reject, or Request Revision.</p>
             </div>
           </div>
-          <div className="flex items-start gap-4 p-4 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
+          <div className="flex items-start gap-4 p-4 bg-purple-50 rounded-lg">
             <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold">4</div>
             <div>
               <h3 className="font-semibold">Notification</h3>
@@ -177,12 +177,12 @@ export default function InstructionsPage() {
       </div>
 
       {/* Tips */}
-      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-6">
-        <h2 className="font-semibold text-lg mb-4 flex items-center gap-2 text-amber-700 dark:text-amber-400">
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+        <h2 className="font-semibold text-lg mb-4 flex items-center gap-2 text-amber-700">
           <BookOpen className="h-5 w-5" />
           Best Practices
         </h2>
-        <ul className="text-sm space-y-2 text-amber-800 dark:text-amber-300">
+        <ul className="text-sm space-y-2 text-amber-800">
           <li>• Set clear deadlines and communicate them well in advance</li>
           <li>• Enable blind review for unbiased scoring (hides author names from reviewers)</li>
           <li>• Aim for at least 2 reviewers per abstract for balanced evaluation</li>

@@ -397,11 +397,11 @@ export default function ConvocationPage() {
 
             {/* Warning: candidates without AMASI */}
             {noAmasi.length > 0 && (
-              <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-xl p-4 mb-6">
-                <p className="font-medium text-yellow-800 dark:text-yellow-200 text-sm">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                <p className="font-medium text-yellow-800 text-sm">
                   {noAmasi.length} candidate(s) have no AMASI membership — cannot assign convocation numbers until membership is confirmed.
                 </p>
-                <ul className="mt-2 text-xs text-yellow-700 dark:text-yellow-300 space-y-1 max-h-32 overflow-y-auto">
+                <ul className="mt-2 text-xs text-yellow-700 space-y-1 max-h-32 overflow-y-auto">
                   {noAmasi.map((r) => (
                     <li key={r.id}>{r.name} — {r.email}</li>
                   ))}
@@ -411,7 +411,7 @@ export default function ConvocationPage() {
 
             {/* Auto Assign */}
             {unassigned > 0 && (
-              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl p-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-300">
                 <h3 className="font-medium text-sm mb-3 flex items-center gap-2">
                   <Wand2 className="h-4 w-4" />
                   Auto-assign convocation numbers ({unassigned} pending)
@@ -521,7 +521,7 @@ export default function ConvocationPage() {
                         key={reg.id}
                         className={cn(
                           "transition-colors duration-150 hover:bg-muted/50",
-                          editingId === reg.id && "bg-blue-50 dark:bg-blue-950/20"
+                          editingId === reg.id && "bg-blue-50"
                         )}
                       >
                         <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>

@@ -193,10 +193,10 @@ export default function ResultsPage() {
       {/* Stats - Animated & Clickable */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: "Passed", value: passed, color: "text-green-600", filter: "pass", bg: "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900" },
-          { label: "Failed", value: failed, color: "text-red-600", filter: "fail", bg: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900" },
-          { label: "Withheld", value: withheld, color: "text-yellow-600", filter: "withheld", bg: "bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900" },
-          { label: "Absent", value: absent, color: "text-orange-600", filter: "absent", bg: "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900" },
+          { label: "Passed", value: passed, color: "text-green-600", filter: "pass", bg: "bg-green-50 border-green-200" },
+          { label: "Failed", value: failed, color: "text-red-600", filter: "fail", bg: "bg-red-50 border-red-200" },
+          { label: "Withheld", value: withheld, color: "text-yellow-600", filter: "withheld", bg: "bg-yellow-50 border-yellow-200" },
+          { label: "Absent", value: absent, color: "text-orange-600", filter: "absent", bg: "bg-orange-50 border-orange-200" },
           { label: "All", value: (registrations?.length || 0), color: "", filter: "all", bg: "bg-card" },
         ].map((stat) => (
           <AnimatedStatCard
@@ -273,7 +273,7 @@ export default function ResultsPage() {
                     key={reg.id}
                     className={cn(
                       "transition-colors duration-150 hover:bg-muted/50",
-                      reg.exam_result === "pass" && "bg-green-50/50 dark:bg-green-950/10 print:bg-green-50"
+                      reg.exam_result === "pass" && "bg-green-50/50 print:bg-green-50"
                     )}
                   >
                     <TableCell className="font-medium text-muted-foreground">{i + 1}</TableCell>

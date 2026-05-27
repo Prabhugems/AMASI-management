@@ -203,7 +203,7 @@ export function ConditionalLogicEditor({
                 key={field.id}
                 className={cn(
                   "transition-all",
-                  fieldHasLogic && "border-yellow-500/50 bg-yellow-50/50 dark:bg-yellow-950/10"
+                  fieldHasLogic && "border-yellow-500/50 bg-yellow-50/50"
                 )}
               >
                 <CardHeader
@@ -447,12 +447,12 @@ export function ConditionalLogicEditor({
       )}
 
       {/* Help Text */}
-      <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
+      <Card className="bg-blue-50 border-blue-200">
         <CardContent className="py-4">
-          <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+          <h4 className="font-medium text-blue-900 mb-2">
             How Conditional Logic Works
           </h4>
-          <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+          <ul className="text-sm text-blue-800 space-y-1">
             <li>• Fields can only depend on fields that appear before them</li>
             <li>• Use "All" when every condition must be met</li>
             <li>• Use "Any" when at least one condition must be met</li>
