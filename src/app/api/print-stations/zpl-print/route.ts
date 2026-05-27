@@ -246,22 +246,24 @@ function generateZPLFromTemplate(
     }
   }
 
-  // ~SD30 and ^PQ1,0,1,Y removed — they wedge the 4BARCODE 4B-2054TG's ZPL
-  // emulation silently (CUPS accepts the job, printer drops it). The same
-  // printer prints cleanly with ^MD15 + ^MMC, validated against the
-  // convocation Electron ZPL.
+  // Command order matches the convocation Electron generator (known to print
+  // on the 4BARCODE 4B-2054TG): label dimensions FIRST, then media tracking
+  // / cutter / darkness, then elements. The earlier order (^MNM before ^LH)
+  // wedges the printer silently. Removed ~SD30, ^PQ1,0,1,Y, and ^LS0 for
+  // the same reason.
+  // Using ^MMT (tear-off) — ^MMC (cutter) wedges this 4BARCODE's parser
+  // after a single print on the production setup. Operator tears manually.
   return `
 ^XA
 ^CI28
-^MNM
-^MMC
-^LT-30
-^MD15
-^LS0
-${rotationCmd}
 ^LH0,0
 ^LL${dimensions.height}
 ^PW${dimensions.width}
+^MNM
+^MMT
+^LT-30
+^MD15
+${rotationCmd}
 ${zplElements}
 ^XZ
 `.trim()
