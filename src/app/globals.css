@@ -59,25 +59,25 @@
   }
 
   .dark {
-    /* Light mint/champagne palette — redefining dark-mode vars */
-    --background: 42 25% 91%;          /* #ebe6d8 warmer, more distinct from white cards */
-    --foreground: 0 0% 16%;            /* #2a2a2a near-black */
-    --card: 0 0% 100%;                 /* #ffffff white */
-    --card-foreground: 0 0% 16%;       /* #2a2a2a */
-    --popover: 0 0% 100%;             /* white */
-    --popover-foreground: 0 0% 16%;
+    /* Dark mint/champagne palette — same hues, deep backgrounds */
+    --background: 155 15% 13%;          /* #1c2622 dark warm green */
+    --foreground: 140 16% 96%;          /* #f4f7f5 light text */
+    --card: 150 12% 13%;               /* #1e2622 dark card */
+    --card-foreground: 140 16% 96%;    /* #f4f7f5 */
+    --popover: 150 14% 15%;            /* slightly lifted for dropdowns */
+    --popover-foreground: 140 16% 96%;
 
-    --primary: 38 66% 37%;             /* #9c7320 champagne gold */
-    --primary-foreground: 0 0% 100%;   /* white on gold */
+    --primary: 38 66% 42%;             /* champagne gold, brighter for dark bg */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 45 25% 91%;           /* #ebe7d9 soft champagne */
-    --secondary-foreground: 0 0% 16%;
+    --secondary: 155 12% 17%;          /* slightly lighter than bg */
+    --secondary-foreground: 140 16% 96%;
 
-    --muted: 45 20% 93%;               /* #efece3 very soft warm grey */
-    --muted-foreground: 222 5% 45%;    /* #6b6f78 medium grey */
+    --muted: 155 10% 18%;              /* subtle muted dark */
+    --muted-foreground: 157 12% 65%;   /* #9bb0a8 soft mint grey */
 
-    --accent: 45 25% 91%;              /* same as secondary */
-    --accent-foreground: 0 0% 16%;
+    --accent: 155 12% 17%;
+    --accent-foreground: 140 16% 96%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
@@ -91,19 +91,19 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    --border: 38 27% 74%;              /* #d4c9a8 darker champagne-grey */
-    --input: 38 27% 74%;
-    --ring: 38 66% 37%;                /* matches primary gold */
+    --border: 157 10% 25%;             /* #3a4742 */
+    --input: 157 10% 25%;
+    --ring: 38 66% 42%;
 
-    --sidebar-background: 45 36% 89%;  /* #efeada warm panel */
-    --sidebar-foreground: 0 0% 16%;    /* dark text */
-    --sidebar-primary: 38 66% 37%;     /* gold accent */
+    --sidebar-background: 155 18% 10%; /* darker than main bg */
+    --sidebar-foreground: 140 16% 96%;
+    --sidebar-primary: 38 66% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 45 30% 85%;      /* slightly deeper warm */
-    --sidebar-accent-foreground: 0 0% 16%;
-    --sidebar-border: 38 27% 70%;      /* slightly deeper than border */
-    --sidebar-ring: 38 66% 37%;
-    --sidebar-muted: 222 5% 45%;       /* medium grey */
+    --sidebar-accent: 155 12% 16%;
+    --sidebar-accent-foreground: 140 16% 96%;
+    --sidebar-border: 157 10% 20%;
+    --sidebar-ring: 38 66% 42%;
+    --sidebar-muted: 157 12% 55%;
   }
 
   /* Theme Color: Blue */
@@ -175,10 +175,10 @@
     --sidebar-primary: 270 50% 60%;
   }
   .dark.theme-violet {
-    --primary: 38 66% 37%;
+    --primary: 38 66% 42%;
     --primary-foreground: 0 0% 100%;
-    --ring: 38 66% 37%;
-    --sidebar-primary: 38 66% 37%;
+    --ring: 38 66% 42%;
+    --sidebar-primary: 38 66% 42%;
   }
 
   /* Theme Color: Orange */
@@ -193,19 +193,19 @@
     --sidebar-primary: 28 90% 45%;
   }
 
-  /* Sidebar Colors - Light warm variants */
+  /* Sidebar Colors - Dark warm variants */
   .sidebar-dark,
   .sidebar-blue,
   .sidebar-slate,
   .sidebar-gray,
   .sidebar-zinc,
   .sidebar-neutral {
-    --sidebar-background: 45 36% 89%;
-    --sidebar-foreground: 0 0% 16%;
-    --sidebar-accent: 45 30% 85%;
-    --sidebar-accent-foreground: 0 0% 16%;
-    --sidebar-border: 38 27% 70%;
-    --sidebar-muted: 222 5% 45%;
+    --sidebar-background: 155 18% 10%;
+    --sidebar-foreground: 140 16% 96%;
+    --sidebar-accent: 155 12% 16%;
+    --sidebar-accent-foreground: 140 16% 96%;
+    --sidebar-border: 157 10% 20%;
+    --sidebar-muted: 157 12% 55%;
   }
 }
 
@@ -217,6 +217,12 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  .dark body {
+    background-image: linear-gradient(110deg,#3f6e5c 0%,#4a6b5e 24%,#3a3a3a 52%,#5a4f33 76%,#6e5a28 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
   }
 
   /* Paper Dashboard Typography */
@@ -258,10 +264,23 @@
     box-shadow: 0 6px 16px rgba(120,90,20,0.12);
   }
 
+  .dark .paper-card {
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+
+  .dark .paper-card:hover {
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  }
+
   .paper-card.hover-lift:hover {
     transform: translateY(-5px);
     border-color: #c9a44a;
     box-shadow: 0 8px 20px rgba(120,90,20,0.18);
+  }
+
+  .dark .paper-card.hover-lift:hover {
+    border-color: #7fcfae;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.45);
   }
 
   /* Icon Big - Paper Dashboard Style */
@@ -1667,3 +1686,16 @@
 .gold .stat-label{color:#8a6313 !important;}.gold .stat-icon{background:rgba(170,119,28,.12) !important;color:#9c7320 !important;}
 @keyframes cardIn{to{opacity:1;transform:translateY(0);}}
 @keyframes shimmer{0%{left:-70%;}45%{left:140%;}100%{left:140%;}}
+
+/* Dark metal cards — same mint/gold hues, dark interior, light text */
+.dark .metal-panel{background:linear-gradient(110deg,rgba(63,110,92,0.18) 0%,rgba(58,58,58,0.22) 52%,rgba(90,79,51,0.18) 100%) !important;border:1px solid #3a4742;}
+.dark .metal-card.mint{background:linear-gradient(150deg,#7fcfae,#3d8a6e) !important;}
+.dark .metal-card.gold{background:linear-gradient(150deg,#e0bd66,#9c7320) !important;}
+.dark .metal-card .inner{background:linear-gradient(160deg,#1c2622,#161e1a) !important;}
+.dark .metal-card .inner::before{background:linear-gradient(100deg,transparent,rgba(255,255,255,.06),transparent);}
+.dark .metal-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.45);}
+.dark .stat-value{color:#f4f7f5 !important;}
+.dark .mint .stat-label{color:#9bdcc2 !important;}
+.dark .mint .stat-icon{background:rgba(127,207,174,0.1) !important;color:#7fcfae !important;}
+.dark .gold .stat-label{color:#ead08a !important;}
+.dark .gold .stat-icon{background:rgba(232,199,102,0.12) !important;color:#e8c766 !important;}
