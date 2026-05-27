@@ -34,6 +34,10 @@ export async function GET(request: NextRequest) {
           id,
           name,
           slug
+        ),
+        ticket_types (
+          id,
+          name
         )
       `)
       .or(`qr_code.eq.${sanitizedCode},id.eq.${sanitizedCode},registration_number.eq.${sanitizedCode}`)
@@ -88,7 +92,7 @@ function formatRegistration(reg: any) {
     email: maskEmail(reg.attendee_email || reg.email),
     phone: maskPhone(reg.attendee_phone || reg.phone),
     organization: reg.attendee_institution || reg.organization || reg.company || reg.institution,
-    ticketType: reg.ticket_type || reg.registration_type || "Attendee",
+    ticketType: reg.ticket_types?.name || reg.ticket_type || reg.registration_type || "Attendee",
     registrationNumber: reg.registration_number,
     checkedIn: reg.checked_in,
     badgePrinted: reg.badge_printed,
