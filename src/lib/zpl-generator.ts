@@ -52,6 +52,8 @@ export function generateTestZPL(): string {
     "^XA",
     "^CI28",
     "^MNM",
+    "^MMC",
+    "^LT-30",
     "^POI",
     "^FO50,50^A0N,40,40^FDZebra Test Print^FS",
     "^FO50,100^A0N,30,30^FDConnection Successful!^FS",
@@ -84,6 +86,8 @@ function generateDefaultZPL(registration: ZPLRegistration, station: ZPLStation):
     "^XA",
     "^CI28",
     "^MNM",
+    "^MMC",
+    "^LT-30",
     rotationCmd,
     "^LH0,0",
     `^LL${dimensions.height}`,
@@ -197,8 +201,8 @@ function generateZPLFromTemplate(
     "~SD30",           // Set Darkness (max = 30)
     "^CI28",           // UTF-8 encoding
     "^MNM",            // Mark sensing (black mark media)
-    "^MMT",            // Media mode: Tear-off
-    "^LT0",            // Label top offset (adjust if needed)
+    "^MMC",            // Media mode: Cutter (cut between each label)
+    "^LT-30",          // Label top offset, calibrated for AMASI pre-printed badges
     "^LS0",            // Label shift left/right (adjust if needed)
     rotationCmd,
     "^LH0,0",          // Label home position
