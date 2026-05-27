@@ -388,6 +388,41 @@ function PrintStationKioskPage() {
           },
           badge_template: station?.badge_templates
         }
+        // Try 4BARCODE direct via CUPS raw (lp -d -o raw). This routes through
+        // the 4BARCODE CUPS filter which handles cut+backfeed correctly — the
+        // proxy/HTML-to-PDF path wastes one blank label per cut on this printer
+        // because backfeed isn't injected. Pinning printer_name bypasses the
+        // proxy-prefer guard in /api/local-print.
+        const fourBarcode = proxyPrinters.find(p => /4BARCODE|4B-/i.test(p.name))
+        if (fourBarcode) {
+          try {
+            const { generateZPL } = await import("@/lib/zpl-generator")
+            const zpl = generateZPL(
+              data.registration,
+              {
+                id: station?.id,
+                name: station?.name,
+                print_settings: station?.print_settings,
+                events: station?.events,
+              },
+              station?.badge_templates,
+              station?.print_mode
+            )
+            const localRes = await fetch("/api/local-print", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ zpl, printer_name: fourBarcode.name })
+            })
+            if (localRes.ok) {
+              setZplStatus({ success: true, message: `Printed via CUPS raw to ${fourBarcode.name}` })
+              setTimeout(() => resetScan(), 1500)
+              return
+            }
+          } catch (e) {
+            console.log("CUPS raw print failed, falling back:", e)
+          }
+        }
+
         // Try local USB printing first (for Zebra connected via USB)
         try {
           const { generateZPL } = await import("@/lib/zpl-generator")
