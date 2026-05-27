@@ -59,24 +59,24 @@
   }
 
   .dark {
-    /* Dark mint/champagne palette — same hues, deep backgrounds */
-    --background: 155 15% 13%;          /* #1c2622 dark warm green */
-    --foreground: 140 16% 96%;          /* #f4f7f5 light text */
-    --card: 150 12% 13%;               /* #1e2622 dark card */
-    --card-foreground: 140 16% 96%;    /* #f4f7f5 */
-    --popover: 150 14% 15%;            /* slightly lifted for dropdowns */
+    /* Charcoal base + mint/gold accents */
+    --background: 0 0% 6%;              /* #101010 */
+    --foreground: 140 16% 96%;          /* #f4f7f5 */
+    --card: 240 10% 9%;                 /* #16161a */
+    --card-foreground: 140 16% 96%;
+    --popover: 240 10% 11%;
     --popover-foreground: 140 16% 96%;
 
-    --primary: 38 66% 42%;             /* champagne gold, brighter for dark bg */
+    --primary: 38 66% 42%;              /* champagne gold */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 155 12% 17%;          /* slightly lighter than bg */
+    --secondary: 240 6% 12%;
     --secondary-foreground: 140 16% 96%;
 
-    --muted: 155 10% 18%;              /* subtle muted dark */
-    --muted-foreground: 157 12% 65%;   /* #9bb0a8 soft mint grey */
+    --muted: 240 6% 14%;
+    --muted-foreground: 157 12% 65%;    /* #9bb0a8 */
 
-    --accent: 155 12% 17%;
+    --accent: 240 6% 12%;
     --accent-foreground: 140 16% 96%;
 
     --destructive: 0 72% 51%;
@@ -91,17 +91,17 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    --border: 157 10% 25%;             /* #3a4742 */
-    --input: 157 10% 25%;
+    --border: 240 6% 18%;               /* #2a2a30 */
+    --input: 240 6% 18%;
     --ring: 38 66% 42%;
 
-    --sidebar-background: 155 18% 10%; /* darker than main bg */
+    --sidebar-background: 0 0% 5%;      /* #0e0e0e */
     --sidebar-foreground: 140 16% 96%;
     --sidebar-primary: 38 66% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 155 12% 16%;
+    --sidebar-accent: 30 4% 10%;
     --sidebar-accent-foreground: 140 16% 96%;
-    --sidebar-border: 157 10% 20%;
+    --sidebar-border: 240 6% 14%;
     --sidebar-ring: 38 66% 42%;
     --sidebar-muted: 157 12% 55%;
   }
@@ -193,18 +193,18 @@
     --sidebar-primary: 28 90% 45%;
   }
 
-  /* Sidebar Colors - Dark warm variants */
+  /* Sidebar Colors - Dark charcoal variants */
   .sidebar-dark,
   .sidebar-blue,
   .sidebar-slate,
   .sidebar-gray,
   .sidebar-zinc,
   .sidebar-neutral {
-    --sidebar-background: 155 18% 10%;
+    --sidebar-background: 0 0% 5%;
     --sidebar-foreground: 140 16% 96%;
-    --sidebar-accent: 155 12% 16%;
+    --sidebar-accent: 30 4% 10%;
     --sidebar-accent-foreground: 140 16% 96%;
-    --sidebar-border: 157 10% 20%;
+    --sidebar-border: 240 6% 14%;
     --sidebar-muted: 157 12% 55%;
   }
 }
@@ -220,7 +220,10 @@
   }
 
   .dark body {
-    background-image: linear-gradient(110deg,#3f6e5c 0%,#4a6b5e 24%,#3a3a3a 52%,#5a4f33 76%,#6e5a28 100%);
+    background:
+      radial-gradient(circle at 88% 14%, rgba(224,189,102,0.22), transparent 48%),
+      radial-gradient(circle at 10% 88%, rgba(160,120,40,0.14), transparent 45%),
+      #101010 !important;
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -1687,15 +1690,30 @@
 @keyframes cardIn{to{opacity:1;transform:translateY(0);}}
 @keyframes shimmer{0%{left:-70%;}45%{left:140%;}100%{left:140%;}}
 
-/* Dark metal cards — same mint/gold hues, dark interior, light text */
-.dark .metal-panel{background:linear-gradient(110deg,rgba(63,110,92,0.18) 0%,rgba(58,58,58,0.22) 52%,rgba(90,79,51,0.18) 100%) !important;border:1px solid #3a4742;}
-.dark .metal-card.mint{background:linear-gradient(150deg,#7fcfae,#3d8a6e) !important;}
-.dark .metal-card.gold{background:linear-gradient(150deg,#e0bd66,#9c7320) !important;}
-.dark .metal-card .inner{background:linear-gradient(160deg,#1c2622,#161e1a) !important;}
-.dark .metal-card .inner::before{background:linear-gradient(100deg,transparent,rgba(255,255,255,.06),transparent);}
-.dark .metal-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.45);}
+/* Dark metal cards — animated gradient border, dark interior */
+.dark .metal-panel{background:transparent !important;border:none !important;}
+.dark .metal-card{background:linear-gradient(120deg,#7fcfae,#e0bd66,#7fcfae,#e0bd66) !important;background-size:300% 300% !important;animation:cardIn .4s ease forwards,borderFlow 4s linear infinite !important;}
+.dark .metal-card .inner{background:linear-gradient(160deg,#1a1d1c,#131414) !important;}
+.dark .metal-card .inner::before{background:linear-gradient(100deg,transparent,rgba(255,255,255,.06),transparent);animation:shimmerSweep 3.5s ease-in-out infinite !important;}
+.dark .metal-card:hover{transform:translateY(-8px) scale(1.03) !important;box-shadow:0 16px 40px rgba(0,0,0,.55) !important;}
 .dark .stat-value{color:#f4f7f5 !important;}
+.dark .stat-icon{animation:iconBob 3s ease-in-out infinite;transition:transform .3s cubic-bezier(.34,1.56,.64,1);}
+.dark .metal-card:hover .stat-icon{transform:scale(1.18) rotate(-8deg);}
 .dark .mint .stat-label{color:#9bdcc2 !important;}
 .dark .mint .stat-icon{background:rgba(127,207,174,0.1) !important;color:#7fcfae !important;}
 .dark .gold .stat-label{color:#ead08a !important;}
 .dark .gold .stat-icon{background:rgba(232,199,102,0.12) !important;color:#e8c766 !important;}
+
+@keyframes borderFlow{0%{background-position:0% 50%;}100%{background-position:300% 50%;}}
+@keyframes shimmerSweep{0%{left:-70%;}50%{left:140%;}100%{left:140%;}}
+@keyframes iconBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
+
+/* Floating glow orbs */
+.dark body::before,.dark body::after{content:'';position:fixed;border-radius:50%;pointer-events:none;z-index:0;filter:blur(70px);opacity:.22;}
+.dark body::before{width:420px;height:420px;top:-60px;right:-60px;background:#e0bd66;animation:glowDrift1 12s ease-in-out infinite alternate;}
+.dark body::after{width:380px;height:380px;bottom:-60px;left:-60px;background:#7fcfae;animation:glowDrift2 10s ease-in-out infinite alternate;}
+@keyframes glowDrift1{from{transform:translate(0,0);}to{transform:translate(-30px,20px);}}
+@keyframes glowDrift2{from{transform:translate(0,0);}to{transform:translate(20px,-25px);}}
+
+/* Dark sidebar gradient */
+.dark .sidebar-glass{background:linear-gradient(180deg,#0e0e0e,#141210) !important;}
