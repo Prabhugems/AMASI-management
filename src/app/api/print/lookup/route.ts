@@ -49,15 +49,17 @@ export async function GET(request: NextRequest) {
         .ilike("registration_number", `%${sanitizedCode}`)
       if (eventId) query = query.eq("event_id", eventId)
     } else if (looksLikeUuid) {
+      // qr_code column doesn't exist on registrations — match against id and
+      // registration_number only.
       query = supabase
         .from("registrations")
         .select(select)
-        .or(`qr_code.eq.${sanitizedCode},id.eq.${sanitizedCode},registration_number.eq.${sanitizedCode}`)
+        .or(`id.eq.${sanitizedCode},registration_number.eq.${sanitizedCode}`)
     } else {
       query = supabase
         .from("registrations")
         .select(select)
-        .or(`qr_code.eq.${sanitizedCode},registration_number.eq.${sanitizedCode}`)
+        .eq("registration_number", sanitizedCode)
     }
 
     const { data: matches, error } = await query.limit(5)
