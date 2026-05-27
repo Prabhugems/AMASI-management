@@ -268,15 +268,15 @@ ${zplElements}
 function replacePlaceholders(text: string, registration: any, station: any): string {
   if (!text) return ""
   let result = text
-  result = result.replace(/\{\{name\}\}/g, registration?.attendee_name || "")
-  result = result.replace(/\{\{registration_number\}\}/g, registration?.registration_number || "")
-  result = result.replace(/\{\{ticket_type\}\}/g, registration?.ticket_type || registration?.ticket_types?.name || "")
-  result = result.replace(/\{\{email\}\}/g, registration?.attendee_email || "")
-  result = result.replace(/\{\{phone\}\}/g, registration?.attendee_phone || "")
-  result = result.replace(/\{\{institution\}\}/g, registration?.attendee_institution || "")
-  result = result.replace(/\{\{designation\}\}/g, registration?.attendee_designation || "")
-  result = result.replace(/\{\{event_name\}\}/g, station?.events?.name || "")
-  result = result.replace(/\{\{event_date\}\}/g, "")
+  result = result.replace(/\{\{name\}\}/gi, registration?.attendee_name || "")
+  result = result.replace(/\{\{registration_number\}\}/gi, registration?.registration_number || "")
+  result = result.replace(/\{\{ticket_type\}\}/gi, registration?.ticket_type || registration?.ticket_types?.name || "")
+  result = result.replace(/\{\{email\}\}/gi, registration?.attendee_email || "")
+  result = result.replace(/\{\{phone\}\}/gi, registration?.attendee_phone || "")
+  result = result.replace(/\{\{institution\}\}/gi, registration?.attendee_institution || "")
+  result = result.replace(/\{\{designation\}\}/gi, registration?.attendee_designation || "")
+  result = result.replace(/\{\{event_name\}\}/gi, station?.events?.name || "")
+  result = result.replace(/\{\{event_date\}\}/gi, "")
   return result
 }
 
