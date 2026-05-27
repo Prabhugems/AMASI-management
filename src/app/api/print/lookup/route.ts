@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
       ticket_types (id, name)
     `
 
+    // UUIDs only on the id column — Postgres errors if we feed it a non-UUID
+    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sanitizedCode)
+
     let query
     if (isShort) {
       query = supabase
@@ -45,11 +48,16 @@ export async function GET(request: NextRequest) {
         .select(select)
         .ilike("registration_number", `%${sanitizedCode}`)
       if (eventId) query = query.eq("event_id", eventId)
-    } else {
+    } else if (looksLikeUuid) {
       query = supabase
         .from("registrations")
         .select(select)
         .or(`qr_code.eq.${sanitizedCode},id.eq.${sanitizedCode},registration_number.eq.${sanitizedCode}`)
+    } else {
+      query = supabase
+        .from("registrations")
+        .select(select)
+        .or(`qr_code.eq.${sanitizedCode},registration_number.eq.${sanitizedCode}`)
     }
 
     const { data: matches, error } = await query.limit(5)
