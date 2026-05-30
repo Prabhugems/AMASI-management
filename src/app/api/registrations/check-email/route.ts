@@ -2,6 +2,67 @@ import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
+// GET - Look up the registrations a given email already has for an event.
+// Used by the public registration page's "Already registered? Check your email"
+// widget, which fetches with query params (so it needs a GET handler — a POST-only
+// route returns 405 Method Not Allowed).
+export async function GET(request: NextRequest) {
+  // Rate limit: strict tier to prevent email enumeration
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(ip, "strict")
+  if (!rateLimit.success) {
+    return rateLimitExceededResponse(rateLimit)
+  }
+
+  try {
+    const { searchParams } = new URL(request.url)
+    const email = searchParams.get("email")?.trim()
+    const event_id = searchParams.get("event_id")?.trim()
+
+    if (!email || !event_id) {
+      return NextResponse.json(
+        { error: "email and event_id are required" },
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createServerSupabaseClient()
+
+    const { data: existingRegistrations, error } = await (supabase as any)
+      .from("registrations")
+      .select(`
+        id,
+        registration_number,
+        attendee_name,
+        status
+      `)
+      .eq("event_id", event_id)
+      .ilike("attendee_email", email)
+      .neq("status", "cancelled")
+
+    if (error) {
+      console.error("Error checking email:", error)
+      return NextResponse.json(
+        { error: "Failed to check email" },
+        { status: 500 }
+      )
+    }
+
+    const registrations = existingRegistrations || []
+
+    return NextResponse.json({
+      exists: registrations.length > 0,
+      registrations,
+    })
+  } catch (error: any) {
+    console.error("Error in check-email GET:", error)
+    return NextResponse.json(
+      { error: "Failed to check email" },
+      { status: 500 }
+    )
+  }
+}
+
 // POST - Check if email already has registrations for an event
 export async function POST(request: NextRequest) {
   // Rate limit: strict tier to prevent email enumeration
