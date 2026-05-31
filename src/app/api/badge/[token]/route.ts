@@ -18,11 +18,13 @@ export async function GET(
 
   const supabase = await createAdminClient()
 
-  // Determine if this is a checkin_token (long) or registration_number (short)
-  const isSecureToken = token.length >= 20
+  // The token can be either a registration_number (e.g. REG-20260430-YZW9ZGK)
+  // or a 64-char secure checkin_token. Their lengths overlap, so a length
+  // heuristic mis-routes lookups. Match either column.
+  const safeToken = token.replace(/[,()]/g, "")
 
   // Look up registration
-  let query = (supabase as any)
+  const { data: registration, error } = await (supabase as any)
     .from("registrations")
     .select(`
       id,
@@ -49,14 +51,8 @@ export async function GET(
         end_date
       )
     `)
-
-  if (isSecureToken) {
-    query = query.eq("checkin_token", token)
-  } else {
-    query = query.ilike("registration_number", token)
-  }
-
-  const { data: registration, error } = await query.maybeSingle()
+    .or(`registration_number.ilike.${safeToken},checkin_token.eq.${safeToken}`)
+    .maybeSingle()
 
   if (error || !registration) {
     return NextResponse.json(
