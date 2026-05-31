@@ -20,13 +20,9 @@ export async function GET(
 
   // The token can be either a registration_number (e.g. REG-20260430-YZW9ZGK)
   // or a 64-char secure checkin_token. Their lengths overlap, so a length
-  // heuristic mis-routes lookups. Match either column.
-  const safeToken = token.replace(/[,()]/g, "")
-
-  // Look up registration
-  const { data: registration, error } = await (supabase as any)
-    .from("registrations")
-    .select(`
+  // heuristic mis-routes lookups. Try reg number first, then checkin_token —
+  // two plain queries avoid the PostgREST .or() filter quirks.
+  const selectCols = `
       id,
       registration_number,
       attendee_name,
@@ -50,9 +46,22 @@ export async function GET(
         start_date,
         end_date
       )
-    `)
-    .or(`registration_number.ilike.${safeToken},checkin_token.eq.${safeToken}`)
+    `
+
+  // Look up registration by registration_number, then by checkin_token
+  let { data: registration, error } = await (supabase as any)
+    .from("registrations")
+    .select(selectCols)
+    .ilike("registration_number", token)
     .maybeSingle()
+
+  if (!registration && !error) {
+    ;({ data: registration, error } = await (supabase as any)
+      .from("registrations")
+      .select(selectCols)
+      .eq("checkin_token", token)
+      .maybeSingle())
+  }
 
   if (error || !registration) {
     return NextResponse.json(

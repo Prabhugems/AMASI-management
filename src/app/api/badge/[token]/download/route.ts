@@ -98,13 +98,10 @@ export async function GET(
 
   // The token can be either a registration_number (e.g. REG-20260430-YZW9ZGK)
   // or a 64-char secure checkin_token. Their lengths overlap (a reg number can
-  // be 20+ chars), so a length heuristic mis-routes lookups. Match either column.
-  const safeToken = token.replace(/[,()]/g, "")
-
-  // Look up registration
-  const { data: registration, error: regError } = await (supabase as any)
-    .from("registrations")
-    .select(`
+  // be 20+ chars), so a length heuristic mis-routes lookups. Try reg number
+  // first, then fall back to checkin_token — two plain queries avoid the
+  // PostgREST .or() filter quirks that silently fail to match.
+  const selectCols = `
       id,
       registration_number,
       attendee_name,
@@ -123,9 +120,22 @@ export async function GET(
         addon_id,
         addons (name)
       )
-    `)
-    .or(`registration_number.ilike.${safeToken},checkin_token.eq.${safeToken}`)
+    `
+
+  // Look up registration by registration_number, then by checkin_token
+  let { data: registration, error: regError } = await (supabase as any)
+    .from("registrations")
+    .select(selectCols)
+    .ilike("registration_number", token)
     .maybeSingle()
+
+  if (!registration && !regError) {
+    ;({ data: registration, error: regError } = await (supabase as any)
+      .from("registrations")
+      .select(selectCols)
+      .eq("checkin_token", token)
+      .maybeSingle())
+  }
 
   if (regError || !registration) {
     return NextResponse.json({ error: "Registration not found" }, { status: 404 })
