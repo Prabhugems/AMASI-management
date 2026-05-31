@@ -74,8 +74,21 @@ export async function POST(request: NextRequest) {
       errors: [] as string[],
     }
 
+    // Resend (and most email providers) rate-limit to ~2 requests/second. A
+    // bulk blast with no spacing gets 429'd partway through — that's how a
+    // 113-recipient send ended up with ~55 "Too many requests" failures.
+    // Space each send ~600ms apart to stay safely under 2/sec.
+    const SEND_THROTTLE_MS = 600
+    let sendIndex = 0
+
     // Process each recipient
     for (const reg of registrations) {
+      // Throttle between sends (skip the wait before the very first one)
+      if (sendIndex > 0) {
+        await new Promise((resolve) => setTimeout(resolve, SEND_THROTTLE_MS))
+      }
+      sendIndex++
+
       // Personalize message
       const personalizedMessage = message.replace(/\{\{name\}\}/gi, reg.attendee_name)
       const personalizedSubject = subject?.replace(/\{\{name\}\}/gi, reg.attendee_name)
