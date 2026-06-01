@@ -354,27 +354,57 @@ function RegistrationsContent() {
   }
 
   // Fetch registrations for this event
-  const { data: registrations, isLoading } = useQuery({
+  const {
+    data: registrations,
+    isLoading,
+    isError,
+    error: registrationsError,
+    refetch: refetchRegistrations,
+  } = useQuery({
     queryKey: ["event-registrations", eventId, statusFilter],
     queryFn: async () => {
-      let query = (supabase as any)
-        .from("registrations")
-        .select(`
-          *,
-          ticket_type:ticket_types(name, price)
-        `)
-        .eq("event_id", eventId)
-        .order("created_at", { ascending: false })
-
-      if (statusFilter === "checked_in") {
-        query = query.eq("checked_in", true)
-      } else if (statusFilter === "not_checked_in") {
-        query = query.or("checked_in.is.null,checked_in.eq.false")
-      } else if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter)
+      // Self-heal stale sessions: missing/expired tokens can cause RLS to
+      // silently return empty data with no error, which used to render as a
+      // blank attendees list.
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData.session) {
+        await supabase.auth.refreshSession()
+        const { data: refreshed } = await supabase.auth.getSession()
+        if (!refreshed.session) {
+          throw new Error(
+            "Your session has expired. Please refresh the page or log in again."
+          )
+        }
       }
 
-      const { data, error } = await query
+      const runQuery = () => {
+        let query = (supabase as any)
+          .from("registrations")
+          .select(`
+            *,
+            ticket_type:ticket_types(name, price)
+          `)
+          .eq("event_id", eventId)
+          .order("created_at", { ascending: false })
+
+        if (statusFilter === "checked_in") {
+          query = query.eq("checked_in", true)
+        } else if (statusFilter === "not_checked_in") {
+          query = query.or("checked_in.is.null,checked_in.eq.false")
+        } else if (statusFilter !== "all") {
+          query = query.eq("status", statusFilter)
+        }
+
+        return query
+      }
+
+      let { data, error } = await runQuery()
+
+      // One refresh + retry on auth-flavoured failures
+      if (error && /jwt|token|expired|unauthor/i.test(error.message || "")) {
+        await supabase.auth.refreshSession()
+        ;({ data, error } = await runQuery())
+      }
 
       if (error) throw error
       return data as Registration[]
@@ -1609,6 +1639,33 @@ function RegistrationsContent() {
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : isError ? (
+        <div className="paper-card card-animated">
+          <div className="p-8">
+            <div className="flex items-start gap-3 text-destructive">
+              <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold mb-1">Couldn&apos;t load attendees</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Your session may have expired. Refresh the page or log out and back in.
+                </p>
+                {registrationsError instanceof Error && registrationsError.message && (
+                  <p className="text-xs text-muted-foreground/70 mb-3">
+                    Details: {registrationsError.message}
+                  </p>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => refetchRegistrations()}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       ) : filteredRegistrations?.length === 0 ? (
         <div className="paper-card card-animated">

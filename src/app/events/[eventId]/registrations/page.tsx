@@ -28,14 +28,47 @@ export default function RegistrationsOverviewPage() {
   const supabase = createClient()
 
   // Fetch registrations
-  const { data: registrations, isLoading } = useQuery({
+  const {
+    data: registrations,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["registrations-overview", eventId],
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("registrations")
-        .select("id, status, total_amount, ticket_type:ticket_types(name)")
-        .eq("event_id", eventId)
+      // Self-heal stale sessions: missing/expired tokens can cause RLS to
+      // silently return empty data with no error, which used to render as a
+      // blank attendees page.
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData.session) {
+        await supabase.auth.refreshSession()
+        const { data: refreshed } = await supabase.auth.getSession()
+        if (!refreshed.session) {
+          throw new Error(
+            "Your session has expired. Please refresh the page or log in again."
+          )
+        }
+      }
 
+      const runQuery = () =>
+        (supabase as any)
+          .from("registrations")
+          .select("id, status, total_amount, ticket_type:ticket_types(name)")
+          .eq("event_id", eventId)
+
+      let { data, error: queryError } = await runQuery()
+
+      // One refresh + retry on auth-flavoured failures
+      if (
+        queryError &&
+        /jwt|token|expired|unauthor/i.test(queryError.message || "")
+      ) {
+        await supabase.auth.refreshSession()
+        ;({ data, error: queryError } = await runQuery())
+      }
+
+      if (queryError) throw queryError
       return data || []
     },
   })
@@ -73,6 +106,34 @@ export default function RegistrationsOverviewPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold">Registrations Overview</h1>
+          <p className="text-sm text-muted-foreground">Manage event registrations and attendees</p>
+        </div>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-destructive">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-semibold mb-1">Couldn&apos;t load attendees</h3>
+              <p className="text-sm mb-3">
+                Your session may have expired. Refresh the page or log out and back in.
+              </p>
+              {error instanceof Error && error.message && (
+                <p className="text-xs opacity-75 mb-3">Details: {error.message}</p>
+              )}
+              <Button size="sm" variant="outline" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
