@@ -3,10 +3,11 @@
 import * as React from "react"
 import { Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Mail, Loader2, CheckCircle2, AlertTriangle, Calendar, Users, BarChart3, Shield } from "lucide-react"
+import { Mail, Loader2, CheckCircle2, AlertTriangle, Calendar, Users, BarChart3, Shield, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/hooks/use-auth"
+import { createClient } from "@/lib/supabase/client"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 
 // Check if Supabase is properly configured
@@ -29,6 +30,11 @@ function LoginForm() {
   const [sent, setSent] = React.useState(false)
   const [error, setError] = React.useState("")
   const [loginMode] = React.useState<"password" | "magic-link">("magic-link")
+  // Email-scanner-resistant fallback: 6-digit code the user can type in case
+  // the magic link gets pre-fetched (and burned) by their email provider.
+  const [code, setCode] = React.useState("")
+  const [verifying, setVerifying] = React.useState(false)
+  const [verifyError, setVerifyError] = React.useState("")
 
   // If login page receives a code param, redirect to auth callback
   React.useEffect(() => {
@@ -63,6 +69,51 @@ function LoginForm() {
       setError(err instanceof Error ? err.message : "Login failed")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const token = code.trim()
+    // Supabase OTP length is configurable (MAILER_OTP_LENGTH); this project uses 8.
+    if (token.length < 6) return
+    setVerifying(true)
+    setVerifyError("")
+
+    try {
+      const supabase = createClient()
+      const { data, error: otpError } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token,
+        type: "email",
+      })
+      if (otpError) throw otpError
+      const accessToken = data.session?.access_token
+      if (!accessToken) throw new Error("No session returned")
+
+      // Mirror the auth/callback flow: validate + record login, get redirect target
+      const res = await fetch("/api/auth/login-complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken }),
+      })
+      const lc = await res.json().catch(() => ({}))
+      if (!res.ok || lc.error) {
+        await supabase.auth.signOut()
+        throw new Error(lc.error || "Unauthorized")
+      }
+
+      router.push(lc.redirectTo || redirectTo)
+    } catch (err) {
+      setVerifyError(
+        err instanceof Error && err.message
+          ? err.message === "Token has expired or is invalid"
+            ? "That code is invalid or has expired. Request a new one."
+            : err.message
+          : "Invalid or expired code"
+      )
+    } finally {
+      setVerifying(false)
     }
   }
 
@@ -199,14 +250,71 @@ function LoginForm() {
                 Check your email
               </h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                We sent a magic link to <strong className="text-foreground">{email}</strong>. Click the link to sign in.
+                We sent a magic link and a verification code to{" "}
+                <strong className="text-foreground">{email}</strong>. Click the link, or enter the
+                code below if your email provider strips the link.
               </p>
+
+              <form onSubmit={handleVerifyCode} className="mt-8 space-y-4">
+                <div>
+                  <label
+                    htmlFor="otp-code"
+                    className="block text-sm font-medium leading-6 text-foreground"
+                  >
+                    Verification code
+                  </label>
+                  <div className="mt-2">
+                    <Input
+                      id="otp-code"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={10}
+                      autoComplete="one-time-code"
+                      autoFocus
+                      value={code}
+                      onChange={(e) => {
+                        setVerifyError("")
+                        setCode(e.target.value.replace(/\D/g, "").slice(0, 10))
+                      }}
+                      placeholder="Enter code from email"
+                      className="text-center text-xl tracking-[0.4em] font-mono"
+                      aria-invalid={!!verifyError}
+                    />
+                  </div>
+                </div>
+
+                {verifyError && (
+                  <p className="text-sm text-destructive">{verifyError}</p>
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={verifying || code.length < 6}
+                >
+                  {verifying ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="h-4 w-4 mr-2" />
+                      Verify code & sign in
+                    </>
+                  )}
+                </Button>
+              </form>
+
               <Button
                 variant="outline"
-                className="w-full mt-10"
+                className="w-full mt-4"
                 onClick={() => {
                   setSent(false)
                   setEmail("")
+                  setCode("")
+                  setVerifyError("")
                 }}
               >
                 Use a different email

@@ -5,7 +5,7 @@ import { logActivityFromRequest } from "@/lib/activity-logger"
 import { COMPANY_CONFIG } from "@/lib/config"
 import { createAdminClient } from "@/lib/supabase/server"
 
-function getMagicLinkEmailHtml(loginUrl: string): string {
+function getMagicLinkEmailHtml(loginUrl: string, code: string): string {
   const year = new Date().getFullYear()
 
   return `<!DOCTYPE html>
@@ -65,8 +65,25 @@ function getMagicLinkEmailHtml(loginUrl: string): string {
                 </tr>
               </table>
 
+              <!-- OR divider -->
+              <table role="presentation" style="width: 100%; margin: 32px 0 20px 0;">
+                <tr>
+                  <td style="border-bottom: 1px solid #e5e7eb; line-height: 0;">&nbsp;</td>
+                  <td style="padding: 0 14px; color: #9ca3af; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; white-space: nowrap;">OR</td>
+                  <td style="border-bottom: 1px solid #e5e7eb; line-height: 0;">&nbsp;</td>
+                </tr>
+              </table>
+
+              <!-- OTP Code -->
+              <p style="color: #6b7280; margin: 0 0 14px 0; font-size: 14px;">
+                Or enter this code on the sign-in page:
+              </p>
+              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 22px 16px; margin: 0 0 24px 0;">
+                <span style="font-size: 30px; font-weight: 700; letter-spacing: 8px; color: #111827; font-family: 'Courier New', monospace;">${code}</span>
+              </div>
+
               <!-- Divider -->
-              <div style="margin: 32px 0; border-top: 1px solid #e5e7eb;"></div>
+              <div style="margin: 8px 0 32px 0; border-top: 1px solid #e5e7eb;"></div>
 
               <!-- Alternative Link -->
               <p style="color: #9ca3af; margin: 0 0 12px 0; font-size: 13px;">
@@ -79,7 +96,7 @@ function getMagicLinkEmailHtml(loginUrl: string): string {
               <!-- Security Notice -->
               <div style="background-color: #f9fafb; border-radius: 10px; padding: 16px 20px; text-align: left;">
                 <p style="color: #6b7280; margin: 0; font-size: 13px; line-height: 1.5;">
-                  <strong style="color: #374151;">Security notice:</strong> This link expires in 24 hours and can only be used once. If you didn't request this email, you can safely ignore it.
+                  <strong style="color: #374151;">Security notice:</strong> This link and code expire in 1 hour and can only be used once. If you didn't request this email, you can safely ignore it.
                 </p>
               </div>
 
@@ -106,7 +123,7 @@ function getMagicLinkEmailHtml(loginUrl: string): string {
 </html>`
 }
 
-function getInviteEmailHtml(loginUrl: string): string {
+function getInviteEmailHtml(loginUrl: string, code: string): string {
   const year = new Date().getFullYear()
 
   return `<!DOCTYPE html>
@@ -166,8 +183,25 @@ function getInviteEmailHtml(loginUrl: string): string {
                 </tr>
               </table>
 
+              <!-- OR divider -->
+              <table role="presentation" style="width: 100%; margin: 32px 0 20px 0;">
+                <tr>
+                  <td style="border-bottom: 1px solid #e5e7eb; line-height: 0;">&nbsp;</td>
+                  <td style="padding: 0 14px; color: #9ca3af; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; white-space: nowrap;">OR</td>
+                  <td style="border-bottom: 1px solid #e5e7eb; line-height: 0;">&nbsp;</td>
+                </tr>
+              </table>
+
+              <!-- OTP Code -->
+              <p style="color: #6b7280; margin: 0 0 14px 0; font-size: 14px;">
+                Or enter this code on the sign-in page:
+              </p>
+              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 22px 16px; margin: 0 0 24px 0;">
+                <span style="font-size: 30px; font-weight: 700; letter-spacing: 8px; color: #111827; font-family: 'Courier New', monospace;">${code}</span>
+              </div>
+
               <!-- Divider -->
-              <div style="margin: 32px 0; border-top: 1px solid #e5e7eb;"></div>
+              <div style="margin: 8px 0 32px 0; border-top: 1px solid #e5e7eb;"></div>
 
               <!-- Alternative Link -->
               <p style="color: #9ca3af; margin: 0 0 12px 0; font-size: 13px;">
@@ -180,7 +214,7 @@ function getInviteEmailHtml(loginUrl: string): string {
               <!-- Security Notice -->
               <div style="background-color: #f9fafb; border-radius: 10px; padding: 16px 20px; text-align: left;">
                 <p style="color: #6b7280; margin: 0; font-size: 13px; line-height: 1.5;">
-                  <strong style="color: #374151;">Security notice:</strong> This link expires in 24 hours and can only be used once. If you didn't expect this email, you can safely ignore it.
+                  <strong style="color: #374151;">Security notice:</strong> This link and code expire in 1 hour and can only be used once. If you didn't expect this email, you can safely ignore it.
                 </p>
               </div>
 
@@ -349,13 +383,17 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+    // Email-scanner-resistant fallback: same auth attempt, exposed as a 6-digit
+    // code the user can type on the login page. The code is generated by
+    // Supabase as part of generateLink — same expiry, same single-use semantics.
+    const code = linkData.properties?.email_otp || ""
 
     // Send custom designed email (invite variant or login variant)
     const subject = isInvite ? `You've been invited to ${COMPANY_CONFIG.name}` : `Sign in to ${COMPANY_CONFIG.name}`
-    const html = isInvite ? getInviteEmailHtml(loginUrl) : getMagicLinkEmailHtml(loginUrl)
+    const html = isInvite ? getInviteEmailHtml(loginUrl, code) : getMagicLinkEmailHtml(loginUrl, code)
     const text = isInvite
-      ? `You've been invited to ${COMPANY_CONFIG.name}\n\nYou've been invited to join the ${COMPANY_CONFIG.name} Command Center. Click the link below to accept your invitation:\n${loginUrl}\n\nThis link expires in 24 hours and can only be used once.\n\nIf you didn't expect this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} ${COMPANY_CONFIG.name} - ${COMPANY_CONFIG.fullName}`
-      : `Sign in to ${COMPANY_CONFIG.name}\n\nClick the link below to sign in to your account:\n${loginUrl}\n\nThis link expires in 24 hours and can only be used once.\n\nIf you didn't request this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} ${COMPANY_CONFIG.name} - ${COMPANY_CONFIG.fullName}`
+      ? `You've been invited to ${COMPANY_CONFIG.name}\n\nYou've been invited to join the ${COMPANY_CONFIG.name} Command Center.\n\nOption 1 — Click this link:\n${loginUrl}\n\nOption 2 — Enter this code on the sign-in page:\n${code}\n\nThis link and code expire in 1 hour and can only be used once.\n\nIf you didn't expect this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} ${COMPANY_CONFIG.name} - ${COMPANY_CONFIG.fullName}`
+      : `Sign in to ${COMPANY_CONFIG.name}\n\nOption 1 — Click this link:\n${loginUrl}\n\nOption 2 — Enter this code on the sign-in page:\n${code}\n\nThis link and code expire in 1 hour and can only be used once.\n\nIf you didn't request this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} ${COMPANY_CONFIG.name} - ${COMPANY_CONFIG.fullName}`
     const emailResult = await sendEmail({
       to: normalizedEmail,
       subject,
