@@ -168,7 +168,7 @@ export default function TeamPortalPage() {
 
   if (checkingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -180,7 +180,7 @@ export default function TeamPortalPage() {
   const pastEvents = events?.filter(e => new Date(e.end_date) < now && e.status !== "active") || []
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-muted">
       {/* Header */}
       <header className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
         <div className="max-w-5xl mx-auto px-4 py-4 sm:py-6">
@@ -209,7 +209,7 @@ export default function TeamPortalPage() {
 
       <main className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
         {/* User Profile Card */}
-        <div className="bg-white rounded-xl border shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
+        <div className="bg-card rounded-xl border shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
               <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -366,7 +366,7 @@ export default function TeamPortalPage() {
             )}
 
             {events?.length === 0 && (
-              <div className="text-center py-12 bg-white rounded-xl border">
+              <div className="text-center py-12 bg-card rounded-xl border">
                 <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-2">No events found</p>
                 <p className="text-xs text-muted-foreground">
@@ -403,7 +403,7 @@ function EventCard({
 
   return (
     <div className={cn(
-      "bg-white rounded-xl border shadow-sm overflow-hidden transition-all",
+      "bg-card rounded-xl border shadow-sm overflow-hidden transition-all",
       isPast && "opacity-75"
     )}>
       {/* Event Header - Clickable */}
@@ -413,7 +413,7 @@ function EventCard({
       >
         <div className={cn(
           "h-14 w-14 rounded-xl flex items-center justify-center flex-shrink-0",
-          isPast ? "bg-slate-100" : "bg-primary/10"
+          isPast ? "bg-muted" : "bg-primary/10"
         )}>
           <Calendar className={cn("h-7 w-7", isPast ? "text-slate-400" : "text-primary")} />
         </div>
@@ -460,7 +460,7 @@ function EventCard({
                       <Link
                         key={module.key}
                         href={href}
-                        className="flex items-center gap-2 p-3 rounded-lg bg-white border hover:border-primary hover:shadow-sm transition-all"
+                        className="flex items-center gap-2 p-3 rounded-lg bg-card border hover:border-primary hover:shadow-sm transition-all"
                       >
                         <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white", module.color)}>
                           <Icon className="h-4 w-4" />
@@ -486,7 +486,7 @@ function EventCard({
                       <Link
                         key={module.key}
                         href={`/events/${event.id}${module.href}`}
-                        className="flex items-center gap-2 p-3 rounded-lg bg-white border hover:border-primary hover:shadow-sm transition-all"
+                        className="flex items-center gap-2 p-3 rounded-lg bg-card border hover:border-primary hover:shadow-sm transition-all"
                       >
                         <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white", module.color)}>
                           <Icon className="h-4 w-4" />

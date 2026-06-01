@@ -367,7 +367,7 @@ export default function FloorPlanPage() {
       <div className="flex gap-6">
         {/* Main Floor Plan Area */}
         <div className={cn(
-          "flex-1 overflow-auto bg-slate-50 rounded-xl border min-h-[500px] p-6",
+          "flex-1 overflow-auto bg-muted rounded-xl border min-h-[500px] p-6",
           selectedStall ? "mr-80" : ""
         )}>
           {Object.keys(stallsByLocation).length === 0 ? (
@@ -386,7 +386,7 @@ export default function FloorPlanPage() {
               style={{ transform: `scale(${zoom})` }}
             >
               {Object.entries(stallsByLocation).map(([location, locationStalls]) => (
-                <div key={location} className="bg-white rounded-xl border shadow-sm p-5">
+                <div key={location} className="bg-card rounded-xl border shadow-sm p-5">
                   <div className="flex items-center gap-3 mb-4 pb-3 border-b">
                     <div className="p-2 bg-primary/10 rounded-lg">
                       <Grid3X3 className="h-5 w-5 text-primary" />

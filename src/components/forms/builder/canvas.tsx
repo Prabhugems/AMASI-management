@@ -59,7 +59,7 @@ function SortableField({
         isDragging && "opacity-60 z-50 scale-[1.02] rotate-1",
         isSelected
           ? "bg-gradient-to-br from-indigo-50 via-white to-purple-50 border-2 border-indigo-400 shadow-xl shadow-indigo-200/50 ring-4 ring-indigo-100"
-          : "bg-white border-2 border-gray-200 hover:border-indigo-300 hover:shadow-lg hover:shadow-gray-200/50"
+          : "bg-card border-2 border-border hover:border-indigo-300 hover:shadow-lg hover:shadow-gray-200/50"
       )}
       onClick={(e) => {
         e.stopPropagation()
@@ -71,7 +71,7 @@ function SortableField({
         "absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all",
         isSelected
           ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white scale-110"
-          : "bg-gray-100 text-gray-600 group-hover:bg-indigo-100 group-hover:text-indigo-600"
+          : "bg-muted text-muted-foreground group-hover:bg-indigo-100 group-hover:text-indigo-600"
       )}>
         {fieldIndex + 1}
       </div>
@@ -87,7 +87,7 @@ function SortableField({
         <button
           {...attributes}
           {...listeners}
-          className="p-3 rounded-xl bg-white border-2 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 cursor-grab active:cursor-grabbing shadow-lg hover:shadow-xl transition-all"
+          className="p-3 rounded-xl bg-card border-2 border-border hover:border-indigo-300 hover:bg-indigo-50 cursor-grab active:cursor-grabbing shadow-lg hover:shadow-xl transition-all"
         >
           <GripVertical className="w-5 h-5 text-gray-400" />
         </button>
@@ -106,7 +106,7 @@ function SortableField({
             e.stopPropagation()
             onDuplicate()
           }}
-          className="p-3 rounded-xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 shadow-lg hover:shadow-xl transition-all group/btn"
+          className="p-3 rounded-xl bg-card border-2 border-border hover:border-blue-400 hover:bg-blue-50 shadow-lg hover:shadow-xl transition-all group/btn"
           title="Duplicate field"
         >
           <Copy className="w-5 h-5 text-blue-500 group-hover/btn:scale-110 transition-transform" />
@@ -116,7 +116,7 @@ function SortableField({
             e.stopPropagation()
             onDelete()
           }}
-          className="p-3 rounded-xl bg-white border-2 border-gray-200 hover:border-red-400 hover:bg-red-50 shadow-lg hover:shadow-xl transition-all group/btn"
+          className="p-3 rounded-xl bg-card border-2 border-border hover:border-red-400 hover:bg-red-50 shadow-lg hover:shadow-xl transition-all group/btn"
           title="Delete field"
         >
           <Trash2 className="w-5 h-5 text-red-500 group-hover/btn:scale-110 transition-transform" />
@@ -170,7 +170,7 @@ export function Canvas({
   return (
     <div
       ref={setNodeRef}
-      className="min-h-[700px] rounded-3xl overflow-hidden shadow-2xl transition-all duration-300 border border-gray-200"
+      className="min-h-[700px] rounded-3xl overflow-hidden shadow-2xl transition-all duration-300 border border-border"
       style={{ backgroundColor }}
       onClick={() => onSelectField(null)}
     >
@@ -190,9 +190,9 @@ export function Canvas({
       )}
 
       {/* Form Card */}
-      <div className="mx-6 my-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+      <div className="mx-6 my-8 bg-card rounded-2xl shadow-xl border border-border">
         {/* Form Header Preview */}
-        <div className="p-8 border-b border-gray-100 bg-gradient-to-br from-gray-50 to-white rounded-t-2xl">
+        <div className="p-8 border-b border-border bg-gradient-to-br from-muted to-card rounded-t-2xl">
           {/* Logo */}
           {logoUrl && (
             <div className="flex justify-center mb-6">
@@ -213,7 +213,7 @@ export function Canvas({
             {formName || "Untitled Form"}
           </h1>
           {formDescription && (
-            <p className="text-gray-500 text-center text-lg max-w-md mx-auto">{formDescription}</p>
+            <p className="text-muted-foreground text-center text-lg max-w-md mx-auto">{formDescription}</p>
           )}
         </div>
 
@@ -225,7 +225,7 @@ export function Canvas({
                 "flex flex-col items-center justify-center py-20 text-center border-3 border-dashed rounded-2xl transition-all duration-300",
                 isOver
                   ? "border-indigo-400 bg-gradient-to-br from-indigo-50 to-purple-50 scale-[1.02]"
-                  : "border-gray-300 bg-gray-50/50"
+                  : "border-border bg-muted/50"
               )}
             >
               <div
@@ -238,15 +238,15 @@ export function Canvas({
                   <MousePointerClick className="w-12 h-12 text-white" />
                 )}
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-3">
+              <h3 className="text-2xl font-bold text-foreground mb-3">
                 {isOver ? "Drop it here!" : "Start Building Your Form"}
               </h3>
-              <p className="text-gray-500 max-w-sm text-lg">
+              <p className="text-muted-foreground max-w-sm text-lg">
                 {isOver
                   ? "Release to add this field"
                   : "Drag fields from the left panel and drop them here"}
               </p>
-              <div className="mt-6 flex items-center gap-2 text-sm text-gray-400">
+              <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
                 <span>Pro tip: Click a field to edit its properties</span>
               </div>
@@ -279,10 +279,10 @@ export function Canvas({
                 "mt-6 h-20 rounded-2xl border-3 border-dashed flex items-center justify-center transition-all duration-300",
                 isOver
                   ? "border-indigo-400 bg-indigo-50 scale-[1.02]"
-                  : "border-gray-300 hover:border-indigo-300 hover:bg-gray-50"
+                  : "border-border hover:border-indigo-300 hover:bg-accent"
               )}
             >
-              <p className="text-base text-gray-500 flex items-center gap-3 font-medium">
+              <p className="text-base text-muted-foreground flex items-center gap-3 font-medium">
                 <Plus className="w-5 h-5" />
                 {isOver ? "Drop here to add" : "Drop a field here to add more"}
               </p>
@@ -308,7 +308,7 @@ export function Canvas({
 
       {/* Footer */}
       <div className="text-center pb-6">
-        <p className="text-sm text-gray-400 font-medium">
+        <p className="text-sm text-muted-foreground font-medium">
           Powered by <span className="text-indigo-500 font-bold">{COMPANY_CONFIG.name} Forms</span>
         </p>
       </div>

@@ -46,7 +46,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
               type="text"
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
               disabled={disabled}
-              className="pointer-events-none h-14 pl-14 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-200 rounded-2xl text-gray-800 placeholder:text-gray-400 text-lg font-medium shadow-md hover:shadow-lg transition-shadow"
+              className="pointer-events-none h-14 pl-14 bg-gradient-to-r from-card to-muted border-2 border-border rounded-2xl text-foreground placeholder:text-muted-foreground text-lg font-medium shadow-md hover:shadow-lg transition-shadow"
             />
           </div>
         )
@@ -61,7 +61,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
               type="email"
               placeholder={field.placeholder || "your@email.com"}
               disabled={disabled}
-              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-white to-indigo-50/50 border-2 border-indigo-200 rounded-2xl text-gray-800 placeholder:text-gray-400 text-lg font-medium shadow-md"
+              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-card to-indigo-50/50 border-2 border-indigo-200 rounded-2xl text-foreground placeholder:text-muted-foreground text-lg font-medium shadow-md"
             />
           </div>
         )
@@ -76,7 +76,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
               type="tel"
               placeholder={field.placeholder || "+91 XXXXX XXXXX"}
               disabled={disabled}
-              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-white to-emerald-50/50 border-2 border-emerald-200 rounded-2xl text-gray-800 placeholder:text-gray-400 text-lg font-medium shadow-md"
+              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-card to-emerald-50/50 border-2 border-emerald-200 rounded-2xl text-foreground placeholder:text-muted-foreground text-lg font-medium shadow-md"
             />
           </div>
         )
@@ -91,7 +91,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
               type="number"
               placeholder={field.placeholder || "0"}
               disabled={disabled}
-              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-white to-violet-50/50 border-2 border-violet-200 rounded-2xl text-gray-800 placeholder:text-gray-400 text-lg font-medium shadow-md"
+              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-card to-violet-50/50 border-2 border-violet-200 rounded-2xl text-foreground placeholder:text-muted-foreground text-lg font-medium shadow-md"
             />
           </div>
         )
@@ -102,14 +102,14 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
             placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
             disabled={disabled}
             rows={4}
-            className="pointer-events-none resize-none bg-gradient-to-r from-white to-gray-50 border-2 border-gray-200 rounded-2xl text-gray-800 placeholder:text-gray-400 text-lg font-medium shadow-md min-h-[140px] p-5"
+            className="pointer-events-none resize-none bg-gradient-to-r from-card to-muted border-2 border-border rounded-2xl text-foreground placeholder:text-muted-foreground text-lg font-medium shadow-md min-h-[140px] p-5"
           />
         )
 
       case "select":
         return (
           <Select disabled={disabled}>
-            <SelectTrigger className="pointer-events-none h-14 bg-gradient-to-r from-white to-orange-50/50 border-2 border-orange-200 rounded-2xl text-gray-800 text-lg font-medium shadow-md">
+            <SelectTrigger className="pointer-events-none h-14 bg-gradient-to-r from-card to-orange-50/50 border-2 border-orange-200 rounded-2xl text-foreground text-lg font-medium shadow-md">
               <SelectValue placeholder={field.placeholder || "Select an option..."} />
             </SelectTrigger>
             <SelectContent>
@@ -126,7 +126,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
         return (
           <div className="space-y-3 p-6 rounded-2xl border-2 border-teal-200 bg-gradient-to-br from-teal-50/50 to-cyan-50/50 shadow-md">
             {field.options?.length ? field.options.map((opt, idx) => (
-              <div key={opt.value} className="flex items-center gap-4 p-4 bg-white rounded-xl border-2 border-teal-100 shadow-sm hover:shadow-md transition-shadow">
+              <div key={opt.value} className="flex items-center gap-4 p-4 bg-card rounded-xl border-2 border-teal-100 shadow-sm hover:shadow-md transition-shadow">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center text-white font-bold text-sm shadow">
                   {idx + 1}
                 </div>
@@ -135,7 +135,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
                   disabled={disabled}
                   className="w-6 h-6 border-2 border-teal-300 data-[state=checked]:bg-teal-600 data-[state=checked]:border-teal-600 rounded-lg"
                 />
-                <Label htmlFor={opt.value} className="text-lg font-semibold text-gray-800 cursor-pointer flex-1">
+                <Label htmlFor={opt.value} className="text-lg font-semibold text-foreground cursor-pointer flex-1">
                   {opt.label}
                 </Label>
               </div>
@@ -153,7 +153,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
               disabled={disabled}
               className="w-7 h-7 border-2 border-green-400 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 rounded-lg"
             />
-            <Label htmlFor={field.id} className="text-lg font-semibold text-gray-800 cursor-pointer">
+            <Label htmlFor={field.id} className="text-lg font-semibold text-foreground cursor-pointer">
               {field.placeholder || field.label}
             </Label>
           </div>
@@ -163,7 +163,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
         return (
           <div className="space-y-3 p-6 rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 shadow-md">
             {field.options?.length ? field.options.map((opt, idx) => (
-              <div key={opt.value} className="flex items-center gap-4 p-4 bg-white rounded-xl border-2 border-blue-100 shadow-sm hover:shadow-md transition-shadow">
+              <div key={opt.value} className="flex items-center gap-4 p-4 bg-card rounded-xl border-2 border-blue-100 shadow-sm hover:shadow-md transition-shadow">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow">
                   {idx + 1}
                 </div>
@@ -172,7 +172,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
                   disabled={disabled}
                   className="w-6 h-6 border-2 border-blue-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-lg"
                 />
-                <Label htmlFor={opt.value} className="text-lg font-semibold text-gray-800 cursor-pointer flex-1">
+                <Label htmlFor={opt.value} className="text-lg font-semibold text-foreground cursor-pointer flex-1">
                   {opt.label}
                 </Label>
               </div>
@@ -186,7 +186,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
         return (
           <RadioGroup disabled={disabled} className="space-y-3 p-6 rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50/50 to-pink-50/50 shadow-md">
             {field.options?.length ? field.options.map((opt, idx) => (
-              <div key={opt.value} className="flex items-center gap-4 p-4 bg-white rounded-xl border-2 border-purple-100 shadow-sm hover:shadow-md transition-shadow">
+              <div key={opt.value} className="flex items-center gap-4 p-4 bg-card rounded-xl border-2 border-purple-100 shadow-sm hover:shadow-md transition-shadow">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold text-sm shadow">
                   {idx + 1}
                 </div>
@@ -195,7 +195,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
                   id={opt.value}
                   className="w-6 h-6 border-2 border-purple-300 text-purple-600"
                 />
-                <Label htmlFor={opt.value} className="text-lg font-semibold text-gray-800 cursor-pointer flex-1">
+                <Label htmlFor={opt.value} className="text-lg font-semibold text-foreground cursor-pointer flex-1">
                   {opt.label}
                 </Label>
               </div>
@@ -214,7 +214,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
             <Input
               type="date"
               disabled={disabled}
-              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-white to-orange-50/50 border-2 border-orange-200 rounded-2xl text-gray-800 text-lg font-medium shadow-md"
+              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-card to-orange-50/50 border-2 border-orange-200 rounded-2xl text-foreground text-lg font-medium shadow-md"
             />
           </div>
         )
@@ -228,7 +228,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
             <Input
               type="time"
               disabled={disabled}
-              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-white to-purple-50/50 border-2 border-purple-200 rounded-2xl text-gray-800 text-lg font-medium shadow-md"
+              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-card to-purple-50/50 border-2 border-purple-200 rounded-2xl text-foreground text-lg font-medium shadow-md"
             />
           </div>
         )
@@ -242,7 +242,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
             <Input
               type="datetime-local"
               disabled={disabled}
-              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-white to-pink-50/50 border-2 border-pink-200 rounded-2xl text-gray-800 text-lg font-medium shadow-md"
+              className="pointer-events-none h-14 pl-20 bg-gradient-to-r from-card to-pink-50/50 border-2 border-pink-200 rounded-2xl text-foreground text-lg font-medium shadow-md"
             />
           </div>
         )
@@ -253,10 +253,10 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
             <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
               <Upload className="w-10 h-10 text-white" />
             </div>
-            <p className="text-lg font-semibold text-gray-800 mb-1">
+            <p className="text-lg font-semibold text-foreground mb-1">
               Click to upload or drag & drop
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               {field.settings?.allowed_file_types
                 ? field.settings.allowed_file_types.join(", ").toUpperCase()
                 : "PDF, PNG, JPG up to 10MB"}
@@ -266,14 +266,14 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
 
       case "signature":
         return (
-          <div className="border-3 border-dashed border-gray-300 rounded-2xl p-12 text-center bg-gradient-to-br from-gray-50 to-slate-50">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-200 flex items-center justify-center">
-              <PenLine className="w-8 h-8 text-gray-500" />
+          <div className="border-3 border-dashed border-border rounded-2xl p-12 text-center bg-muted">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted-foreground/20 flex items-center justify-center">
+              <PenLine className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-lg font-semibold text-gray-700 mb-1">
+            <p className="text-lg font-semibold text-foreground mb-1">
               Draw your signature
             </p>
-            <p className="text-sm text-gray-400">Click and drag to sign</p>
+            <p className="text-sm text-muted-foreground">Click and drag to sign</p>
           </div>
         )
 
@@ -298,16 +298,16 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
         const max = field.settings?.scale_max ?? 10
         return (
           <div className="space-y-4 p-5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
-            <div className="flex justify-between text-sm font-bold text-gray-600">
-              <span className="px-3 py-1 bg-white rounded-full shadow-sm">{field.settings?.scale_min_label || `${min} - Low`}</span>
-              <span className="px-3 py-1 bg-white rounded-full shadow-sm">{field.settings?.scale_max_label || `${max} - High`}</span>
+            <div className="flex justify-between text-sm font-bold text-muted-foreground">
+              <span className="px-3 py-1 bg-card rounded-full shadow-sm">{field.settings?.scale_min_label || `${min} - Low`}</span>
+              <span className="px-3 py-1 bg-card rounded-full shadow-sm">{field.settings?.scale_max_label || `${max} - High`}</span>
             </div>
             <div className="flex gap-2">
               {[...Array(max - min + 1)].map((_, i) => (
                 <button
                   key={i}
                   disabled={disabled}
-                  className="flex-1 py-3 text-base font-bold rounded-xl border-2 border-blue-200 bg-white text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-105 transition-all pointer-events-none shadow-sm"
+                  className="flex-1 py-3 text-base font-bold rounded-xl border-2 border-blue-200 bg-card text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-105 transition-all pointer-events-none shadow-sm"
                 >
                   {min + i}
                 </button>
@@ -319,9 +319,9 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
       case "heading":
         const HeadingTag = (field.settings?.heading_size || "h2") as keyof JSX.IntrinsicElements
         const headingClasses = {
-          h1: "text-3xl font-extrabold text-gray-900 tracking-tight",
-          h2: "text-2xl font-bold text-gray-800",
-          h3: "text-xl font-semibold text-gray-700",
+          h1: "text-3xl font-extrabold text-foreground tracking-tight",
+          h2: "text-2xl font-bold text-foreground",
+          h3: "text-xl font-semibold text-foreground",
         }
         const headingStyle: React.CSSProperties = {
           fontWeight: field.settings?.label_bold ? 800 : undefined,
@@ -338,7 +338,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
 
       case "paragraph":
         return (
-          <p className="text-gray-600 leading-relaxed text-base py-1">{field.label}</p>
+          <p className="text-muted-foreground leading-relaxed text-base py-1">{field.label}</p>
         )
 
       case "divider":
@@ -367,7 +367,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
           <Input
             placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
             disabled={disabled}
-            className="pointer-events-none h-12 bg-white border-2 border-gray-200 rounded-xl text-gray-800 placeholder:text-gray-400 text-base font-medium shadow-sm"
+            className="pointer-events-none h-12 bg-card border-2 border-border rounded-xl text-foreground placeholder:text-muted-foreground text-base font-medium shadow-sm"
           />
         )
     }
@@ -392,7 +392,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
   return (
     <div className={cn("space-y-4", field.width === "half" && "max-w-[50%]", field.width === "third" && "max-w-[33%]")}>
       <Label
-        className="text-lg font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+        className="text-lg font-extrabold text-foreground flex items-center gap-3 tracking-tight"
         style={{ textAlign: field.settings?.label_alignment || "left" }}
       >
         <span style={labelStyle} className="flex-1">
@@ -404,7 +404,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
       </Label>
       {renderField()}
       {field.help_text && (
-        <p className="text-base text-gray-500 flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
+        <p className="text-base text-muted-foreground flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
           <span className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs text-white font-bold">i</span>
           {field.help_text}
         </p>

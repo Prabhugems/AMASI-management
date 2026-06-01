@@ -602,7 +602,7 @@ export default function FlightsPage() {
 
           <div className="grid grid-cols-2 gap-0 divide-x">
             {/* LEFT: Speaker's Request */}
-            <div className="p-5 bg-slate-50/50">
+            <div className="p-5 bg-muted/30">
               <div className="flex items-center gap-2 mb-4">
                 <div className="p-1.5 rounded-md bg-blue-100">
                   <Plane className="h-4 w-4 text-blue-600" />
@@ -628,17 +628,17 @@ export default function FlightsPage() {
                 return (
                   <div className="space-y-4">
                     {/* Speaker Photo & Contact Card */}
-                    <div className="p-4 bg-white rounded-xl border shadow-sm">
+                    <div className="p-4 bg-card rounded-xl border shadow-sm">
                       <div className="flex items-start gap-3">
                         {photoUrl ? (
                           <img src={photoUrl} alt={editingGuest.attendee_name} className="w-16 h-16 rounded-lg object-cover border" />
                         ) : (
-                          <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center border">
+                          <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center border">
                             <User className="h-8 w-8 text-slate-400" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold truncate">{editingGuest.attendee_name}</p>
+                          <p className="font-semibold truncate text-foreground">{editingGuest.attendee_name}</p>
                           {editingGuest.attendee_phone && (
                             <a href={`tel:${editingGuest.attendee_phone}`} className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline mt-1">
                               <Phone className="h-3 w-3" />
@@ -655,28 +655,28 @@ export default function FlightsPage() {
                       </div>
                     </div>
 
-                    <div className="p-4 bg-white rounded-xl border shadow-sm">
+                    <div className="p-4 bg-card rounded-xl border shadow-sm">
                       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Route</p>
-                      <p className="font-semibold text-lg">{requestedRoute || "-"}</p>
+                      <p className="font-semibold text-lg text-foreground">{requestedRoute || "-"}</p>
                     </div>
-                    <div className="p-4 bg-white rounded-xl border shadow-sm">
+                    <div className="p-4 bg-card rounded-xl border shadow-sm">
                       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Preferred Flight(s)</p>
-                      <p className="font-mono font-semibold">{requestedFlight || "-"}</p>
+                      <p className="font-mono font-semibold text-foreground">{requestedFlight || "-"}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-4 bg-white rounded-xl border shadow-sm">
+                      <div className="p-4 bg-card rounded-xl border shadow-sm">
                         <div className="flex items-center gap-1.5 mb-1">
                           <Calendar className="h-3 w-3 text-muted-foreground" />
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Date</p>
                         </div>
-                        <p className="font-medium">{requestedDate ? new Date(requestedDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "-"}</p>
+                        <p className="font-medium text-foreground">{requestedDate ? new Date(requestedDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "-"}</p>
                       </div>
-                      <div className="p-4 bg-white rounded-xl border shadow-sm">
+                      <div className="p-4 bg-card rounded-xl border shadow-sm">
                         <div className="flex items-center gap-1.5 mb-1">
                           <Clock className="h-3 w-3 text-muted-foreground" />
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Time</p>
                         </div>
-                        <p className="font-mono font-medium">{requestedTime || "-"}</p>
+                        <p className="font-mono font-medium text-foreground">{requestedTime || "-"}</p>
                       </div>
                     </div>
 
@@ -836,10 +836,10 @@ export default function FlightsPage() {
 
               <div className="space-y-3">
                 {/* Status Row */}
-                <div className="p-3 bg-slate-50 rounded-lg">
+                <div className="p-3 bg-muted rounded-lg">
                   <Label className="text-xs text-muted-foreground block mb-1.5">Status</Label>
                   <Select value={flightForm.status} onValueChange={(v) => setFlightForm({ ...flightForm, status: v })}>
-                    <SelectTrigger className="w-full bg-white"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-full bg-card"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">⏳ Pending</SelectItem>
                       <SelectItem value="booked">📋 Booked</SelectItem>
@@ -936,7 +936,7 @@ export default function FlightsPage() {
           </div>
 
           {/* Footer Buttons */}
-          <div className="flex justify-end gap-3 px-6 py-4 border-t bg-slate-50">
+          <div className="flex justify-end gap-3 px-6 py-4 border-t bg-muted">
             <Button variant="outline" onClick={() => setEditingGuest(null)}>Cancel</Button>
             <Button
               onClick={() => editingGuest && updateFlight.mutate({ id: editingGuest.id, type: editingType, flight: flightForm })}

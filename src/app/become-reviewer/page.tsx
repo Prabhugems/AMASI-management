@@ -143,7 +143,7 @@ export default function BecomeReviewerPage() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+        <div className="max-w-md w-full bg-card rounded-2xl shadow-lg p-8 text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="h-8 w-8 text-green-600" />
           </div>
@@ -181,7 +181,7 @@ export default function BecomeReviewerPage() {
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-2xl shadow-lg p-5 sm:p-6 md:p-8 space-y-5 sm:space-y-6">
+        <div className="bg-card rounded-2xl shadow-lg p-5 sm:p-6 md:p-8 space-y-5 sm:space-y-6">
           {/* Event Selection */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">Select Event *</Label>

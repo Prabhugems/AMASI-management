@@ -95,12 +95,12 @@ function UTMLinkGenerator({ eventSlug, eventShortName }: { eventSlug: string; ev
   }
 
   return (
-    <div className="bg-white rounded-xl border p-6">
+    <div className="bg-card rounded-xl border p-6">
       <div className="flex items-center gap-3 mb-4">
         <Share2 className="w-5 h-5 text-emerald-600" />
-        <h2 className="text-lg font-semibold text-gray-900">UTM Link Generator</h2>
+        <h2 className="text-lg font-semibold text-foreground">UTM Link Generator</h2>
       </div>
-      <p className="text-sm text-gray-500 mb-5">
+      <p className="text-sm text-muted-foreground mb-5">
         Share these tracked links to see which channel brings the most registrations.
       </p>
 
@@ -112,23 +112,23 @@ function UTMLinkGenerator({ eventSlug, eventShortName }: { eventSlug: string; ev
           return (
             <div key={idx} className="flex items-center gap-3 group">
               <span className="w-8 text-center text-lg">{"icon" in ch ? (ch as any).icon : "🔗"}</span>
-              <span className="w-24 text-sm font-medium text-gray-700 shrink-0">{ch.name}</span>
+              <span className="w-24 text-sm font-medium text-muted-foreground shrink-0">{ch.name}</span>
               <input
                 readOnly
                 value={url}
-                className="flex-1 text-xs bg-gray-50 border rounded-lg px-3 py-2 text-gray-600 truncate focus:outline-none cursor-pointer"
+                className="flex-1 text-xs bg-muted border rounded-lg px-3 py-2 text-muted-foreground truncate focus:outline-none cursor-pointer"
                 onClick={() => copyToClipboard(url, idx)}
                 title="Click to copy"
               />
               <button
                 onClick={() => copyToClipboard(url, idx)}
-                className="shrink-0 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="shrink-0 p-2 rounded-lg hover:bg-accent transition-colors"
                 title="Copy link"
               >
                 {isCopied ? (
                   <Check className="w-4 h-4 text-emerald-600" />
                 ) : (
-                  <Copy className="w-4 h-4 text-gray-400" />
+                  <Copy className="w-4 h-4 text-muted-foreground" />
                 )}
               </button>
               {idx >= PRESET_CHANNELS.length && (
@@ -147,7 +147,7 @@ function UTMLinkGenerator({ eventSlug, eventShortName }: { eventSlug: string; ev
 
       {/* Add custom promoter link */}
       <div className="border-t pt-4">
-        <p className="text-sm font-medium text-gray-700 mb-3">Add Custom Promoter Link</p>
+        <p className="text-sm font-medium text-foreground mb-3">Add Custom Promoter Link</p>
         <div className="flex items-center gap-2">
           <input
             value={customName}
@@ -171,7 +171,7 @@ function UTMLinkGenerator({ eventSlug, eventShortName }: { eventSlug: string; ev
             Add
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-2">
+        <p className="text-xs text-muted-foreground mt-2">
           Give each promoter a unique link. You'll see their registrations in UTM Sources above.
         </p>
       </div>
@@ -228,13 +228,13 @@ export default function EventAnalyticsPage({
         <div className="flex items-center gap-4">
           <Link
             href={`/events/${eventId}`}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-accent rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Analytics</h1>
-            <p className="text-gray-500">{event?.name || "Event"}</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Analytics</h1>
+            <p className="text-muted-foreground">{event?.name || "Event"}</p>
           </div>
         </div>
 
@@ -255,7 +255,7 @@ export default function EventAnalyticsPage({
           {event?.slug && (
             <button
               onClick={() => setShowUtmGenerator(!showUtmGenerator)}
-              className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${showUtmGenerator ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "hover:bg-gray-50"}`}
+              className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${showUtmGenerator ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "hover:bg-accent"}`}
             >
               <Share2 className="w-4 h-4" />
               UTM Links
@@ -265,7 +265,7 @@ export default function EventAnalyticsPage({
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
             Refresh
@@ -286,59 +286,59 @@ export default function EventAnalyticsPage({
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl border p-5">
+            <div className="bg-card rounded-xl border p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Eye className="w-5 h-5 text-blue-600" />
                 </div>
-                <span className="text-sm text-gray-500">Page Views</span>
+                <span className="text-sm text-muted-foreground">Page Views</span>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">
                 {analytics.summary.totalPageViews.toLocaleString()}
               </p>
             </div>
 
-            <div className="bg-white rounded-xl border p-5">
+            <div className="bg-card rounded-xl border p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-purple-100 rounded-lg">
                   <Users className="w-5 h-5 text-purple-600" />
                 </div>
-                <span className="text-sm text-gray-500">Unique Visitors</span>
+                <span className="text-sm text-muted-foreground">Unique Visitors</span>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">
                 {analytics.summary.uniqueVisitors.toLocaleString()}
               </p>
             </div>
 
-            <div className="bg-white rounded-xl border p-5">
+            <div className="bg-card rounded-xl border p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-emerald-100 rounded-lg">
                   <UserPlus className="w-5 h-5 text-emerald-600" />
                 </div>
-                <span className="text-sm text-gray-500">Registrations</span>
+                <span className="text-sm text-muted-foreground">Registrations</span>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">
                 {analytics.summary.registrations.toLocaleString()}
               </p>
             </div>
 
-            <div className="bg-white rounded-xl border p-5">
+            <div className="bg-card rounded-xl border p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-amber-100 rounded-lg">
                   <TrendingUp className="w-5 h-5 text-amber-600" />
                 </div>
-                <span className="text-sm text-gray-500">Conversion Rate</span>
+                <span className="text-sm text-muted-foreground">Conversion Rate</span>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">
                 {analytics.summary.conversionRate}%
               </p>
             </div>
           </div>
 
           {/* Visual Funnel Chart */}
-          <div className="bg-white rounded-xl border p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Conversion Funnel</h2>
-            <p className="text-sm text-gray-500 mb-6">Visitor journey from page view to registration</p>
+          <div className="bg-card rounded-xl border p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-2">Conversion Funnel</h2>
+            <p className="text-sm text-muted-foreground mb-6">Visitor journey from page view to registration</p>
             {(() => {
               const maxCount = analytics.funnel.eventPageViews || 1
               const steps = [
@@ -394,10 +394,10 @@ export default function EventAnalyticsPage({
                         {dropOff !== null && (
                           <div className="flex items-center gap-2 py-1.5 pl-4">
                             <div className="flex items-center gap-1.5">
-                              <svg className="w-3.5 h-3.5 text-gray-400 -rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <svg className="w-3.5 h-3.5 text-muted-foreground -rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                               </svg>
-                              <span className="text-xs font-medium text-gray-500">
+                              <span className="text-xs font-medium text-muted-foreground">
                                 {stepRate}% continued
                               </span>
                               <span className="text-xs text-red-400 ml-1">
@@ -409,7 +409,7 @@ export default function EventAnalyticsPage({
                         {/* Funnel bar */}
                         <div className="flex items-center gap-4">
                           <div className="w-32 sm:w-40 shrink-0 text-right">
-                            <span className="text-sm font-medium text-gray-700">{step.label}</span>
+                            <span className="text-sm font-medium text-muted-foreground">{step.label}</span>
                           </div>
                           <div className="flex-1 relative">
                             <div
@@ -443,7 +443,7 @@ export default function EventAnalyticsPage({
 
             {/* Overall conversion summary */}
             <div className="mt-6 pt-4 border-t flex items-center justify-between">
-              <span className="text-sm text-gray-500">Overall conversion (Page View to Paid)</span>
+              <span className="text-sm text-muted-foreground">Overall conversion (Page View to Paid)</span>
               <span className="text-lg font-bold text-emerald-600">
                 {analytics.funnel.eventPageViews > 0
                   ? ((analytics.funnel.registrations / analytics.funnel.eventPageViews) * 100).toFixed(1)
@@ -454,8 +454,8 @@ export default function EventAnalyticsPage({
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Device Breakdown - CSS Pie Chart */}
-            <div className="bg-white rounded-xl border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Device Breakdown</h2>
+            <div className="bg-card rounded-xl border p-6">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Device Breakdown</h2>
               {(() => {
                 const total = analytics.deviceBreakdown.desktop + analytics.deviceBreakdown.mobile + analytics.deviceBreakdown.tablet
                 const devices = [
@@ -465,7 +465,7 @@ export default function EventAnalyticsPage({
                 ]
 
                 if (total === 0) {
-                  return <p className="text-gray-500 text-sm text-center py-8">No device data yet</p>
+                  return <p className="text-muted-foreground text-sm text-center py-8">No device data yet</p>
                 }
 
                 // Build conic-gradient segments
@@ -488,10 +488,10 @@ export default function EventAnalyticsPage({
                       />
                       {/* Center hole for donut effect */}
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center">
+                        <div className="w-20 h-20 rounded-full bg-card flex items-center justify-center">
                           <div className="text-center">
-                            <p className="text-lg font-bold text-gray-900">{total}</p>
-                            <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total</p>
+                            <p className="text-lg font-bold text-foreground">{total}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</p>
                           </div>
                         </div>
                       </div>
@@ -510,12 +510,12 @@ export default function EventAnalyticsPage({
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-1.5">
-                                  <device.icon className="w-4 h-4 text-gray-400" />
-                                  <span className="text-sm font-medium text-gray-700">{device.label}</span>
+                                  <device.icon className="w-4 h-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium text-foreground">{device.label}</span>
                                 </div>
-                                <span className="text-sm tabular-nums text-gray-900 font-semibold">{percentage}%</span>
+                                <span className="text-sm tabular-nums text-foreground font-semibold">{percentage}%</span>
                               </div>
-                              <p className="text-xs text-gray-400 mt-0.5">{device.count.toLocaleString()} visits</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{device.count.toLocaleString()} visits</p>
                             </div>
                           </div>
                         )
@@ -527,8 +527,8 @@ export default function EventAnalyticsPage({
             </div>
 
             {/* Top Referrers with Progress Bars */}
-            <div className="bg-white rounded-xl border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Referrers</h2>
+            <div className="bg-card rounded-xl border p-6">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Top Referrers</h2>
               {analytics.topReferrers.length > 0 ? (
                 <div className="space-y-3">
                   {analytics.topReferrers.map((ref, i) => {
@@ -538,14 +538,14 @@ export default function EventAnalyticsPage({
                       <div key={i} className="group">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2 min-w-0">
-                            <Globe className="w-4 h-4 text-gray-400 shrink-0" />
-                            <span className="text-sm font-medium text-gray-700 truncate">{ref.source}</span>
+                            <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <span className="text-sm font-medium text-foreground truncate">{ref.source}</span>
                           </div>
-                          <span className="text-sm font-semibold text-gray-900 tabular-nums shrink-0 ml-3">
+                          <span className="text-sm font-semibold text-foreground tabular-nums shrink-0 ml-3">
                             {ref.count.toLocaleString()}
                           </span>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
                           <div
                             className="h-full bg-gradient-to-r from-indigo-400 to-indigo-500 rounded-full transition-all duration-300"
                             style={{ width: `${barWidth}%` }}
@@ -556,16 +556,16 @@ export default function EventAnalyticsPage({
                   })}
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm text-center py-8">No referrer data yet</p>
+                <p className="text-muted-foreground text-sm text-center py-8">No referrer data yet</p>
               )}
             </div>
 
             {/* UTM Campaign Performance Table */}
-            <div className="bg-white rounded-xl border p-6 md:col-span-2">
+            <div className="bg-card rounded-xl border p-6 md:col-span-2">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">UTM Campaign Performance</h2>
-                  <p className="text-sm text-gray-500 mt-0.5">Which channels are driving the most traffic</p>
+                  <h2 className="text-lg font-semibold text-foreground">UTM Campaign Performance</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">Which channels are driving the most traffic</p>
                 </div>
                 <button
                   onClick={() => setShowUtmGenerator(true)}
@@ -579,11 +579,11 @@ export default function EventAnalyticsPage({
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-100">
-                        <th className="text-left py-3 px-3 font-medium text-gray-500 uppercase text-xs tracking-wider">Source</th>
-                        <th className="text-right py-3 px-3 font-medium text-gray-500 uppercase text-xs tracking-wider">Visits</th>
-                        <th className="text-left py-3 px-3 font-medium text-gray-500 uppercase text-xs tracking-wider w-1/3">Distribution</th>
-                        <th className="text-right py-3 px-3 font-medium text-gray-500 uppercase text-xs tracking-wider">Share</th>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground uppercase text-xs tracking-wider">Source</th>
+                        <th className="text-right py-3 px-3 font-medium text-muted-foreground uppercase text-xs tracking-wider">Visits</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground uppercase text-xs tracking-wider w-1/3">Distribution</th>
+                        <th className="text-right py-3 px-3 font-medium text-muted-foreground uppercase text-xs tracking-wider">Share</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -605,25 +605,25 @@ export default function EventAnalyticsPage({
                           const share = totalUtm > 0 ? ((utm.count / totalUtm) * 100).toFixed(1) : "0"
                           const colorClass = barColors[i % barColors.length]
                           return (
-                            <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                            <tr key={i} className="border-b border-border last:border-0 hover:bg-accent/50 transition-colors">
                               <td className="py-3 px-3">
                                 <div className="flex items-center gap-2">
                                   <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${colorClass} shrink-0`} />
-                                  <span className="font-medium text-gray-900">{utm.source}</span>
+                                  <span className="font-medium text-foreground">{utm.source}</span>
                                 </div>
                               </td>
-                              <td className="text-right py-3 px-3 font-semibold text-gray-900 tabular-nums">
+                              <td className="text-right py-3 px-3 font-semibold text-foreground tabular-nums">
                                 {utm.count.toLocaleString()}
                               </td>
                               <td className="py-3 px-3">
-                                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-2.5 bg-muted rounded-full overflow-hidden">
                                   <div
                                     className={`h-full bg-gradient-to-r ${colorClass} rounded-full transition-all duration-300`}
                                     style={{ width: `${barWidth}%` }}
                                   />
                                 </div>
                               </td>
-                              <td className="text-right py-3 px-3 text-gray-500 tabular-nums">{share}%</td>
+                              <td className="text-right py-3 px-3 text-muted-foreground tabular-nums">{share}%</td>
                             </tr>
                           )
                         })
@@ -631,29 +631,29 @@ export default function EventAnalyticsPage({
                     </tbody>
                     <tfoot>
                       <tr className="border-t">
-                        <td className="py-3 px-3 font-medium text-gray-500">Total</td>
-                        <td className="text-right py-3 px-3 font-bold text-gray-900 tabular-nums">
+                        <td className="py-3 px-3 font-medium text-muted-foreground">Total</td>
+                        <td className="text-right py-3 px-3 font-bold text-foreground tabular-nums">
                           {analytics.topUtmSources.reduce((sum, u) => sum + u.count, 0).toLocaleString()}
                         </td>
                         <td></td>
-                        <td className="text-right py-3 px-3 text-gray-500">100%</td>
+                        <td className="text-right py-3 px-3 text-muted-foreground">100%</td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <LinkIcon className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No UTM tracking data yet</p>
-                  <p className="text-xs text-gray-400 mt-1">Generate tracked links above and share them to see which channels perform best</p>
+                  <LinkIcon className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground text-sm">No UTM tracking data yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Generate tracked links above and share them to see which channels perform best</p>
                 </div>
               )}
             </div>
 
             {/* Leads */}
-            <div className="bg-white rounded-xl border p-6">
+            <div className="bg-card rounded-xl border p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Leads</h2>
+                <h2 className="text-lg font-semibold text-foreground">Leads</h2>
                 <Link
                   href={`/events/${eventId}/leads`}
                   className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
@@ -662,50 +662,50 @@ export default function EventAnalyticsPage({
                 </Link>
               </div>
               <div className="text-center py-4">
-                <p className="text-4xl font-bold text-gray-900">{analytics.summary.leads}</p>
-                <p className="text-gray-500 text-sm mt-1">Interested visitors</p>
+                <p className="text-4xl font-bold text-foreground">{analytics.summary.leads}</p>
+                <p className="text-muted-foreground text-sm mt-1">Interested visitors</p>
               </div>
-              <p className="text-xs text-gray-500 text-center">
+              <p className="text-xs text-muted-foreground text-center">
                 People who showed interest but haven't registered yet
               </p>
             </div>
           </div>
 
           {/* Daily Chart (Simple Table) */}
-          <div className="bg-white rounded-xl border p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Daily Traffic</h2>
+          <div className="bg-card rounded-xl border p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4">Daily Traffic</h2>
             {analytics.chartData.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2 px-3 font-medium text-gray-500">Date</th>
-                      <th className="text-right py-2 px-3 font-medium text-gray-500">Views</th>
-                      <th className="text-right py-2 px-3 font-medium text-gray-500">Visitors</th>
+                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">Date</th>
+                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Views</th>
+                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Visitors</th>
                     </tr>
                   </thead>
                   <tbody>
                     {analytics.chartData.slice(-14).map((day) => (
                       <tr key={day.date} className="border-b last:border-0">
-                        <td className="py-2 px-3">{new Date(day.date).toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" })}</td>
-                        <td className="text-right py-2 px-3 font-medium">{day.views}</td>
-                        <td className="text-right py-2 px-3 text-gray-600">{day.visitors}</td>
+                        <td className="py-2 px-3 text-foreground">{new Date(day.date).toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" })}</td>
+                        <td className="text-right py-2 px-3 font-medium text-foreground">{day.views}</td>
+                        <td className="text-right py-2 px-3 text-muted-foreground">{day.visitors}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-8">No traffic data yet. Share your event link to start tracking!</p>
+              <p className="text-muted-foreground text-center py-8">No traffic data yet. Share your event link to start tracking!</p>
             )}
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-xl border p-12 text-center">
-          <Eye className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Analytics Data Yet</h3>
-          <p className="text-gray-500 mb-4">Share your event link to start tracking page views and visitors.</p>
-          <p className="text-sm text-gray-400">Analytics will appear here once visitors view your event page.</p>
+        <div className="bg-card rounded-xl border p-12 text-center">
+          <Eye className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">No Analytics Data Yet</h3>
+          <p className="text-muted-foreground mb-4">Share your event link to start tracking page views and visitors.</p>
+          <p className="text-sm text-muted-foreground">Analytics will appear here once visitors view your event page.</p>
         </div>
       )}
     </div>

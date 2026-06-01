@@ -215,9 +215,9 @@ export function PreviewModal({ open, onClose, memberId }: PreviewModalProps) {
                     data.access.events.eventList.map((event) => (
                       <div
                         key={event.id}
-                        className="flex items-center gap-2 rounded-md px-3 py-2 bg-slate-50 text-sm"
+                        className="flex items-center gap-2 rounded-md px-3 py-2 bg-muted text-sm text-foreground"
                       >
-                        <Calendar className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span className="truncate">{event.title}</span>
                       </div>
                     ))

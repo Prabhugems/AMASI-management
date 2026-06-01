@@ -361,7 +361,7 @@ export default function SendInvitationsPage() {
           <div className="border rounded-lg max-h-[400px] overflow-y-auto">
             {filteredAssignments.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                <Users className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+                <Users className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
                 <p>No pending invitations found</p>
                 <p className="text-sm mt-1">All faculty have been invited or no faculty with emails</p>
               </div>
@@ -444,7 +444,7 @@ export default function SendInvitationsPage() {
                   For: {previewAssignment.faculty_name}
                 </span>
               </div>
-              <div className="bg-white border rounded p-3 space-y-2">
+              <div className="bg-card border rounded p-3 space-y-2">
                 <div>
                   <span className="text-xs text-muted-foreground">Subject:</span>
                   <p className="font-medium">{getPreviewEmail(previewAssignment).subject}</p>

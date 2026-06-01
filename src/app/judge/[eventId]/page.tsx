@@ -189,7 +189,7 @@ export default function JudgePortal() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
           <p className="mt-2 text-muted-foreground">Loading judge portal...</p>
@@ -201,10 +201,10 @@ export default function JudgePortal() {
   // Error state
   if (error || !event) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="text-center max-w-md mx-auto p-6">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Invalid Link</h1>
+          <h1 className="text-xl font-bold text-foreground mb-2">Invalid Link</h1>
           <p className="text-muted-foreground">
             This judge scoring link is invalid or has expired. Please contact the event organizer.
           </p>
@@ -216,8 +216,8 @@ export default function JudgePortal() {
   // Entry screen
   if (!hasEntered) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-full max-w-md mx-auto p-8 bg-white rounded-xl border shadow-sm">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
+        <div className="w-full max-w-md mx-auto p-8 bg-card rounded-xl border shadow-sm">
           <div className="text-center mb-6">
             <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Gavel className="h-7 w-7 text-primary" />
@@ -270,9 +270,9 @@ export default function JudgePortal() {
 
   // Main portal
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10">
+      <header className="bg-card border-b sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -294,7 +294,7 @@ export default function JudgePortal() {
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         {/* Category Selector */}
-        <div className="bg-white rounded-lg border p-4">
+        <div className="bg-card rounded-lg border p-4">
           <label className="text-sm font-medium mb-2 block">Select Award Category</label>
           <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
             <SelectTrigger className="max-w-md">
@@ -362,7 +362,7 @@ export default function JudgePortal() {
                         setRemarks("")
                       }}
                       className={cn(
-                        "w-full text-left bg-white rounded-lg border p-4 transition-all hover:shadow-md hover:border-primary/30",
+                        "w-full text-left bg-card rounded-lg border p-4 transition-all hover:shadow-md hover:border-primary/30",
                         scored && "border-green-200 bg-green-50/30"
                       )}
                     >
@@ -384,7 +384,7 @@ export default function JudgePortal() {
                               </span>
                             )}
                           </div>
-                          <h3 className="font-medium text-base">{abstract.title}</h3>
+                          <h3 className="font-medium text-base text-foreground">{abstract.title}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
                             {abstract.presenting_author_name}
                             {abstract.presenting_author_affiliation && ` \u2022 ${abstract.presenting_author_affiliation}`}

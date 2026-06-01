@@ -1016,7 +1016,7 @@ export function CSVImportWizard({
                   </div>
                   <div className="space-y-2 max-h-[150px] overflow-auto">
                     {skippedRows.map(({ index, data, reason }) => (
-                      <div key={index} className="flex items-center justify-between gap-2 bg-white p-2 rounded text-sm">
+                      <div key={index} className="flex items-center justify-between gap-2 bg-card p-2 rounded text-sm">
                         <div className="flex-1 min-w-0">
                           <span className="text-muted-foreground">Row {index + 1}:</span>{" "}
                           <span className="font-medium truncate">{data.session_name || "(no name)"}</span>

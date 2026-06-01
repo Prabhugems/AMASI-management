@@ -275,7 +275,7 @@ export default function SponsorsOverviewPage() {
                       <img
                         src={sponsor.logo_url}
                         alt={sponsor.name}
-                        className="w-10 h-10 object-contain rounded border bg-white"
+                        className="w-10 h-10 object-contain rounded border bg-card"
                       />
                     ) : (
                       <div className="w-10 h-10 rounded border bg-muted flex items-center justify-center">

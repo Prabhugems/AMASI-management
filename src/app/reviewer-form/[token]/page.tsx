@@ -100,7 +100,7 @@ export default function ReviewerFormPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-muted flex items-center justify-center p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -108,7 +108,7 @@ export default function ReviewerFormPage() {
 
   if (error && !reviewer) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-muted flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardHeader className="text-center">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-2" />
@@ -122,7 +122,7 @@ export default function ReviewerFormPage() {
 
   if (reviewer?.form_completed_at || success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-muted flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardHeader className="text-center">
             <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
@@ -137,11 +137,11 @@ export default function ReviewerFormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-muted py-8 px-4">
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">{COMPANY_CONFIG.name}</h1>
-          <p className="text-sm text-gray-600">{COMPANY_CONFIG.fullName}</p>
+          <h1 className="text-2xl font-bold text-foreground">{COMPANY_CONFIG.name}</h1>
+          <p className="text-sm text-muted-foreground">{COMPANY_CONFIG.fullName}</p>
         </div>
 
         <Card>
@@ -237,7 +237,7 @@ export default function ReviewerFormPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-gray-500 mt-6">
+        <p className="text-center text-xs text-muted-foreground mt-6">
           If you have any questions, please contact the {COMPANY_CONFIG.name} team.
         </p>
       </div>

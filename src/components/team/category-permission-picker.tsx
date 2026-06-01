@@ -78,17 +78,17 @@ export function CategoryPermissionPicker({
     <div className="space-y-3">
       {/* Full access toggle */}
       {onAllAccessChange && (
-        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-muted">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">Full access to all modules</span>
+            <span className="text-sm text-foreground">Full access to all modules</span>
           </div>
           <Switch checked={allAccess} onCheckedChange={handleAllAccessChange} />
         </div>
       )}
 
       {allAccess && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-800">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-800 dark:bg-amber-950/40 dark:border-amber-800/50 dark:text-amber-300">
           <Shield className="h-4 w-4 shrink-0" />
           <span className="text-sm font-medium">
             Full Access: This member can access ALL modules without restriction.
@@ -97,7 +97,7 @@ export function CategoryPermissionPicker({
       )}
 
       {allAccess ? (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/50 dark:text-emerald-300">
           <CheckCircle className="h-4 w-4" />
           <span className="text-sm font-medium">
             All {ALL_PERMISSION_VALUES.length} modules accessible
@@ -118,7 +118,7 @@ export function CategoryPermissionPicker({
                 <div
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors",
-                    sel > 0 ? cat.bgLight : "bg-slate-50 hover:bg-slate-100"
+                    sel > 0 ? "bg-primary/5 border-b border-primary/10" : "bg-muted/50 hover:bg-muted"
                   )}
                   onClick={() => toggle(cat.key)}
                 >
@@ -129,7 +129,7 @@ export function CategoryPermissionPicker({
                     className="shrink-0"
                   />
                   <CatIcon className={cn("h-4 w-4 shrink-0", cat.color)} />
-                  <span className="text-sm font-medium flex-1">{cat.label}</span>
+                  <span className="text-sm font-medium flex-1 text-foreground">{cat.label}</span>
                   <Badge variant="secondary" className="text-xs font-normal px-1.5 py-0">
                     {sel}/{tot}
                   </Badge>
@@ -142,7 +142,7 @@ export function CategoryPermissionPicker({
 
                 {/* Expanded permission list */}
                 {isOpen && (
-                  <div className="border-t bg-white px-3 py-2 space-y-1">
+                  <div className="border-t bg-card px-3 py-2 space-y-1">
                     {cat.permissions.map((perm) => {
                       const isSel = selectedPermissions.includes(perm.value)
                       const PermIcon = ICON_MAP[perm.icon] || Settings
@@ -154,7 +154,7 @@ export function CategoryPermissionPicker({
                             "flex items-center gap-3 px-2.5 py-2 rounded-lg cursor-pointer transition-colors",
                             isSel
                               ? "bg-primary/5 border border-primary/20"
-                              : "hover:bg-slate-50 border border-transparent"
+                              : "hover:bg-accent border border-transparent"
                           )}
                         >
                           <Checkbox checked={isSel} className="shrink-0" />

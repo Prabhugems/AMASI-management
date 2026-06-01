@@ -187,7 +187,7 @@ export function Header({ sidebarCollapsed, onMobileMenuToggle }: HeaderProps) {
         sidebarCollapsed ? "lg:left-[72px]" : "lg:left-64"
       )}
     >
-      <div className="flex h-full items-center justify-between gap-2 px-3 sm:px-6">
+      <div className="flex h-full items-center justify-between gap-2 pl-3 pr-4 sm:pl-6 sm:pr-10">
         {/* Mobile menu button + Search */}
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 max-w-xl">
           <button

@@ -208,7 +208,7 @@ export function DeviceTokens() {
         <div className="rounded-xl border overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50">
+              <TableRow className="bg-muted">
                 <TableHead className="font-semibold">Name</TableHead>
                 <TableHead className="font-semibold">Module</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
@@ -338,7 +338,7 @@ export function DeviceTokens() {
                   Save this token securely. It will only be shown once.
                 </p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 text-xs bg-white rounded px-2 py-1.5 border font-mono break-all select-all">
+                  <code className="flex-1 text-xs bg-card text-foreground rounded px-2 py-1.5 border font-mono break-all select-all">
                     {createdToken}
                   </code>
                   <Button

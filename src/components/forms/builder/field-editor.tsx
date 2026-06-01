@@ -159,9 +159,9 @@ export function FieldEditor({
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-white to-gray-50">
+    <div className="h-full flex flex-col bg-gradient-to-b from-card to-muted">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-violet-100 via-purple-100 to-fuchsia-100">
+      <div className="p-6 border-b border-border bg-gradient-to-r from-violet-100 via-purple-100 to-fuchsia-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className={cn(
@@ -171,7 +171,7 @@ export function FieldEditor({
               <Settings className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h3 className="text-xl font-black text-gray-900">Field Settings</h3>
+              <h3 className="text-xl font-black text-foreground">Field Settings</h3>
               <p className={cn(
                 "text-sm font-bold mt-1 bg-gradient-to-r bg-clip-text text-transparent",
                 fieldTypeColors[field.field_type] || "from-indigo-500 to-purple-600"
@@ -202,15 +202,15 @@ export function FieldEditor({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="px-6 pt-6 bg-white">
-          <div className="flex gap-2 p-1.5 bg-gradient-to-r from-gray-100 to-gray-200/80 rounded-2xl">
+        <div className="px-6 pt-6 bg-card">
+          <div className="flex gap-2 p-1.5 bg-gradient-to-r from-muted to-muted/80 rounded-2xl">
             <button
               onClick={() => setActiveTab("general")}
               className={cn(
                 "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all",
                 activeTab === "general"
-                  ? "bg-white shadow-lg text-violet-600"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-card shadow-lg text-violet-600"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Settings className="w-4 h-4" />
@@ -222,8 +222,8 @@ export function FieldEditor({
                 className={cn(
                   "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all",
                   activeTab === "validation"
-                    ? "bg-white shadow-lg text-violet-600"
-                    : "text-gray-500 hover:text-gray-700"
+                    ? "bg-card shadow-lg text-violet-600"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <Zap className="w-4 h-4" />
@@ -235,8 +235,8 @@ export function FieldEditor({
               className={cn(
                 "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all",
                 activeTab === "layout"
-                  ? "bg-white shadow-lg text-violet-600"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-card shadow-lg text-violet-600"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Layout className="w-4 h-4" />
@@ -247,8 +247,8 @@ export function FieldEditor({
               className={cn(
                 "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all",
                 activeTab === "logic"
-                  ? "bg-white shadow-lg text-violet-600"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-card shadow-lg text-violet-600"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <GitBranch className="w-4 h-4" />
@@ -257,7 +257,7 @@ export function FieldEditor({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-white">
+        <div className="flex-1 overflow-y-auto p-6 bg-card">
           {/* General Tab */}
           {activeTab === "general" && (
             <div className="space-y-6">
@@ -267,7 +267,7 @@ export function FieldEditor({
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                     <Tag className="w-4 h-4 text-white" />
                   </div>
-                  <Label className="text-sm font-bold text-gray-800">Field Label</Label>
+                  <Label className="text-sm font-bold text-foreground">Field Label</Label>
                 </div>
 
                 {/* Rich Text Toolbar */}
@@ -361,7 +361,7 @@ export function FieldEditor({
                   value={field.label}
                   onChange={(e) => onUpdate({ label: e.target.value })}
                   placeholder="Enter field label"
-                  className="h-14 bg-white border-2 border-violet-200 rounded-2xl focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-lg font-medium text-gray-800 placeholder:text-gray-400 shadow-sm"
+                  className="h-14 bg-card border-2 border-violet-200 rounded-2xl focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-lg font-medium text-foreground placeholder:text-muted-foreground shadow-sm"
                   style={{
                     fontWeight: field.settings?.label_bold ? "bold" : "normal",
                     fontStyle: field.settings?.label_italic ? "italic" : "normal",
@@ -380,13 +380,13 @@ export function FieldEditor({
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                         <Type className="w-4 h-4 text-white" />
                       </div>
-                      <Label className="text-sm font-bold text-gray-800">Placeholder Text</Label>
+                      <Label className="text-sm font-bold text-foreground">Placeholder Text</Label>
                     </div>
                     <Input
                       value={field.placeholder || ""}
                       onChange={(e) => onUpdate({ placeholder: e.target.value })}
                       placeholder="Enter placeholder text"
-                      className="h-14 bg-white border-2 border-blue-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-lg font-medium text-gray-800 placeholder:text-gray-400 shadow-sm"
+                      className="h-14 bg-card border-2 border-blue-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-lg font-medium text-foreground placeholder:text-muted-foreground shadow-sm"
                     />
                   </div>
 
@@ -396,14 +396,14 @@ export function FieldEditor({
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                         <HelpCircle className="w-4 h-4 text-white" />
                       </div>
-                      <Label className="text-sm font-bold text-gray-800">Help Text</Label>
+                      <Label className="text-sm font-bold text-foreground">Help Text</Label>
                     </div>
                     <Textarea
                       value={field.help_text || ""}
                       onChange={(e) => onUpdate({ help_text: e.target.value })}
                       placeholder="Additional instructions for users"
                       rows={3}
-                      className="bg-white border-2 border-emerald-200 rounded-2xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 text-base font-medium text-gray-800 placeholder:text-gray-400 shadow-sm resize-none"
+                      className="bg-card border-2 border-emerald-200 rounded-2xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 text-base font-medium text-foreground placeholder:text-muted-foreground shadow-sm resize-none"
                     />
                   </div>
 
@@ -416,8 +416,8 @@ export function FieldEditor({
                             <Users className="w-5 h-5 text-white" />
                           </div>
                           <div>
-                            <Label className="text-base font-bold text-gray-800">Member Lookup</Label>
-                            <p className="text-sm text-gray-500">Auto-fill from membership database</p>
+                            <Label className="text-base font-bold text-foreground">Member Lookup</Label>
+                            <p className="text-sm text-muted-foreground">Auto-fill from membership database</p>
                           </div>
                         </div>
                         <Switch
@@ -445,8 +445,8 @@ export function FieldEditor({
                             <Shield className="w-5 h-5 text-white" />
                           </div>
                           <div>
-                            <Label className="text-base font-bold text-gray-800">Email OTP Verification</Label>
-                            <p className="text-sm text-gray-500">Require OTP to verify email</p>
+                            <Label className="text-base font-bold text-foreground">Email OTP Verification</Label>
+                            <p className="text-sm text-muted-foreground">Require OTP to verify email</p>
                           </div>
                         </div>
                         <Switch
@@ -476,8 +476,8 @@ export function FieldEditor({
                               <span className="text-white font-bold text-sm">🌍</span>
                             </div>
                             <div>
-                              <Label className="text-base font-bold text-gray-800">Default Country</Label>
-                              <p className="text-sm text-gray-500">Pre-select country code</p>
+                              <Label className="text-base font-bold text-foreground">Default Country</Label>
+                              <p className="text-sm text-muted-foreground">Pre-select country code</p>
                             </div>
                           </div>
                           <Switch
@@ -488,12 +488,12 @@ export function FieldEditor({
                         </div>
                         {field.settings?.show_country && (
                           <div className="mt-3">
-                            <Label className="text-sm font-bold text-gray-700 mb-2 block">Country</Label>
+                            <Label className="text-sm font-bold text-muted-foreground mb-2 block">Country</Label>
                             <Select
                               value={field.settings?.default_country || "IN"}
                               onValueChange={(value) => onUpdate({ settings: { ...field.settings, default_country: value } })}
                             >
-                              <SelectTrigger className="h-12 bg-white border-2 border-emerald-200 rounded-xl">
+                              <SelectTrigger className="h-12 bg-card border-2 border-emerald-200 rounded-xl">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -518,8 +518,8 @@ export function FieldEditor({
                               <CheckCircle2 className="w-5 h-5 text-white" />
                             </div>
                             <div>
-                              <Label className="text-base font-bold text-gray-800">Phone Verification</Label>
-                              <p className="text-sm text-gray-500">Send OTP to verify phone</p>
+                              <Label className="text-base font-bold text-foreground">Phone Verification</Label>
+                              <p className="text-sm text-muted-foreground">Send OTP to verify phone</p>
                             </div>
                           </div>
                           <Switch
@@ -549,7 +549,7 @@ export function FieldEditor({
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center">
                         <List className="w-4 h-4 text-white" />
                       </div>
-                      <Label className="text-sm font-bold text-gray-800">Options</Label>
+                      <Label className="text-sm font-bold text-foreground">Options</Label>
                     </div>
                     <Button
                       onClick={handleAddOption}
@@ -563,7 +563,7 @@ export function FieldEditor({
                     {localOptions.map((option, index) => (
                       <div
                         key={index}
-                        className="flex items-center gap-3 bg-white p-4 rounded-xl border-2 border-orange-100 shadow-sm hover:shadow-md transition-all"
+                        className="flex items-center gap-3 bg-card p-4 rounded-xl border-2 border-orange-100 shadow-sm hover:shadow-md transition-all"
                       >
                         <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-amber-500 text-white font-bold text-sm shadow-md">
                           {index + 1}
@@ -577,7 +577,7 @@ export function FieldEditor({
                             })
                           }
                           placeholder="Option label"
-                          className="flex-1 h-12 bg-white border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-100 text-base font-medium text-gray-800"
+                          className="flex-1 h-12 bg-card border-2 border-orange-200 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-100 text-base font-medium text-gray-800"
                         />
                         <button
                           onClick={() => handleDeleteOption(index)}
@@ -604,7 +604,7 @@ export function FieldEditor({
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center">
                       <Star className="w-4 h-4 text-white" />
                     </div>
-                    <Label className="text-sm font-bold text-gray-800">Max Stars</Label>
+                    <Label className="text-sm font-bold text-foreground">Max Stars</Label>
                   </div>
                   <div className="grid grid-cols-6 gap-2 p-4 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl border-2 border-amber-200">
                     {[3, 4, 5, 6, 7, 10].map((n) => (
@@ -615,7 +615,7 @@ export function FieldEditor({
                           "py-3 rounded-xl font-bold text-lg transition-all",
                           field.settings?.max_rating === n || (!field.settings?.max_rating && n === 5)
                             ? "bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-lg"
-                            : "bg-white border-2 border-amber-200 text-gray-600 hover:border-amber-400"
+                            : "bg-card border-2 border-amber-200 text-muted-foreground hover:border-amber-400"
                         )}
                       >
                         {n}
@@ -632,44 +632,44 @@ export function FieldEditor({
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
                       <Sliders className="w-4 h-4 text-white" />
                     </div>
-                    <Label className="text-sm font-bold text-gray-800">Scale Settings</Label>
+                    <Label className="text-sm font-bold text-foreground">Scale Settings</Label>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-gray-600">Min Value</Label>
+                      <Label className="text-xs font-bold text-muted-foreground">Min Value</Label>
                       <Input
                         type="number"
                         value={field.settings?.scale_min ?? 1}
                         onChange={(e) => onUpdate({ settings: { ...field.settings, scale_min: Number(e.target.value) } })}
-                        className="h-12 bg-white border-2 border-cyan-200 rounded-xl focus:border-cyan-500 text-gray-800 font-medium"
+                        className="h-12 bg-card border-2 border-cyan-200 rounded-xl focus:border-cyan-500 text-foreground font-medium"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-gray-600">Max Value</Label>
+                      <Label className="text-xs font-bold text-muted-foreground">Max Value</Label>
                       <Input
                         type="number"
                         value={field.settings?.scale_max ?? 10}
                         onChange={(e) => onUpdate({ settings: { ...field.settings, scale_max: Number(e.target.value) } })}
-                        className="h-12 bg-white border-2 border-cyan-200 rounded-xl focus:border-cyan-500 text-gray-800 font-medium"
+                        className="h-12 bg-card border-2 border-cyan-200 rounded-xl focus:border-cyan-500 text-foreground font-medium"
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold text-gray-600">Min Label</Label>
+                    <Label className="text-xs font-bold text-muted-foreground">Min Label</Label>
                     <Input
                       value={field.settings?.scale_min_label || ""}
                       onChange={(e) => onUpdate({ settings: { ...field.settings, scale_min_label: e.target.value } })}
                       placeholder="e.g., Not satisfied"
-                      className="h-12 bg-white border-2 border-cyan-200 rounded-xl focus:border-cyan-500 text-gray-800 font-medium"
+                      className="h-12 bg-card border-2 border-cyan-200 rounded-xl focus:border-cyan-500 text-foreground font-medium"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold text-gray-600">Max Label</Label>
+                    <Label className="text-xs font-bold text-muted-foreground">Max Label</Label>
                     <Input
                       value={field.settings?.scale_max_label || ""}
                       onChange={(e) => onUpdate({ settings: { ...field.settings, scale_max_label: e.target.value } })}
                       placeholder="e.g., Very satisfied"
-                      className="h-12 bg-white border-2 border-cyan-200 rounded-xl focus:border-cyan-500 text-gray-800 font-medium"
+                      className="h-12 bg-card border-2 border-cyan-200 rounded-xl focus:border-cyan-500 text-foreground font-medium"
                     />
                   </div>
                 </div>
@@ -682,18 +682,18 @@ export function FieldEditor({
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                       <FileText className="w-4 h-4 text-white" />
                     </div>
-                    <Label className="text-sm font-bold text-gray-800">File Settings</Label>
+                    <Label className="text-sm font-bold text-foreground">File Settings</Label>
                   </div>
 
                   {/* Allow Multiple Files */}
-                  <div className="flex items-center justify-between p-4 bg-white rounded-xl border-2 border-indigo-100">
+                  <div className="flex items-center justify-between p-4 bg-card rounded-xl border-2 border-indigo-100">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                         <Plus className="w-4 h-4 text-white" />
                       </div>
                       <div>
-                        <Label className="text-sm font-bold text-gray-800">Allow Multiple Files</Label>
-                        <p className="text-xs text-gray-500">Let users upload more than one file</p>
+                        <Label className="text-sm font-bold text-foreground">Allow Multiple Files</Label>
+                        <p className="text-xs text-muted-foreground">Let users upload more than one file</p>
                       </div>
                     </div>
                     <Switch
@@ -706,29 +706,29 @@ export function FieldEditor({
                   {/* Max Files (only show if multiple is enabled) */}
                   {field.settings?.allow_multiple && (
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-gray-600">Max Number of Files</Label>
+                      <Label className="text-xs font-bold text-muted-foreground">Max Number of Files</Label>
                       <Input
                         type="number"
                         value={field.settings?.max_files ?? 5}
                         onChange={(e) => onUpdate({ settings: { ...field.settings, max_files: Number(e.target.value) } })}
                         min={1}
                         max={20}
-                        className="h-12 bg-white border-2 border-indigo-200 rounded-xl focus:border-indigo-500 text-gray-800 font-medium"
+                        className="h-12 bg-card border-2 border-indigo-200 rounded-xl focus:border-indigo-500 text-foreground font-medium"
                       />
                     </div>
                   )}
 
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold text-gray-600">Max File Size (MB)</Label>
+                    <Label className="text-xs font-bold text-muted-foreground">Max File Size (MB)</Label>
                     <Input
                       type="number"
                       value={field.settings?.max_file_size ?? 10}
                       onChange={(e) => onUpdate({ settings: { ...field.settings, max_file_size: Number(e.target.value) } })}
-                      className="h-12 bg-white border-2 border-indigo-200 rounded-xl focus:border-indigo-500 text-gray-800 font-medium"
+                      className="h-12 bg-card border-2 border-indigo-200 rounded-xl focus:border-indigo-500 text-foreground font-medium"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold text-gray-600">Allowed File Types</Label>
+                    <Label className="text-xs font-bold text-muted-foreground">Allowed File Types</Label>
                     <Input
                       value={field.settings?.allowed_file_types?.join(", ") || ""}
                       onChange={(e) => onUpdate({
@@ -738,9 +738,9 @@ export function FieldEditor({
                         },
                       })}
                       placeholder="pdf, doc, jpg, png"
-                      className="h-12 bg-white border-2 border-indigo-200 rounded-xl focus:border-indigo-500 text-gray-800 font-medium"
+                      className="h-12 bg-card border-2 border-indigo-200 rounded-xl focus:border-indigo-500 text-foreground font-medium"
                     />
-                    <p className="text-xs text-gray-500">Leave empty to allow all file types</p>
+                    <p className="text-xs text-muted-foreground">Leave empty to allow all file types</p>
                   </div>
                 </div>
               )}
@@ -752,9 +752,9 @@ export function FieldEditor({
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
                       <Heading className="w-4 h-4 text-white" />
                     </div>
-                    <Label className="text-sm font-bold text-gray-800">Heading Size</Label>
+                    <Label className="text-sm font-bold text-foreground">Heading Size</Label>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl border-2 border-gray-200">
+                  <div className="grid grid-cols-3 gap-3 p-4 bg-muted rounded-2xl border-2 border-border">
                     {[
                       { value: "h1", label: "Large", size: "text-2xl" },
                       { value: "h2", label: "Medium", size: "text-xl" },
@@ -767,7 +767,7 @@ export function FieldEditor({
                           "py-4 rounded-xl font-bold transition-all",
                           field.settings?.heading_size === opt.value || (!field.settings?.heading_size && opt.value === "h2")
                             ? "bg-gradient-to-br from-gray-700 to-gray-900 text-white shadow-lg"
-                            : "bg-white border-2 border-gray-200 text-gray-600 hover:border-gray-400"
+                            : "bg-card border-2 border-border text-muted-foreground hover:border-gray-400"
                         )}
                       >
                         <span className={opt.size}>{opt.label}</span>
@@ -779,14 +779,14 @@ export function FieldEditor({
 
               {/* Divider settings */}
               {showDividerSettings && (
-                <div className="space-y-5 p-5 bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl border-2 border-gray-200">
+                <div className="space-y-5 p-5 bg-muted rounded-2xl border-2 border-border">
                   {/* Divider Color */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center">
                         <Minus className="w-4 h-4 text-white" />
                       </div>
-                      <Label className="text-sm font-bold text-gray-800">Divider Color</Label>
+                      <Label className="text-sm font-bold text-foreground">Divider Color</Label>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {[
@@ -822,7 +822,7 @@ export function FieldEditor({
 
                   {/* Divider Style */}
                   <div className="space-y-3">
-                    <Label className="text-sm font-bold text-gray-800">Style</Label>
+                    <Label className="text-sm font-bold text-foreground">Style</Label>
                     <div className="grid grid-cols-3 gap-3">
                       {[
                         { value: "solid", label: "Solid" },
@@ -836,7 +836,7 @@ export function FieldEditor({
                             "py-3 rounded-xl font-semibold transition-all text-sm",
                             (field.settings?.divider_style === style.value || (!field.settings?.divider_style && style.value === "solid"))
                               ? "bg-gray-800 text-white shadow-lg"
-                              : "bg-white border-2 border-gray-200 text-gray-600 hover:border-gray-400"
+                              : "bg-card border-2 border-border text-muted-foreground hover:border-gray-400"
                           )}
                         >
                           {style.label}
@@ -847,7 +847,7 @@ export function FieldEditor({
 
                   {/* Divider Thickness */}
                   <div className="space-y-3">
-                    <Label className="text-sm font-bold text-gray-800">Thickness</Label>
+                    <Label className="text-sm font-bold text-foreground">Thickness</Label>
                     <div className="grid grid-cols-3 gap-3">
                       {[
                         { value: "thin", label: "Thin", height: "1px" },
@@ -861,7 +861,7 @@ export function FieldEditor({
                             "py-3 rounded-xl font-semibold transition-all text-sm flex flex-col items-center gap-2",
                             (field.settings?.divider_thickness === thickness.value || (!field.settings?.divider_thickness && thickness.value === "thin"))
                               ? "bg-gray-800 text-white shadow-lg"
-                              : "bg-white border-2 border-gray-200 text-gray-600 hover:border-gray-400"
+                              : "bg-card border-2 border-border text-muted-foreground hover:border-gray-400"
                           )}
                         >
                           <div
@@ -893,8 +893,8 @@ export function FieldEditor({
                     <CheckCircle2 className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <Label className="text-base font-bold text-gray-800">Required Field</Label>
-                    <p className="text-sm text-gray-500">User must fill this field</p>
+                    <Label className="text-base font-bold text-foreground">Required Field</Label>
+                    <p className="text-sm text-muted-foreground">User must fill this field</p>
                   </div>
                 </div>
                 <Switch
@@ -911,13 +911,13 @@ export function FieldEditor({
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                       <Ruler className="w-4 h-4 text-white" />
                     </div>
-                    <Label className="text-sm font-bold text-gray-800">
+                    <Label className="text-sm font-bold text-foreground">
                       {field.field_type === "number" ? "Value Limits" : "Length Limits"}
                     </Label>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-gray-600">
+                      <Label className="text-xs font-bold text-muted-foreground">
                         {field.field_type === "number" ? "Min Value" : "Min Length"}
                       </Label>
                       <Input
@@ -928,11 +928,11 @@ export function FieldEditor({
                           onUpdate(field.field_type === "number" ? { min_value: val } : { min_length: val })
                         }}
                         placeholder="No min"
-                        className="h-12 bg-white border-2 border-blue-200 rounded-xl focus:border-blue-500 text-gray-800 font-medium"
+                        className="h-12 bg-card border-2 border-blue-200 rounded-xl focus:border-blue-500 text-foreground font-medium"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold text-gray-600">
+                      <Label className="text-xs font-bold text-muted-foreground">
                         {field.field_type === "number" ? "Max Value" : "Max Length"}
                       </Label>
                       <Input
@@ -943,7 +943,7 @@ export function FieldEditor({
                           onUpdate(field.field_type === "number" ? { max_value: val } : { max_length: val })
                         }}
                         placeholder="No max"
-                        className="h-12 bg-white border-2 border-blue-200 rounded-xl focus:border-blue-500 text-gray-800 font-medium"
+                        className="h-12 bg-card border-2 border-blue-200 rounded-xl focus:border-blue-500 text-foreground font-medium"
                       />
                     </div>
                   </div>
@@ -957,13 +957,13 @@ export function FieldEditor({
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
                       <Hash className="w-4 h-4 text-white" />
                     </div>
-                    <Label className="text-sm font-bold text-gray-800">Validation Pattern (Regex)</Label>
+                    <Label className="text-sm font-bold text-foreground">Validation Pattern (Regex)</Label>
                   </div>
                   <Input
                     value={field.pattern || ""}
                     onChange={(e) => onUpdate({ pattern: e.target.value })}
                     placeholder="e.g., ^[A-Za-z]+$"
-                    className="h-12 bg-white border-2 border-amber-200 rounded-xl focus:border-amber-500 text-gray-800 font-medium font-mono"
+                    className="h-12 bg-card border-2 border-amber-200 rounded-xl focus:border-amber-500 text-foreground font-medium font-mono"
                   />
                   <p className="text-xs text-amber-700 bg-amber-100 px-3 py-2 rounded-lg flex items-center gap-2">
                     <AlertCircle className="w-4 h-4" />
@@ -983,7 +983,7 @@ export function FieldEditor({
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
                     <Layout className="w-4 h-4 text-white" />
                   </div>
-                  <Label className="text-sm font-bold text-gray-800">Field Width</Label>
+                  <Label className="text-sm font-bold text-foreground">Field Width</Label>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   {[
@@ -998,7 +998,7 @@ export function FieldEditor({
                         "p-4 rounded-2xl font-bold transition-all text-center",
                         field.width === opt.value
                           ? "bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-lg"
-                          : "bg-white border-2 border-gray-200 text-gray-600 hover:border-pink-300"
+                          : "bg-card border-2 border-border text-muted-foreground hover:border-pink-300"
                       )}
                     >
                       <span className="text-base">{opt.label}</span>
@@ -1009,9 +1009,9 @@ export function FieldEditor({
               </div>
 
               {/* Width Preview */}
-              <div className="space-y-3 p-5 bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl border-2 border-gray-200">
-                <Label className="text-sm font-bold text-gray-800">Width Preview</Label>
-                <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+              <div className="space-y-3 p-5 bg-muted rounded-2xl border-2 border-border">
+                <Label className="text-sm font-bold text-foreground">Width Preview</Label>
+                <div className="h-4 bg-border rounded-full overflow-hidden">
                   <div
                     className={cn(
                       "h-full bg-gradient-to-r from-pink-500 to-rose-600 rounded-full transition-all duration-300",
@@ -1029,7 +1029,7 @@ export function FieldEditor({
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
                     <Type className="w-4 h-4 text-white" />
                   </div>
-                  <Label className="text-sm font-bold text-gray-800">Label Position</Label>
+                  <Label className="text-sm font-bold text-foreground">Label Position</Label>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {([
@@ -1043,7 +1043,7 @@ export function FieldEditor({
                         "p-3 rounded-xl font-bold transition-all text-center text-sm",
                         (field.settings?.label_position || "top") === opt.value
                           ? "bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg"
-                          : "bg-white border-2 border-indigo-200 text-gray-600 hover:border-indigo-400"
+                          : "bg-card border-2 border-indigo-200 text-muted-foreground hover:border-indigo-400"
                       )}
                     >
                       {opt.label}
@@ -1058,7 +1058,7 @@ export function FieldEditor({
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                     <Ruler className="w-4 h-4 text-white" />
                   </div>
-                  <Label className="text-sm font-bold text-gray-800">Spacing</Label>
+                  <Label className="text-sm font-bold text-foreground">Spacing</Label>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   {([
@@ -1073,7 +1073,7 @@ export function FieldEditor({
                         "p-3 rounded-xl font-bold transition-all text-center text-sm",
                         (field.settings?.spacing || "normal") === opt.value
                           ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg"
-                          : "bg-white border-2 border-emerald-200 text-gray-600 hover:border-emerald-400"
+                          : "bg-card border-2 border-emerald-200 text-muted-foreground hover:border-emerald-400"
                       )}
                     >
                       {opt.label}
@@ -1089,8 +1089,8 @@ export function FieldEditor({
                     <Tag className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <Label className="text-base font-bold text-gray-800">Hide Label</Label>
-                    <p className="text-sm text-gray-500">Show only the input field</p>
+                    <Label className="text-base font-bold text-foreground">Hide Label</Label>
+                    <p className="text-sm text-muted-foreground">Show only the input field</p>
                   </div>
                 </div>
                 <Switch
@@ -1107,7 +1107,7 @@ export function FieldEditor({
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                       <HelpCircle className="w-4 h-4 text-white" />
                     </div>
-                    <Label className="text-sm font-bold text-gray-800">Help Text Position</Label>
+                    <Label className="text-sm font-bold text-foreground">Help Text Position</Label>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {([
@@ -1121,7 +1121,7 @@ export function FieldEditor({
                           "p-3 rounded-xl font-bold transition-all text-center text-sm",
                           (field.settings?.help_position || "below") === opt.value
                             ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg"
-                            : "bg-white border-2 border-violet-200 text-gray-600 hover:border-violet-400"
+                            : "bg-card border-2 border-violet-200 text-muted-foreground hover:border-violet-400"
                         )}
                       >
                         {opt.label}
@@ -1143,8 +1143,8 @@ export function FieldEditor({
                     <GitBranch className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <Label className="text-base font-bold text-gray-800">Conditional Logic</Label>
-                    <p className="text-sm text-gray-500">Show/hide based on other fields</p>
+                    <Label className="text-base font-bold text-foreground">Conditional Logic</Label>
+                    <p className="text-sm text-muted-foreground">Show/hide based on other fields</p>
                   </div>
                 </div>
                 <Switch
@@ -1178,7 +1178,7 @@ export function FieldEditor({
                           <EyeOff className="w-4 h-4 text-white" />
                         )}
                       </div>
-                      <Label className="text-sm font-bold text-gray-800">Action</Label>
+                      <Label className="text-sm font-bold text-foreground">Action</Label>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       {[
@@ -1194,7 +1194,7 @@ export function FieldEditor({
                             "p-4 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2",
                             field.conditional_logic?.action === opt.value
                               ? "bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg"
-                              : "bg-white border-2 border-indigo-200 text-gray-600 hover:border-indigo-400"
+                              : "bg-card border-2 border-indigo-200 text-muted-foreground hover:border-indigo-400"
                           )}
                         >
                           <opt.icon className="w-4 h-4" />
@@ -1206,7 +1206,7 @@ export function FieldEditor({
 
                   {/* Logic Type */}
                   <div className="space-y-3 p-5 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border-2 border-emerald-200">
-                    <Label className="text-sm font-bold text-gray-800">When</Label>
+                    <Label className="text-sm font-bold text-foreground">When</Label>
                     <div className="grid grid-cols-2 gap-3">
                       {[
                         { value: "all", label: "ALL rules match" },
@@ -1221,7 +1221,7 @@ export function FieldEditor({
                             "p-3 rounded-xl font-bold transition-all text-center text-sm",
                             field.conditional_logic?.logic === opt.value
                               ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg"
-                              : "bg-white border-2 border-emerald-200 text-gray-600 hover:border-emerald-400"
+                              : "bg-card border-2 border-emerald-200 text-muted-foreground hover:border-emerald-400"
                           )}
                         >
                           {opt.label}
@@ -1237,7 +1237,7 @@ export function FieldEditor({
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
                           <Zap className="w-4 h-4 text-white" />
                         </div>
-                        <Label className="text-sm font-bold text-gray-800">Rules</Label>
+                        <Label className="text-sm font-bold text-foreground">Rules</Label>
                       </div>
                       <Button
                         onClick={() => {
@@ -1252,9 +1252,9 @@ export function FieldEditor({
                     </div>
 
                     {field.conditional_logic?.rules?.map((rule, ruleIndex) => (
-                      <div key={ruleIndex} className="p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl border-2 border-gray-200 space-y-3">
+                      <div key={ruleIndex} className="p-4 bg-muted rounded-2xl border-2 border-border space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-gray-500 uppercase">Rule {ruleIndex + 1}</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase">Rule {ruleIndex + 1}</span>
                           {(field.conditional_logic?.rules?.length || 0) > 1 && (
                             <button
                               onClick={() => {
@@ -1270,7 +1270,7 @@ export function FieldEditor({
 
                         {/* Field Selector */}
                         <div className="space-y-2">
-                          <Label className="text-xs font-bold text-gray-600">If this field</Label>
+                          <Label className="text-xs font-bold text-muted-foreground">If this field</Label>
                           <Select
                             value={rule.field_id}
                             onValueChange={(value) => {
@@ -1279,7 +1279,7 @@ export function FieldEditor({
                               onUpdate({ conditional_logic: { ...field.conditional_logic!, rules: newRules } })
                             }}
                           >
-                            <SelectTrigger className="h-12 bg-white border-2 border-gray-200 rounded-xl">
+                            <SelectTrigger className="h-12 bg-card border-2 border-border rounded-xl">
                               <SelectValue placeholder="Select a field..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -1295,7 +1295,7 @@ export function FieldEditor({
 
                         {/* Operator */}
                         <div className="space-y-2">
-                          <Label className="text-xs font-bold text-gray-600">Condition</Label>
+                          <Label className="text-xs font-bold text-muted-foreground">Condition</Label>
                           <Select
                             value={rule.operator}
                             onValueChange={(value) => {
@@ -1304,7 +1304,7 @@ export function FieldEditor({
                               onUpdate({ conditional_logic: { ...field.conditional_logic!, rules: newRules } })
                             }}
                           >
-                            <SelectTrigger className="h-12 bg-white border-2 border-gray-200 rounded-xl">
+                            <SelectTrigger className="h-12 bg-card border-2 border-border rounded-xl">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1323,7 +1323,7 @@ export function FieldEditor({
                         {/* Value - only show if operator needs a value */}
                         {!["is_empty", "is_not_empty"].includes(rule.operator) && (
                           <div className="space-y-2">
-                            <Label className="text-xs font-bold text-gray-600">Value</Label>
+                            <Label className="text-xs font-bold text-muted-foreground">Value</Label>
                             {(() => {
                               const targetField = allFields.find(f => f.id === rule.field_id)
                               if (targetField?.options && targetField.options.length > 0) {
@@ -1336,7 +1336,7 @@ export function FieldEditor({
                                       onUpdate({ conditional_logic: { ...field.conditional_logic!, rules: newRules } })
                                     }}
                                   >
-                                    <SelectTrigger className="h-12 bg-white border-2 border-gray-200 rounded-xl">
+                                    <SelectTrigger className="h-12 bg-card border-2 border-border rounded-xl">
                                       <SelectValue placeholder="Select value..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1356,7 +1356,7 @@ export function FieldEditor({
                                     onUpdate({ conditional_logic: { ...field.conditional_logic!, rules: newRules } })
                                   }}
                                   placeholder="Enter value..."
-                                  className="h-12 bg-white border-2 border-gray-200 rounded-xl"
+                                  className="h-12 bg-card border-2 border-border rounded-xl"
                                 />
                               )
                             })()}
@@ -1395,7 +1395,7 @@ export function FieldEditor({
       </Tabs>
 
       {/* Footer */}
-      <div className="p-6 border-t border-gray-200 bg-gradient-to-r from-red-50 to-rose-50">
+      <div className="p-6 border-t border-border bg-gradient-to-r from-red-50 to-rose-50">
         <Button
           onClick={onDelete}
           className="w-full h-14 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all"

@@ -222,7 +222,7 @@ export default function CabAgentPortal() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <Loader2 className="h-8 w-8 animate-spin text-green-500" />
       </div>
     )
@@ -230,17 +230,17 @@ export default function CabAgentPortal() {
 
   if (error || !event) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold">Invalid Link</h1>
+          <h1 className="text-xl font-bold text-foreground">Invalid Link</h1>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       <header className="bg-gradient-to-r from-green-600 to-green-700 text-white sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -274,15 +274,15 @@ export default function CabAgentPortal() {
           </TabsList>
 
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="bg-white rounded-lg border p-4">
+            <div className="bg-card rounded-lg border p-4">
               <div className="flex items-center gap-2"><Car className="h-5 w-5 text-green-500" /><span className="text-sm text-muted-foreground">Total</span></div>
               <p className="text-3xl font-bold mt-2">{activeTab === "pickup" ? stats.pickup.total : stats.drop.total}</p>
             </div>
-            <div className="bg-white rounded-lg border p-4">
+            <div className="bg-card rounded-lg border p-4">
               <div className="flex items-center gap-2"><Clock className="h-5 w-5 text-amber-500" /><span className="text-sm text-muted-foreground">Pending</span></div>
               <p className="text-3xl font-bold mt-2 text-amber-600">{activeTab === "pickup" ? stats.pickup.pending : stats.drop.pending}</p>
             </div>
-            <div className="bg-white rounded-lg border p-4">
+            <div className="bg-card rounded-lg border p-4">
               <div className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /><span className="text-sm text-muted-foreground">Arranged</span></div>
               <p className="text-3xl font-bold mt-2 text-green-600">{activeTab === "pickup" ? stats.pickup.arranged : stats.drop.arranged}</p>
             </div>
@@ -326,7 +326,7 @@ export default function CabAgentPortal() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:divide-x">
             {/* LEFT: Guest Info */}
-            <div className="p-5 bg-slate-50/50">
+            <div className="p-5 bg-muted/30">
               <h3 className="font-semibold text-sm mb-4">Guest Details</h3>
               {editingGuest && (() => {
                 const booking = editingGuest.custom_fields?.booking || {}
@@ -346,13 +346,13 @@ export default function CabAgentPortal() {
                 return (
                   <div className="space-y-4">
                     {/* Photo & Contact */}
-                    <div className="p-4 bg-white rounded-xl border shadow-sm">
+                    <div className="p-4 bg-card rounded-xl border shadow-sm">
                       <div className="flex items-start gap-3">
                         {photoUrl ? (
                           <img src={photoUrl} alt="" className="w-16 h-16 rounded-lg object-cover border" />
                         ) : (
-                          <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center border">
-                            <User className="h-8 w-8 text-slate-400" />
+                          <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center border">
+                            <User className="h-8 w-8 text-muted-foreground" />
                           </div>
                         )}
                         <div>
@@ -367,7 +367,7 @@ export default function CabAgentPortal() {
                     </div>
 
                     {/* Flight/Train Info */}
-                    <div className="p-4 bg-white rounded-xl border shadow-sm">
+                    <div className="p-4 bg-card rounded-xl border shadow-sm">
                       <p className="text-xs text-muted-foreground mb-2">{editingType === "pickup" ? "Arrival" : "Departure"} Info</p>
                       <div className="flex items-center gap-2 mb-2">
                         <MapPin className="h-4 w-4 text-green-500" />
@@ -404,10 +404,10 @@ export default function CabAgentPortal() {
             <div className="p-5">
               <h3 className="font-semibold text-sm mb-4">Transfer Details</h3>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                   <Label>Status</Label>
                   <Select value={transferForm.status} onValueChange={(v) => setTransferForm({ ...transferForm, status: v })}>
-                    <SelectTrigger className="w-[130px] bg-white"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-[130px] bg-card"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="arranged">Arranged</SelectItem>
@@ -433,7 +433,7 @@ export default function CabAgentPortal() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 px-6 py-4 border-t bg-slate-50">
+          <div className="flex justify-end gap-3 px-6 py-4 border-t bg-muted/50">
             <Button variant="outline" onClick={() => setEditingGuest(null)}>Cancel</Button>
             <Button onClick={() => editingGuest && updateTransfer.mutate({ id: editingGuest.id, type: editingType, transfer: transferForm })} disabled={updateTransfer.isPending}>
               {updateTransfer.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
@@ -450,15 +450,15 @@ export default function CabAgentPortal() {
 function TransferTable({ guests, type, onEdit, formatDate }: { guests: Guest[]; type: "pickup" | "drop"; onEdit: (g: Guest) => void; formatDate: (d: string | undefined) => string }) {
   if (guests.length === 0) {
     return (
-      <div className="text-center py-12 bg-white rounded-lg border border-dashed">
+      <div className="text-center py-12 bg-card rounded-lg border border-dashed">
         <Car className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <p>No {type} requests found</p>
+        <p className="text-foreground">No {type} requests found</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-lg border overflow-x-auto">
+    <div className="bg-card rounded-lg border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className={type === "pickup" ? "bg-green-50" : "bg-red-50"}>

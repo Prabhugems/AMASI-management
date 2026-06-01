@@ -56,7 +56,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string; icon: ty
   pending: { label: "Pending", className: "bg-blue-100 text-blue-700 border-blue-200", icon: Clock },
   expired: { label: "Expired", className: "bg-red-100 text-red-700 border-red-200", icon: XCircle },
   accepted: { label: "Accepted", className: "bg-green-100 text-green-700 border-green-200", icon: CheckCircle },
-  revoked: { label: "Revoked", className: "bg-slate-100 text-slate-500 border-slate-200", icon: XCircle },
+  revoked: { label: "Revoked", className: "bg-muted text-muted-foreground border-border", icon: XCircle },
 }
 
 function getExpiryText(expiresAt: string): { text: string; isExpired: boolean } {
@@ -95,7 +95,7 @@ export function PendingInvitations({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
+      <div className="bg-card rounded-xl shadow-sm border p-12 text-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
         <p className="text-sm text-muted-foreground mt-2">Loading invitations...</p>
       </div>
@@ -104,11 +104,11 @@ export function PendingInvitations({
 
   if (invitations.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border py-16 text-center">
-        <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-          <Mail className="h-8 w-8 text-slate-400" />
+      <div className="bg-card rounded-xl shadow-sm border py-16 text-center">
+        <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+          <Mail className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-semibold mb-1">No pending invitations</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-1">No pending invitations</h3>
         <p className="text-sm text-muted-foreground">
           Invite team members to get started
         </p>
@@ -117,10 +117,10 @@ export function PendingInvitations({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+    <div className="bg-card rounded-xl shadow-sm border overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="bg-slate-50 hover:bg-slate-50">
+          <TableRow className="bg-muted hover:bg-muted">
             <TableHead className="w-[280px]">Email</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Status</TableHead>
@@ -140,13 +140,13 @@ export function PendingInvitations({
             const resent = wasResent(invitation.created_at, invitation.updated_at)
 
             return (
-              <TableRow key={invitation.id} className="hover:bg-slate-50">
+              <TableRow key={invitation.id} className="hover:bg-accent">
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
-                      <Mail className="h-4 w-4 text-slate-500" />
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <span className="font-medium text-sm truncate max-w-[220px]">
+                    <span className="font-medium text-sm text-foreground truncate max-w-[220px]">
                       {invitation.email}
                     </span>
                   </div>
@@ -229,7 +229,7 @@ export function PendingInvitations({
                               <Trash2
                                 className={cn(
                                   "h-4 w-4",
-                                  confirmingId === invitation.id ? "text-red-600" : "text-slate-500"
+                                  confirmingId === invitation.id ? "text-red-600" : "text-muted-foreground"
                                 )}
                               />
                             </Button>

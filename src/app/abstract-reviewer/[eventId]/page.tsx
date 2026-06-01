@@ -458,7 +458,7 @@ export default function AbstractReviewerPortal() {
   // Loading state (only show after entry)
   if (hasEntered && isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
           <p className="mt-2 text-muted-foreground">Loading reviewer portal...</p>
@@ -470,10 +470,10 @@ export default function AbstractReviewerPortal() {
   // Error state (only show after entry)
   if (hasEntered && (error || !portalData?.event)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="text-center max-w-md mx-auto p-6">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Invalid Link</h1>
+          <h1 className="text-xl font-bold text-foreground mb-2">Invalid Link</h1>
           <p className="text-muted-foreground">
             This reviewer link is invalid or has expired. Please contact the event organizer for a new link.
           </p>
@@ -596,7 +596,7 @@ export default function AbstractReviewerPortal() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-slate-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-purple-100 sticky top-0 z-10">
+      <header className="bg-card/80 backdrop-blur-xl border-b border-purple-100 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -692,7 +692,7 @@ export default function AbstractReviewerPortal() {
 
         {/* Progress Bar */}
         {stats.total > 0 && (
-          <div className="p-5 rounded-2xl bg-white/80 backdrop-blur-sm border border-purple-100 shadow-sm">
+          <div className="p-5 rounded-2xl bg-card/80 backdrop-blur-sm border border-purple-100 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-purple-500" />
@@ -718,7 +718,7 @@ export default function AbstractReviewerPortal() {
         )}
 
         {/* COI Declaration Section */}
-        <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-purple-100 overflow-hidden">
+        <div className="rounded-2xl bg-card/80 backdrop-blur-sm border border-purple-100 overflow-hidden">
           <button
             onClick={() => setShowCoiSection(!showCoiSection)}
             className="w-full p-4 flex items-center justify-between hover:bg-purple-50/50 transition-colors"
@@ -799,7 +799,7 @@ export default function AbstractReviewerPortal() {
                     <div>
                       <label className="text-sm font-medium mb-1.5 block">Conflict Type</label>
                       <Select value={newCoiType} onValueChange={(v: "institution" | "co_author" | "personal" | "other") => setNewCoiType(v)}>
-                        <SelectTrigger className="bg-white">
+                        <SelectTrigger className="bg-card">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -841,7 +841,7 @@ export default function AbstractReviewerPortal() {
                           newCoiType === "personal" ? "e.g., Spouse, Family member" :
                           "Describe the conflict"
                         }
-                        className="bg-white"
+                        className="bg-card"
                       />
                     </div>
                   </div>
@@ -851,7 +851,7 @@ export default function AbstractReviewerPortal() {
                       value={newCoiReason}
                       onChange={(e) => setNewCoiReason(e.target.value)}
                       placeholder="Additional context about this conflict..."
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                   <div className="flex items-center gap-2 justify-end">
@@ -896,19 +896,19 @@ export default function AbstractReviewerPortal() {
         </div>
 
         {/* Search & Filters */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl bg-white/80 backdrop-blur-sm border border-purple-100">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl bg-card/80 backdrop-blur-sm border border-purple-100">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-purple-400" />
             <Input
               placeholder="Search by title, number, or author..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-12 h-11 bg-white border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="pl-12 h-11 bg-card border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
           <div className="flex items-center gap-3">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white border-purple-100 rounded-xl">
+              <SelectTrigger className="w-full sm:w-[150px] h-11 bg-card border-purple-100 rounded-xl">
                 <Filter className="h-4 w-4 mr-2 text-purple-400" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -922,7 +922,7 @@ export default function AbstractReviewerPortal() {
             </Select>
             {categories.length > 0 && (
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full sm:w-[180px] h-11 bg-white border-purple-100 rounded-xl">
+                <SelectTrigger className="w-full sm:w-[180px] h-11 bg-card border-purple-100 rounded-xl">
                   <Tag className="h-4 w-4 mr-2 text-purple-400" />
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
@@ -944,7 +944,7 @@ export default function AbstractReviewerPortal() {
 
         {/* Abstracts List */}
         {filteredAbstracts.length === 0 ? (
-          <div className="text-center py-16 rounded-2xl border-2 border-dashed border-purple-200 bg-white/50">
+          <div className="text-center py-16 rounded-2xl border-2 border-dashed border-purple-200 bg-card/50">
             <div className="h-20 w-20 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
               <FileText className="h-10 w-10 text-purple-400" />
             </div>
@@ -991,7 +991,7 @@ export default function AbstractReviewerPortal() {
                     "w-full text-left rounded-2xl border p-5 transition-all hover:shadow-lg group",
                     reviewed
                       ? "bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200 hover:border-emerald-300"
-                      : "bg-white/80 backdrop-blur-sm border-purple-100 hover:border-purple-300"
+                      : "bg-card/80 backdrop-blur-sm border-purple-100 hover:border-purple-300"
                   )}
                 >
                   <div className="flex items-start justify-between gap-5">
@@ -1502,7 +1502,7 @@ export default function AbstractReviewerPortal() {
                       "w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all",
                       declineReason === option.value
                         ? "border-red-300 bg-red-50"
-                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        : "border-border hover:border-border hover:bg-accent"
                     )}
                   >
                     <span className="text-xl">{option.icon}</span>

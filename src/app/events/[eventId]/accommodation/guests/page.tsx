@@ -571,7 +571,7 @@ export default function AccommodationGuestsPage() {
                 return (
                   <TableRow
                     key={speaker.id}
-                    className={cn("cursor-pointer hover:bg-muted/50", isSelected && "bg-blue-50")}
+                    className={cn("cursor-pointer hover:bg-muted/50", isSelected && "bg-primary/10")}
                     onClick={() => openEditBooking(speaker)}
                   >
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -692,7 +692,7 @@ export default function AccommodationGuestsPage() {
 
           <div className="grid grid-cols-2 gap-0 divide-x">
             {/* LEFT: Guest's Request */}
-            <div className="p-5 bg-slate-50/50">
+            <div className="p-5 bg-muted/30">
               <div className="flex items-center gap-2 mb-4">
                 <div className="p-1.5 rounded-md bg-blue-100">
                   <User className="h-4 w-4 text-blue-600" />
@@ -705,13 +705,13 @@ export default function AccommodationGuestsPage() {
                 return (
                   <div className="space-y-4">
                     {/* Guest Photo & Contact Card */}
-                    <div className="p-4 bg-white rounded-xl border shadow-sm">
+                    <div className="p-4 bg-card rounded-xl border shadow-sm">
                       <div className="flex items-start gap-3">
                         {photoUrl ? (
                           <img src={photoUrl} alt={editingBooking.attendee_name} className="w-16 h-16 rounded-lg object-cover border" />
                         ) : (
-                          <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center border">
-                            <User className="h-8 w-8 text-slate-400" />
+                          <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center border">
+                            <User className="h-8 w-8 text-muted-foreground" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
@@ -733,14 +733,14 @@ export default function AccommodationGuestsPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-4 bg-white rounded-xl border shadow-sm">
+                      <div className="p-4 bg-card rounded-xl border shadow-sm">
                         <div className="flex items-center gap-1.5 mb-1">
                           <CalendarDays className="h-3 w-3 text-green-500" />
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Check-in</p>
                         </div>
                         <p className="font-semibold">{travel?.hotel_check_in ? new Date(travel.hotel_check_in).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "-"}</p>
                       </div>
-                      <div className="p-4 bg-white rounded-xl border shadow-sm">
+                      <div className="p-4 bg-card rounded-xl border shadow-sm">
                         <div className="flex items-center gap-1.5 mb-1">
                           <CalendarDays className="h-3 w-3 text-red-500" />
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Check-out</p>
@@ -748,7 +748,7 @@ export default function AccommodationGuestsPage() {
                         <p className="font-semibold">{travel?.hotel_check_out ? new Date(travel.hotel_check_out).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "-"}</p>
                       </div>
                     </div>
-                    <div className="p-4 bg-white rounded-xl border shadow-sm">
+                    <div className="p-4 bg-card rounded-xl border shadow-sm">
                       <div className="flex items-center gap-1.5 mb-1">
                         <BedDouble className="h-3 w-3 text-muted-foreground" />
                         <p className="text-xs text-muted-foreground uppercase tracking-wide">Room Type Requested</p>
@@ -776,13 +776,13 @@ export default function AccommodationGuestsPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                   <Label className="font-medium">Status</Label>
                   <Select
                     value={bookingForm.hotel_status}
                     onValueChange={(v: any) => setBookingForm({ ...bookingForm, hotel_status: v })}
                   >
-                    <SelectTrigger className="w-[140px] bg-white">
+                    <SelectTrigger className="w-[140px] bg-card">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -902,7 +902,7 @@ export default function AccommodationGuestsPage() {
           </div>
 
           {/* Footer Buttons */}
-          <div className="flex justify-end gap-3 px-6 py-4 border-t bg-slate-50">
+          <div className="flex justify-end gap-3 px-6 py-4 border-t bg-muted/50">
             <Button variant="outline" onClick={() => setEditingBooking(null)}>Cancel</Button>
             <Button
               onClick={() => editingBooking && updateBooking.mutate({ id: editingBooking.id, booking: bookingForm })}

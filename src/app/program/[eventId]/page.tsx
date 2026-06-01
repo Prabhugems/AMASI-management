@@ -172,7 +172,7 @@ export default function ProgramPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h1 className="text-xl font-semibold mb-2">Program Not Available</h1>
+          <h1 className="text-xl font-semibold text-foreground mb-2">Program Not Available</h1>
           <p className="text-muted-foreground">The program for this event is not yet published.</p>
         </div>
       </div>
@@ -182,14 +182,14 @@ export default function ProgramPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
-      <div className="bg-white border-b shadow-sm">
+      <div className="bg-card border-b shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="flex items-center gap-4 mb-4">
             <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg">
               <Calendar className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{event.short_name || event.name}</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">{event.short_name || event.name}</h1>
               <p className="text-muted-foreground">Scientific Program</p>
             </div>
           </div>
@@ -220,7 +220,7 @@ export default function ProgramPage() {
 
       <div className="max-w-6xl mx-auto px-4 py-6">
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6 p-4 bg-white rounded-2xl shadow-sm border">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6 p-4 bg-card rounded-2xl shadow-sm border">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -265,9 +265,9 @@ export default function ProgramPage() {
 
         {/* Program Content */}
         {filtered.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl shadow-sm border">
+          <div className="text-center py-16 bg-card rounded-2xl shadow-sm border">
             <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No presentations found</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No presentations found</h3>
             <p className="text-muted-foreground">
               {abstracts.length === 0
                 ? "The program hasn't been published yet"
@@ -283,13 +283,13 @@ export default function ProgramPage() {
                   <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
                     <Calendar className="h-5 w-5 text-primary" />
                   </div>
-                  <h2 className="text-xl font-bold">{formatDate(date)}</h2>
+                  <h2 className="text-xl font-bold text-foreground">{formatDate(date)}</h2>
                 </div>
 
                 {/* Halls */}
                 <div className="space-y-6">
                   {Object.entries(halls).map(([hall, hallAbstracts]) => (
-                    <div key={hall} className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                    <div key={hall} className="bg-card rounded-2xl shadow-sm border overflow-hidden">
                       {/* Hall Header */}
                       <div className="px-4 py-3 bg-gradient-to-r from-primary/5 to-purple-500/5 border-b flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-primary" />
@@ -354,7 +354,7 @@ export default function ProgramPage() {
                                           </Badge>
                                         )}
                                       </div>
-                                      <h3 className="font-medium text-gray-900 line-clamp-2">
+                                      <h3 className="font-medium text-foreground line-clamp-2">
                                         {abstract.title}
                                       </h3>
                                     </div>
@@ -414,7 +414,7 @@ export default function ProgramPage() {
       </div>
 
       {/* Footer */}
-      <div className="bg-white border-t mt-12">
+      <div className="bg-card border-t mt-12">
         <div className="max-w-6xl mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
           <p>Scientific Program - {event.name}</p>
           <p className="mt-1">Schedule is subject to change. Please check back for updates.</p>

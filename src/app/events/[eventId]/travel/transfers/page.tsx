@@ -519,7 +519,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
                       {photoUrl ? (
                         <img src={photoUrl} alt={editingGuest.attendee_name} className="w-20 h-20 rounded-lg object-cover border-2 border-white shadow-sm" />
                       ) : (
-                        <div className="w-20 h-20 rounded-lg bg-white flex items-center justify-center border-2 border-slate-200">
+                        <div className="w-20 h-20 rounded-lg bg-card flex items-center justify-center border-2 border-border">
                           <User className="h-10 w-10 text-slate-400" />
                         </div>
                       )}
@@ -543,7 +543,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
                   </div>
 
                   {/* Flight Info */}
-                  <div className="p-4 bg-slate-50 rounded-xl border">
+                  <div className="p-4 bg-muted rounded-xl border">
                     <div className="flex items-center gap-2 text-sm font-medium mb-3">
                       <Plane className="h-4 w-4 text-primary" />
                       Flight Information
@@ -551,7 +551,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
                         <p className="text-xs text-muted-foreground">Flight</p>
-                        <p className="font-mono font-medium">
+                        <p className="font-mono font-medium text-foreground">
                           {editingType === "pickup"
                             ? (booking.onward_flight_number || travel.onward_from_city || "-")
                             : (booking.return_flight_number || travel.return_to_city || "-")}
@@ -559,7 +559,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Date</p>
-                        <p className="font-medium">
+                        <p className="font-medium text-foreground">
                           {editingType === "pickup"
                             ? formatDate(travel.onward_date || travel.arrival_date)
                             : formatDate(travel.return_date || travel.departure_date)}
@@ -567,7 +567,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">{editingType === "pickup" ? "Arrival Time" : "Departure Time"}</p>
-                        <p className="font-mono font-medium">
+                        <p className="font-mono font-medium text-foreground">
                           {editingType === "pickup"
                             ? (booking.onward_arrival_time || "-")
                             : (booking.return_departure_time || "-")}
@@ -575,7 +575,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Route</p>
-                        <p className="font-medium text-xs">
+                        <p className="font-medium text-xs text-foreground">
                           {editingType === "pickup"
                             ? `${travel.onward_from_city || "-"} → ${travel.onward_to_city || "-"}`
                             : `${travel.return_from_city || "-"} → ${travel.return_to_city || "-"}`}
@@ -619,10 +619,10 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
               )
             })()}
 
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
               <Label className="font-medium">Status</Label>
               <Select value={transferForm.status} onValueChange={(v) => setTransferForm({ ...transferForm, status: v })}>
-                <SelectTrigger className="w-[140px] bg-white"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-[140px] bg-card"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">⏳ Pending</SelectItem>
                   <SelectItem value="arranged">📋 Arranged</SelectItem>
@@ -676,7 +676,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
           </div>
 
           {/* Footer Buttons */}
-          <div className="flex items-center justify-between gap-3 px-6 py-4 border-t bg-slate-50">
+          <div className="flex items-center justify-between gap-3 px-6 py-4 border-t bg-muted">
             <div className="flex gap-2">
               {editingGuest && (
                 <>

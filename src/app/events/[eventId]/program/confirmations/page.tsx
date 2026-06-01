@@ -557,9 +557,9 @@ export default function ConfirmationsPage() {
           <Mail className="h-4 w-4 text-blue-600" />
           <span className="text-blue-700">Invited: {stats?.invited || 0}</span>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg min-w-fit">
-          <Clock3 className="h-4 w-4 text-gray-600" />
-          <span className="text-gray-700">Not Invited: {stats?.pending || 0}</span>
+        <div className="flex items-center gap-2 px-4 py-2 bg-muted border border-border rounded-lg min-w-fit">
+          <Clock3 className="h-4 w-4 text-muted-foreground" />
+          <span className="text-foreground">Not Invited: {stats?.pending || 0}</span>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg min-w-fit">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
@@ -579,12 +579,12 @@ export default function ConfirmationsPage() {
             placeholder="Search name, email, or session..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="pl-10 bg-white"
+            className="pl-10 bg-background"
           />
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px] bg-white">
+          <SelectTrigger className="w-[150px] bg-background">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -596,7 +596,7 @@ export default function ConfirmationsPage() {
         </Select>
 
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-[140px] bg-white">
+          <SelectTrigger className="w-[140px] bg-background">
             <SelectValue placeholder="Role" />
           </SelectTrigger>
           <SelectContent>
@@ -609,7 +609,7 @@ export default function ConfirmationsPage() {
         </Select>
 
         <Select value={dayFilter} onValueChange={setDayFilter}>
-          <SelectTrigger className="w-[140px] bg-white">
+          <SelectTrigger className="w-[140px] bg-background">
             <SelectValue placeholder="Day" />
           </SelectTrigger>
           <SelectContent>
@@ -623,7 +623,7 @@ export default function ConfirmationsPage() {
         </Select>
 
         <Select value={hallFilter} onValueChange={setHallFilter}>
-          <SelectTrigger className="w-[140px] bg-white">
+          <SelectTrigger className="w-[140px] bg-background">
             <SelectValue placeholder="Hall" />
           </SelectTrigger>
           <SelectContent>
@@ -695,7 +695,7 @@ export default function ConfirmationsPage() {
                     className={cn(
                       "cursor-pointer",
                       selectedIds.has(assignment.id) && "bg-primary/5",
-                      detailAssignment?.id === assignment.id && "bg-blue-50"
+                      detailAssignment?.id === assignment.id && "bg-accent"
                     )}
                     onClick={() => setDetailAssignment(assignment)}
                   >
@@ -775,7 +775,7 @@ export default function ConfirmationsPage() {
                           )}
                         </div>
                       ) : (
-                        <span className="text-gray-400">Not sent</span>
+                        <span className="text-muted-foreground">Not sent</span>
                       )}
                     </TableCell>
                     <TableCell>

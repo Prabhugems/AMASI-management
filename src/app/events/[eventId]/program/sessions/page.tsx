@@ -144,10 +144,10 @@ const SESSION_TYPES = [
   { value: "live_surgery", label: "Live Surgery", color: "bg-red-100 text-red-700 border-red-200", icon: Video },
   { value: "workshop", label: "Workshop", color: "bg-green-100 text-green-700 border-green-200", icon: Users },
   { value: "ceremony", label: "Ceremony", color: "bg-pink-100 text-pink-700 border-pink-200", icon: Award },
-  { value: "break", label: "Break", color: "bg-gray-100 text-gray-600 border-gray-200", icon: Coffee },
+  { value: "break", label: "Break", color: "bg-muted text-muted-foreground border-border", icon: Coffee },
   { value: "exam", label: "Exam", color: "bg-orange-100 text-orange-700 border-orange-200", icon: BookOpen },
-  { value: "session", label: "Session", color: "bg-slate-100 text-slate-700 border-slate-200", icon: Mic },
-  { value: "other", label: "Other", color: "bg-gray-100 text-gray-600 border-gray-200", icon: Presentation },
+  { value: "session", label: "Session", color: "bg-muted text-muted-foreground border-border", icon: Mic },
+  { value: "other", label: "Other", color: "bg-muted text-muted-foreground border-border", icon: Presentation },
 ]
 
 const getSessionTypeConfig = (type: string) => {
@@ -162,7 +162,7 @@ const naturalSort = (a: string, b: string): number => {
 // Status config for speakers
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   confirmed: { label: "Accepted", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
-  pending: { label: "Pending", color: "bg-gray-100 text-gray-600", icon: Clock },
+  pending: { label: "Pending", color: "bg-muted text-muted-foreground", icon: Clock },
   invited: { label: "Invited", color: "bg-blue-100 text-blue-700", icon: Mail },
   declined: { label: "Declined", color: "bg-red-100 text-red-700", icon: AlertCircle },
   change_requested: { label: "Change Req.", color: "bg-amber-100 text-amber-700", icon: MessageSquare },
@@ -257,8 +257,8 @@ function AssignedSpeakersSection({
                     className={cn(
                       "text-xs px-2 py-1 rounded border transition-colors",
                       assignment.status === status
-                        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                        : "hover:bg-gray-100 cursor-pointer",
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "hover:bg-accent cursor-pointer",
                       updatingId === assignment.id && "opacity-50"
                     )}
                   >
@@ -319,11 +319,11 @@ function DraggableHeader({ header, children }: { header: any; children: React.Re
           <div
             {...attributes}
             {...listeners}
-            className="cursor-grab active:cursor-grabbing p-1 -ml-1 hover:bg-gray-200 rounded touch-none"
+            className="cursor-grab active:cursor-grabbing p-1 -ml-1 hover:bg-muted rounded touch-none"
             role="button"
             tabIndex={0}
           >
-            <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
         )}
         {children}
@@ -350,7 +350,7 @@ function DraggableHeader({ header, children }: { header: any; children: React.Re
         >
           <div
             className={cn(
-              "w-1 h-8 rounded bg-gray-300 hover:bg-blue-500 transition-colors",
+              "w-1 h-8 rounded bg-border hover:bg-blue-500 transition-colors",
               header.column.getIsResizing() && "bg-blue-500"
             )}
           />
@@ -561,7 +561,7 @@ export default function SessionsPage() {
     if (hasDeclined) return { status: 'declined', label: 'Has Declined', color: 'bg-red-100 text-red-700' }
     if (hasChangeRequested) return { status: 'change', label: 'Change Requested', color: 'bg-amber-100 text-amber-700' }
     if (confirmed > 0) return { status: 'partial', label: `${confirmed}/${total} Confirmed`, color: 'bg-blue-100 text-blue-700' }
-    return { status: 'pending', label: 'Pending', color: 'bg-gray-100 text-gray-600' }
+    return { status: 'pending', label: 'Pending', color: 'bg-muted text-muted-foreground' }
   }, [assignments])
 
   // Format helpers
@@ -1241,13 +1241,13 @@ export default function SessionsPage() {
 
         {/* Bulk Actions Toolbar */}
         {selectedCount > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-4">
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Checkbox
                 checked={true}
                 onCheckedChange={() => setRowSelection({})}
               />
-              <span className="font-medium text-blue-900">
+              <span className="font-medium text-foreground">
                 {selectedCount} session{selectedCount > 1 ? "s" : ""} selected
               </span>
             </div>
@@ -1367,7 +1367,7 @@ export default function SessionsPage() {
                         key={row.id}
                         className={cn(
                           "border-b hover:bg-muted/30 transition-colors",
-                          editingSession?.id === row.original.id && "bg-blue-50"
+                          editingSession?.id === row.original.id && "bg-primary/5"
                         )}
                       >
                         {row.getVisibleCells().map(cell => (
@@ -1388,7 +1388,7 @@ export default function SessionsPage() {
               {/* Drag overlay */}
               <DragOverlay>
                 {activeId ? (
-                  <div className="px-4 py-2 bg-white border-2 border-blue-500 rounded shadow-lg font-medium text-sm">
+                  <div className="px-4 py-2 bg-card border-2 border-blue-500 rounded shadow-lg font-medium text-sm text-foreground">
                     <div className="flex items-center gap-2">
                       <GripVertical className="h-4 w-4 text-blue-500" />
                       {getColumnLabel(activeId)}

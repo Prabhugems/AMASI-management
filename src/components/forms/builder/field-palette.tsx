@@ -92,8 +92,8 @@ function DraggableFieldItem({ field, onAdd }: { field: FieldPaletteItemData; onA
       onClick={handleClick}
       className={`
         group flex items-center gap-3 p-3.5 rounded-xl cursor-pointer
-        bg-white hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50
-        border-2 border-gray-100 hover:border-indigo-300
+        bg-card hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50
+        border-2 border-border hover:border-indigo-300
         shadow-sm hover:shadow-lg hover:shadow-indigo-200/50
         transition-all duration-200 hover:scale-[1.02]
         ${isDragging ? "opacity-70 ring-4 ring-indigo-400 scale-105 rotate-2 shadow-2xl" : ""}
@@ -103,8 +103,8 @@ function DraggableFieldItem({ field, onAdd }: { field: FieldPaletteItemData; onA
         {field.icon}
       </div>
       <div className="flex-1">
-        <span className="text-sm font-bold text-gray-800 block">{field.label}</span>
-        <span className="text-xs text-gray-400 group-hover:text-indigo-500 transition-colors">Click to add</span>
+        <span className="text-sm font-bold text-foreground block">{field.label}</span>
+        <span className="text-xs text-muted-foreground group-hover:text-indigo-500 transition-colors">Click to add</span>
       </div>
       <div className="flex items-center gap-1">
         <span className="text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
@@ -131,11 +131,11 @@ export function FieldPalette({ className, onAddField }: FieldPaletteProps) {
     <div className="flex items-center justify-between mb-4">
       <div className="flex items-center gap-3">
         <div className={`w-3 h-3 rounded-full bg-gradient-to-br ${color}`} />
-        <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">
           {title}
         </h3>
       </div>
-      <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+      <span className="text-xs font-bold text-muted-foreground bg-muted px-2 py-1 rounded-full">
         {count}
       </span>
     </div>

@@ -369,11 +369,11 @@ export default function TrainsPage() {
               </div>
             )}
 
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-3">
                 <Label className="font-medium">Type</Label>
                 <Select value={trainForm.type} onValueChange={(v: any) => setTrainForm({ ...trainForm, type: v })}>
-                  <SelectTrigger className="w-[120px] bg-white"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-[120px] bg-card"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="onward">🚂 Onward</SelectItem>
                     <SelectItem value="return">🚃 Return</SelectItem>
@@ -383,7 +383,7 @@ export default function TrainsPage() {
               <div className="flex items-center gap-3">
                 <Label className="font-medium">Status</Label>
                 <Select value={trainForm.status} onValueChange={(v) => setTrainForm({ ...trainForm, status: v })}>
-                  <SelectTrigger className="w-[130px] bg-white"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-[130px] bg-card"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">⏳ Pending</SelectItem>
                     <SelectItem value="booked">📋 Booked</SelectItem>
@@ -467,7 +467,7 @@ export default function TrainsPage() {
           </div>
 
           {/* Footer Buttons */}
-          <div className="flex justify-end gap-3 px-6 py-4 border-t bg-slate-50">
+          <div className="flex justify-end gap-3 px-6 py-4 border-t bg-muted">
             <Button variant="outline" onClick={() => { setShowAddBooking(false); setEditingBooking(null) }}>Cancel</Button>
             <Button
               onClick={() => {

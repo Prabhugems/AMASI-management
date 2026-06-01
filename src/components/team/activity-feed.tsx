@@ -127,21 +127,21 @@ export function ActivityFeed({ onClose }: ActivityFeedProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed right-0 top-0 bottom-0 z-50 bg-white flex flex-col",
+          "fixed right-0 top-0 bottom-0 z-50 bg-card flex flex-col",
           "w-full sm:w-80 lg:relative lg:z-auto",
-          "border-l border-slate-200 shadow-lg lg:shadow-none"
+          "border-l border-border shadow-lg lg:shadow-none"
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50/80">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/80">
           <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-slate-600" />
-            <h3 className="text-sm font-semibold text-slate-800">Activity Feed</h3>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold text-foreground">Activity Feed</h3>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 p-0 text-slate-500 hover:text-slate-800"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -157,16 +157,16 @@ export function ActivityFeed({ onClose }: ActivityFeedProps) {
             <div className="space-y-2 pt-2">
               {[1, 2, 3, 4, 5].map((i) => (
                 <div key={i} className="animate-pulse flex items-start gap-2 p-2">
-                  <div className="h-2 w-2 rounded-full bg-slate-200 mt-1.5 shrink-0" />
+                  <div className="h-2 w-2 rounded-full bg-muted-foreground/30 mt-1.5 shrink-0" />
                   <div className="flex-1 space-y-1.5">
-                    <div className="h-3 bg-slate-200 rounded w-3/4" />
-                    <div className="h-2.5 bg-slate-100 rounded w-1/2" />
+                    <div className="h-3 bg-muted rounded w-3/4" />
+                    <div className="h-2.5 bg-muted rounded w-1/2" />
                   </div>
                 </div>
               ))}
             </div>
           ) : items.length === 0 ? (
-            <div className="text-center py-8 text-sm text-slate-400">
+            <div className="text-center py-8 text-sm text-muted-foreground">
               No activity yet
             </div>
           ) : (
@@ -178,7 +178,7 @@ export function ActivityFeed({ onClose }: ActivityFeedProps) {
               return (
                 <div
                   key={item.id}
-                  className="flex items-start gap-2 p-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  className="flex items-start gap-2 p-2 rounded-lg hover:bg-accent transition-colors"
                 >
                   <div
                     className={cn(
@@ -187,10 +187,10 @@ export function ActivityFeed({ onClose }: ActivityFeedProps) {
                     )}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-slate-700 leading-relaxed">
+                    <p className="text-xs text-foreground leading-relaxed">
                       <span className="font-medium">{actorName(item.actor_email)}</span>
                       {" "}
-                      <span className="text-slate-500">{actionLabel}</span>
+                      <span className="text-muted-foreground">{actionLabel}</span>
                       {target && (
                         <>
                           {" "}
@@ -198,7 +198,7 @@ export function ActivityFeed({ onClose }: ActivityFeedProps) {
                         </>
                       )}
                     </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
                       {relativeTime(item.created_at)}
                     </p>
                   </div>

@@ -158,7 +158,7 @@ const PERMISSION_LABELS: Record<string, string> = {
 }
 
 const getInitials = (name: string) => name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?"
-const getRoleColor = (role: string) => ROLE_OPTIONS.find(r => r.value === role)?.color || "bg-slate-100 text-slate-700 border-slate-200"
+const getRoleColor = (role: string) => ROLE_OPTIONS.find(r => r.value === role)?.color || "bg-muted text-muted-foreground border-border"
 const getRoleLabel = (role: string) => ROLE_OPTIONS.find(r => r.value === role)?.label || role
 
 function formatActionLabel(action: string): string {
@@ -555,7 +555,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                           "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all",
                           role === r.value
                             ? "border-[#185FA5] bg-[#185FA5]/5 text-[#185FA5] ring-1 ring-[#185FA5]/20"
-                            : "border-border text-muted-foreground hover:border-slate-300"
+                            : "border-border text-muted-foreground hover:border-border/70"
                         )}
                       >
                         <Icon className="h-3.5 w-3.5" />
@@ -613,7 +613,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                               if (e.target.checked) setEventIds([...eventIds, event.id])
                               else setEventIds(eventIds.filter(id => id !== event.id))
                             }}
-                            className="rounded border-slate-300"
+                            className="rounded border-border"
                           />
                           <span className="truncate">{event.short_name || event.name}</span>
                         </label>
@@ -632,7 +632,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                               if (e.target.checked) setEventIds([...eventIds, event.id])
                               else setEventIds(eventIds.filter(id => id !== event.id))
                             }}
-                            className="rounded border-slate-300"
+                            className="rounded border-border"
                           />
                           <span className="truncate">{event.short_name || event.name}</span>
                         </label>
@@ -691,7 +691,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                     <button
                       key={tag}
                       onClick={() => setTags(tags.filter(t => t !== tag))}
-                      className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border cursor-pointer hover:opacity-70", TAG_COLORS[tag] || "bg-slate-100 text-slate-700")}
+                      className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border cursor-pointer hover:opacity-70", TAG_COLORS[tag] || "bg-muted text-muted-foreground")}
                     >
                       {tag} ×
                     </button>
@@ -702,7 +702,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                     <button
                       key={tag}
                       onClick={() => setTags([...tags, tag])}
-                      className="text-[11px] px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-muted-foreground hover:border-[#185FA5] hover:text-[#185FA5] transition-colors"
+                      className="text-[11px] px-2 py-0.5 rounded-full border border-dashed border-border text-muted-foreground hover:border-[#185FA5] hover:text-[#185FA5] transition-colors"
                     >
                       + {tag}
                     </button>
@@ -789,7 +789,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
               ) : (
                 <div className="space-y-0">
                   {activityLogs.map((log, i) => {
-                    const actionCfg = ACTION_ICONS[log.action] || { icon: Activity, color: "text-slate-500" }
+                    const actionCfg = ACTION_ICONS[log.action] || { icon: Activity, color: "text-muted-foreground" }
                     const Icon = actionCfg.icon
                     const isLast = i === activityLogs.length - 1
 
@@ -919,7 +919,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                               {diff.unchangedPerms.map(p => (
                                 <div key={p} className="flex items-center gap-1.5">
                                   <span className="w-3" />
-                                  <span className="text-xs bg-slate-100 text-slate-500 rounded px-1.5 py-0.5">{getPermLabel(p)}</span>
+                                  <span className="text-xs bg-muted text-muted-foreground rounded px-1.5 py-0.5">{getPermLabel(p)}</span>
                                 </div>
                               ))}
                             </>
@@ -944,7 +944,7 @@ export function MemberDetailPanel({ open, onClose, member, events, allMembers, i
                               {diff.unchangedPerms.map(p => (
                                 <div key={p} className="flex items-center gap-1.5">
                                   <span className="w-3" />
-                                  <span className="text-xs bg-slate-100 text-slate-500 rounded px-1.5 py-0.5">{getPermLabel(p)}</span>
+                                  <span className="text-xs bg-muted text-muted-foreground rounded px-1.5 py-0.5">{getPermLabel(p)}</span>
                                 </div>
                               ))}
                             </>

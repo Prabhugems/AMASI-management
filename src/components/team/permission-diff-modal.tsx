@@ -48,7 +48,7 @@ function getRoleLabel(role: string): string {
 
 function getRoleBadgeClasses(role: string): string {
   const cfg = ROLE_CONFIG[role]
-  if (!cfg) return "bg-gray-100 text-gray-700"
+  if (!cfg) return "bg-muted text-muted-foreground"
   return `${cfg.bg} ${cfg.color}`
 }
 
@@ -97,7 +97,7 @@ export function PermissionDiffModal({
         <div className="space-y-4 py-2">
           {/* Role change */}
           {roleChanged && (
-            <div className="flex items-center gap-2 flex-wrap p-3 rounded-xl bg-slate-50 border">
+            <div className="flex items-center gap-2 flex-wrap p-3 rounded-xl bg-muted border">
               <span className="text-sm font-medium text-muted-foreground">Role:</span>
               <Badge className={cn("text-xs", getRoleBadgeClasses(oldRole!))}>
                 {getRoleLabel(oldRole!)}
@@ -182,11 +182,11 @@ export function PermissionDiffModal({
                 {unchanged.map((p) => (
                   <div
                     key={p}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground"
                   >
                     <Equal className="h-3 w-3 shrink-0" />
                     <span className="text-sm">{getPermissionLabel(p)}</span>
-                    <span className="text-xs text-slate-400 ml-auto">{getCategoryLabel(p)}</span>
+                    <span className="text-xs text-muted-foreground ml-auto">{getCategoryLabel(p)}</span>
                   </div>
                 ))}
               </div>

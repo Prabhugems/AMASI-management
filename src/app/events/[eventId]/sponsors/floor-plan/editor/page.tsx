@@ -682,7 +682,7 @@ export default function FloorPlanEditorPage() {
   return (
     <div className="h-screen flex flex-col bg-stone-100">
       {/* Toolbar */}
-      <div className="bg-white border-b px-4 py-2.5 flex items-center justify-between shadow-sm">
+      <div className="bg-card border-b px-4 py-2.5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => router.push(`/events/${eventId}/sponsors/floor-plan`)}>
             <ArrowLeft className="h-4 w-4 mr-1" />
@@ -772,7 +772,7 @@ export default function FloorPlanEditorPage() {
       </div>
 
       {/* Location tabs + Selection info */}
-      <div className="bg-white border-b px-4 py-1.5 flex items-center justify-between">
+      <div className="bg-card border-b px-4 py-1.5 flex items-center justify-between">
         <div className="flex items-center gap-1">
           {locations.map(loc => (
             <button
@@ -922,7 +922,7 @@ export default function FloorPlanEditorPage() {
 
       {/* Side Panel */}
       {selectedStall && selectedStalls.size === 1 && (
-        <div className="absolute right-6 top-32 w-72 bg-white rounded-xl border shadow-xl overflow-hidden">
+        <div className="absolute right-6 top-32 w-72 bg-card rounded-xl border shadow-xl overflow-hidden">
           <div className="p-3 bg-muted/50 border-b flex items-center justify-between">
             <h3 className="font-semibold">Stall {selectedStall.stall_number}</h3>
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setSelectedStalls(new Set())}>
@@ -998,12 +998,12 @@ export default function FloorPlanEditorPage() {
       )}
 
       {/* Legend */}
-      <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur rounded-xl border shadow-lg p-3">
+      <div className="absolute bottom-6 left-6 bg-card/95 backdrop-blur rounded-xl border shadow-lg p-3">
         <div className="flex items-center gap-4 text-xs">
           {Object.entries(STATUS_COLORS).map(([status, colors]) => (
             <div key={status} className="flex items-center gap-1.5">
               <div className={cn("w-4 h-4 rounded border-2", colors.bg, colors.border)} />
-              <span className="capitalize">{status.replace("_", " ")}</span>
+              <span className="capitalize text-foreground">{status.replace("_", " ")}</span>
             </div>
           ))}
         </div>

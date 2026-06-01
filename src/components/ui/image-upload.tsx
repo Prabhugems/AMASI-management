@@ -229,7 +229,7 @@ export function ImageUpload({
   return (
     <div className={cn("space-y-2", className)}>
       {value ? (
-        <div className={cn("relative rounded-lg overflow-hidden border bg-gray-50", aspectClasses[aspectRatio])}>
+        <div className={cn("relative rounded-lg overflow-hidden border bg-muted", aspectClasses[aspectRatio])}>
           <img
             src={value}
             alt="Uploaded"
@@ -265,15 +265,15 @@ export function ImageUpload({
             {isUploading ? (
               <>
                 <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mb-2" />
-                <p className="text-sm text-gray-500">Uploading...</p>
+                <p className="text-sm text-muted-foreground">Uploading...</p>
               </>
             ) : (
               <>
-                <div className="p-3 bg-gray-100 rounded-full mb-2">
-                  <Upload className="w-6 h-6 text-gray-400" />
+                <div className="p-3 bg-muted rounded-full mb-2">
+                  <Upload className="w-6 h-6 text-muted-foreground" />
                 </div>
-                <p className="text-sm text-gray-600 font-medium">Click to upload</p>
-                <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 5MB</p>
+                <p className="text-sm text-foreground font-medium">Click to upload</p>
+                <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 5MB</p>
               </>
             )}
           </div>
@@ -328,7 +328,7 @@ export function ImageUpload({
               </button>
               <button
                 onClick={() => setShowUrlInput(false)}
-                className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm border rounded-lg hover:bg-accent"
               >
                 Cancel
               </button>
@@ -336,7 +336,7 @@ export function ImageUpload({
           ) : (
             <button
               onClick={() => setShowUrlInput(true)}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-emerald-600 transition-colors"
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-emerald-600 transition-colors"
             >
               <Link className="w-4 h-4" />
               Or paste image URL

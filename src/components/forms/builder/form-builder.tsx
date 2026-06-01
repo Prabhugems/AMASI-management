@@ -343,16 +343,16 @@ export function FormBuilder({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="h-screen flex flex-col bg-gradient-to-br from-gray-100 via-gray-50 to-indigo-50/30">
+      <div className="h-screen flex flex-col bg-gradient-to-br from-muted via-muted/50 to-indigo-50/30">
         {/* Header */}
-        <div className="border-b border-gray-200 bg-white/90 backdrop-blur-lg sticky top-0 z-10 shadow-sm">
+        <div className="border-b border-border bg-card/90 backdrop-blur-lg sticky top-0 z-10 shadow-sm">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               {/* Left side - Back and Title */}
               <div className="flex items-center gap-4">
                 <Link
                   href={backUrl}
-                  className="p-2.5 rounded-xl hover:bg-gray-100 transition-colors text-gray-600 border border-gray-200"
+                  className="p-2.5 rounded-xl hover:bg-accent transition-colors text-muted-foreground border border-border"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </Link>
@@ -363,7 +363,7 @@ export function FormBuilder({
                       setForm({ ...form, name: e.target.value })
                       setIsDirty(true)
                     }}
-                    className="text-xl font-extrabold border-0 bg-transparent px-2 h-auto py-1 focus-visible:ring-1 w-auto min-w-[250px] text-gray-900"
+                    className="text-xl font-extrabold border-0 bg-transparent px-2 h-auto py-1 focus-visible:ring-1 w-auto min-w-[250px] text-foreground"
                     placeholder="Form Name"
                   />
                   {isDirty && (
@@ -382,7 +382,7 @@ export function FormBuilder({
               </div>
 
               {/* Center - Tabs */}
-              <div className="hidden md:flex items-center bg-gray-100 rounded-2xl p-1.5 shadow-inner">
+              <div className="hidden md:flex items-center bg-muted rounded-2xl p-1.5 shadow-inner">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
@@ -390,8 +390,8 @@ export function FormBuilder({
                     className={cn(
                       "flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all duration-200",
                       activeTab === tab.id
-                        ? "bg-white text-indigo-600 shadow-md"
-                        : "text-gray-500 hover:text-gray-700"
+                        ? "bg-card text-indigo-600 shadow-md"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <tab.icon className="w-4 h-4" />
@@ -509,7 +509,7 @@ export function FormBuilder({
               {/* Left Panel - Field Palette (Resizable & Collapsible) */}
               <div
                 className={cn(
-                  "border-r border-gray-200 bg-white overflow-hidden shadow-lg transition-all ease-in-out relative flex",
+                  "border-r border-border bg-card overflow-hidden shadow-lg transition-all ease-in-out relative flex",
                   sidebarCollapsed ? "w-0" : "",
                   !isResizingLeft && "duration-300"
                 )}
@@ -528,12 +528,12 @@ export function FormBuilder({
                         <Layers className="w-6 h-6 text-white" />
                       </div>
                       <div className="flex-1">
-                        <h2 className="text-lg font-extrabold text-gray-900">Add Fields</h2>
-                        <p className="text-sm text-gray-500">Click or drag</p>
+                        <h2 className="text-lg font-extrabold text-foreground">Add Fields</h2>
+                        <p className="text-sm text-muted-foreground">Click or drag</p>
                       </div>
                       <button
                         onClick={() => setSidebarCollapsed(true)}
-                        className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
+                        className="p-2 rounded-xl hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
                         title="Collapse sidebar"
                       >
                         <PanelLeftClose className="w-5 h-5" />
@@ -551,7 +551,7 @@ export function FormBuilder({
                       setIsResizingLeft(true)
                     }}
                   >
-                    <div className="w-1 h-16 bg-gray-300 group-hover:bg-white rounded-full transition-colors" />
+                    <div className="w-1 h-16 bg-border group-hover:bg-white rounded-full transition-colors" />
                   </div>
                 )}
               </div>
@@ -604,7 +604,7 @@ export function FormBuilder({
 
                   <div
                     className={cn(
-                      "border-l border-gray-200 bg-white overflow-hidden shadow-2xl transition-all ease-in-out flex",
+                      "border-l border-border bg-card overflow-hidden shadow-2xl transition-all ease-in-out flex",
                       rightPanelCollapsed ? "w-0" : "",
                       !isResizingRight && "duration-300"
                     )}
@@ -619,7 +619,7 @@ export function FormBuilder({
                           setIsResizingRight(true)
                         }}
                       >
-                        <div className="w-1 h-16 bg-gray-300 group-hover:bg-white rounded-full transition-colors" />
+                        <div className="w-1 h-16 bg-border group-hover:bg-white rounded-full transition-colors" />
                       </div>
                     )}
                     <div
@@ -675,7 +675,7 @@ export function FormBuilder({
 
           {/* Share Tab Content */}
           {activeTab === "share" && (
-            <div className="flex-1 overflow-y-auto bg-gray-50">
+            <div className="flex-1 overflow-y-auto bg-muted">
               <div className="max-w-2xl mx-auto p-8">
                 {/* Share Header */}
                 <div className="flex items-center gap-4 mb-8">
@@ -684,7 +684,7 @@ export function FormBuilder({
                   </div>
                   <div>
                     <div className="flex items-center gap-3">
-                      <h1 className="text-2xl font-bold text-gray-900">Share</h1>
+                      <h1 className="text-2xl font-bold text-foreground">Share</h1>
                       {form.status === "published" ? (
                         <span className="flex items-center gap-1.5 text-sm font-semibold text-green-700 bg-green-100 px-3 py-1 rounded-full">
                           <CheckCircle2 className="w-4 h-4" />
@@ -696,28 +696,28 @@ export function FormBuilder({
                         </span>
                       )}
                     </div>
-                    <p className="text-gray-500 mt-1">Publish your form to share it with others</p>
+                    <p className="text-muted-foreground mt-1">Publish your form to share it with others</p>
                   </div>
                 </div>
 
                 {/* Link Section */}
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm mb-6">
+                <div className="bg-card rounded-2xl border border-border p-6 shadow-sm mb-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <Link2 className="w-5 h-5 text-gray-500" />
-                    <span className="font-semibold text-gray-700">Form Link</span>
+                    <Link2 className="w-5 h-5 text-muted-foreground" />
+                    <span className="font-semibold text-foreground">Form Link</span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-                      <span className="text-gray-700 truncate flex-1 font-medium">
+                    <div className="flex-1 flex items-center gap-2 bg-muted border border-border rounded-xl px-4 py-3">
+                      <span className="text-foreground truncate flex-1 font-medium">
                         {formUrl}
                       </span>
                       <button
                         onClick={() => window.open(formUrl, '_blank')}
-                        className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                        className="p-1.5 hover:bg-accent rounded-lg transition-colors"
                         title="Open in new tab"
                       >
-                        <ExternalLink className="w-4 h-4 text-gray-500" />
+                        <ExternalLink className="w-4 h-4 text-muted-foreground" />
                       </button>
                     </div>
 
@@ -750,48 +750,48 @@ export function FormBuilder({
                   </div>
 
                   {/* Social Share Icons */}
-                  <div className="flex items-center gap-3 mt-6 pt-6 border-t border-gray-100">
+                  <div className="flex items-center gap-3 mt-6 pt-6 border-t border-border">
                     <button
                       onClick={() => {
                         // Generate QR Code - for now just show a message
                         toast.info('QR Code feature coming soon!')
                       }}
-                      className="p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+                      className="p-3 rounded-xl border border-border hover:bg-accent transition-colors"
                       title="Generate QR Code"
                     >
-                      <QrCode className="w-5 h-5 text-gray-600" />
+                      <QrCode className="w-5 h-5 text-muted-foreground" />
                     </button>
                     <button
                       onClick={shareToTwitter}
-                      className="p-3 rounded-xl border border-gray-200 hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                      className="p-3 rounded-xl border border-border hover:bg-blue-50 hover:border-blue-200 transition-colors"
                       title="Share on Twitter"
                     >
-                      <Twitter className="w-5 h-5 text-gray-600 hover:text-blue-500" />
+                      <Twitter className="w-5 h-5 text-muted-foreground hover:text-blue-500" />
                     </button>
                     <button
                       onClick={shareToFacebook}
-                      className="p-3 rounded-xl border border-gray-200 hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                      className="p-3 rounded-xl border border-border hover:bg-blue-50 hover:border-blue-200 transition-colors"
                       title="Share on Facebook"
                     >
-                      <Facebook className="w-5 h-5 text-gray-600 hover:text-blue-600" />
+                      <Facebook className="w-5 h-5 text-muted-foreground hover:text-blue-600" />
                     </button>
                     <button
                       onClick={shareToLinkedIn}
-                      className="p-3 rounded-xl border border-gray-200 hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                      className="p-3 rounded-xl border border-border hover:bg-blue-50 hover:border-blue-200 transition-colors"
                       title="Share on LinkedIn"
                     >
-                      <Linkedin className="w-5 h-5 text-gray-600 hover:text-blue-700" />
+                      <Linkedin className="w-5 h-5 text-muted-foreground hover:text-blue-700" />
                     </button>
                   </div>
                 </div>
 
                 {/* Embed Section */}
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
                   <div className="flex items-center gap-3 mb-4">
                     <span className="text-lg">{'</>'}</span>
-                    <span className="font-semibold text-gray-700">Embed Code</span>
+                    <span className="font-semibold text-foreground">Embed Code</span>
                   </div>
-                  <p className="text-sm text-gray-500 mb-4">Copy this code to embed the form on your website</p>
+                  <p className="text-sm text-muted-foreground mb-4">Copy this code to embed the form on your website</p>
                   <div className="bg-gray-900 rounded-xl p-4 font-mono text-sm text-green-400 overflow-x-auto">
                     {`<iframe src="${formUrl}" width="100%" height="600" frameborder="0"></iframe>`}
                   </div>

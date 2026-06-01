@@ -394,7 +394,7 @@ function ExpandedRequest({
                   className={`max-w-[80%] rounded-lg p-3 ${
                     reply.sender_type === "admin"
                       ? "bg-blue-100 text-blue-900"
-                      : "bg-gray-100 text-gray-900"
+                      : "bg-muted text-foreground"
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -491,7 +491,7 @@ function ExpandedRequest({
         {(req.status === "open" || req.status === "in_progress") && (
           <button
             onClick={() => updateMutation.mutate({ id: req.id, status: "closed" })}
-            className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+            className="px-3 py-1.5 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-accent transition-colors"
           >
             Close
           </button>

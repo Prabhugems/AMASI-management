@@ -83,12 +83,12 @@ type Track = {
 }
 
 const STATUS_CONFIG = {
-  pending: { label: "Not Invited", color: "bg-gray-100 text-gray-700", icon: Clock3 },
+  pending: { label: "Not Invited", color: "bg-muted text-muted-foreground", icon: Clock3 },
   invited: { label: "Invited", color: "bg-blue-100 text-blue-700", icon: Mail },
   confirmed: { label: "Confirmed", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
   declined: { label: "Declined", color: "bg-red-100 text-red-700", icon: XCircle },
   change_requested: { label: "Change Requested", color: "bg-amber-100 text-amber-700", icon: AlertTriangle },
-  cancelled: { label: "Cancelled", color: "bg-gray-100 text-gray-500", icon: XCircle },
+  cancelled: { label: "Cancelled", color: "bg-muted text-muted-foreground", icon: XCircle },
 }
 
 export default function ProgramDashboardPage() {
@@ -464,12 +464,12 @@ export default function ProgramDashboardPage() {
         </div>
 
         <div className="bg-card rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-gray-500">
+          <div className="flex items-center gap-2 text-muted-foreground">
             <Clock3 className="h-4 w-4" />
             <span className="text-sm">Not Invited</span>
             <HelpTooltip content="Faculty who haven't been sent invitations yet. Go to 'Send Invitations' to invite them." />
           </div>
-          <p className="text-2xl sm:text-3xl font-bold mt-2 text-gray-500">{stats?.pending || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold mt-2 text-muted-foreground">{stats?.pending || 0}</p>
           <p className="text-xs text-muted-foreground mt-1">Need invitation</p>
         </div>
 
@@ -494,7 +494,7 @@ export default function ProgramDashboardPage() {
           <h3 className="font-semibold">Confirmation Progress</h3>
           <span className="text-sm text-muted-foreground">{stats?.confirmationRate || 0}% confirmed</span>
         </div>
-        <div className="h-4 bg-gray-100 rounded-full overflow-hidden flex">
+        <div className="h-4 bg-muted rounded-full overflow-hidden flex">
           <div
             className="bg-green-500 transition-all"
             style={{ width: `${((stats?.confirmed || 0) / (stats?.total || 1)) * 100}%` }}
@@ -618,9 +618,9 @@ export default function ProgramDashboardPage() {
                     onClick={() => toggleSession(session.id)}
                     className={cn(
                       "w-full flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors text-left",
-                      allConfirmed && "bg-green-50",
-                      needsAttention && "bg-amber-50",
-                      notStarted && "bg-gray-50"
+                      allConfirmed && "bg-green-500/10",
+                      needsAttention && "bg-amber-500/10",
+                      notStarted && "bg-muted/50"
                     )}
                   >
                     {/* Expand Icon */}
@@ -660,7 +660,7 @@ export default function ProgramDashboardPage() {
                           <div className="font-medium">
                             {confirmedCount}/{totalCount} confirmed
                           </div>
-                          <div className="h-1.5 bg-gray-200 rounded-full mt-1">
+                          <div className="h-1.5 bg-muted rounded-full mt-1">
                             <div
                               className="h-full bg-green-500 rounded-full"
                               style={{ width: `${(confirmedCount / totalCount) * 100}%` }}

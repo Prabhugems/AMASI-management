@@ -429,7 +429,7 @@ export default function AbstractSettingsPage() {
           <div className="pt-4 border-t border-border">
             <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-200">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-white flex items-center justify-center">
+                <div className="h-10 w-10 rounded-lg bg-card flex items-center justify-center">
                   <Video className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>
@@ -701,7 +701,7 @@ export default function AbstractSettingsPage() {
               </div>
 
               {formData.auto_reminders_enabled && (
-                <div className="ml-8 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                <div className="ml-8 p-4 bg-secondary/30 rounded-lg border border-border">
                   <label className="text-sm font-medium mb-2 block">Send reminders X days before deadline</label>
                   <div className="flex flex-wrap gap-2">
                     {[1, 3, 5, 7, 14].map((days) => {
@@ -722,7 +722,7 @@ export default function AbstractSettingsPage() {
                             "px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all",
                             isSelected
                               ? "border-indigo-500 bg-indigo-500 text-white"
-                              : "border-gray-300 hover:border-indigo-300"
+                              : "border-border hover:border-indigo-300"
                           )}
                         >
                           {days} day{days > 1 ? "s" : ""}

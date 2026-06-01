@@ -103,7 +103,7 @@ const ACTION_CONFIG: Record<
 
 const DEFAULT_CONFIG = {
   icon: Clock,
-  color: "text-muted-foreground bg-slate-50",
+  color: "text-muted-foreground bg-muted",
   borderColor: "border-l-slate-400",
   label: "Activity",
 }
@@ -166,7 +166,7 @@ function MetadataDetails({ metadata }: { metadata: Record<string, unknown> }) {
         Details
       </button>
       {open && (
-        <div className="mt-1.5 p-2 rounded-lg bg-slate-50 text-xs space-y-1">
+        <div className="mt-1.5 p-2 rounded-lg bg-muted text-xs space-y-1">
           {entries.map(([key, value]) => (
             <div key={key} className="flex gap-2">
               <span className="text-muted-foreground font-medium min-w-[80px]">
@@ -185,12 +185,12 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-3">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="p-3 rounded-xl bg-slate-50 border-l-4 border-l-slate-200 animate-pulse">
+        <div key={i} className="p-3 rounded-xl bg-muted border-l-4 border-l-border animate-pulse">
           <div className="flex items-center gap-3">
-            <div className="h-7 w-7 rounded-full bg-slate-200" />
+            <div className="h-7 w-7 rounded-full bg-muted-foreground/20" />
             <div className="flex-1 space-y-2">
-              <div className="h-3.5 w-32 bg-slate-200 rounded" />
-              <div className="h-3 w-48 bg-slate-200 rounded" />
+              <div className="h-3.5 w-32 bg-muted-foreground/20 rounded" />
+              <div className="h-3 w-48 bg-muted-foreground/20 rounded" />
             </div>
           </div>
         </div>
@@ -258,7 +258,7 @@ export function ActivityLog({ memberId }: ActivityLogProps) {
 
   if (allEntries.length === 0) {
     return (
-      <div className="p-6 rounded-xl bg-slate-50 text-center">
+      <div className="p-6 rounded-xl bg-muted text-center">
         <Clock className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">No activity recorded yet</p>
       </div>
@@ -268,7 +268,7 @@ export function ActivityLog({ memberId }: ActivityLogProps) {
   return (
     <div className="space-y-4">
       {/* Filter bar */}
-      <div className="space-y-3 p-3 rounded-xl bg-slate-50/50 border border-slate-200">
+      <div className="space-y-3 p-3 rounded-xl bg-muted/50 border border-border">
         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
           <Filter className="h-3.5 w-3.5" />
           Filters
@@ -344,7 +344,7 @@ export function ActivityLog({ memberId }: ActivityLogProps) {
 
       {/* Activity timeline */}
       {filteredEntries.length === 0 ? (
-        <div className="p-6 rounded-xl bg-slate-50 text-center">
+        <div className="p-6 rounded-xl bg-muted text-center">
           <Search className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">No matching activity found</p>
           <Button
@@ -359,7 +359,7 @@ export function ActivityLog({ memberId }: ActivityLogProps) {
       ) : (
         <div className="relative space-y-3">
           {/* Timeline connector line */}
-          <div className="absolute left-[22px] top-4 bottom-4 w-px bg-slate-200" />
+          <div className="absolute left-[22px] top-4 bottom-4 w-px bg-border" />
 
           {filteredEntries.map((entry) => {
             const config = ACTION_CONFIG[entry.action] ?? DEFAULT_CONFIG
@@ -369,7 +369,7 @@ export function ActivityLog({ memberId }: ActivityLogProps) {
               <div
                 key={entry.id}
                 className={cn(
-                  "relative p-3 rounded-xl bg-slate-50 border-l-4 transition-colors hover:bg-slate-100",
+                  "relative p-3 rounded-xl bg-muted border-l-4 transition-colors hover:bg-accent",
                   config.borderColor
                 )}
               >

@@ -152,7 +152,7 @@ const LOGIN_STATUS_CONFIG: Record<string, { label: string; color: string; bgColo
   online: { label: "Online", color: "text-green-700", bgColor: "bg-green-100", icon: Wifi, pulse: true },
   away: { label: "Away", color: "text-amber-700", bgColor: "bg-amber-100", icon: Clock },
   logged_out: { label: "Logged out", color: "text-orange-700", bgColor: "bg-orange-100", icon: LogOut },
-  offline: { label: "Offline", color: "text-slate-600", bgColor: "bg-slate-100", icon: WifiOff },
+  offline: { label: "Offline", color: "text-muted-foreground", bgColor: "bg-muted", icon: WifiOff },
   pending: { label: "Pending", color: "text-blue-700", bgColor: "bg-blue-100", icon: CircleDot },
   deactivated: { label: "Deactivated", color: "text-red-700", bgColor: "bg-red-100", icon: UserX },
 }
@@ -473,7 +473,7 @@ export default function EventTeamPage() {
   }
 
   const getRoleConfig = (role: string) => {
-    return ROLE_CONFIG[role] || { label: role, color: "text-gray-700", bg: "bg-gray-100" }
+    return ROLE_CONFIG[role] || { label: role, color: "text-muted-foreground", bg: "bg-muted" }
   }
 
   const getPresetForMember = (member: TeamMember) => {

@@ -252,7 +252,7 @@ export function FormDesign({ form, onUpdate }: FormDesignProps) {
           )}
 
           {/* Form Content Preview */}
-          <div className="p-6 bg-white/90 backdrop-blur mx-4 my-6 rounded-xl shadow-sm">
+          <div className="p-6 bg-card/90 backdrop-blur mx-4 my-6 rounded-xl shadow-sm">
             {/* Logo */}
             {form.logo_url && (
               <div className="flex justify-center mb-4">
@@ -285,7 +285,7 @@ export function FormDesign({ form, onUpdate }: FormDesignProps) {
             {/* Sample Fields */}
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">
+                <label className="text-sm font-medium text-foreground">
                   Name <span className="text-destructive">*</span>
                 </label>
                 <div
@@ -294,7 +294,7 @@ export function FormDesign({ form, onUpdate }: FormDesignProps) {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">
+                <label className="text-sm font-medium text-foreground">
                   Email <span className="text-destructive">*</span>
                 </label>
                 <div
@@ -303,7 +303,7 @@ export function FormDesign({ form, onUpdate }: FormDesignProps) {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Message</label>
+                <label className="text-sm font-medium text-foreground">Message</label>
                 <div
                   className="h-24 rounded-md border bg-secondary/30"
                   style={{ borderColor: `${form.primary_color}30` || "#8B5CF630" }}

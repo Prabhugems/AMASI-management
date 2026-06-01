@@ -60,7 +60,7 @@ export function AccessLogViewer({ memberId, memberEmail }: { memberId: string; m
     return (
       <div className="space-y-2">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-10 rounded-lg bg-slate-100 animate-pulse" />
+          <div key={i} className="h-10 rounded-lg bg-muted animate-pulse" />
         ))}
       </div>
     )
@@ -90,7 +90,7 @@ export function AccessLogViewer({ memberId, memberEmail }: { memberId: string; m
 
   if (!hasAnyData) {
     return (
-      <div className="rounded-xl bg-slate-50 p-4 text-center">
+      <div className="rounded-xl bg-muted p-4 text-center">
         <Eye className="h-5 w-5 mx-auto text-muted-foreground mb-1.5" />
         <p className="text-sm text-muted-foreground">No module access recorded yet.</p>
       </div>
@@ -107,9 +107,9 @@ export function AccessLogViewer({ memberId, memberEmail }: { memberId: string; m
             if (!meta) return null
             const Icon = meta.icon
             return (
-              <div key={mod} className="rounded-xl bg-slate-50 p-2.5 text-center">
+              <div key={mod} className="rounded-xl bg-muted p-2.5 text-center">
                 <Icon className={cn("h-3.5 w-3.5 mx-auto mb-1", meta.color)} />
-                <p className="text-xs font-medium">{meta.label}</p>
+                <p className="text-xs font-medium text-foreground">{meta.label}</p>
                 <p className="text-[10px] text-muted-foreground">{info.count} view{info.count !== 1 ? "s" : ""}</p>
                 {info.lastAccess && (
                   <p className="text-[10px] text-muted-foreground">
@@ -128,12 +128,12 @@ export function AccessLogViewer({ memberId, memberEmail }: { memberId: string; m
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Recent Activity</p>
           <div className="space-y-1">
             {data.logs.map(log => {
-              const meta = MODULE_META[log.module] || { icon: Eye, color: "text-slate-500", label: log.module }
+              const meta = MODULE_META[log.module] || { icon: Eye, color: "text-muted-foreground", label: log.module }
               const Icon = meta.icon
               return (
-                <div key={log.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+                <div key={log.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-accent transition-colors">
                   <Icon className={cn("h-3.5 w-3.5 shrink-0", meta.color)} />
-                  <span className="text-xs font-medium truncate">{meta.label}</span>
+                  <span className="text-xs font-medium text-foreground truncate">{meta.label}</span>
                   {log.path && <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">{log.path}</span>}
                   <span className="text-[10px] text-muted-foreground ml-auto shrink-0 flex items-center gap-1">
                     <Clock className="h-2.5 w-2.5" />
@@ -156,9 +156,9 @@ export function AccessLogViewer({ memberId, memberEmail }: { memberId: string; m
               if (!meta) return null
               const Icon = meta.icon
               return (
-                <div key={mod} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100">
-                  <Icon className="h-3 w-3 text-slate-400" />
-                  <span className="text-[10px] text-slate-400">{meta.label}</span>
+                <div key={mod} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-muted border border-border">
+                  <Icon className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground">{meta.label}</span>
                 </div>
               )
             })}

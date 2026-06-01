@@ -205,7 +205,7 @@ const ROLE_PRESETS = [
   { value: "travel-manager", label: "Travel Manager", icon: MapPin, description: "All travel modules", role: "travel", permissions: ["flights", "hotels", "transfers", "trains"], allEvents: false, allPermissions: false, gradient: "from-cyan-500 to-blue-500", borderColor: "border-cyan-300", bgLight: "bg-cyan-50" },
   { value: "hotel-coordinator", label: "Hotel Coord.", icon: Hotel, description: "Hotels only", role: "travel", permissions: ["hotels"], allEvents: false, allPermissions: false, gradient: "from-amber-500 to-orange-500", borderColor: "border-amber-300", bgLight: "bg-amber-50" },
   { value: "flight-coordinator", label: "Flight Coord.", icon: Plane, description: "Flights only", role: "travel", permissions: ["flights"], allEvents: false, allPermissions: false, gradient: "from-sky-500 to-blue-500", borderColor: "border-sky-300", bgLight: "bg-sky-50" },
-  { value: "custom", label: "Custom", icon: Settings, description: "Configure manually", role: "", permissions: [] as string[], allEvents: false, allPermissions: false, gradient: "from-slate-400 to-slate-500", borderColor: "border-slate-300", bgLight: "bg-slate-50" },
+  { value: "custom", label: "Custom", icon: Settings, description: "Configure manually", role: "", permissions: [] as string[], allEvents: false, allPermissions: false, gradient: "from-slate-400 to-slate-500", borderColor: "border-border", bgLight: "bg-muted" },
 ]
 
 // ---------------------------------------------------------------------------
@@ -1076,8 +1076,8 @@ export default function TeamPage() {
         {activeView === "role-presets" && (
           <div className="p-6">
             <div className="flex items-center gap-2 mb-6">
-              <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                <Settings className="h-4 w-4 text-slate-600" />
+              <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+                <Settings className="h-4 w-4 text-muted-foreground" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Role Presets</h3>
@@ -1157,7 +1157,7 @@ export default function TeamPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="audit-action-type">Action Type</Label>
-              <select id="audit-action-type" value={auditActionType} onChange={(e) => setAuditActionType(e.target.value)} className="w-full h-10 px-3 rounded-lg border bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-[#185FA5]/20">
+              <select id="audit-action-type" value={auditActionType} onChange={(e) => setAuditActionType(e.target.value)} className="w-full h-10 px-3 rounded-lg border bg-card text-foreground shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-[#185FA5]/20">
                 <option value="">All Actions</option>
                 <option value="team_member.created">Member Created</option>
                 <option value="team_member.updated">Member Updated</option>
@@ -1490,7 +1490,7 @@ function PermissionGuideContent() {
         {/* Quick Reference Table */}
         <div>
           <div className="flex items-center gap-2 mb-4">
-            <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center"><BarChart3 className="h-4 w-4 text-slate-600" /></div>
+            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center"><BarChart3 className="h-4 w-4 text-muted-foreground" /></div>
             <h3 className="text-lg font-semibold">Quick Reference</h3>
           </div>
           <div className="rounded-xl border overflow-x-auto">

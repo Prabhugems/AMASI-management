@@ -112,10 +112,10 @@ const SESSION_TYPES = [
 
 // Hall/Track configuration for side-by-side view
 const TRACK_CONFIG: Record<string, { name: string; color: string; bgColor: string }> = {
-  common: { name: "Common Sessions", color: "bg-purple-600", bgColor: "bg-purple-50" },
-  surgery: { name: "Surgery", color: "bg-blue-600", bgColor: "bg-blue-50" },
-  gynecology: { name: "Gynecology", color: "bg-pink-600", bgColor: "bg-pink-50" },
-  general: { name: "General", color: "bg-gray-600", bgColor: "bg-gray-50" },
+  common: { name: "Common Sessions", color: "bg-purple-600", bgColor: "bg-purple-500/10" },
+  surgery: { name: "Surgery", color: "bg-blue-600", bgColor: "bg-blue-500/10" },
+  gynecology: { name: "Gynecology", color: "bg-pink-600", bgColor: "bg-pink-500/10" },
+  general: { name: "General", color: "bg-gray-600", bgColor: "bg-muted" },
 }
 
 // Detect track type from session hall/specialty_track
@@ -1176,20 +1176,20 @@ export default function ProgramPage() {
                     {groupedByTrack["common"].map((session) => (
                       <div
                         key={session.id}
-                        className={cn("p-3 flex items-start gap-3 cursor-pointer hover:bg-purple-100 transition-colors", TRACK_CONFIG.common.bgColor)}
+                        className={cn("p-3 flex items-start gap-3 cursor-pointer hover:bg-accent transition-colors", TRACK_CONFIG.common.bgColor)}
                         onClick={() => setSelectedSession(session)}
                       >
                         <div className="text-xs min-w-[70px]">
-                          <div className="font-semibold text-gray-700">{formatTime(session.start_time)}</div>
-                          <div className="text-gray-500">{formatTime(session.end_time)}</div>
+                          <div className="font-semibold text-foreground">{formatTime(session.start_time)}</div>
+                          <div className="text-muted-foreground">{formatTime(session.end_time)}</div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm text-gray-900">{session.session_name}</div>
+                          <div className="font-medium text-sm text-foreground">{session.session_name}</div>
                           {session.speakers && (
                             <div className="text-xs text-blue-600 mt-0.5">{session.speakers}</div>
                           )}
                           {session.description && !session.speakers && (
-                            <div className="text-xs text-gray-600 mt-0.5">{session.description.split(" | ")[0]}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{session.description.split(" | ")[0]}</div>
                           )}
                         </div>
                         <DropdownMenu>
@@ -1233,13 +1233,13 @@ export default function ProgramPage() {
                               onClick={() => setSelectedSession(session)}
                             >
                               <div className="text-xs min-w-[60px]">
-                                <div className="font-semibold text-gray-700">{formatTime(session.start_time)}</div>
-                                <div className="text-gray-500">{formatTime(session.end_time)}</div>
+                                <div className="font-semibold text-foreground">{formatTime(session.start_time)}</div>
+                                <div className="text-muted-foreground">{formatTime(session.end_time)}</div>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm text-gray-900 line-clamp-2">{session.session_name}</div>
+                                <div className="font-medium text-sm text-foreground line-clamp-2">{session.session_name}</div>
                                 {session.description && (
-                                  <div className="text-xs text-gray-600 mt-0.5 line-clamp-1">{session.description.split(" | ")[0]}</div>
+                                  <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{session.description.split(" | ")[0]}</div>
                                 )}
                               </div>
                               <DropdownMenu>
@@ -1276,20 +1276,20 @@ export default function ProgramPage() {
                     {groupedByTrack["general"].map((session) => (
                       <div
                         key={session.id}
-                        className={cn("p-3 flex items-start gap-3 cursor-pointer hover:bg-gray-100 transition-colors", TRACK_CONFIG.general.bgColor)}
+                        className={cn("p-3 flex items-start gap-3 cursor-pointer hover:bg-accent transition-colors", TRACK_CONFIG.general.bgColor)}
                         onClick={() => setSelectedSession(session)}
                       >
                         <div className="text-xs min-w-[70px]">
-                          <div className="font-semibold text-gray-700">{formatTime(session.start_time)}</div>
-                          <div className="text-gray-500">{formatTime(session.end_time)}</div>
+                          <div className="font-semibold text-foreground">{formatTime(session.start_time)}</div>
+                          <div className="text-muted-foreground">{formatTime(session.end_time)}</div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm text-gray-900">{session.session_name}</div>
+                          <div className="font-medium text-sm text-foreground">{session.session_name}</div>
                           {session.speakers && (
                             <div className="text-xs text-blue-600 mt-0.5">{session.speakers}</div>
                           )}
                           {session.description && !session.speakers && (
-                            <div className="text-xs text-gray-600 mt-0.5">{session.description.split(" | ")[0]}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{session.description.split(" | ")[0]}</div>
                           )}
                         </div>
                         <DropdownMenu>
