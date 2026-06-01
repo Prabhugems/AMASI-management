@@ -280,6 +280,32 @@ export async function requireSuperAdmin(): Promise<AuthResult> {
 }
 
 /**
+ * Resolve the active team_members row for an authenticated user.
+ *
+ * Matches by user_id OR email so an unlinked/stale user_id can't cause a
+ * false 403. This mirrors how usePermissions resolves team members on the
+ * client (by email) and keeps server and client access decisions consistent.
+ * Prefers a user_id-linked row when more than one matches.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getActiveTeamMember(
+  adminClient: any,
+  user: AuthUser,
+  columns: string
+): Promise<any | null> {
+  const email = user.email.toLowerCase()
+  const { data } = await adminClient
+    .from('team_members')
+    .select(columns)
+    .or(`user_id.eq.${user.id},email.ilike.${email}`)
+    .eq('is_active', true)
+    .order('user_id', { ascending: false, nullsFirst: false })
+    .limit(1)
+
+  return data?.[0] ?? null
+}
+
+/**
  * Check if user has access to a specific event
  * Super admins have access to all events
  * Event admins have access to events they created or are team members of
@@ -332,14 +358,8 @@ export async function requireEventAccess(eventId: string): Promise<AuthResult> {
     return result
   }
 
-  // Check if user is a team member for this event
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: teamMember } = await (adminClient as any)
-    .from('team_members')
-    .select('id, event_ids')
-    .eq('user_id', result.user.id)
-    .eq('is_active', true)
-    .maybeSingle()
+  // Check if user is a team member for this event (match by user_id OR email)
+  const teamMember = await getActiveTeamMember(adminClient, result.user, 'id, event_ids')
 
   if (teamMember) {
     // Empty event_ids means access to all events
@@ -484,14 +504,8 @@ export async function requireEventAndPermission(
     return result
   }
 
-  // Check team membership, event access, and permissions in a single query
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: teamMember } = await (adminClient as any)
-    .from('team_members')
-    .select('id, event_ids, permissions')
-    .eq('user_id', result.user.id)
-    .eq('is_active', true)
-    .maybeSingle()
+  // Check team membership, event access, and permissions (match by user_id OR email)
+  const teamMember = await getActiveTeamMember(adminClient, result.user, 'id, event_ids, permissions')
 
   if (!teamMember) {
     return {

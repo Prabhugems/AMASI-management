@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { getApiUser, getActiveTeamMember } from "@/lib/auth/api-auth"
 import { createAdminClient } from "@/lib/supabase/server"
 
 interface Notification {
@@ -26,14 +26,8 @@ export async function GET() {
     let eventFilter: string[] | null = null
 
     if (!user.is_super_admin) {
-      // Check team membership for event scoping
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: teamMember } = await (supabase as any)
-        .from("team_members")
-        .select("event_ids")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle()
+      // Check team membership for event scoping (match by user_id OR email)
+      const teamMember = await getActiveTeamMember(supabase, user, "event_ids")
 
       const eventIds = teamMember?.event_ids as string[] | null
       if (eventIds && eventIds.length > 0) {
