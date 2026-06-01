@@ -1,10 +1,15 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse, after } from "next/server"
 import { mapTeamRoleToPlatformRole } from "@/lib/auth/role-mapping"
 import { getClientIp } from "@/lib/rate-limit"
 import { createAdminClient } from "@/lib/supabase/server"
 
 // POST /api/auth/login-complete
-// Validates user, tracks login, returns redirect URL
+// Validates user, tracks login, returns redirect URL.
+//
+// Performance: only the work needed to decide the redirect is awaited. The
+// non-critical writes (login-activity update, team_members linking, audit log)
+// are deferred with after() so they run post-response instead of adding extra
+// cross-region DB round-trips to the login critical path.
 export async function POST(request: NextRequest) {
   try {
     const { accessToken } = await request.json()
@@ -27,6 +32,9 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date().toISOString()
+    // Capture request-derived values now; the request is not readable inside after().
+    const clientIp = getClientIp(request)
+    const userAgent = request.headers.get("user-agent") || null
 
     // Get current user profile and team member info
     const [userResult, teamResult] = await Promise.all([
@@ -47,9 +55,11 @@ export async function POST(request: NextRequest) {
 
     const currentUser = userResult.data
     const teamMemberName = teamResult.data?.name
+    // Resolve the role we need for the redirect without an extra SELECT later.
+    let platformRole: string | null = currentUser?.platform_role ?? null
 
     if (currentUser) {
-      // Existing user - update login activity
+      // Existing user - update login activity (deferred: not needed for redirect)
       const updateData: Record<string, unknown> = {
         last_login_at: now,
         last_active_at: now,
@@ -63,10 +73,14 @@ export async function POST(request: NextRequest) {
       ) {
         updateData.name = teamMemberName
       }
-      await adminClient.from("users").update(updateData).eq("id", user.id)
+      after(async () => {
+        await adminClient.from("users").update(updateData).eq("id", user.id)
+      })
     } else if (teamResult.data) {
-      // New user but is an active team member - auto-create profile
-      const platformRole = mapTeamRoleToPlatformRole(teamResult.data.role)
+      // New user but is an active team member - auto-create profile.
+      // Awaited: the profile must exist before the destination page loads to
+      // avoid a duplicate-insert race with getApiUser's own profile creation.
+      platformRole = mapTeamRoleToPlatformRole(teamResult.data.role)
       await adminClient.from("users").insert({
         id: user.id,
         email: user.email || "",
@@ -90,67 +104,56 @@ export async function POST(request: NextRequest) {
       console.warn(
         `[Login Complete] Blocked login for unknown user: ${user.email}`
       )
-      // Log blocked login attempt with IP/UA
-      await adminClient.from("activity_logs").insert({
-        user_email: user.email || "",
-        user_name: user.email?.split("@")[0] || "",
-        action: "failed_login",
-        entity_type: "user",
-        entity_name: user.email || "",
-        description: `Blocked login completion for unknown user: ${user.email}`,
-        ip_address: getClientIp(request),
-        user_agent: request.headers.get("user-agent") || null,
-        metadata: { reason: "unknown_user" },
+      // Log blocked login attempt with IP/UA (deferred - response is a 403 either way)
+      after(async () => {
+        await adminClient.from("activity_logs").insert({
+          user_email: user.email || "",
+          user_name: user.email?.split("@")[0] || "",
+          action: "failed_login",
+          entity_type: "user",
+          entity_name: user.email || "",
+          description: `Blocked login completion for unknown user: ${user.email}`,
+          ip_address: clientIp,
+          user_agent: userAgent,
+          metadata: { reason: "unknown_user" },
+        })
       })
       return NextResponse.json({ error: "unauthorized" }, { status: 403 })
     }
 
-    // Auto-link unlinked team_members records
-    if (user.email) {
-      await adminClient
-        .from("team_members")
-        .update({ user_id: user.id })
-        .eq("email", user.email.toLowerCase())
-        .is("user_id", null)
-    }
-
-    // Log login event with IP and user-agent
-    await adminClient.from("activity_logs").insert({
-      user_id: user.id,
-      user_email: user.email || "",
-      user_name:
-        user.user_metadata?.name || user.email?.split("@")[0] || "",
-      action: "login",
-      entity_type: "user",
-      entity_id: user.id,
-      entity_name: user.email || "",
-      description: "User logged in via magic link",
-      ip_address: getClientIp(request),
-      user_agent: request.headers.get("user-agent") || null,
-      metadata: {
-        login_count: (currentUser?.login_count || 0) + 1,
-        method: "magic_link",
-      },
+    // Deferred side-effects: link unlinked team_members + write the login audit
+    // log. Neither is needed to compute the redirect, and getApiUser/usePermissions
+    // resolve team members by email regardless, so linking can happen post-response.
+    const loginCount = (currentUser?.login_count || 0) + 1
+    after(async () => {
+      if (user.email) {
+        await adminClient
+          .from("team_members")
+          .update({ user_id: user.id })
+          .eq("email", user.email.toLowerCase())
+          .is("user_id", null)
+      }
+      await adminClient.from("activity_logs").insert({
+        user_id: user.id,
+        user_email: user.email || "",
+        user_name: user.user_metadata?.name || user.email?.split("@")[0] || "",
+        action: "login",
+        entity_type: "user",
+        entity_id: user.id,
+        entity_name: user.email || "",
+        description: "User logged in via magic link",
+        ip_address: clientIp,
+        user_agent: userAgent,
+        metadata: { login_count: loginCount, method: "magic_link" },
+      })
     })
 
-    // Determine redirect based on role
-    const { data: profile } = await adminClient
-      .from("users")
-      .select("platform_role")
-      .eq("id", user.id)
-      .maybeSingle()
-
+    // Determine redirect based on role (uses the role resolved above - no re-select)
     let redirectTo = "/"
 
-    if (
-      profile?.platform_role === "super_admin" ||
-      profile?.platform_role === "admin"
-    ) {
+    if (platformRole === "super_admin" || platformRole === "admin") {
       redirectTo = "/"
-    } else if (
-      profile?.platform_role === "event_admin" ||
-      profile?.platform_role === "staff"
-    ) {
+    } else if (platformRole === "event_admin" || platformRole === "staff") {
       const { data: eventAccess } = await adminClient
         .from("event_faculty")
         .select("event_id")
@@ -161,7 +164,7 @@ export async function POST(request: NextRequest) {
       if (eventAccess?.event_id) {
         redirectTo = `/events/${eventAccess.event_id}`
       }
-    } else if (profile?.platform_role === "faculty") {
+    } else if (platformRole === "faculty") {
       const { data: facultyRecord } = await adminClient
         .from("faculty")
         .select("id")
