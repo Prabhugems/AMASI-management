@@ -9,115 +9,35 @@ function getMagicLinkEmailHtml(loginUrl: string, code: string): string {
   const year = new Date().getFullYear()
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign in to ${COMPANY_CONFIG.name}</title>
+  <title>Your sign-in code</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
-    <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" style="width: 100%; max-width: 520px; border-collapse: collapse;">
-
-          <!-- Header with Logo -->
-          <tr>
-            <td style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
-              <table role="presentation" style="margin: 0 auto;">
-                <tr>
-                  <td style="width: 48px; height: 48px; background-color: rgba(255,255,255,0.2); border-radius: 12px; text-align: center; vertical-align: middle;">
-                    <span style="color: white; font-size: 22px; font-weight: bold; line-height: 48px;">A</span>
-                  </td>
-                  <td style="padding-left: 12px;">
-                    <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${COMPANY_CONFIG.name}</h1>
-                    <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 13px;">Command Center</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Main Content -->
-          <tr>
-            <td style="background-color: white; padding: 40px 30px; text-align: center;">
-
-              <!-- Lock Icon -->
-              <div style="width: 64px; height: 64px; border-radius: 50%; background-color: #eff6ff; margin: 0 auto 24px auto; line-height: 64px;">
-                <span style="font-size: 28px; line-height: 64px;">&#128274;</span>
-              </div>
-
-              <h2 style="color: #111827; margin: 0 0 8px 0; font-size: 22px; font-weight: 700;">
-                Sign in to your account
-              </h2>
-              <p style="color: #6b7280; margin: 0 0 32px 0; font-size: 15px; line-height: 1.5;">
-                Click the button below to securely sign in to your ${COMPANY_CONFIG.name} dashboard. No password needed.
-              </p>
-
-              <!-- Login Button -->
-              <table role="presentation" style="margin: 0 auto;">
-                <tr>
-                  <td style="border-radius: 12px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);">
-                    <a href="${loginUrl}" target="_blank" style="display: inline-block; padding: 16px 48px; color: white; text-decoration: none; font-size: 16px; font-weight: 600; letter-spacing: 0.3px;">
-                      Click to Login
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- OR divider -->
-              <table role="presentation" style="width: 100%; margin: 32px 0 20px 0;">
-                <tr>
-                  <td style="border-bottom: 1px solid #e5e7eb; line-height: 0;">&nbsp;</td>
-                  <td style="padding: 0 14px; color: #9ca3af; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; white-space: nowrap;">OR</td>
-                  <td style="border-bottom: 1px solid #e5e7eb; line-height: 0;">&nbsp;</td>
-                </tr>
-              </table>
-
-              <!-- OTP Code -->
-              <p style="color: #6b7280; margin: 0 0 14px 0; font-size: 14px;">
-                Or enter this code on the sign-in page:
-              </p>
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 22px 16px; margin: 0 0 24px 0;">
-                <span style="font-size: 30px; font-weight: 700; letter-spacing: 8px; color: #111827; font-family: 'Courier New', monospace;">${code}</span>
-              </div>
-
-              <!-- Divider -->
-              <div style="margin: 8px 0 32px 0; border-top: 1px solid #e5e7eb;"></div>
-
-              <!-- Alternative Link -->
-              <p style="color: #9ca3af; margin: 0 0 12px 0; font-size: 13px;">
-                If the button doesn't work, copy and paste this link into your browser:
-              </p>
-              <p style="color: #2563eb; margin: 0 0 32px 0; font-size: 13px; word-break: break-all; line-height: 1.6;">
-                <a href="${loginUrl}" style="color: #2563eb; text-decoration: underline;">${loginUrl}</a>
-              </p>
-
-              <!-- Security Notice -->
-              <div style="background-color: #f9fafb; border-radius: 10px; padding: 16px 20px; text-align: left;">
-                <p style="color: #6b7280; margin: 0; font-size: 13px; line-height: 1.5;">
-                  <strong style="color: #374151;">Security notice:</strong> This link and code expire in 1 hour and can only be used once. If you didn't request this email, you can safely ignore it.
-                </p>
-              </div>
-
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #111827; padding: 24px 30px; border-radius: 0 0 16px 16px; text-align: center;">
-              <p style="color: #9ca3af; margin: 0 0 8px 0; font-size: 13px;">
-                ${COMPANY_CONFIG.fullName}
-              </p>
-              <p style="color: #4b5563; margin: 0; font-size: 12px;">
-                &copy; ${year} ${COMPANY_CONFIG.name}. All rights reserved.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
+<body style="margin:0; padding:0; background-color:#0b1530; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table align="center" cellpadding="0" cellspacing="0" style="width:100%; max-width:560px; margin:0 auto; padding:32px 0;">
+    <tr><td style="padding:0 24px 16px 24px; text-align:center;">
+      <p style="margin:0; color:#94a3b8; font-size:11px; letter-spacing:2px; text-transform:uppercase; font-weight:700;">${COMPANY_CONFIG.name} Admin</p>
+    </td></tr>
+    <tr><td style="background-color:#111827; border-radius:16px; padding:32px 30px;">
+      <h1 style="color:#ffffff; margin:0 0 8px 0; font-size:22px; font-weight:700;">Your sign-in code</h1>
+      <p style="color:#9ca3af; margin:0 0 28px 0; font-size:14px; line-height:1.5;">
+        Enter this 6-digit code in the ${COMPANY_CONFIG.name} Admin app to sign in. It expires in 10 minutes.
+      </p>
+      <div style="background-color:#0b1530; border:1px solid #1e293b; border-radius:12px; padding:24px; text-align:center;">
+        <p style="margin:0; color:#ffffff; font-size:36px; font-weight:800; letter-spacing:10px; font-family:Menlo,Consolas,monospace;">${code}</p>
+      </div>
+      <p style="color:#9ca3af; margin:24px 0 0 0; font-size:13px; line-height:1.5;">
+        Or use this link to sign in: <a href="${loginUrl}" style="color:#60a5fa;">Sign in</a>
+      </p>
+      <p style="color:#64748b; margin:24px 0 0 0; font-size:12px; line-height:1.5;">
+        If you didn't request this code, ignore this email &mdash; no further action is needed.
+      </p>
+    </td></tr>
+    <tr><td style="padding:24px 30px; text-align:center;">
+      <p style="color:#94a3b8; margin:0 0 6px 0; font-size:13px;">${COMPANY_CONFIG.fullName}</p>
+      <p style="color:#4b5563; margin:0; font-size:12px;">&copy; ${year} ${COMPANY_CONFIG.name}. All rights reserved.</p>
+    </td></tr>
   </table>
 </body>
 </html>`
@@ -393,7 +313,7 @@ export async function POST(request: NextRequest) {
     const html = isInvite ? getInviteEmailHtml(loginUrl, code) : getMagicLinkEmailHtml(loginUrl, code)
     const text = isInvite
       ? `You've been invited to ${COMPANY_CONFIG.name}\n\nYou've been invited to join the ${COMPANY_CONFIG.name} Command Center.\n\nOption 1 — Click this link:\n${loginUrl}\n\nOption 2 — Enter this code on the sign-in page:\n${code}\n\nThis link and code expire in 1 hour and can only be used once.\n\nIf you didn't expect this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} ${COMPANY_CONFIG.name} - ${COMPANY_CONFIG.fullName}`
-      : `Sign in to ${COMPANY_CONFIG.name}\n\nOption 1 — Click this link:\n${loginUrl}\n\nOption 2 — Enter this code on the sign-in page:\n${code}\n\nThis link and code expire in 1 hour and can only be used once.\n\nIf you didn't request this email, you can safely ignore it.\n\n© ${new Date().getFullYear()} ${COMPANY_CONFIG.name} - ${COMPANY_CONFIG.fullName}`
+      : `Your sign-in code\n\n${code}\n\nEnter this code in the ${COMPANY_CONFIG.name} Admin app to sign in. It expires in 10 minutes.\n\nOr use this link to sign in:\n${loginUrl}\n\nIf you didn't request this code, ignore this email.\n\n© ${new Date().getFullYear()} ${COMPANY_CONFIG.name} - ${COMPANY_CONFIG.fullName}`
     const emailResult = await sendEmail({
       to: normalizedEmail,
       subject,
