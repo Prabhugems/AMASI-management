@@ -395,13 +395,17 @@
   .stagger-item:nth-child(7) { animation-delay: 300ms; }
   .stagger-item:nth-child(8) { animation-delay: 350ms; }
 
-  /* Gentle page-level fade-in */
+  /* Gentle page-level fade-in.
+     Opacity-only — do NOT add `transform` here. A non-`none` transform on the
+     wrapper creates a new containing block for `position: fixed` descendants,
+     which breaks the team-user kiosk overlay in every module layout
+     (registrations, speakers, badges, abstracts, ...). */
   .page-fade-in {
     animation: pageFade 0.3s ease both;
   }
   @keyframes pageFade {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   @keyframes fade-in-up {
