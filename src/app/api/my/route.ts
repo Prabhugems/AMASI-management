@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
         exam_result,
         exam_marks,
         checkin_token,
+        custom_fields,
         ticket_type_id,
         event_id,
         ticket_types (
@@ -179,6 +180,7 @@ export async function GET(request: NextRequest) {
       exam_result: registration.exam_result || null,
       exam_marks: registration.exam_marks || null,
       checkin_token: registration.checkin_token || null,
+      custom_fields: registration.custom_fields || {},
       ticket_type: registration.ticket_types,
       event: registration.events,
       payment: registration.payments?.[0] || null,

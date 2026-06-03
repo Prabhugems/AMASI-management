@@ -51,6 +51,49 @@ import QRCode from "qrcode"
 import { FormRenderer } from "@/components/forms/renderer/form-renderer"
 import { Form as FormType, FormField } from "@/lib/types"
 
+// -- TechnoSurg: Medical Council gate for certificate download (TNMC CME reporting) --
+// Scoped to the TechnoSurg registration form only, so other events are unaffected.
+const TECHNOSURG_FORM_ID = "c7b8bffc-5e05-40d7-b7e5-2819fc57f711"
+const COUNCIL_FIELD_ID = "388a7c42-4ccd-4bb7-b9e7-8a3edcfc9af9"
+const REGNUM_FIELD_ID = "e6f89c4a-0de9-4f1b-a85e-99c099a09b41"
+const MEDICAL_COUNCILS: { value: string; label: string }[] = [
+  { value: "tnmc", label: "Tamil Nadu Medical Council (TNMC)" },
+  { value: "andhra_pradesh", label: "Andhra Pradesh Medical Council" },
+  { value: "telangana", label: "Telangana State Medical Council" },
+  { value: "karnataka", label: "Karnataka Medical Council" },
+  { value: "kerala", label: "Kerala Medical Council" },
+  { value: "maharashtra", label: "Maharashtra Medical Council" },
+  { value: "gujarat", label: "Gujarat Medical Council" },
+  { value: "goa", label: "Goa Medical Council" },
+  { value: "delhi", label: "Delhi Medical Council" },
+  { value: "madhya_pradesh", label: "Madhya Pradesh Medical Council" },
+  { value: "chhattisgarh", label: "Chhattisgarh Medical Council" },
+  { value: "rajasthan", label: "Rajasthan Medical Council" },
+  { value: "uttar_pradesh", label: "Uttar Pradesh Medical Council" },
+  { value: "uttarakhand", label: "Uttarakhand Medical Council" },
+  { value: "west_bengal", label: "West Bengal Medical Council" },
+  { value: "odisha", label: "Odisha Council of Medical Registration" },
+  { value: "bihar", label: "Bihar Medical Council" },
+  { value: "jharkhand", label: "Jharkhand Medical Council" },
+  { value: "punjab", label: "Punjab Medical Council" },
+  { value: "haryana", label: "Haryana Medical Council" },
+  { value: "himachal_pradesh", label: "Himachal Pradesh Medical Council" },
+  { value: "assam", label: "Assam Medical Council" },
+  { value: "jammu_kashmir", label: "Jammu & Kashmir Medical Council" },
+  { value: "pondicherry", label: "Pondicherry Medical Council" },
+  { value: "nmc", label: "National Medical Commission (NMC)" },
+  { value: "other", label: "Other" },
+]
+
+// Returns true when this registration still needs the Medical Council captured.
+function needsMedicalCouncil(reg: Registration | null): boolean {
+  if (!reg) return false
+  const cf = reg.custom_fields || {}
+  if (cf.form_id !== TECHNOSURG_FORM_ID) return false
+  const council = cf[COUNCIL_FIELD_ID]
+  return !council || (typeof council === "string" && council.trim() === "")
+}
+
 // -- Haptic feedback utility --
 function haptic(style: "light" | "medium" | "heavy" = "light") {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) {
@@ -250,6 +293,7 @@ interface Registration {
   exam_result?: string
   exam_marks?: Record<string, any>
   checkin_token?: string
+  custom_fields?: Record<string, any>
   ticket_type?: { id: string; name: string; price?: number }
   event?: {
     id: string
@@ -300,6 +344,11 @@ export default function DelegatePortalPage() {
   const [downloadingInvitation, setDownloadingInvitation] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
   const [certGatedByFeedback, setCertGatedByFeedback] = useState(true) // Default to locked until feedback check completes
+  // TechnoSurg medical-council capture (gates certificate download for TNMC reporting)
+  const [showCouncilDialog, setShowCouncilDialog] = useState(false)
+  const [councilValue, setCouncilValue] = useState("")
+  const [councilRegNum, setCouncilRegNum] = useState("")
+  const [savingCouncil, setSavingCouncil] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   // Refresh registration data (re-fetch without clearing UI)
@@ -540,22 +589,32 @@ export default function DelegatePortalPage() {
     }
   }
 
-  const handleDownloadCertificate = async () => {
-    if (!selectedRegistration) return
+  const handleDownloadCertificate = async (regOverride?: Registration) => {
+    const reg = regOverride || selectedRegistration
+    if (!reg) return
+
+    // TechnoSurg: require Medical Council before issuing the certificate (TNMC CME reporting)
+    if (needsMedicalCouncil(reg)) {
+      const cf = reg.custom_fields || {}
+      setCouncilValue("")
+      setCouncilRegNum(typeof cf[REGNUM_FIELD_ID] === "string" ? cf[REGNUM_FIELD_ID] : "")
+      setShowCouncilDialog(true)
+      return
+    }
 
     setDownloadingCert(true)
     try {
-      if (selectedRegistration.certificate_url) {
-        window.open(selectedRegistration.certificate_url, "_blank")
+      if (reg.certificate_url) {
+        window.open(reg.certificate_url, "_blank")
         // Track the download (fire and forget)
         fetch("/api/certificate/track-download", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ registration_id: selectedRegistration.id }),
+          body: JSON.stringify({ registration_id: reg.id }),
         }).catch(() => {})
       } else {
         // Generate certificate on the fly (download is tracked server-side)
-        const res = await fetch(`/api/certificate/${selectedRegistration.registration_number}/download`)
+        const res = await fetch(`/api/certificate/${reg.registration_number}/download`)
 
         if (!res.ok) {
           let errorMsg = "Certificate not available yet"
@@ -572,7 +631,7 @@ export default function DelegatePortalPage() {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement("a")
         a.href = url
-        a.download = `certificate-${selectedRegistration.registration_number}.pdf`
+        a.download = `certificate-${reg.registration_number}.pdf`
         document.body.appendChild(a)
         a.click()
         window.URL.revokeObjectURL(url)
@@ -582,6 +641,49 @@ export default function DelegatePortalPage() {
       toast.error(err.message)
     } finally {
       setDownloadingCert(false)
+    }
+  }
+
+  // Save the captured Medical Council, then continue with the certificate download
+  const handleSaveCouncil = async () => {
+    if (!selectedRegistration) return
+    if (!councilValue) {
+      toast.error("Please select your medical council")
+      return
+    }
+    if (!councilRegNum.trim()) {
+      toast.error("Please enter your medical council registration number")
+      return
+    }
+
+    setSavingCouncil(true)
+    try {
+      const res = await fetch("/api/my/medical-council", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          registration_id: selectedRegistration.id,
+          medical_council: councilValue,
+          registration_number: councilRegNum.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to save details")
+
+      // Update local state so the gate passes immediately
+      const updatedReg = { ...selectedRegistration, custom_fields: data.custom_fields }
+      setSelectedRegistration(updatedReg)
+      setRegistrations((prev) =>
+        prev.map((r) => (r.id === updatedReg.id ? updatedReg : r))
+      )
+      setShowCouncilDialog(false)
+      haptic("medium")
+      // Proceed with the download now that the council is captured (pass fresh reg to bypass stale state)
+      await handleDownloadCertificate(updatedReg)
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setSavingCouncil(false)
     }
   }
 
@@ -1955,6 +2057,91 @@ export default function DelegatePortalPage() {
 
       {/* Floating Help Button */}
       <FloatingHelpButton onClick={scrollToHelp} />
+
+      {/* Medical Council capture dialog (TechnoSurg / TNMC CME reporting) */}
+      <AnimatePresence>
+        {showCouncilDialog && (
+          <motion.div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => !savingCouncil && setShowCouncilDialog(false)}
+          >
+            <motion.div
+              className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 text-slate-900"
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                  <Stethoscope className="w-5 h-5 text-indigo-600" />
+                </div>
+                <h3 className="text-lg font-semibold">Confirm your Medical Council</h3>
+              </div>
+              <p className="text-sm text-slate-500 mb-5">
+                This is required for CME credit reporting (TNMC). Please confirm your details to download your certificate.
+              </p>
+
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Medical Council (State) <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={councilValue}
+                onChange={(e) => setCouncilValue(e.target.value)}
+                disabled={savingCouncil}
+                className="w-full mb-4 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              >
+                <option value="">Select your medical council…</option>
+                {MEDICAL_COUNCILS.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Medical Council Registration Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={councilRegNum}
+                onChange={(e) => setCouncilRegNum(e.target.value)}
+                disabled={savingCouncil}
+                placeholder="e.g. 12345"
+                className="w-full mb-5 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCouncilDialog(false)}
+                  disabled={savingCouncil}
+                  className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveCouncil}
+                  disabled={savingCouncil}
+                  className="flex-1 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {savingCouncil ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Saving…
+                    </>
+                  ) : (
+                    <>
+                      Save &amp; Download <Download className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
     </PullToRefresh>
   )
