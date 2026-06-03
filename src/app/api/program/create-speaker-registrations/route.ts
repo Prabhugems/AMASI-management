@@ -162,20 +162,24 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // For name-only entries, try to look up email from the faculty table
+    // For name-only entries, try to look up email from the faculty table.
+    // Faculty master can have thousands of rows; query per-name with ilike so the
+    // 1000-row default PostgREST cap does not silently hide matches.
     const nameOnlyKeys = Array.from(facultyMap.keys()).filter(k => k.startsWith("name:"))
     if (nameOnlyKeys.length > 0) {
-      const { data: knownFaculty } = await (supabase as any)
-        .from("faculty")
-        .select("name, email, phone")
+      for (const key of nameOnlyKeys) {
+        const entry = facultyMap.get(key)!
+        const targetName = entry.name.toLowerCase()
+        const { data: candidates } = await (supabase as any)
+          .from("faculty")
+          .select("name, email, phone")
+          .ilike("name", `%${entry.name}%`)
+          .not("email", "is", null)
 
-      if (knownFaculty && knownFaculty.length > 0) {
-        nameOnlyKeys.forEach(key => {
-          const entry = facultyMap.get(key)!
-          // Find matching faculty by name (case-insensitive)
-          const match = knownFaculty.find((f: any) =>
-            f.name?.toLowerCase() === entry.name.toLowerCase() ||
-            stripTitle(f.name || "").toLowerCase() === entry.name.toLowerCase()
+        if (candidates && candidates.length > 0) {
+          const match = candidates.find((f: any) =>
+            f.name?.toLowerCase() === targetName ||
+            stripTitle(f.name || "").toLowerCase() === targetName
           )
           if (match?.email) {
             // Upgrade from name-based key to email-based key
@@ -197,7 +201,7 @@ export async function POST(request: NextRequest) {
               }
             }
           }
-        })
+        }
       }
     }
 
