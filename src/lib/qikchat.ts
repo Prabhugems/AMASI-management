@@ -72,12 +72,18 @@ export async function sendQikchatText(
 
 /**
  * Send a template message via Qikchat
- * Parameters is an array of values for the template variables in order
+ * Parameters is an array of values for the template variables in order.
+ *
+ * Note: Qikchat's payload uses `language` as a plain string at the template
+ * root (per https://qikchat.gitbook.io/apidocs), NOT the WhatsApp Cloud API
+ * shape `language: { code: "en" }`. Sending the object form gets rejected
+ * with "invalid message payload".
  */
 export async function sendQikchatTemplate(
   phone: string,
   templateName: string,
-  parameters: string[]
+  parameters: string[],
+  language: string = "en"
 ): Promise<QikchatResult> {
   if (!isQikchatEnabled()) {
     return { success: false, error: "Qikchat not configured" }
@@ -90,9 +96,7 @@ export async function sendQikchatTemplate(
     type: "template",
     template: {
       name: templateName,
-      language: {
-        code: "en",
-      },
+      language,
       components: parameters.length > 0
         ? [
             {
