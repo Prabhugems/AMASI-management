@@ -8,6 +8,11 @@
 
 const QIKCHAT_API_URL = "https://api.qikchat.in/v1/messages"
 
+// Approved Qikchat template names (Meta-approved in the Qikchat dashboard).
+// Update here if templates are renamed — every call site reads from these constants.
+export const QIKCHAT_TEMPLATE_WELCOME = "technosurg_welcome"
+export const QIKCHAT_TEMPLATE_CERTIFICATE_READY = "technosurg_certificate_ready"
+
 function getApiKey(): string {
   return (process.env.QIKCHAT_API_KEY || "").trim()
 }

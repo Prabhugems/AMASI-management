@@ -522,9 +522,9 @@ export default function DelegatePortalPage() {
     }
   }
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!searchQuery.trim()) return
+  const executeSearch = useCallback(async (rawQuery: string) => {
+    const query = rawQuery.trim()
+    if (!query) return
 
     setLoading(true)
     setError(null)
@@ -532,7 +532,7 @@ export default function DelegatePortalPage() {
     setPendingPayments([])
 
     try {
-      const res = await fetch(`/api/my?q=${encodeURIComponent(searchQuery.trim())}`)
+      const res = await fetch(`/api/my?q=${encodeURIComponent(query)}`)
       const data = await res.json()
 
       if (!res.ok) {
@@ -552,7 +552,22 @@ export default function DelegatePortalPage() {
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await executeSearch(searchQuery)
   }
+
+  // Deep-link from WhatsApp / email: /my?q=<phone|email|reg> auto-loads the registration.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const q = new URLSearchParams(window.location.search).get("q")?.trim()
+    if (q) {
+      setSearchQuery(q)
+      executeSearch(q)
+    }
+  }, [executeSearch])
 
   const handleDownloadBadge = async () => {
     if (!selectedRegistration) return

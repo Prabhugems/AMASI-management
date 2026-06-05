@@ -26,6 +26,7 @@ import {
   Award,
   FileDown,
   AlertCircle,
+  MessageCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -34,6 +35,7 @@ type Attendee = {
   id: string
   attendee_name: string
   attendee_email: string
+  attendee_phone: string | null
   certificate_generated_at: string | null
   certificate_url: string | null
   certificate_downloaded_at: string | null
@@ -43,6 +45,8 @@ type Attendee = {
     certificate_generated?: boolean
     certificate_sent?: boolean
     certificate_sent_at?: string
+    certificate_whatsapp_sent?: boolean
+    certificate_whatsapp_sent_at?: string
   } | null
 }
 
@@ -59,6 +63,7 @@ export default function SendCertificatesPage() {
   const [sendProgress, setSendProgress] = useState(0)
   const [sendTotal, setSendTotal] = useState(0)
   const [failedIds, setFailedIds] = useState<Set<string>>(new Set())
+  const [sendChannel, setSendChannel] = useState<"email" | "whatsapp">("email")
 
   // Fetch attendees with generated certificates
   const { data: attendees, isLoading } = useQuery({
@@ -66,7 +71,7 @@ export default function SendCertificatesPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, attendee_name, attendee_email, certificate_generated_at, certificate_url, certificate_downloaded_at, checked_in, custom_fields, ticket_type:ticket_types(name)")
+        .select("id, attendee_name, attendee_email, attendee_phone, certificate_generated_at, certificate_url, certificate_downloaded_at, checked_in, custom_fields, ticket_type:ticket_types(name)")
         .eq("event_id", eventId)
         .eq("status", "confirmed")
         .not("certificate_generated_at", "is", null)
@@ -117,32 +122,47 @@ export default function SendCertificatesPage() {
     setSelectedAttendees(new Set(ready.map(a => a.id)))
   }
 
-  const sendCertificates = async (retryOnly = false) => {
+  const sendCertificates = async (
+    channel: "email" | "whatsapp" = "email",
+    retryOnly = false
+  ) => {
     const idsToSend = retryOnly ? failedIds : selectedAttendees
     if (idsToSend.size === 0) {
       toast.error(retryOnly ? "No failed sends to retry" : "Select attendees first")
       return
     }
 
-    if (!retryOnly && !confirm(`Send certificates to ${idsToSend.size} selected attendee(s)?`)) {
+    const channelLabel = channel === "whatsapp" ? "WhatsApp messages" : "emails"
+    if (!retryOnly && !confirm(`Send ${channelLabel} to ${idsToSend.size} selected attendee(s)?`)) {
       return
     }
 
     setSending(true)
+    setSendChannel(channel)
     setSendProgress(0)
     setFailedIds(new Set())
     let successCount = 0
     const newFailedIds = new Set<string>()
 
-    // Filter out already-sent attendees
+    const sentKey = channel === "whatsapp" ? "certificate_whatsapp_sent" : "certificate_sent"
+    const sentAtKey = channel === "whatsapp" ? "certificate_whatsapp_sent_at" : "certificate_sent_at"
+    const endpoint = channel === "whatsapp" ? "/api/certificates/whatsapp" : "/api/certificates/email"
+
+    // Filter: skip already-sent for this channel; skip missing phone for WhatsApp
     const idsArray = Array.from(idsToSend).filter(id => {
       const attendee = attendees?.find(a => a.id === id)
-      return attendee && !attendee.custom_fields?.certificate_sent
+      if (!attendee) return false
+      if (channel === "whatsapp" && !attendee.attendee_phone) return false
+      return !attendee.custom_fields?.[sentKey]
     })
     setSendTotal(idsArray.length)
 
     if (idsArray.length === 0) {
-      toast.info("All selected attendees have already been sent certificates")
+      toast.info(
+        channel === "whatsapp"
+          ? "All selected attendees have already been sent (or have no phone on file)"
+          : "All selected attendees have already been sent certificates"
+      )
       setSending(false)
       return
     }
@@ -157,7 +177,7 @@ export default function SendCertificatesPage() {
             const attendee = attendees?.find(a => a.id === id)
             if (!attendee) throw new Error("Attendee not found")
 
-            const response = await fetch("/api/certificates/email", {
+            const response = await fetch(endpoint, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -167,16 +187,19 @@ export default function SendCertificatesPage() {
             })
 
             if (response.ok) {
-              await (supabase as any)
-                .from("registrations")
-                .update({
-                  custom_fields: {
-                    ...attendee.custom_fields,
-                    certificate_sent: true,
-                    certificate_sent_at: new Date().toISOString(),
-                  },
-                })
-                .eq("id", id)
+              // WhatsApp endpoint updates custom_fields server-side; email endpoint does not.
+              if (channel === "email") {
+                await (supabase as any)
+                  .from("registrations")
+                  .update({
+                    custom_fields: {
+                      ...attendee.custom_fields,
+                      [sentKey]: true,
+                      [sentAtKey]: new Date().toISOString(),
+                    },
+                  })
+                  .eq("id", id)
+              }
               return { id, success: true }
             } else {
               throw new Error("Failed to send")
@@ -197,7 +220,7 @@ export default function SendCertificatesPage() {
       queryClient.invalidateQueries({ queryKey: ["certificate-send-attendees", eventId] })
 
       if (successCount > 0) {
-        toast.success(`Sent certificates to ${successCount} attendee${successCount > 1 ? "s" : ""}`)
+        toast.success(`Sent ${channelLabel} to ${successCount} attendee${successCount > 1 ? "s" : ""}`)
       }
       if (newFailedIds.size > 0) {
         setFailedIds(newFailedIds)
@@ -205,7 +228,7 @@ export default function SendCertificatesPage() {
       }
       if (!retryOnly) setSelectedAttendees(new Set())
     } catch {
-      toast.error("Failed to send certificates")
+      toast.error(`Failed to send ${channelLabel}`)
     } finally {
       setSending(false)
     }
@@ -297,15 +320,30 @@ export default function SendCertificatesPage() {
         <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <Mail className="h-5 w-5 text-blue-600" />
           <span className="font-medium text-blue-800">
-            {sending ? `Sending ${sendProgress}/${sendTotal}...` : `${selectedAttendees.size} selected`}
+            {sending
+              ? `Sending ${sendChannel === "whatsapp" ? "WhatsApp" : "emails"} ${sendProgress}/${sendTotal}...`
+              : `${selectedAttendees.size} selected`}
           </span>
           <div className="flex-1" />
           <Button size="sm" variant="outline" onClick={() => setSelectedAttendees(new Set())} disabled={sending}>
             Clear
           </Button>
-          <Button size="sm" onClick={() => sendCertificates(false)} disabled={sending}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => sendCertificates("whatsapp", false)}
+            disabled={sending}
+          >
+            <MessageCircle className="h-4 w-4 mr-2" />
+            {sending && sendChannel === "whatsapp"
+              ? `Sending ${sendProgress}/${sendTotal}...`
+              : "Send WhatsApp"}
+          </Button>
+          <Button size="sm" onClick={() => sendCertificates("email", false)} disabled={sending}>
             <Send className="h-4 w-4 mr-2" />
-            {sending ? `Sending ${sendProgress}/${sendTotal}...` : "Send Emails"}
+            {sending && sendChannel === "email"
+              ? `Sending ${sendProgress}/${sendTotal}...`
+              : "Send Emails"}
           </Button>
         </div>
       )}
@@ -314,12 +352,14 @@ export default function SendCertificatesPage() {
       {failedIds.size > 0 && !sending && (
         <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
           <AlertCircle className="h-5 w-5 text-red-600" />
-          <span className="font-medium text-red-800">{failedIds.size} failed to send</span>
+          <span className="font-medium text-red-800">
+            {failedIds.size} failed to send ({sendChannel === "whatsapp" ? "WhatsApp" : "email"})
+          </span>
           <div className="flex-1" />
           <Button size="sm" variant="outline" onClick={() => setFailedIds(new Set())}>
             Dismiss
           </Button>
-          <Button size="sm" variant="destructive" onClick={() => sendCertificates(true)}>
+          <Button size="sm" variant="destructive" onClick={() => sendCertificates(sendChannel, true)}>
             <Send className="h-4 w-4 mr-2" />
             Retry {failedIds.size} Failed
           </Button>
@@ -370,6 +410,7 @@ export default function SendCertificatesPage() {
           <TableBody>
             {filteredAttendees.map((attendee) => {
               const sent = attendee.custom_fields?.certificate_sent
+              const waSent = attendee.custom_fields?.certificate_whatsapp_sent
 
               return (
                 <TableRow key={attendee.id}>
@@ -383,17 +424,35 @@ export default function SendCertificatesPage() {
                   <TableCell className="text-muted-foreground">{attendee.attendee_email}</TableCell>
                   <TableCell className="text-muted-foreground">{attendee.ticket_type?.name || "-"}</TableCell>
                   <TableCell>
-                    {sent ? (
-                      <Badge className="bg-green-500 text-white">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Sent
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-blue-500">
-                        <Mail className="h-3 w-3 mr-1" />
-                        Ready
-                      </Badge>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      {sent ? (
+                        <Badge className="bg-green-500 text-white">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Email Sent
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-blue-500">
+                          <Mail className="h-3 w-3 mr-1" />
+                          Email Ready
+                        </Badge>
+                      )}
+                      {waSent ? (
+                        <Badge className="bg-green-600 text-white">
+                          <MessageCircle className="h-3 w-3 mr-1" />
+                          WA Sent
+                        </Badge>
+                      ) : attendee.attendee_phone ? (
+                        <Badge variant="outline" className="text-emerald-600">
+                          <MessageCircle className="h-3 w-3 mr-1" />
+                          WA Ready
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          <MessageCircle className="h-3 w-3 mr-1" />
+                          No phone
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {attendee.certificate_downloaded_at ? (

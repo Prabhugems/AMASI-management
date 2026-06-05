@@ -6,7 +6,11 @@ import { validatePagination, sanitizeSearchInput, isValidUUID } from "@/lib/vali
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { DEFAULTS } from "@/lib/config"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
-import { isQikchatEnabled, sendQikchatText } from "@/lib/qikchat"
+import {
+  isQikchatEnabled,
+  sendQikchatTemplate,
+  QIKCHAT_TEMPLATE_WELCOME,
+} from "@/lib/qikchat"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { internalSecretHeaders } from "@/lib/env"
 
@@ -567,16 +571,21 @@ export async function POST(request: NextRequest) {
 
     // Send delegate_login WhatsApp (non-blocking, only for confirmed registrations)
     if ((isGallaboxEnabled() || isQikchatEnabled()) && attendee_phone && initialStatus === "confirmed") {
-      const portalUrl = `${baseUrl}/my`
+      // Prefill /my with the phone so the delegate lands directly on their registration.
+      const portalUrl = `${baseUrl}/my?q=${encodeURIComponent(attendee_phone)}`
       const eventName = event?.name || "Event"
 
       if (isQikchatEnabled()) {
-        const message = `Hello ${attendee_name}! 🎉\n\nYour registration for *${eventName}* is confirmed!\n\n📋 Registration: ${registrationNumber}\n🎫 Ticket: ${ticket.name}\n\n📅 Date: June 19-20, 2026\n📍 Venue: ITC Grand Chola, Chennai\n\nManage your registration: ${portalUrl}\n\n- Team TechnoSurg`
-        sendQikchatText(attendee_phone, message).then(waResult => {
+        sendQikchatTemplate(attendee_phone, QIKCHAT_TEMPLATE_WELCOME, [
+          attendee_name,
+          eventName,
+          registrationNumber,
+          portalUrl,
+        ]).then(waResult => {
           if (waResult.success) {
-            console.log(`[WhatsApp/Qikchat] Registration confirmation sent to ${attendee_phone} - ID: ${waResult.messageId}`)
+            console.log(`[WhatsApp/Qikchat] ${QIKCHAT_TEMPLATE_WELCOME} sent to ${attendee_phone} - ID: ${waResult.messageId}`)
           } else {
-            console.warn(`[WhatsApp/Qikchat] Failed for ${attendee_phone}: ${waResult.error}`)
+            console.warn(`[WhatsApp/Qikchat] ${QIKCHAT_TEMPLATE_WELCOME} failed for ${attendee_phone}: ${waResult.error}`)
           }
         }).catch(err => {
           console.warn("[WhatsApp/Qikchat] error:", err.message)

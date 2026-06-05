@@ -4,7 +4,11 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { internalSecretHeaders } from "@/lib/env"
 import { getNextRegistrationNumber } from "@/lib/services/registration-number"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
-import { isQikchatEnabled, sendQikchatText } from "@/lib/qikchat"
+import {
+  isQikchatEnabled,
+  sendQikchatTemplate,
+  QIKCHAT_TEMPLATE_WELCOME,
+} from "@/lib/qikchat"
 
 export async function POST(request: NextRequest) {
   try {
@@ -413,17 +417,22 @@ export async function POST(request: NextRequest) {
       // Send WhatsApp confirmation (non-blocking)
       if ((isGallaboxEnabled() || isQikchatEnabled()) && finalRegistration.attendee_phone) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || ""
-        const portalUrl = `${baseUrl}/my`
+        // Prefill /my with the phone so the delegate lands directly on their registration.
+        const portalUrl = `${baseUrl}/my?q=${encodeURIComponent(finalRegistration.attendee_phone)}`
         const attendeeName = finalRegistration.attendee_name || "Delegate"
         const eventName = existingMetadata.event_name || "Event"
 
         if (isQikchatEnabled()) {
-          const message = `Hello ${attendeeName}! 🎉\n\nYour payment for *${eventName}* is confirmed!\n\n📋 Registration: ${finalRegistration.registration_number}\n\nManage your registration: ${portalUrl}\n\n- Team TechnoSurg`
-          sendQikchatText(finalRegistration.attendee_phone, message).then(waResult => {
+          sendQikchatTemplate(finalRegistration.attendee_phone, QIKCHAT_TEMPLATE_WELCOME, [
+            attendeeName,
+            eventName,
+            finalRegistration.registration_number,
+            portalUrl,
+          ]).then(waResult => {
             if (waResult.success) {
-              console.log(`[WhatsApp/Qikchat] Confirmation sent to ${finalRegistration.attendee_phone} - ID: ${waResult.messageId}`)
+              console.log(`[WhatsApp/Qikchat] ${QIKCHAT_TEMPLATE_WELCOME} sent to ${finalRegistration.attendee_phone} - ID: ${waResult.messageId}`)
             } else {
-              console.warn(`[WhatsApp/Qikchat] Failed for ${finalRegistration.attendee_phone}: ${waResult.error}`)
+              console.warn(`[WhatsApp/Qikchat] ${QIKCHAT_TEMPLATE_WELCOME} failed for ${finalRegistration.attendee_phone}: ${waResult.error}`)
             }
           }).catch(err => {
             console.warn("[WhatsApp/Qikchat] error:", err.message)
