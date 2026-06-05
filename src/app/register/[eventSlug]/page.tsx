@@ -26,6 +26,7 @@ import {
   ClipboardList,
   CreditCard,
 } from "lucide-react"
+import { toast } from "sonner"
 import { TicketSelector } from "@/components/registration/ticket-selector"
 import { RegistrationTypeSelector } from "@/components/registration/registration-type-selector"
 import { AddonsSelector, Addon, SelectedAddon } from "@/components/registration/addons-selector"
@@ -518,15 +519,25 @@ function EventDetailsPage() {
       addonsSelection.push(addon)
     })
 
-    sessionStorage.setItem(
-      `checkout_${eventSlug}`,
-      JSON.stringify({
-        selection,
-        addonsSelection,
-        totals,
-        registrationType: registrationType || "individual",
-      })
-    )
+    // iOS Safari throws DOMException 18 ("SecurityError: The operation is insecure")
+    // when sessionStorage is blocked (Private Browsing / "Block all cookies").
+    // Without this guard the button silently fails and the user retries forever.
+    try {
+      sessionStorage.setItem(
+        `checkout_${eventSlug}`,
+        JSON.stringify({
+          selection,
+          addonsSelection,
+          totals,
+          registrationType: registrationType || "individual",
+        })
+      )
+    } catch {
+      toast.error(
+        "Your browser is blocking storage needed to continue. Please disable Private Browsing or allow cookies for this site and try again."
+      )
+      return
+    }
 
     if (registrationType === "group") {
       router.push(`/register/${eventSlug}/group`)
