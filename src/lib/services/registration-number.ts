@@ -86,3 +86,68 @@ export async function getNextRegistrationNumber(
   console.error(`[REG-NUMBER] All ${maxRetries} retry attempts exhausted for event ${eventId}, using fallback`)
   return generateFallbackNumber()
 }
+
+/**
+ * Faculty registration number generator.
+ *
+ * Faculty numbers must live on a separate prefix + counter from delegates
+ * (e.g. TechnoSurg uses `TECH-F-1001` onwards, delegates use `Technosurg2026A1001+`).
+ * Same atomic optimistic-lock pattern as `getNextRegistrationNumber` but reads
+ * and writes the `faculty_registration_*` columns on `event_settings`.
+ *
+ * If `faculty_registration_prefix` is not set for the event, falls back to
+ * `getNextRegistrationNumber` so events that don't separate faculty numbering
+ * keep working unchanged.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getNextFacultyRegistrationNumber(
+  supabaseOrNull: any,
+  eventId: string,
+  maxRetries = 5,
+): Promise<string> {
+  const supabase = supabaseOrNull || await createAdminClient()
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const { data: settings } = await (supabase as any)
+      .from("event_settings")
+      .select("faculty_registration_prefix, faculty_registration_start_number, faculty_registration_suffix, current_faculty_registration_number")
+      .eq("event_id", eventId)
+      .maybeSingle()
+
+    const prefix = (settings?.faculty_registration_prefix || "").trim()
+
+    if (!prefix) {
+      // Faculty numbering not configured for this event — use delegate logic.
+      return getNextRegistrationNumber(supabase, eventId, maxRetries)
+    }
+
+    const suffix = settings.faculty_registration_suffix || ""
+    const startNumber = settings.faculty_registration_start_number || 1
+    const currentNum = settings.current_faculty_registration_number || 0
+    const nextNum = currentNum + 1
+    const regNumber = Math.max(startNumber, nextNum)
+
+    const { data: updated, error } = await (supabase as any)
+      .from("event_settings")
+      .update({ current_faculty_registration_number: regNumber })
+      .eq("event_id", eventId)
+      .eq("current_faculty_registration_number", currentNum)
+      .select("current_faculty_registration_number")
+      .maybeSingle()
+
+    if (error) {
+      console.error(`[REG-NUMBER/FACULTY] Update error on attempt ${attempt + 1}:`, error)
+      continue
+    }
+
+    if (!updated) {
+      console.log(`[REG-NUMBER/FACULTY] Optimistic lock conflict on attempt ${attempt + 1}, retrying...`)
+      continue
+    }
+
+    return `${prefix}${regNumber}${suffix}`
+  }
+
+  console.error(`[REG-NUMBER/FACULTY] All ${maxRetries} retry attempts exhausted for event ${eventId}, using fallback`)
+  return generateFallbackNumber()
+}

@@ -253,13 +253,16 @@ export default function FacultyPage() {
         throw new Error("Faculty is already registered for this event")
       }
 
-      // Generate registration number
-      const date = new Date()
-      const dateStr = date.getFullYear().toString() +
-        (date.getMonth() + 1).toString().padStart(2, "0") +
-        date.getDate().toString().padStart(2, "0")
-      const random = Math.floor(1000 + Math.random() * 9000)
-      const registrationNumber = `FAC-${dateStr}-${random}`
+      // Get next faculty registration number from the server (uses TECH-F-NNNN
+      // for events configured with a faculty prefix; falls back to the delegate
+      // counter otherwise). Server-side endpoint is required because the
+      // counter lives in event_settings and needs admin-client RLS bypass.
+      const regNumRes = await fetch(`/api/registrations/next-faculty-number?event_id=${encodeURIComponent(inviteEventId)}`)
+      const regNumData = await regNumRes.json()
+      if (!regNumRes.ok || !regNumData.registration_number) {
+        throw new Error(regNumData.error || "Failed to generate registration number")
+      }
+      const registrationNumber: string = regNumData.registration_number
 
       // Create registration
       const fullName = selectedFaculty.title

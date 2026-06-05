@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { parse } from "csv-parse/sync"
 import { requireAdmin } from "@/lib/auth/api-auth"
+import { getNextFacultyRegistrationNumber } from "@/lib/services/registration-number"
 
 /**
  * AI-Powered Program Import
@@ -1335,7 +1336,7 @@ export async function POST(request: NextRequest) {
           }
 
           // Step 2: Create registration for this event
-          const regNumber = `FAC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+          const regNumber = await getNextFacultyRegistrationNumber(supabase, eventId)
           const { error } = await (supabase as any).from("registrations").insert({
             event_id: eventId,
             ticket_type_id: ticketTypeId,

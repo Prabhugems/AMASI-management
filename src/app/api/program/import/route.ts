@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { parse } from "csv-parse/sync"
 import { requireEventAccess } from "@/lib/auth/api-auth"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { getNextFacultyRegistrationNumber } from "@/lib/services/registration-number"
 
 // Convert 12-hour to 24-hour
 function to24h(h: number, period: string): number {
@@ -587,7 +588,7 @@ export async function POST(request: NextRequest) {
           }
         } else if (ticketTypeId) {
           // Create new registration
-          const regNumber = `FAC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+          const regNumber = await getNextFacultyRegistrationNumber(db, eventId)
 
           const { error: insertError } = await db
             .from("registrations")

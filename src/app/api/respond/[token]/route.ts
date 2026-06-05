@@ -3,37 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { DEFAULTS } from "@/lib/config"
 import { webhookTravelSubmitted } from "@/lib/webhooks"
 import { syncSpeakerStatus } from "@/lib/services/sync-speaker-status"
-
-// Generate registration number (same pattern as create-speaker-registrations)
-async function generateRegistrationNumber(supabase: any, eventId: string): Promise<string> {
-  const { data: settings } = await supabase
-    .from("event_settings")
-    .select("customize_registration_id, registration_prefix, registration_start_number, registration_suffix, current_registration_number")
-    .eq("event_id", eventId)
-    .maybeSingle()
-
-  if (settings?.customize_registration_id) {
-    const prefix = settings.registration_prefix || ""
-    const suffix = settings.registration_suffix || ""
-    const startNumber = settings.registration_start_number || 1
-    const currentNumber = (settings.current_registration_number || 0) + 1
-    const regNumber = Math.max(startNumber, currentNumber)
-
-    await supabase
-      .from("event_settings")
-      .update({ current_registration_number: regNumber })
-      .eq("event_id", eventId)
-
-    return `${prefix}${regNumber}${suffix}`
-  }
-
-  const date = new Date()
-  const dateStr = date.getFullYear().toString() +
-    (date.getMonth() + 1).toString().padStart(2, "0") +
-    date.getDate().toString().padStart(2, "0")
-  const random = Math.floor(1000 + Math.random() * 9000)
-  return `SPK-${dateStr}-${random}`
-}
+import { getNextFacultyRegistrationNumber } from "@/lib/services/registration-number"
 
 export async function GET(
   request: NextRequest,
@@ -301,7 +271,7 @@ export async function POST(
         }
 
         if (speakerTicket) {
-          const registrationNumber = await generateRegistrationNumber(db, assignment.event_id)
+          const registrationNumber = await getNextFacultyRegistrationNumber(db, assignment.event_id)
           const portalToken = crypto.randomUUID()
 
           const { data: newReg } = await db
