@@ -155,47 +155,12 @@ function CheckinQRCode({ token, size = 180 }: { token: string; size?: number }) 
 }
 
 // -- Pull-to-refresh wrapper --
-function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promise<void>; children: React.ReactNode }) {
-  const y = useMotionValue(0)
-  const pullProgress = useTransform(y, [0, 80], [0, 1])
-  const spinnerOpacity = useTransform(y, [0, 40, 80], [0, 0.5, 1])
-  const spinnerRotate = useTransform(y, [0, 80], [0, 360])
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const handleDragEnd = async () => {
-    if (y.get() >= 70 && !isRefreshing) {
-      setIsRefreshing(true)
-      haptic("medium")
-      await onRefresh()
-      setIsRefreshing(false)
-    }
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      {/* Pull indicator */}
-      <motion.div
-        className="absolute top-0 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center"
-        style={{ opacity: spinnerOpacity, y: useTransform(y, [0, 80], [-30, 10]) }}
-      >
-        <motion.div style={{ rotate: isRefreshing ? undefined : spinnerRotate }}>
-          <RefreshCw className={`w-6 h-6 text-white/80 ${isRefreshing ? "animate-spin" : ""}`} />
-        </motion.div>
-      </motion.div>
-
-      <motion.div
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0, bottom: 0.4 }}
-        style={{ y }}
-        onDragEnd={handleDragEnd}
-        className="touch-pan-x"
-      >
-        {children}
-      </motion.div>
-    </div>
-  )
+function PullToRefresh({ children }: { onRefresh: () => Promise<void>; children: React.ReactNode }) {
+  // Previously wrapped children in a framer-motion drag handler with
+  // `touch-action: pan-x`, which blocked vertical page scroll on mobile —
+  // users couldn't scroll past the fold on /my. The header already has a
+  // Refresh button, so we drop the gesture and pass children through.
+  return <>{children}</>
 }
 
 // -- Enhanced loading skeleton --
