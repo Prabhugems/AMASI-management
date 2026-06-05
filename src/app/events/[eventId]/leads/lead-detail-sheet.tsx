@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useConfirm } from "@/hooks/use-confirm"
+import { useConfirm } from "@/components/confirm-dialog"
 import type { Lead, LeadNote, LeadStatus } from "./leads-types"
 import { LEAD_STATUSES } from "./leads-types"
 

@@ -14,7 +14,9 @@ import {
 import { AlertTriangle, Trash2, XCircle, CheckCircle, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type ConfirmVariant = "danger" | "warning" | "info" | "success"
+// "destructive" is an alias for "danger" so callers that previously used the
+// orphan @/hooks/use-confirm (which used shadcn's destructive naming) keep working.
+type ConfirmVariant = "danger" | "destructive" | "warning" | "info" | "success"
 
 interface ConfirmOptions {
   title: string
@@ -31,13 +33,16 @@ interface ConfirmContextType {
 
 const ConfirmContext = createContext<ConfirmContextType | null>(null)
 
+const dangerConfig = {
+  icon: Trash2,
+  iconBg: "bg-red-100",
+  iconColor: "text-red-600",
+  buttonClass: "bg-red-600 hover:bg-red-700 focus:ring-red-600",
+}
+
 const variantConfig = {
-  danger: {
-    icon: Trash2,
-    iconBg: "bg-red-100",
-    iconColor: "text-red-600",
-    buttonClass: "bg-red-600 hover:bg-red-700 focus:ring-red-600",
-  },
+  danger: dangerConfig,
+  destructive: dangerConfig,
   warning: {
     icon: AlertTriangle,
     iconBg: "bg-amber-100",
