@@ -35,6 +35,7 @@ import {
   MoreHorizontal,
   Eye,
   Mail,
+  MessageCircle,
   Trash2,
   Loader2,
   IndianRupee,
@@ -181,6 +182,7 @@ function RegistrationsContent() {
   })
   const [isPrintingBadge, setIsPrintingBadge] = useState<string | null>(null)
   const [isEmailingBadge, setIsEmailingBadge] = useState<string | null>(null)
+  const [isWhatsAppingWelcome, setIsWhatsAppingWelcome] = useState<string | null>(null)
   const [isGeneratingBadge, setIsGeneratingBadge] = useState<string | null>(null)
   const [_isGeneratingCertificate, _setIsGeneratingCertificate] = useState<string | null>(null)
   const [isSwitchTicketOpen, setIsSwitchTicketOpen] = useState(false)
@@ -275,6 +277,42 @@ function RegistrationsContent() {
       toast.error(error.message)
     } finally {
       setIsPrintingBadge(null)
+    }
+  }
+
+  // Send welcome WhatsApp (technosurg_welcome template) — links to /my prefilled with phone
+  const whatsappWelcome = async (registration: Registration) => {
+    if (registration.status !== "confirmed") {
+      toast.error("Cannot send WhatsApp - registration is not confirmed")
+      return
+    }
+    if (!registration.attendee_phone) {
+      toast.error("No phone number on file")
+      return
+    }
+
+    setIsWhatsAppingWelcome(registration.id)
+    try {
+      const res = await fetch("/api/registrations/whatsapp-welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          registration_id: registration.id,
+          event_id: eventId,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send WhatsApp")
+      }
+
+      toast.success(`WhatsApp sent to ${registration.attendee_phone}`)
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setIsWhatsAppingWelcome(null)
     }
   }
 
@@ -1879,6 +1917,24 @@ function RegistrationsContent() {
                             )}
                             Email Badge
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              whatsappWelcome(reg)
+                            }}
+                            disabled={
+                              isWhatsAppingWelcome === reg.id ||
+                              reg.status !== "confirmed" ||
+                              !reg.attendee_phone
+                            }
+                          >
+                            {isWhatsAppingWelcome === reg.id ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <MessageCircle className="h-4 w-4 mr-2" />
+                            )}
+                            Send WhatsApp
+                          </DropdownMenuItem>
                           {reg.status === "pending" && (
                             <DropdownMenuItem
                               onClick={() =>
@@ -2599,6 +2655,24 @@ function RegistrationsContent() {
                     <Mail className="w-3.5 h-3.5 mr-1.5" />
                   )}
                   Email Badge
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
+                  onClick={() => whatsappWelcome(selectedRegistration)}
+                  disabled={
+                    isWhatsAppingWelcome === selectedRegistration.id ||
+                    selectedRegistration.status !== "confirmed" ||
+                    !selectedRegistration.attendee_phone
+                  }
+                >
+                  {isWhatsAppingWelcome === selectedRegistration.id ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  Send WhatsApp
                 </Button>
                 <Button variant="outline" size="sm" className="h-9 text-xs border-sky-200 text-sky-700 hover:bg-sky-50 hover:border-sky-300">
                   <Send className="w-3.5 h-3.5 mr-1.5" />
