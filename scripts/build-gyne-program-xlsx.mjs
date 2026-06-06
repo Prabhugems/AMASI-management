@@ -91,6 +91,37 @@ function tokens(name) {
   return normalize(name).split(/\s+/).filter((t) => t.length >= 3)
 }
 
+// Title-case a name: "DR.KAVITHA YOGINI" → "Dr. Kavitha Yogini".
+// Preserves real acronyms (e.g. "TK", "PSN", "GV") — all-caps tokens with no
+// vowels. Common short names that happen to be all-caps in the source
+// (JAY, ROY, SAI, KAY) get normalised to title case.
+function cleanName(raw) {
+  if (!raw) return ""
+  let s = raw.trim().replace(/\s+/g, " ")
+  s = s.replace(/\b(dr|prof|mr|mrs|ms|shri)\.(?!\s)/gi, "$1. ")
+  s = s.replace(/\s*\([^)]*\)\s*$/g, "").trim()
+  return s
+    .split(" ")
+    .map((tok) => {
+      if (!tok) return tok
+      if (/^(dr|prof|mr|mrs|ms|shri)\.?$/i.test(tok)) {
+        const base = tok.replace(/\.$/, "").toLowerCase()
+        return base.charAt(0).toUpperCase() + base.slice(1) + "."
+      }
+      const letters = tok.replace(/[^a-z]/gi, "")
+      if (!letters) return tok
+      const isAllUpper = tok === tok.toUpperCase()
+      const hasVowel = /[aeiou]/i.test(letters)
+      // Real acronym: all-caps, short, and no vowels → keep
+      if (isAllUpper && letters.length <= 4 && !hasVowel) return tok
+      const lower = tok.toLowerCase()
+      return lower.charAt(0).toUpperCase() + lower.slice(1)
+    })
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 function splitNames(raw) {
   if (!raw) return []
   let s = raw
@@ -101,7 +132,10 @@ function splitNames(raw) {
     .replace(/\b(yes|y\/n)\b/gi, "")
   // Handle the role-prefixed format "DR. GYN - DR. KARTHIKHA" → "DR. KARTHIKHA"
   s = s.replace(/(COLORECTAL|UROLOGIST|FERTILITY EXPERT|GYN|DR\. GYN)\s*[-:]\s*/gi, "")
-  const parts = s.split(/,|\||;|\//).map((x) => x.trim()).filter(Boolean)
+  // Split on common separators including colon, "AND", "&", and double-space gaps
+  // (the source CSV stitches roles together with weird whitespace).
+  s = s.replace(/\s+&\s+/g, ", ").replace(/\s+AND\s+/gi, ", ")
+  const parts = s.split(/,|\||;|\/|:|\s{2,}/).map((x) => x.trim()).filter(Boolean)
   return parts
     .map((x) => x.replace(/^\s*-\s*/, "").trim())
     .filter((x) => {
@@ -109,10 +143,10 @@ function splitNames(raw) {
       const norm = normalize(x)
       if (!norm) return false
       if (tokens(x).length === 0) return false
-      // Discard tokens that are obviously not names (e.g. "PENDING")
       if (/^(pending|tbc|tbd)$/i.test(norm)) return false
       return true
     })
+    .map(cleanName)
 }
 
 function findTnmcFor(speakerName, tnmcEntries) {
@@ -149,9 +183,9 @@ function recordPerson(name, email, tnmc) {
   if (!name) return
   const key = normalize(name)
   if (!key) return
-  const prev = peopleMap.get(key) || { Name: name, Email: "", TNMC: "" }
+  const prev = peopleMap.get(key) || { Name: name, Email: "", "TNMC No": "" }
   if (email && !prev.Email) prev.Email = email
-  if (tnmc && !prev.TNMC) prev.TNMC = tnmc
+  if (tnmc && !prev["TNMC No"]) prev["TNMC No"] = tnmc
   if (name.length > prev.Name.length) prev.Name = name // prefer fuller spelling
   peopleMap.set(key, prev)
 }
@@ -248,7 +282,7 @@ programSheet["!cols"] = [
 xlsx.utils.book_append_sheet(wb, programSheet, "Program")
 
 const peopleRows = [...peopleMap.values()].sort((a, b) => a.Name.localeCompare(b.Name))
-const peopleSheet = xlsx.utils.json_to_sheet(peopleRows)
+const peopleSheet = xlsx.utils.json_to_sheet(peopleRows, { header: ["Name", "Email", "TNMC No"] })
 peopleSheet["!cols"] = [{ wch: 32 }, { wch: 32 }, { wch: 16 }]
 xlsx.utils.book_append_sheet(wb, peopleSheet, "People")
 
