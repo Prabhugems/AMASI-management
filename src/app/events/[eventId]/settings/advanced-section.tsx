@@ -25,6 +25,8 @@ interface AdvancedSectionProps {
   cloning: boolean
   onExport: () => void
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onDelete: () => Promise<void>
+  deleting: boolean
 }
 
 export function AdvancedSection({
@@ -35,6 +37,8 @@ export function AdvancedSection({
   cloning,
   onExport,
   onImport,
+  onDelete,
+  deleting,
 }: AdvancedSectionProps) {
   const [deleteInput, setDeleteInput] = useState("")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -209,11 +213,12 @@ export function AdvancedSection({
                 <Button
                   variant="destructive"
                   size="sm"
-                  disabled={deleteInput !== event?.name}
+                  disabled={deleteInput !== event?.name || deleting}
                   className="gap-2"
+                  onClick={onDelete}
                 >
-                  <Trash2 className="h-4 w-4" />
-                  Permanently Delete
+                  {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {deleting ? "Deleting..." : "Permanently Delete"}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => { setShowDeleteDialog(false); setDeleteInput("") }}>
                   Cancel
