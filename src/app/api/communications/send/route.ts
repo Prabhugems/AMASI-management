@@ -138,7 +138,18 @@ export async function POST(request: NextRequest) {
               continue
             }
 
-            if (settings?.whatsapp_provider) {
+            // If the event's provider is qikchat but its api_key is blank,
+            // fall back to the env-var QIKCHAT_API_KEY (same path auto-sends
+            // use). This is how the TechnoSurg event is configured — provider
+            // set, key stored only in env. Without this fallback every send
+            // failed with "Missing Qikchat API key".
+            const qikchatEnvAvailable = !!process.env.QIKCHAT_API_KEY?.trim()
+            const useEnvQikchat =
+              settings?.whatsapp_provider === "qikchat" &&
+              !settings?.whatsapp_api_key &&
+              qikchatEnvAvailable
+
+            if (settings?.whatsapp_provider && !useEnvQikchat) {
               // Validate required fields based on provider
               const provider = settings.whatsapp_provider
               if (provider === "meta" && (!settings.whatsapp_phone_number_id || !settings.whatsapp_access_token)) {
@@ -154,6 +165,11 @@ export async function POST(request: NextRequest) {
               if (provider === "gallabox" && (!settings.whatsapp_api_key || !settings.whatsapp_access_token || !settings.whatsapp_phone_number_id)) {
                 results.failed++
                 results.errors.push(`${reg.attendee_name}: WhatsApp Gallabox provider not configured (missing api_key, access_token/apiSecret, or phone_number_id/channelId)`)
+                continue
+              }
+              if (provider === "qikchat" && !settings.whatsapp_api_key) {
+                results.failed++
+                results.errors.push(`${reg.attendee_name}: WhatsApp Qikchat provider not configured (missing api_key, and no QIKCHAT_API_KEY env var)`)
                 continue
               }
 
@@ -175,11 +191,11 @@ export async function POST(request: NextRequest) {
                 to: recipient,
                 message: personalizedMessage,
               })
-            } else if (process.env.QIKCHAT_API_KEY?.trim()) {
+            } else if (useEnvQikchat || (!settings?.whatsapp_provider && qikchatEnvAvailable)) {
               // Use Qikchat from env vars as fallback
               const { sendQikchatText } = await import("@/lib/qikchat")
               sendResult = await sendQikchatText(recipient, personalizedMessage)
-            } else if (process.env.GALLABOX_API_KEY?.trim()) {
+            } else if (!settings?.whatsapp_provider && process.env.GALLABOX_API_KEY?.trim()) {
               // Use Gallabox from env vars as fallback
               const { sendGallaboxText } = await import("@/lib/gallabox")
               sendResult = await sendGallaboxText(recipient, reg.attendee_name || "Delegate", personalizedMessage)
