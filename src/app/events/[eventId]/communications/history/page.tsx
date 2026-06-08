@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -42,8 +42,12 @@ import {
   RefreshCw,
   Download,
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import { toast } from "sonner"
+
+const PAGE_SIZE = 100
 
 type MessageLog = {
   id: string
@@ -72,17 +76,24 @@ export default function HistoryPage() {
   const [channelFilter, setChannelFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedLog, setSelectedLog] = useState<MessageLog | null>(null)
+  const [page, setPage] = useState(0)
 
-  // Fetch message logs
-  const { data: logs, isLoading, refetch } = useQuery({
-    queryKey: ["message-logs", eventId, channelFilter, statusFilter],
+  // Reset to first page whenever filters change
+  useEffect(() => {
+    setPage(0)
+  }, [channelFilter, statusFilter])
+
+  // Fetch paginated message logs + total count
+  const { data: logsData, isLoading, refetch } = useQuery({
+    queryKey: ["message-logs", eventId, channelFilter, statusFilter, page],
     queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let query = (supabase as any)
         .from("message_logs")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("event_id", eventId)
         .order("created_at", { ascending: false })
-        .limit(100)
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
       if (channelFilter !== "all") {
         query = query.eq("channel", channelFilter)
@@ -91,8 +102,44 @@ export default function HistoryPage() {
         query = query.eq("status", statusFilter)
       }
 
-      const { data } = await query
-      return (data || []) as MessageLog[]
+      const { data, count } = await query
+      return { logs: (data || []) as MessageLog[], total: count || 0 }
+    },
+  })
+  const logs = logsData?.logs
+  const total = logsData?.total ?? 0
+
+  // Accurate status counts across ALL rows for the current channel filter
+  // (not just the visible page). Each call is a head:true count, so they're
+  // cheap server-side.
+  const { data: stats } = useQuery({
+    queryKey: ["message-logs-stats", eventId, channelFilter],
+    queryFn: async () => {
+      const base = () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let q = (supabase as any)
+          .from("message_logs")
+          .select("*", { count: "exact", head: true })
+          .eq("event_id", eventId)
+        if (channelFilter !== "all") q = q.eq("channel", channelFilter)
+        return q
+      }
+
+      const [totalRes, deliveredRes, sentRes, pendingRes, failedRes] = await Promise.all([
+        base(),
+        base().in("status", ["delivered", "read"]),
+        base().eq("status", "sent"),
+        base().in("status", ["pending", "queued"]),
+        base().in("status", ["failed", "bounced"]),
+      ])
+
+      return {
+        total: totalRes.count || 0,
+        delivered: deliveredRes.count || 0,
+        sent: sentRes.count || 0,
+        pending: pendingRes.count || 0,
+        failed: failedRes.count || 0,
+      }
     },
   })
 
@@ -149,14 +196,33 @@ export default function HistoryPage() {
     )
   })
 
-  const exportCSV = () => {
-    if (!filteredLogs || filteredLogs.length === 0) {
+  // Export ALL matching rows (not just the visible page). The visible table is
+  // paginated, but an admin running a bulk audit expects the CSV to cover the
+  // full filtered set.
+  const exportCSV = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase as any)
+      .from("message_logs")
+      .select("created_at,channel,recipient,recipient_name,subject,status,provider")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: false })
+
+    if (channelFilter !== "all") query = query.eq("channel", channelFilter)
+    if (statusFilter !== "all") query = query.eq("status", statusFilter)
+
+    const { data, error } = await query
+    if (error) {
+      toast.error("Export failed")
+      return
+    }
+    const rows: MessageLog[] = data || []
+    if (rows.length === 0) {
       toast.error("No data to export")
       return
     }
 
     const headers = ["Date", "Channel", "Recipient", "Name", "Subject", "Status", "Provider"]
-    const rows = filteredLogs.map((log) => [
+    const csvRows = rows.map((log) => [
       formatDate(log.created_at),
       log.channel,
       log.recipient,
@@ -166,7 +232,7 @@ export default function HistoryPage() {
       log.provider || "",
     ])
 
-    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n")
+    const csv = [headers.join(","), ...csvRows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n")
     const blob = new Blob([csv], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -174,7 +240,7 @@ export default function HistoryPage() {
     a.download = `message-logs-${eventId}.csv`
     a.click()
     URL.revokeObjectURL(url)
-    toast.success("Exported to CSV")
+    toast.success(`Exported ${rows.length} rows`)
   }
 
   if (isLoading) {
@@ -243,34 +309,26 @@ export default function HistoryPage() {
         </Select>
       </div>
 
-      {/* Stats Summary */}
+      {/* Stats Summary (across ALL rows for the current channel filter) */}
       <div className="grid grid-cols-5 gap-4">
         <div className="bg-card rounded-lg border p-3 text-center">
-          <p className="text-xl sm:text-2xl font-bold">{logs?.length || 0}</p>
+          <p className="text-xl sm:text-2xl font-bold">{stats?.total ?? 0}</p>
           <p className="text-xs text-muted-foreground">Total</p>
         </div>
         <div className="bg-card rounded-lg border p-3 text-center">
-          <p className="text-xl sm:text-2xl font-bold text-green-500">
-            {logs?.filter((l) => l.status === "delivered" || l.status === "read").length || 0}
-          </p>
+          <p className="text-xl sm:text-2xl font-bold text-green-500">{stats?.delivered ?? 0}</p>
           <p className="text-xs text-muted-foreground">Delivered</p>
         </div>
         <div className="bg-card rounded-lg border p-3 text-center">
-          <p className="text-xl sm:text-2xl font-bold text-sky-500">
-            {logs?.filter((l) => l.status === "sent").length || 0}
-          </p>
+          <p className="text-xl sm:text-2xl font-bold text-sky-500">{stats?.sent ?? 0}</p>
           <p className="text-xs text-muted-foreground">Sent</p>
         </div>
         <div className="bg-card rounded-lg border p-3 text-center">
-          <p className="text-xl sm:text-2xl font-bold text-amber-500">
-            {logs?.filter((l) => l.status === "pending" || l.status === "queued").length || 0}
-          </p>
+          <p className="text-xl sm:text-2xl font-bold text-amber-500">{stats?.pending ?? 0}</p>
           <p className="text-xs text-muted-foreground">Pending</p>
         </div>
         <div className="bg-card rounded-lg border p-3 text-center">
-          <p className="text-xl sm:text-2xl font-bold text-red-500">
-            {logs?.filter((l) => l.status === "failed" || l.status === "bounced").length || 0}
-          </p>
+          <p className="text-xl sm:text-2xl font-bold text-red-500">{stats?.failed ?? 0}</p>
           <p className="text-xs text-muted-foreground">Failed</p>
         </div>
       </div>
@@ -331,6 +389,36 @@ export default function HistoryPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      {total > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total}
+            {search && " (search applied to current page)"}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0 || isLoading}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={(page + 1) * PAGE_SIZE >= total || isLoading}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
