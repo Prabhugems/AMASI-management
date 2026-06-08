@@ -50,6 +50,7 @@ export default function SettingsPage() {
 
   // Clone state
   const [cloning, setCloning] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Fetch event settings
   const { data: event, isLoading } = useQuery({
@@ -200,6 +201,23 @@ export default function SettingsPage() {
       toast.error("Failed to clone event")
     }
     setCloning(false)
+  }
+
+  // Delete event handler (irreversible)
+  const handleDeleteEvent = async () => {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/events/${eventId}`, { method: "DELETE" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to delete event")
+      }
+      toast.success("Event deleted")
+      router.push("/events")
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete event")
+      setDeleting(false)
+    }
   }
 
   // Export settings as JSON
@@ -430,6 +448,8 @@ export default function SettingsPage() {
               cloning={cloning}
               onExport={exportSettings}
               onImport={importSettings}
+              onDelete={handleDeleteEvent}
+              deleting={deleting}
             />
           )}
         </div>

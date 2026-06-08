@@ -10,22 +10,18 @@ import {
   Search,
   Filter,
   ChevronRight,
-  Edit,
-  Trash2,
   Eye,
-  Send,
   CheckCircle,
   Clock,
   XCircle,
-  Download,
   UserPlus,
   Copy,
-  Calendar,
   Loader2,
   Building2,
   Phone,
 } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -100,6 +96,7 @@ interface FacultyMember {
 }
 
 function FacultyRow({ faculty, index, isLast }: { faculty: FacultyMember; index: number; isLast: boolean }) {
+  const router = useRouter()
   const [isVisible, setIsVisible] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
 
@@ -161,12 +158,13 @@ function FacultyRow({ faculty, index, isLast }: { faculty: FacultyMember; index:
       <td className="py-3.5 px-4">
         <div className="relative flex items-center gap-1">
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button className="p-1.5 rounded-lg text-muted-foreground hover:text-cyan-600 hover:bg-muted transition-colors">
-              <Send className="w-3.5 h-3.5" />
-            </button>
-            <button className="p-1.5 rounded-lg text-muted-foreground hover:text-cyan-600 hover:bg-muted transition-colors">
+            <Link
+              href={`/faculty/${faculty.id}`}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-cyan-600 hover:bg-muted transition-colors"
+              title="View profile"
+            >
               <Eye className="w-3.5 h-3.5" />
-            </button>
+            </Link>
           </div>
           <button
             onClick={() => setShowMenu(!showMenu)}
@@ -176,24 +174,25 @@ function FacultyRow({ faculty, index, isLast }: { faculty: FacultyMember; index:
           </button>
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 w-44 rounded-xl overflow-hidden z-50 bg-card border border-border shadow-xl">
-              {[
-                { icon: Eye, label: "View Profile" },
-                { icon: Send, label: "Send Reminder" },
-                { icon: Edit, label: "Edit Details" },
-                { icon: Copy, label: "Copy Email" },
-                { icon: Calendar, label: "Assign Session" },
-                { icon: Trash2, label: "Remove" },
-              ].map((item, i) => (
-                <button
-                  key={i}
-                  className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors ${
-                    item.label === "Remove" ? "hover:text-rose-600" : ""
-                  }`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                </button>
-              ))}
+              <button
+                onClick={() => { setShowMenu(false); router.push(`/faculty/${faculty.id}`) }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <Eye className="w-4 h-4" />
+                View Profile
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(faculty.email)
+                    .then(() => toast.success("Email copied"))
+                    .catch(() => toast.error("Could not copy email"))
+                  setShowMenu(false)
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <Copy className="w-4 h-4" />
+                Copy Email
+              </button>
             </div>
           )}
         </div>
@@ -215,14 +214,13 @@ function SectionHeader({ totalCount }: { totalCount: number }) {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:border-border transition-colors">
-          <Download className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Export</span>
-        </button>
-        <button className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-sm">
-          <Send className="w-3.5 h-3.5" />
-          <span className="whitespace-nowrap">Send Reminders</span>
-        </button>
+        <Link
+          href="/faculty"
+          className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-sm"
+        >
+          <span className="whitespace-nowrap">View All</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
     </div>
   )

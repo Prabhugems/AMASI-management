@@ -755,6 +755,7 @@ async function createRegistrationAddons(supabase: any, registrationId: string, a
     quantity: addon.quantity || 1,
     unit_price: addon.unitPrice || 0,
     total_price: addon.totalPrice || 0,
+    price: addon.totalPrice || 0, // keep `price` in sync — some readers use it
   }))
 
   const { error } = await supabase

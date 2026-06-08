@@ -135,6 +135,7 @@ export async function POST(
         quantity: qty,
         unit_price: unitPrice,
         total_price: totalPrice,
+        price: totalPrice, // keep `price` in sync — some readers use it
       }
     })
 

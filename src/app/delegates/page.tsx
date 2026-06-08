@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { useConfirm } from "@/hooks/use-confirm"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -77,10 +78,40 @@ export default function GlobalAttendeesPage() {
   const [checkinFilter, setCheckinFilter] = useState("all")
   const [selectedAttendee, setSelectedAttendee] = useState<Attendee | null>(null)
   const [activeTab, setActiveTab] = useState("details")
+  const [deletingAttendee, setDeletingAttendee] = useState(false)
 
   const supabase = createClient()
   const queryClient = useQueryClient()
   const router = useRouter()
+  const confirm = useConfirm()
+
+  // Delete an attendee's registration (irreversible)
+  const handleDeleteAttendee = async (attendee: Attendee) => {
+    const confirmed = await confirm({
+      title: "Delete attendee?",
+      description: `This permanently removes ${attendee.attendee_name || "this attendee"}'s registration${attendee.registration_number ? ` (${attendee.registration_number})` : ""}. This cannot be undone.`,
+      confirmText: "Delete",
+      variant: "destructive",
+    })
+    if (!confirmed) return
+
+    setDeletingAttendee(true)
+    try {
+      const res = await fetch(`/api/registrations/${attendee.id}`, { method: "DELETE" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to delete attendee")
+      }
+      toast.success("Attendee deleted")
+      setSelectedAttendee(null)
+      queryClient.invalidateQueries({ queryKey: ["attendees-stats"] })
+      refetch()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete attendee")
+    } finally {
+      setDeletingAttendee(false)
+    }
+  }
 
   // Fetch events for dropdown
   const { data: events } = useQuery({
@@ -630,8 +661,14 @@ export default function GlobalAttendeesPage() {
                   variant="outline"
                   size="sm"
                   className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                  disabled={deletingAttendee}
+                  onClick={() => handleDeleteAttendee(selectedAttendee)}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deletingAttendee ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
                   Delete
                 </Button>
                 <Button size="sm" asChild>

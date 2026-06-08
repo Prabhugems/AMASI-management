@@ -110,6 +110,8 @@ export default function CourseParticipantsPage() {
           addon_id,
           quantity,
           price,
+          unit_price,
+          total_price,
           created_at,
           registration:registrations(
             id, registration_number, attendee_name, attendee_email, attendee_phone, status
@@ -119,13 +121,14 @@ export default function CourseParticipantsPage() {
         .order("created_at", { ascending: false })
 
       if (error) throw error
-      // Map price to unit_price/total_price for UI compatibility
+      // Price columns diverged historically: Razorpay paths write total_price/
+      // unit_price, the direct-registration path writes price. Read whichever is set.
       return (data || []).map((item: any) => {
         const qty = item.quantity || 1
-        const totalPrice = item.price || 0
+        const totalPrice = item.total_price ?? item.price ?? (item.unit_price != null ? item.unit_price * qty : 0)
         return {
           ...item,
-          unit_price: qty > 0 ? totalPrice / qty : 0,
+          unit_price: item.unit_price ?? (qty > 0 ? totalPrice / qty : 0),
           total_price: totalPrice,
           certificate_issued: false,
           certificate_issued_at: null,
@@ -177,6 +180,56 @@ export default function CourseParticipantsPage() {
     total: participants?.length || 0,
     certificatesIssued: participants?.filter(p => p.certificate_issued).length || 0,
     totalRevenue: participants?.reduce((sum, p) => sum + (p.total_price || 0), 0) || 0,
+  }
+
+  // Export participants to CSV
+  const handleExport = () => {
+    const rows = filteredParticipants || []
+    if (rows.length === 0) {
+      toast.error("No participants to export")
+      return
+    }
+
+    const escape = (val: unknown) => {
+      const s = val == null ? "" : String(val)
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+
+    const headers = [
+      "Registration",
+      "Participant",
+      "Email",
+      "Phone",
+      "Purchased",
+      "Amount",
+      "Certificate",
+    ]
+    const lines = rows.map(p =>
+      [
+        p.registration?.registration_number,
+        p.registration?.attendee_name,
+        p.registration?.attendee_email,
+        p.registration?.attendee_phone,
+        format(new Date(p.created_at), "d MMM yyyy"),
+        p.total_price || 0,
+        p.certificate_issued ? "Issued" : "Pending",
+      ]
+        .map(escape)
+        .join(",")
+    )
+    const csv = [headers.join(","), ...lines].join("\n")
+
+    const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    const slug = (addon?.name || "course").replace(/[^a-z0-9]+/gi, "-").toLowerCase()
+    a.href = url
+    a.download = `${slug}-participants.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${rows.length} participant${rows.length > 1 ? "s" : ""}`)
   }
 
   const toggleSelect = (id: string) => {
@@ -279,7 +332,7 @@ export default function CourseParticipantsPage() {
             className="pl-10"
           />
         </div>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={handleExport}>
           <Download className="h-4 w-4 mr-2" />
           Export
         </Button>

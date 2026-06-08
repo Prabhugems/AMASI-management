@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, MessageCircle, ChevronRight, Activity, Loader2, LogIn, LogOut } from "lucide-react"
+import { Users, ChevronRight, Activity, Loader2, LogIn, LogOut } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { useTheme } from "next-themes"
 import Link from "next/link"
@@ -187,20 +187,6 @@ function TeamMemberRow({
             </>
           )}
         </div>
-      </div>
-
-      {/* Quick Action */}
-      <div
-        className={`
-        flex items-center gap-1 transition-all duration-300
-        ${isHovered ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2"}
-      `}
-      >
-        <button
-          className="p-1.5 rounded-lg transition-colors hover:bg-accent text-muted-foreground"
-        >
-          <MessageCircle className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Time / Login Status */}

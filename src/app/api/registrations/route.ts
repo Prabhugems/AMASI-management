@@ -344,8 +344,11 @@ export async function POST(request: NextRequest) {
             const addonRecords = addonsForExisting.map((addon: any) => ({
               registration_id: existingReg.id,
               addon_id: addon.addonId,
+              addon_variant_id: addon.variantId || null,
               quantity: addon.quantity,
               price: addon.totalPrice,
+              unit_price: addon.unitPrice ?? (addon.quantity > 0 ? addon.totalPrice / addon.quantity : 0),
+              total_price: addon.totalPrice,
             }))
             await (supabase as any).from("registration_addons").insert(addonRecords)
           }
@@ -466,8 +469,11 @@ export async function POST(request: NextRequest) {
       }) => ({
         registration_id: registration.id,
         addon_id: addon.addonId,
+        addon_variant_id: addon.variantId || null,
         quantity: addon.quantity,
         price: addon.totalPrice, // Use totalPrice as the price column
+        unit_price: addon.unitPrice ?? (addon.quantity > 0 ? addon.totalPrice / addon.quantity : 0),
+        total_price: addon.totalPrice, // keep total_price in sync — Razorpay-path readers use it
       }))
 
       const { error: addonsError } = await (supabase as any)
