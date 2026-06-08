@@ -243,6 +243,32 @@ export default function HistoryPage() {
     toast.success(`Exported ${rows.length} rows`)
   }
 
+  const [syncing, setSyncing] = useState(false)
+  const syncWhatsAppStatus = async () => {
+    setSyncing(true)
+    try {
+      const res = await fetch("/api/communications/sync-qikchat-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        toast.error(json.error || "Sync failed")
+        return
+      }
+      const r = json.results
+      toast.success(
+        `Checked ${r.checked} · Delivered +${r.delivered} · Read +${r.read} · Failed +${r.failed}${r.capped ? " (more remain — click again)" : ""}`
+      )
+      refetch()
+    } catch {
+      toast.error("Sync request failed")
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -260,6 +286,14 @@ export default function HistoryPage() {
           <p className="text-muted-foreground">Track all sent messages and their delivery status</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={syncWhatsAppStatus} disabled={syncing}>
+            {syncing ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Sync WhatsApp status
+          </Button>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh

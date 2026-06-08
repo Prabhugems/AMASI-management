@@ -114,6 +114,84 @@ export async function sendQikchatTemplate(
   return callQikchatApi(body)
 }
 
+/**
+ * Fetch a message's delivery / read status from Qikchat.
+ * Qikchat does NOT support webhooks for status callbacks; the only way to learn
+ * whether a message was delivered or read is to poll this endpoint.
+ *
+ * Response shape (per Qikchat docs):
+ *   { status: "sent" | "delivered" | "read" | "failed",
+ *     sentAt, deliveredAt, readAt, lastUpdatedAt, ... }
+ * The wrapper shape varies across API versions, so the parser below is
+ * tolerant — it inspects `data`, `data[0]`, and the top level.
+ */
+export interface QikchatMessageStatus {
+  status: "sent" | "delivered" | "read" | "failed" | "unknown"
+  sentAt?: string
+  deliveredAt?: string
+  readAt?: string
+  errorMessage?: string
+}
+
+export async function getQikchatMessageStatus(
+  messageId: string
+): Promise<{ success: boolean; data?: QikchatMessageStatus; error?: string }> {
+  if (!isQikchatEnabled()) return { success: false, error: "Qikchat not configured" }
+  if (!messageId) return { success: false, error: "Missing messageId" }
+
+  const url = `${QIKCHAT_API_URL}?msgid=${encodeURIComponent(messageId)}`
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { "QIKCHAT-API-KEY": getApiKey() },
+    })
+    const raw = await response.json().catch(() => null)
+    if (!response.ok) {
+      return { success: false, error: `Qikchat status API error (${response.status})` }
+    }
+
+    const candidate =
+      (raw && typeof raw === "object" && "data" in raw && Array.isArray((raw as { data: unknown }).data)
+        ? (raw as { data: unknown[] }).data[0]
+        : null) ??
+      (raw && typeof raw === "object" && "data" in raw ? (raw as { data: unknown }).data : null) ??
+      raw
+
+    if (!candidate || typeof candidate !== "object") {
+      return { success: false, error: "Unrecognized response shape" }
+    }
+    const c = candidate as Record<string, unknown>
+
+    const rawStatus = String((c.status ?? c.delivery_status ?? "")).toLowerCase()
+    let status: QikchatMessageStatus["status"] = "unknown"
+    if (rawStatus.includes("read")) status = "read"
+    else if (rawStatus.includes("deliver")) status = "delivered"
+    else if (rawStatus.includes("fail") || rawStatus.includes("undeliver") || rawStatus.includes("reject")) status = "failed"
+    else if (rawStatus.includes("sent") || rawStatus === "accepted") status = "sent"
+
+    const pickStr = (...keys: string[]) => {
+      for (const k of keys) {
+        const v = c[k]
+        if (typeof v === "string" && v) return v
+      }
+      return undefined
+    }
+
+    return {
+      success: true,
+      data: {
+        status,
+        sentAt: pickStr("sentAt", "sent_at"),
+        deliveredAt: pickStr("deliveredAt", "delivered_at"),
+        readAt: pickStr("readAt", "read_at"),
+        errorMessage: pickStr("errorMessage", "error_message", "reason"),
+      },
+    }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Network error" }
+  }
+}
+
 async function callQikchatApi(body: Record<string, unknown>): Promise<QikchatResult> {
   try {
     const response = await fetch(QIKCHAT_API_URL, {
