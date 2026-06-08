@@ -110,6 +110,8 @@ export default function CourseParticipantsPage() {
           addon_id,
           quantity,
           price,
+          unit_price,
+          total_price,
           created_at,
           registration:registrations(
             id, registration_number, attendee_name, attendee_email, attendee_phone, status
@@ -119,13 +121,14 @@ export default function CourseParticipantsPage() {
         .order("created_at", { ascending: false })
 
       if (error) throw error
-      // Map price to unit_price/total_price for UI compatibility
+      // Price columns diverged historically: Razorpay paths write total_price/
+      // unit_price, the direct-registration path writes price. Read whichever is set.
       return (data || []).map((item: any) => {
         const qty = item.quantity || 1
-        const totalPrice = item.price || 0
+        const totalPrice = item.total_price ?? item.price ?? (item.unit_price != null ? item.unit_price * qty : 0)
         return {
           ...item,
-          unit_price: qty > 0 ? totalPrice / qty : 0,
+          unit_price: item.unit_price ?? (qty > 0 ? totalPrice / qty : 0),
           total_price: totalPrice,
           certificate_issued: false,
           certificate_issued_at: null,
