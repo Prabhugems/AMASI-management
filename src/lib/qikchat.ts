@@ -119,11 +119,17 @@ export async function sendQikchatTemplate(
  * Qikchat does NOT support webhooks for status callbacks; the only way to learn
  * whether a message was delivered or read is to poll this endpoint.
  *
- * Response shape (per Qikchat docs):
- *   { status: "sent" | "delivered" | "read" | "failed",
- *     sentAt, deliveredAt, readAt, lastUpdatedAt, ... }
- * The wrapper shape varies across API versions, so the parser below is
- * tolerant — it inspects `data`, `data[0]`, and the top level.
+ * Actual response shape (verified 2026-06-10):
+ *   { status: true,                              // request success boolean
+ *     message: {
+ *       event: "whatsapp:message:dlr",
+ *       payload: {
+ *         id, contacts: [...],
+ *         message: { type, status: "sent"|"delivered"|"read"|"failed",
+ *                    sentAt, deliveredAt, readAt, processedAt, lastUpdatedAt }
+ *       }
+ *     } }
+ * Parser is tolerant of older `data` / `data[0]` wrappers as a fallback.
  */
 export interface QikchatMessageStatus {
   status: "sent" | "delivered" | "read" | "failed" | "unknown"
@@ -150,12 +156,22 @@ export async function getQikchatMessageStatus(
       return { success: false, error: `Qikchat status API error (${response.status})` }
     }
 
+    const r = raw as Record<string, unknown> | null
+    const messageWrap = r && typeof r === "object" ? (r.message as Record<string, unknown> | undefined) : undefined
+    const payload = messageWrap && typeof messageWrap === "object"
+      ? (messageWrap.payload as Record<string, unknown> | undefined)
+      : undefined
+    const dlrMessage = payload && typeof payload === "object"
+      ? (payload.message as Record<string, unknown> | undefined)
+      : undefined
+
+    // Prefer the verified shape: message.payload.message; fall back to legacy
+    // `data` / `data[0]` wrappers and finally the top-level object.
     const candidate =
-      (raw && typeof raw === "object" && "data" in raw && Array.isArray((raw as { data: unknown }).data)
-        ? (raw as { data: unknown[] }).data[0]
-        : null) ??
-      (raw && typeof raw === "object" && "data" in raw ? (raw as { data: unknown }).data : null) ??
-      raw
+      (dlrMessage && typeof dlrMessage === "object" ? dlrMessage : null) ??
+      (r && Array.isArray(r.data) ? (r.data as unknown[])[0] : null) ??
+      (r && "data" in (r ?? {}) ? (r as { data: unknown }).data : null) ??
+      r
 
     if (!candidate || typeof candidate !== "object") {
       return { success: false, error: "Unrecognized response shape" }
