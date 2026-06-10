@@ -2,16 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
-import {
-  isGallaboxEnabled,
-  sendGallaboxTemplate,
-  sendGallaboxText,
-} from "@/lib/gallabox"
-import {
-  isQikchatEnabled,
-  sendQikchatText,
-  sendQikchatTemplate,
-} from "@/lib/qikchat"
+import { isGallaboxEnabled } from "@/lib/gallabox"
+import { isQikchatEnabled } from "@/lib/qikchat"
+import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp-send"
 
 interface SendRequest {
   phone: string
@@ -53,31 +46,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "phone and recipient_name are required" }, { status: 400 })
     }
 
-    let result: { success: boolean; messageId?: string; error?: string }
-    const provider = useQikchat ? "qikchat" : "gallabox"
-
+    let result
     if (type === "template") {
       if (!template_name) {
         return NextResponse.json({ error: "template_name is required for template messages" }, { status: 400 })
       }
-      if (useQikchat) {
-        const params = body_values ? Object.values(body_values) : []
-        result = await sendQikchatTemplate(phone, template_name, params)
-      } else {
-        result = await sendGallaboxTemplate(phone, recipient_name, template_name, body_values || {})
-      }
+      result = await sendWhatsAppTemplate(phone, recipient_name, template_name, body_values || {})
     } else {
       if (!text) {
         return NextResponse.json({ error: "text is required for text messages" }, { status: 400 })
       }
-      if (useQikchat) {
-        result = await sendQikchatText(phone, text)
-      } else {
-        result = await sendGallaboxText(phone, recipient_name, text)
-      }
+      result = await sendWhatsAppText(phone, recipient_name, text)
     }
 
-    // Log to message_logs
+    const provider = result.provider || (useQikchat ? "qikchat" : "gallabox")
+    const errorForLog = result.fallback && result.qikchatError
+      ? `qikchat: ${result.qikchatError}${result.error ? `; ${result.error}` : ""}`
+      : result.error
+
     try {
       const supabase = await createAdminClient()
       await (supabase as any).from("message_logs").insert({
@@ -91,7 +77,7 @@ export async function POST(request: NextRequest) {
         message_body: type === "template" ? `Template: ${template_name}` : text,
         status: result.success ? "sent" : "failed",
         provider_message_id: result.messageId || null,
-        error_message: result.error || null,
+        error_message: errorForLog || null,
         sent_at: result.success ? new Date().toISOString() : null,
         failed_at: result.success ? null : new Date().toISOString(),
       })
@@ -109,6 +95,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       messageId: result.messageId,
+      provider,
+      fallback: result.fallback || false,
     })
   } catch (error: any) {
     console.error("Error in POST /api/whatsapp/send:", error)
