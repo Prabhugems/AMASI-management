@@ -224,11 +224,10 @@ export async function POST(request: NextRequest) {
         accepted_as,
         category_id,
         presentation_type,
-        registration_verified,
         session_date,
         session_time,
         session_location,
-        category:abstract_categories(name)
+        category:abstract_categories!category_id(name)
       `)
       .eq("event_id", event_id)
 

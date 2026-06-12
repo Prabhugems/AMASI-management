@@ -85,6 +85,7 @@ type Abstract = {
   // NOTE: Author info excluded for BLIND REVIEW
   status: string
   file_url: string | null
+  file_path: string | null
   file_name: string | null
   submitted_at: string
   category: { id: string; name: string } | null
@@ -341,6 +342,9 @@ export default function ReviewerPortalPage() {
   const [activeTab, setActiveTab] = useState("pending")
   const [editingProfile, setEditingProfile] = useState(false)
   const [selectedReview, setSelectedReview] = useState<Review | null>(null)
+  // Signed URL for the open abstract's file — fetched lazily so the list
+  // GET doesn't pay N sign-ops per request.
+  const [resolvedFileUrl, setResolvedFileUrl] = useState<string | null>(null)
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
 
   // Action dialogs state
@@ -375,6 +379,22 @@ export default function ReviewerPortalPage() {
   const [showSpecialtyDropdown, setShowSpecialtyDropdown] = useState(false)
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([])
   const specialtyRef = useRef<HTMLDivElement>(null)
+
+  // Lazily fetch a signed URL for the open abstract's file. Cleared when the
+  // detail panel closes so we don't render a stale URL next time.
+  useEffect(() => {
+    const ab = selectedReview?.abstract
+    if (!ab?.id || (!ab.file_path && !ab.file_url)) {
+      setResolvedFileUrl(null)
+      return
+    }
+    let cancelled = false
+    fetch(`/api/abstracts/${ab.id}/file-url`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setResolvedFileUrl(d.url ?? null) })
+      .catch(() => { if (!cancelled) setResolvedFileUrl(null) })
+    return () => { cancelled = true }
+  }, [selectedReview?.abstract?.id, selectedReview?.abstract?.file_path, selectedReview?.abstract?.file_url])
 
   // Filter specialties based on search
   const filteredSpecialties = useMemo(() => {
@@ -994,16 +1014,17 @@ export default function ReviewerPortalPage() {
                                     {review.abstract.event.short_name || review.abstract.event.name}
                                   </Badge>
                                 )}
-                                {/* File type badge */}
-                                {review.abstract.file_url?.match(/\.(mp4|webm|mov|avi)$/i) ? (
+                                {/* File type badge — detect from file_name so
+                                    Phase A rows (no file_url) still show it */}
+                                {review.abstract.file_name?.match(/\.(mp4|webm|mov|avi)$/i) ? (
                                   <Badge className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-100 gap-1">
                                     <Video className="h-3 w-3" /> Video
                                   </Badge>
-                                ) : review.abstract.file_url?.match(/\.(pdf)$/i) ? (
+                                ) : review.abstract.file_name?.match(/\.(pdf)$/i) ? (
                                   <Badge className="text-xs bg-red-100 text-red-700 hover:bg-red-100 gap-1">
                                     <FileIcon className="h-3 w-3" /> PDF
                                   </Badge>
-                                ) : review.abstract.file_url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                ) : review.abstract.file_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                                   <Badge className="text-xs bg-teal-100 text-teal-700 hover:bg-teal-100 gap-1">
                                     <Image className="h-3 w-3" /> Image
                                   </Badge>
@@ -1125,11 +1146,13 @@ export default function ReviewerPortalPage() {
                     </div>
                   )}
 
-                  {selectedReview.abstract.file_url && (
+                  {(selectedReview.abstract.file_path || selectedReview.abstract.file_url) && (
                     <div className="space-y-3">
                       <h4 className="font-medium text-sm text-gray-700">Attachment</h4>
-                      {/* Video Player */}
-                      {selectedReview.abstract.file_url.match(/\.(mp4|webm|mov|avi)$/i) ? (
+                      {/* resolvedFileUrl is fetched lazily; render skeleton until it arrives */}
+                      {!resolvedFileUrl ? (
+                        <div className="text-xs text-gray-500">Loading attachment…</div>
+                      ) : selectedReview.abstract.file_name?.match(/\.(mp4|webm|mov|avi)$/i) ? (
                         <div className="rounded-lg overflow-hidden border bg-gray-900 p-4">
                           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                           <video
@@ -1138,44 +1161,38 @@ export default function ReviewerPortalPage() {
                             controlsList="nodownload"
                             className="w-full bg-black"
                             style={{ maxHeight: '450px', minHeight: '300px' }}
-                            src={selectedReview.abstract.file_url.startsWith('http')
-                              ? selectedReview.abstract.file_url
-                              : `${window.location.origin}${selectedReview.abstract.file_url}`}
+                            src={resolvedFileUrl}
                             onError={() => {
                               toast.error("Video failed to load. Please try refreshing.")
                             }}
-                            onLoadedData={() => { /* Video loaded */ }}
                           />
-                          <p className="text-xs text-gray-400 mt-2">
-                            Video: {selectedReview.abstract.file_url}
-                          </p>
                         </div>
-                      ) : selectedReview.abstract.file_url.match(/\.(pdf)$/i) ? (
-                        /* PDF Viewer */
+                      ) : selectedReview.abstract.file_name?.match(/\.(pdf)$/i) ? (
                         <div className="rounded-lg overflow-hidden border">
                           <iframe
-                            src={selectedReview.abstract.file_url}
+                            src={resolvedFileUrl}
                             className="w-full h-[550px]"
                             title="PDF Viewer"
                           />
                         </div>
-                      ) : selectedReview.abstract.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                        /* Image Viewer */
+                      ) : selectedReview.abstract.file_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                         <div className="rounded-lg overflow-hidden border">
                           <img
-                            src={selectedReview.abstract.file_url}
+                            src={resolvedFileUrl}
                             alt="Attachment"
                             className="w-full max-h-[550px] object-contain"
                           />
                         </div>
                       ) : null}
                       {/* Download Button */}
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={selectedReview.abstract.file_url} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-4 w-4 mr-2" />
-                          {selectedReview.abstract.file_name || "Download Attachment"}
-                        </a>
-                      </Button>
+                      {resolvedFileUrl && (
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={resolvedFileUrl} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4 mr-2" />
+                            {selectedReview.abstract.file_name || "Download Attachment"}
+                          </a>
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>

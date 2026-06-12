@@ -103,7 +103,7 @@ export async function POST(
         keywords,
         title,
         presenting_author_email,
-        abstract_categories (
+        abstract_categories!category_id (
           name,
           keywords
         )
@@ -270,7 +270,7 @@ export async function GET(
         keywords,
         title,
         presenting_author_email,
-        abstract_categories (
+        abstract_categories!category_id (
           name,
           keywords
         )

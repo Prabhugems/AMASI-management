@@ -94,7 +94,7 @@ export async function POST(
     // Fetch abstracts with title, keywords, and category name for specialty matching
     const { data: abstracts, error: aErr } = await adminClient
       .from("abstracts")
-      .select("id, title, keywords, category:abstract_categories(name)")
+      .select("id, title, keywords, category:abstract_categories!category_id(name)")
       .eq("event_id", eventId)
       .in("status", ["submitted", "under_review"])
 
@@ -241,7 +241,7 @@ export async function reassignPending(adminClient: SupabaseClient, eventId: stri
   // Fetch all abstracts with details for specialty matching
   const { data: allAbstracts } = await adminClient
     .from("abstracts")
-    .select("id, title, keywords, category:abstract_categories(name)")
+    .select("id, title, keywords, category:abstract_categories!category_id(name)")
     .eq("event_id", eventId)
 
   const abstractIds = (allAbstracts || []).map((a: any) => a.id)

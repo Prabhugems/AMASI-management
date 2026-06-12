@@ -92,18 +92,27 @@ export async function POST(
       )
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
+    // Bucket is private; return a short-lived signed URL for preview.
+    // Submit handler persists uploadData.path, never the signed URL.
+    const { data: signed, error: signedError } = await supabase.storage
       .from("abstract-files")
-      .getPublicUrl(fileName)
+      .createSignedUrl(uploadData.path, 3600)
+
+    if (signedError || !signed?.signedUrl) {
+      console.error("Signed URL error:", signedError)
+      return NextResponse.json(
+        { error: "Uploaded but failed to generate preview link" },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
       file: {
-        url: urlData.publicUrl,
+        path: uploadData.path,
+        signedUrl: signed.signedUrl,
         name: file.name,
         size: file.size,
-        path: uploadData.path,
       },
     })
   } catch (error) {

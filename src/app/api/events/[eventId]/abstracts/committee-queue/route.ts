@@ -27,10 +27,7 @@ export async function GET(
         presentation_type,
         status,
         workflow_stage,
-        review_round,
-        committee_decision,
-        registration_verified,
-        category:abstract_categories(id, name)
+        category:abstract_categories!category_id(id, name)
       `)
       .eq("event_id", eventId)
       .in("status", ["submitted", "under_review", "accepted", "rejected"])

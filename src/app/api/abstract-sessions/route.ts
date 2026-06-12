@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
           presenting_author_name,
           presenting_author_email,
           accepted_as,
-          category:abstract_categories(name)
+          category:abstract_categories!category_id(name)
         )
       `)
       .eq("event_id", eventId)

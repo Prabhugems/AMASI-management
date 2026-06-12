@@ -55,6 +55,7 @@ export async function GET(
           presentation_type,
           status,
           file_url,
+          file_path,
           file_name,
           submitted_at,
           category:abstract_categories!category_id (

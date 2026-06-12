@@ -31,7 +31,6 @@ export async function GET(
         session_time,
         session_location,
         registration_id,
-        registration_verified,
         presenter_checked_in,
         presenter_checked_in_at,
         presentation_completed,

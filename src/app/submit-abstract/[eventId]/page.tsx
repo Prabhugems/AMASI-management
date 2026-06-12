@@ -70,12 +70,20 @@ interface Author {
   is_presenting: boolean
 }
 
+interface EligibilityRules {
+  max_age?: number
+  require_dob?: boolean
+  allowed_positions?: string[]
+}
+
 interface Category {
   id: string
   name: string
   description: string
   is_award_category: boolean
   award_name: string
+  eligibility_rules: EligibilityRules | null
+  required_file?: boolean
 }
 
 interface FormData {
@@ -100,7 +108,7 @@ interface FormData {
   competition_type: string // best (award) or free (certificate only)
 
   // Step 5: File or Video URL
-  file_url: string
+  file_path: string
   file_name: string
   file_size: number
   video_url: string
@@ -111,6 +119,12 @@ interface FormData {
   ethics_confirmed: boolean
   originality_confirmed: boolean
   consent_confirmed: boolean
+
+  // Eligibility (rendered conditionally when the selected category requires it)
+  submitter_metadata: {
+    date_of_birth?: string
+    current_position?: string
+  }
 }
 
 const initialFormData: FormData = {
@@ -126,7 +140,7 @@ const initialFormData: FormData = {
   category_id: "",
   presentation_type: "paper", // paper, video, poster
   competition_type: "free", // best (award) or free (certificate)
-  file_url: "",
+  file_path: "",
   file_name: "",
   file_size: 0,
   video_url: "",
@@ -135,6 +149,7 @@ const initialFormData: FormData = {
   ethics_confirmed: false,
   originality_confirmed: false,
   consent_confirmed: false,
+  submitter_metadata: {},
 }
 
 const steps = [
@@ -163,6 +178,7 @@ export default function SubmitAbstractPage() {
   const [submitting, setSubmitting] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
   const [checkingDuplicates, setCheckingDuplicates] = useState(false)
+  const [uploadingFile, setUploadingFile] = useState(false)
   const [duplicateWarning, setDuplicateWarning] = useState<{
     duplicates: { abstract_number: string; title: string; author: string; overall_similarity: number; match_type: string }[]
     has_exact_match: boolean
@@ -258,7 +274,7 @@ export default function SubmitAbstractPage() {
         category_id: data.category_id || "",
         presentation_type: data.presentation_type || "paper",
         competition_type: data.competition_type || "free",
-        file_url: data.file_url || "",
+        file_path: data.file_path || "",
         file_name: data.file_name || "",
         file_size: 0,
         video_url: data.video_url || "",
@@ -267,6 +283,7 @@ export default function SubmitAbstractPage() {
         ethics_confirmed: false,
         originality_confirmed: false,
         consent_confirmed: false,
+        submitter_metadata: data.submitter_metadata || {},
       })
 
       toast.info("Loaded abstract for revision")
@@ -442,11 +459,40 @@ export default function SubmitAbstractPage() {
           toast.error("Please select competition type (Best or Free)")
           return false
         }
+        // Eligibility pre-check — mirrors the C.4 server gate. Server stays the
+        // real enforcement; this just gives the author a friendly error before
+        // they hit submit. Position list is sourced from category.eligibility_rules
+        // so the exact-string match against the server check never drifts.
+        {
+          const cat = categories.find((c) => c.id === formData.category_id)
+          const rules = cat?.eligibility_rules
+          if (rules?.require_dob && !formData.submitter_metadata.date_of_birth) {
+            toast.error("Date of birth is required for this category")
+            return false
+          }
+          if (typeof rules?.max_age === "number" && formData.submitter_metadata.date_of_birth) {
+            const dob = new Date(formData.submitter_metadata.date_of_birth)
+            if (!isNaN(dob.getTime())) {
+              const ageYears = (Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+              if (ageYears > rules.max_age) {
+                toast.error(`This category is restricted to authors aged ${rules.max_age} or under`)
+                return false
+              }
+            }
+          }
+          if (rules?.allowed_positions?.length) {
+            const pos = formData.submitter_metadata.current_position
+            if (!pos || !rules.allowed_positions.includes(pos)) {
+              toast.error("Please select an eligible position from the dropdown")
+              return false
+            }
+          }
+        }
         return true
 
       case 5:
         // File is REQUIRED for Best category submissions (full manuscript)
-        if (formData.competition_type === "best" && !formData.file_url && !formData.video_url) {
+        if (formData.competition_type === "best" && !formData.file_path && !formData.video_url) {
           toast.error("Full manuscript/video is required for Best category submissions")
           return false
         }
@@ -541,18 +587,38 @@ export default function SubmitAbstractPage() {
     try {
       setSubmitting(true)
 
+      // declarations_accepted is persisted as a JSONB array of the statement
+      // texts the author actually ticked (matches the convention of pre-Phase-A
+      // rows and the admin detail UI that renders each entry as text).
+      const declarationStatements: string[] = []
+      if (formData.ethics_confirmed) declarationStatements.push(
+        "I confirm that this research was conducted in accordance with ethical standards and has received appropriate ethical approval where required."
+      )
+      if (formData.originality_confirmed) declarationStatements.push(
+        "I confirm that this abstract is original work and has not been previously published or is not under consideration for publication elsewhere."
+      )
+      if (formData.consent_confirmed) declarationStatements.push(
+        "I confirm that all co-authors have reviewed and approved this submission, and consent to their names being included."
+      )
+
       const payload = {
         ...formData,
-        // Include revision info if in revision mode
+        declarations_accepted: declarationStatements,
         ...(isRevisionMode && revisionAbstractId && {
           is_revision: true,
           revision_of: revisionAbstractId,
         }),
       }
 
+      // Per-attempt idempotency key — protects against network retries and
+      // any double-click that gets past the button's disabled state.
+      const idempotencyKey = crypto.randomUUID()
       const res = await fetch(`/api/submit-abstract/${eventId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
         body: JSON.stringify(payload),
       })
 
@@ -1235,6 +1301,83 @@ export default function SubmitAbstractPage() {
                       </div>
                     </RadioGroup>
                   </div>
+
+                  {/* Conditional eligibility (e.g. Young Scholar Award).
+                      Rendered only when the selected category declares rules.
+                      Position options come straight from category.eligibility_rules
+                      so the exact-string match against C.4's server check is
+                      drift-proof. */}
+                  {(() => {
+                    const cat = categories.find((c) => c.id === formData.category_id)
+                    const rules = cat?.eligibility_rules
+                    const requireDob = !!rules?.require_dob
+                    const allowedPositions = rules?.allowed_positions ?? []
+                    if (!requireDob && allowedPositions.length === 0) return null
+                    return (
+                      <>
+                        <Separator />
+                        <div className="space-y-3">
+                          <Label className="text-base font-semibold">
+                            4. Eligibility for {cat?.name || "this category"} *
+                          </Label>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            This category has eligibility requirements. Please provide the details below.
+                          </p>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            {requireDob && (
+                              <div className="space-y-2">
+                                <Label htmlFor="submitter-dob">
+                                  Date of Birth *
+                                  {typeof rules?.max_age === "number" && (
+                                    <span className="text-xs text-muted-foreground ml-2">
+                                      (must be {rules.max_age} or under)
+                                    </span>
+                                  )}
+                                </Label>
+                                <Input
+                                  id="submitter-dob"
+                                  type="date"
+                                  max={new Date().toISOString().slice(0, 10)}
+                                  value={formData.submitter_metadata.date_of_birth ?? ""}
+                                  onChange={(e) =>
+                                    updateFormData("submitter_metadata", {
+                                      ...formData.submitter_metadata,
+                                      date_of_birth: e.target.value || undefined,
+                                    })
+                                  }
+                                />
+                              </div>
+                            )}
+                            {allowedPositions.length > 0 && (
+                              <div className="space-y-2">
+                                <Label htmlFor="submitter-position">Current Position *</Label>
+                                <Select
+                                  value={formData.submitter_metadata.current_position ?? ""}
+                                  onValueChange={(value) =>
+                                    updateFormData("submitter_metadata", {
+                                      ...formData.submitter_metadata,
+                                      current_position: value,
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger id="submitter-position">
+                                    <SelectValue placeholder="Select your position..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {allowedPositions.map((pos) => (
+                                      <SelectItem key={pos} value={pos}>
+                                        {pos}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
             )}
@@ -1314,10 +1457,18 @@ export default function SubmitAbstractPage() {
                           const file = e.target.files?.[0]
                           if (!file) return
 
-                          // Validate file size
+                          // Fail fast on size; server re-validates
                           const maxSize = (settings?.max_file_size_mb || 5) * 1024 * 1024
                           if (file.size > maxSize) {
                             toast.error(`File size exceeds ${settings?.max_file_size_mb || 5}MB limit`)
+                            e.target.value = ""
+                            return
+                          }
+
+                          // Upload endpoint requires email to scope the storage path
+                          if (!formData.presenting_author_email) {
+                            toast.error("Please enter your email in Step 1 before uploading")
+                            e.target.value = ""
                             return
                           }
 
@@ -1325,14 +1476,49 @@ export default function SubmitAbstractPage() {
                           updateFormData("video_url", "")
                           updateFormData("video_platform", "")
 
-                          // TODO: Upload to storage
-                          toast.info("File upload functionality - integrate with Supabase Storage")
-                          updateFormData("file_name", file.name)
-                          updateFormData("file_size", file.size)
+                          setUploadingFile(true)
+                          try {
+                            const uploadForm = new FormData()
+                            uploadForm.append("file", file)
+                            uploadForm.append("email", formData.presenting_author_email)
+
+                            const res = await fetch(`/api/submit-abstract/${eventId}/upload`, {
+                              method: "POST",
+                              body: uploadForm,
+                            })
+
+                            if (!res.ok) {
+                              const error = await res.json().catch(() => ({}))
+                              throw new Error(error.error || "Upload failed")
+                            }
+
+                            const result = await res.json()
+                            updateFormData("file_path", result.file.path)
+                            updateFormData("file_name", result.file.name)
+                            updateFormData("file_size", result.file.size)
+                            toast.success("File uploaded")
+                          } catch (err) {
+                            console.error("File upload error:", err)
+                            toast.error(err instanceof Error ? err.message : "Failed to upload file")
+                            e.target.value = ""
+                          } finally {
+                            setUploadingFile(false)
+                          }
                         }}
                       />
-                      <Button variant="outline" onClick={() => document.getElementById("file-upload")?.click()}>
-                        Select File
+                      <Button
+                        variant="outline"
+                        onClick={() => document.getElementById("file-upload")?.click()}
+                        disabled={uploadingFile}
+                      >
+                        {uploadingFile ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          "Select File"
+                        )}
                       </Button>
                     </div>
 
@@ -1351,7 +1537,7 @@ export default function SubmitAbstractPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            updateFormData("file_url", "")
+                            updateFormData("file_path", "")
                             updateFormData("file_name", "")
                             updateFormData("file_size", 0)
                           }}

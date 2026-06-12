@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { claimIdempotency } from "@/lib/idempotency"
 
 interface Author {
   name: string
@@ -26,8 +28,9 @@ interface SubmissionData {
   // Co-authors
   authors: Author[]
 
-  // File attachment
-  file_url?: string
+  // File attachment — file_path is the Supabase Storage object path in the
+  // private abstract-files bucket. Never a public URL.
+  file_path?: string
   file_name?: string
   file_size?: number
 
@@ -37,6 +40,10 @@ interface SubmissionData {
 
   // Membership & declarations
   amasi_membership_number?: string
+  submitter_metadata?: {
+    date_of_birth?: string
+    current_position?: string
+  }
   declarations_accepted: boolean
 
   // Optional registration link
@@ -53,8 +60,15 @@ export async function POST(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    // Public endpoint — rate limit before doing any work
+    const ip = getClientIp(request)
+    const rl = checkRateLimit(ip, "public")
+    if (!rl.success) return rateLimitExceededResponse(rl)
+
     const { eventId } = await params
     const body: SubmissionData = await request.json()
+    const idemKey = request.headers.get("idempotency-key")
+    const idemEndpoint = `submit-abstract:${eventId}`
 
     // Validate required fields
     const requiredFields = [
@@ -75,7 +89,10 @@ export async function POST(
       }
     }
 
-    if (!body.declarations_accepted) {
+    if (
+      !Array.isArray(body.declarations_accepted) ||
+      body.declarations_accepted.length === 0
+    ) {
       return NextResponse.json(
         { error: "You must accept the declarations to submit" },
         { status: 400 }
@@ -93,6 +110,20 @@ export async function POST(
 
     if (eventError || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
+    }
+
+    // Module enablement: events can disable the abstracts module entirely
+    // without dropping abstract_settings/categories rows.
+    const { data: eventSettings } = await (supabase as any)
+      .from("event_settings")
+      .select("enable_abstracts")
+      .eq("event_id", eventId)
+      .maybeSingle()
+    if (eventSettings && eventSettings.enable_abstracts === false) {
+      return NextResponse.json(
+        { error: "Abstract submission is disabled for this event" },
+        { status: 400 }
+      )
     }
 
     // Check abstract settings
@@ -168,10 +199,25 @@ export async function POST(
       )
     }
 
-    // Verify category exists
+    // COI declaration: when required, the declarations array must contain an
+    // entry whose text references conflict of interest. The wizard renders the
+    // matching checkbox conditionally on settings.require_coi_declaration.
+    if (settings.require_coi_declaration) {
+      const hasCoi = (body.declarations_accepted as unknown as string[]).some(
+        (d) => typeof d === "string" && /conflict of interest/i.test(d)
+      )
+      if (!hasCoi) {
+        return NextResponse.json(
+          { error: "A conflict-of-interest declaration is required for this event" },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Verify category exists (and pull category-level rules used below)
     const { data: category } = await (supabase as any)
       .from("abstract_categories")
-      .select("id, name")
+      .select("id, name, required_file, eligibility_rules")
       .eq("id", body.category_id)
       .eq("event_id", eventId)
       .eq("is_active", true)
@@ -179,6 +225,57 @@ export async function POST(
 
     if (!category) {
       return NextResponse.json({ error: "Invalid category" }, { status: 400 })
+    }
+
+    // Category-level: a file is mandatory for some tracks (e.g. Best videos,
+    // Young Scholar manuscripts). file_path is the canonical storage pointer;
+    // file_url is the legacy fallback for pre-Phase-A rows / admin imports.
+    if (category.required_file && !body.file_path) {
+      return NextResponse.json(
+        { error: `A file upload is required for the '${category.name}' category` },
+        { status: 400 }
+      )
+    }
+
+    // Category-level eligibility (currently used by Young Scholar Award tracks).
+    // Rule shape: { max_age?: number, require_dob?: boolean, allowed_positions?: string[] }
+    // Eligibility data lives in body.submitter_metadata; the wizard collects
+    // these fields only when the rule requires them (admin path always allowed).
+    if (category.eligibility_rules) {
+      const rules = category.eligibility_rules as {
+        max_age?: number
+        require_dob?: boolean
+        allowed_positions?: string[]
+      }
+      const meta = (body as unknown as { submitter_metadata?: { date_of_birth?: string; current_position?: string } })
+        .submitter_metadata
+      if (rules.require_dob && !meta?.date_of_birth) {
+        return NextResponse.json(
+          { error: `Date of birth is required for the '${category.name}' category` },
+          { status: 400 }
+        )
+      }
+      if (typeof rules.max_age === "number" && meta?.date_of_birth) {
+        const dob = new Date(meta.date_of_birth)
+        if (!isNaN(dob.getTime())) {
+          const ageMs = Date.now() - dob.getTime()
+          const ageYears = ageMs / (365.25 * 24 * 60 * 60 * 1000)
+          if (ageYears > rules.max_age) {
+            return NextResponse.json(
+              { error: `The '${category.name}' category is restricted to authors aged ${rules.max_age} or under` },
+              { status: 400 }
+            )
+          }
+        }
+      }
+      if (Array.isArray(rules.allowed_positions) && rules.allowed_positions.length > 0) {
+        if (!meta?.current_position || !rules.allowed_positions.includes(meta.current_position)) {
+          return NextResponse.json(
+            { error: `The '${category.name}' category is restricted to: ${rules.allowed_positions.join(", ")}` },
+            { status: 400 }
+          )
+        }
+      }
     }
 
     // Handle revision submissions
@@ -205,6 +302,26 @@ export async function POST(
         return NextResponse.json({ error: "This abstract is not awaiting revision" }, { status: 400 })
       }
 
+      // Idempotency: claim a slot after revision-specific validations and
+      // before the UPDATE. Critical here because revision_count is incremented
+      // — a double-click would otherwise double-bump it.
+      const revisionClaim = await claimIdempotency(idemEndpoint, idemKey, body)
+      if (revisionClaim.kind === "cached") {
+        return NextResponse.json(revisionClaim.body, { status: revisionClaim.status })
+      }
+      if (revisionClaim.kind === "in_progress") {
+        return NextResponse.json(
+          { error: "A revision with this Idempotency-Key is already being processed" },
+          { status: 409 }
+        )
+      }
+      if (revisionClaim.kind === "key_conflict") {
+        return NextResponse.json(
+          { error: "This Idempotency-Key was used for a different request body" },
+          { status: 422 }
+        )
+      }
+
       // Update the existing abstract
       const { data: updatedAbstract, error: updateError } = await (supabase as any)
         .from("abstracts")
@@ -218,13 +335,11 @@ export async function POST(
           presenting_author_name: body.presenting_author_name.trim(),
           presenting_author_phone: body.presenting_author_phone,
           presenting_author_affiliation: body.presenting_author_affiliation,
-          file_url: body.file_url || originalAbstract.file_url,
+          file_path: body.file_path || originalAbstract.file_path,
           file_name: body.file_name || originalAbstract.file_name,
-          video_url: body.video_url || originalAbstract.video_url,
-          video_platform: body.video_platform || originalAbstract.video_platform,
+          submitter_metadata: body.submitter_metadata ?? null,
           status: "submitted", // Reset to submitted for re-review
           revision_count: (originalAbstract.revision_count || 0) + 1,
-          last_revised_at: new Date().toISOString(),
         })
         .eq("id", body.revision_of)
         .select()
@@ -232,6 +347,7 @@ export async function POST(
 
       if (updateError) {
         console.error("Error updating abstract:", updateError)
+        await revisionClaim.release()
         return NextResponse.json({ error: "Failed to submit revision" }, { status: 500 })
       }
 
@@ -284,7 +400,7 @@ export async function POST(
           })
       }
 
-      return NextResponse.json({
+      const revisionBody = {
         success: true,
         abstract: {
           id: updatedAbstract.id,
@@ -293,7 +409,9 @@ export async function POST(
           status: updatedAbstract.status,
         },
         message: "Revision submitted successfully",
-      })
+      }
+      await revisionClaim.commit(200, revisionBody)
+      return NextResponse.json(revisionBody)
     }
 
     // Check if registration is required
@@ -317,6 +435,26 @@ export async function POST(
       registrationId = registration.id
     }
 
+    // Idempotency: claim a slot after all validations and right before the
+    // write. The leader inserts; followers either see the cached response or
+    // are told the leader is still in-flight.
+    const claim = await claimIdempotency(idemEndpoint, idemKey, body)
+    if (claim.kind === "cached") {
+      return NextResponse.json(claim.body, { status: claim.status })
+    }
+    if (claim.kind === "in_progress") {
+      return NextResponse.json(
+        { error: "A submission with this Idempotency-Key is already being processed" },
+        { status: 409 }
+      )
+    }
+    if (claim.kind === "key_conflict") {
+      return NextResponse.json(
+        { error: "This Idempotency-Key was used for a different request body" },
+        { status: 422 }
+      )
+    }
+
     // Generate abstract number
     const abstractNumber = await generateAbstractNumber(supabase, eventId)
 
@@ -337,12 +475,11 @@ export async function POST(
         presenting_author_email: body.presenting_author_email.toLowerCase().trim(),
         presenting_author_phone: body.presenting_author_phone,
         presenting_author_affiliation: body.presenting_author_affiliation,
-        file_url: body.file_url,
+        file_path: body.file_path,
         file_name: body.file_name,
         file_size: body.file_size,
-        video_url: body.video_url,
-        video_platform: body.video_platform,
         amasi_membership_number: body.amasi_membership_number,
+        submitter_metadata: body.submitter_metadata ?? null,
         declarations_accepted: body.declarations_accepted,
         status: "submitted",
         submitted_at: new Date().toISOString(),
@@ -352,6 +489,8 @@ export async function POST(
 
     if (createError) {
       console.error("Error creating abstract:", createError)
+      // Release the idempotency slot so the caller can retry cleanly
+      await claim.release()
       return NextResponse.json(
         { error: "Failed to submit abstract" },
         { status: 500 }
@@ -414,7 +553,7 @@ export async function POST(
       .eq("event_id", eventId)
       .ilike("user_email", body.presenting_author_email)
 
-    return NextResponse.json({
+    const successBody = {
       success: true,
       abstract: {
         id: abstract.id,
@@ -423,7 +562,11 @@ export async function POST(
         status: abstract.status,
       },
       message: "Abstract submitted successfully",
-    })
+    }
+    // Cache the response keyed by the Idempotency-Key so the next request
+    // with the same key returns this exact body.
+    await claim.commit(200, successBody)
+    return NextResponse.json(successBody)
   } catch (error) {
     console.error("Error in abstract submission:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -445,7 +588,7 @@ export async function GET(
     // Get event
     const { data: event, error: eventError } = await (supabase as any)
       .from("events")
-      .select("id, name, short_name, start_date, end_date, venue, city")
+      .select("id, name, short_name, start_date, end_date, venue_name, city")
       .eq("id", eventId)
       .single()
 
@@ -467,10 +610,12 @@ export async function GET(
       )
     }
 
-    // Get categories
+    // Get categories — eligibility_rules and required_file feed the wizard's
+    // conditional fields and client-side pre-validation. The server still
+    // re-enforces both on submit (C.4); this is just the friendly pre-check.
     const { data: categories } = await (supabase as any)
       .from("abstract_categories")
-      .select("id, name, description, scoring_criteria, is_award_category, award_name")
+      .select("id, name, description, scoring_criteria, is_award_category, award_name, eligibility_rules, required_file")
       .eq("event_id", eventId)
       .eq("is_active", true)
       .order("sort_order")
@@ -519,7 +664,7 @@ export async function GET(
         name: event.name,
         short_name: event.short_name,
         dates: `${event.start_date} - ${event.end_date}`,
-        venue: event.venue,
+        venue: event.venue_name,
         city: event.city,
       },
       settings: {
@@ -558,10 +703,12 @@ async function generateAbstractNumber(supabase: ReturnType<typeof createAdminCli
   const year = new Date().getFullYear()
   const prefix = `ABS-${year}-`
 
+  // The unique constraint on abstract_number is GLOBAL, not per-event, so we
+  // must look across all events. Per-event prefixing belongs in Phase B work
+  // alongside an `UNIQUE(event_id, abstract_number)` migration.
   const { data: existing } = await (supabase as any)
     .from("abstracts")
     .select("abstract_number")
-    .eq("event_id", eventId)
     .ilike("abstract_number", `${prefix}%`)
 
   let maxNumber = 0

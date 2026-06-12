@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     // Get all accepted abstracts for this event (or specific IDs)
     let query = (supabase as any)
       .from("abstracts")
-      .select("id, presenting_author_email, presenting_author_name, registration_verified")
+      .select("id, presenting_author_email, presenting_author_name")
       .eq("event_id", event_id)
       .eq("status", "accepted")
 
@@ -142,7 +142,6 @@ export async function GET(request: NextRequest) {
         title,
         presenting_author_name,
         presenting_author_email,
-        registration_verified,
         registration_id,
         status,
         accepted_as

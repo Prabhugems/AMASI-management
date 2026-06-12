@@ -82,6 +82,7 @@ type AbstractData = {
   presenting_author_email?: string
   presenting_author_affiliation?: string
   file_url: string | null
+  file_path: string | null
   file_name: string | null
   submitted_at: string
   category?: { id: string; name: string; scoring_criteria?: ScoringCriterion[] | null }
@@ -1145,19 +1146,25 @@ export default function AbstractReviewerPortal() {
                   </div>
                 )}
 
-                {/* File attachment */}
-                {selectedAbstract.file_url && (
+                {/* File attachment — fetches a fresh signed URL on click so
+                    Phase A rows (file_path) and legacy rows (file_url) both work */}
+                {(selectedAbstract.file_path || selectedAbstract.file_url) && (
                   <div>
-                    <a
-                      href={selectedAbstract.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
                       className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                      onClick={async () => {
+                        try {
+                          const r = await fetch(`/api/abstracts/${selectedAbstract.id}/file-url`)
+                          const d = await r.json()
+                          if (d?.url) window.open(d.url, "_blank", "noopener,noreferrer")
+                        } catch { /* swallow — UI state isn't worth a toast here */ }
+                      }}
                     >
                       <FileText className="h-4 w-4" />
                       {selectedAbstract.file_name || "Download Attachment"}
                       <ExternalLink className="h-3 w-3" />
-                    </a>
+                    </button>
                   </div>
                 )}
 

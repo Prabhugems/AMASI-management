@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
         session_location,
         presentation_completed,
         presentation_completed_at,
-        category:abstract_categories(name)
+        category:abstract_categories!category_id(name)
       `)
       .in("id", abstract_ids)
       .eq("status", "accepted")

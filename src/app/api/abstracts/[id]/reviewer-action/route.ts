@@ -160,7 +160,7 @@ export async function POST(
     // Get abstract details
     const { data: abstract } = await (supabase as any)
       .from("abstracts")
-      .select("*, abstract_categories(name)")
+      .select("*, abstract_categories!category_id(name)")
       .eq("id", abstractId)
       .single()
 

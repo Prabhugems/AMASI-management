@@ -36,7 +36,7 @@ export async function GET(
       .from("abstracts")
       .select(`
         *,
-        category:abstract_categories(id, name, description, scoring_criteria, is_award_category, award_name),
+        category:abstract_categories!category_id(id, name, description, scoring_criteria, is_award_category, award_name),
         authors:abstract_authors(id, name, email, affiliation, author_order, is_presenting),
         reviews:abstract_reviews(
           id, reviewer_id, reviewer_name, reviewer_email,

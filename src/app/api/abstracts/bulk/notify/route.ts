@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
         abstract_number,
         title,
         status,
-        decision,
         decision_notes,
         accepted_as,
         presenting_author_name,
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
         session_date,
         session_time,
         session_location,
-        category:abstract_categories(name),
+        category:abstract_categories!category_id(name),
         events(id, name, short_name, start_date, city)
       `)
       .in("id", abstract_ids)

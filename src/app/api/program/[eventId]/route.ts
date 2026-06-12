@@ -56,7 +56,7 @@ export async function GET(
         presentation_type,
         award_type,
         accepted_as,
-        category:abstract_categories(name),
+        category:abstract_categories!category_id(name),
         slot:abstract_presentation_slots(
           presentation_date,
           start_time,

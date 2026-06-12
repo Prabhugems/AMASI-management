@@ -61,6 +61,7 @@ interface Abstract {
   accepted_as: string | null
   category_id: string | null
   file_url: string | null
+  file_path: string | null
   file_name: string | null
   submitted_at: string
   amasi_membership_number: string | null
@@ -652,17 +653,22 @@ export default function AbstractDetailPage() {
                   <span className="font-medium">{formatDate(abstract.decision_date)}</span>
                 </div>
               )}
-              {abstract.file_url && (
+              {(abstract.file_path || abstract.file_url) && (
                 <div className="pt-3 border-t">
-                  <a
-                    href={abstract.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
                     className="flex items-center gap-2 text-primary hover:underline"
+                    onClick={async () => {
+                      try {
+                        const r = await fetch(`/api/abstracts/${abstract.id}/file-url`)
+                        const d = await r.json()
+                        if (d?.url) window.open(d.url, "_blank", "noopener,noreferrer")
+                      } catch { /* no-op */ }
+                    }}
                   >
                     <FileText className="h-4 w-4" />
                     {abstract.file_name || "Download Attachment"}
-                  </a>
+                  </button>
                 </div>
               )}
             </div>

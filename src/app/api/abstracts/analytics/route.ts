@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         submitted_at,
         updated_at,
         decision_notified_at,
-        category:abstract_categories(id, name),
+        category:abstract_categories!category_id(id, name),
         reviews:abstract_reviews(id, overall_score, recommendation, reviewed_at)
       `)
       .eq("event_id", eventId)

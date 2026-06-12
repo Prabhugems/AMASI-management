@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
         keywords,
         presenting_author_email,
         presenting_author_affiliation,
-        category:abstract_categories(id, name, keywords, specialty_track)
+        category:abstract_categories!category_id(id, name, keywords, specialty_track)
       `)
       .eq("event_id", event_id)
       .in("status", ["submitted", "under_review"])

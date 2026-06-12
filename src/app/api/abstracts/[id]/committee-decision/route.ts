@@ -36,7 +36,7 @@ export async function POST(
     // Get the abstract
     const { data: abstract, error: fetchError } = await (supabase as any)
       .from("abstracts")
-      .select("*, event_id, presenting_author_email, presenting_author_name, review_round")
+      .select("*, event_id, presenting_author_email, presenting_author_name")
       .eq("id", id)
       .single()
 

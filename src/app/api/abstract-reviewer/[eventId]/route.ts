@@ -87,9 +87,10 @@ export async function GET(
         presenting_author_email,
         presenting_author_affiliation,
         file_url,
+        file_path,
         file_name,
         submitted_at,
-        category:abstract_categories(id, name, scoring_criteria),
+        category:abstract_categories!category_id(id, name, scoring_criteria),
         authors:abstract_authors(id, name, email, affiliation, author_order, is_presenting),
         reviews:abstract_reviews(id, reviewer_name, reviewer_email, score_originality, score_methodology, score_relevance, score_clarity, overall_score, scores, total_score, max_possible_score, review_type, recommendation, comments_to_author, reviewed_at)
       `)

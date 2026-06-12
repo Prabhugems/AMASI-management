@@ -27,7 +27,6 @@ export async function POST(
         presenting_author_email,
         presenting_author_name,
         registration_id,
-        registration_verified
       `)
       .eq("id", id)
       .single()
@@ -245,7 +244,6 @@ export async function GET(
         presenting_author_name,
         presenting_author_email,
         registration_id,
-        registration_verified,
         presenter_checked_in,
         presenter_checked_in_at,
         presentation_completed,
