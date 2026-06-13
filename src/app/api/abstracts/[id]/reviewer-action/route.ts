@@ -1,5 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
+import { sendAndLogAbstractNotification } from "@/lib/abstracts/notify"
+import { isEmailEnabled } from "@/lib/email"
+import type { TemplateType, TemplateVariables } from "@/lib/email-templates"
 import { NextRequest, NextResponse } from "next/server"
 
 // Valid decline reasons
@@ -164,24 +167,24 @@ export async function POST(
       .eq("id", abstractId)
       .single()
 
-    // Get committee members for notifications. Source = team_members with a
-    // committee-capable role for this event. abstract_committee_members was
-    // a phantom table; the role system is the source of truth.
+    // Committee = active team_members with a committee-capable role and this
+    // event in their event_ids. Phase 4: BROADCAST to all such members, not
+    // just the first one. The previous .limit(5) + [0]-only pattern was a
+    // single-point-of-failure: if that one member was unavailable, the
+    // abstract silently stalled. No cap: committee sizes are small (max 2
+    // observed in production), and per-recipient send means N=committee_size
+    // notification rows — trivial volume.
     const { data: committeeMembers } = await (supabase as any)
       .from("team_members")
       .select("email, name")
       .eq("is_active", true)
       .contains("event_ids", [abstract?.event_id])
       .in("role", ["admin", "coordinator", "committee_member"])
-      .limit(5)
 
-    // When no real committee is staffed for this event, we DO NOT write a
-    // notification row pointing at a fake address (the old
-    // "committee@event.com" placeholder was a silent-fail to a fake inbox).
-    // Reviewer action still succeeds; response signals committee_notified:false.
+    // Phase 2 hardening retained: when zero committee staffed for the event,
+    // we don't fabricate a fake recipient (no more `committee@event.com`
+    // placeholder). The reviewer's action still succeeds.
     const hasRealCommittee = (committeeMembers?.length ?? 0) > 0
-    const committeeEmail = committeeMembers?.[0]?.email ?? null
-    const committeeName = committeeMembers?.[0]?.name ?? null
 
     switch (action) {
       case "decline": {
@@ -213,32 +216,43 @@ export async function POST(
           })
           .eq("id", reviewer.id)
 
-        // Log the decline action — only if there's a real committee recipient.
-        if (hasRealCommittee && committeeEmail) {
-          await (supabase as any).from("abstract_notifications").insert({
-            abstract_id: abstractId,
-            notification_type: "reviewer_declined",
-            recipient_email: committeeEmail,
-            recipient_name: committeeName,
-            subject: `Reviewer Declined: ${abstract?.title}`,
-            body_preview: `${reviewer.name} has declined to review abstract #${abstract?.abstract_number}. Reason: ${reasonLabel}${body.declined_notes ? ` - ${body.declined_notes}` : ""}`,
-            metadata: {
-              reviewer_id: reviewer.id,
-              reviewer_name: reviewer.name,
-              reason: declineReason,
-              reason_label: reasonLabel,
-              declined_notes: body.declined_notes,
-              suggested_reviewer_email,
-            },
-          })
-        }
+        // Broadcast to all committee members. Side-effects above are already
+        // committed; notification failures don't roll them back. Per-recipient
+        // rows so a partial failure is visible (3-of-4 delivered, 4th bounced).
+        const notifyResult = await broadcastToCommittee({
+          supabase,
+          abstract,
+          committeeMembers: committeeMembers ?? [],
+          hasRealCommittee,
+          templateType: "reviewer_declined",
+          notificationType: "reviewer_declined",
+          subject: `[Action required] Reviewer declined: ${abstract?.abstract_number} (${reviewer.name})`,
+          fallbackHtmlBuilder: (committeeMemberName) =>
+            buildReviewerDeclinedHtml({
+              committeeMemberName,
+              reviewerName: reviewer.name,
+              abstractNumber: abstract?.abstract_number ?? "",
+              abstractTitle: abstract?.title ?? "",
+              reasonLabel,
+              declinedNotes: body.declined_notes ?? null,
+              suggestedReviewerEmail: suggested_reviewer_email ?? null,
+            }),
+          metadata: {
+            reviewer_id: reviewer.id,
+            reviewer_name: reviewer.name,
+            reason: declineReason,
+            reason_label: reasonLabel,
+            declined_notes: body.declined_notes,
+            suggested_reviewer_email,
+          },
+        })
 
         return NextResponse.json({
           success: true,
           message: "Assignment declined. Committee will be notified to reassign.",
           needs_reassignment: true,
           reason: declineReason,
-          committee_notified: hasRealCommittee,
+          notifications: notifyResult,
         })
       }
 
@@ -267,30 +281,39 @@ export async function POST(
           })
           .eq("id", abstractId)
 
-        // Notify committee — only if there's a real recipient.
-        if (hasRealCommittee && committeeEmail) {
-          await (supabase as any).from("abstract_notifications").insert({
-            abstract_id: abstractId,
-            notification_type: "category_mismatch",
-            recipient_email: committeeEmail,
-            recipient_name: committeeName,
-            subject: `Category Mismatch Flagged: ${abstract?.title}`,
-            body_preview: `${reviewer.name} has flagged a potential category mismatch for abstract #${abstract?.abstract_number}. Current category: ${(abstract?.abstract_categories as any)?.name}. Reason: ${reason}`,
-            metadata: {
-              reviewer_id: reviewer.id,
-              reviewer_name: reviewer.name,
-              reason,
-              current_category: (abstract?.abstract_categories as any)?.name,
-              suggested_category,
-            },
-          })
-        }
+        const currentCategoryName = (abstract?.abstract_categories as any)?.name ?? "Uncategorized"
+        const notifyResult = await broadcastToCommittee({
+          supabase,
+          abstract,
+          committeeMembers: committeeMembers ?? [],
+          hasRealCommittee,
+          templateType: "category_mismatch_flagged",
+          notificationType: "category_mismatch",
+          subject: `[Action required] Category flagged: ${abstract?.abstract_number} (${reviewer.name})`,
+          fallbackHtmlBuilder: (committeeMemberName) =>
+            buildCategoryMismatchHtml({
+              committeeMemberName,
+              reviewerName: reviewer.name,
+              abstractNumber: abstract?.abstract_number ?? "",
+              abstractTitle: abstract?.title ?? "",
+              currentCategoryName,
+              reason: reason ?? null,
+              suggestedCategory: suggested_category ?? null,
+            }),
+          metadata: {
+            reviewer_id: reviewer.id,
+            reviewer_name: reviewer.name,
+            reason,
+            current_category: currentCategoryName,
+            suggested_category,
+          },
+        })
 
         return NextResponse.json({
           success: true,
           message: "Category mismatch flagged. Committee will review and may reassign.",
           needs_committee_review: true,
-          committee_notified: hasRealCommittee,
+          notifications: notifyResult,
         })
       }
 
@@ -300,31 +323,41 @@ export async function POST(
           new Date(assignment.due_date).getTime() + (extension_days || 3) * 24 * 60 * 60 * 1000
         )
 
-        // Log extension request — only if there's a real committee recipient.
-        if (hasRealCommittee && committeeEmail) {
-          await (supabase as any).from("abstract_notifications").insert({
-            abstract_id: abstractId,
-            notification_type: "extension_requested",
-            recipient_email: committeeEmail,
-            recipient_name: committeeName,
-            subject: `Extension Requested: ${abstract?.title}`,
-            body_preview: `${reviewer.name} has requested a ${extension_days || 3}-day extension for reviewing abstract #${abstract?.abstract_number}. Reason: ${reason || "Not specified"}`,
-            metadata: {
-              reviewer_id: reviewer.id,
-              reviewer_name: reviewer.name,
-              current_due_date: assignment.due_date,
-              requested_due_date: newDueDate.toISOString(),
-              extension_days: extension_days || 3,
-              reason,
-            },
-          })
-        }
+        const days = extension_days || 3
+        const notifyResult = await broadcastToCommittee({
+          supabase,
+          abstract,
+          committeeMembers: committeeMembers ?? [],
+          hasRealCommittee,
+          templateType: "review_extension_requested",
+          notificationType: "extension_requested",
+          subject: `[Review needed] Extension request: ${abstract?.abstract_number}`,
+          fallbackHtmlBuilder: (committeeMemberName) =>
+            buildExtensionRequestHtml({
+              committeeMemberName,
+              reviewerName: reviewer.name,
+              abstractNumber: abstract?.abstract_number ?? "",
+              abstractTitle: abstract?.title ?? "",
+              currentDueDate: assignment.due_date,
+              requestedDueDate: newDueDate.toISOString(),
+              days,
+              reason: reason ?? null,
+            }),
+          metadata: {
+            reviewer_id: reviewer.id,
+            reviewer_name: reviewer.name,
+            current_due_date: assignment.due_date,
+            requested_due_date: newDueDate.toISOString(),
+            extension_days: days,
+            reason,
+          },
+        })
 
         return NextResponse.json({
           success: true,
           message: "Extension request submitted. Committee will review.",
           pending_approval: true,
-          committee_notified: hasRealCommittee,
+          notifications: notifyResult,
         })
       }
 
@@ -487,4 +520,181 @@ export async function PUT(
     console.error("Error processing committee action:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
+}
+
+// ---------------------------------------------------------------------------
+// Broadcast + fallback helpers (Phase: reviewer-action sync-send)
+// ---------------------------------------------------------------------------
+
+type BroadcastInput = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  abstract: any
+  committeeMembers: Array<{ email: string; name: string | null }>
+  hasRealCommittee: boolean
+  templateType: TemplateType
+  notificationType: string
+  subject: string
+  fallbackHtmlBuilder: (committeeMemberName: string) => string
+  metadata: Record<string, unknown>
+}
+
+type BroadcastResult = {
+  recipients: number
+  sent: number
+  failed: number
+  skipped: boolean
+  details: Array<{ email: string; delivered: boolean; error?: string }>
+}
+
+// Per-recipient sync send. One abstract_notifications row per recipient so
+// "3 of 4 delivered, 4th bounced" is observable, not aggregated away.
+// Send failures are recorded but do NOT throw — the reviewer's action has
+// already committed; an unsent email is a separate problem.
+async function broadcastToCommittee(input: BroadcastInput): Promise<BroadcastResult> {
+  if (!input.hasRealCommittee) {
+    return { recipients: 0, sent: 0, failed: 0, skipped: true, details: [] }
+  }
+  if (!isEmailEnabled()) {
+    return {
+      recipients: input.committeeMembers.length,
+      sent: 0,
+      failed: 0,
+      skipped: true,
+      details: input.committeeMembers.map(m => ({
+        email: m.email,
+        delivered: false,
+        error: "email provider not configured",
+      })),
+    }
+  }
+
+  const details: BroadcastResult["details"] = []
+  let sent = 0
+  let failed = 0
+  for (const member of input.committeeMembers) {
+    if (!member.email) continue
+    const html = input.fallbackHtmlBuilder(member.name ?? "Committee member")
+    // Template variables kept lean — these emails fall back to the inline
+    // HTML by default; if a custom template is configured later, it gets
+    // these standard fields to substitute against.
+    const variables: TemplateVariables = {
+      abstract_number: input.abstract?.abstract_number ?? undefined,
+      abstract_title: input.abstract?.title ?? undefined,
+      author_name: input.abstract?.presenting_author_name ?? undefined,
+    }
+    const result = await sendAndLogAbstractNotification({
+      supabase: input.supabase,
+      abstractId: input.abstract.id,
+      eventId: input.abstract.event_id,
+      recipientEmail: member.email,
+      recipientName: member.name,
+      templateType: input.templateType,
+      notificationType: input.notificationType,
+      templateVariables: variables,
+      fallbackSubject: input.subject,
+      fallbackHtml: html,
+      metadata: input.metadata,
+    })
+    if (result.delivered) sent++; else failed++
+    details.push({ email: member.email, delivered: result.delivered, error: result.error })
+  }
+
+  return {
+    recipients: input.committeeMembers.length,
+    sent,
+    failed,
+    skipped: false,
+    details,
+  }
+}
+
+function escRA(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+function buildReviewerDeclinedHtml(input: {
+  committeeMemberName: string
+  reviewerName: string
+  abstractNumber: string
+  abstractTitle: string
+  reasonLabel: string
+  declinedNotes: string | null
+  suggestedReviewerEmail: string | null
+}): string {
+  const notesBlock = input.declinedNotes
+    ? `<p><strong>Reviewer notes:</strong> ${escRA(input.declinedNotes)}</p>`
+    : ""
+  const suggestionBlock = input.suggestedReviewerEmail
+    ? `<p><strong>Reviewer suggests:</strong> ${escRA(input.suggestedReviewerEmail)} as an alternative.</p>`
+    : ""
+  return `<!doctype html><html><body style="font-family:-apple-system,sans-serif;line-height:1.6;color:#1f2937;max-width:600px;margin:0 auto;padding:20px">
+    <p>Dear ${escRA(input.committeeMemberName)},</p>
+    <p><strong>${escRA(input.reviewerName)}</strong> has declined to review <strong>${escRA(input.abstractNumber)}</strong> — ${escRA(input.abstractTitle)}.</p>
+    <p><strong>Reason:</strong> ${escRA(input.reasonLabel)}</p>
+    ${notesBlock}
+    ${suggestionBlock}
+    <p>The abstract now needs a replacement reviewer. Please reassign at your earliest convenience so the review round stays on track.</p>
+    <p style="color:#6b7280;font-size:13px">— The Organizing Committee notification system</p>
+  </body></html>`
+}
+
+function buildCategoryMismatchHtml(input: {
+  committeeMemberName: string
+  reviewerName: string
+  abstractNumber: string
+  abstractTitle: string
+  currentCategoryName: string
+  reason: string | null
+  suggestedCategory: string | null
+}): string {
+  const reasonBlock = input.reason
+    ? `<p><strong>Reason:</strong> ${escRA(input.reason)}</p>`
+    : ""
+  const suggestionBlock = input.suggestedCategory
+    ? `<p><strong>Suggested category:</strong> ${escRA(input.suggestedCategory)}</p>`
+    : ""
+  return `<!doctype html><html><body style="font-family:-apple-system,sans-serif;line-height:1.6;color:#1f2937;max-width:600px;margin:0 auto;padding:20px">
+    <p>Dear ${escRA(input.committeeMemberName)},</p>
+    <p><strong>${escRA(input.reviewerName)}</strong> has flagged a category mismatch on <strong>${escRA(input.abstractNumber)}</strong> — ${escRA(input.abstractTitle)}.</p>
+    <p><strong>Current category:</strong> ${escRA(input.currentCategoryName)}</p>
+    ${suggestionBlock}
+    ${reasonBlock}
+    <p>The abstract is now flagged and the reviewer's assignment is parked until the committee acts. Please either change the category (and possibly reassign), or confirm the current category and reassign to a reviewer in this domain.</p>
+    <p style="color:#6b7280;font-size:13px">— The Organizing Committee notification system</p>
+  </body></html>`
+}
+
+function buildExtensionRequestHtml(input: {
+  committeeMemberName: string
+  reviewerName: string
+  abstractNumber: string
+  abstractTitle: string
+  currentDueDate: string | null
+  requestedDueDate: string
+  days: number
+  reason: string | null
+}): string {
+  const fmt = (iso: string | null) => {
+    if (!iso) return "—"
+    try { return new Date(iso).toUTCString() } catch { return iso }
+  }
+  const reasonBlock = input.reason
+    ? `<p><strong>Reason:</strong> ${escRA(input.reason)}</p>`
+    : ""
+  return `<!doctype html><html><body style="font-family:-apple-system,sans-serif;line-height:1.6;color:#1f2937;max-width:600px;margin:0 auto;padding:20px">
+    <p>Dear ${escRA(input.committeeMemberName)},</p>
+    <p><strong>${escRA(input.reviewerName)}</strong> has requested a <strong>${input.days}-day extension</strong> on <strong>${escRA(input.abstractNumber)}</strong> — ${escRA(input.abstractTitle)}.</p>
+    <p><strong>Current deadline:</strong> ${escRA(fmt(input.currentDueDate))}<br/>
+       <strong>Requested deadline:</strong> ${escRA(fmt(input.requestedDueDate))}</p>
+    ${reasonBlock}
+    <p>The reviewer is still working — no reassignment needed. Please approve or decline so they know whether to continue against the new deadline.</p>
+    <p style="color:#6b7280;font-size:13px">— The Organizing Committee notification system</p>
+  </body></html>`
 }
