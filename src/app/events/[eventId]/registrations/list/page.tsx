@@ -1501,7 +1501,22 @@ function RegistrationsContent() {
               View Page
             </Button>
           )}
-          <Button variant="outline" onClick={() => router.push(`/events/${eventId}/registrations/export`)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Carry the active filters to the export page so it exports
+              // exactly what's currently shown, not all registrations.
+              const p = new URLSearchParams()
+              if (statusFilter !== "all") p.set("status", statusFilter)
+              if (ticketFilter !== "all") p.set("ticket", ticketFilter)
+              if (modeFilter !== "all") p.set("mode", modeFilter)
+              if (addonFilter !== "all") p.set("addon", addonFilter)
+              if (addonsOnly) p.set("addons_only", "1")
+              if (searchQuery) p.set("q", searchQuery)
+              const qs = p.toString()
+              router.push(`/events/${eventId}/registrations/export${qs ? `?${qs}` : ""}`)
+            }}
+          >
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>

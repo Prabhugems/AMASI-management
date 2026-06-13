@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -34,6 +34,7 @@ const EXPORT_FIELDS = [
   { id: "status", label: "Status", default: true },
   { id: "payment_status", label: "Payment Status", default: false },
   { id: "total_amount", label: "Amount", default: false },
+  { id: "addon_total", label: "Add-on Total", default: false },
   { id: "checked_in", label: "Checked In", default: false },
   { id: "checked_in_at", label: "Checked In At", default: false },
   { id: "badge_printed", label: "Badge Printed", default: false },
@@ -47,16 +48,30 @@ export default function ExportRegistrationsPage() {
   const eventId = params.eventId as string
   const supabase = createClient()
 
-  const [selectedFields, setSelectedFields] = useState<Set<string>>(
-    new Set(EXPORT_FIELDS.filter(f => f.default).map(f => f.id))
-  )
-  const [statusFilter, setStatusFilter] = useState<string>("all")
+  // Filters carried over from the registrations list (so Export respects what
+  // the user filtered to, rather than always exporting everything).
+  const sp = useSearchParams()
+  const ticketParam = sp.get("ticket") || "all"
+  const modeParam = sp.get("mode") || "all"
+  const addonParam = sp.get("addon") || "all"
+  const addonsOnlyParam = sp.get("addons_only") === "1"
+  const searchParam = (sp.get("q") || "").toLowerCase()
+  const hasListFilters =
+    ticketParam !== "all" || modeParam !== "all" || addonParam !== "all" || addonsOnlyParam || !!searchParam
+
+  const [selectedFields, setSelectedFields] = useState<Set<string>>(() => {
+    const base = new Set(EXPORT_FIELDS.filter(f => f.default).map(f => f.id))
+    // Auto-include add-on total when arriving from an add-on filter
+    if (addonParam !== "all" || addonsOnlyParam) base.add("addon_total")
+    return base
+  })
+  const [statusFilter, setStatusFilter] = useState<string>(sp.get("status") || "all")
   const [format, setFormat] = useState<"csv" | "json">("csv")
   const [exporting, setExporting] = useState(false)
 
   // Fetch registrations and ticket types
   const { data: registrations } = useQuery({
-    queryKey: ["export-registrations", eventId, statusFilter],
+    queryKey: ["export-registrations", eventId, statusFilter, ticketParam, modeParam, addonParam, addonsOnlyParam, searchParam],
     queryFn: async () => {
       // Fetch ticket types first (separate query to avoid RLS join issues)
       const { data: tickets } = await (supabase as any)
@@ -71,7 +86,7 @@ export default function ExportRegistrationsPage() {
 
       let query = (supabase as any)
         .from("registrations")
-        .select("*")
+        .select("*, registration_addons(addon_id, total_price)")
         .eq("event_id", eventId)
 
       if (statusFilter !== "all") {
@@ -79,11 +94,36 @@ export default function ExportRegistrationsPage() {
       }
 
       const { data } = await query
-      // Map ticket_type_id to ticket name
-      return (data || []).map((r: any) => ({
+      // Map ticket name + compute add-on total
+      let rows = (data || []).map((r: any) => ({
         ...r,
         ticket_type: ticketMap[r.ticket_type_id] || "",
+        addon_total: (r.registration_addons || []).reduce(
+          (s: number, a: any) => s + (a.total_price || 0),
+          0
+        ),
       }))
+
+      // Apply the same filters the list uses, so the export matches the view
+      if (ticketParam !== "all") {
+        rows = rows.filter((r: any) => r.ticket_type_id === ticketParam)
+      }
+      if (modeParam !== "all") {
+        rows = rows.filter((r: any) => (r.participation_mode || "offline") === modeParam)
+      }
+      if (addonParam !== "all") {
+        rows = rows.filter((r: any) => (r.registration_addons || []).some((a: any) => a.addon_id === addonParam))
+      }
+      if (addonsOnlyParam) {
+        rows = rows.filter((r: any) => (r.registration_addons || []).length > 0)
+      }
+      if (searchParam) {
+        rows = rows.filter((r: any) =>
+          [r.attendee_name, r.attendee_email, r.registration_number, r.attendee_phone, r.attendee_institution]
+            .some((v: any) => (v || "").toLowerCase().includes(searchParam))
+        )
+      }
+      return rows
     },
   })
 
@@ -170,6 +210,12 @@ export default function ExportRegistrationsPage() {
       <div>
         <h1 className="text-xl sm:text-2xl font-bold">Export Registrations</h1>
         <p className="text-muted-foreground">Download registration data in various formats</p>
+        {hasListFilters && (
+          <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+            <CheckSquare className="h-3.5 w-3.5" />
+            Exporting your filtered selection ({registrations?.length || 0} of all registrations)
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
