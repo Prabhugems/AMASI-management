@@ -541,7 +541,7 @@ function RegistrationsContent() {
           price,
           max_quantity,
           has_variants,
-          variants:addon_variants(id, name, price_adjustment, is_available)
+          variants:addon_variants(id, name, price, is_active)
         `)
         .eq("event_id", eventId)
         .eq("is_active", true)
@@ -563,7 +563,7 @@ function RegistrationsContent() {
     }) => {
       const addon = availableAddons?.find((a: any) => a.id === data.addonId)
       const variant = addon?.variants?.find((v: any) => v.id === data.variantId)
-      const unitPrice = addon?.price + (variant?.price_adjustment || 0)
+      const unitPrice = variant ? variant.price : (addon?.price || 0)
 
       const response = await fetch(`/api/registrations/${data.registrationId}/addons`, {
         method: "POST",
@@ -3471,14 +3471,12 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
                         <SelectValue placeholder="Choose a variant..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {addon.variants.filter((v: any) => v.is_available).map((variant: any) => (
+                        {addon.variants.filter((v: any) => v.is_active).map((variant: any) => (
                           <SelectItem key={variant.id} value={variant.id}>
                             {variant.name}
-                            {variant.price_adjustment !== 0 && (
-                              <span className="text-muted-foreground ml-2">
-                                ({variant.price_adjustment > 0 ? '+' : ''}{fmtAmt(variant.price_adjustment)})
-                              </span>
-                            )}
+                            <span className="text-muted-foreground ml-2">
+                              ({fmtAmt(variant.price)})
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -3508,7 +3506,7 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
                     {(() => {
                       const addon = availableAddons?.find((a: any) => a.id === selectedAddonId)
                       const variant = addon?.variants?.find((v: any) => v.id === selectedVariantId)
-                      return fmtAmt(addon?.price + (variant?.price_adjustment || 0))
+                      return fmtAmt(variant ? variant.price : (addon?.price || 0))
                     })()}
                   </span>
                 </div>
@@ -3518,7 +3516,7 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
                     {(() => {
                       const addon = availableAddons?.find((a: any) => a.id === selectedAddonId)
                       const variant = addon?.variants?.find((v: any) => v.id === selectedVariantId)
-                      const unitPrice = addon?.price + (variant?.price_adjustment || 0)
+                      const unitPrice = variant ? variant.price : (addon?.price || 0)
                       return fmtAmt(unitPrice * addonQuantity)
                     })()}
                   </span>
