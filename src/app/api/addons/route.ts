@@ -30,6 +30,14 @@ export async function GET(request: NextRequest) {
         addon_ticket_links (
           ticket_type_id,
           max_quantity_per_attendee
+        ),
+        variants:addon_variants (
+          id,
+          addon_id,
+          name,
+          price,
+          is_active,
+          sort_order
         )
       `)
       .eq("event_id", eventId)
@@ -73,11 +81,16 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Active variants only, ordered by sort_order
+      const variants = (addon.variants || [])
+        .filter((v: any) => v.is_active)
+        .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+
       return {
         ...addon,
         max_quantity: maxQty,
         addon_ticket_links: undefined, // Don't expose internal data
-        variants: [], // Variants not implemented yet
+        variants,
       }
     })
 
