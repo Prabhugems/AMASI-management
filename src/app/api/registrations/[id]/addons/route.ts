@@ -26,7 +26,7 @@ export async function GET(
       .select(`
         *,
         addon:addons(id, name, price, is_course),
-        addon_variant:addon_variants(id, name, price_adjustment)
+        addon_variant:addon_variants(id, name, price)
       `)
       .eq("registration_id", id)
 

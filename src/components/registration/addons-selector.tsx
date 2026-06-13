@@ -26,8 +26,8 @@ export interface AddonVariant {
   id: string
   addon_id: string
   name: string
-  price_adjustment: number
-  is_available: boolean
+  price: number
+  is_active: boolean
   sort_order: number
 }
 
@@ -85,7 +85,7 @@ export function AddonsSelector({
       newSelection.delete(key)
     } else if (newQty <= maxQty) {
       const variant = addon.variants?.find(v => v.id === variantId)
-      const unitPrice = addon.price + (variant?.price_adjustment || 0)
+      const unitPrice = variant ? variant.price : addon.price
       newSelection.set(key, {
         addonId: addon.id,
         variantId,
@@ -236,11 +236,11 @@ export function AddonsSelector({
                     </p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {addon.variants
-                        .filter(v => v.is_available)
+                        .filter(v => v.is_active)
                         .sort((a, b) => a.sort_order - b.sort_order)
                         .map((variant) => {
                           const selected = getSelectedQuantity(addon.id, variant.id)
-                          const variantPrice = addon.price + variant.price_adjustment
+                          const variantPrice = variant.price
                           return (
                             <div
                               key={variant.id}

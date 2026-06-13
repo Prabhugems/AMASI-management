@@ -62,7 +62,7 @@ export async function GET(
       unit_price,
       total_price,
       addon:addons(id, name, price),
-      addon_variant:addon_variants(id, name, price_adjustment)
+      addon_variant:addon_variants(id, name, price)
     `)
     .eq("registration_id", registration.id)
 
