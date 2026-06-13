@@ -1740,6 +1740,35 @@ function RegistrationsContent() {
         )}
       </div>
 
+      {/* Add-on revenue summary (only when filtering to add-on buyers) */}
+      {addonsOnly && filteredRegistrations && filteredRegistrations.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50/50 px-4 py-3 dark:border-orange-500/30 dark:bg-orange-500/10">
+          <div className="flex items-center gap-2 text-sm">
+            <Package className="h-4 w-4 text-orange-500" />
+            <span className="font-semibold">{filteredRegistrations.length}</span>
+            <span className="text-muted-foreground">
+              add-on {filteredRegistrations.length === 1 ? "buyer" : "buyers"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Add-on revenue</span>
+            <span className="font-bold tabular-nums text-orange-600 dark:text-orange-400">
+              {fmtAmt(
+                filteredRegistrations.reduce(
+                  (sum, r) =>
+                    sum +
+                    (r.registration_addons || []).reduce(
+                      (s, a) => s + (a.total_price || 0),
+                      0
+                    ),
+                  0
+                )
+              )}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Registrations List */}
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
