@@ -119,7 +119,7 @@ interface Registration {
     name: string
     price: number
   }
-  registration_addons?: { addon_id: string }[]
+  registration_addons?: { addon_id: string; total_price: number | null }[]
 }
 
 interface TicketType {
@@ -450,7 +450,7 @@ function RegistrationsContent() {
           .select(`
             *,
             ticket_type:ticket_types(name, price),
-            registration_addons(addon_id)
+            registration_addons(addon_id, total_price)
           `)
           .eq("event_id", eventId)
           .order("created_at", { ascending: false })
@@ -1809,6 +1809,11 @@ function RegistrationsContent() {
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">
                     Amount
                   </th>
+                  {addonsOnly && (
+                    <th className="text-right p-4 text-sm font-medium text-muted-foreground">
+                      Add-on Total
+                    </th>
+                  )}
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">
                     Status
                   </th>
@@ -1873,6 +1878,18 @@ function RegistrationsContent() {
                         {getPaymentStatusIcon(reg.payment_status)}
                       </div>
                     </td>
+                    {addonsOnly && (
+                      <td className="p-4 text-right">
+                        <span className="font-medium tabular-nums">
+                          {fmtAmt(
+                            (reg.registration_addons || []).reduce(
+                              (sum, a) => sum + (a.total_price || 0),
+                              0
+                            )
+                          )}
+                        </span>
+                      </td>
+                    )}
                     <td className="p-4">
                       <div className="flex items-center gap-1.5">
                         <Badge
