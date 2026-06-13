@@ -232,10 +232,11 @@ export async function POST(
     }
 
     // Fetch all abstracts upfront so we can run per-row transition checks
-    // BEFORE writing anything.
+    // BEFORE writing anything. abstract_number is fetched so we can name
+    // blocked rows in the rejection response by human-readable identifier.
     const { data: abstracts, error: fetchError } = await adminClient
       .from("abstracts")
-      .select("id, event_id, category_id, presentation_type, status, decision_notified_at")
+      .select("id, event_id, category_id, presentation_type, status, decision_notified_at, abstract_number")
       .in("id", body.abstract_ids)
 
     if (fetchError || !abstracts || abstracts.length === 0) {
@@ -259,11 +260,18 @@ export async function POST(
     // Per-row transition check. If ANY row would be an illegal transition
     // (or a re-decide without force_redecide), reject the whole batch — the
     // safer all-or-nothing semantic for a curl-bypass-able admin tool.
+    // Each blocked entry names id + abstract_number + current_status so a
+    // CLI or UI client can deselect-and-rerun without a UUID lookup.
     const targetStatus = targetStatusFor(body.decision)
-    const blockedRows: { id: string; reason: string }[] = []
+    const blockedRows: { id: string; abstract_number: string | null; current_status: string; reason: string }[] = []
     for (const a of abstracts) {
       if (!isAbstractStatus(a.status)) {
-        blockedRows.push({ id: a.id, reason: `unknown status: ${a.status}` })
+        blockedRows.push({
+          id: a.id,
+          abstract_number: a.abstract_number ?? null,
+          current_status: a.status,
+          reason: `unknown status: ${a.status}`,
+        })
         continue
       }
       const t = canTransition(a.status, targetStatus, {
@@ -271,7 +279,14 @@ export async function POST(
         forceRedecide: Boolean(body.force_redecide),
         overrideReason: body.override_reason ?? null,
       })
-      if (!t.ok) blockedRows.push({ id: a.id, reason: t.error })
+      if (!t.ok) {
+        blockedRows.push({
+          id: a.id,
+          abstract_number: a.abstract_number ?? null,
+          current_status: a.status,
+          reason: t.error,
+        })
+      }
     }
     if (blockedRows.length > 0) {
       return NextResponse.json(

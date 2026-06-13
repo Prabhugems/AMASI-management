@@ -13,6 +13,8 @@ export type TemplateType =
   | "abstract_revision"
   | "abstract_schedule"
   | "abstract_reminder"
+  | "abstract_submission_confirmation"
+  | "abstract_revision_submitted"
   | "team_invitation"
   | "team_role_changed"
   | "team_deactivated"

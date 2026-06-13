@@ -2,6 +2,9 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { claimIdempotency } from "@/lib/idempotency"
+import { sendAndLogAbstractNotification } from "@/lib/abstracts/notify"
+import { buildAbstractVariables } from "@/lib/email-templates"
+import { isEmailEnabled } from "@/lib/email"
 
 interface Author {
   name: string
@@ -101,10 +104,12 @@ export async function POST(
 
     const supabase = await createAdminClient()
 
-    // Verify event exists and abstracts are enabled
+    // Verify event exists and abstracts are enabled. The extra columns
+    // (short_name, start_date, city, contact_email) feed the confirmation
+    // email template variables — fetched here so we don't re-query later.
     const { data: event, error: eventError } = await (supabase as any)
       .from("events")
-      .select("id, name, status")
+      .select("id, name, status, short_name, start_date, city, contact_email")
       .eq("id", eventId)
       .single()
 
@@ -381,23 +386,57 @@ export async function POST(
           .insert(authorInserts)
       }
 
-      // Log revision notification
-      if (settings.notify_on_submission) {
-        await (supabase as any)
-          .from("abstract_notifications")
-          .insert({
-            abstract_id: body.revision_of,
-            notification_type: "revision_submitted",
-            recipient_email: body.presenting_author_email,
-            recipient_name: body.presenting_author_name,
-            subject: `Revision Submitted: ${originalAbstract.abstract_number}`,
-            metadata: {
-              abstract_number: originalAbstract.abstract_number,
-              title: body.title,
-              category: category.name,
-              event_name: event.name,
-            },
-          })
+      // Sync-send revision-confirmation. Phase 3 incident fix: prior to
+      // this, the row was inserted but no email was sent. Failure here
+      // does NOT roll back the revision write — same wrapping rule as
+      // committee-decision.
+      let revisionNotification: { delivered: boolean; error?: string } = { delivered: false }
+      if (settings.notify_on_submission && isEmailEnabled()) {
+        const portalUrl = `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "")}/my`
+        const variables = buildAbstractVariables(
+          {
+            abstract_number: originalAbstract.abstract_number,
+            title: body.title,
+            status: updatedAbstract.status,
+            presenting_author_name: body.presenting_author_name,
+            presenting_author_email: body.presenting_author_email,
+            category_name: category.name,
+          },
+          {
+            name: event.name,
+            short_name: event.short_name ?? null,
+            start_date: event.start_date ?? null,
+            city: event.city ?? null,
+          },
+          portalUrl,
+          event.contact_email ?? null
+        )
+        const fallbackHtml = buildSubmissionFallbackHtml({
+          authorName: body.presenting_author_name,
+          eventName: event.short_name || event.name,
+          abstractNumber: originalAbstract.abstract_number,
+          title: body.title,
+          kind: "revision",
+          portalUrl,
+        })
+        revisionNotification = await sendAndLogAbstractNotification({
+          supabase,
+          abstractId: body.revision_of,
+          eventId,
+          recipientEmail: body.presenting_author_email,
+          recipientName: body.presenting_author_name,
+          templateType: "abstract_revision_submitted",
+          notificationType: "revision_submitted",
+          templateVariables: variables,
+          fallbackSubject: `Revision Submitted: ${originalAbstract.abstract_number}`,
+          fallbackHtml,
+          metadata: {
+            abstract_number: originalAbstract.abstract_number,
+            title: body.title,
+            category: category.name,
+            event_name: event.name,
+          },
+        })
       }
 
       const revisionBody = {
@@ -407,6 +446,10 @@ export async function POST(
           abstract_number: originalAbstract.abstract_number,
           title: updatedAbstract.title,
           status: updatedAbstract.status,
+        },
+        notification: {
+          delivered: revisionNotification.delivered,
+          error: revisionNotification.error,
         },
         message: "Revision submitted successfully",
       }
@@ -527,23 +570,58 @@ export async function POST(
       }
     }
 
-    // Log notification
-    if (settings.notify_on_submission) {
-      await (supabase as any)
-        .from("abstract_notifications")
-        .insert({
-          abstract_id: abstract.id,
-          notification_type: "submission_confirmation",
-          recipient_email: body.presenting_author_email,
-          recipient_name: body.presenting_author_name,
-          subject: `Abstract Submitted: ${abstractNumber}`,
-          metadata: {
-            abstract_number: abstractNumber,
-            title: body.title,
-            category: category.name,
-            event_name: event.name,
-          },
-        })
+    // Sync-send submission confirmation. Phase 3 incident fix: this was
+    // the production defect — the row was being inserted (when settings
+    // allowed) but no email was sent. Authors submitting to AMASICON were
+    // getting a "we'll confirm by email" intent record and no confirmation.
+    // Failure here does NOT roll back the abstract create.
+    let submissionNotification: { delivered: boolean; error?: string } = { delivered: false }
+    if (settings.notify_on_submission && isEmailEnabled()) {
+      const portalUrl = `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "")}/my`
+      const variables = buildAbstractVariables(
+        {
+          abstract_number: abstractNumber,
+          title: body.title,
+          status: abstract.status,
+          presenting_author_name: body.presenting_author_name,
+          presenting_author_email: body.presenting_author_email,
+          category_name: category.name,
+        },
+        {
+          name: event.name,
+          short_name: event.short_name ?? null,
+          start_date: event.start_date ?? null,
+          city: event.city ?? null,
+        },
+        portalUrl,
+        event.contact_email ?? null
+      )
+      const fallbackHtml = buildSubmissionFallbackHtml({
+        authorName: body.presenting_author_name,
+        eventName: event.short_name || event.name,
+        abstractNumber,
+        title: body.title,
+        kind: "submission",
+        portalUrl,
+      })
+      submissionNotification = await sendAndLogAbstractNotification({
+        supabase,
+        abstractId: abstract.id,
+        eventId,
+        recipientEmail: body.presenting_author_email,
+        recipientName: body.presenting_author_name,
+        templateType: "abstract_submission_confirmation",
+        notificationType: "submission_confirmation",
+        templateVariables: variables,
+        fallbackSubject: `Abstract Submitted: ${abstractNumber}`,
+        fallbackHtml,
+        metadata: {
+          abstract_number: abstractNumber,
+          title: body.title,
+          category: category.name,
+          event_name: event.name,
+        },
+      })
     }
 
     // Delete any saved draft
@@ -560,6 +638,10 @@ export async function POST(
         abstract_number: abstractNumber,
         title: abstract.title,
         status: abstract.status,
+      },
+      notification: {
+        delivered: submissionNotification.delivered,
+        error: submissionNotification.error,
       },
       message: "Abstract submitted successfully",
     }
@@ -721,4 +803,42 @@ async function generateAbstractNumber(supabase: ReturnType<typeof createAdminCli
 
   const nextNumber = maxNumber + 1
   return `${prefix}${nextNumber.toString().padStart(3, "0")}`
+}
+
+// Fallback HTML used by the submission/revision confirmation emails when
+// no event-scoped template is configured. Simple, defensive — the
+// expected path is for the event admin to create a custom template later.
+function buildSubmissionFallbackHtml(input: {
+  authorName: string
+  eventName: string
+  abstractNumber: string
+  title: string
+  kind: "submission" | "revision"
+  portalUrl: string
+}): string {
+  const isRevision = input.kind === "revision"
+  const heading = isRevision
+    ? `Your revision has been received.`
+    : `Thank you for submitting your abstract.`
+  const tail = isRevision
+    ? `Your revision is now under review. We'll notify you when a decision is made.`
+    : `Your abstract is now under review. We'll notify you when a decision is made.`
+  return `<!doctype html><html><body style="font-family:-apple-system,sans-serif;line-height:1.6;color:#1f2937;max-width:600px;margin:0 auto;padding:20px">
+    <h2>${escapeSubmissionHtml(input.eventName)}</h2>
+    <p>Dear ${escapeSubmissionHtml(input.authorName)},</p>
+    <p>${heading}</p>
+    <p><strong>${escapeSubmissionHtml(input.abstractNumber)}</strong> — ${escapeSubmissionHtml(input.title)}</p>
+    <p>${tail}</p>
+    <p><a href="${escapeSubmissionHtml(input.portalUrl)}">View your submissions</a></p>
+    <p style="color:#6b7280;font-size:13px">— The ${escapeSubmissionHtml(input.eventName)} Organizing Committee</p>
+  </body></html>`
+}
+
+function escapeSubmissionHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
 }

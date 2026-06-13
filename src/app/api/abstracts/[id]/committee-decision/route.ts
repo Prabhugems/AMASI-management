@@ -3,6 +3,9 @@ import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { claimIdempotency } from "@/lib/idempotency"
 import { isCommitteeDecision, outcomeFor } from "@/lib/abstracts/committee-decision"
 import { canTransition, isAbstractStatus } from "@/lib/abstracts/transitions"
+import { sendAndLogAbstractNotification } from "@/lib/abstracts/notify"
+import { buildAbstractVariables, type TemplateType } from "@/lib/email-templates"
+import { isEmailEnabled } from "@/lib/email"
 import { NextRequest, NextResponse } from "next/server"
 
 // POST /api/abstracts/[id]/committee-decision
@@ -226,28 +229,133 @@ export async function POST(
       }
     }
 
-    // Notification ledger insert. The real send is wired in Phase 3 — this
-    // row is currently a record of intent, not delivery.
+    // Sync-send to the author. Phase 3: this replaces the old write-only
+    // intent insert. Failure here MUST NOT roll back the decision — the
+    // decision is already persisted; an unsent email is a separate problem.
+    // decision_notified_at is bumped only if delivery actually succeeds.
+    let notification: { delivered: boolean; error?: string; notificationId?: string | null } = {
+      delivered: false,
+    }
     if (send_notification) {
-      let notificationType = "accepted"
-      if (outcome.targetStatus === "rejected") notificationType = "rejected"
-      else if (outcome.bumpsReviewRound) notificationType = "second_review_requested"
-      else if (outcome.targetStatus === "revision_requested") notificationType = "revision_requested"
+      // Per-event gate. notify_on_decision being false is a deliberate
+      // "don't email authors" choice (e.g. paper conferences, internal pilots).
+      const { data: settings } = await (supabase as any)
+        .from("abstract_settings")
+        .select("notify_on_decision")
+        .eq("event_id", abstract.event_id)
+        .maybeSingle()
 
-      await (supabase as any)
-        .from("abstract_notifications")
-        .insert({
-          abstract_id: id,
-          notification_type: notificationType,
-          recipient_email: abstract.presenting_author_email,
-          recipient_name: abstract.presenting_author_name,
-          subject: `Abstract Decision: ${abstract.title}`,
+      const notifyEnabled = settings?.notify_on_decision !== false
+      const emailEnabled = isEmailEnabled()
+
+      if (notifyEnabled && emailEnabled) {
+        // Pick template + notification_type. Some verbs have no dedicated
+        // template (second_review_requested, under_review-as-override); for
+        // those we still send, just on the fallback HTML.
+        let templateType: TemplateType = "abstract_accepted"
+        let notificationType = "accepted"
+        if (outcome.targetStatus === "rejected") {
+          templateType = "abstract_rejected"
+          notificationType = "rejected"
+        } else if (outcome.bumpsReviewRound) {
+          templateType = "abstract_revision" // closest existing template; fallback below covers gap
+          notificationType = "second_review_requested"
+        } else if (outcome.targetStatus === "revision_requested") {
+          templateType = "abstract_revision"
+          notificationType = "revision_requested"
+        }
+
+        // Fetch event + category for template variables.
+        const { data: eventRow } = await (supabase as any)
+          .from("events")
+          .select("id, name, short_name, start_date, city, contact_email")
+          .eq("id", abstract.event_id)
+          .single()
+        const { data: categoryRow } = abstract.category_id
+          ? await (supabase as any)
+              .from("abstract_categories")
+              .select("name")
+              .eq("id", abstract.category_id)
+              .maybeSingle()
+          : { data: null }
+
+        const portalUrl = `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "")}/my`
+        const variables = buildAbstractVariables(
+          {
+            abstract_number: updatedAbstract.abstract_number,
+            title: updatedAbstract.title,
+            status: updatedAbstract.status,
+            decision,
+            accepted_as: updatedAbstract.accepted_as,
+            decision_notes: notes ?? null,
+            presenting_author_name: abstract.presenting_author_name,
+            presenting_author_email: abstract.presenting_author_email,
+            category_name: categoryRow?.name ?? null,
+          },
+          {
+            name: eventRow?.name ?? "Event",
+            short_name: eventRow?.short_name ?? null,
+            start_date: eventRow?.start_date ?? null,
+            city: eventRow?.city ?? null,
+          },
+          portalUrl,
+          eventRow?.contact_email ?? null
+        )
+
+        const eventName = eventRow?.short_name || eventRow?.name || "Event"
+        const fallbackSubject =
+          notificationType === "rejected"
+            ? `Abstract Decision — ${eventName}`
+            : notificationType === "revision_requested"
+              ? `Revision Requested — ${eventName}`
+              : notificationType === "second_review_requested"
+                ? `Second Review — ${eventName}`
+                : `Abstract Accepted — ${eventName}`
+        const fallbackHtml = buildDecisionFallbackHtml({
+          abstract: updatedAbstract,
+          authorName: abstract.presenting_author_name,
+          eventName,
+          notificationType,
+          notes: notes ?? null,
+          feedbackToAuthor: feedback_to_author ?? null,
+        })
+
+        notification = await sendAndLogAbstractNotification({
+          supabase,
+          abstractId: id,
+          eventId: abstract.event_id,
+          recipientEmail: abstract.presenting_author_email,
+          recipientName: abstract.presenting_author_name,
+          templateType,
+          notificationType,
+          templateVariables: variables,
+          fallbackSubject,
+          fallbackHtml,
           metadata: {
             decision,
-            feedback: feedback_to_author,
+            feedback_to_author,
             is_override: transition.isOverride,
           },
+          sentBy: committeeMember?.id ?? null,
         })
+
+        if (notification.delivered) {
+          // Bump decision_notified_at ONLY on real send success.
+          // Failure leaves the field NULL so a manual resend (or the next
+          // bulk/notify pass) can pick it up.
+          await (supabase as any)
+            .from("abstracts")
+            .update({ decision_notified_at: new Date().toISOString() })
+            .eq("id", id)
+        }
+      } else {
+        notification = {
+          delivered: false,
+          error: !emailEnabled
+            ? "email provider not configured"
+            : "notify_on_decision is disabled for this event",
+        }
+      }
     }
 
     const responseBody = {
@@ -256,6 +364,9 @@ export async function POST(
       registration_status: registrationStatus,
       decision_logged: !logError,
       is_override: transition.isOverride,
+      notification: send_notification
+        ? { delivered: notification.delivered, error: notification.error }
+        : { delivered: false, skipped: true },
     }
     await claim.commit(200, responseBody)
     return NextResponse.json(responseBody)
@@ -263,6 +374,55 @@ export async function POST(
     console.error("Error in committee decision:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
+}
+
+// Fallback HTML when no event-scoped template exists. Kept simple — the
+// expected path is for the event admin to configure a template; this is
+// defensive so a missing template doesn't mean no email.
+function buildDecisionFallbackHtml(input: {
+  abstract: { abstract_number: string; title: string; accepted_as?: string | null }
+  authorName: string
+  eventName: string
+  notificationType: string
+  notes: string | null
+  feedbackToAuthor: string | null
+}): string {
+  const acceptedAs = input.abstract.accepted_as
+    ? ` as a <strong>${input.abstract.accepted_as.toUpperCase()}</strong> presentation`
+    : ""
+  const heading =
+    input.notificationType === "rejected"
+      ? `After committee review, your abstract was not selected for presentation.`
+      : input.notificationType === "revision_requested"
+        ? `The committee has requested revisions to your abstract.`
+        : input.notificationType === "second_review_requested"
+          ? `Your abstract has been queued for a second review round.`
+          : `Congratulations — your abstract has been accepted${acceptedAs}.`
+  const notesBlock = input.notes
+    ? `<p><strong>Committee notes:</strong></p><p>${escapeHtml(input.notes)}</p>`
+    : ""
+  const feedbackBlock = input.feedbackToAuthor
+    ? `<p><strong>Feedback to author:</strong></p><p>${escapeHtml(input.feedbackToAuthor)}</p>`
+    : ""
+  return `<!doctype html><html><body style="font-family:-apple-system,sans-serif;line-height:1.6;color:#1f2937;max-width:600px;margin:0 auto;padding:20px">
+    <h2>${escapeHtml(input.eventName)}</h2>
+    <p>Dear ${escapeHtml(input.authorName)},</p>
+    <p>Re: <strong>${escapeHtml(input.abstract.abstract_number)}</strong> — ${escapeHtml(input.abstract.title)}</p>
+    <p>${heading}</p>
+    ${notesBlock}
+    ${feedbackBlock}
+    <p>You can view your submission status in your author portal.</p>
+    <p style="color:#6b7280;font-size:13px">— The ${escapeHtml(input.eventName)} Organizing Committee</p>
+  </body></html>`
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
 }
 
 // GET /api/abstracts/[id]/committee-decision - Get decision history
