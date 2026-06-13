@@ -29,7 +29,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
@@ -1747,14 +1746,18 @@ function RegistrationsContent() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {availableAddons.map((addon: any) => (
-                <DropdownMenuCheckboxItem
+                <DropdownMenuItem
                   key={addon.id}
-                  checked={addonFilter.includes(addon.id)}
-                  onCheckedChange={() => toggleAddonFilter(addon.id)}
                   onSelect={(e) => e.preventDefault()}
+                  onClick={() => toggleAddonFilter(addon.id)}
+                  className="gap-2 cursor-pointer"
                 >
-                  {addon.name}
-                </DropdownMenuCheckboxItem>
+                  <Checkbox
+                    checked={addonFilter.includes(addon.id)}
+                    className="pointer-events-none shrink-0"
+                  />
+                  <span className="flex-1">{addon.name}</span>
+                </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
