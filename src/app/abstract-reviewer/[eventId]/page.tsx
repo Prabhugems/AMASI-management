@@ -127,12 +127,12 @@ type PortalData = {
 }
 
 const statusColors: Record<string, { bg: string; text: string; label: string }> = {
-  submitted: { bg: "bg-blue-100", text: "text-blue-700", label: "Submitted" },
-  under_review: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Under Review" },
-  revision_requested: { bg: "bg-orange-100", text: "text-orange-700", label: "Revision Requested" },
-  accepted: { bg: "bg-green-100", text: "text-green-700", label: "Accepted" },
-  rejected: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
-  withdrawn: { bg: "bg-gray-100", text: "text-gray-600", label: "Withdrawn" },
+  submitted: { bg: "bg-blue-100 dark:bg-blue-500/15", text: "text-blue-700 dark:text-blue-400", label: "Submitted" },
+  under_review: { bg: "bg-yellow-100 dark:bg-yellow-500/15", text: "text-yellow-700 dark:text-yellow-400", label: "Under Review" },
+  revision_requested: { bg: "bg-orange-100 dark:bg-orange-500/15", text: "text-orange-700 dark:text-orange-400", label: "Revision Requested" },
+  accepted: { bg: "bg-green-100 dark:bg-green-500/15", text: "text-green-700 dark:text-green-400", label: "Accepted" },
+  rejected: { bg: "bg-red-100 dark:bg-red-500/15", text: "text-red-700 dark:text-red-400", label: "Rejected" },
+  withdrawn: { bg: "bg-gray-100 dark:bg-muted/60", text: "text-gray-600 dark:text-muted-foreground", label: "Withdrawn" },
 }
 
 export default function AbstractReviewerPortal() {
@@ -595,9 +595,9 @@ export default function AbstractReviewerPortal() {
 
   // Main portal
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 dark:from-slate-500/10 via-purple-50/30 dark:via-purple-500/5 to-slate-50 dark:to-slate-500/10">
       {/* Header */}
-      <header className="bg-card/80 backdrop-blur-xl border-b border-purple-100 sticky top-0 z-10">
+      <header className="bg-card/80 backdrop-blur-xl border-b border-purple-100 dark:border-purple-500/30 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -615,9 +615,9 @@ export default function AbstractReviewerPortal() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-50 border border-purple-100">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/30">
                 <Calendar className="h-4 w-4 text-purple-500" />
-                <span className="text-sm font-medium text-purple-700">
+                <span className="text-sm font-medium text-purple-700 dark:text-purple-400">
                   {event?.start_date && formatDate(event.start_date)} - {event?.end_date && formatDate(event.end_date)}
                 </span>
               </div>
@@ -693,7 +693,7 @@ export default function AbstractReviewerPortal() {
 
         {/* Progress Bar */}
         {stats.total > 0 && (
-          <div className="p-5 rounded-2xl bg-card/80 backdrop-blur-sm border border-purple-100 shadow-sm">
+          <div className="p-5 rounded-2xl bg-card/80 backdrop-blur-sm border border-purple-100 dark:border-purple-500/30 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-purple-500" />
@@ -703,7 +703,7 @@ export default function AbstractReviewerPortal() {
                 {stats.reviewedByMe} of {stats.total} reviewed ({Math.round((stats.reviewedByMe / stats.total) * 100)}%)
               </span>
             </div>
-            <div className="h-3 rounded-full bg-purple-100 overflow-hidden">
+            <div className="h-3 rounded-full bg-purple-100 dark:bg-purple-500/15 overflow-hidden">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
                 style={{ width: `${Math.round((stats.reviewedByMe / stats.total) * 100)}%` }}
@@ -719,14 +719,14 @@ export default function AbstractReviewerPortal() {
         )}
 
         {/* COI Declaration Section */}
-        <div className="rounded-2xl bg-card/80 backdrop-blur-sm border border-purple-100 overflow-hidden">
+        <div className="rounded-2xl bg-card/80 backdrop-blur-sm border border-purple-100 dark:border-purple-500/30 overflow-hidden">
           <button
             onClick={() => setShowCoiSection(!showCoiSection)}
-            className="w-full p-4 flex items-center justify-between hover:bg-purple-50/50 transition-colors"
+            className="w-full p-4 flex items-center justify-between hover:bg-purple-50/50 dark:hover:bg-purple-500/10 transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                <Shield className="h-5 w-5 text-amber-600" />
+              <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center">
+                <Shield className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div className="text-left">
                 <h3 className="font-semibold">Conflict of Interest Declaration</h3>
@@ -744,7 +744,7 @@ export default function AbstractReviewerPortal() {
           </button>
 
           {showCoiSection && (
-            <div className="p-4 border-t border-purple-100 space-y-4">
+            <div className="p-4 border-t border-purple-100 dark:border-purple-500/30 space-y-4">
               <p className="text-sm text-muted-foreground">
                 Declare any conflicts of interest (e.g., co-authors, same institution, personal relationships).
                 Abstracts from declared conflicts will be flagged for reassignment.
@@ -756,15 +756,15 @@ export default function AbstractReviewerPortal() {
                   {coiConflicts.map((conflict: { id: string; conflict_type: string; conflict_value: string; conflict_reason?: string }) => (
                     <div
                       key={conflict.id}
-                      className="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-200"
+                      className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-200 dark:border-amber-500/30"
                     >
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold",
-                          conflict.conflict_type === "institution" ? "bg-blue-100 text-blue-700" :
-                          conflict.conflict_type === "co_author" ? "bg-purple-100 text-purple-700" :
-                          conflict.conflict_type === "personal" ? "bg-pink-100 text-pink-700" :
-                          "bg-gray-100 text-gray-700"
+                          conflict.conflict_type === "institution" ? "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400" :
+                          conflict.conflict_type === "co_author" ? "bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400" :
+                          conflict.conflict_type === "personal" ? "bg-pink-100 dark:bg-pink-500/15 text-pink-700 dark:text-pink-400" :
+                          "bg-gray-100 dark:bg-muted/60 text-gray-700 dark:text-slate-200"
                         )}>
                           {conflict.conflict_type === "institution" ? <Building2 className="h-4 w-4" /> :
                            conflict.conflict_type === "co_author" ? <Users className="h-4 w-4" /> :
@@ -784,7 +784,7 @@ export default function AbstractReviewerPortal() {
                         size="sm"
                         onClick={() => removeCoiMutation.mutate(conflict.id)}
                         disabled={removeCoiMutation.isPending}
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -795,7 +795,7 @@ export default function AbstractReviewerPortal() {
 
               {/* Add new conflict form */}
               {addingCoi ? (
-                <div className="p-4 bg-purple-50 rounded-xl border border-purple-200 space-y-4">
+                <div className="p-4 bg-purple-50 dark:bg-purple-500/10 rounded-xl border border-purple-200 dark:border-purple-500/30 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-sm font-medium mb-1.5 block">Conflict Type</label>
@@ -886,7 +886,7 @@ export default function AbstractReviewerPortal() {
                 <Button
                   variant="outline"
                   onClick={() => setAddingCoi(true)}
-                  className="w-full border-dashed border-purple-300 text-purple-600 hover:bg-purple-50"
+                  className="w-full border-dashed border-purple-300 dark:border-purple-500/40 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Conflict of Interest
@@ -897,19 +897,19 @@ export default function AbstractReviewerPortal() {
         </div>
 
         {/* Search & Filters */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl bg-card/80 backdrop-blur-sm border border-purple-100">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl bg-card/80 backdrop-blur-sm border border-purple-100 dark:border-purple-500/30">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-purple-400" />
             <Input
               placeholder="Search by title, number, or author..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-12 h-11 bg-card border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="pl-12 h-11 bg-card border-purple-100 dark:border-purple-500/30 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
           <div className="flex items-center gap-3">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[150px] h-11 bg-card border-purple-100 rounded-xl">
+              <SelectTrigger className="w-full sm:w-[150px] h-11 bg-card border-purple-100 dark:border-purple-500/30 rounded-xl">
                 <Filter className="h-4 w-4 mr-2 text-purple-400" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -923,7 +923,7 @@ export default function AbstractReviewerPortal() {
             </Select>
             {categories.length > 0 && (
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full sm:w-[180px] h-11 bg-card border-purple-100 rounded-xl">
+                <SelectTrigger className="w-full sm:w-[180px] h-11 bg-card border-purple-100 dark:border-purple-500/30 rounded-xl">
                   <Tag className="h-4 w-4 mr-2 text-purple-400" />
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
@@ -938,15 +938,15 @@ export default function AbstractReviewerPortal() {
               </Select>
             )}
           </div>
-          <Badge variant="secondary" className="px-4 py-2 bg-purple-100 text-purple-700 border-0 rounded-xl">
+          <Badge variant="secondary" className="px-4 py-2 bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400 border-0 rounded-xl">
             {filteredAbstracts.length} abstract{filteredAbstracts.length !== 1 ? "s" : ""}
           </Badge>
         </div>
 
         {/* Abstracts List */}
         {filteredAbstracts.length === 0 ? (
-          <div className="text-center py-16 rounded-2xl border-2 border-dashed border-purple-200 bg-card/50">
-            <div className="h-20 w-20 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
+          <div className="text-center py-16 rounded-2xl border-2 border-dashed border-purple-200 dark:border-purple-500/30 bg-card/50">
+            <div className="h-20 w-20 rounded-full bg-purple-100 dark:bg-purple-500/15 flex items-center justify-center mx-auto mb-4">
               <FileText className="h-10 w-10 text-purple-400" />
             </div>
             <h3 className="text-lg font-semibold mb-2">No abstracts found</h3>
@@ -991,8 +991,8 @@ export default function AbstractReviewerPortal() {
                   className={cn(
                     "w-full text-left rounded-2xl border p-5 transition-all hover:shadow-lg group",
                     reviewed
-                      ? "bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200 hover:border-emerald-300"
-                      : "bg-card/80 backdrop-blur-sm border-purple-100 hover:border-purple-300"
+                      ? "bg-gradient-to-r from-emerald-50 dark:from-emerald-500/10 to-green-50 dark:to-green-500/10 border-emerald-200 dark:border-emerald-500/30 hover:border-emerald-300 dark:hover:border-emerald-500/50"
+                      : "bg-card/80 backdrop-blur-sm border-purple-100 dark:border-purple-500/30 hover:border-purple-300 dark:hover:border-purple-500/50"
                   )}
                 >
                   <div className="flex items-start justify-between gap-5">
@@ -1005,11 +1005,11 @@ export default function AbstractReviewerPortal() {
                           {status.label}
                         </span>
                         {abstract.category && (
-                          <span className="px-3 py-1 text-xs font-medium rounded-lg bg-purple-100 text-purple-700">
+                          <span className="px-3 py-1 text-xs font-medium rounded-lg bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400">
                             {abstract.category.name}
                           </span>
                         )}
-                        <span className="px-3 py-1 text-xs font-medium rounded-lg bg-blue-100 text-blue-700 capitalize">
+                        <span className="px-3 py-1 text-xs font-medium rounded-lg bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400 capitalize">
                           {abstract.presentation_type}
                         </span>
                         {reviewed && (
@@ -1032,12 +1032,12 @@ export default function AbstractReviewerPortal() {
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
                       {/* Review count */}
-                      <div className="text-center px-4 py-2 rounded-xl bg-purple-50">
-                        <div className="flex items-center justify-center gap-1.5 text-purple-600">
+                      <div className="text-center px-4 py-2 rounded-xl bg-purple-50 dark:bg-purple-500/10">
+                        <div className="flex items-center justify-center gap-1.5 text-purple-600 dark:text-purple-400">
                           <MessageSquare className="h-4 w-4" />
                           <span className="font-bold">{reviewCount}</span>
                         </div>
-                        <p className="text-[10px] uppercase tracking-wide text-purple-400 mt-0.5">reviews</p>
+                        <p className="text-[10px] uppercase tracking-wide text-purple-400 dark:text-purple-400 mt-0.5">reviews</p>
                       </div>
                       {/* Average score */}
                       {avgScore && (
@@ -1140,7 +1140,7 @@ export default function AbstractReviewerPortal() {
 
                 {/* Blind review notice */}
                 {settings?.blind_review && selectedAbstract.authors && selectedAbstract.authors.length > 0 && (
-                  <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg text-sm text-amber-800 dark:text-amber-300">
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     Blind review is enabled. Author identities are hidden.
                   </div>
@@ -1184,10 +1184,10 @@ export default function AbstractReviewerPortal() {
                               {review.recommendation && (
                                 <span className={cn(
                                   "px-2 py-0.5 text-xs font-medium rounded-full capitalize",
-                                  review.recommendation === "accept" ? "bg-green-100 text-green-700" :
-                                  review.recommendation === "reject" ? "bg-red-100 text-red-700" :
-                                  review.recommendation === "revise" ? "bg-orange-100 text-orange-700" :
-                                  "bg-gray-100 text-gray-600"
+                                  review.recommendation === "accept" ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" :
+                                  review.recommendation === "reject" ? "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400" :
+                                  review.recommendation === "revise" ? "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-400" :
+                                  "bg-gray-100 dark:bg-muted/60 text-gray-600 dark:text-muted-foreground"
                                 )}>
                                   {review.recommendation}
                                 </span>
@@ -1199,9 +1199,9 @@ export default function AbstractReviewerPortal() {
                               ) : review.overall_score ? (
                                 <span className={cn(
                                   "w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold",
-                                  review.overall_score >= 7 ? "bg-green-100 text-green-700" :
-                                  review.overall_score >= 5 ? "bg-yellow-100 text-yellow-700" :
-                                  "bg-red-100 text-red-700"
+                                  review.overall_score >= 7 ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" :
+                                  review.overall_score >= 5 ? "bg-yellow-100 dark:bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" :
+                                  "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400"
                                 )}>
                                   {review.overall_score.toFixed(1)}
                                 </span>
@@ -1245,7 +1245,7 @@ export default function AbstractReviewerPortal() {
 
                 {/* Review Form */}
                 {isReviewedByMe(selectedAbstract) ? (
-                  <div className="flex items-center gap-2 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
+                  <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/30 rounded-lg text-green-800 dark:text-green-300">
                     <CheckCircle className="h-5 w-5" />
                     <span className="font-medium">You have already reviewed this abstract.</span>
                   </div>
@@ -1293,9 +1293,9 @@ export default function AbstractReviewerPortal() {
                                       />
                                       <span className={cn(
                                         "w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm",
-                                        score >= criterion.max_score * 0.7 ? "bg-green-100 text-green-700" :
-                                        score >= criterion.max_score * 0.5 ? "bg-yellow-100 text-yellow-700" :
-                                        "bg-red-100 text-red-700"
+                                        score >= criterion.max_score * 0.7 ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" :
+                                        score >= criterion.max_score * 0.5 ? "bg-yellow-100 dark:bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" :
+                                        "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400"
                                       )}>
                                         {score}
                                       </span>
@@ -1347,9 +1347,9 @@ export default function AbstractReviewerPortal() {
                                   />
                                   <span className={cn(
                                     "w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm",
-                                    (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 7 ? "bg-green-100 text-green-700" :
-                                    (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 5 ? "bg-yellow-100 text-yellow-700" :
-                                    "bg-red-100 text-red-700"
+                                    (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 7 ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" :
+                                    (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 5 ? "bg-yellow-100 dark:bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" :
+                                    "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400"
                                   )}>
                                     {reviewScores[criterion.key as keyof typeof reviewScores]}
                                   </span>
@@ -1478,8 +1478,8 @@ export default function AbstractReviewerPortal() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-red-600">
-              <div className="h-10 w-10 rounded-xl bg-red-100 flex items-center justify-center">
-                <AlertOctagon className="h-5 w-5 text-red-600" />
+              <div className="h-10 w-10 rounded-xl bg-red-100 dark:bg-red-500/15 flex items-center justify-center">
+                <AlertOctagon className="h-5 w-5 text-red-600 dark:text-red-400" />
               </div>
               Decline Assignment
             </DialogTitle>
@@ -1508,7 +1508,7 @@ export default function AbstractReviewerPortal() {
                     className={cn(
                       "w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all",
                       declineReason === option.value
-                        ? "border-red-300 bg-red-50"
+                        ? "border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10"
                         : "border-border hover:border-border hover:bg-accent"
                     )}
                   >
@@ -1516,7 +1516,7 @@ export default function AbstractReviewerPortal() {
                     <div className="flex-1">
                       <p className={cn(
                         "font-medium text-sm",
-                        declineReason === option.value ? "text-red-700" : "text-foreground"
+                        declineReason === option.value ? "text-red-700 dark:text-red-400" : "text-foreground"
                       )}>
                         {option.label}
                       </p>
@@ -1548,7 +1548,7 @@ export default function AbstractReviewerPortal() {
               </div>
             )}
 
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex items-start gap-2">
+            <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl text-sm text-amber-800 dark:text-amber-300 flex items-start gap-2">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>The committee will be notified and will reassign this abstract to another reviewer.</span>
             </div>

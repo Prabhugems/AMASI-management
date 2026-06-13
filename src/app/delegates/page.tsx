@@ -660,7 +660,7 @@ export default function GlobalAttendeesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                  className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-500/10"
                   disabled={deletingAttendee}
                   onClick={() => handleDeleteAttendee(selectedAttendee)}
                 >

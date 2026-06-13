@@ -211,7 +211,7 @@ export default function DriverAssignmentsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-100 dark:bg-muted/40 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
           <p className="text-muted-foreground">Loading assignments...</p>
@@ -222,10 +222,10 @@ export default function DriverAssignmentsPage() {
 
   if (!assignments || assignments.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-100 dark:bg-muted/40 flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
-          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="h-8 w-8 text-amber-600" />
+          <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="h-8 w-8 text-amber-600 dark:text-amber-400" />
           </div>
           <h2 className="text-xl font-semibold mb-2">No Assignments Found</h2>
           <p className="text-muted-foreground mb-6">
@@ -252,7 +252,7 @@ export default function DriverAssignmentsPage() {
   const completedCount = assignments.filter(a => a.status === "completed").length
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-100 dark:bg-muted/40">
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white px-4 py-6 pb-12">
         <div className="max-w-lg mx-auto">
@@ -305,20 +305,20 @@ export default function DriverAssignmentsPage() {
                 <div
                   key={assignment.id}
                   className={cn(
-                    "bg-white rounded-2xl shadow-sm overflow-hidden border-l-4",
+                    "bg-white dark:bg-card rounded-2xl shadow-sm overflow-hidden border-l-4",
                     assignment.type === "pickup" ? "border-l-green-500" : "border-l-orange-500"
                   )}
                 >
                   {/* Card Header */}
                   <div className={cn(
                     "px-4 py-3 flex items-center justify-between",
-                    assignment.type === "pickup" ? "bg-green-50" : "bg-orange-50"
+                    assignment.type === "pickup" ? "bg-green-50 dark:bg-green-500/10" : "bg-orange-50 dark:bg-orange-500/10"
                   )}>
                     <div className="flex items-center gap-2">
                       {assignment.type === "pickup" ? (
-                        <ArrowDown className="h-5 w-5 text-green-600" />
+                        <ArrowDown className="h-5 w-5 text-green-600 dark:text-green-400" />
                       ) : (
-                        <ArrowUp className="h-5 w-5 text-orange-600" />
+                        <ArrowUp className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                       )}
                       <span className="font-semibold text-sm">
                         {assignment.type === "pickup" ? "Pickup" : "Drop"}
@@ -339,7 +339,7 @@ export default function DriverAssignmentsPage() {
                           className="w-14 h-14 rounded-xl object-cover"
                         />
                       ) : (
-                        <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center">
+                        <div className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-muted/60 flex items-center justify-center">
                           <User className="h-7 w-7 text-slate-400" />
                         </div>
                       )}
@@ -363,8 +363,8 @@ export default function DriverAssignmentsPage() {
                   <div className="p-4 space-y-3">
                     {/* Time */}
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                        <Clock className="h-5 w-5 text-blue-600" />
+                      <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+                        <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">
@@ -377,8 +377,8 @@ export default function DriverAssignmentsPage() {
                     {/* Flight */}
                     {assignment.flightNumber && (
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                          <Plane className="h-5 w-5 text-purple-600" />
+                        <div className="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center">
+                          <Plane className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Flight</p>
@@ -391,7 +391,7 @@ export default function DriverAssignmentsPage() {
                     )}
 
                     {/* Route */}
-                    <div className="bg-slate-50 rounded-xl p-4">
+                    <div className="bg-slate-50 dark:bg-muted/40 rounded-xl p-4">
                       <div className="flex items-start gap-3">
                         <div className="flex flex-col items-center">
                           <div className={cn(
@@ -425,14 +425,14 @@ export default function DriverAssignmentsPage() {
                     {assignment.hotelAddress && (
                       <button
                         onClick={() => openMaps(assignment.hotelAddress!)}
-                        className="w-full flex items-center gap-3 p-3 bg-amber-50 rounded-xl text-left hover:bg-amber-100 transition-colors"
+                        className="w-full flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-left hover:bg-amber-100 dark:hover:bg-amber-500/15 transition-colors"
                       >
-                        <Building2 className="h-5 w-5 text-amber-600 flex-shrink-0" />
+                        <Building2 className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-amber-700 font-medium">Hotel Address</p>
-                          <p className="text-sm text-amber-900 truncate">{assignment.hotelAddress}</p>
+                          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Hotel Address</p>
+                          <p className="text-sm text-amber-900 dark:text-amber-300 truncate">{assignment.hotelAddress}</p>
                         </div>
-                        <Navigation className="h-4 w-4 text-amber-600" />
+                        <Navigation className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                       </button>
                     )}
 
@@ -440,7 +440,7 @@ export default function DriverAssignmentsPage() {
                     {assignment.hotelPhone && (
                       <a
                         href={`tel:${assignment.hotelPhone}`}
-                        className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+                        className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-muted/40 rounded-xl hover:bg-slate-100 dark:hover:bg-muted/60 transition-colors"
                       >
                         <Phone className="h-5 w-5 text-slate-600" />
                         <div>
@@ -452,7 +452,7 @@ export default function DriverAssignmentsPage() {
 
                     {/* Vehicle */}
                     {assignment.vehicle && (
-                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-muted/40 rounded-xl">
                         <Car className="h-5 w-5 text-slate-600" />
                         <div>
                           <p className="text-xs text-muted-foreground">Vehicle</p>
@@ -463,15 +463,15 @@ export default function DriverAssignmentsPage() {
 
                     {/* Notes */}
                     {assignment.notes && (
-                      <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
-                        <p className="text-xs text-blue-600 font-medium mb-1">Special Instructions</p>
-                        <p className="text-sm text-blue-900">{assignment.notes}</p>
+                      <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl border border-blue-200 dark:border-blue-500/30">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">Special Instructions</p>
+                        <p className="text-sm text-blue-900 dark:text-blue-300">{assignment.notes}</p>
                       </div>
                     )}
                   </div>
 
                   {/* Card Actions */}
-                  <div className="px-4 py-3 bg-slate-50 flex gap-2">
+                  <div className="px-4 py-3 bg-slate-50 dark:bg-muted/40 flex gap-2">
                     {assignment.guestPhone && (
                       <Button
                         variant="outline"

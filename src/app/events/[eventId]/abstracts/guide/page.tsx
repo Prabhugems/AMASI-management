@@ -130,7 +130,7 @@ const roles = [
   {
     title: "Delegate / Author",
     icon: FileText,
-    color: "text-blue-600 bg-blue-50",
+    color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10",
     responsibilities: [
       "Submit abstracts via public portal",
       "Upload supporting documents",
@@ -143,7 +143,7 @@ const roles = [
   {
     title: "Reviewer",
     icon: Eye,
-    color: "text-purple-600 bg-purple-50",
+    color: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10",
     responsibilities: [
       "Review assigned abstracts",
       "Score based on criteria",
@@ -156,7 +156,7 @@ const roles = [
   {
     title: "Committee Member",
     icon: Users,
-    color: "text-amber-600 bg-amber-50",
+    color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10",
     responsibilities: [
       "Review aggregated scores",
       "Make accept/reject decisions",
@@ -169,7 +169,7 @@ const roles = [
   {
     title: "Event Admin",
     icon: Settings,
-    color: "text-green-600 bg-green-50",
+    color: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10",
     responsibilities: [
       "Configure submission settings",
       "Manage reviewer pool",
@@ -312,7 +312,7 @@ export default function AbstractWorkflowGuidePage() {
                 {workflowStages.map((stage, index) => (
                   <div key={stage.id} className="relative">
                     {index < workflowStages.length - 1 && (
-                      <div className="absolute left-6 top-14 bottom-0 w-0.5 bg-gray-200" />
+                      <div className="absolute left-6 top-14 bottom-0 w-0.5 bg-gray-200 dark:bg-border" />
                     )}
                     <div className="flex gap-4">
                       <div className={`w-12 h-12 rounded-full ${stage.color} flex items-center justify-center text-white shadow-lg z-10 shrink-0`}>
@@ -418,9 +418,9 @@ export default function AbstractWorkflowGuidePage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="p-4 rounded-lg border bg-gradient-to-br from-amber-50 to-orange-50">
+                <div className="p-4 rounded-lg border bg-gradient-to-br from-amber-50 dark:from-amber-500/10 to-orange-50 dark:to-orange-500/10">
                   <h4 className="font-semibold flex items-center gap-2 mb-3">
-                    <Target className="h-4 w-4 text-amber-600" />
+                    <Target className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     How Matching Works
                   </h4>
                   <ul className="space-y-2 text-sm">
@@ -442,9 +442,9 @@ export default function AbstractWorkflowGuidePage() {
                     </li>
                   </ul>
                 </div>
-                <div className="p-4 rounded-lg border bg-gradient-to-br from-purple-50 to-indigo-50">
+                <div className="p-4 rounded-lg border bg-gradient-to-br from-purple-50 dark:from-purple-500/10 to-indigo-50 dark:to-indigo-500/10">
                   <h4 className="font-semibold flex items-center gap-2 mb-3">
-                    <Zap className="h-4 w-4 text-purple-600" />
+                    <Zap className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                     Match Score Calculation
                   </h4>
                   <div className="space-y-2 text-sm">
@@ -512,8 +512,8 @@ export default function AbstractWorkflowGuidePage() {
                 {/* Decline Flow */}
                 <div className="p-4 rounded-lg border">
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                      <XCircle className="h-5 w-5 text-red-600" />
+                    <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-500/15 flex items-center justify-center shrink-0">
+                      <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold">Reviewer Declines Assignment</h4>
@@ -534,8 +534,8 @@ export default function AbstractWorkflowGuidePage() {
                 {/* Flag Mismatch Flow */}
                 <div className="p-4 rounded-lg border">
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold">Reviewer Flags Expertise Mismatch</h4>
@@ -556,8 +556,8 @@ export default function AbstractWorkflowGuidePage() {
                 {/* Extension Request Flow */}
                 <div className="p-4 rounded-lg border">
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                      <Clock className="h-5 w-5 text-blue-600" />
+                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-500/15 flex items-center justify-center shrink-0">
+                      <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold">Reviewer Requests Extension</h4>
@@ -620,12 +620,12 @@ export default function AbstractWorkflowGuidePage() {
                 </div>
               </div>
 
-              <div className="mt-6 p-4 rounded-lg bg-orange-50 border border-orange-200">
+              <div className="mt-6 p-4 rounded-lg bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/30">
                 <div className="flex items-start gap-3">
-                  <HelpCircle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+                  <HelpCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-semibold text-orange-800">Important Note</h4>
-                    <p className="text-sm text-orange-700 mt-1">
+                    <h4 className="font-semibold text-orange-800 dark:text-orange-300">Important Note</h4>
+                    <p className="text-sm text-orange-700 dark:text-orange-400 mt-1">
                       When a category is changed, the existing reviews remain valid if scoring criteria are compatible.
                       Otherwise, the abstract is re-assigned to new reviewers with expertise in the new category.
                     </p>
@@ -649,8 +649,8 @@ export default function AbstractWorkflowGuidePage() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="p-4 rounded-lg border text-center">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-3">
-                    <RefreshCw className="h-6 w-6 text-blue-600" />
+                  <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-500/15 flex items-center justify-center mx-auto mb-3">
+                    <RefreshCw className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                   <h4 className="font-semibold">Reassign Reviewer</h4>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -658,8 +658,8 @@ export default function AbstractWorkflowGuidePage() {
                   </p>
                 </div>
                 <div className="p-4 rounded-lg border text-center">
-                  <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
-                    <Shuffle className="h-6 w-6 text-amber-600" />
+                  <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center mx-auto mb-3">
+                    <Shuffle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                   </div>
                   <h4 className="font-semibold">Change Category</h4>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -667,8 +667,8 @@ export default function AbstractWorkflowGuidePage() {
                   </p>
                 </div>
                 <div className="p-4 rounded-lg border text-center">
-                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
-                    <Clock className="h-6 w-6 text-green-600" />
+                  <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-500/15 flex items-center justify-center mx-auto mb-3">
+                    <Clock className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
                   <h4 className="font-semibold">Approve Extensions</h4>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -724,8 +724,8 @@ export default function AbstractWorkflowGuidePage() {
                 <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
                   {/* Delegate */}
                   <div className="text-center">
-                    <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-2">
-                      <FileText className="h-8 w-8 text-blue-600" />
+                    <div className="w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-500/15 flex items-center justify-center mx-auto mb-2">
+                      <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                     </div>
                     <span className="text-sm font-medium">Delegate</span>
                     <p className="text-xs text-muted-foreground">Submits</p>
@@ -736,8 +736,8 @@ export default function AbstractWorkflowGuidePage() {
 
                   {/* Reviewer */}
                   <div className="text-center">
-                    <div className="w-20 h-20 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-2">
-                      <Eye className="h-8 w-8 text-purple-600" />
+                    <div className="w-20 h-20 rounded-full bg-purple-100 dark:bg-purple-500/15 flex items-center justify-center mx-auto mb-2">
+                      <Eye className="h-8 w-8 text-purple-600 dark:text-purple-400" />
                     </div>
                     <span className="text-sm font-medium">Reviewer</span>
                     <p className="text-xs text-muted-foreground">Reviews</p>
@@ -748,8 +748,8 @@ export default function AbstractWorkflowGuidePage() {
 
                   {/* Committee */}
                   <div className="text-center">
-                    <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-2">
-                      <Users className="h-8 w-8 text-amber-600" />
+                    <div className="w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center mx-auto mb-2">
+                      <Users className="h-8 w-8 text-amber-600 dark:text-amber-400" />
                     </div>
                     <span className="text-sm font-medium">Committee</span>
                     <p className="text-xs text-muted-foreground">Decides</p>
@@ -760,8 +760,8 @@ export default function AbstractWorkflowGuidePage() {
 
                   {/* Admin */}
                   <div className="text-center">
-                    <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-2">
-                      <Settings className="h-8 w-8 text-green-600" />
+                    <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-500/15 flex items-center justify-center mx-auto mb-2">
+                      <Settings className="h-8 w-8 text-green-600 dark:text-green-400" />
                     </div>
                     <span className="text-sm font-medium">Admin</span>
                     <p className="text-xs text-muted-foreground">Schedules</p>
@@ -839,8 +839,8 @@ export default function AbstractWorkflowGuidePage() {
               <CardContent className="pt-6">
                 <Link href={`/events/${eventId}/abstracts`}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <FileText className="h-6 w-6 text-blue-600" />
+                    <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-500/15 flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                       <h3 className="font-semibold">View All Abstracts</h3>
@@ -857,8 +857,8 @@ export default function AbstractWorkflowGuidePage() {
               <CardContent className="pt-6">
                 <Link href={`/events/${eventId}/abstracts/committee`}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center">
-                      <Users className="h-6 w-6 text-amber-600" />
+                    <div className="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center">
+                      <Users className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div>
                       <h3 className="font-semibold">Committee Queue</h3>
@@ -875,8 +875,8 @@ export default function AbstractWorkflowGuidePage() {
               <CardContent className="pt-6">
                 <Link href={`/events/${eventId}/abstracts/reviewers`}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-                      <UserCheck className="h-6 w-6 text-purple-600" />
+                    <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-500/15 flex items-center justify-center">
+                      <UserCheck className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
                       <h3 className="font-semibold">Manage Reviewers</h3>
@@ -893,8 +893,8 @@ export default function AbstractWorkflowGuidePage() {
               <CardContent className="pt-6">
                 <Link href={`/events/${eventId}/abstracts/presenter-checkin`}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-rose-100 flex items-center justify-center">
-                      <ClipboardCheck className="h-6 w-6 text-rose-600" />
+                    <div className="w-12 h-12 rounded-lg bg-rose-100 dark:bg-rose-500/15 flex items-center justify-center">
+                      <ClipboardCheck className="h-6 w-6 text-rose-600 dark:text-rose-400" />
                     </div>
                     <div>
                       <h3 className="font-semibold">Presenter Check-in</h3>
@@ -911,8 +911,8 @@ export default function AbstractWorkflowGuidePage() {
               <CardContent className="pt-6">
                 <Link href={`/events/${eventId}/abstracts/settings`}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                      <Settings className="h-6 w-6 text-gray-600" />
+                    <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-muted/60 flex items-center justify-center">
+                      <Settings className="h-6 w-6 text-gray-600 dark:text-muted-foreground" />
                     </div>
                     <div>
                       <h3 className="font-semibold">Submission Settings</h3>
@@ -929,8 +929,8 @@ export default function AbstractWorkflowGuidePage() {
               <CardContent className="pt-6">
                 <Link href={`/events/${eventId}/abstracts/awards`}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-yellow-100 flex items-center justify-center">
-                      <Award className="h-6 w-6 text-yellow-600" />
+                    <div className="w-12 h-12 rounded-lg bg-yellow-100 dark:bg-yellow-500/15 flex items-center justify-center">
+                      <Award className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                     </div>
                     <div>
                       <h3 className="font-semibold">Awards</h3>

@@ -183,10 +183,10 @@ export default function ReviewerTrackingPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         <div className="rounded-2xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 p-4">
           <div className="flex items-center gap-2 mb-2">
-            <MailOpen className="h-5 w-5 text-emerald-600" />
+            <MailOpen className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             <span className="text-sm text-muted-foreground">Emails Opened</span>
           </div>
-          <p className="text-3xl font-bold text-emerald-600">{stats.emailsOpened}</p>
+          <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{stats.emailsOpened}</p>
         </div>
 
         <div className="rounded-2xl bg-gradient-to-br from-red-500/10 to-pink-500/10 border border-red-500/20 p-4">
@@ -199,34 +199,34 @@ export default function ReviewerTrackingPage() {
 
         <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Eye className="h-5 w-5 text-blue-600" />
+            <Eye className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <span className="text-sm text-muted-foreground">Viewed</span>
           </div>
-          <p className="text-3xl font-bold text-blue-600">{stats.abstractsViewed}</p>
+          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.abstractsViewed}</p>
         </div>
 
         <div className="rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Bell className="h-5 w-5 text-amber-600" />
+            <Bell className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             <span className="text-sm text-muted-foreground">Reminders Sent</span>
           </div>
-          <p className="text-3xl font-bold text-amber-600">{stats.totalReminders}</p>
+          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{stats.totalReminders}</p>
         </div>
 
         <div className="rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 p-4">
           <div className="flex items-center gap-2 mb-2">
-            <AlertOctagon className="h-5 w-5 text-purple-600" />
+            <AlertOctagon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             <span className="text-sm text-muted-foreground">Declined</span>
           </div>
-          <p className="text-3xl font-bold text-purple-600">{stats.totalDeclined}</p>
+          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.totalDeclined}</p>
         </div>
 
         <div className="rounded-2xl bg-gradient-to-br from-gray-500/10 to-slate-500/10 border border-gray-500/20 p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Users className="h-5 w-5 text-gray-600" />
+            <Users className="h-5 w-5 text-gray-600 dark:text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Total Reviewers</span>
           </div>
-          <p className="text-3xl font-bold text-gray-600">{stats.total}</p>
+          <p className="text-3xl font-bold text-gray-600 dark:text-muted-foreground">{stats.total}</p>
         </div>
       </div>
 
@@ -237,27 +237,27 @@ export default function ReviewerTrackingPage() {
           Activity Distribution
         </h2>
         <div className="flex gap-3 flex-wrap">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-100 text-emerald-700">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
             <div className="w-3 h-3 rounded-full bg-emerald-500" />
             <span className="font-medium">{stats.activeToday}</span>
             <span className="text-sm">Active Today</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-100 text-blue-700">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400">
             <div className="w-3 h-3 rounded-full bg-blue-500" />
             <span className="font-medium">{stats.activeRecently}</span>
             <span className="text-sm">Last 3 Days</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-100 text-amber-700">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400">
             <div className="w-3 h-3 rounded-full bg-amber-500" />
             <span className="font-medium">{stats.inactiveWeek}</span>
             <span className="text-sm">3-7 Days</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-100 text-red-700">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400">
             <div className="w-3 h-3 rounded-full bg-red-500" />
             <span className="font-medium">{stats.inactiveLong}</span>
             <span className="text-sm">7+ Days</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-700">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 dark:bg-muted/60 text-gray-700 dark:text-muted-foreground">
             <div className="w-3 h-3 rounded-full bg-gray-400" />
             <span className="font-medium">{stats.neverActive}</span>
             <span className="text-sm">Never Active</span>
@@ -278,13 +278,13 @@ export default function ReviewerTrackingPage() {
           ) : (
             <div className="space-y-2 max-h-[300px] overflow-auto">
               {categorizedReviewers.neverOpened.map(r => (
-                <div key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-100">
+                <div key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20">
                   <div>
                     <p className="font-medium text-sm">{r.name}</p>
                     <p className="text-xs text-muted-foreground">{r.email}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-red-600">{r.activity?.assignments_total || 0} assigned</p>
+                    <p className="text-sm font-medium text-red-600 dark:text-red-400">{r.activity?.assignments_total || 0} assigned</p>
                     <p className="text-xs text-muted-foreground">{r.activity?.reminders_sent || 0} reminders</p>
                   </div>
                 </div>
@@ -304,13 +304,13 @@ export default function ReviewerTrackingPage() {
           ) : (
             <div className="space-y-2 max-h-[300px] overflow-auto">
               {categorizedReviewers.openedNotViewed.map(r => (
-                <div key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-100">
+                <div key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20">
                   <div>
                     <p className="font-medium text-sm">{r.name}</p>
                     <p className="text-xs text-muted-foreground">{r.email}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-amber-600">{r.activity?.assignments_opened || 0} opened</p>
+                    <p className="text-sm font-medium text-amber-600 dark:text-amber-400">{r.activity?.assignments_opened || 0} opened</p>
                     <p className="text-xs text-muted-foreground">0 viewed</p>
                   </div>
                 </div>
@@ -330,13 +330,13 @@ export default function ReviewerTrackingPage() {
           ) : (
             <div className="space-y-2 max-h-[300px] overflow-auto">
               {categorizedReviewers.declined.map(r => (
-                <div key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-purple-50 border border-purple-100">
+                <div key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20">
                   <div>
                     <p className="font-medium text-sm">{r.name}</p>
                     <p className="text-xs text-muted-foreground">{r.email}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-purple-600">{r.activity?.assignments_declined || 0} declined</p>
+                    <p className="text-sm font-medium text-purple-600 dark:text-purple-400">{r.activity?.assignments_declined || 0} declined</p>
                   </div>
                 </div>
               ))}
@@ -355,13 +355,13 @@ export default function ReviewerTrackingPage() {
           ) : (
             <div className="space-y-2 max-h-[300px] overflow-auto">
               {categorizedReviewers.completed.map(r => (
-                <div key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                <div key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20">
                   <div>
                     <p className="font-medium text-sm">{r.name}</p>
                     <p className="text-xs text-muted-foreground">{r.email}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-emerald-600">{r.activity?.assignments_completed || 0} completed</p>
+                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{r.activity?.assignments_completed || 0} completed</p>
                   </div>
                 </div>
               ))}
@@ -401,7 +401,7 @@ export default function ReviewerTrackingPage() {
                   <td className="text-center p-3">
                     <span className={cn(
                       "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                      (r.activity?.assignments_opened || 0) > 0 ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
+                      (r.activity?.assignments_opened || 0) > 0 ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-gray-100 dark:bg-muted/60 text-gray-500 dark:text-muted-foreground"
                     )}>
                       {r.activity?.assignments_opened || 0}
                     </span>
@@ -409,26 +409,26 @@ export default function ReviewerTrackingPage() {
                   <td className="text-center p-3">
                     <span className={cn(
                       "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                      (r.activity?.assignments_viewed || 0) > 0 ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
+                      (r.activity?.assignments_viewed || 0) > 0 ? "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400" : "bg-gray-100 dark:bg-muted/60 text-gray-500 dark:text-muted-foreground"
                     )}>
                       {r.activity?.assignments_viewed || 0}
                     </span>
                   </td>
                   <td className="text-center p-3">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
                       {r.activity?.assignments_completed || 0}
                     </span>
                   </td>
                   <td className="text-center p-3">
                     {(r.activity?.assignments_declined || 0) > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400">
                         {r.activity?.assignments_declined}
                       </span>
                     )}
                   </td>
                   <td className="text-center p-3">
                     {(r.activity?.reminders_sent || 0) > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400">
                         {r.activity?.reminders_sent}
                       </span>
                     )}
@@ -436,11 +436,11 @@ export default function ReviewerTrackingPage() {
                   <td className="text-center p-3">
                     <span className={cn(
                       "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                      r.activity?.activity_status === "active_today" && "bg-emerald-100 text-emerald-700",
-                      r.activity?.activity_status === "active_recently" && "bg-blue-100 text-blue-700",
-                      r.activity?.activity_status === "inactive_week" && "bg-amber-100 text-amber-700",
-                      r.activity?.activity_status === "inactive_long" && "bg-red-100 text-red-700",
-                      r.activity?.activity_status === "never_active" && "bg-gray-100 text-gray-500"
+                      r.activity?.activity_status === "active_today" && "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+                      r.activity?.activity_status === "active_recently" && "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400",
+                      r.activity?.activity_status === "inactive_week" && "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400",
+                      r.activity?.activity_status === "inactive_long" && "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400",
+                      r.activity?.activity_status === "never_active" && "bg-gray-100 dark:bg-muted/60 text-gray-500 dark:text-muted-foreground"
                     )}>
                       {r.activity?.activity_status === "active_today" && "Today"}
                       {r.activity?.activity_status === "active_recently" && "Recent"}

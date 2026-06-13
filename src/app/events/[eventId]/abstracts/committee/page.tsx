@@ -193,20 +193,20 @@ export default function CommitteeDecisionPage() {
   }
 
   const getScoreBadgeColor = (score: number) => {
-    if (score >= 8) return "bg-green-100 text-green-800"
-    if (score >= 6) return "bg-yellow-100 text-yellow-800"
-    if (score >= 4) return "bg-orange-100 text-orange-800"
-    return "bg-red-100 text-red-800"
+    if (score >= 8) return "bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300"
+    if (score >= 6) return "bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-300"
+    if (score >= 4) return "bg-orange-100 dark:bg-orange-500/15 text-orange-800 dark:text-orange-300"
+    return "bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300"
   }
 
   const getRecommendationBadge = (rec: string) => {
     switch (rec?.toLowerCase()) {
       case 'accept':
-        return <Badge className="bg-green-100 text-green-800">Accept</Badge>
+        return <Badge className="bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300">Accept</Badge>
       case 'reject':
-        return <Badge className="bg-red-100 text-red-800">Reject</Badge>
+        return <Badge className="bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300">Reject</Badge>
       case 'revise':
-        return <Badge className="bg-yellow-100 text-yellow-800">Revise</Badge>
+        return <Badge className="bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-300">Revise</Badge>
       default:
         return <Badge variant="outline">{rec || 'Pending'}</Badge>
     }
@@ -252,28 +252,28 @@ export default function CommitteeDecisionPage() {
             <div className="text-sm text-muted-foreground">Total Abstracts</div>
           </CardContent>
         </Card>
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-yellow-200 dark:border-yellow-500/30 bg-yellow-50 dark:bg-yellow-500/10">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-yellow-700">{stats.pending_decision}</div>
-            <div className="text-sm text-yellow-600">Pending Decision</div>
+            <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{stats.pending_decision}</div>
+            <div className="text-sm text-yellow-600 dark:text-yellow-400">Pending Decision</div>
           </CardContent>
         </Card>
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-green-200 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-700">{stats.accepted}</div>
-            <div className="text-sm text-green-600">Accepted</div>
+            <div className="text-2xl font-bold text-green-700 dark:text-green-400">{stats.accepted}</div>
+            <div className="text-sm text-green-600 dark:text-green-400">Accepted</div>
           </CardContent>
         </Card>
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-red-700">{stats.rejected}</div>
-            <div className="text-sm text-red-600">Rejected</div>
+            <div className="text-2xl font-bold text-red-700 dark:text-red-400">{stats.rejected}</div>
+            <div className="text-sm text-red-600 dark:text-red-400">Rejected</div>
           </CardContent>
         </Card>
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-700">{stats.second_review}</div>
-            <div className="text-sm text-blue-600">Second Review</div>
+            <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">{stats.second_review}</div>
+            <div className="text-sm text-blue-600 dark:text-blue-400">Second Review</div>
           </CardContent>
         </Card>
       </div>
@@ -400,9 +400,9 @@ export default function CommitteeDecisionPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         {abstract.status === 'accepted' ? (
-                          <Badge className="bg-green-100 text-green-800">Accepted</Badge>
+                          <Badge className="bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300">Accepted</Badge>
                         ) : abstract.status === 'rejected' ? (
-                          <Badge className="bg-red-100 text-red-800">Rejected</Badge>
+                          <Badge className="bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300">Rejected</Badge>
                         ) : (
                           <Button
                             size="sm"

@@ -106,11 +106,11 @@ type TopUser = {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
-  online: { label: "Online", color: "text-green-700 bg-green-100 border-green-200", dot: "bg-green-500" },
-  away: { label: "Away", color: "text-amber-700 bg-amber-100 border-amber-200", dot: "bg-amber-500" },
-  logged_out: { label: "Logged Out", color: "text-gray-700 bg-gray-100 border-gray-200", dot: "bg-gray-400" },
-  offline: { label: "Offline", color: "text-gray-600 bg-gray-50 border-gray-200", dot: "bg-gray-300" },
-  never: { label: "Never Logged In", color: "text-red-700 bg-red-50 border-red-200", dot: "bg-red-400" },
+  online: { label: "Online", color: "text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-500/15 border-green-200 dark:border-green-500/30", dot: "bg-green-500" },
+  away: { label: "Away", color: "text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/30", dot: "bg-amber-500" },
+  logged_out: { label: "Logged Out", color: "text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-muted/60 border-gray-200 dark:border-border", dot: "bg-gray-400" },
+  offline: { label: "Offline", color: "text-gray-600 dark:text-muted-foreground bg-gray-50 dark:bg-muted/40 border-gray-200 dark:border-border", dot: "bg-gray-300" },
+  never: { label: "Never Logged In", color: "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30", dot: "bg-red-400" },
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -289,7 +289,7 @@ function UserHistoryRow({ user }: { user: AuditUser }) {
                         isLogin ? "bg-green-500" : "bg-gray-400"
                       )} />
                       {isLogin ? (
-                        <LogIn className="h-3 w-3 text-green-600 flex-shrink-0" />
+                        <LogIn className="h-3 w-3 text-green-600 dark:text-green-400 flex-shrink-0" />
                       ) : (
                         <LogOut className="h-3 w-3 text-gray-500 flex-shrink-0" />
                       )}
@@ -477,21 +477,21 @@ export default function AuditDashboardPage() {
           <p className="text-2xl font-bold mt-1">{stats.total_users}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-green-600">
+          <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
             <UserCheck className="h-4 w-4" />
             <span className="text-sm">Online Now</span>
           </div>
           <p className="text-2xl font-bold mt-1">{stats.online_now}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-blue-600">
+          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
             <LogIn className="h-4 w-4" />
             <span className="text-sm">Active Today</span>
           </div>
           <p className="text-2xl font-bold mt-1">{stats.active_today}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-amber-600">
+          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
             <Timer className="h-4 w-4" />
             <span className="text-sm">Avg Session</span>
           </div>
@@ -500,7 +500,7 @@ export default function AuditDashboardPage() {
           </p>
         </div>
         <div className="bg-card rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-red-600">
+          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
             <AlertCircle className="h-4 w-4" />
             <span className="text-sm">Never Logged In</span>
           </div>
@@ -510,11 +510,11 @@ export default function AuditDashboardPage() {
 
       {/* Error State */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg p-4 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-medium text-red-800">Failed to load audit data</h3>
-            <p className="text-sm text-red-600 mt-1">{error.message}</p>
+            <h3 className="font-medium text-red-800 dark:text-red-300">Failed to load audit data</h3>
+            <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error.message}</p>
             <Button variant="outline" size="sm" className="mt-2" onClick={() => refetch()}>
               <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
               Try Again
@@ -689,7 +689,7 @@ export default function AuditDashboardPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               {isLogin ? (
-                                <LogIn className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                                <LogIn className="h-3.5 w-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
                               ) : (
                                 <LogOut className="h-3.5 w-3.5 text-gray-500 flex-shrink-0" />
                               )}
@@ -831,9 +831,9 @@ export default function AuditDashboardPage() {
                             {/* Rank */}
                             <div className={cn(
                               "flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold flex-shrink-0",
-                              idx === 0 ? "bg-amber-100 text-amber-700" :
-                              idx === 1 ? "bg-gray-200 text-gray-700" :
-                              idx === 2 ? "bg-orange-100 text-orange-700" :
+                              idx === 0 ? "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400" :
+                              idx === 1 ? "bg-gray-200 dark:bg-muted/60 text-gray-700 dark:text-slate-200" :
+                              idx === 2 ? "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-400" :
                               "bg-muted text-muted-foreground"
                             )}>
                               {idx + 1}
@@ -952,19 +952,19 @@ export default function AuditDashboardPage() {
                     <p className="text-xs text-muted-foreground mt-1">Total Logins (30 days)</p>
                   </div>
                   <div className="text-center p-3 bg-muted/30 rounded-lg">
-                    <p className="text-3xl font-bold text-green-600">
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
                       {loginsPerDay.length > 0 ? Math.round(loginsPerDay.reduce((sum, d) => sum + d.count, 0) / loginsPerDay.length * 10) / 10 : 0}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Avg Daily Logins</p>
                   </div>
                   <div className="text-center p-3 bg-muted/30 rounded-lg">
-                    <p className="text-3xl font-bold text-amber-600">
+                    <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
                       {loginsPerDay.length > 0 ? Math.max(...loginsPerDay.map(d => d.count)) : 0}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Peak Day Logins</p>
                   </div>
                   <div className="text-center p-3 bg-muted/30 rounded-lg">
-                    <p className="text-3xl font-bold text-blue-600">
+                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
                       {users.filter(u => u.login_count > 0).length}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Users Who Logged In</p>
