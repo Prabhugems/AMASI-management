@@ -34,6 +34,8 @@ const EXPORT_FIELDS = [
   { id: "status", label: "Status", default: true },
   { id: "payment_status", label: "Payment Status", default: false },
   { id: "total_amount", label: "Amount", default: false },
+  { id: "addons", label: "Add-ons", default: false },
+  { id: "addon_count", label: "Add-on Count", default: false },
   { id: "addon_total", label: "Add-on Total", default: false },
   { id: "checked_in", label: "Checked In", default: false },
   { id: "checked_in_at", label: "Checked In At", default: false },
@@ -61,8 +63,11 @@ export default function ExportRegistrationsPage() {
 
   const [selectedFields, setSelectedFields] = useState<Set<string>>(() => {
     const base = new Set(EXPORT_FIELDS.filter(f => f.default).map(f => f.id))
-    // Auto-include add-on total when arriving from an add-on filter
-    if (addonParams.length > 0 || addonsOnlyParam) base.add("addon_total")
+    // Auto-include add-on details when arriving from an add-on filter
+    if (addonParams.length > 0 || addonsOnlyParam) {
+      base.add("addons")
+      base.add("addon_total")
+    }
     return base
   })
   const [statusFilter, setStatusFilter] = useState<string>(sp.get("status") || "all")
@@ -86,7 +91,9 @@ export default function ExportRegistrationsPage() {
 
       let query = (supabase as any)
         .from("registrations")
-        .select("*, registration_addons(addon_id, total_price)")
+        .select(
+          "*, registration_addons(addon_id, quantity, total_price, addon:addons(name), addon_variant:addon_variants(name))"
+        )
         .eq("event_id", eventId)
 
       if (statusFilter !== "all") {
@@ -94,15 +101,25 @@ export default function ExportRegistrationsPage() {
       }
 
       const { data } = await query
-      // Map ticket name + compute add-on total
-      let rows = (data || []).map((r: any) => ({
-        ...r,
-        ticket_type: ticketMap[r.ticket_type_id] || "",
-        addon_total: (r.registration_addons || []).reduce(
-          (s: number, a: any) => s + (a.total_price || 0),
-          0
-        ),
-      }))
+      // Map ticket name + compute add-on total and a readable add-on list
+      let rows = (data || []).map((r: any) => {
+        const ra = r.registration_addons || []
+        const addons = ra
+          .map((a: any) => {
+            const name = a.addon?.name || "Add-on"
+            const variant = a.addon_variant?.name ? ` (${a.addon_variant.name})` : ""
+            const qty = (a.quantity || 1) > 1 ? ` x${a.quantity}` : ""
+            return `${name}${variant}${qty}`
+          })
+          .join("; ")
+        return {
+          ...r,
+          ticket_type: ticketMap[r.ticket_type_id] || "",
+          addons,
+          addon_count: ra.length,
+          addon_total: ra.reduce((s: number, a: any) => s + (a.total_price || 0), 0),
+        }
+      })
 
       // Apply the same filters the list uses, so the export matches the view
       if (ticketParam !== "all") {
