@@ -48,3 +48,6 @@ public/*.zip
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Generated abstract-management docs
+docs/abstract-management.*
