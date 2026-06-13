@@ -164,12 +164,15 @@ export async function POST(
       .eq("id", abstractId)
       .single()
 
-    // Get committee members for notifications
+    // Get committee members for notifications. Source = team_members with a
+    // committee-capable role for this event. abstract_committee_members was
+    // a phantom table; the role system is the source of truth.
     const { data: committeeMembers } = await (supabase as any)
-      .from("abstract_committee_members")
+      .from("team_members")
       .select("email, name")
-      .eq("event_id", abstract?.event_id)
       .eq("is_active", true)
+      .contains("event_ids", [abstract?.event_id])
+      .in("role", ["admin", "coordinator", "committee_member"])
       .limit(5)
 
     const committeeEmail = committeeMembers?.[0]?.email || "committee@event.com"

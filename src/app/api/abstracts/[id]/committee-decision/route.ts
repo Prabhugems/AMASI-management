@@ -49,20 +49,28 @@ export async function POST(
       return authError || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get committee member info
+    // Resolve committee identity from team_members. Committee = explicit
+    // committee_member, or the event's admins/coordinators (who hold the
+    // abstracts-module permission via requireEventAndPermission above).
+    // abstract_committee_members was a phantom table; the role system is the
+    // source of truth.
     const { data: committeeMember } = await (supabase as any)
-      .from("abstract_committee_members")
-      .select("id, name")
-      .eq("event_id", abstract.event_id)
+      .from("team_members")
+      .select("id, name, email")
       .eq("email", user.email?.toLowerCase())
+      .eq("is_active", true)
+      .contains("event_ids", [abstract.event_id])
+      .in("role", ["admin", "coordinator", "committee_member"])
       .maybeSingle()
 
-    // Prepare update based on decision
+    // Prepare update based on decision. decision_notes is the canonical
+    // human-readable note field; committee_notes was a phantom write and is
+    // folded in here.
     const updateData: Record<string, unknown> = {
       committee_decision: decision,
-      committee_decision_by: committeeMember?.id || null,
+      committee_decision_by: committeeMember?.id ?? null,
       committee_decision_at: new Date().toISOString(),
-      committee_notes: notes,
+      decision_notes: notes,
       updated_at: new Date().toISOString(),
     }
 
@@ -95,14 +103,17 @@ export async function POST(
       return NextResponse.json({ error: "Failed to update abstract" }, { status: 500 })
     }
 
-    // Log the decision
+    // Log the decision. Past-tense column names match the audit log table
+    // shape; snapshot the identity (name + email) so the audit row survives
+    // a team_member delete.
     const { error: logError } = await (supabase as any)
       .from("abstract_committee_decisions")
       .insert({
         abstract_id: id,
         decision,
-        decision_by: committeeMember?.id,
-        decision_by_name: committeeMember?.name || user.email,
+        decided_by: committeeMember?.id ?? null,
+        decided_by_name: committeeMember?.name || user.email || "unknown",
+        decided_by_email: committeeMember?.email || user.email?.toLowerCase() || null,
         review_round: abstract.review_round || 1,
         second_review_reason,
         second_review_instructions,

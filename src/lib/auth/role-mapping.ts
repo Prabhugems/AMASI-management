@@ -10,6 +10,8 @@ export function mapTeamRoleToPlatformRole(teamRole: string): PlatformRole {
       return 'admin'
     case 'coordinator':
       return 'event_admin'
+    case 'committee_member':
+      return 'event_admin'
     case 'travel':
       return 'staff'
     default:
