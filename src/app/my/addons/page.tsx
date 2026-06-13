@@ -31,8 +31,8 @@ interface Addon {
 interface AddonVariant {
   id: string
   name: string
-  price_adjustment: number
-  is_available: boolean
+  price: number
+  is_active: boolean
 }
 
 interface SelectedAddon {
@@ -141,7 +141,7 @@ function PurchaseAddonsContent() {
       newSelection.delete(key)
     } else if (newQty <= maxQty) {
       const variant = addon.variants?.find(v => v.id === variantId)
-      const unitPrice = addon.price + (variant?.price_adjustment || 0)
+      const unitPrice = variant ? variant.price : addon.price
       newSelection.set(key, {
         addonId: addon.id,
         variantId,
@@ -423,10 +423,10 @@ function PurchaseAddonsContent() {
                     {/* Variants or Direct Quantity */}
                     {addon.has_variants && addon.variants?.length ? (
                       <div className="mt-4 space-y-2">
-                        {addon.variants.filter(v => v.is_available).map(variant => {
+                        {addon.variants.filter(v => v.is_active).map(variant => {
                           const key = `${addon.id}-${variant.id}`
                           const selected = selectedAddons.get(key)
-                          const finalPrice = addon.price + variant.price_adjustment
+                          const finalPrice = variant.price
 
                           return (
                             <div
