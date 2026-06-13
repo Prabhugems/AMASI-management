@@ -91,12 +91,12 @@ interface Category {
 }
 
 const statusColors: Record<string, { bg: string; text: string; label: string }> = {
-  submitted: { bg: "bg-blue-100", text: "text-blue-700", label: "Submitted" },
-  under_review: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Under Review" },
-  revision_requested: { bg: "bg-orange-100", text: "text-orange-700", label: "Revision Requested" },
-  accepted: { bg: "bg-green-100", text: "text-green-700", label: "Accepted" },
-  rejected: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
-  withdrawn: { bg: "bg-gray-100", text: "text-gray-600", label: "Withdrawn" },
+  submitted: { bg: "bg-blue-100 dark:bg-blue-500/15", text: "text-blue-700 dark:text-blue-400", label: "Submitted" },
+  under_review: { bg: "bg-yellow-100 dark:bg-yellow-500/15", text: "text-yellow-700 dark:text-yellow-400", label: "Under Review" },
+  revision_requested: { bg: "bg-orange-100 dark:bg-orange-500/15", text: "text-orange-700 dark:text-orange-400", label: "Revision Requested" },
+  accepted: { bg: "bg-green-100 dark:bg-green-500/15", text: "text-green-700 dark:text-green-400", label: "Accepted" },
+  rejected: { bg: "bg-red-100 dark:bg-red-500/15", text: "text-red-700 dark:text-red-400", label: "Rejected" },
+  withdrawn: { bg: "bg-gray-100 dark:bg-muted/60", text: "text-gray-600 dark:text-muted-foreground", label: "Withdrawn" },
 }
 
 export default function AbstractsPage() {
@@ -456,38 +456,38 @@ export default function AbstractsPage() {
         </div>
         <div className="bg-card border rounded-xl p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-blue-600">New</p>
+            <p className="text-sm text-blue-600 dark:text-blue-400">New</p>
             <Clock className="h-4 w-4 text-blue-500" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-blue-600">{stats.submitted}</p>
+          <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.submitted}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-yellow-600">In Review</p>
+            <p className="text-sm text-yellow-600 dark:text-yellow-400">In Review</p>
             <Users className="h-4 w-4 text-yellow-500" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.underReview}</p>
+          <p className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.underReview}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-orange-600">Revision</p>
+            <p className="text-sm text-orange-600 dark:text-orange-400">Revision</p>
             <AlertCircle className="h-4 w-4 text-orange-500" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-orange-600">{stats.revisionRequested}</p>
+          <p className="text-xl sm:text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.revisionRequested}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-green-600">Accepted</p>
+            <p className="text-sm text-green-600 dark:text-green-400">Accepted</p>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.accepted}</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">{stats.accepted}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-red-600">Rejected</p>
+            <p className="text-sm text-red-600 dark:text-red-400">Rejected</p>
             <XCircle className="h-4 w-4 text-red-500" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-red-600">{stats.rejected}</p>
+          <p className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400">{stats.rejected}</p>
         </div>
       </div>
 
@@ -780,9 +780,9 @@ export default function AbstractsPage() {
                       {avgScore ? (
                         <span className={cn(
                           "inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium",
-                          parseFloat(avgScore) >= 7 ? "bg-green-100 text-green-700" :
-                          parseFloat(avgScore) >= 5 ? "bg-yellow-100 text-yellow-700" :
-                          "bg-red-100 text-red-700"
+                          parseFloat(avgScore) >= 7 ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" :
+                          parseFloat(avgScore) >= 5 ? "bg-yellow-100 dark:bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" :
+                          "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400"
                         )}>
                           {avgScore}
                         </span>
@@ -794,15 +794,15 @@ export default function AbstractsPage() {
                       {abstract.award_rank ? (
                         <span className={cn(
                           "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full",
-                          abstract.award_type === "medal" ? "bg-yellow-100 text-yellow-800" :
-                          abstract.award_type === "certificate" ? "bg-blue-100 text-blue-700" :
-                          abstract.award_type === "bursary" ? "bg-green-100 text-green-700" :
-                          "bg-gray-100 text-gray-600"
+                          abstract.award_type === "medal" ? "bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-300" :
+                          abstract.award_type === "certificate" ? "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400" :
+                          abstract.award_type === "bursary" ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" :
+                          "bg-gray-100 dark:bg-muted/60 text-gray-600 dark:text-muted-foreground"
                         )}>
                           #{abstract.award_rank}
                         </span>
                       ) : abstract.redirected_from_category_id ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700">
+                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-400">
                           Redirected
                         </span>
                       ) : (
@@ -834,28 +834,28 @@ export default function AbstractsPage() {
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            className="text-green-600"
+                            className="text-green-600 dark:text-green-400"
                             onClick={() => singleDecisionMutation.mutate({ abstractId: abstract.id, decision: "accepted", accepted_as: "oral" })}
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
                             Accept
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="text-red-600"
+                            className="text-red-600 dark:text-red-400"
                             onClick={() => singleDecisionMutation.mutate({ abstractId: abstract.id, decision: "rejected" })}
                           >
                             <XCircle className="h-4 w-4 mr-2" />
                             Reject
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="text-orange-600"
+                            className="text-orange-600 dark:text-orange-400"
                             onClick={() => singleDecisionMutation.mutate({ abstractId: abstract.id, decision: "revision_requested" })}
                           >
                             <AlertCircle className="h-4 w-4 mr-2" />
                             Request Revision
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="text-indigo-600"
+                            className="text-indigo-600 dark:text-indigo-400"
                             onClick={() => singleDecisionMutation.mutate({ abstractId: abstract.id, decision: "redirected" })}
                           >
                             <ArrowRightLeft className="h-4 w-4 mr-2" />

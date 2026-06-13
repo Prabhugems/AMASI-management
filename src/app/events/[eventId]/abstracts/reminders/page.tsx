@@ -162,8 +162,8 @@ export default function RemindersPage() {
                     className={cn(
                       "w-full p-4 rounded-xl border-2 text-left transition-all",
                       selectedType === type.value
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-border hover:border-blue-300"
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10"
+                        : "border-border hover:border-blue-300 dark:hover:border-blue-500/50"
                     )}
                   >
                     <div className="flex items-center gap-3">
@@ -192,8 +192,8 @@ export default function RemindersPage() {
                     className={cn(
                       "flex-1 p-4 rounded-xl border-2 transition-all",
                       selectedChannel === channel.value
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-border hover:border-blue-300",
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10"
+                        : "border-border hover:border-blue-300 dark:hover:border-blue-500/50",
                       channel.value === "whatsapp" && "opacity-50 cursor-not-allowed"
                     )}
                     disabled={channel.value === "whatsapp"}
@@ -281,12 +281,12 @@ export default function RemindersPage() {
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "h-10 w-10 rounded-lg flex items-center justify-center",
-                    reminder.reminder_type === "review_deadline" ? "bg-blue-100" : "bg-amber-100"
+                    reminder.reminder_type === "review_deadline" ? "bg-blue-100 dark:bg-blue-500/15" : "bg-amber-100 dark:bg-amber-500/15"
                   )}>
                     {reminder.reminder_type === "review_deadline" ? (
-                      <Users className="h-5 w-5 text-blue-600" />
+                      <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     ) : (
-                      <FileText className="h-5 w-5 text-amber-600" />
+                      <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     )}
                   </div>
                   <div>
@@ -298,12 +298,12 @@ export default function RemindersPage() {
                 </div>
                 <div className="flex items-center gap-4">
                   {reminder.delivery_status === "sent" ? (
-                    <span className="flex items-center gap-1 text-sm text-green-600">
+                    <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
                       <CheckCircle className="h-4 w-4" />
                       Sent
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-sm text-red-600">
+                    <span className="flex items-center gap-1 text-sm text-red-600 dark:text-red-400">
                       <AlertCircle className="h-4 w-4" />
                       Failed
                     </span>

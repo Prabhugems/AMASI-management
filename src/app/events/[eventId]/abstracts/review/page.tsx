@@ -198,9 +198,9 @@ export default function ReviewPage() {
                     <Star className="h-5 w-5 text-yellow-500" />
                     <span className={cn(
                       "text-xl sm:text-2xl font-bold",
-                      parseFloat(avgScore) >= 7 ? "text-green-600" :
-                      parseFloat(avgScore) >= 5 ? "text-yellow-600" :
-                      "text-red-600"
+                      parseFloat(avgScore) >= 7 ? "text-green-600 dark:text-green-400" :
+                      parseFloat(avgScore) >= 5 ? "text-yellow-600 dark:text-yellow-400" :
+                      "text-red-600 dark:text-red-400"
                     )}>
                       {avgScore}
                     </span>
@@ -227,27 +227,27 @@ export default function ReviewPage() {
               <div className="grid grid-cols-3 gap-4">
                 <button
                   onClick={() => makeDecision("accepted")}
-                  className="p-6 rounded-xl border-2 border-green-200 bg-green-50 hover:bg-green-100 transition-colors text-center group"
+                  className="p-6 rounded-xl border-2 border-green-200 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 hover:bg-green-100 dark:hover:bg-green-500/15 transition-colors text-center group"
                 >
-                  <CheckCircle className="h-10 w-10 mx-auto text-green-600 mb-2 group-hover:scale-110 transition-transform" />
-                  <p className="font-semibold text-green-700">Accept</p>
-                  <p className="text-xs text-green-600 mt-1">Approve for presentation</p>
+                  <CheckCircle className="h-10 w-10 mx-auto text-green-600 dark:text-green-400 mb-2 group-hover:scale-110 transition-transform" />
+                  <p className="font-semibold text-green-700 dark:text-green-400">Accept</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">Approve for presentation</p>
                 </button>
                 <button
                   onClick={() => makeDecision("revision_requested")}
-                  className="p-6 rounded-xl border-2 border-orange-200 bg-orange-50 hover:bg-orange-100 transition-colors text-center group"
+                  className="p-6 rounded-xl border-2 border-orange-200 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100 dark:hover:bg-orange-500/15 transition-colors text-center group"
                 >
-                  <AlertCircle className="h-10 w-10 mx-auto text-orange-600 mb-2 group-hover:scale-110 transition-transform" />
-                  <p className="font-semibold text-orange-700">Request Revision</p>
-                  <p className="text-xs text-orange-600 mt-1">Ask for changes</p>
+                  <AlertCircle className="h-10 w-10 mx-auto text-orange-600 dark:text-orange-400 mb-2 group-hover:scale-110 transition-transform" />
+                  <p className="font-semibold text-orange-700 dark:text-orange-400">Request Revision</p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Ask for changes</p>
                 </button>
                 <button
                   onClick={() => makeDecision("rejected")}
-                  className="p-6 rounded-xl border-2 border-red-200 bg-red-50 hover:bg-red-100 transition-colors text-center group"
+                  className="p-6 rounded-xl border-2 border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/15 transition-colors text-center group"
                 >
-                  <XCircle className="h-10 w-10 mx-auto text-red-600 mb-2 group-hover:scale-110 transition-transform" />
-                  <p className="font-semibold text-red-700">Reject</p>
-                  <p className="text-xs text-red-600 mt-1">Decline submission</p>
+                  <XCircle className="h-10 w-10 mx-auto text-red-600 dark:text-red-400 mb-2 group-hover:scale-110 transition-transform" />
+                  <p className="font-semibold text-red-700 dark:text-red-400">Reject</p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">Decline submission</p>
                 </button>
               </div>
             </div>
@@ -282,10 +282,10 @@ export default function ReviewPage() {
                         {review.recommendation && (
                           <span className={cn(
                             "px-2 py-0.5 text-xs rounded-full capitalize",
-                            review.recommendation === "accept" ? "bg-green-100 text-green-700" :
-                            review.recommendation === "reject" ? "bg-red-100 text-red-700" :
-                            review.recommendation === "revise" ? "bg-orange-100 text-orange-700" :
-                            "bg-gray-100 text-gray-600"
+                            review.recommendation === "accept" ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" :
+                            review.recommendation === "reject" ? "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400" :
+                            review.recommendation === "revise" ? "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-400" :
+                            "bg-gray-100 dark:bg-muted/60 text-gray-600 dark:text-muted-foreground"
                           )}>
                             {review.recommendation}
                           </span>

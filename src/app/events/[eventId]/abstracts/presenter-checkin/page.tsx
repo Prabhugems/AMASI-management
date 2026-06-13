@@ -236,28 +236,28 @@ export default function PresenterCheckinPage() {
             <div className="text-sm text-muted-foreground">Total Presenters</div>
           </CardContent>
         </Card>
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-green-200 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-700">{stats.checked_in}</div>
-            <div className="text-sm text-green-600">Checked In</div>
+            <div className="text-2xl font-bold text-green-700 dark:text-green-400">{stats.checked_in}</div>
+            <div className="text-sm text-green-600 dark:text-green-400">Checked In</div>
           </CardContent>
         </Card>
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-yellow-200 dark:border-yellow-500/30 bg-yellow-50 dark:bg-yellow-500/10">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-yellow-700">{stats.not_checked_in}</div>
-            <div className="text-sm text-yellow-600">Awaiting</div>
+            <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{stats.not_checked_in}</div>
+            <div className="text-sm text-yellow-600 dark:text-yellow-400">Awaiting</div>
           </CardContent>
         </Card>
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-700">{stats.presentations_completed}</div>
-            <div className="text-sm text-blue-600">Completed</div>
+            <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">{stats.presentations_completed}</div>
+            <div className="text-sm text-blue-600 dark:text-blue-400">Completed</div>
           </CardContent>
         </Card>
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-red-700">{stats.not_registered}</div>
-            <div className="text-sm text-red-600">Not Registered</div>
+            <div className="text-2xl font-bold text-red-700 dark:text-red-400">{stats.not_registered}</div>
+            <div className="text-sm text-red-600 dark:text-red-400">Not Registered</div>
           </CardContent>
         </Card>
       </div>
@@ -369,12 +369,12 @@ export default function PresenterCheckinPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       {abstract.registration_verified ? (
-                        <Badge className="bg-green-100 text-green-800">
+                        <Badge className="bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
                           Registered
                         </Badge>
                       ) : (
-                        <Badge className="bg-red-100 text-red-800">
+                        <Badge className="bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300">
                           <AlertTriangle className="h-3 w-3 mr-1" />
                           Not Registered
                         </Badge>
@@ -382,17 +382,17 @@ export default function PresenterCheckinPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       {abstract.presentation_completed ? (
-                        <Badge className="bg-blue-100 text-blue-800">
+                        <Badge className="bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-300">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
                           Presented
                         </Badge>
                       ) : abstract.presenter_checked_in ? (
-                        <Badge className="bg-green-100 text-green-800">
+                        <Badge className="bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-300">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
                           Checked In
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-yellow-600 border-yellow-300">
+                        <Badge variant="outline" className="text-yellow-600 dark:text-yellow-400 border-yellow-300 dark:border-yellow-500/40">
                           <Clock className="h-3 w-3 mr-1" />
                           Awaiting
                         </Badge>
@@ -418,7 +418,7 @@ export default function PresenterCheckinPage() {
                             Mark Complete
                           </Button>
                         ) : (
-                          <Badge className="bg-gray-100 text-gray-600">Done</Badge>
+                          <Badge className="bg-gray-100 dark:bg-muted/60 text-gray-600 dark:text-muted-foreground">Done</Badge>
                         )}
                       </div>
                     </TableCell>

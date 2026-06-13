@@ -309,7 +309,7 @@ export default function CabAgentPortal() {
         <ResizableSheetContent defaultWidth={600} minWidth={320} maxWidth={900} storageKey="cab-agent-sheet-width" className="overflow-y-auto p-0">
           <div className={cn(
             "px-6 py-4 border-b",
-            editingType === "pickup" ? "bg-gradient-to-r from-green-50 to-green-100/50" : "bg-gradient-to-r from-red-50 to-red-100/50"
+            editingType === "pickup" ? "bg-gradient-to-r from-green-50 dark:from-green-500/10 to-green-100/50 dark:to-green-500/10" : "bg-gradient-to-r from-red-50 dark:from-red-500/10 to-red-100/50 dark:to-red-500/10"
           )}>
             <SheetHeader>
               <SheetTitle className="flex items-center gap-3">
@@ -387,8 +387,8 @@ export default function CabAgentPortal() {
                       </div>
                     </div>
 
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
-                      <p className="text-blue-700">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-lg text-sm">
+                      <p className="text-blue-700 dark:text-blue-400">
                         {editingType === "pickup"
                           ? "Guest arriving - arrange pickup from airport/station"
                           : "Guest departing - arrange drop to airport/station"
@@ -461,7 +461,7 @@ function TransferTable({ guests, type, onEdit, formatDate }: { guests: Guest[]; 
     <div className="bg-card rounded-lg border overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className={type === "pickup" ? "bg-green-50" : "bg-red-50"}>
+          <TableRow className={type === "pickup" ? "bg-green-50 dark:bg-green-500/10" : "bg-red-50 dark:bg-red-500/10"}>
             <TableHead>Guest</TableHead>
             <TableHead>{type === "pickup" ? "Arrival" : "Departure"}</TableHead>
             <TableHead>Date</TableHead>

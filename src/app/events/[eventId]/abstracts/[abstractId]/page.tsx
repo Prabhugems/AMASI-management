@@ -94,12 +94,12 @@ interface Abstract {
 }
 
 const statusColors: Record<string, { bg: string; text: string; label: string }> = {
-  submitted: { bg: "bg-blue-100", text: "text-blue-700", label: "Submitted" },
-  under_review: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Under Review" },
-  revision_requested: { bg: "bg-orange-100", text: "text-orange-700", label: "Revision Requested" },
-  accepted: { bg: "bg-green-100", text: "text-green-700", label: "Accepted" },
-  rejected: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
-  withdrawn: { bg: "bg-gray-100", text: "text-gray-600", label: "Withdrawn" },
+  submitted: { bg: "bg-blue-100 dark:bg-blue-500/15", text: "text-blue-700 dark:text-blue-400", label: "Submitted" },
+  under_review: { bg: "bg-yellow-100 dark:bg-yellow-500/15", text: "text-yellow-700 dark:text-yellow-400", label: "Under Review" },
+  revision_requested: { bg: "bg-orange-100 dark:bg-orange-500/15", text: "text-orange-700 dark:text-orange-400", label: "Revision Requested" },
+  accepted: { bg: "bg-green-100 dark:bg-green-500/15", text: "text-green-700 dark:text-green-400", label: "Accepted" },
+  rejected: { bg: "bg-red-100 dark:bg-red-500/15", text: "text-red-700 dark:text-red-400", label: "Rejected" },
+  withdrawn: { bg: "bg-gray-100 dark:bg-muted/60", text: "text-gray-600 dark:text-muted-foreground", label: "Withdrawn" },
 }
 
 export default function AbstractDetailPage() {
@@ -254,7 +254,7 @@ export default function AbstractDetailPage() {
                 {status.label}
               </span>
               {abstract.accepted_as && (
-                <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-emerald-100 text-emerald-700 capitalize">
+                <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 capitalize">
                   {abstract.accepted_as}
                 </span>
               )}
@@ -268,7 +268,7 @@ export default function AbstractDetailPage() {
               <Button
                 variant="outline"
                 onClick={() => openDecisionDialog("accepted")}
-                className="gap-2 text-green-600 border-green-200 hover:bg-green-50"
+                className="gap-2 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/30 hover:bg-green-50 dark:hover:bg-green-500/10"
               >
                 <CheckCircle className="h-4 w-4" />
                 Accept
@@ -276,7 +276,7 @@ export default function AbstractDetailPage() {
               <Button
                 variant="outline"
                 onClick={() => openDecisionDialog("rejected")}
-                className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                className="gap-2 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/30 hover:bg-red-50 dark:hover:bg-red-500/10"
               >
                 <XCircle className="h-4 w-4" />
                 Reject
@@ -284,7 +284,7 @@ export default function AbstractDetailPage() {
               <Button
                 variant="outline"
                 onClick={() => openDecisionDialog("revision_requested")}
-                className="gap-2 text-orange-600 border-orange-200 hover:bg-orange-50"
+                className="gap-2 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/30 hover:bg-orange-50 dark:hover:bg-orange-500/10"
               >
                 <AlertCircle className="h-4 w-4" />
                 Request Revision
@@ -292,7 +292,7 @@ export default function AbstractDetailPage() {
               <Button
                 variant="outline"
                 onClick={() => openDecisionDialog("redirected")}
-                className="gap-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                className="gap-2 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
               >
                 <ArrowRightLeft className="h-4 w-4" />
                 Redirect to Free Session
@@ -403,9 +403,9 @@ export default function AbstractDetailPage() {
                   <span className="text-sm text-muted-foreground">Average Score:</span>
                   <span className={cn(
                     "inline-flex items-center justify-center w-10 h-10 rounded-full text-lg font-bold",
-                    parseFloat(avgScore) >= 7 ? "bg-green-100 text-green-700" :
-                    parseFloat(avgScore) >= 5 ? "bg-yellow-100 text-yellow-700" :
-                    "bg-red-100 text-red-700"
+                    parseFloat(avgScore) >= 7 ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" :
+                    parseFloat(avgScore) >= 5 ? "bg-yellow-100 dark:bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" :
+                    "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400"
                   )}>
                     {avgScore}
                   </span>
@@ -429,17 +429,17 @@ export default function AbstractDetailPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {review.review_type === "judge_score" && (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400">
                             Judge
                           </span>
                         )}
                         {review.recommendation && (
                           <span className={cn(
                             "px-2 py-1 text-xs font-medium rounded-full capitalize",
-                            review.recommendation === "accept" ? "bg-green-100 text-green-700" :
-                            review.recommendation === "reject" ? "bg-red-100 text-red-700" :
-                            review.recommendation === "revise" ? "bg-orange-100 text-orange-700" :
-                            "bg-gray-100 text-gray-600"
+                            review.recommendation === "accept" ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" :
+                            review.recommendation === "reject" ? "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400" :
+                            review.recommendation === "revise" ? "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-400" :
+                            "bg-gray-100 dark:bg-muted/60 text-gray-600 dark:text-muted-foreground"
                           )}>
                             {review.recommendation}
                           </span>
@@ -557,9 +557,9 @@ export default function AbstractDetailPage() {
               </h2>
               <div className="space-y-3 text-sm">
                 {abstract.redirected_from_category_id && (
-                  <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
-                    <p className="text-xs text-indigo-600 font-medium">Redirected from Award Category</p>
-                    <p className="text-sm text-indigo-700">Moved to free session</p>
+                  <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 rounded-lg">
+                    <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Redirected from Award Category</p>
+                    <p className="text-sm text-indigo-700 dark:text-indigo-400">Moved to free session</p>
                   </div>
                 )}
                 {abstract.award_rank && (
@@ -573,9 +573,9 @@ export default function AbstractDetailPage() {
                     <span className="text-muted-foreground">Award</span>
                     <span className={cn(
                       "px-2 py-1 text-xs font-medium rounded-full capitalize",
-                      abstract.award_type === "medal" ? "bg-yellow-100 text-yellow-800" :
-                      abstract.award_type === "certificate" ? "bg-blue-100 text-blue-700" :
-                      "bg-green-100 text-green-700"
+                      abstract.award_type === "medal" ? "bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-300" :
+                      abstract.award_type === "certificate" ? "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400" :
+                      "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400"
                     )}>
                       {abstract.award_type}
                     </span>
@@ -799,9 +799,9 @@ export default function AbstractDetailPage() {
                       />
                       <span className={cn(
                         "w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm",
-                        (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 7 ? "bg-green-100 text-green-700" :
-                        (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 5 ? "bg-yellow-100 text-yellow-700" :
-                        "bg-red-100 text-red-700"
+                        (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 7 ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" :
+                        (reviewScores[criterion.key as keyof typeof reviewScores] as number) >= 5 ? "bg-yellow-100 dark:bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" :
+                        "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400"
                       )}>
                         {reviewScores[criterion.key as keyof typeof reviewScores]}
                       </span>

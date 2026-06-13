@@ -189,15 +189,15 @@ export default function PresentationsPage() {
         <div className="rounded-2xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-3xl font-bold text-emerald-600">{stats.uploaded}</p>
+              <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{stats.uploaded}</p>
               <p className="text-sm text-muted-foreground">Uploaded</p>
             </div>
             <div className="h-10 w-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </div>
           </div>
           {stats.total > 0 && (
-            <div className="mt-3 h-2 rounded-full bg-emerald-100 overflow-hidden">
+            <div className="mt-3 h-2 rounded-full bg-emerald-100 dark:bg-emerald-500/15 overflow-hidden">
               <div
                 className="h-full bg-emerald-500 rounded-full"
                 style={{ width: `${(stats.uploaded / stats.total) * 100}%` }}
@@ -209,11 +209,11 @@ export default function PresentationsPage() {
         <div className="rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-3xl font-bold text-amber-600">{stats.pending}</p>
+              <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{stats.pending}</p>
               <p className="text-sm text-muted-foreground">Pending</p>
             </div>
             <div className="h-10 w-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-              <Clock className="h-5 w-5 text-amber-600" />
+              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
           </div>
         </div>
@@ -221,16 +221,16 @@ export default function PresentationsPage() {
         <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 p-5">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <FileText className="h-4 w-4 text-blue-600" />
-              <span className="text-lg font-semibold text-blue-600">{stats.papers}</span>
+              <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">{stats.papers}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Video className="h-4 w-4 text-red-500" />
               <span className="text-lg font-semibold text-red-500">{stats.videos}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Presentation className="h-4 w-4 text-green-600" />
-              <span className="text-lg font-semibold text-green-600">{stats.posters}</span>
+              <Presentation className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="text-lg font-semibold text-green-600 dark:text-green-400">{stats.posters}</span>
             </div>
           </div>
           <p className="text-sm text-muted-foreground mt-2">By Type</p>
@@ -330,9 +330,9 @@ export default function PresentationsPage() {
                         variant="outline"
                         className={cn(
                           "capitalize",
-                          abstract.presentation_type === "paper" && "border-blue-300 text-blue-700 bg-blue-50",
-                          abstract.presentation_type === "video" && "border-red-300 text-red-700 bg-red-50",
-                          abstract.presentation_type === "poster" && "border-green-300 text-green-700 bg-green-50"
+                          abstract.presentation_type === "paper" && "border-blue-300 dark:border-blue-500/40 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10",
+                          abstract.presentation_type === "video" && "border-red-300 dark:border-red-500/40 text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10",
+                          abstract.presentation_type === "poster" && "border-green-300 dark:border-green-500/40 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-500/10"
                         )}
                       >
                         {abstract.presentation_type === "paper" && <FileText className="h-3 w-3 mr-1" />}
@@ -346,7 +346,7 @@ export default function PresentationsPage() {
                         <div className="flex items-center gap-2">
                           <CheckCircle className="h-4 w-4 text-emerald-500" />
                           <div>
-                            <p className="text-sm font-medium text-emerald-700">Uploaded</p>
+                            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Uploaded</p>
                             <p className="text-xs text-muted-foreground">
                               {formatDate(abstract.presentation_uploaded_at)}
                             </p>
@@ -355,7 +355,7 @@ export default function PresentationsPage() {
                       ) : (
                         <div className="flex items-center gap-2">
                           <AlertCircle className="h-4 w-4 text-amber-500" />
-                          <span className="text-sm text-amber-700">Pending</span>
+                          <span className="text-sm text-amber-700 dark:text-amber-400">Pending</span>
                         </div>
                       )}
                     </td>
@@ -388,7 +388,7 @@ export default function PresentationsPage() {
                             size="sm"
                             onClick={() => sendReminder(abstract)}
                             title="Send reminder"
-                            className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                            className="text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-500/10"
                           >
                             <Send className="h-4 w-4 mr-1" />
                             Remind

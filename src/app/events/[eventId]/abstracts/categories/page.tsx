@@ -483,8 +483,8 @@ export default function CategoriesPage() {
       </div>
 
       {/* Info Box */}
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-        <p className="text-sm text-blue-800">
+      <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl">
+        <p className="text-sm text-blue-800 dark:text-blue-300">
           <strong>Specialities</strong> help organize abstract submissions by medical speciality (e.g., Bariatric Surgery, Robotic Surgery).
           Common examples: Free Paper, Video, Poster, Young Investigator, Case Report.
           You can set a maximum number of submissions per category if needed.
@@ -540,7 +540,7 @@ export default function CategoriesPage() {
                     {category.description || "—"}
                   </TableCell>
                   <TableCell className="text-center">
-                    <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700 capitalize">
+                    <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 capitalize">
                       {category.submission_type || "paper"}
                     </span>
                     {category.required_file && (
@@ -549,7 +549,7 @@ export default function CategoriesPage() {
                   </TableCell>
                   <TableCell className="text-center">
                     {category.is_award_category ? (
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400">
                         {category.award_name || "Award"}
                       </span>
                     ) : (
@@ -558,7 +558,7 @@ export default function CategoriesPage() {
                   </TableCell>
                   <TableCell className="text-center">
                     {(category.scoring_criteria as ScoringCriterion[] | undefined)?.length ? (
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400">
                         {(category.scoring_criteria as ScoringCriterion[]).length} criteria / {(category.scoring_criteria as ScoringCriterion[]).reduce((sum, c) => sum + c.max_score, 0)} pts
                       </span>
                     ) : (
@@ -569,8 +569,8 @@ export default function CategoriesPage() {
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                         category.is_active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-600"
+                          ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400"
+                          : "bg-gray-100 dark:bg-muted/60 text-gray-600 dark:text-muted-foreground"
                       }`}
                     >
                       {category.is_active ? "Active" : "Inactive"}
@@ -876,7 +876,7 @@ export default function CategoriesPage() {
                     <p className="text-xs text-muted-foreground">
                       Define criteria judges will use to score submissions
                       {formData.scoring_criteria.length > 0 && (
-                        <span className="ml-1 font-medium text-purple-600">
+                        <span className="ml-1 font-medium text-purple-600 dark:text-purple-400">
                           ({formData.scoring_criteria.length} criteria, {formData.scoring_criteria.reduce((s, c) => s + c.max_score, 0)} pts total)
                         </span>
                       )}

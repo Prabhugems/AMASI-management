@@ -132,50 +132,50 @@ export default function AnalyticsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-blue-600">New</span>
+              <span className="text-sm text-blue-600 dark:text-blue-400">New</span>
               <Clock className="h-4 w-4 text-blue-500" />
             </div>
-            <p className="text-2xl font-bold text-blue-600">{summary.submitted}</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{summary.submitted}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-yellow-600">In Review</span>
+              <span className="text-sm text-yellow-600 dark:text-yellow-400">In Review</span>
               <Eye className="h-4 w-4 text-yellow-500" />
             </div>
-            <p className="text-2xl font-bold text-yellow-600">{summary.under_review}</p>
+            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{summary.under_review}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-green-600">Accepted</span>
+              <span className="text-sm text-green-600 dark:text-green-400">Accepted</span>
               <CheckCircle className="h-4 w-4 text-green-500" />
             </div>
-            <p className="text-2xl font-bold text-green-600">{summary.accepted}</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{summary.accepted}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-red-600">Rejected</span>
+              <span className="text-sm text-red-600 dark:text-red-400">Rejected</span>
               <XCircle className="h-4 w-4 text-red-500" />
             </div>
-            <p className="text-2xl font-bold text-red-600">{summary.rejected}</p>
+            <p className="text-2xl font-bold text-red-600 dark:text-red-400">{summary.rejected}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-orange-600">Revision</span>
+              <span className="text-sm text-orange-600 dark:text-orange-400">Revision</span>
               <AlertTriangle className="h-4 w-4 text-orange-500" />
             </div>
-            <p className="text-2xl font-bold text-orange-600">{summary.revision_requested}</p>
+            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{summary.revision_requested}</p>
           </CardContent>
         </Card>
       </div>

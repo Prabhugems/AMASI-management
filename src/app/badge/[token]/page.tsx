@@ -132,15 +132,15 @@ export default function BadgeDownloadPage() {
   if (error || !badgeInfo) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-red-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="bg-white dark:bg-card rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-500/15 rounded-full flex items-center justify-center mx-auto mb-6">
             <XCircle className="w-10 h-10 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Badge Not Found</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-200 mb-2">Badge Not Found</h1>
+          <p className="text-gray-600 dark:text-muted-foreground">
             {error || "This badge link is invalid or has expired."}
           </p>
-          <p className="text-sm text-gray-500 mt-4">
+          <p className="text-sm text-gray-500 dark:text-muted-foreground mt-4">
             Please contact the event organizer for assistance.
           </p>
         </div>
@@ -153,7 +153,7 @@ export default function BadgeDownloadPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-800 to-indigo-900 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+      <div className="bg-white dark:bg-card rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white text-center">
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -167,12 +167,12 @@ export default function BadgeDownloadPage() {
         <div className="p-6">
           {/* Attendee Info */}
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 break-words">{registration.attendee_name}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-200 break-words">{registration.attendee_name}</h2>
             {registration.attendee_designation && (
-              <p className="text-gray-600">{registration.attendee_designation}</p>
+              <p className="text-gray-600 dark:text-muted-foreground">{registration.attendee_designation}</p>
             )}
             {registration.attendee_institution && (
-              <p className="text-gray-500 text-sm flex items-center justify-center gap-1">
+              <p className="text-gray-500 dark:text-muted-foreground text-sm flex items-center justify-center gap-1">
                 <Building2 className="w-4 h-4" />
                 {registration.attendee_institution}
               </p>
@@ -181,9 +181,9 @@ export default function BadgeDownloadPage() {
 
           {/* Event Info */}
           {event && (
-            <div className="bg-gray-50 rounded-xl p-4 mb-6">
-              <h3 className="font-semibold text-gray-900 mb-2">{event.short_name || event.name}</h3>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="bg-gray-50 dark:bg-muted/40 rounded-xl p-4 mb-6">
+              <h3 className="font-semibold text-gray-900 dark:text-slate-200 mb-2">{event.short_name || event.name}</h3>
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-muted-foreground">
                 <Calendar className="w-4 h-4" />
                 <span>
                   {formatDate(event.start_date)}
@@ -195,22 +195,22 @@ export default function BadgeDownloadPage() {
 
           {/* Badge Details */}
           <div className="space-y-3 mb-6">
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <div className="flex items-center gap-2 text-gray-600">
+            <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-border">
+              <div className="flex items-center gap-2 text-gray-600 dark:text-muted-foreground">
                 <Ticket className="w-4 h-4" />
                 <span>Ticket Type</span>
               </div>
-              <span className="font-medium text-gray-900">
+              <span className="font-medium text-gray-900 dark:text-slate-200">
                 {registration.ticket_type?.name || "General"}
               </span>
             </div>
 
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <div className="flex items-center gap-2 text-gray-600">
+            <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-border">
+              <div className="flex items-center gap-2 text-gray-600 dark:text-muted-foreground">
                 <User className="w-4 h-4" />
                 <span>Registration #</span>
               </div>
-              <span className="font-mono font-medium text-gray-900">
+              <span className="font-mono font-medium text-gray-900 dark:text-slate-200">
                 {registration.registration_number}
               </span>
             </div>
@@ -221,7 +221,7 @@ export default function BadgeDownloadPage() {
                   <CheckCircle className="w-4 h-4 text-green-500" />
                   <span>Badge Status</span>
                 </div>
-                <span className="text-green-600 font-medium text-sm">
+                <span className="text-green-600 dark:text-green-400 font-medium text-sm">
                   Generated {formatDate(registration.badge_generated_at)}
                 </span>
               </div>
@@ -249,8 +249,8 @@ export default function BadgeDownloadPage() {
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 text-center">
-          <p className="text-xs text-gray-500">
+        <div className="bg-gray-50 dark:bg-muted/40 px-6 py-4 text-center">
+          <p className="text-xs text-gray-500 dark:text-muted-foreground">
             Print this badge and wear it at the event venue for identification.
           </p>
         </div>

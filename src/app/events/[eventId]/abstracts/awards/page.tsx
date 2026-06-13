@@ -63,9 +63,9 @@ interface Category {
 }
 
 const awardTypeLabels: Record<string, { label: string; color: string }> = {
-  medal: { label: "Medal", color: "bg-yellow-100 text-yellow-800" },
-  certificate: { label: "Certificate", color: "bg-blue-100 text-blue-700" },
-  bursary: { label: "Bursary", color: "bg-green-100 text-green-700" },
+  medal: { label: "Medal", color: "bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-300" },
+  certificate: { label: "Certificate", color: "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400" },
+  bursary: { label: "Bursary", color: "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" },
 }
 
 export default function AwardsPage() {
@@ -245,8 +245,8 @@ export default function AwardsPage() {
       </div>
 
       {/* Legend */}
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-        <p className="text-sm text-blue-800 mb-2">
+      <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl">
+        <p className="text-sm text-blue-800 dark:text-blue-300 mb-2">
           <strong>Award Assignment Rules:</strong>
         </p>
         <div className="flex gap-4 text-sm">
@@ -303,13 +303,13 @@ export default function AwardsPage() {
 
       {/* Success/Error Messages */}
       {saveMutation.isSuccess && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2 text-green-700">
+        <div className="p-4 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/30 rounded-xl flex items-center gap-2 text-green-700 dark:text-green-400">
           <CheckCircle className="h-5 w-5" />
           Rankings saved successfully!
         </div>
       )}
       {saveMutation.isError && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700">
+        <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl flex items-center gap-2 text-red-700 dark:text-red-400">
           <AlertCircle className="h-5 w-5" />
           {saveMutation.error.message}
         </div>
@@ -356,9 +356,9 @@ export default function AwardsPage() {
                       <TableRow
                         key={abstract.id}
                         className={cn(
-                          rank === 1 && "bg-yellow-50",
-                          rank && rank <= 3 && rank > 1 && "bg-blue-50/50",
-                          rank && rank > 3 && rank <= 10 && "bg-green-50/30",
+                          rank === 1 && "bg-yellow-50 dark:bg-yellow-500/10",
+                          rank && rank <= 3 && rank > 1 && "bg-blue-50/50 dark:bg-blue-500/10",
+                          rank && rank > 3 && rank <= 10 && "bg-green-50/30 dark:bg-green-500/5",
                         )}
                       >
                         <TableCell>
@@ -398,9 +398,9 @@ export default function AwardsPage() {
                           ) : avgScore ? (
                             <span className={cn(
                               "inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium",
-                              avgScore >= 7 ? "bg-green-100 text-green-700" :
-                              avgScore >= 5 ? "bg-yellow-100 text-yellow-700" :
-                              "bg-red-100 text-red-700"
+                              avgScore >= 7 ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400" :
+                              avgScore >= 5 ? "bg-yellow-100 dark:bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" :
+                              "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400"
                             )}>
                               {avgScore.toFixed(1)}
                             </span>
@@ -412,7 +412,7 @@ export default function AwardsPage() {
                           {abstract.amasi_membership_number ? (
                             <span className="text-xs font-mono">{abstract.amasi_membership_number}</span>
                           ) : (
-                            <span className="text-xs text-amber-600">Missing</span>
+                            <span className="text-xs text-amber-600 dark:text-amber-400">Missing</span>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
