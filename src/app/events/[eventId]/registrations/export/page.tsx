@@ -53,16 +53,16 @@ export default function ExportRegistrationsPage() {
   const sp = useSearchParams()
   const ticketParam = sp.get("ticket") || "all"
   const modeParam = sp.get("mode") || "all"
-  const addonParam = sp.get("addon") || "all"
+  const addonParams = (sp.get("addon") || "").split(",").filter(Boolean)
   const addonsOnlyParam = sp.get("addons_only") === "1"
   const searchParam = (sp.get("q") || "").toLowerCase()
   const hasListFilters =
-    ticketParam !== "all" || modeParam !== "all" || addonParam !== "all" || addonsOnlyParam || !!searchParam
+    ticketParam !== "all" || modeParam !== "all" || addonParams.length > 0 || addonsOnlyParam || !!searchParam
 
   const [selectedFields, setSelectedFields] = useState<Set<string>>(() => {
     const base = new Set(EXPORT_FIELDS.filter(f => f.default).map(f => f.id))
     // Auto-include add-on total when arriving from an add-on filter
-    if (addonParam !== "all" || addonsOnlyParam) base.add("addon_total")
+    if (addonParams.length > 0 || addonsOnlyParam) base.add("addon_total")
     return base
   })
   const [statusFilter, setStatusFilter] = useState<string>(sp.get("status") || "all")
@@ -71,7 +71,7 @@ export default function ExportRegistrationsPage() {
 
   // Fetch registrations and ticket types
   const { data: registrations } = useQuery({
-    queryKey: ["export-registrations", eventId, statusFilter, ticketParam, modeParam, addonParam, addonsOnlyParam, searchParam],
+    queryKey: ["export-registrations", eventId, statusFilter, ticketParam, modeParam, addonParams.join(","), addonsOnlyParam, searchParam],
     queryFn: async () => {
       // Fetch ticket types first (separate query to avoid RLS join issues)
       const { data: tickets } = await (supabase as any)
@@ -111,8 +111,8 @@ export default function ExportRegistrationsPage() {
       if (modeParam !== "all") {
         rows = rows.filter((r: any) => (r.participation_mode || "offline") === modeParam)
       }
-      if (addonParam !== "all") {
-        rows = rows.filter((r: any) => (r.registration_addons || []).some((a: any) => a.addon_id === addonParam))
+      if (addonParams.length > 0) {
+        rows = rows.filter((r: any) => (r.registration_addons || []).some((a: any) => addonParams.includes(a.addon_id)))
       }
       if (addonsOnlyParam) {
         rows = rows.filter((r: any) => (r.registration_addons || []).length > 0)

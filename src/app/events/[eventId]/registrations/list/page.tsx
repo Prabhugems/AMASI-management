@@ -29,6 +29,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 import {
   UserCheck,
@@ -154,21 +157,34 @@ function RegistrationsContent() {
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus)
   const [ticketFilter, setTicketFilter] = useState<string>("all")
   const [modeFilter, setModeFilter] = useState<string>("all")
-  const [addonFilter, setAddonFilter] = useState<string>(searchParams.get("addon") || "all")
+  const [addonFilter, setAddonFilter] = useState<string[]>(
+    () => (searchParams.get("addon") || "").split(",").filter(Boolean)
+  )
   const [addonsOnly, setAddonsOnly] = useState<boolean>(searchParams.get("addons_only") === "1")
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
 
-  // Persist the add-on filter to the URL so it survives refresh and can be shared
-  const handleAddonFilterChange = (value: string) => {
-    setAddonFilter(value)
+  // Persist the (multi-select) add-on filter to the URL so it survives refresh
+  // and can be shared. Empty = no filter ("All Add-ons").
+  const syncAddonFilterUrl = (ids: string[]) => {
     const next = new URLSearchParams(searchParams.toString())
-    if (value === "all") {
-      next.delete("addon")
+    if (ids.length > 0) {
+      next.set("addon", ids.join(","))
     } else {
-      next.set("addon", value)
+      next.delete("addon")
     }
     const qs = next.toString()
     router.replace(qs ? `?${qs}` : "?", { scroll: false })
+  }
+  const toggleAddonFilter = (id: string) => {
+    setAddonFilter((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      syncAddonFilterUrl(next)
+      return next
+    })
+  }
+  const clearAddonFilter = () => {
+    setAddonFilter([])
+    syncAddonFilterUrl([])
   }
 
   // "Add-on buyers only" toggle — show only attendees who bought at least one add-on
@@ -1127,9 +1143,9 @@ function RegistrationsContent() {
     if (modeFilter !== "all" && (reg.participation_mode || "offline") !== modeFilter) {
       return false
     }
-    // Add-on filter
-    if (addonFilter !== "all") {
-      if (!reg.registration_addons?.some((a) => a.addon_id === addonFilter)) {
+    // Add-on filter (any of the selected add-ons)
+    if (addonFilter.length > 0) {
+      if (!reg.registration_addons?.some((a) => addonFilter.includes(a.addon_id))) {
         return false
       }
     }
@@ -1510,7 +1526,7 @@ function RegistrationsContent() {
               if (statusFilter !== "all") p.set("status", statusFilter)
               if (ticketFilter !== "all") p.set("ticket", ticketFilter)
               if (modeFilter !== "all") p.set("mode", modeFilter)
-              if (addonFilter !== "all") p.set("addon", addonFilter)
+              if (addonFilter.length > 0) p.set("addon", addonFilter.join(","))
               if (addonsOnly) p.set("addons_only", "1")
               if (searchQuery) p.set("q", searchQuery)
               const qs = p.toString()
@@ -1701,20 +1717,47 @@ function RegistrationsContent() {
         </Select>
 
         {availableAddons && availableAddons.length > 0 && (
-          <Select value={addonFilter} onValueChange={handleAddonFilterChange}>
-            <SelectTrigger className="w-full md:w-48">
-              <Package className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="All Add-ons" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Add-ons</SelectItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full md:w-48 justify-start font-normal"
+              >
+                <Package className="h-4 w-4 mr-2 shrink-0" />
+                <span className="truncate">
+                  {addonFilter.length === 0
+                    ? "All Add-ons"
+                    : addonFilter.length === 1
+                    ? availableAddons.find((a: any) => a.id === addonFilter[0])?.name || "1 add-on"
+                    : `${addonFilter.length} add-ons`}
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Filter by add-on</span>
+                {addonFilter.length > 0 && (
+                  <button
+                    onClick={clearAddonFilter}
+                    className="text-xs font-normal text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
               {availableAddons.map((addon: any) => (
-                <SelectItem key={addon.id} value={addon.id}>
+                <DropdownMenuCheckboxItem
+                  key={addon.id}
+                  checked={addonFilter.includes(addon.id)}
+                  onCheckedChange={() => toggleAddonFilter(addon.id)}
+                  onSelect={(e) => e.preventDefault()}
+                >
                   {addon.name}
-                </SelectItem>
+                </DropdownMenuCheckboxItem>
               ))}
-            </SelectContent>
-          </Select>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full md:w-40">
