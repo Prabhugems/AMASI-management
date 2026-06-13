@@ -119,6 +119,7 @@ interface Registration {
     name: string
     price: number
   }
+  registration_addons?: { addon_id: string }[]
 }
 
 interface TicketType {
@@ -153,7 +154,21 @@ function RegistrationsContent() {
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus)
   const [ticketFilter, setTicketFilter] = useState<string>("all")
   const [modeFilter, setModeFilter] = useState<string>("all")
+  const [addonFilter, setAddonFilter] = useState<string>(searchParams.get("addon") || "all")
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
+
+  // Persist the add-on filter to the URL so it survives refresh and can be shared
+  const handleAddonFilterChange = (value: string) => {
+    setAddonFilter(value)
+    const next = new URLSearchParams(searchParams.toString())
+    if (value === "all") {
+      next.delete("addon")
+    } else {
+      next.set("addon", value)
+    }
+    const qs = next.toString()
+    router.replace(qs ? `?${qs}` : "?", { scroll: false })
+  }
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [copiedField, setCopiedField] = useState<string | null>(null)
 
@@ -420,7 +435,8 @@ function RegistrationsContent() {
           .from("registrations")
           .select(`
             *,
-            ticket_type:ticket_types(name, price)
+            ticket_type:ticket_types(name, price),
+            registration_addons(addon_id)
           `)
           .eq("event_id", eventId)
           .order("created_at", { ascending: false })
@@ -534,7 +550,7 @@ function RegistrationsContent() {
       if (error) throw error
       return data || []
     },
-    enabled: !!eventId && isAddAddonOpen,
+    enabled: !!eventId,
   })
 
   // Add addon mutation
@@ -1096,6 +1112,12 @@ function RegistrationsContent() {
     // Participation mode filter
     if (modeFilter !== "all" && (reg.participation_mode || "offline") !== modeFilter) {
       return false
+    }
+    // Add-on filter
+    if (addonFilter !== "all") {
+      if (!reg.registration_addons?.some((a) => a.addon_id === addonFilter)) {
+        return false
+      }
     }
     // Search filter
     if (!searchQuery) return true
@@ -1671,6 +1693,23 @@ function RegistrationsContent() {
             <SelectItem value="hybrid">Hybrid</SelectItem>
           </SelectContent>
         </Select>
+
+        {availableAddons && availableAddons.length > 0 && (
+          <Select value={addonFilter} onValueChange={handleAddonFilterChange}>
+            <SelectTrigger className="w-full md:w-48">
+              <Package className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="All Add-ons" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Add-ons</SelectItem>
+              {availableAddons.map((addon: any) => (
+                <SelectItem key={addon.id} value={addon.id}>
+                  {addon.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Registrations List */}
