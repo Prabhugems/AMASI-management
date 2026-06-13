@@ -1666,6 +1666,23 @@ function RegistrationsContent() {
             ))}
           </SelectContent>
         </Select>
+
+        {availableAddons && availableAddons.length > 0 && (
+          <Select value={addonFilter} onValueChange={handleAddonFilterChange}>
+            <SelectTrigger className="w-full md:w-48">
+              <Package className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="All Add-ons" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Add-ons</SelectItem>
+              {availableAddons.map((addon: any) => (
+                <SelectItem key={addon.id} value={addon.id}>
+                  {addon.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full md:w-40">
             <Filter className="h-4 w-4 mr-2" />
@@ -1693,23 +1710,6 @@ function RegistrationsContent() {
             <SelectItem value="hybrid">Hybrid</SelectItem>
           </SelectContent>
         </Select>
-
-        {availableAddons && availableAddons.length > 0 && (
-          <Select value={addonFilter} onValueChange={handleAddonFilterChange}>
-            <SelectTrigger className="w-full md:w-48">
-              <Package className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="All Add-ons" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Add-ons</SelectItem>
-              {availableAddons.map((addon: any) => (
-                <SelectItem key={addon.id} value={addon.id}>
-                  {addon.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
       {/* Registrations List */}
