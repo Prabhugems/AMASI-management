@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
+import { claimIdempotency } from "@/lib/idempotency"
 import { NextRequest, NextResponse } from "next/server"
 import { sendEmail } from "@/lib/email"
 
@@ -198,6 +199,27 @@ export async function POST(request: NextRequest) {
       return authError || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Idempotency: a re-submitted "Send Notifications" with the same key
+    // returns the cached result instead of re-emailing every recipient.
+    const idemKey = request.headers.get("idempotency-key")
+    const idemEndpoint = `send-notifications:${event_id}:${notification_type}`
+    const claim = await claimIdempotency(idemEndpoint, idemKey, body)
+    if (claim.kind === "cached") {
+      return NextResponse.json(claim.body, { status: claim.status })
+    }
+    if (claim.kind === "in_progress") {
+      return NextResponse.json(
+        { error: "A send-notifications run with this Idempotency-Key is already being processed" },
+        { status: 409 }
+      )
+    }
+    if (claim.kind === "key_conflict") {
+      return NextResponse.json(
+        { error: "This Idempotency-Key was used for a different request body" },
+        { status: 422 }
+      )
+    }
+
     const supabase = await createAdminClient()
 
     // Get event details
@@ -332,7 +354,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    const responseBody = {
       success: true,
       total: abstracts.length,
       sent: results.sent.length,
@@ -340,7 +362,9 @@ export async function POST(request: NextRequest) {
       skipped: results.skipped.length,
       results,
       test_mode,
-    })
+    }
+    await claim.commit(200, responseBody)
+    return NextResponse.json(responseBody)
   } catch (error) {
     console.error("Error in send notifications:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

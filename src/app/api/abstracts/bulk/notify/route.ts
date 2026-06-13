@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
+import { claimIdempotency } from "@/lib/idempotency"
 import { renderEmailTemplate, buildAbstractVariables, TemplateType } from "@/lib/email-templates"
 import { sendEmail } from "@/lib/email"
 
 const MAX_BULK_SIZE = 500
 
-// POST /api/abstracts/bulk/notify - Send notifications to authors
+// POST /api/abstracts/bulk/notify - Send notifications to authors.
+// Idempotent: a double-clicked Send Notifications must not double-email.
+// decision_notified_at is only set for abstracts whose emails actually
+// sent (or were queued in send_email:false mode) — never blanket-set for
+// the whole batch the way it was before Phase 2.
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -61,10 +66,36 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Idempotency claim after gates pass. Key the endpoint to the event so
+    // overlapping batches for different events don't collide.
+    const idemKey = request.headers.get("idempotency-key")
+    const idemEndpoint = `bulk-notify:${abstracts[0].event_id}`
+    const claim = await claimIdempotency(idemEndpoint, idemKey, body)
+    if (claim.kind === "cached") {
+      return NextResponse.json(claim.body, { status: claim.status })
+    }
+    if (claim.kind === "in_progress") {
+      return NextResponse.json(
+        { error: "A bulk-notify with this Idempotency-Key is already being processed" },
+        { status: 409 }
+      )
+    }
+    if (claim.kind === "key_conflict") {
+      return NextResponse.json(
+        { error: "This Idempotency-Key was used for a different request body" },
+        { status: 422 }
+      )
+    }
+
     let sentCount = 0
     let emailsSent = 0
     const notifications: any[] = []
     const errors: string[] = []
+    // Collect the abstract IDs whose notifications actually succeeded — only
+    // these get decision_notified_at bumped at the end. Pre-Phase-2 this was
+    // a blanket update over the whole batch, so failed sends still got the
+    // abstract marked "notified" → worst-case lie.
+    const notifiedIds: string[] = []
 
     // Process each abstract individually for personalized emails
     for (const abstract of notifiableAbstracts) {
@@ -154,9 +185,9 @@ export async function POST(request: NextRequest) {
 
           if (result.success) {
             emailsSent++
-            // Update notification status
             notifications[notifications.length - 1].delivery_status = "sent"
             notifications[notifications.length - 1].sent_at = new Date().toISOString()
+            notifiedIds.push(abstract.id)
           } else {
             errors.push(`Failed to send to ${email}: ${result.error}`)
             notifications[notifications.length - 1].delivery_status = "failed"
@@ -165,6 +196,10 @@ export async function POST(request: NextRequest) {
           errors.push(`Error sending to ${email}: ${emailError.message}`)
           notifications[notifications.length - 1].delivery_status = "failed"
         }
+      } else {
+        // send_email:false = "queue only" mode. We treat the queued record
+        // as the notification of record, so still bump decision_notified_at.
+        notifiedIds.push(abstract.id)
       }
 
       sentCount++
@@ -181,22 +216,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Mark abstracts as notified
-    await (supabase as any)
-      .from("abstracts")
-      .update({ decision_notified_at: new Date().toISOString() })
-      .in("id", notifiableAbstracts.map((a: any) => a.id))
+    // Mark only the actually-notified abstracts. Failed sends leave
+    // decision_notified_at NULL so a retry will pick them up.
+    if (notifiedIds.length > 0) {
+      await (supabase as any)
+        .from("abstracts")
+        .update({ decision_notified_at: new Date().toISOString() })
+        .in("id", notifiedIds)
+    }
 
-    return NextResponse.json({
+    const responseBody = {
       success: true,
       sent: sentCount,
       emails_sent: emailsSent,
+      notified: notifiedIds.length,
       total_abstracts: notifiableAbstracts.length,
       errors: errors.length > 0 ? errors : undefined,
       message: send_email
         ? `Sent ${emailsSent} email(s) for ${notifiableAbstracts.length} abstract(s)`
         : `Notifications queued for ${sentCount} abstract(s)`,
-    })
+    }
+    await claim.commit(200, responseBody)
+    return NextResponse.json(responseBody)
   } catch (error) {
     console.error("Error sending bulk notifications:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

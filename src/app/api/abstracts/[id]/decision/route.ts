@@ -1,9 +1,39 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
+import { claimIdempotency } from "@/lib/idempotency"
+import { canTransition, isAbstractStatus, type AbstractStatus } from "@/lib/abstracts/transitions"
 import { NextRequest, NextResponse } from "next/server"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
+
+// Initial-decision vocabulary. "redirected" is a meta-action that lands as
+// status='accepted' with a category swap; the others map 1:1 to status.
+type InitialDecisionVerb =
+  | "accepted"
+  | "rejected"
+  | "revision_requested"
+  | "under_review"
+  | "redirected"
+
+const VALID_INITIAL_DECISIONS: ReadonlyArray<InitialDecisionVerb> = [
+  "accepted",
+  "rejected",
+  "revision_requested",
+  "under_review",
+  "redirected",
+]
+
+function isInitialDecision(value: unknown): value is InitialDecisionVerb {
+  return typeof value === "string" && (VALID_INITIAL_DECISIONS as readonly string[]).includes(value)
+}
+
+// Map an initial-decision verb to the resulting `abstracts.status`. Used by
+// canTransition() — keep this in sync with the bulk handler below.
+function targetStatusFor(decision: InitialDecisionVerb): AbstractStatus {
+  if (decision === "redirected") return "accepted"
+  return decision
+}
 
 // PUT /api/abstracts/[id]/decision - Make acceptance decision
 export async function PUT(
@@ -18,7 +48,6 @@ export async function PUT(
     }
 
     const adminClient: SupabaseClient = await createAdminClient()
-
     const body = await request.json()
 
     if (!body.decision) {
@@ -27,16 +56,13 @@ export async function PUT(
         { status: 400 }
       )
     }
-
-    const validDecisions = ["accepted", "rejected", "revision_requested", "under_review", "redirected"]
-    if (!validDecisions.includes(body.decision)) {
+    if (!isInitialDecision(body.decision)) {
       return NextResponse.json(
-        { error: `Invalid decision. Must be one of: ${validDecisions.join(", ")}` },
+        { error: `Invalid decision. Must be one of: ${VALID_INITIAL_DECISIONS.join(", ")}` },
         { status: 400 }
       )
     }
 
-    // Get current abstract
     const { data: abstract, error: fetchError } = await adminClient
       .from("abstracts")
       .select("*, event_id")
@@ -47,12 +73,51 @@ export async function PUT(
       return NextResponse.json({ error: "Abstract not found" }, { status: 404 })
     }
 
-    const { error: permError } = await requireEventAndPermission(abstract.event_id, 'abstracts')
+    const { error: permError } = await requireEventAndPermission(abstract.event_id, "abstracts")
     if (permError) return permError
+
+    // Transition gate. Shared with committee-decision via canTransition().
+    const currentStatus = isAbstractStatus(abstract.status) ? abstract.status : null
+    if (!currentStatus) {
+      return NextResponse.json(
+        { error: `Abstract is in an unknown status (${abstract.status}); cannot transition` },
+        { status: 422 }
+      )
+    }
+    const targetStatus = targetStatusFor(body.decision)
+    const transition = canTransition(currentStatus, targetStatus, {
+      notified: Boolean(abstract.decision_notified_at),
+      forceRedecide: Boolean(body.force_redecide),
+      overrideReason: body.override_reason ?? null,
+    })
+    if (!transition.ok) {
+      return NextResponse.json({ error: transition.error }, { status: transition.status })
+    }
+
+    // Idempotency: claim only after gates pass.
+    const idemKey = request.headers.get("idempotency-key")
+    const idemEndpoint = `decision:${id}`
+    const claim = await claimIdempotency(idemEndpoint, idemKey, body)
+    if (claim.kind === "cached") {
+      return NextResponse.json(claim.body, { status: claim.status })
+    }
+    if (claim.kind === "in_progress") {
+      return NextResponse.json(
+        { error: "A decision with this Idempotency-Key is already being processed" },
+        { status: 409 }
+      )
+    }
+    if (claim.kind === "key_conflict") {
+      return NextResponse.json(
+        { error: "This Idempotency-Key was used for a different request body" },
+        { status: 422 }
+      )
+    }
+
+    const decidedAt = new Date().toISOString()
 
     // Handle "Redirect to Free Session" decision
     if (body.decision === "redirected") {
-      // Find the Free Paper/Video/Poster category for this event
       const { data: freeCategory } = await adminClient
         .from("abstract_categories")
         .select("id")
@@ -64,6 +129,7 @@ export async function PUT(
         .maybeSingle()
 
       if (!freeCategory) {
+        await claim.release()
         return NextResponse.json(
           { error: "No free session category found. Please create a non-award category first." },
           { status: 400 }
@@ -74,7 +140,7 @@ export async function PUT(
         .from("abstracts")
         .update({
           status: "accepted",
-          decision_date: new Date().toISOString(),
+          decision_date: decidedAt,
           decision_notes: body.decision_notes || "Redirected to free session",
           redirected_from_category_id: abstract.category_id,
           category_id: freeCategory.id,
@@ -86,28 +152,26 @@ export async function PUT(
 
       if (redirectError) {
         console.error("Error redirecting abstract:", redirectError)
+        await claim.release()
         return NextResponse.json({ error: "Failed to redirect abstract" }, { status: 500 })
       }
 
+      await claim.commit(200, redirectedData)
       return NextResponse.json(redirectedData)
     }
 
-    // Build update payload
-    const updateData: Record<string, any> = {
+    // Build update payload for non-redirect decisions
+    const updateData: Record<string, unknown> = {
       status: body.decision,
-      decision_date: new Date().toISOString(),
+      decision_date: decidedAt,
     }
 
     if (body.decision_notes !== undefined) {
       updateData.decision_notes = body.decision_notes
     }
-
-    // For accepted abstracts, set the accepted_as (oral, poster, video)
     if (body.decision === "accepted" && body.accepted_as) {
       updateData.accepted_as = body.accepted_as
     }
-
-    // For revision_requested, clear accepted_as
     if (body.decision === "revision_requested") {
       updateData.accepted_as = null
     }
@@ -121,11 +185,11 @@ export async function PUT(
 
     if (error) {
       console.error("Error updating abstract decision:", error)
+      await claim.release()
       return NextResponse.json({ error: "Failed to update decision" }, { status: 500 })
     }
 
-    // TODO: Send notification email to author based on event settings
-
+    await claim.commit(200, data)
     return NextResponse.json(data)
   } catch (error) {
     console.error("Error in PUT /api/abstracts/[id]/decision:", error)
@@ -133,33 +197,30 @@ export async function PUT(
   }
 }
 
-// POST /api/abstracts/[id]/decision/bulk - Bulk decision for multiple abstracts
+// POST /api/abstracts/[id]/decision - Bulk decision for multiple abstracts.
+// Transition gate runs per-row so partial-legal batches are reported, not
+// silently let through.
 export async function POST(
   request: NextRequest,
   { params: _params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const adminClient: SupabaseClient = await createAdminClient()
-
     const body = await request.json()
 
     if (!body.abstract_ids || !Array.isArray(body.abstract_ids) || body.abstract_ids.length === 0) {
       return NextResponse.json({ error: "abstract_ids array is required" }, { status: 400 })
     }
-
     if (!body.decision) {
       return NextResponse.json({ error: "decision is required" }, { status: 400 })
     }
-
-    const validDecisions = ["accepted", "rejected", "revision_requested", "under_review", "redirected"]
-    if (!validDecisions.includes(body.decision)) {
+    if (!isInitialDecision(body.decision)) {
       return NextResponse.json(
-        { error: `Invalid decision. Must be one of: ${validDecisions.join(", ")}` },
+        { error: `Invalid decision. Must be one of: ${VALID_INITIAL_DECISIONS.join(", ")}` },
         { status: 400 }
       )
     }
 
-    // Validate accepted_as values
     if (body.decision === "accepted" && body.accepted_as) {
       const validAcceptedAs = ["oral", "poster", "video"]
       if (!validAcceptedAs.includes(body.accepted_as)) {
@@ -170,16 +231,16 @@ export async function POST(
       }
     }
 
-    // Verify all abstract_ids belong to the same event
+    // Fetch all abstracts upfront so we can run per-row transition checks
+    // BEFORE writing anything.
     const { data: abstracts, error: fetchError } = await adminClient
       .from("abstracts")
-      .select("id, event_id, category_id, presentation_type")
+      .select("id, event_id, category_id, presentation_type, status, decision_notified_at")
       .in("id", body.abstract_ids)
 
     if (fetchError || !abstracts || abstracts.length === 0) {
       return NextResponse.json({ error: "No abstracts found for the provided IDs" }, { status: 404 })
     }
-
     if (abstracts.length !== body.abstract_ids.length) {
       return NextResponse.json({ error: "Some abstract IDs were not found" }, { status: 404 })
     }
@@ -192,11 +253,60 @@ export async function POST(
       )
     }
 
-    // Check permission for the event
-    const { error: permError } = await requireEventAndPermission(abstracts[0].event_id, 'abstracts')
+    const { error: permError } = await requireEventAndPermission(abstracts[0].event_id, "abstracts")
     if (permError) return permError
 
-    // Handle bulk redirect to free session
+    // Per-row transition check. If ANY row would be an illegal transition
+    // (or a re-decide without force_redecide), reject the whole batch — the
+    // safer all-or-nothing semantic for a curl-bypass-able admin tool.
+    const targetStatus = targetStatusFor(body.decision)
+    const blockedRows: { id: string; reason: string }[] = []
+    for (const a of abstracts) {
+      if (!isAbstractStatus(a.status)) {
+        blockedRows.push({ id: a.id, reason: `unknown status: ${a.status}` })
+        continue
+      }
+      const t = canTransition(a.status, targetStatus, {
+        notified: Boolean(a.decision_notified_at),
+        forceRedecide: Boolean(body.force_redecide),
+        overrideReason: body.override_reason ?? null,
+      })
+      if (!t.ok) blockedRows.push({ id: a.id, reason: t.error })
+    }
+    if (blockedRows.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Bulk decision rejected: one or more rows would violate transition rules",
+          blocked: blockedRows,
+        },
+        { status: 422 }
+      )
+    }
+
+    // Idempotency on the bulk call.
+    const idemKey = request.headers.get("idempotency-key")
+    const idemEndpoint = `decision:bulk:${abstracts[0].event_id}`
+    const claim = await claimIdempotency(idemEndpoint, idemKey, body)
+    if (claim.kind === "cached") {
+      return NextResponse.json(claim.body, { status: claim.status })
+    }
+    if (claim.kind === "in_progress") {
+      return NextResponse.json(
+        { error: "A bulk decision with this Idempotency-Key is already being processed" },
+        { status: 409 }
+      )
+    }
+    if (claim.kind === "key_conflict") {
+      return NextResponse.json(
+        { error: "This Idempotency-Key was used for a different request body" },
+        { status: 422 }
+      )
+    }
+
+    const decidedAt = new Date().toISOString()
+
+    // Bulk redirect: per-row update to preserve each abstract's original
+    // category_id. Failures surface, don't get swallowed.
     if (body.decision === "redirected") {
       const eventId = abstracts[0].event_id
       const { data: freeCategory } = await adminClient
@@ -210,20 +320,21 @@ export async function POST(
         .maybeSingle()
 
       if (!freeCategory) {
+        await claim.release()
         return NextResponse.json(
           { error: "No free session category found. Please create a non-award category first." },
           { status: 400 }
         )
       }
 
-      // Update each abstract individually to preserve its original category_id
-      const results = []
+      const results: unknown[] = []
+      const failures: { id: string; error: string }[] = []
       for (const abstract of abstracts) {
         const { data: updated, error: updateErr } = await adminClient
           .from("abstracts")
           .update({
             status: "accepted",
-            decision_date: new Date().toISOString(),
+            decision_date: decidedAt,
             decision_notes: body.decision_notes || "Redirected to free session",
             redirected_from_category_id: abstract.category_id,
             category_id: freeCategory.id,
@@ -235,27 +346,31 @@ export async function POST(
 
         if (updateErr) {
           console.error(`Error redirecting abstract ${abstract.id}:`, updateErr)
+          failures.push({ id: abstract.id, error: updateErr.message })
         } else {
           results.push(updated)
         }
       }
 
-      return NextResponse.json({
-        success: true,
+      const responseBody = {
+        success: failures.length === 0,
         updated: results.length,
+        failed: failures.length,
+        failures: failures.length > 0 ? failures : undefined,
         abstracts: results,
-      })
+      }
+      await claim.commit(200, responseBody)
+      return NextResponse.json(responseBody)
     }
 
-    const updateData: Record<string, any> = {
+    // Non-redirect bulk: single UPDATE … IN (…).
+    const updateData: Record<string, unknown> = {
       status: body.decision,
-      decision_date: new Date().toISOString(),
+      decision_date: decidedAt,
     }
-
     if (body.decision_notes !== undefined) {
       updateData.decision_notes = body.decision_notes
     }
-
     if (body.decision === "accepted" && body.accepted_as) {
       updateData.accepted_as = body.accepted_as
     }
@@ -268,14 +383,17 @@ export async function POST(
 
     if (error) {
       console.error("Error bulk updating abstract decisions:", error)
+      await claim.release()
       return NextResponse.json({ error: "Failed to update decisions" }, { status: 500 })
     }
 
-    return NextResponse.json({
+    const responseBody = {
       success: true,
       updated: data?.length || 0,
       abstracts: data,
-    })
+    }
+    await claim.commit(200, responseBody)
+    return NextResponse.json(responseBody)
   } catch (error) {
     console.error("Error in POST /api/abstracts/[id]/decision:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

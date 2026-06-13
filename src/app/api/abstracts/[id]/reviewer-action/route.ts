@@ -175,8 +175,13 @@ export async function POST(
       .in("role", ["admin", "coordinator", "committee_member"])
       .limit(5)
 
-    const committeeEmail = committeeMembers?.[0]?.email || "committee@event.com"
-    const committeeName = committeeMembers?.[0]?.name || "Scientific Committee"
+    // When no real committee is staffed for this event, we DO NOT write a
+    // notification row pointing at a fake address (the old
+    // "committee@event.com" placeholder was a silent-fail to a fake inbox).
+    // Reviewer action still succeeds; response signals committee_notified:false.
+    const hasRealCommittee = (committeeMembers?.length ?? 0) > 0
+    const committeeEmail = committeeMembers?.[0]?.email ?? null
+    const committeeName = committeeMembers?.[0]?.name ?? null
 
     switch (action) {
       case "decline": {
@@ -208,29 +213,32 @@ export async function POST(
           })
           .eq("id", reviewer.id)
 
-        // Log the decline action
-        await (supabase as any).from("abstract_notifications").insert({
-          abstract_id: abstractId,
-          notification_type: "reviewer_declined",
-          recipient_email: committeeEmail,
-          recipient_name: committeeName,
-          subject: `Reviewer Declined: ${abstract?.title}`,
-          body_preview: `${reviewer.name} has declined to review abstract #${abstract?.abstract_number}. Reason: ${reasonLabel}${body.declined_notes ? ` - ${body.declined_notes}` : ""}`,
-          metadata: {
-            reviewer_id: reviewer.id,
-            reviewer_name: reviewer.name,
-            reason: declineReason,
-            reason_label: reasonLabel,
-            declined_notes: body.declined_notes,
-            suggested_reviewer_email,
-          },
-        })
+        // Log the decline action — only if there's a real committee recipient.
+        if (hasRealCommittee && committeeEmail) {
+          await (supabase as any).from("abstract_notifications").insert({
+            abstract_id: abstractId,
+            notification_type: "reviewer_declined",
+            recipient_email: committeeEmail,
+            recipient_name: committeeName,
+            subject: `Reviewer Declined: ${abstract?.title}`,
+            body_preview: `${reviewer.name} has declined to review abstract #${abstract?.abstract_number}. Reason: ${reasonLabel}${body.declined_notes ? ` - ${body.declined_notes}` : ""}`,
+            metadata: {
+              reviewer_id: reviewer.id,
+              reviewer_name: reviewer.name,
+              reason: declineReason,
+              reason_label: reasonLabel,
+              declined_notes: body.declined_notes,
+              suggested_reviewer_email,
+            },
+          })
+        }
 
         return NextResponse.json({
           success: true,
           message: "Assignment declined. Committee will be notified to reassign.",
           needs_reassignment: true,
           reason: declineReason,
+          committee_notified: hasRealCommittee,
         })
       }
 
@@ -259,27 +267,30 @@ export async function POST(
           })
           .eq("id", abstractId)
 
-        // Notify committee
-        await (supabase as any).from("abstract_notifications").insert({
-          abstract_id: abstractId,
-          notification_type: "category_mismatch",
-          recipient_email: committeeEmail,
-          recipient_name: committeeName,
-          subject: `Category Mismatch Flagged: ${abstract?.title}`,
-          body_preview: `${reviewer.name} has flagged a potential category mismatch for abstract #${abstract?.abstract_number}. Current category: ${(abstract?.abstract_categories as any)?.name}. Reason: ${reason}`,
-          metadata: {
-            reviewer_id: reviewer.id,
-            reviewer_name: reviewer.name,
-            reason,
-            current_category: (abstract?.abstract_categories as any)?.name,
-            suggested_category,
-          },
-        })
+        // Notify committee — only if there's a real recipient.
+        if (hasRealCommittee && committeeEmail) {
+          await (supabase as any).from("abstract_notifications").insert({
+            abstract_id: abstractId,
+            notification_type: "category_mismatch",
+            recipient_email: committeeEmail,
+            recipient_name: committeeName,
+            subject: `Category Mismatch Flagged: ${abstract?.title}`,
+            body_preview: `${reviewer.name} has flagged a potential category mismatch for abstract #${abstract?.abstract_number}. Current category: ${(abstract?.abstract_categories as any)?.name}. Reason: ${reason}`,
+            metadata: {
+              reviewer_id: reviewer.id,
+              reviewer_name: reviewer.name,
+              reason,
+              current_category: (abstract?.abstract_categories as any)?.name,
+              suggested_category,
+            },
+          })
+        }
 
         return NextResponse.json({
           success: true,
           message: "Category mismatch flagged. Committee will review and may reassign.",
           needs_committee_review: true,
+          committee_notified: hasRealCommittee,
         })
       }
 
@@ -289,28 +300,31 @@ export async function POST(
           new Date(assignment.due_date).getTime() + (extension_days || 3) * 24 * 60 * 60 * 1000
         )
 
-        // Log extension request (don't auto-approve, needs committee approval)
-        await (supabase as any).from("abstract_notifications").insert({
-          abstract_id: abstractId,
-          notification_type: "extension_requested",
-          recipient_email: committeeEmail,
-          recipient_name: committeeName,
-          subject: `Extension Requested: ${abstract?.title}`,
-          body_preview: `${reviewer.name} has requested a ${extension_days || 3}-day extension for reviewing abstract #${abstract?.abstract_number}. Reason: ${reason || "Not specified"}`,
-          metadata: {
-            reviewer_id: reviewer.id,
-            reviewer_name: reviewer.name,
-            current_due_date: assignment.due_date,
-            requested_due_date: newDueDate.toISOString(),
-            extension_days: extension_days || 3,
-            reason,
-          },
-        })
+        // Log extension request — only if there's a real committee recipient.
+        if (hasRealCommittee && committeeEmail) {
+          await (supabase as any).from("abstract_notifications").insert({
+            abstract_id: abstractId,
+            notification_type: "extension_requested",
+            recipient_email: committeeEmail,
+            recipient_name: committeeName,
+            subject: `Extension Requested: ${abstract?.title}`,
+            body_preview: `${reviewer.name} has requested a ${extension_days || 3}-day extension for reviewing abstract #${abstract?.abstract_number}. Reason: ${reason || "Not specified"}`,
+            metadata: {
+              reviewer_id: reviewer.id,
+              reviewer_name: reviewer.name,
+              current_due_date: assignment.due_date,
+              requested_due_date: newDueDate.toISOString(),
+              extension_days: extension_days || 3,
+              reason,
+            },
+          })
+        }
 
         return NextResponse.json({
           success: true,
           message: "Extension request submitted. Committee will review.",
           pending_approval: true,
+          committee_notified: hasRealCommittee,
         })
       }
 
