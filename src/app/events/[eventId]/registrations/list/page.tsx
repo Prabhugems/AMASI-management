@@ -155,6 +155,7 @@ function RegistrationsContent() {
   const [ticketFilter, setTicketFilter] = useState<string>("all")
   const [modeFilter, setModeFilter] = useState<string>("all")
   const [addonFilter, setAddonFilter] = useState<string>(searchParams.get("addon") || "all")
+  const [addonsOnly, setAddonsOnly] = useState<boolean>(searchParams.get("addons_only") === "1")
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
 
   // Persist the add-on filter to the URL so it survives refresh and can be shared
@@ -165,6 +166,19 @@ function RegistrationsContent() {
       next.delete("addon")
     } else {
       next.set("addon", value)
+    }
+    const qs = next.toString()
+    router.replace(qs ? `?${qs}` : "?", { scroll: false })
+  }
+
+  // "Add-on buyers only" toggle — show only attendees who bought at least one add-on
+  const handleAddonsOnlyChange = (checked: boolean) => {
+    setAddonsOnly(checked)
+    const next = new URLSearchParams(searchParams.toString())
+    if (checked) {
+      next.set("addons_only", "1")
+    } else {
+      next.delete("addons_only")
     }
     const qs = next.toString()
     router.replace(qs ? `?${qs}` : "?", { scroll: false })
@@ -1119,6 +1133,10 @@ function RegistrationsContent() {
         return false
       }
     }
+    // Add-on buyers only
+    if (addonsOnly && !reg.registration_addons?.length) {
+      return false
+    }
     // Search filter
     if (!searchQuery) return true
     const query = searchQuery.toLowerCase()
@@ -1710,6 +1728,16 @@ function RegistrationsContent() {
             <SelectItem value="hybrid">Hybrid</SelectItem>
           </SelectContent>
         </Select>
+
+        {availableAddons && availableAddons.length > 0 && (
+          <label className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-background text-sm whitespace-nowrap cursor-pointer select-none">
+            <Checkbox
+              checked={addonsOnly}
+              onCheckedChange={(c) => handleAddonsOnlyChange(c === true)}
+            />
+            Add-on buyers only
+          </label>
+        )}
       </div>
 
       {/* Registrations List */}
