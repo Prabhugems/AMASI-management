@@ -30,6 +30,7 @@ interface ReconciliationSummary {
   orphans_logged: number
   pending_updated: number
   already_synced: number
+  membership_skipped: number
   errors: string[]
   details: {
     type: string
@@ -39,6 +40,19 @@ interface ReconciliationSummary {
     event_id?: string
     action: string
   }[]
+}
+
+// Membership orders are created by the amasi-membership app and tracked in
+// membership_payments. They share a Razorpay merchant account with event
+// registrations, so this cron sees them too — but it must not "rescue" them
+// into public.payments as event orphans. Two skip signals:
+//   1. notes.membership_type set at order creation (covers ~92% of cases)
+//   2. gateway_order_id present in membership_payments (covers the rest;
+//      may be unavailable on tenants whose Supabase lacks the table —
+//      caller swallows the error)
+function isMembershipNotes(notes: Record<string, string> | undefined): boolean {
+  if (!notes) return false
+  return Boolean(notes.membership_type || notes.membershipType)
 }
 
 /**
@@ -114,6 +128,7 @@ export async function GET(request: NextRequest) {
     orphans_logged: 0,
     pending_updated: 0,
     already_synced: 0,
+    membership_skipped: 0,
     errors: [],
     details: [],
   }
@@ -267,13 +282,55 @@ export async function GET(request: NextRequest) {
     }
 
     // ================================================================
-    // STEP 3 & 4: Process missing payments
+    // STEP 2.5: Drop membership payments before treating them as orphans
     // ================================================================
-    const missingPayments = allRazorpayPayments.filter(
+    // Without this, every membership Razorpay capture got logged as an event
+    // orphan and inserted into public.payments with event_id=NULL — 300+ stray
+    // rows accumulated between 2026-03-25 and 2026-06-14 before this was caught.
+    const candidatePayments = allRazorpayPayments.filter(
       (p) => !existingPaymentIds.has(p.id),
     )
+
+    const markerSkipped = new Set<string>()
+    for (const p of candidatePayments) {
+      if (isMembershipNotes(p.notes)) markerSkipped.add(p.id)
+    }
+
+    // DB cross-check for the marker-less remainder. membership_payments is on
+    // the membership tenant's Supabase; on standalone event tenants (no
+    // membership table) the query errors and we proceed with notes-only.
+    const remainingOrderIds = candidatePayments
+      .filter((p) => !markerSkipped.has(p.id) && p.order_id)
+      .map((p) => p.order_id)
+
+    const dbSkippedOrderIds = new Set<string>()
+    if (remainingOrderIds.length > 0) {
+      try {
+        for (let i = 0; i < remainingOrderIds.length; i += 100) {
+          const batch = remainingOrderIds.slice(i, i + 100)
+          const { data, error: mpError } = await supabase
+            .from("membership_payments")
+            .select("gateway_order_id")
+            .in("gateway_order_id", batch)
+          if (mpError) throw mpError
+          for (const row of data ?? []) {
+            if (row.gateway_order_id) dbSkippedOrderIds.add(row.gateway_order_id)
+          }
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.log(
+          `[RECON] membership_payments cross-check unavailable on this tenant (${msg}); using notes-only filter`,
+        )
+      }
+    }
+
+    const missingPayments = candidatePayments.filter(
+      (p) => !markerSkipped.has(p.id) && !dbSkippedOrderIds.has(p.order_id),
+    )
     summary.missing_in_db = missingPayments.length
-    summary.already_synced = allRazorpayPayments.length - missingPayments.length
+    summary.membership_skipped = candidatePayments.length - missingPayments.length
+    summary.already_synced = allRazorpayPayments.length - candidatePayments.length
 
     for (const rzpPayment of missingPayments) {
       const eventId = rzpPayment.notes?.event_id || null
