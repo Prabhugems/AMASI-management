@@ -94,6 +94,32 @@ export function splitPanel(chair: string | undefined): {
   return { label: "Chair", moderator: chair }
 }
 
+// Detect chair strings that carry time-slot annotations like
+//   "Dr.A, Dr.B - 11-1 PM, Dr.C, Dr.D 1-3 PM"
+// and split into one group per slot. Returns null if there's no slot pattern.
+export function splitChairsByTimeSlot(
+  raw: string,
+): Array<{ slot: string; names: string[] }> | null {
+  const timeRangeRe =
+    /\d{1,2}[:.]?\d{0,2}\s*(?:AM|PM)?\s*[-–]\s*\d{1,2}[:.]?\d{0,2}\s*(?:AM|PM)/gi
+  const matches = [...raw.matchAll(timeRangeRe)]
+  if (matches.length < 2) return null
+
+  const groups: Array<{ slot: string; names: string[] }> = []
+  let lastEnd = 0
+  for (const m of matches) {
+    const before = raw.slice(lastEnd, m.index ?? 0)
+    const cleaned = before.replace(/^[\s,\-–—]+|[\s,\-–—]+$/g, "")
+    const names = cleaned
+      .split(/\s*,\s*/)
+      .map((n) => n.trim())
+      .filter((n) => n.length >= 2)
+    if (names.length) groups.push({ slot: m[0], names })
+    lastEnd = (m.index ?? 0) + m[0].length
+  }
+  return groups.length >= 2 ? groups : null
+}
+
 // Strip leading/trailing dashes left over from clean()'s dash-run collapse.
 function stripBorderDashes(s: string): string {
   return s.replace(/^[\s\-–—•·]+/, "").replace(/[\s\-–—•·]+$/, "").trim()
@@ -189,6 +215,26 @@ function SpeakerLine({
 }
 
 function ChairLine({ value, sessionLevel = false }: { value: string; sessionLevel?: boolean }) {
+  // First check for time-slot-grouped chairs — different chairs per sub-window.
+  const slots = splitChairsByTimeSlot(value)
+  if (slots) {
+    return (
+      <div className="mt-2 space-y-1.5">
+        {slots.map((g, i) => (
+          <div key={i} className="flex items-start gap-1.5">
+            <Users className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground/70">
+                {formatTime(g.slot)} chair —{" "}
+              </span>
+              {g.names.map((n) => formatTime(titleCase(n))).join(", ")}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   const panel = splitPanel(value)
   const prefix = sessionLevel && panel.label === "Chair" ? "Session chair" : panel.label
   return (
