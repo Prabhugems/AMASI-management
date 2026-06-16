@@ -257,8 +257,6 @@ export default async function TechnosurgProgramPage() {
               <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5" />
                 <span>4 parallel screens</span>
-                <span className="text-muted-foreground/50">•</span>
-                <span>Live from organising committee sheet</span>
               </div>
             </div>
           </div>
