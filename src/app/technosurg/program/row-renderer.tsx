@@ -94,6 +94,20 @@ export function splitPanel(chair: string | undefined): {
   return { label: "Chair", moderator: chair }
 }
 
+// Strip leading/trailing dashes left over from clean()'s dash-run collapse.
+function stripBorderDashes(s: string): string {
+  return s.replace(/^[\s\-–—•·]+/, "").replace(/[\s\-–—•·]+$/, "").trim()
+}
+
+// Split a comma-separated list of names into individual entries, dropping
+// empty/trivial tokens.
+function splitNames(s: string): string[] {
+  return s
+    .split(/\s*,\s*/)
+    .map(stripBorderDashes)
+    .filter((n) => n.length >= 2)
+}
+
 export function titleCase(input: string | undefined): string {
   if (!input) return ""
   const letters = input.replace(/[^a-zA-Z]/g, "")
@@ -132,6 +146,46 @@ const ACCENT_MAP: Record<string, Accent> = {
 
 function deriveAccent(accent: string): Accent {
   return ACCENT_MAP[accent] ?? ACCENT_MAP["bg-slate-700"]
+}
+
+function SpeakerLine({
+  topic,
+  value,
+  accent,
+  compact,
+}: {
+  topic: string
+  value: string
+  accent: { icon: string }
+  compact: boolean
+}) {
+  const cleaned = stripBorderDashes(value)
+  const names = splitNames(cleaned)
+  const isSurgeonRoster =
+    /operating\s+surgeon|operating\s+surgeons|live\s+surgeries|live\s+surgery/i.test(topic) &&
+    names.length >= 3
+
+  if (isSurgeonRoster) {
+    return (
+      <div className="flex items-start gap-1.5">
+        <User className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${accent.icon}`} />
+        <ul className={`min-w-0 space-y-0.5 ${compact ? "text-xs" : "text-sm"} font-medium text-foreground/80`}>
+          {names.map((n, i) => (
+            <li key={i} className="leading-snug">{formatTime(titleCase(n))}</li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-start gap-1.5">
+      <User className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${accent.icon}`} />
+      <span className={`font-medium text-foreground/80 ${compact ? "text-xs" : "text-sm"}`}>
+        {formatTime(titleCase(cleaned))}
+      </span>
+    </div>
+  )
 }
 
 function ChairLine({ value, sessionLevel = false }: { value: string; sessionLevel?: boolean }) {
@@ -218,14 +272,7 @@ export function RenderRow({ row, accent, compact = false }: { row: Row; accent: 
           </h3>
           {(row.speaker || row.chair) && (
             <div className="mt-1.5 space-y-1">
-              {row.speaker && (
-                <div className="flex items-start gap-1.5">
-                  <User className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${a.icon}`} />
-                  <span className={`font-medium text-foreground/80 ${compact ? "text-xs" : "text-sm"}`}>
-                    {formatTime(titleCase(row.speaker))}
-                  </span>
-                </div>
-              )}
+              {row.speaker && <SpeakerLine topic={row.topic} value={row.speaker} accent={a} compact={compact} />}
               {row.chair && <ChairLine value={row.chair} />}
             </div>
           )}

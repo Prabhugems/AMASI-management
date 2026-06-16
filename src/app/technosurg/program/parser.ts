@@ -318,11 +318,16 @@ function parseSparseScreen(csv: string, cols: number[]): Day[] {
     if (!pendingBlock) return
     const { time, title, notes, surgeons } = pendingBlock
     if (time || title || notes.length || surgeons) {
+      const finalTitle = title || "LIVE SURGERIES"
+      // Drop note entries that just repeat the title (case-insensitive).
+      const filteredNotes = notes.filter(
+        (n) => n.toLowerCase().trim() !== finalTitle.toLowerCase().trim(),
+      )
       current.rows.push({
         kind: "block",
         blockTime: time,
-        rangeOrNote: notes.join(" • "),
-        sessionTitle: title || "LIVE SURGERIES",
+        rangeOrNote: filteredNotes.join(" • "),
+        sessionTitle: finalTitle,
       })
       if (surgeons) {
         current.rows.push({
