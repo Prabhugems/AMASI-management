@@ -152,11 +152,16 @@ export function splitDayForPlenary(day: Day): {
 function cleanChair(v: string): string | undefined {
   if (!v) return undefined
   if (/^(yes|no|y|n|pending|done|judge|n\/?a)$/i.test(v)) return undefined
+  // "Chairperson" / "Chairperson:" alone is a column-label header, not a name
+  if (/^chairperson\s*:?\s*$/i.test(v)) return undefined
   // "Chairperson for 2:45 to 4:24" is a label in the sheet, not a chair name
-  if (/^chairperson\s+for/i.test(v)) return undefined
+  if (/^chairperson\s+for\b/i.test(v)) return undefined
   // TNMC-like: "name - 12345" or short string with digits & dash
   if (/-\s*\d{4,}/.test(v) && v.length < 40 && !/dr\.?\s/i.test(v)) return undefined
-  return v
+  // Strip a leading "Chairperson" / time-range prefix (e.g.
+  // "10.15 AM- 11:00 AM Chairperson Dr. Santosh ...") so the rendered
+  // chair list reads as just names.
+  return v.replace(/^.*?chairperson\s*[:\-]?\s*/i, "").trim() || undefined
 }
 
 function looksLikeBlockTime(s: string): boolean {
@@ -221,9 +226,26 @@ export function parseScreen1(csv: string): Day[] {
       current.rows.push({
         kind: "block",
         blockTime: c0,
-        rangeOrNote: c1,
+        rangeOrNote: c1Fixed,
         sessionTitle: c2,
+        chair: cleanChair(c5),
       })
+      continue
+    }
+
+    // Chair-only continuation row: nothing in c0-c4, only c5 has names.
+    // Attach to the most recent block or section.
+    if (!c0 && !c1 && !c2 && !c3 && !c4 && c5) {
+      const cleaned = cleanChair(c5)
+      if (cleaned) {
+        for (let i = current.rows.length - 1; i >= 0; i--) {
+          const prev = current.rows[i]
+          if (prev.kind === "block" || prev.kind === "section") {
+            prev.chair = prev.chair ? `${prev.chair}, ${cleaned}` : cleaned
+            break
+          }
+        }
+      }
       continue
     }
 
@@ -252,6 +274,17 @@ export function parseScreen1(csv: string): Day[] {
     if (!c0 && (c1Fixed || c2)) {
       if (/^\(.*\)$/.test(c1Fixed) && !c2) {
         current.rows.push({ kind: "note", text: c1Fixed })
+        // A note row can also carry chairs for the previous block; attach.
+        const chairFromNote = cleanChair(c5)
+        if (chairFromNote) {
+          for (let i = current.rows.length - 2; i >= 0; i--) {
+            const prev = current.rows[i]
+            if (prev.kind === "block" || prev.kind === "section") {
+              prev.chair = prev.chair ? `${prev.chair}, ${chairFromNote}` : chairFromNote
+              break
+            }
+          }
+        }
         continue
       }
       const title = c2 || c1Fixed

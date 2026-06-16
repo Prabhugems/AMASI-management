@@ -12,7 +12,7 @@ import { DayProgram, type DayLayout, type Band, type Column } from "./day-progra
 
 export const revalidate = 60
 
-const PAGE_URL = "https://collegeofmas.org.in/technosurg/program"
+const PAGE_URL = "https://technosurg.gemhospitals.com/technosurg/program"
 const PAGE_TITLE =
   "TechnoSurg 2026 Surgery Conference Program — Live Surgeries, Lectures & Gynaec Track"
 const PAGE_DESCRIPTION =
