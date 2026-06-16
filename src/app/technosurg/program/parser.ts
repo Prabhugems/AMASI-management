@@ -450,6 +450,13 @@ export function parseGynaec(csv: string): Day[] {
       current!.rows.push({ kind: "section", title: c1 })
       continue
     }
+    // Time-only row (c0 has a time range, rest empty) — the SESSION title was
+    // erased from the sheet. Emit a section divider so the talks beneath it
+    // hoist their chairs to this header instead of staying on the first talk.
+    if (c0 && !c1 && !c2 && !c4 && /\d/.test(c0)) {
+      current!.rows.push({ kind: "section", title: c0 })
+      continue
+    }
 
     // Talk: time + topic + speaker
     if (c0 && c1 && c2) {
