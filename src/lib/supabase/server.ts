@@ -61,3 +61,15 @@ export async function createAdminClient() {
     }
   )
 }
+
+// Admin client for the TechnoSurg Supabase project. Returns null when the
+// env isn't configured so callers can degrade gracefully (e.g. dev machines
+// or deployments that shouldn't cross-tenant query).
+export function createTechnosurgAdminClient() {
+  const url = process.env.TECHNOSURG_SUPABASE_URL?.trim()
+  const key = process.env.TECHNOSURG_SUPABASE_SERVICE_ROLE_KEY?.trim()
+  if (!url || !key) return null
+  return createClient<Database>(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+}

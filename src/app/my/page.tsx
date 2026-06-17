@@ -238,6 +238,8 @@ interface PendingPayment {
 
 interface Registration {
   id: string
+  _tenant?: "amasi" | "technosurg"
+  _source_id?: string
   registration_number: string
   attendee_name: string
   attendee_email: string
@@ -507,9 +509,18 @@ export default function DelegatePortalPage() {
       setRegistrations(data.registrations || [])
       setPendingPayments(data.pending_payments || [])
 
-      // If only one registration, select it automatically
+      // If only one registration, select it automatically — unless it's
+      // a TechnoSurg record, which can't render in this portal (badge /
+      // certificate APIs are AMASI-only). Redirect to TechnoSurg's portal.
       if (data.registrations?.length === 1) {
-        setSelectedRegistration(data.registrations[0])
+        const only = data.registrations[0]
+        if (only._tenant === "technosurg") {
+          const portal = process.env.NEXT_PUBLIC_TECHNOSURG_PORTAL_URL || "https://technosurg.gemhospitals.com"
+          const q = encodeURIComponent(only.registration_number || query)
+          window.location.href = `${portal}/my?q=${q}`
+          return
+        }
+        setSelectedRegistration(only)
       }
     } catch (err: any) {
       setError(err.message)
@@ -797,7 +808,7 @@ export default function DelegatePortalPage() {
             className="bg-gray-900/80 backdrop-blur-sm rounded-2xl shadow-2xl shadow-black/30 p-6 ring-1 ring-white/10"
           >
             <label className="block text-sm font-medium text-white/70 mb-2">
-              Email, Phone, or Registration Number
+              Name, Email, Phone, or Registration Number
             </label>
             <div className="relative mb-4">
               <input
@@ -807,7 +818,7 @@ export default function DelegatePortalPage() {
                   setSearchQuery(e.target.value)
                   if (error) setError(null)
                 }}
-                placeholder="email@example.com or 9876543210"
+                placeholder="Your name, email, or 9876543210"
                 inputMode={/^\d/.test(searchQuery) ? "tel" : "email"}
                 className="w-full px-4 py-3.5 text-base border border-white/15 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all text-center bg-white/10 text-white placeholder:text-white/40"
                 autoFocus
@@ -844,7 +855,7 @@ export default function DelegatePortalPage() {
             </button>
 
             <p className="text-center text-xs text-white/40 mt-3">
-              Use the email or phone you registered with
+              Use the name, email, or phone you registered with
             </p>
           </motion.form>
 
@@ -1049,13 +1060,24 @@ export default function DelegatePortalPage() {
             {sortedRegistrations.map((reg) => {
               const status = getEventStatus(reg)
               const styles = statusStyles[status.color]
+              const isTechnosurg = reg._tenant === "technosurg"
+              const handleClick = () => {
+                haptic("light")
+                if (isTechnosurg) {
+                  const portal = process.env.NEXT_PUBLIC_TECHNOSURG_PORTAL_URL || "https://technosurg.gemhospitals.com"
+                  const q = encodeURIComponent(reg.registration_number || searchQuery)
+                  window.open(`${portal}/my?q=${q}`, "_blank", "noopener,noreferrer")
+                  return
+                }
+                setSelectedRegistration(reg)
+              }
               return (
                 <motion.button
                   key={reg.id}
                   variants={itemVariants}
                   whileHover={{ scale: 1.01, y: -1 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => { haptic("light"); setSelectedRegistration(reg) }}
+                  onClick={handleClick}
                   className={`w-full bg-white rounded-xl p-4 text-left shadow-lg hover:shadow-xl transition-shadow group border-l-4 ${styles.border}`}
                 >
                   <div className="flex items-center gap-3.5">
@@ -1078,6 +1100,11 @@ export default function DelegatePortalPage() {
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold flex-shrink-0 ${styles.badge}`}>
                           {status.label}
                         </span>
+                        {isTechnosurg && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold flex-shrink-0 bg-cyan-50 text-cyan-700 border border-cyan-200">
+                            TechnoSurg
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 text-sm text-gray-500">
                         <span className="flex items-center gap-1">
@@ -1383,6 +1410,27 @@ export default function DelegatePortalPage() {
                 {registration.attendee_institution}
               </p>
             )}
+
+            {/* QR Code under name — encodes the same verify URL as the printed badge,
+                so check-in scanners read either the phone screen or the badge identically. */}
+            <div className="mt-5 flex justify-center">
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
+                <p className="text-[0.65rem] text-indigo-600 font-medium mb-2 flex items-center justify-center gap-1 tracking-wide">
+                  <QrCode className="w-3.5 h-3.5" />
+                  {registration.checked_in ? "CHECKED IN" : "SHOW FOR QUICK CHECK-IN"}
+                </p>
+                <CheckinQRCode
+                  token={(() => {
+                    const t = registration.checkin_token || registration.registration_number
+                    const origin = typeof window !== "undefined"
+                      ? window.location.origin
+                      : (process.env.NEXT_PUBLIC_APP_URL || "")
+                    return `${origin.replace(/\/$/, "")}/v/${t}`
+                  })()}
+                  size={160}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Registration Number */}
@@ -1392,20 +1440,6 @@ export default function DelegatePortalPage() {
               {registration.registration_number}
             </p>
           </div>
-
-          {/* QR Code for Check-in */}
-          {registration.checkin_token && !registration.checked_in && (
-            <div className="mb-6 text-center">
-              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
-                <p className="text-xs text-indigo-600 font-medium mb-3 flex items-center justify-center gap-1">
-                  <QrCode className="w-3.5 h-3.5" />
-                  SHOW THIS FOR QUICK CHECK-IN
-                </p>
-                <CheckinQRCode token={registration.checkin_token} size={160} />
-                <p className="text-xs text-gray-400 mt-2 font-mono">{registration.checkin_token}</p>
-              </div>
-            </div>
-          )}
 
           {/* Status & Details */}
           <div className="space-y-3 mb-6">
