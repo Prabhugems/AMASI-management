@@ -388,9 +388,12 @@ function EventDetailsPage() {
       const eventData = await res.json() as EventDetails | null
 
       if (eventData?.ticket_types) {
-        eventData.ticket_types = eventData.ticket_types.filter(
-          (t: TicketType) => !t.is_hidden || t.id === directTicketId
-        )
+        // When a specific ticket id is supplied via ?ticket=…, show ONLY that
+        // ticket on the form — used for targeted private registration links.
+        // Otherwise show every non-hidden ticket.
+        eventData.ticket_types = directTicketId
+          ? eventData.ticket_types.filter((t: TicketType) => t.id === directTicketId)
+          : eventData.ticket_types.filter((t: TicketType) => !t.is_hidden)
       }
 
       return eventData
