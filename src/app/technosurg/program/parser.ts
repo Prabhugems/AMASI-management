@@ -332,7 +332,7 @@ function parseSparseScreen(csv: string, cols: number[]): Day[] {
       if (surgeons) {
         current.rows.push({
           kind: "talk",
-          topic: "Operating surgeons",
+          topic: "Moderators",
           speaker: surgeons,
         })
       }

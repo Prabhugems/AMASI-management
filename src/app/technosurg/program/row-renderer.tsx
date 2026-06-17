@@ -187,11 +187,11 @@ function SpeakerLine({
 }) {
   const cleaned = stripBorderDashes(value)
   const names = splitNames(cleaned)
-  const isSurgeonRoster =
-    /operating\s+surgeon|operating\s+surgeons|live\s+surgeries|live\s+surgery/i.test(topic) &&
+  const isRoster =
+    /operating\s+surgeon|live\s+surger|moderator/i.test(topic) &&
     names.length >= 3
 
-  if (isSurgeonRoster) {
+  if (isRoster) {
     return (
       <div className="flex items-start gap-1.5">
         <User className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${accent.icon}`} />
