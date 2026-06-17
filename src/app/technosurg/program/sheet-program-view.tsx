@@ -216,8 +216,8 @@ export async function TechnosurgSheetProgramView() {
           type: "split-plenary",
           timeRange: "5:45 PM – 6:00 PM",
           halves: [
-            { scope: "Screen 1 · Live GI / General", rows: screen1AtSplit, accent: ACCENTS.s1 },
-            { scope: "Screen 2 · Live GI / Onco", rows: screen2AtSplit, accent: ACCENTS.s2 },
+            { scope: "Screen 1", rows: screen1AtSplit, accent: ACCENTS.s1 },
+            { scope: "Screen 2", rows: screen2AtSplit, accent: ACCENTS.s2 },
           ],
         })
       }
