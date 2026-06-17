@@ -230,7 +230,7 @@ export async function TechnosurgSheetProgramView() {
         })
       }
     }
-    if (day1Bands.length) days.push({ day: "Day 1", bands: day1Bands })
+    if (day1Bands.length) days.push({ day: "Day 1 · Friday, 19 June 2026", bands: day1Bands })
   }
 
   // ───────── Day 2 ─────────
@@ -322,7 +322,7 @@ export async function TechnosurgSheetProgramView() {
         rows: nonEmpty(lec2S.evening),
       })
     }
-    if (day2Bands.length) days.push({ day: "Day 2", bands: day2Bands })
+    if (day2Bands.length) days.push({ day: "Day 2 · Saturday, 20 June 2026", bands: day2Bands })
   }
 
   const fullFetchError = !surgeryCsv && !gynaecCsv
