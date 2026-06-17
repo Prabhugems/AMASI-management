@@ -3,7 +3,7 @@ import Papa from "papaparse"
 export type Row =
   | { kind: "block"; blockTime?: string; rangeOrNote: string; sessionTitle: string; chair?: string }
   | { kind: "section"; title: string; note?: string; chair?: string }
-  | { kind: "talk"; time?: string; topic: string; speaker?: string; chair?: string }
+  | { kind: "talk"; time?: string; topic: string; speaker?: string; chair?: string; screen?: number }
   | { kind: "note"; text: string }
 
 export type Day = { label: string; rows: Row[] }
@@ -21,14 +21,33 @@ function hoistChairs(days: Day[]): Day[] {
     const flush = () => {
       if (!container) return
       const merged = [...(container.chair ? [container.chair] : []), ...collected]
-      const parts = new Set<string>()
+      // Dedup by alpha-only normalized key so "Dr. Vinoth Kumar" and
+      // "Dr.Vinoth Kumar" collapse into a single entry.
+      const seen = new Set<string>()
+      const ordered: string[] = []
       for (const m of merged) {
-        for (const p of m.split(/\s*,\s*/)) {
-          const trimmed = p.trim()
-          if (trimmed) parts.add(trimmed)
+        // Insert commas between adjacent "Dr X Dr Y" tokens (some sheet cells
+        // list two doctors without a comma separator). Skip when the preceding
+        // letter is an AM/PM marker so "10:15 AM Dr X" doesn't become
+        // "10:15 AM, Dr X" (which would split the slot label off as a name).
+        const withCommas = m.replace(
+          /([a-z])\s+(Dr[.\s])/gi,
+          (match, before, after, offset, str) => {
+            const ctx = (str as string).substring(Math.max(0, offset - 2), offset + 1)
+            if (/[ap]m$/i.test(ctx)) return match
+            return `${before}, ${after}`
+          },
+        )
+        for (const p of withCommas.split(/\s*,\s*/)) {
+          const trimmed = p.trim().replace(/\s+/g, " ")
+          if (!trimmed) continue
+          const key = trimmed.toLowerCase().replace(/[^a-z0-9]/g, "")
+          if (seen.has(key)) continue
+          seen.add(key)
+          ordered.push(trimmed)
         }
       }
-      if (parts.size > 0) container.chair = Array.from(parts).join(", ")
+      if (ordered.length) container.chair = ordered.join(", ")
       collected = []
     }
 
@@ -153,15 +172,23 @@ function cleanChair(v: string): string | undefined {
   if (!v) return undefined
   if (/^(yes|no|y|n|pending|done|judge|n\/?a)$/i.test(v)) return undefined
   // "Chairperson" / "Chairperson:" alone is a column-label header, not a name
-  if (/^chairperson\s*:?\s*$/i.test(v)) return undefined
-  // "Chairperson for 2:45 to 4:24" is a label in the sheet, not a chair name
-  if (/^chairperson\s+for\b/i.test(v)) return undefined
+  if (/^chairpersons?\s*:?\s*$/i.test(v)) return undefined
+  // "Chairperson for HH:MM to HH:MM Dr.X Dr.Y" — strip the time-window
+  // descriptor and keep the actual chair names that follow.
+  if (/^chairpersons?\s+for\b/i.test(v)) {
+    const stripped = v.replace(
+      /^chairpersons?\s+for\s+[^A-Za-z]*(?:[ap]m)?\s*(?:to|[-–])\s*[^A-Za-z]*(?:[ap]m)?\s*/i,
+      "",
+    )
+    return stripped && stripped !== v ? stripped.trim() || undefined : undefined
+  }
   // TNMC-like: "name - 12345" or short string with digits & dash
   if (/-\s*\d{4,}/.test(v) && v.length < 40 && !/dr\.?\s/i.test(v)) return undefined
-  // Strip a leading "Chairperson" / time-range prefix (e.g.
-  // "10.15 AM- 11:00 AM Chairperson Dr. Santosh ...") so the rendered
-  // chair list reads as just names.
-  return v.replace(/^.*?chairperson\s*[:\-]?\s*/i, "").trim() || undefined
+  // Strip just the "Chairperson(s)" word and any colon/dash separator.
+  // Preserve any leading time-range prefix so splitChairsByTimeSlot can
+  // group chairs by sub-window (e.g. "9.00 - 9.36 AM Chairpersons Dr. X"
+  // becomes "9.00 - 9.36 AM Dr. X").
+  return v.replace(/\bchairpersons?\s*[:\-]?\s*/i, "").trim() || undefined
 }
 
 function looksLikeBlockTime(s: string): boolean {
@@ -233,6 +260,17 @@ export function parseScreen1(csv: string): Day[] {
       continue
     }
 
+    // Panelists-only continuation row (panelists list in c3 alone) — attach
+    // to the previous section's chair so ChairLine's MODERATOR/PANELISTS
+    // splitter shows both labelled lines.
+    if (!c0 && !c1Fixed && !c2 && c3 && !c4 && !c5 && /^panelists?\b/i.test(c3)) {
+      const last = current.rows[current.rows.length - 1]
+      if (last && (last.kind === "section" || last.kind === "block")) {
+        last.chair = last.chair ? `${last.chair} ${c3}` : c3
+      }
+      continue
+    }
+
     // Chair-only continuation row: nothing in c0-c4, only c5 has names.
     // Attach to the most recent block or section.
     if (!c0 && !c1 && !c2 && !c3 && !c4 && c5) {
@@ -287,11 +325,54 @@ export function parseScreen1(csv: string): Day[] {
         }
         continue
       }
-      const title = c2 || c1Fixed
+      // "MODERATORS [FOR LIVE]:" line attaches to the previous block as its
+      // moderators roster rather than creating a new section — keeps the
+      // LIVE SURGERY block on Screens 1 & 2 from splintering into 3 sections.
+      // Also tag the preceding section/block with the time so splitDayForPlenary
+      // can bucket the whole group into the right band.
+      if (c2 && /^MODERATORS?\b/i.test(c2)) {
+        const cleaned = c2
+          .replace(/^MODERATORS?(?:\s+FOR\s+LIVE)?\s*[:\-]?\s*/i, "")
+          .trim()
+        const last = current.rows[current.rows.length - 1]
+        if (last && last.kind === "section" && !last.note && looksLikeTime(c1Fixed)) {
+          last.note = c1Fixed
+        }
+        if (last && last.kind === "block" && !last.blockTime && looksLikeTime(c1Fixed)) {
+          last.blockTime = c1Fixed
+        }
+        current.rows.push({
+          kind: "talk",
+          time: looksLikeTime(c1Fixed) ? c1Fixed : undefined,
+          topic: "Moderators",
+          speaker: cleaned,
+        })
+        continue
+      }
+      // Strip "(SCREEN N)" / "(SCREEN N & M)" source markers from session
+      // titles — these are internal scheduling notes, not display labels.
+      const rawTitle = (c2 || c1Fixed).replace(/\s*\(\s*SCREEN[^)]*\)\s*/gi, "").trim()
+      const title = rawTitle || c1Fixed
       const note = c2 && c1Fixed && c1Fixed !== c2 ? c1Fixed : undefined
       // Capture moderators (c3) on a section header — the sheet uses c3 for
       // panel moderators which would otherwise be discarded.
       const chair = cleanChair(c3) || cleanChair(c5)
+      // Skip a duplicate "LIVE SURGER…" header that immediately follows a
+      // section with the same root — the surgery sheet emits a 3-row LIVE
+      // SURGERY block and we already absorbed the first row.
+      const last = current.rows[current.rows.length - 1]
+      if (
+        last &&
+        last.kind === "section" &&
+        /^live\s+surger/i.test(last.title) &&
+        /^live\s+surger/i.test(title) &&
+        !note
+      ) {
+        // Prefer the more canonical short form ("Live Surgeries" over
+        // "Live Surgery").
+        if (title.length > last.title.length) last.title = title
+        continue
+      }
       current.rows.push({ kind: "section", title, note, chair })
       continue
     }
@@ -347,14 +428,34 @@ function parseSparseScreen(csv: string, cols: number[]): Day[] {
       stop = true
       continue
     }
-    if (/\bDAY\s*2\b/i.test(rowJoined(r)) && current.rows.length) {
+    if (/\bDAY\s*2\b/i.test(rowJoined(r)) && (current.rows.length || pendingBlock)) {
       flush()
       current = { label: "Day 2", rows: [] }
       days.push(current)
       continue
     }
 
-    const vals = cols.map((c) => clean(r[c])).filter((v) => v && !/^screen\s*\d+$/i.test(v))
+    // Only treat the row as LIVE SURGERIES-block content when its first listed
+    // column has data OR one of the listed columns starts with "MODERATORS".
+    // Rows where only later columns have data are structured talks handled by
+    // parseScreen2Structured (e.g. the 5:45-6 PM MERIL entries at col 8-10).
+    const firstColVal = clean(r[cols[0]])
+    const hasModeratorsMarker = cols.some((c) =>
+      /^MODERATORS?\b/i.test(clean(r[c])),
+    )
+    if (!firstColVal && !hasModeratorsMarker) continue
+
+    const vals = cols
+      .map((c) => clean(r[c]))
+      .filter((v) => {
+        if (!v) return false
+        if (/^screen\s*\d+$/i.test(v)) return false
+        // Strip stray email addresses and TNMC-like "name - 12345" IDs that
+        // leak in from adjacent contact-detail columns.
+        if (/\S+@\S+\.\S+/.test(v)) return false
+        if (/^[a-z]+\s*-\s*\d{4,}/i.test(v) && v.length < 40) return false
+        return true
+      })
     if (vals.length === 0) continue
 
     // Treat consecutive non-empty cells as part of the same block
@@ -364,10 +465,20 @@ function parseSparseScreen(csv: string, cols: number[]): Day[] {
         pendingBlock.time = pendingBlock.time ? `${pendingBlock.time} / ${v}` : v
       } else if (/^\(.*\)$/.test(v)) {
         pendingBlock.notes.push(v)
-      } else if (/\b(LIVE\s+SURGER|SURGERY|SESSION|MASTERCLASS)\b/i.test(v) && v.length < 60) {
+      } else if (/\b(LIVE\s+SURGER\w*|SURGER(?:Y|IES)|SESSION|MASTERCLASS)\b/i.test(v) && v.length < 60) {
         pendingBlock.title = v
-      } else if (/Dr[.\s]/i.test(v) && v.length > 30) {
-        pendingBlock.surgeons = pendingBlock.surgeons ? `${pendingBlock.surgeons}, ${v}` : v
+      } else if (/^MODERATORS?\b/i.test(v) || (/Dr[.\s]/i.test(v) && v.length > 30)) {
+        // Strip the "MODERATORS [FOR LIVE]:" prefix so the rendered roster
+        // shows just the names — the label is supplied by the topic field.
+        const cleaned = v
+          .replace(/^MODERATORS?(?:\s+FOR\s+LIVE)?\s*[:\-]?\s*/i, "")
+          .replace(/^-+|-+$/g, "")
+          .trim()
+        if (cleaned) {
+          pendingBlock.surgeons = pendingBlock.surgeons
+            ? `${pendingBlock.surgeons}, ${cleaned}`
+            : cleaned
+        }
       } else {
         pendingBlock.notes.push(v)
       }
@@ -377,12 +488,179 @@ function parseSparseScreen(csv: string, cols: number[]): Day[] {
   return days.filter((d) => d.rows.length > 0)
 }
 
-export function parseScreen2(csv: string): Day[] {
-  return parseSparseScreen(csv, [7, 8, 9, 10])
+// Screen 2 also carries one-off structured talks at cols 8-10
+//   col 8 = time, col 9 = topic, col 10 = speaker
+// — e.g. the 5:45–6 PM MERIL Robotic Console Inauguration on Day 1 evening.
+// Row 62 is a continuation (no time) that reuses the previous talk's slot.
+function parseScreen2Structured(csv: string): Day[] {
+  const rows = parseCsv(csv)
+  const days: Day[] = [{ label: "Day 1", rows: [] }]
+  let current = days[0]
+  let stop = false
+  let lastTime: string | undefined
+
+  for (const r of rows) {
+    if (stop) break
+    const joined = rowJoined(r)
+    if (/online\s*talks/i.test(joined)) {
+      stop = true
+      continue
+    }
+    if (/\bDAY\s*2\b/i.test(joined) && current.rows.length) {
+      current = { label: "Day 2", rows: [] }
+      days.push(current)
+      lastTime = undefined
+      continue
+    }
+
+    const c8 = clean(r[8])
+    const c9 = clean(r[9])
+    const c10 = clean(r[10])
+
+    // Don't treat the LIVE SURGERIES moderator row (c9 starts with MODERATORS)
+    // or column headers as structured talks.
+    if (c9 && /^(MODERATORS?|SCREEN\s*\d)/i.test(c9)) continue
+
+    if (c8 && (looksLikeBlockTime(c8) || looksLikeTime(c8)) && c9) {
+      current.rows.push({
+        kind: "talk",
+        time: c8,
+        topic: c9,
+        speaker: c10 || undefined,
+        screen: 2,
+      })
+      lastTime = c8
+      continue
+    }
+
+    if (!c8 && c9 && c10 && lastTime) {
+      current.rows.push({
+        kind: "talk",
+        time: lastTime,
+        topic: c9,
+        speaker: c10,
+        screen: 2,
+      })
+      continue
+    }
+  }
+
+  return days.filter((d) => d.rows.length > 0)
 }
 
+export function parseScreen2(csv: string): Day[] {
+  // Screen 2 has two co-existing layouts in the same column range:
+  //   – sparse rows 20-22 carrying the LIVE SURGERIES 11 AM–3 PM block
+  //   – structured rows (cols 8-10) carrying individual evening talks
+  // Merge both into the same day list.
+  const sparse = parseSparseScreen(csv, [7, 8, 9])
+  const structured = parseScreen2Structured(csv)
+  const dayMap = new Map<string, Day>()
+  for (const d of sparse) dayMap.set(d.label, { label: d.label, rows: [...d.rows] })
+  for (const d of structured) {
+    const existing = dayMap.get(d.label)
+    if (existing) existing.rows.push(...d.rows)
+    else dayMap.set(d.label, { label: d.label, rows: [...d.rows] })
+  }
+  return Array.from(dayMap.values())
+}
+
+// Screen 3 grew its own structured grid: col 15 = time, col 16 = topic,
+// col 17 = speaker, col 18 = chair. Parse it like the main lecture column
+// rather than as sparse data.
 export function parseScreen3(csv: string): Day[] {
-  return parseSparseScreen(csv, [11, 12, 13, 14])
+  const rows = parseCsv(csv)
+  const days: Day[] = [{ label: "Day 1", rows: [] }]
+  let current = days[0]
+  let stop = false
+
+  const skipPatterns = (v: string) =>
+    /\S+@\S+\.\S+/.test(v) || /^[a-z]+\s*-\s*\d{4,}/i.test(v)
+
+  for (const r of rows) {
+    if (stop) break
+    const joined = rowJoined(r)
+    if (/online\s*talks/i.test(joined)) {
+      stop = true
+      continue
+    }
+    if (/\bDAY\s*2\b/i.test(joined) && current.rows.length) {
+      current = { label: "Day 2", rows: [] }
+      days.push(current)
+      continue
+    }
+
+    const c15 = clean(r[15])
+    const c16 = clean(r[16])
+    const c17 = clean(r[17])
+    const c18 = clean(r[18])
+
+    if (!c15 && !c16 && !c17 && !c18) continue
+    if (/^screen\s*\d+$/i.test(c16) || /^speakers?$/i.test(c17) || /^chairpersons?$/i.test(c18)) continue
+    if ((c16 && skipPatterns(c16)) || (c17 && skipPatterns(c17))) continue
+
+    // Row carrying just a block time in c16 (e.g. "11 AM ----3.00 PM").
+    if (!c15 && looksLikeBlockTime(c16) && !c17 && !c18) {
+      current.rows.push({
+        kind: "block",
+        blockTime: c16,
+        rangeOrNote: "",
+        sessionTitle: "",
+      })
+      continue
+    }
+
+    // Title-only row attaches to a preceding title-less block. Skip "DAY N"
+    // header labels — they're column markers, not session titles.
+    if (!c15 && c16 && !c17 && !c18 && !looksLikeTime(c16)) {
+      if (/^DAY\s*\d+\b/i.test(c16)) continue
+      const last = current.rows[current.rows.length - 1]
+      if (last && last.kind === "block" && !last.sessionTitle) {
+        last.sessionTitle = c16
+      } else {
+        current.rows.push({ kind: "section", title: c16 })
+      }
+      continue
+    }
+
+    // Full talk: time + topic (+ optional speaker, chair).
+    if (c15 && c16) {
+      current.rows.push({
+        kind: "talk",
+        time: c15,
+        topic: c16,
+        speaker: c17 || undefined,
+        chair: cleanChair(c18),
+      })
+      continue
+    }
+
+    // Chair-only continuation.
+    if (!c15 && !c16 && !c17 && c18) {
+      const cleaned = cleanChair(c18)
+      if (cleaned) {
+        for (let i = current.rows.length - 1; i >= 0; i--) {
+          const prev = current.rows[i]
+          if (prev.kind === "talk" || prev.kind === "block" || prev.kind === "section") {
+            prev.chair = prev.chair ? `${prev.chair}, ${cleaned}` : cleaned
+            break
+          }
+        }
+      }
+      continue
+    }
+  }
+
+  // Default any title-less blocks to "LIVE SURGERIES".
+  for (const day of days) {
+    for (const row of day.rows) {
+      if (row.kind === "block" && !row.sessionTitle) row.sessionTitle = "LIVE SURGERIES"
+    }
+  }
+
+  // Skip hoistChairs — Screen 3 talks have per-talk chairs that should stay
+  // attached to their individual talks, not aggregate to the session header.
+  return days.filter((d) => d.rows.length > 0)
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -419,23 +697,18 @@ export function parseGynaec(csv: string): Day[] {
     // Day markers
     if (/^DAY\s*1/i.test(c0)) {
       ensureDay("Day 1")
-      // Day 1 row also carries a single live-surgery block. Keep speaker on a
-      // talk row (operating surgeon name) but move the chair list onto the
-      // block so we avoid duplicate empty rows after chair hoisting.
+      // Day 1 row also carries a single live-surgery block. Render only the
+      // block + chair list — the c2 speaker (e.g. Dr. Kavitha Yogini) is also
+      // a moderator-equivalent, so fold them in with the chairs to avoid a
+      // misleading "Operating surgeon" sub-row.
       if (c1) {
+        const chairs = [cleanChair(c4), cleanChair(c2)].filter(Boolean) as string[]
         current!.rows.push({
           kind: "block",
           rangeOrNote: c0,
           sessionTitle: c1,
-          chair: cleanChair(c4),
+          chair: chairs.length ? chairs.join(", ") : undefined,
         })
-        if (c2) {
-          current!.rows.push({
-            kind: "talk",
-            topic: "Operating surgeon",
-            speaker: c2,
-          })
-        }
       }
       continue
     }
@@ -459,7 +732,17 @@ export function parseGynaec(csv: string): Day[] {
     // erased from the sheet. Emit a section divider so the talks beneath it
     // hoist their chairs to this header instead of staying on the first talk.
     if (c0 && !c1 && !c2 && !c4 && /\d/.test(c0)) {
-      current!.rows.push({ kind: "section", title: c0 })
+      // c0 may carry both time and title in one cell, like
+      // "9.00 AM to 9.45 AM SESSION 1 - THE FUTURE BEGINS HERE ...".
+      // Split the time prefix into a note so the title renders cleanly.
+      const split = c0.match(
+        /^(\d[\d:.]*\s*(?:AM|PM)?\s*(?:to|[-–—])\s*\d[\d:.]*\s*(?:AM|PM)?)\s+(.+)$/i,
+      )
+      if (split) {
+        current!.rows.push({ kind: "section", title: split[2], note: split[1] })
+      } else {
+        current!.rows.push({ kind: "section", title: c0 })
+      }
       continue
     }
 
@@ -488,11 +771,15 @@ export function parseGynaec(csv: string): Day[] {
       continue
     }
 
-    // Continuation of chairs from previous row (no c0/c1/c2, only c4)
+    // Continuation of chairs from previous row (no c0/c1/c2, only c4) —
+    // attach to the most recent talk OR block/section so multi-row slot-grouped
+    // chair lists (e.g. DAY 2 LIVE SURGERY split into "… 11 AM-1 PM" and
+    // "… 1PM-3PM") don't drop the second row.
     if (!c0 && !c1 && !c2 && c4) {
       const last = current!.rows[current!.rows.length - 1]
-      if (last && last.kind === "talk") {
-        last.chair = last.chair ? `${last.chair}, ${c4}` : c4
+      if (last && (last.kind === "talk" || last.kind === "block" || last.kind === "section")) {
+        const cleaned = last.kind === "talk" ? c4 : (cleanChair(c4) ?? "")
+        if (cleaned) last.chair = last.chair ? `${last.chair}, ${cleaned}` : cleaned
       }
       continue
     }
