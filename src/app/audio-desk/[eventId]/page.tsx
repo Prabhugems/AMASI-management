@@ -6,7 +6,8 @@ import {
   Headphones, ScanLine, Undo2, ListChecks, Search, Loader2, CheckCircle, XCircle, AlertCircle, RotateCcw,
   Hash, User, Ticket, Building2,
 } from "lucide-react"
-import { Html5Qrcode } from "html5-qrcode"
+// html5-qrcode is loaded lazily to keep first-paint small on mobile
+import type { Html5Qrcode as Html5QrcodeType } from "html5-qrcode"
 import Link from "next/link"
 
 type Tab = "issue" | "return" | "list"
@@ -52,7 +53,11 @@ export default function AudioDeskPage() {
   const badgeInputRef = useRef<HTMLInputElement>(null)
   const deviceInputRef = useRef<HTMLInputElement>(null)
   const returnInputRef = useRef<HTMLInputElement>(null)
-  const scannerRef = useRef<Html5Qrcode | null>(null)
+  const scannerRef = useRef<Html5QrcodeType | null>(null)
+  // Decode dispatcher: scanner stays running across step changes; the ref
+  // is updated as state changes so the latest handler runs without restart.
+  const decodeHandlerRef = useRef<((v: string) => Promise<void> | void) | null>(null)
+  const lastScanRef = useRef<{ value: string; at: number }>({ value: "", at: 0 })
 
   // Auto-focus the right input
   useEffect(() => {
@@ -61,15 +66,21 @@ export default function AudioDeskPage() {
     if (tab === "return") returnInputRef.current?.focus()
   }, [tab, issueStep, result])
 
-  // Auto-start camera when entering a scan state (no result visible)
+  // Auto-dismiss the result card so the camera resumes scanning
+  // (3s for success, 4s for warning/error to give time to read).
   useEffect(() => {
-    if (result || scanning) return
-    if (tab === "issue" && issueStep === "scan_badge") startCamera("badge")
-    else if (tab === "issue" && issueStep === "scan_device") startCamera("device")
-    else if (tab === "return") startCamera("return")
-    // intentionally re-runs when tab/step changes; startCamera is stable
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, issueStep, result])
+    if (!result) return
+    const ms = result.kind === "success" ? 3000 : 4000
+    const t = setTimeout(() => {
+      setResult(null)
+      if (tab === "issue") {
+        setAttendee(null)
+        setScanInput("")
+        setIssueStep("scan_badge")
+      }
+    }, ms)
+    return () => clearTimeout(t)
+  }, [result, tab])
 
   // Look up an attendee by reg number or by /v/{token} URL
   const lookupAttendee = useCallback(async (value: string) => {
@@ -213,14 +224,24 @@ export default function AudioDeskPage() {
     setIssueStep("scan_badge")
   }
 
-  // Camera scanner — entry: click sets state, the useEffect below boots the scanner
-  // AFTER the <div id="audio-desk-qr"> has been mounted (avoids "Element not found").
-  const startCamera = useCallback((targetInput: "badge" | "device" | "return") => {
-    setCameraError(null)
-    setScannerReady(false)
-    setCameraTarget(targetInput)
-    setScanning(true)
-  }, [])
+  // Compute whether the camera should be active right now.
+  // Persistent across Issue Step 1 → Step 2 so we don't pay the camera
+  // restart cost when transitioning between badge and device scans.
+  const cameraTab: "badge" | "device" | "return" | null =
+    tab === "return" ? "return" :
+    tab === "issue" && issueStep === "scan_badge" ? "badge" :
+    tab === "issue" && issueStep === "scan_device" ? "device" :
+    null
+  const shouldScan = !result && !busy && cameraTab !== null
+
+  // Keep decode dispatcher pointing at the right handler for the current step
+  useEffect(() => {
+    decodeHandlerRef.current =
+      cameraTab === "badge" ? lookupAttendee :
+      cameraTab === "device" ? issueDevice :
+      cameraTab === "return" ? returnDevice :
+      null
+  }, [cameraTab, lookupAttendee, issueDevice, returnDevice])
 
   const stopCamera = useCallback(async () => {
     if (scannerRef.current) {
@@ -232,29 +253,44 @@ export default function AudioDeskPage() {
     setCameraTarget(null)
   }, [])
 
-  // Boot html5-qrcode only after the target <div> is in the DOM.
+  // Boot html5-qrcode once shouldScan flips on. Lazy-imports the library
+  // so it isn't in the first-paint bundle on mobile.
   useEffect(() => {
-    if (!scanning || !cameraTarget) return
+    if (!shouldScan) return
+    setScanning(true)
+    setCameraTarget(cameraTab)
+    setCameraError(null)
+    setScannerReady(false)
     let cancelled = false
-    const target = cameraTarget
 
     ;(async () => {
       try {
-        const scanner = new Html5Qrcode("audio-desk-qr")
+        const { Html5Qrcode } = await import("html5-qrcode")
         if (cancelled) return
+        // Wait one frame so the <div id="audio-desk-qr"> is in the DOM.
+        await new Promise((r) => requestAnimationFrame(r))
+        if (cancelled) return
+        const scanner = new Html5Qrcode("audio-desk-qr", { verbose: false })
         scannerRef.current = scanner
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 240, height: 240 } },
-          async (decoded) => {
-            try { await scanner.stop() } catch {}
-            scannerRef.current = null
-            setScannerReady(false)
-            setScanning(false)
-            setCameraTarget(null)
-            if (target === "badge") await lookupAttendee(decoded)
-            else if (target === "device") await issueDevice(decoded)
-            else await returnDevice(decoded)
+          {
+            fps: 25,
+            // Responsive QR box: 75% of the shorter viewfinder edge, capped at 320.
+            qrbox: (vw: number, vh: number) => {
+              const size = Math.floor(Math.min(Math.min(vw, vh) * 0.75, 320))
+              return { width: size, height: size }
+            },
+            aspectRatio: 1,
+            disableFlip: false,
+          } as any,
+          (decoded: string) => {
+            // Dedupe: ignore the same value within 1.5s
+            const now = Date.now()
+            if (decoded === lastScanRef.current.value && now - lastScanRef.current.at < 1500) return
+            lastScanRef.current = { value: decoded, at: now }
+            const handler = decodeHandlerRef.current
+            if (handler) handler(decoded)
           },
           () => {}
         )
@@ -266,27 +302,33 @@ export default function AudioDeskPage() {
       } catch (e: any) {
         const msg = String(e?.message || e || "")
         const isPerm = /permission|NotAllowed/i.test(msg)
-        const isMissing = /not found|getElementById/i.test(msg)
         setCameraError(
           isPerm
             ? "Camera permission denied. Allow camera access in your browser settings."
-            : isMissing
-            ? "Could not attach to camera view — please try again."
             : `Camera error: ${msg}`
         )
         setScannerReady(false)
       }
     })()
 
-    return () => {
-      cancelled = true
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {})
-        scannerRef.current = null
-      }
-    }
-  }, [scanning, cameraTarget, lookupAttendee, issueDevice, returnDevice])
+    return () => { cancelled = true }
+    // Only re-run when shouldScan toggles (not on cameraTab change — handler is via ref).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldScan])
 
+  // Stop the camera when shouldScan goes false.
+  useEffect(() => {
+    if (shouldScan) return
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(() => {})
+      scannerRef.current = null
+    }
+    setScannerReady(false)
+    setScanning(false)
+    setCameraTarget(null)
+  }, [shouldScan])
+
+  // Cleanup on unmount
   useEffect(() => () => {
     if (scannerRef.current) {
       scannerRef.current.stop().catch(() => {})
@@ -394,13 +436,13 @@ export default function AudioDeskPage() {
           </div>
         )}
 
-        {/* Camera overlay */}
-        {scanning && (
-          <div className="mb-4 p-4 bg-black/30 rounded-2xl border border-white/10">
+        {/* Camera viewfinder — always active in Issue/Return tabs */}
+        {shouldScan && (
+          <div className="mb-3 rounded-2xl overflow-hidden border border-white/10 bg-black">
             <div className="relative">
-              <div id="audio-desk-qr" style={{ minHeight: 250 }} />
+              <div id="audio-desk-qr" style={{ width: "100%" }} />
               {!scannerReady && !cameraError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60 rounded-xl">
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60">
                   <div className="text-center">
                     <Loader2 className="w-10 h-10 text-emerald-400 animate-spin mx-auto" />
                     <p className="text-white/60 mt-3 text-sm">Starting camera…</p>
@@ -408,20 +450,25 @@ export default function AudioDeskPage() {
                 </div>
               )}
               {cameraError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 rounded-xl p-4">
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 p-4">
                   <div className="text-center max-w-xs">
                     <XCircle className="w-10 h-10 text-red-400 mx-auto" />
                     <p className="text-red-200 mt-3 text-sm">{cameraError}</p>
                   </div>
                 </div>
               )}
+              {/* Subtle hint of what we're scanning for */}
+              {scannerReady && cameraTab && (
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 text-xs text-white/90 backdrop-blur-sm">
+                  {cameraTab === "badge" ? "Scan attendee badge" : cameraTab === "device" ? "Scan device QR" : "Scan returning device"}
+                </div>
+              )}
             </div>
-            <button onClick={stopCamera} className="mt-3 w-full py-2 rounded-xl bg-white/10 hover:bg-white/20">Close camera</button>
           </div>
         )}
 
         {/* Issue tab */}
-        {tab === "issue" && !result && !scanning && (
+        {tab === "issue" && !result && (
           <div className="space-y-4">
             {/* Step indicator */}
             <div className="flex items-center justify-center gap-2 text-sm">
@@ -445,16 +492,13 @@ export default function AudioDeskPage() {
                   autoCapitalize="characters"
                   autoComplete="off"
                 />
-                <div className="flex gap-2 mt-3">
-                  <button onClick={() => startCamera("badge")} className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20">Use camera</button>
-                  <button
-                    onClick={() => lookupAttendee(scanInput)}
-                    disabled={!scanInput || busy}
-                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 disabled:opacity-50"
-                  >
-                    {busy ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Find attendee"}
-                  </button>
-                </div>
+                <button
+                  onClick={() => lookupAttendee(scanInput)}
+                  disabled={!scanInput || busy}
+                  className="mt-3 w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 disabled:opacity-50 font-medium"
+                >
+                  {busy ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Find attendee"}
+                </button>
               </div>
             )}
 
@@ -489,12 +533,11 @@ export default function AudioDeskPage() {
                   autoComplete="off"
                 />
                 <div className="flex gap-2 mt-3">
-                  <button onClick={resetIssueFlow} className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20">Cancel</button>
-                  <button onClick={() => startCamera("device")} className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20">Use camera</button>
+                  <button onClick={resetIssueFlow} className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20">Cancel</button>
                   <button
                     onClick={() => issueDevice(scanInput)}
                     disabled={!scanInput || busy}
-                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 disabled:opacity-50"
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 disabled:opacity-50 font-medium"
                   >
                     {busy ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Issue"}
                   </button>
@@ -505,7 +548,7 @@ export default function AudioDeskPage() {
         )}
 
         {/* Return tab */}
-        {tab === "return" && !result && !scanning && (
+        {tab === "return" && !result && (
           <div className="bg-black/30 border border-white/10 rounded-3xl p-6">
             <div className="flex items-center gap-2 text-white/60 mb-2"><Undo2 className="w-4 h-4" /> Scan returning device</div>
             <input
@@ -520,16 +563,13 @@ export default function AudioDeskPage() {
               autoCapitalize="characters"
               autoComplete="off"
             />
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => startCamera("return")} className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20">Use camera</button>
-              <button
-                onClick={() => returnDevice(returnInput)}
-                disabled={!returnInput || busy}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 disabled:opacity-50"
-              >
-                {busy ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Return"}
-              </button>
-            </div>
+            <button
+              onClick={() => returnDevice(returnInput)}
+              disabled={!returnInput || busy}
+              className="mt-3 w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 disabled:opacity-50 font-medium"
+            >
+              {busy ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Return"}
+            </button>
           </div>
         )}
 
