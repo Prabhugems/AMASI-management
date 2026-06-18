@@ -9,6 +9,22 @@ import {
 } from "./parser"
 import { DayProgram, type DayLayout, type Band, type Column } from "./day-program"
 
+// Day 2 · Screen 2 breakout that doesn't live in the sheet yet.
+const DAY2_SCREEN2_ICG_BREAKOUT: Row[] = [
+  {
+    kind: "section",
+    title: "ICG Imaging Systems in India",
+    note: "3:00 PM – 3:35 PM · 5 min each",
+  },
+  { kind: "talk", time: "3:00 PM", topic: "Karl Storz" },
+  { kind: "talk", time: "3:05 PM", topic: "Olympus" },
+  { kind: "talk", time: "3:10 PM", topic: "Irillic" },
+  { kind: "talk", time: "3:15 PM", topic: "Stryker" },
+  { kind: "talk", time: "3:20 PM", topic: "Lotus" },
+  { kind: "talk", time: "3:25 PM", topic: "Erbe" },
+  { kind: "talk", time: "3:30 PM", topic: "Meril" },
+]
+
 const SHEET_ID = "1nAO9LsFyXKI787ohOK9-yAaj9-Cll9nrkJquhqbsfeQ"
 const SURGERY_GID = "954562000"
 const GYNAEC_GID = "1740008344"
@@ -275,16 +291,19 @@ export async function TechnosurgSheetProgramView() {
         label: "Screen 2",
         subtitle: "Live GI / Onco",
         accent: ACCENTS.s2,
-        rows: (s2D2S?.parallel ?? findDay(s2Days, "Day 2")?.rows ?? []).length
-          ? (s2D2S?.parallel ?? findDay(s2Days, "Day 2")!.rows)
-          : [
-              {
-                kind: "block" as const,
-                blockTime: "11 AM – 3 PM",
-                rangeOrNote: "",
-                sessionTitle: "Live Surgery",
-              },
-            ],
+        rows: [
+          ...((s2D2S?.parallel ?? findDay(s2Days, "Day 2")?.rows ?? []).length
+            ? (s2D2S?.parallel ?? findDay(s2Days, "Day 2")!.rows)
+            : [
+                {
+                  kind: "block" as const,
+                  blockTime: "11 AM – 3 PM",
+                  rangeOrNote: "",
+                  sessionTitle: "Live Surgery",
+                },
+              ]),
+          ...DAY2_SCREEN2_ICG_BREAKOUT,
+        ],
       },
       {
         screen: 3,
