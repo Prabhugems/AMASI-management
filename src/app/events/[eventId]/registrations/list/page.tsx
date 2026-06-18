@@ -3488,12 +3488,12 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
               />
             </div>
             <div className="space-y-2">
-              <Label>Email *</Label>
+              <Label>Email</Label>
               <Input
                 type="email"
                 value={offlineRegData.email}
                 onChange={(e) => setOfflineRegData({ ...offlineRegData, email: e.target.value })}
-                placeholder="email@example.com"
+                placeholder="email@example.com (optional)"
               />
             </div>
             <div className="space-y-2">
@@ -3536,7 +3536,7 @@ Speaker,Dr. Jane Doe,jane@example.com,,Associate Professor,Hospital,N`}
             </Button>
             <Button
               onClick={() => offlineRegistration.mutate(offlineRegData)}
-              disabled={!offlineRegData.name || !offlineRegData.email || !offlineRegData.ticket_type_id || offlineRegistration.isPending}
+              disabled={!offlineRegData.name || !offlineRegData.ticket_type_id || offlineRegistration.isPending}
             >
               {offlineRegistration.isPending ? (
                 <>

@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth/api-auth"
 
 interface ImportRow {
   name: string
-  email: string
+  email?: string
   phone?: string
   status?: string
   registered_on?: string
@@ -181,24 +181,40 @@ export async function POST(request: NextRequest) {
       const rowNum = i + 2 // Account for header row and 0-index
 
       try {
-        // Validate required fields
-        if (!row.name || !row.email) {
+        // Validate required fields — email is now optional (placeholder generated)
+        if (!row.name) {
           results.failed++
-          results.errors.push({ row: rowNum, error: "Name and email are required" })
+          results.errors.push({ row: rowNum, error: "Name is required" })
           continue
         }
 
-        // Check if registration already exists
-        const { data: existing } = await (supabase as any)
+        // Generate placeholder email if not provided so the registration can exist
+        // without one. Welcome/email blasts skip @noemail.local addresses.
+        const rawEmail = row.email?.trim()
+        const phoneDigits = row.phone?.toString().replace(/[^0-9]/g, "") || ""
+        const slug = row.name.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 24) || "anon"
+        const effectiveEmail = rawEmail
+          ? rawEmail.toLowerCase()
+          : `${slug}-${phoneDigits || "x"}@noemail.local`
+
+        // Check if registration already exists (by email or, if no real email, by phone)
+        let dupQuery = (supabase as any)
           .from("registrations")
-          .select("id")
+          .select("id, attendee_email, attendee_phone")
           .eq("event_id", event_id)
-          .eq("attendee_email", row.email.toLowerCase())
-          .single()
+        if (rawEmail) {
+          dupQuery = dupQuery.eq("attendee_email", effectiveEmail)
+        } else if (phoneDigits) {
+          dupQuery = dupQuery.eq("attendee_phone", phoneDigits)
+        } else {
+          dupQuery = dupQuery.eq("attendee_email", effectiveEmail)
+        }
+        const { data: existing } = await dupQuery.maybeSingle()
 
         if (existing) {
           results.failed++
-          results.errors.push({ row: rowNum, error: `${row.email} already registered` })
+          const label = rawEmail || phoneDigits || row.name
+          results.errors.push({ row: rowNum, error: `${label} already registered` })
           continue
         }
 
@@ -278,9 +294,9 @@ export async function POST(request: NextRequest) {
           phoneNumber = csvPhone
         }
 
-        // If no phone from CSV, lookup from members table
-        if (!phoneNumber) {
-          const emailLower = row.email.toLowerCase().trim()
+        // If no phone from CSV, lookup from members table (only when a real email was given)
+        if (!phoneNumber && rawEmail) {
+          const emailLower = rawEmail.toLowerCase().trim()
           if (memberPhones[emailLower]) {
             phoneNumber = memberPhones[emailLower].toString()
           }
@@ -291,7 +307,7 @@ export async function POST(request: NextRequest) {
           event_id,
           ticket_type_id: ticketId,
           attendee_name: row.name,
-          attendee_email: row.email.toLowerCase(),
+          attendee_email: effectiveEmail,
           attendee_phone: phoneNumber,
           status: row.status?.toLowerCase() || "confirmed",
           registration_number: regNumber,
