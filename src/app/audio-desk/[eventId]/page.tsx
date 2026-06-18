@@ -61,6 +61,16 @@ export default function AudioDeskPage() {
     if (tab === "return") returnInputRef.current?.focus()
   }, [tab, issueStep, result])
 
+  // Auto-start camera when entering a scan state (no result visible)
+  useEffect(() => {
+    if (result || scanning) return
+    if (tab === "issue" && issueStep === "scan_badge") startCamera("badge")
+    else if (tab === "issue" && issueStep === "scan_device") startCamera("device")
+    else if (tab === "return") startCamera("return")
+    // intentionally re-runs when tab/step changes; startCamera is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, issueStep, result])
+
   // Look up an attendee by reg number or by /v/{token} URL
   const lookupAttendee = useCallback(async (value: string) => {
     const v = value.trim()
@@ -82,11 +92,11 @@ export default function AudioDeskPage() {
         setIssueStep("result")
         return
       }
-      // Lookup via the registrations search
-      const r = await fetch(`/api/checkin?event_id=${eventId}&q=${encodeURIComponent(regNumber)}&limit=1`)
+      // Lookup via the public audio-desk find endpoint
+      const r = await fetch(`/api/audio-devices/find-attendee?event_id=${eventId}&q=${encodeURIComponent(regNumber)}`)
       if (!r.ok) throw new Error("Registration lookup failed")
       const j = await r.json()
-      const reg = j.data?.[0]
+      const reg = j.data
       if (!reg) {
         setResult({ kind: "error", title: "Attendee not found", subtitle: regNumber })
         setIssueStep("result")

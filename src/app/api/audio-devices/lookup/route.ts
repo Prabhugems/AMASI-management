@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
-
 // GET /api/audio-devices/lookup?event_id=&device_code= — show current holder
 export async function GET(request: NextRequest) {
-  const { error: authError } = await getApiUser()
-  if (authError) return authError
-
   const { searchParams } = new URL(request.url)
   const event_id = searchParams.get("event_id")
   const device_code = searchParams.get("device_code")

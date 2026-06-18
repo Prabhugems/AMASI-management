@@ -99,6 +99,8 @@ export async function middleware(request: NextRequest) {
     '/badge',              // Badge pages (token-based)
     '/v',                  // Certificate verification (token-based)
     '/checkin/access',     // Check-in access (token-based)
+    '/audio-desk',         // Audio device desk (public, event-id in URL)
+    '/api/audio-devices',  // Audio device APIs (public companion to /audio-desk)
     '/api/travel-agent',   // Travel agent APIs (used by agent portals)
     '/abstract-reviewer',  // Abstract reviewer portal (token-based)
     '/api/abstract-reviewer', // Abstract reviewer APIs

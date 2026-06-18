@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
-
 // POST /api/audio-devices — issue a device to an attendee
 // Body: { event_id, device_code, registration_number?, registration_id?, performed_by?, notes? }
 export async function POST(request: NextRequest) {
-  const { error: authError } = await getApiUser()
-  if (authError) return authError
-
   try {
     const body = await request.json()
     const { event_id, device_code, registration_number, registration_id, performed_by, notes } = body
