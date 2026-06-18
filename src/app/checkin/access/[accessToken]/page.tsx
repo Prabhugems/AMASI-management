@@ -862,7 +862,7 @@ export default function StaffCheckinPage() {
                     type="text"
                     value={listSearch}
                     onChange={(e) => setListSearch(e.target.value)}
-                    placeholder="Search name, reg number, or email..."
+                    placeholder="Search name, reg number, email, or phone..."
                     className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
                     autoComplete="off"
                   />

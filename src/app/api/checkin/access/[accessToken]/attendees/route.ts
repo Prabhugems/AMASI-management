@@ -86,7 +86,7 @@ export async function GET(
   if (query) {
     const sanitized = sanitizeSearchInput(query)
     dbQuery = dbQuery.or(
-      `attendee_name.ilike.%${sanitized}%,registration_number.ilike.%${sanitized}%,attendee_email.ilike.%${sanitized}%`
+      `attendee_name.ilike.%${sanitized}%,registration_number.ilike.%${sanitized}%,attendee_email.ilike.%${sanitized}%,attendee_phone.ilike.%${sanitized}%`
     )
   }
 
