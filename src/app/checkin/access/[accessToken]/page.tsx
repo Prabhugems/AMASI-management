@@ -19,6 +19,8 @@ import {
   Ticket,
   Hash,
   AlertCircle,
+  List as ListIcon,
+  Users,
 } from "lucide-react"
 import { Html5Qrcode } from "html5-qrcode"
 
@@ -54,7 +56,19 @@ interface RecentCheckin {
   success: boolean
 }
 
-type ScanMode = "manual" | "camera"
+type ScanMode = "manual" | "camera" | "list"
+
+interface ListAttendee {
+  id: string
+  registration_number: string
+  attendee_name: string
+  attendee_email: string
+  attendee_institution?: string | null
+  attendee_designation?: string | null
+  ticket_type?: { name: string } | null
+  checked_in: boolean
+  checked_in_at?: string | null
+}
 
 export default function StaffCheckinPage() {
   const params = useParams()
@@ -79,6 +93,15 @@ export default function StaffCheckinPage() {
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment")
   const [recentCheckins, setRecentCheckins] = useState<RecentCheckin[]>([])
   const autoContinueTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // List view state
+  const [listAttendees, setListAttendees] = useState<ListAttendee[]>([])
+  const [listLoading, setListLoading] = useState(false)
+  const [listError, setListError] = useState<string | null>(null)
+  const [listSearch, setListSearch] = useState("")
+  const [listStatusFilter, setListStatusFilter] = useState<"all" | "checked_in" | "not_checked_in">("all")
+  const [listCheckinPending, setListCheckinPending] = useState<string | null>(null)
+  const listSearchTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -280,6 +303,94 @@ export default function StaffCheckinPage() {
       }
     }
   }, [lastResult])
+
+  // Fetch attendee roster for list view (debounced on search/filter)
+  const fetchListAttendees = useCallback(async (signal?: AbortSignal) => {
+    if (!checkinList) return
+    setListLoading(true)
+    setListError(null)
+    try {
+      const url = new URL(`/api/checkin/access/${accessToken}/attendees`, window.location.origin)
+      if (listSearch.trim()) url.searchParams.set("q", listSearch.trim())
+      if (listStatusFilter !== "all") url.searchParams.set("status", listStatusFilter)
+      url.searchParams.set("limit", "200")
+      const res = await fetch(url.toString(), { signal })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to load attendees")
+      }
+      const data = await res.json()
+      setListAttendees(data.data || [])
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        setListError(err.message || "Failed to load attendees")
+      }
+    } finally {
+      setListLoading(false)
+    }
+  }, [accessToken, checkinList, listSearch, listStatusFilter])
+
+  useEffect(() => {
+    if (scanMode !== "list" || !checkinList) return
+    const ctrl = new AbortController()
+    if (listSearchTimerRef.current) clearTimeout(listSearchTimerRef.current)
+    listSearchTimerRef.current = setTimeout(() => {
+      fetchListAttendees(ctrl.signal)
+    }, listSearch ? 250 : 0)
+    return () => {
+      ctrl.abort()
+      if (listSearchTimerRef.current) clearTimeout(listSearchTimerRef.current)
+    }
+  }, [scanMode, checkinList, listSearch, listStatusFilter, fetchListAttendees])
+
+  // Check in a single attendee from the list view
+  const checkInFromList = useCallback(async (attendee: ListAttendee) => {
+    if (!checkinList || listCheckinPending) return
+    setListCheckinPending(attendee.id)
+    try {
+      const res = await fetch(`/api/verify/${attendee.registration_number}?event_id=${checkinList.event_id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          checkin_list_id: checkinList.id,
+          access_token: accessToken,
+          action: "check_in",
+          performed_by: "Staff (via access link)",
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        playSound("success")
+        const wasAlready = data.action === "already_checked_in"
+        // Optimistically mark this attendee as checked in
+        setListAttendees(prev => prev.map(a =>
+          a.id === attendee.id
+            ? { ...a, checked_in: true, checked_in_at: data.registration?.checked_in_at || new Date().toISOString() }
+            : a
+        ))
+        if (!wasAlready) {
+          setStats(prev => ({ ...prev, checkedIn: prev.checkedIn + 1 }))
+          setRecentCheckins(prev => [{
+            id: data.registration?.id || Date.now().toString(),
+            name: data.registration?.attendee_name || attendee.attendee_name,
+            regNumber: data.registration?.registration_number || attendee.registration_number,
+            ticketType: data.registration?.ticket_type?.name || attendee.ticket_type?.name,
+            institution: data.registration?.attendee_institution || attendee.attendee_institution || undefined,
+            time: new Date(),
+            success: true,
+          }, ...prev].slice(0, 20))
+        }
+      } else {
+        playSound("error")
+        setListError(data.error || "Check-in failed")
+      }
+    } catch {
+      playSound("error")
+      setListError("Network error. Please try again.")
+    } finally {
+      setListCheckinPending(null)
+    }
+  }, [checkinList, accessToken, listCheckinPending, soundEnabled])
 
   // Camera scanner setup
   const startScanner = useCallback(async () => {
@@ -490,6 +601,17 @@ export default function StaffCheckinPage() {
           >
             <Keyboard className="w-5 h-5" />
             Manual
+          </button>
+          <button
+            onClick={() => setScanMode("list")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
+              scanMode === "list"
+                ? "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg shadow-emerald-500/25"
+                : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <ListIcon className="w-5 h-5" />
+            List
           </button>
         </div>
       </div>
@@ -724,6 +846,127 @@ export default function StaffCheckinPage() {
               <p className="text-white/40 text-xs text-center">
                 Tip: Use a USB/Bluetooth barcode scanner for faster check-ins
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Attendee List */}
+        {!lastResult && scanMode === "list" && (
+          <div className="w-full max-w-2xl">
+            <div className="bg-black/30 backdrop-blur-sm rounded-3xl border border-white/10 flex flex-col max-h-[70vh]">
+              {/* Search + filter */}
+              <div className="p-4 border-b border-white/10 space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                  <input
+                    type="text"
+                    value={listSearch}
+                    onChange={(e) => setListSearch(e.target.value)}
+                    placeholder="Search name, reg number, or email..."
+                    className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="flex gap-2 text-sm">
+                  {([
+                    { key: "all", label: "All" },
+                    { key: "not_checked_in", label: "Pending" },
+                    { key: "checked_in", label: "Checked in" },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.key}
+                      onClick={() => setListStatusFilter(opt.key)}
+                      className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                        listStatusFilter === opt.key
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                          : "bg-white/5 text-white/60 border border-white/10 hover:bg-white/10"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* List body */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {listLoading && listAttendees.length === 0 ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
+                  </div>
+                ) : listError ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                    <p className="text-red-300 text-sm">{listError}</p>
+                  </div>
+                ) : listAttendees.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Users className="w-6 h-6 text-white/20" />
+                    </div>
+                    <p className="text-white/40 text-sm">No attendees match</p>
+                  </div>
+                ) : (
+                  listAttendees.map(attendee => (
+                    <div
+                      key={attendee.id}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                        attendee.checked_in
+                          ? "bg-emerald-500/10 border-emerald-500/20"
+                          : "bg-white/5 border-white/10"
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                        attendee.checked_in
+                          ? "bg-emerald-500/30 text-emerald-300"
+                          : "bg-white/10 text-white/60"
+                      }`}>
+                        {getInitials(attendee.attendee_name)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium truncate">{attendee.attendee_name}</p>
+                        <div className="flex items-center gap-2 text-xs text-white/40">
+                          <span className="font-mono">{attendee.registration_number}</span>
+                          {attendee.ticket_type?.name && (
+                            <>
+                              <span>•</span>
+                              <span className="truncate">{attendee.ticket_type.name}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {attendee.checked_in ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 rounded-full flex-shrink-0">
+                          <CheckCircle className="w-4 h-4 text-emerald-400" />
+                          <span className="text-xs text-emerald-300 font-medium">In</span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => checkInFromList(attendee)}
+                          disabled={listCheckinPending === attendee.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-full text-xs font-medium disabled:opacity-50 hover:shadow-lg hover:shadow-emerald-500/25 transition-all flex-shrink-0"
+                        >
+                          {listCheckinPending === attendee.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4" />
+                              Check In
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Footer count */}
+              <div className="px-4 py-2 border-t border-white/10 text-center">
+                <p className="text-white/40 text-xs">
+                  Showing {listAttendees.length} attendee{listAttendees.length === 1 ? "" : "s"}
+                </p>
+              </div>
             </div>
           </div>
         )}
