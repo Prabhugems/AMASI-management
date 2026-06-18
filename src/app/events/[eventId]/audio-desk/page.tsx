@@ -34,6 +34,9 @@ export default function AudioDeskPage() {
   const [tab, setTab] = useState<Tab>("issue")
   const [issueStep, setIssueStep] = useState<IssueStep>("scan_badge")
   const [scanning, setScanning] = useState(false)
+  const [cameraTarget, setCameraTarget] = useState<"badge" | "device" | "return" | null>(null)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [scannerReady, setScannerReady] = useState(false)
   const [scanInput, setScanInput] = useState("")
   const [busy, setBusy] = useState(false)
   const [attendee, setAttendee] = useState<Attendee | null>(null)
@@ -200,44 +203,86 @@ export default function AudioDeskPage() {
     setIssueStep("scan_badge")
   }
 
-  // Camera scanner — optional, toggle with the camera button
-  const startCamera = useCallback(async (targetInput: "badge" | "device" | "return") => {
-    if (scannerRef.current) {
-      try { await scannerRef.current.stop() } catch {}
-      scannerRef.current = null
-    }
+  // Camera scanner — entry: click sets state, the useEffect below boots the scanner
+  // AFTER the <div id="audio-desk-qr"> has been mounted (avoids "Element not found").
+  const startCamera = useCallback((targetInput: "badge" | "device" | "return") => {
+    setCameraError(null)
+    setScannerReady(false)
+    setCameraTarget(targetInput)
     setScanning(true)
-    try {
-      const scanner = new Html5Qrcode("audio-desk-qr")
-      scannerRef.current = scanner
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 240, height: 240 } },
-        async (decoded) => {
-          try { await scanner.stop() } catch {}
-          scannerRef.current = null
-          setScanning(false)
-          if (targetInput === "badge") await lookupAttendee(decoded)
-          else if (targetInput === "device") await issueDevice(decoded)
-          else await returnDevice(decoded)
-        },
-        () => {}
-      )
-    } catch (e: any) {
-      setScanning(false)
-      setResult({ kind: "error", title: "Camera blocked", subtitle: e.message })
-    }
-  }, [lookupAttendee, issueDevice, returnDevice])
+  }, [])
 
   const stopCamera = useCallback(async () => {
     if (scannerRef.current) {
       try { await scannerRef.current.stop() } catch {}
       scannerRef.current = null
     }
+    setScannerReady(false)
     setScanning(false)
+    setCameraTarget(null)
   }, [])
 
-  useEffect(() => () => { stopCamera() }, [stopCamera])
+  // Boot html5-qrcode only after the target <div> is in the DOM.
+  useEffect(() => {
+    if (!scanning || !cameraTarget) return
+    let cancelled = false
+    const target = cameraTarget
+
+    ;(async () => {
+      try {
+        const scanner = new Html5Qrcode("audio-desk-qr")
+        if (cancelled) return
+        scannerRef.current = scanner
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 240, height: 240 } },
+          async (decoded) => {
+            try { await scanner.stop() } catch {}
+            scannerRef.current = null
+            setScannerReady(false)
+            setScanning(false)
+            setCameraTarget(null)
+            if (target === "badge") await lookupAttendee(decoded)
+            else if (target === "device") await issueDevice(decoded)
+            else await returnDevice(decoded)
+          },
+          () => {}
+        )
+        if (cancelled) {
+          try { await scanner.stop() } catch {}
+          return
+        }
+        setScannerReady(true)
+      } catch (e: any) {
+        const msg = String(e?.message || e || "")
+        const isPerm = /permission|NotAllowed/i.test(msg)
+        const isMissing = /not found|getElementById/i.test(msg)
+        setCameraError(
+          isPerm
+            ? "Camera permission denied. Allow camera access in your browser settings."
+            : isMissing
+            ? "Could not attach to camera view — please try again."
+            : `Camera error: ${msg}`
+        )
+        setScannerReady(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {})
+        scannerRef.current = null
+      }
+    }
+  }, [scanning, cameraTarget, lookupAttendee, issueDevice, returnDevice])
+
+  useEffect(() => () => {
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(() => {})
+      scannerRef.current = null
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
@@ -342,7 +387,25 @@ export default function AudioDeskPage() {
         {/* Camera overlay */}
         {scanning && (
           <div className="mb-4 p-4 bg-black/30 rounded-2xl border border-white/10">
-            <div id="audio-desk-qr" style={{ minHeight: 250 }} />
+            <div className="relative">
+              <div id="audio-desk-qr" style={{ minHeight: 250 }} />
+              {!scannerReady && !cameraError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60 rounded-xl">
+                  <div className="text-center">
+                    <Loader2 className="w-10 h-10 text-emerald-400 animate-spin mx-auto" />
+                    <p className="text-white/60 mt-3 text-sm">Starting camera…</p>
+                  </div>
+                </div>
+              )}
+              {cameraError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 rounded-xl p-4">
+                  <div className="text-center max-w-xs">
+                    <XCircle className="w-10 h-10 text-red-400 mx-auto" />
+                    <p className="text-red-200 mt-3 text-sm">{cameraError}</p>
+                  </div>
+                </div>
+              )}
+            </div>
             <button onClick={stopCamera} className="mt-3 w-full py-2 rounded-xl bg-white/10 hover:bg-white/20">Close camera</button>
           </div>
         )}
