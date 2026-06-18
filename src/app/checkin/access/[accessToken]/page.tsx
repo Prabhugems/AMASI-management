@@ -933,6 +933,14 @@ export default function StaffCheckinPage() {
                               <span className="truncate">{attendee.ticket_type.name}</span>
                             </>
                           )}
+                          {attendee.checked_in && attendee.checked_in_at && (
+                            <>
+                              <span>•</span>
+                              <span className="text-emerald-300/80 whitespace-nowrap">
+                                In at {formatTime(new Date(attendee.checked_in_at))}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                       {attendee.checked_in ? (
