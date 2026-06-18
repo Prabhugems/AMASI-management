@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/api-auth"
+import { getApiUser } from "@/lib/auth/api-auth"
 
 // GET /api/audio-devices/list?event_id=&status=active|returned|all&q=
 // Returns the roster of currently-issued devices (or history if status=returned/all).
 export async function GET(request: NextRequest) {
-  const { error: authError } = await requireAdmin()
+  const { error: authError } = await getApiUser()
   if (authError) return authError
 
   const { searchParams } = new URL(request.url)
