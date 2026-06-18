@@ -478,6 +478,12 @@ export default function StaffCheckinPage() {
     return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
   }
 
+  const formatDateTime = (date: Date) => {
+    const day = date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
+    const time = date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+    return `${day}, ${time}`
+  }
+
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
   }
@@ -937,7 +943,7 @@ export default function StaffCheckinPage() {
                             <>
                               <span>•</span>
                               <span className="text-emerald-300/80 whitespace-nowrap">
-                                In at {formatTime(new Date(attendee.checked_in_at))}
+                                In at {formatDateTime(new Date(attendee.checked_in_at))}
                               </span>
                             </>
                           )}
