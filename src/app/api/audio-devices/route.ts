@@ -91,6 +91,13 @@ export async function POST(request: NextRequest) {
     // 6. Mark device issued
     await (supabase as any).from("audio_devices").update({ status: "issued", updated_at: new Date().toISOString() }).eq("id", device.id)
 
+    // 7. Sync registrations.checked_in so /my portal reflects attendance
+    await (supabase as any)
+      .from("registrations")
+      .update({ checked_in: true, checked_in_at: new Date().toISOString() })
+      .eq("id", reg.id)
+      .eq("checked_in", false)
+
     return NextResponse.json({
       ok: true,
       device: { ...device, status: "issued" },
