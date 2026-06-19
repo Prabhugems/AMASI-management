@@ -15,8 +15,10 @@ export async function GET(
 
   const supabase = await createAdminClient()
 
-  // Look up registration by registration_number or checkin_token
-  const isSecureToken = token.length >= 20
+  // Look up registration by registration_number or checkin_token.
+  // 32-char threshold avoids misclassifying 20-char reg numbers like
+  // "REG-20260605-Q7ILBX2" as secure tokens.
+  const isSecureToken = token.length >= 32
 
   let query = (supabase as any)
     .from("registrations")

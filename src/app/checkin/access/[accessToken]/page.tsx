@@ -108,6 +108,7 @@ export default function StaffCheckinPage() {
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const lastScannedRef = useRef<string>("")
   const scanCooldownRef = useRef<boolean>(false)
+  const isStartingRef = useRef(false)
 
   // Validate access token and get checkin list info
   useEffect(() => {
@@ -200,12 +201,20 @@ export default function StaffCheckinPage() {
     setProcessing(true)
     setLastResult(null)
 
+    // Stop the camera before the result view unmounts #qr-reader, so html5-qrcode's
+    // internal video.play() can't be interrupted (fixes Sentry AMASI-MANAGEMENT-T).
+    if (scannerRef.current) {
+      try { await scannerRef.current.stop() } catch { /* already stopping */ }
+      scannerRef.current = null
+      setScannerReady(false)
+    }
+
     try {
       // Check if it's a verification URL or direct token
       let token = value.trim()
 
       // Extract token from URL if it's a full URL
-      const urlMatch = value.match(/\/v\/([A-Za-z0-9]+)/)
+      const urlMatch = value.match(/\/v\/([A-Za-z0-9_-]+)/)
       if (urlMatch) {
         token = urlMatch[1]
       }
@@ -394,43 +403,49 @@ export default function StaffCheckinPage() {
 
   // Camera scanner setup
   const startScanner = useCallback(async () => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop()
-      } catch (e) {
-        // Ignore
-      }
-    }
-
-    setCameraError(null)
-    setScannerReady(false)
-
+    if (isStartingRef.current) return
+    isStartingRef.current = true
     try {
-      const scanner = new Html5Qrcode("qr-reader")
-      scannerRef.current = scanner
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.stop()
+        } catch (e) {
+          // Ignore
+        }
+      }
 
-      await scanner.start(
-        { facingMode },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1,
-        },
-        (decodedText) => {
-          if (decodedText !== lastScannedRef.current && !scanCooldownRef.current) {
-            handleScan(decodedText)
-          }
-        },
-        () => {}
-      )
-      setScannerReady(true)
-    } catch (err: any) {
-      console.error("Camera error:", err)
-      setCameraError(
-        err.message?.includes("Permission")
-          ? "Camera permission denied. Please allow camera access."
-          : "Could not access camera. Try manual entry instead."
-      )
+      setCameraError(null)
+      setScannerReady(false)
+
+      try {
+        const scanner = new Html5Qrcode("qr-reader")
+        scannerRef.current = scanner
+
+        await scanner.start(
+          { facingMode },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1,
+          },
+          (decodedText) => {
+            if (decodedText !== lastScannedRef.current && !scanCooldownRef.current) {
+              handleScan(decodedText)
+            }
+          },
+          () => {}
+        )
+        setScannerReady(true)
+      } catch (err: any) {
+        console.error("Camera error:", err)
+        setCameraError(
+          err.message?.includes("Permission")
+            ? "Camera permission denied. Please allow camera access."
+            : "Could not access camera. Try manual entry instead."
+        )
+      }
+    } finally {
+      isStartingRef.current = false
     }
   }, [facingMode, handleScan])
 

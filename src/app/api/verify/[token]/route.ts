@@ -25,8 +25,12 @@ export async function GET(
 
   const supabase = await createAdminClient()
 
-  // Determine if this is a checkin_token (long) or registration_number (short)
-  const isSecureToken = token.length >= 20
+  // Determine if this is a checkin_token (long) or registration_number (short).
+  // Use >= 32 because reg numbers run up to 20 chars (e.g. "REG-20260605-Q7ILBX2")
+  // and the shortest checkin_token is 32. A 20-char threshold misclassifies the
+  // older REG-YYYYMMDD-XXXXXXX reg numbers as secure tokens and looks them up in
+  // the wrong column, surfacing as "Invalid or expired QR code".
+  const isSecureToken = token.length >= 32
 
   // Optional event_id query param. REQUIRED for short registration_number
   // lookups — otherwise the same number across two events could resolve to
@@ -204,8 +208,12 @@ export async function POST(
     verified_checkin_list_id = checkinList.id
   }
 
-  // Determine if this is a checkin_token (long) or registration_number (short)
-  const isSecureToken = token.length >= 20
+  // Determine if this is a checkin_token (long) or registration_number (short).
+  // Use >= 32 because reg numbers run up to 20 chars (e.g. "REG-20260605-Q7ILBX2")
+  // and the shortest checkin_token is 32. A 20-char threshold misclassifies the
+  // older REG-YYYYMMDD-XXXXXXX reg numbers as secure tokens and looks them up in
+  // the wrong column, surfacing as "Invalid or expired QR code".
+  const isSecureToken = token.length >= 32
 
   // Look up registration by checkin_token or registration_number
   let query2 = (supabase as any)
