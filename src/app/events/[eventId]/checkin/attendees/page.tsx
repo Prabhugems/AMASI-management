@@ -101,6 +101,13 @@ export default function AllAttendeesPage() {
     )
   }, [attendees, search])
 
+  // Live counts (full event, not filtered by search)
+  const counts = useMemo(() => {
+    const total = attendees?.length || 0
+    const checkedIn = (attendees || []).filter(a => a.checked_in).length
+    return { total, checkedIn, pending: total - checkedIn }
+  }, [attendees])
+
   // View badge - generate PDF and display
   const handleViewBadge = async (attendee: Attendee) => {
     if (!defaultTemplate) {
@@ -219,6 +226,26 @@ export default function AllAttendeesPage() {
           <Download className="h-4 w-4 mr-2" />
           Export
         </Button>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-card rounded-lg border p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
+          <p className="text-2xl font-bold mt-1">{counts.total}</p>
+        </div>
+        <div className="bg-card rounded-lg border p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+            <CheckCircle className="h-3 w-3 text-green-500" /> Checked In
+          </p>
+          <p className="text-2xl font-bold mt-1 text-green-600">{counts.checkedIn}</p>
+        </div>
+        <div className="bg-card rounded-lg border p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+            <Clock className="h-3 w-3 text-amber-500" /> Pending
+          </p>
+          <p className="text-2xl font-bold mt-1 text-amber-600">{counts.pending}</p>
+        </div>
       </div>
 
       {/* Search */}
