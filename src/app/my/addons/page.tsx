@@ -45,6 +45,8 @@ interface SelectedAddon {
 
 interface Registration {
   id: string
+  _tenant?: "amasi" | "technosurg"
+  _source_id?: string
   registration_number: string
   attendee_name: string
   attendee_email: string
@@ -63,6 +65,14 @@ declare global {
   interface Window {
     Razorpay: any
   }
+}
+
+// /api/my namespaces ids as `${tenant}:${uuid}` — backend addon/payment
+// routes expect bare UUIDs. Mirrors the helper in /my/page.tsx.
+function bareRegId(reg: Pick<Registration, "id" | "_source_id">): string {
+  if (reg._source_id) return reg._source_id
+  const colon = reg.id.indexOf(":")
+  return colon >= 0 ? reg.id.slice(colon + 1) : reg.id
 }
 
 function PurchaseAddonsContent() {
@@ -181,7 +191,7 @@ function PurchaseAddonsContent() {
 
       if (totals.total === 0) {
         // Free addons - add directly
-        const res = await fetch(`/api/registrations/${registration.id}/addons`, {
+        const res = await fetch(`/api/registrations/${bareRegId(registration)}/addons`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ addons: addonsArray }),
@@ -209,7 +219,7 @@ function PurchaseAddonsContent() {
           payer_email: registration.attendee_email,
           addons: addonsArray, // Must be at top level for API to read
           metadata: {
-            registration_id: registration.id,
+            registration_id: bareRegId(registration),
             registration_number: registration.registration_number,
           },
         }),
