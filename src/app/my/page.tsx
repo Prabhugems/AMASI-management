@@ -298,6 +298,16 @@ declare global {
   }
 }
 
+// Records returned from /api/my are namespaced as `${tenant}:${uuid}` so
+// AMASI and TechnoSurg ids never collide in the merged list. Backend APIs
+// (receipt, invitation, certificate tracking, medical-council, retry-payment)
+// expect a bare UUID, so we must strip the tenant prefix before sending.
+function bareRegId(reg: Pick<Registration, "id" | "_source_id">): string {
+  if (reg._source_id) return reg._source_id
+  const colon = reg.id.indexOf(":")
+  return colon >= 0 ? reg.id.slice(colon + 1) : reg.id
+}
+
 export default function DelegatePortalPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(false)
@@ -418,7 +428,7 @@ export default function DelegatePortalPage() {
           payer_email: reg.attendee_email,
           payer_phone: reg.attendee_phone,
           metadata: {
-            registration_id: reg.id,
+            registration_id: bareRegId(reg),
             retry: true,
           },
         }),
@@ -601,7 +611,7 @@ export default function DelegatePortalPage() {
         fetch("/api/certificate/track-download", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ registration_id: reg.id }),
+          body: JSON.stringify({ registration_id: bareRegId(reg) }),
         }).catch(() => {})
       } else {
         // Generate certificate on the fly (download is tracked server-side)
@@ -653,7 +663,7 @@ export default function DelegatePortalPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          registration_id: selectedRegistration.id,
+          registration_id: bareRegId(selectedRegistration),
           medical_council: councilValue,
           registration_number: councilRegNum.trim(),
         }),
@@ -684,7 +694,7 @@ export default function DelegatePortalPage() {
     setDownloadingReceipt(true)
     try {
       // Use final-receipt endpoint for consolidated receipt (ticket + all addons + payment history)
-      const res = await fetch(`/api/registrations/${selectedRegistration.id}/final-receipt`)
+      const res = await fetch(`/api/registrations/${bareRegId(selectedRegistration)}/final-receipt`)
 
       if (!res.ok) {
         const data = await res.json()
@@ -713,7 +723,7 @@ export default function DelegatePortalPage() {
     setDownloadingInvitation(true)
     try {
       const res = await fetch(
-        `/api/events/${selectedRegistration.event.id}/invitation-pdf?registration_id=${selectedRegistration.id}`
+        `/api/events/${selectedRegistration.event.id}/invitation-pdf?registration_id=${bareRegId(selectedRegistration)}`
       )
 
       if (!res.ok) {
