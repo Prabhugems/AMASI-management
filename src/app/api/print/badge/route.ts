@@ -63,6 +63,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Registration not found" }, { status: 404 })
     }
 
+    // Block badge printing for non-confirmed registrations. A pending reg
+    // typically means payment hasn't been finalised — printing the badge
+    // here would let the attendee reach the check-in scanner and get
+    // surprised with an "invalid" message.
+    if (reg.status !== "confirmed") {
+      return NextResponse.json({
+        success: false,
+        error: `Cannot print badge: registration status is "${reg.status}". Resolve payment/approval first.`,
+        registration_status: reg.status,
+      }, { status: 400 })
+    }
+
     // Block badge printing for online-only participants
     if (reg.participation_mode === "online") {
       return NextResponse.json({

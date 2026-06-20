@@ -607,7 +607,10 @@ async function createRegistrationFromPayment(supabase: any, paymentData: any, me
     return existingReg
   }
 
-  // Also check by email + event to catch registrations linked differently
+  // Also check by email + event to catch registrations linked differently.
+  // Only adopt a reg whose payment_id is null or matches this payment — otherwise
+  // a re-registration under the same email would wrongly inherit the prior
+  // confirmed row, leaving the new pending reg orphaned with no confirmation.
   if (paymentData.payer_email && paymentData.event_id) {
     const { data: emailReg } = await supabase
       .from("registrations")
@@ -615,6 +618,7 @@ async function createRegistrationFromPayment(supabase: any, paymentData: any, me
       .eq("attendee_email", paymentData.payer_email)
       .eq("event_id", paymentData.event_id)
       .eq("status", "confirmed")
+      .or(`payment_id.is.null,payment_id.eq.${paymentData.id}`)
       .maybeSingle()
 
     if (emailReg) {

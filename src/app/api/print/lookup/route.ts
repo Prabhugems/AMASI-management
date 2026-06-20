@@ -111,6 +111,8 @@ function formatRegistration(reg: any) {
     organization: reg.attendee_institution || reg.organization || reg.company || reg.institution,
     ticketType: reg.ticket_types?.name || reg.ticket_type || reg.registration_type || "Attendee",
     registrationNumber: reg.registration_number,
+    status: reg.status,
+    paymentStatus: reg.payment_status,
     checkedIn: reg.checked_in,
     badgePrinted: reg.badge_printed,
     eventName: reg.events?.name,

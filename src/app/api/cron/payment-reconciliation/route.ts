@@ -660,6 +660,72 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ================================================================
+    // STEP 6: Confirm registrations whose payment is already completed
+    // but whose registration row never got flipped to "confirmed".
+    //
+    // This catches the race that hit TechnoSurg on 2026-06-18: the webhook
+    // fired before the frontend created the registration row, then bailed
+    // out via the email-dedup path. The payment row was marked completed,
+    // but the pending registration was orphaned and scanned as "Invalid"
+    // at the check-in desk.
+    // ================================================================
+    const { data: paidPending } = await supabase
+      .from("registrations")
+      .select("id, event_id, registration_number, attendee_name, attendee_email, payment_id, payments!inner(id, status, razorpay_payment_id, amount)")
+      .neq("status", "confirmed")
+      .eq("payments.status", "completed")
+      .limit(500)
+
+    let paidPendingConfirmed = 0
+    if (paidPending && paidPending.length > 0) {
+      for (const reg of paidPending) {
+        try {
+          const { error: updErr } = await supabase
+            .from("registrations")
+            .update({
+              status: "confirmed",
+              payment_status: "completed",
+              confirmed_at: new Date().toISOString(),
+            })
+            .eq("id", reg.id)
+            .neq("status", "confirmed")
+
+          if (updErr) {
+            summary.errors.push(`Failed to confirm paid-but-pending reg ${reg.id}: ${updErr.message}`)
+            continue
+          }
+
+          paidPendingConfirmed++
+          summary.details.push({
+            type: "paid_pending_confirmed",
+            razorpay_payment_id: reg.payments?.razorpay_payment_id || "",
+            amount: Number(reg.payments?.amount) || 0,
+            email: reg.attendee_email || undefined,
+            event_id: reg.event_id,
+            action: `confirmed reg ${reg.registration_number} (${reg.attendee_name}) — payment was completed`,
+          })
+
+          try {
+            await supabase.from("payment_alerts").insert({
+              event_id: reg.event_id,
+              payment_id: reg.payment_id,
+              alert_type: "paid_pending_reconciled",
+              severity: "high",
+              message: `Reconciliation auto-confirmed reg ${reg.registration_number} (${reg.attendee_name}, ${reg.attendee_email}) — payment was captured but reg stayed pending. Investigate the webhook race.`,
+            } as any)
+          } catch {
+            // payment_alerts table may not exist on every tenant
+          }
+
+          console.log(`[RECON] Confirmed paid-but-pending reg ${reg.registration_number} (${reg.id})`)
+        } catch (err: any) {
+          summary.errors.push(`Error confirming reg ${reg.id}: ${err.message}`)
+        }
+      }
+    }
+    summary.pending_updated += paidPendingConfirmed
+
     console.log("[RECON] Reconciliation completed:", JSON.stringify(summary, null, 2))
 
     await run.ok({
@@ -671,6 +737,7 @@ export async function GET(request: NextRequest) {
         auto_created: summary.auto_created,
         orphans_logged: summary.orphans_logged,
         pending_updated: summary.pending_updated,
+        paid_pending_confirmed: paidPendingConfirmed,
         errors_count: summary.errors.length,
       },
     })

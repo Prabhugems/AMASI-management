@@ -276,10 +276,24 @@ export async function POST(
       error_message: `Registration is ${registration.status}`
     })
 
+    const friendlyError = registration.status === "pending"
+      ? `PAYMENT NOT CONFIRMED — ${registration.attendee_name || registration.registration_number}. Please escalate to registration desk; do NOT mark as invalid.`
+      : registration.status === "cancelled"
+        ? `REGISTRATION CANCELLED — ${registration.attendee_name || registration.registration_number}. Cannot check in.`
+        : `Registration is ${registration.status}. Cannot check in.`
+
     return NextResponse.json({
       success: false,
-      error: `Registration is ${registration.status}. Cannot check in.`,
+      error: friendlyError,
+      error_code: `registration_${registration.status}`,
       registration_number: registration.registration_number,
+      registration: {
+        id: registration.id,
+        attendee_name: registration.attendee_name,
+        attendee_email: registration.attendee_email,
+        registration_number: registration.registration_number,
+        status: registration.status,
+      },
     }, { status: 400 })
   }
 
