@@ -276,7 +276,14 @@ export default function SubmitAbstractPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           event_id: eventId,
-          registration_id: registrationInfo?.id || null,
+          // /api/my returns id namespaced as `${tenant}:${uuid}`; strip the
+          // prefix so the abstracts API gets a bare UUID. Prefer _source_id
+          // when present (set on every /api/my record).
+          registration_id: (registrationInfo?._source_id
+            || (typeof registrationInfo?.id === "string" && registrationInfo.id.includes(":")
+              ? registrationInfo.id.split(":").slice(1).join(":")
+              : registrationInfo?.id))
+            || null,
           category_id: categoryId || null,
           title,
           subject: subject || null,
