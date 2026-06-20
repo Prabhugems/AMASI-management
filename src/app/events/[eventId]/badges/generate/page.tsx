@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
 import {
@@ -49,13 +49,20 @@ interface BadgeTemplate {
 export default function GenerateBadgesPage() {
   const params = useParams()
   const eventId = params.eventId as string
+  const searchParams = useSearchParams()
 
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTemplate, setSelectedTemplate] = useState<string>("")
   const [selectedTicketTypes, setSelectedTicketTypes] = useState<string[]>([])
   const [ticketDropdownOpen, setTicketDropdownOpen] = useState(false)
   const [selectedStatus, setSelectedStatus] = useState<string>("confirmed")
-  const [badgeFilter, setBadgeFilter] = useState<string>("all") // all, without_badge, with_badge
+  // Honour ?filter=without_badge | with_badge from the overview "Pending Print"
+  // card so admins land directly on the unprinted list.
+  const initialBadgeFilter = ((): string => {
+    const f = searchParams.get("filter")
+    return f === "without_badge" || f === "with_badge" ? f : "all"
+  })()
+  const [badgeFilter, setBadgeFilter] = useState<string>(initialBadgeFilter) // all, without_badge, with_badge
   const [modeFilter, setModeFilter] = useState<string>("all") // all, online, offline, hybrid
   const [selectedRegistrations, setSelectedRegistrations] = useState<string[]>([])
   const [badgesPerPage, setBadgesPerPage] = useState<number>(1)

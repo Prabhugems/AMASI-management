@@ -111,14 +111,18 @@ export default function BadgesOverviewPage() {
           <p className="text-2xl sm:text-3xl font-bold mt-2 text-green-600">{stats?.printed || 0}</p>
         </div>
 
-        <div className="bg-card rounded-lg border p-4">
+        <Link
+          href={`${basePath}/generate?filter=without_badge`}
+          className="bg-card rounded-lg border p-4 transition hover:border-amber-500/60 hover:bg-amber-500/5 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+          aria-label="View pending badges"
+        >
           <div className="flex items-center gap-2 text-amber-500">
             <Clock className="h-4 w-4" />
             <span className="text-sm">Pending Print</span>
-            <HelpTooltip content="Attendees who don't have a badge yet. Generate badges for them before the event." />
+            <HelpTooltip content="Attendees who don't have a badge yet. Click to open the list filtered to unprinted badges so you can generate and print them." />
           </div>
           <p className="text-2xl sm:text-3xl font-bold mt-2 text-amber-500">{stats?.pending || 0}</p>
-        </div>
+        </Link>
 
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center gap-2 text-muted-foreground">
