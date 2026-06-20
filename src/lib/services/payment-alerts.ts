@@ -16,6 +16,7 @@ export type PaymentAlertType =
   | "orphan_payment"
   | "registration_missing"
   | "refund_failed"
+  | "paid_pending_reconciled"
 
 export interface PaymentAlertDetails {
   delegateName?: string
@@ -28,6 +29,7 @@ export interface PaymentAlertDetails {
   errorDescription?: string
   eventId?: string
   eventName?: string
+  registrationNumber?: string
   /** Extra context for the alert */
   notes?: string
 }
@@ -37,6 +39,7 @@ const ALERT_LABELS: Record<PaymentAlertType, string> = {
   orphan_payment: "Orphan Payment Detected",
   registration_missing: "Registration Missing",
   refund_failed: "Refund Failed",
+  paid_pending_reconciled: "Paid-but-Pending Reg Auto-Confirmed",
 }
 
 const ALERT_ACTIONS: Record<PaymentAlertType, string> = {
@@ -48,6 +51,8 @@ const ALERT_ACTIONS: Record<PaymentAlertType, string> = {
     "Verify whether the delegate completed registration. If not, create a registration manually or contact the delegate.",
   refund_failed:
     "Manually process the refund via the Razorpay dashboard. Contact the delegate to confirm.",
+  paid_pending_reconciled:
+    "A delegate paid but their registration stayed pending — the hourly reconciliation just auto-confirmed it. The badge will now scan correctly at check-in. Investigate why the webhook didn't confirm (e.g. frontend created the reg after the webhook fired); this is a near-miss, not a customer-facing failure.",
 }
 
 const SEVERITY_COLORS: Record<PaymentAlertType, string> = {
@@ -55,6 +60,7 @@ const SEVERITY_COLORS: Record<PaymentAlertType, string> = {
   orphan_payment: "#e67e22",
   registration_missing: "#f39c12",
   refund_failed: "#e74c3c",
+  paid_pending_reconciled: "#e67e22",
 }
 
 function getAdminEmail(): string {
@@ -109,6 +115,7 @@ function buildAlertHtml(
               </tr>
               ${details.delegateName ? `<tr><td style="color:#666;">Delegate Name</td><td>${details.delegateName}</td></tr>` : ""}
               ${details.delegateEmail ? `<tr><td style="color:#666;">Delegate Email</td><td>${details.delegateEmail}</td></tr>` : ""}
+              ${details.registrationNumber ? `<tr><td style="color:#666;">Registration Number</td><td style="font-family:monospace;">${details.registrationNumber}</td></tr>` : ""}
               ${details.amount != null ? `<tr><td style="color:#666;">Amount</td><td>${formatCurrency(details.amount, details.currency)}</td></tr>` : ""}
               ${details.razorpayPaymentId ? `<tr><td style="color:#666;">Razorpay Payment ID</td><td style="font-family:monospace;">${details.razorpayPaymentId}</td></tr>` : ""}
               ${details.razorpayOrderId ? `<tr><td style="color:#666;">Razorpay Order ID</td><td style="font-family:monospace;">${details.razorpayOrderId}</td></tr>` : ""}

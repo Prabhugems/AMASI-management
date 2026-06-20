@@ -718,6 +718,19 @@ export async function GET(request: NextRequest) {
             // payment_alerts table may not exist on every tenant
           }
 
+          // Email the admin so this near-miss doesn't sit silently in the DB.
+          // The reg is already auto-confirmed — this is for visibility, not action.
+          sendPaymentAlert("paid_pending_reconciled", {
+            delegateName: reg.attendee_name || undefined,
+            delegateEmail: reg.attendee_email || undefined,
+            amount: Number(reg.payments?.amount) || undefined,
+            currency: "INR",
+            razorpayPaymentId: reg.payments?.razorpay_payment_id || undefined,
+            eventId: reg.event_id || undefined,
+            registrationNumber: reg.registration_number || undefined,
+            notes: `Auto-confirmed by hourly reconciliation. Badge will now scan correctly at check-in. Root cause is likely the webhook-vs-frontend race in /api/registrations.`,
+          }).catch(console.error)
+
           console.log(`[RECON] Confirmed paid-but-pending reg ${reg.registration_number} (${reg.id})`)
         } catch (err: any) {
           summary.errors.push(`Error confirming reg ${reg.id}: ${err.message}`)
