@@ -303,7 +303,7 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
               reg.attendee_phone,
               speaker_name || "Speaker",
               templateName,
-              { "1": speaker_name || "Speaker", "2": event_name, "3": portalUrlForWa }
+              { "Speaker_Name": speaker_name || "Speaker", "Event_Name": event_name, "Portal_URL": portalUrlForWa }
             )
 
             if (waResult.success) {

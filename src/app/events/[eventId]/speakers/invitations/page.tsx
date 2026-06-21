@@ -331,7 +331,7 @@ export default function SpeakerInvitationsPage() {
               template_name: "speaker_invitation",
               body_values: {
                 Speaker_Name: speaker.attendee_name,
-                "2": eventData?.name || "Event",
+                Event_Name: eventData?.name || "Event",
                 Portal_URL: portalUrl,
               },
               event_id: eventId,
@@ -391,7 +391,7 @@ export default function SpeakerInvitationsPage() {
           template_name: "speaker_invitation",
           body_values: {
             Speaker_Name: speaker.attendee_name,
-            Event_Name: "122 FMAS Skill Course and FMAS Exam",
+            Event_Name: eventData?.name || "Event",
             Portal_URL: portalUrl,
           },
           event_id: eventId,
