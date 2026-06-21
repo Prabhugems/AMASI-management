@@ -68,15 +68,23 @@ async function fetchTenantData(
 ) {
   let registrationQuery = supabase.from("registrations").select(REGISTRATION_SELECT)
 
+  // Escape LIKE wildcards so a stray %/_ in user input can't broaden the match.
+  const escapeLike = (s: string) => s.replace(/[%_]/g, (m) => `\\${m}`)
+  // Strip chars that would break a PostgREST or() filter string.
+  const orSafe = (s: string) => escapeLike(s).replace(/[(),*]/g, " ").trim()
+
   if (isEmail) {
-    registrationQuery = registrationQuery.ilike("attendee_email", query)
+    registrationQuery = registrationQuery.ilike("attendee_email", escapeLike(query))
   } else if (isPhone) {
     const searchPhone = cleanedPhone.slice(-10)
     registrationQuery = registrationQuery.ilike("attendee_phone", `%${searchPhone}`)
-  } else if (/^REG[-_]/i.test(query)) {
-    registrationQuery = registrationQuery.ilike("registration_number", query)
   } else {
-    registrationQuery = registrationQuery.ilike("attendee_name", `%${query}%`)
+    // Anything else may be a registration number (REG-..., 126A1001, 127F2001) or a
+    // name. Match either, so typing a registration number works regardless of format.
+    const term = orSafe(query)
+    registrationQuery = registrationQuery.or(
+      `registration_number.ilike.${term},attendee_name.ilike.*${term}*`
+    )
   }
 
   registrationQuery = registrationQuery.order("created_at", { ascending: false })
