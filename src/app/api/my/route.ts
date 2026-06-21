@@ -64,14 +64,26 @@ async function fetchTenantData(
   query: string,
   isEmail: boolean,
   isPhone: boolean,
+  isNameSearch: boolean,
   cleanedPhone: string,
 ) {
-  let registrationQuery = supabase.from("registrations").select(REGISTRATION_SELECT)
-
   // Escape LIKE wildcards so a stray %/_ in user input can't broaden the match.
   const escapeLike = (s: string) => s.replace(/[%_]/g, (m) => `\\${m}`)
-  // Strip chars that would break a PostgREST or() filter string.
-  const orSafe = (s: string) => escapeLike(s).replace(/[(),*]/g, " ").trim()
+
+  // Privacy: a name search is unauthenticated and would otherwise leak every
+  // match's email / phone / badge / payment to anyone. Never return PII for a
+  // name — just report whether a registration with that name exists, so the
+  // caller can ask the visitor to confirm with an identifier they hold (their
+  // email or registration number).
+  if (isNameSearch) {
+    const { count } = await supabase
+      .from("registrations")
+      .select("id", { count: "exact", head: true })
+      .ilike("attendee_name", `%${escapeLike(query)}%`)
+    return { registrations: [] as any[], pendingPayments: [] as any[], nameMatchCount: count || 0 }
+  }
+
+  let registrationQuery = supabase.from("registrations").select(REGISTRATION_SELECT)
 
   if (isEmail) {
     registrationQuery = registrationQuery.ilike("attendee_email", escapeLike(query))
@@ -79,12 +91,10 @@ async function fetchTenantData(
     const searchPhone = cleanedPhone.slice(-10)
     registrationQuery = registrationQuery.ilike("attendee_phone", `%${searchPhone}`)
   } else {
-    // Anything else may be a registration number (REG-..., 126A1001, 127F2001) or a
-    // name. Match either, so typing a registration number works regardless of format.
-    const term = orSafe(query)
-    registrationQuery = registrationQuery.or(
-      `registration_number.ilike.${term},attendee_name.ilike.*${term}*`
-    )
+    // Registration number (126A1001, 127F2001, REG-...). A held identifier, so
+    // the full record is returned; sequential guessing is throttled by the
+    // strict per-IP rate limit above.
+    registrationQuery = registrationQuery.ilike("registration_number", escapeLike(query))
   }
 
   registrationQuery = registrationQuery.order("created_at", { ascending: false })
@@ -226,12 +236,16 @@ export async function GET(request: NextRequest) {
     const isEmail = query.includes("@")
     const cleanedPhone = query.replace(/[\s\-\+\(\)]/g, "")
     const isPhone = /^\d{10,15}$/.test(cleanedPhone) && !isEmail
+    // A registration number has no spaces and contains a digit (126A1001,
+    // 127F2001, REG-...). Anything else is treated as a name.
+    const isRegNumber = !isEmail && !isPhone && /^\S+$/.test(query) && /\d/.test(query)
+    const isNameSearch = !isEmail && !isPhone && !isRegNumber
 
     const amasi = await createAdminClient()
     const technosurg = createTechnosurgAdminClient()
 
-    const tasks: Promise<{ registrations: any[]; pendingPayments: any[]; tenant: Tenant; ok: boolean }>[] = [
-      fetchTenantData(amasi, "amasi", query, isEmail, isPhone, cleanedPhone)
+    const tasks: Promise<{ registrations: any[]; pendingPayments: any[]; nameMatchCount?: number; tenant: Tenant; ok: boolean }>[] = [
+      fetchTenantData(amasi, "amasi", query, isEmail, isPhone, isNameSearch, cleanedPhone)
         .then((r) => ({ ...r, tenant: "amasi" as const, ok: true }))
         .catch((e) => {
           console.error("AMASI lookup failed:", e)
@@ -241,7 +255,7 @@ export async function GET(request: NextRequest) {
 
     if (technosurg) {
       tasks.push(
-        fetchTenantData(technosurg, "technosurg", query, isEmail, isPhone, cleanedPhone)
+        fetchTenantData(technosurg, "technosurg", query, isEmail, isPhone, isNameSearch, cleanedPhone)
           .then((r) => ({ ...r, tenant: "technosurg" as const, ok: true }))
           .catch((e) => {
             console.error("TechnoSurg lookup failed:", e)
@@ -253,6 +267,24 @@ export async function GET(request: NextRequest) {
     const results = await Promise.all(tasks)
     const mergedRegistrations = results.flatMap((r) => r.registrations)
     const mergedPendingPayments = results.flatMap((r) => r.pendingPayments)
+
+    // Name search: never expose PII. Tell the client a match exists (or not) and
+    // ask the visitor to confirm with an email or registration number.
+    if (isNameSearch) {
+      const matchCount = results.reduce((n, r) => n + (r.nameMatchCount || 0), 0)
+      if (matchCount === 0) {
+        return NextResponse.json(
+          { error: "Registration not found. Please check your name, email, phone, or registration number." },
+          { status: 404 }
+        )
+      }
+      return NextResponse.json({
+        registrations: [],
+        pending_payments: [],
+        requires_verification: true,
+        match_count: matchCount,
+      })
+    }
 
     if (mergedRegistrations.length === 0) {
       return NextResponse.json(

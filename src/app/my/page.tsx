@@ -327,6 +327,9 @@ export default function DelegatePortalPage() {
   const [councilRegNum, setCouncilRegNum] = useState("")
   const [savingCouncil, setSavingCouncil] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  // Set when a name search matches but we withhold PII until the visitor
+  // confirms with an email or registration number.
+  const [verifyNotice, setVerifyNotice] = useState<string | null>(null)
 
   // Refresh registration data (re-fetch without clearing UI)
   const refreshRegistration = useCallback(async () => {
@@ -505,6 +508,7 @@ export default function DelegatePortalPage() {
 
     setLoading(true)
     setError(null)
+    setVerifyNotice(null)
     setSelectedRegistration(null)
     setPendingPayments([])
 
@@ -514,6 +518,16 @@ export default function DelegatePortalPage() {
 
       if (!res.ok) {
         throw new Error(data.error || "Registration not found")
+      }
+
+      // Name match: PII is withheld until the visitor identifies themselves.
+      if (data.requires_verification) {
+        setRegistrations([])
+        setVerifyNotice(
+          `We found ${data.match_count} registration${data.match_count === 1 ? "" : "s"} matching that name. ` +
+          `To protect your personal data, please enter your email address or registration number to continue.`
+        )
+        return
       }
 
       setRegistrations(data.registrations || [])
@@ -827,6 +841,7 @@ export default function DelegatePortalPage() {
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
                   if (error) setError(null)
+                  if (verifyNotice) setVerifyNotice(null)
                 }}
                 placeholder="Your name, email, or 9876543210"
                 inputMode={/^\d/.test(searchQuery) ? "tel" : "email"}
@@ -834,6 +849,17 @@ export default function DelegatePortalPage() {
                 autoFocus
               />
             </div>
+
+            {verifyNotice && !error && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-3 bg-teal-500/10 border border-teal-500/25 rounded-xl text-teal-200 text-sm text-center flex items-center justify-center gap-2"
+              >
+                <Search className="w-4 h-4 flex-shrink-0" />
+                {verifyNotice}
+              </motion.div>
+            )}
 
             {error && (
               <motion.div
