@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
@@ -33,6 +33,7 @@ import {
   Award,
   Filter,
   X,
+  ArrowRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COMPANY_CONFIG } from "@/lib/config"
@@ -49,11 +50,11 @@ type Session = {
   description: string | null
   specialty_track: string | null
   speakers?: string | null
-  speakers_text?: string | null  // With contact details
+  speakers_text?: string | null
   chairpersons?: string | null
-  chairpersons_text?: string | null  // With contact details
+  chairpersons_text?: string | null
   moderators?: string | null
-  moderators_text?: string | null  // With contact details
+  moderators_text?: string | null
 }
 
 type Track = {
@@ -70,12 +71,15 @@ type Event = {
   slug: string | null
   event_number: string | null
   short_name: string | null
+  edition: number | null
   tagline: string | null
   start_date: string
   end_date: string
   venue_name: string | null
   city: string | null
   logo_url: string | null
+  banner_url: string | null
+  primary_color: string | null
   settings: {
     public_page?: PublicPageSettings
   } | null
@@ -93,17 +97,52 @@ type PublicPageSettings = {
   footer_text?: string
 }
 
-// Hall colors for visual distinction
-const HALL_COLORS: Record<string, { bg: string; text: string; border: string; light: string }> = {
-  "red": { bg: "bg-red-600", text: "text-red-700", border: "border-red-200", light: "bg-red-50" },
-  "green": { bg: "bg-green-600", text: "text-green-700", border: "border-green-200", light: "bg-green-50" },
-  "blue": { bg: "bg-blue-600", text: "text-blue-700", border: "border-blue-200", light: "bg-blue-50" },
-  "yellow": { bg: "bg-amber-500", text: "text-amber-700", border: "border-amber-200", light: "bg-amber-50" },
-  "conference": { bg: "bg-purple-600", text: "text-purple-700", border: "border-purple-200", light: "bg-purple-50" },
-  "lecture": { bg: "bg-indigo-600", text: "text-indigo-700", border: "border-indigo-200", light: "bg-indigo-50" },
-  "default": { bg: "bg-gray-600", text: "text-gray-700", border: "border-gray-200", light: "bg-gray-50" },
+const DEFAULT_ACCENT = "#0f766e"
+
+// Append an 8-bit alpha to a 6-digit hex (e.g. tint("#10b981","1f")). Pass-through otherwise.
+const withAlpha = (hex: string, alpha: string) =>
+  /^#[0-9a-fA-F]{6}$/.test(hex) ? `${hex}${alpha}` : hex
+
+const hashStr = (s: string) => {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return h
 }
 
+// Soft, deterministic avatar palette so each speaker gets a stable colour.
+const AVATAR_COLORS = [
+  { bg: "#e0f2fe", text: "#075985" },
+  { bg: "#dcfce7", text: "#166534" },
+  { bg: "#fae8ff", text: "#86198f" },
+  { bg: "#fef3c7", text: "#92400e" },
+  { bg: "#ffe4e6", text: "#9f1239" },
+  { bg: "#ede9fe", text: "#5b21b6" },
+  { bg: "#cffafe", text: "#155e75" },
+  { bg: "#fee2e2", text: "#991b1b" },
+]
+const avatarColor = (name: string) => AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length]
+
+const getInitials = (name: string) => {
+  const parts = name.replace(/^dr\.?\s*/i, "").trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return "?"
+  return ((parts[0][0] || "") + (parts[1]?.[0] || "")).toUpperCase()
+}
+
+// Use alternation, not a bracketed character class, to strip a leading "Venue -"
+// prefix — a colon inside square brackets trips Tailwind's JIT class scanner.
+const cleanVenue = (v: string | null | undefined) =>
+  (v || "").replace(/^\s*venue\s*(?:[-–]|:)\s*/i, "").trim()
+
+// Hall accent chips (used only for the hall filter + modal tag)
+const HALL_COLORS: Record<string, { bg: string; text: string; border: string; light: string }> = {
+  red: { bg: "bg-rose-600", text: "text-rose-700", border: "border-rose-200", light: "bg-rose-50" },
+  green: { bg: "bg-emerald-600", text: "text-emerald-700", border: "border-emerald-200", light: "bg-emerald-50" },
+  blue: { bg: "bg-sky-600", text: "text-sky-700", border: "border-sky-200", light: "bg-sky-50" },
+  yellow: { bg: "bg-amber-500", text: "text-amber-700", border: "border-amber-200", light: "bg-amber-50" },
+  conference: { bg: "bg-violet-600", text: "text-violet-700", border: "border-violet-200", light: "bg-violet-50" },
+  lecture: { bg: "bg-indigo-600", text: "text-indigo-700", border: "border-indigo-200", light: "bg-indigo-50" },
+  default: { bg: "bg-slate-600", text: "text-slate-700", border: "border-slate-200", light: "bg-slate-50" },
+}
 const getHallColor = (hall: string | null) => {
   if (!hall) return HALL_COLORS.default
   const h = hall.toLowerCase()
@@ -116,63 +155,46 @@ const getHallColor = (hall: string | null) => {
   return HALL_COLORS.default
 }
 
-// Theme configurations
-const THEME_CONFIG = {
-  modern: {
-    page: "bg-gray-50",
-    header: "bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white",
-    headerText: "text-blue-200",
-    nav: "bg-white border-b shadow-sm",
-    card: "bg-white border shadow-sm",
-    cardHeader: "bg-gray-50",
-    text: "text-gray-900",
-    textMuted: "text-gray-500",
-    accent: "bg-blue-600 text-white",
-  },
-  classic: {
-    page: "bg-[#1a1a2e]",
-    header: "bg-[#FDF6E3] text-gray-900 border-b-2 border-gray-300",
-    headerText: "text-gray-600",
-    nav: "bg-[#FDF6E3] border-b border-gray-300",
-    card: "bg-[#FDF6E3] border-gray-300",
-    cardHeader: "bg-[#1B6B93] text-white",
-    text: "text-gray-800",
-    textMuted: "text-gray-600",
-    accent: "bg-[#14919B] text-white",
-  },
-  dark: {
-    page: "bg-gray-950",
-    header: "bg-gradient-to-br from-gray-900 to-gray-800 text-white",
-    headerText: "text-gray-400",
-    nav: "bg-gray-900 border-b border-gray-800",
-    card: "bg-gray-900 border-gray-800 text-white",
-    cardHeader: "bg-gray-800 text-white",
-    text: "text-white",
-    textMuted: "text-gray-400",
-    accent: "bg-blue-600 text-white",
-  },
-  minimal: {
-    page: "bg-white",
-    header: "bg-white text-gray-900 border-b",
-    headerText: "text-gray-500",
-    nav: "bg-gray-50 border-b",
-    card: "bg-white border",
-    cardHeader: "bg-gray-50",
-    text: "text-gray-900",
-    textMuted: "text-gray-500",
-    accent: "bg-gray-900 text-white",
-  },
-}
-
 const getSessionIcon = (sessionName: string, sessionType: string | null) => {
   const name = (sessionName || "").toLowerCase()
   const _type = (sessionType || "").toLowerCase()
-
   if (name.includes("panel") || name.includes("debate")) return MessageSquare
   if (name.includes("live") || name.includes("video")) return Video
   if (name.includes("award") || name.includes("inaug")) return Award
   if (name.includes("keynote") || name.includes("oration")) return Mic2
   return null
+}
+
+// Small initials avatar used in lists + modal
+function SpeakerAvatar({ name, size = "sm" }: { name: string; size?: "sm" | "md" }) {
+  const c = avatarColor(name)
+  const dim = size === "md" ? "h-9 w-9 text-[0.7rem]" : "h-7 w-7 text-[0.62rem]"
+  return (
+    <span
+      className={cn("inline-flex items-center justify-center rounded-full font-bold ring-2 ring-white shrink-0", dim)}
+      style={{ backgroundColor: c.bg, color: c.text }}
+      aria-hidden
+    >
+      {getInitials(name)}
+    </span>
+  )
+}
+
+function SpeakerLine({ names }: { names: string[] }) {
+  if (names.length === 0) return null
+  const shown = names.slice(0, 3)
+  return (
+    <div className="mt-2.5 flex items-center gap-2">
+      <span className="flex -space-x-1.5">
+        {shown.map((n, i) => (
+          <SpeakerAvatar key={i} name={n} />
+        ))}
+      </span>
+      <span className="text-sm text-slate-600 leading-snug">
+        {names.join(", ")}
+      </span>
+    </div>
+  )
 }
 
 export default function LegacyPublicProgram() {
@@ -184,15 +206,15 @@ export default function LegacyPublicProgram() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
   const [showFilters, setShowFilters] = useState(false)
-  const [groupBy, setGroupBy] = useState<"hall" | "track">("track") // Default to track view
+  const [groupBy, setGroupBy] = useState<"hall" | "track">("track")
 
-  // Helper to extract just names from formatted string "Name (email, phone) | Name2 (email, phone)"
   const extractNames = (formatted: string | null | undefined) => {
     if (!formatted) return []
-    return formatted.split(" | ").map(p => p.split("(")[0].trim())
+    return formatted.split(" | ").map((p) => p.split("(")[0].trim()).filter(Boolean)
   }
+  const splitNames = (s: string | null | undefined) =>
+    (s || "").split(",").map((p) => p.trim()).filter(Boolean)
 
-  // Fetch all data in a single API call
   const { data: programData, isLoading } = useQuery({
     queryKey: ["public-program", eventId],
     queryFn: async () => {
@@ -200,7 +222,7 @@ export default function LegacyPublicProgram() {
       if (!res.ok) throw new Error("Failed to fetch program")
       return res.json() as Promise<{ event: Event; sessions: Session[]; tracks: Track[] }>
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
 
@@ -208,44 +230,37 @@ export default function LegacyPublicProgram() {
   const sessions = programData?.sessions || []
   const tracks = programData?.tracks || []
 
-  // Get unique dates
+  const accent = event?.primary_color && /^#[0-9a-fA-F]{6}$/.test(event.primary_color)
+    ? event.primary_color
+    : DEFAULT_ACCENT
+
+  // Set the document title to the event name (was a generic app title before).
+  useEffect(() => {
+    if (event?.name) document.title = `${event.name} · Programme`
+  }, [event?.name])
+
   const dates = useMemo(() => {
     if (!sessions) return []
-    const uniqueDates = [...new Set(sessions.map(s => s.session_date))].sort()
-    return uniqueDates
+    return [...new Set(sessions.map((s) => s.session_date))].sort()
   }, [sessions])
 
-  // Get unique halls
   const halls = useMemo(() => {
     if (!sessions) return []
-    const uniqueHalls = [...new Set(sessions.map(s => s.hall).filter(Boolean))] as string[]
-    return uniqueHalls.sort()
+    return ([...new Set(sessions.map((s) => s.hall).filter(Boolean))] as string[]).sort()
   }, [sessions])
 
-  // Set default day
   useMemo(() => {
-    if (dates.length > 0 && !selectedDay) {
-      setSelectedDay(dates[0])
-    }
+    if (dates.length > 0 && !selectedDay) setSelectedDay(dates[0])
   }, [dates, selectedDay])
 
-  // Filter sessions
   const filteredSessions = useMemo(() => {
     if (!sessions) return []
-
-    return sessions.filter(session => {
-      // Exclude hall coordinator rows (session_name is just a hall name like "HALL A", "RED HALL", etc.)
+    return sessions.filter((session) => {
       const sessionName = (session.session_name || "").toLowerCase().trim()
       if (/^hall\s*[a-z0-9]?$/i.test(sessionName)) return false
       if (/^(red|green|blue|yellow|main|conference)\s*hall/i.test(sessionName)) return false
-
-      // Filter by day
       if (selectedDay && session.session_date !== selectedDay) return false
-
-      // Filter by halls
       if (selectedHalls.length > 0 && session.hall && !selectedHalls.includes(session.hall)) return false
-
-      // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
         const matchesName = session.session_name?.toLowerCase().includes(query)
@@ -254,15 +269,13 @@ export default function LegacyPublicProgram() {
         const matchesDesc = session.description?.toLowerCase().includes(query)
         if (!matchesName && !matchesSpeakers && !matchesChairs && !matchesDesc) return false
       }
-
       return true
     })
   }, [sessions, selectedDay, selectedHalls, searchQuery])
 
-  // Group sessions by hall for the selected day
   const sessionsByHall = useMemo(() => {
     const grouped: Record<string, Session[]> = {}
-    filteredSessions.forEach(session => {
+    filteredSessions.forEach((session) => {
       const hall = session.hall || "Other"
       if (!grouped[hall]) grouped[hall] = []
       grouped[hall].push(session)
@@ -270,14 +283,12 @@ export default function LegacyPublicProgram() {
     return grouped
   }, [filteredSessions])
 
-  // Group sessions by track for the selected day
   const sessionsByTrack = useMemo(() => {
     const grouped: Record<string, { track: Track | null; sessions: Session[] }> = {}
-    filteredSessions.forEach(session => {
+    filteredSessions.forEach((session) => {
       const trackName = session.specialty_track || "Other"
       if (!grouped[trackName]) {
-        // Find track metadata
-        const trackData = tracks?.find(t => t.name === trackName) || null
+        const trackData = tracks?.find((t) => t.name === trackName) || null
         grouped[trackName] = { track: trackData, sessions: [] }
       }
       grouped[trackName].sessions.push(session)
@@ -285,17 +296,12 @@ export default function LegacyPublicProgram() {
     return grouped
   }, [filteredSessions, tracks])
 
-  // Stats
   const stats = useMemo(() => {
     if (!sessions) return { totalSessions: 0, totalSpeakers: 0, totalDays: 0, totalHalls: 0 }
-
     const speakerSet = new Set<string>()
-    sessions.forEach(s => {
-      if (s.speakers) {
-        s.speakers.split(",").forEach(sp => speakerSet.add(sp.trim()))
-      }
+    sessions.forEach((s) => {
+      if (s.speakers) s.speakers.split(",").forEach((sp) => speakerSet.add(sp.trim()))
     })
-
     return {
       totalSessions: sessions.length,
       totalSpeakers: speakerSet.size,
@@ -305,8 +311,6 @@ export default function LegacyPublicProgram() {
   }, [sessions, dates, halls])
 
   const publicSettings = event?.settings?.public_page
-  const theme = publicSettings?.theme || "modern"
-  const themeConfig = THEME_CONFIG[theme]
 
   const formatTime = (time: string) => {
     if (!time) return ""
@@ -316,84 +320,41 @@ export default function LegacyPublicProgram() {
     const h12 = h % 12 || 12
     return `${h12}:${minutes} ${ampm}`
   }
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString("en-IN", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-    })
-  }
-
-  const formatFullDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString("en-IN", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    })
-  }
-
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+  const formatFullDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
   const formatDateRange = (start: string, end: string) => {
     const s = new Date(start)
     const e = new Date(end)
-    return `${s.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} - ${e.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
+    return `${s.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${e.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
   }
 
-  const toggleHall = (hall: string) => {
-    setSelectedHalls(prev =>
-      prev.includes(hall) ? prev.filter(h => h !== hall) : [...prev, hall]
-    )
-  }
+  const toggleHall = (hall: string) =>
+    setSelectedHalls((prev) => (prev.includes(hall) ? prev.filter((h) => h !== hall) : [...prev, hall]))
+
+  const registerHref = `/register/${event?.slug || eventId}`
+  const titleText = event?.short_name || event?.name || "Conference Programme"
+  // Big decorative edition number, derived from the event short name/name.
+  const editionNum = (event?.short_name || event?.name || "").match(/\d{2,4}/)?.[0] || null
+  const monogram = editionNum || (event?.short_name || event?.name || "AM").replace(/[^a-z]/gi, "").slice(0, 2).toUpperCase()
+
+  const statItems = [
+    { label: "Days", value: stats.totalDays },
+    { label: "Sessions", value: stats.totalSessions },
+    { label: "Faculty", value: stats.totalSpeakers },
+    { label: "Halls", value: stats.totalHalls },
+  ]
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Header Skeleton */}
-        <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white">
-          <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="h-16 w-16 rounded-lg bg-white/20 animate-pulse" />
-              <div className="space-y-2">
-                <div className="h-8 w-64 bg-white/20 rounded animate-pulse" />
-                <div className="h-4 w-48 bg-white/10 rounded animate-pulse" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="bg-white/10 rounded-xl p-4 text-center">
-                  <div className="h-8 w-12 bg-white/20 rounded mx-auto mb-2 animate-pulse" />
-                  <div className="h-3 w-16 bg-white/10 rounded mx-auto animate-pulse" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        {/* Content Skeleton */}
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex gap-2 mb-6">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-10 w-28 bg-gray-200 rounded-full animate-pulse" />
-            ))}
-          </div>
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white rounded-xl border p-4">
-                <div className="h-6 w-48 bg-gray-200 rounded mb-4 animate-pulse" />
-                <div className="space-y-3">
-                  {[1, 2].map(j => (
-                    <div key={j} className="flex gap-4">
-                      <div className="h-12 w-20 bg-gray-100 rounded animate-pulse" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-5 w-3/4 bg-gray-200 rounded animate-pulse" />
-                        <div className="h-4 w-1/2 bg-gray-100 rounded animate-pulse" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      <div className="min-h-screen bg-slate-50">
+        <div className="h-[320px] bg-slate-900 animate-pulse" />
+        <div className="max-w-6xl mx-auto px-4 -mt-12">
+          <div className="h-24 bg-white rounded-2xl shadow-lg animate-pulse" />
+          <div className="mt-8 space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-28 bg-white rounded-2xl border animate-pulse" />
             ))}
           </div>
         </div>
@@ -402,91 +363,122 @@ export default function LegacyPublicProgram() {
   }
 
   return (
-    <div className={cn("min-h-screen", themeConfig.page)}>
-      {/* Hero Header */}
-      <header className={themeConfig.header}>
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8 md:py-12">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
-            <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
-              {event?.logo_url && (
-                <img src={event.logo_url} alt="" className="h-14 w-14 sm:h-16 sm:w-16 rounded-lg bg-white p-1 flex-shrink-0" />
-              )}
-              <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl md:text-4xl font-bold break-words">
-                  {event?.short_name || event?.name || "Conference Program"}
-                </h1>
-                {event?.tagline && (
-                  <p className={cn("mt-1 text-sm sm:text-base break-words", themeConfig.headerText)}>{event.tagline}</p>
+    <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+      {/* ===== Hero ===== */}
+      <header className="relative overflow-hidden bg-slate-950">
+        {event?.banner_url && (
+          <img src={event.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
+        )}
+        {/* brand-colour glows */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(70% 90% at 88% -20%, ${withAlpha(accent, "66")}, transparent 60%), radial-gradient(60% 70% at -10% 120%, ${withAlpha(accent, "30")}, transparent 55%)`,
+          }}
+        />
+        {/* dot texture */}
+        <div
+          className="absolute inset-0 opacity-[0.05]"
+          style={{ backgroundImage: "radial-gradient(#fff 1px, transparent 1px)", backgroundSize: "22px 22px" }}
+        />
+        {/* giant edition monogram */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-0 top-1/2 hidden -translate-y-1/2 select-none font-black leading-none tracking-tighter sm:block"
+          style={{ fontSize: "18rem", color: "#ffffff", opacity: 0.04 }}
+        >
+          {monogram}
+        </span>
+
+        <div className="relative max-w-6xl mx-auto px-4 pt-12 pb-24 sm:pt-16 sm:pb-28">
+          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+            <div className="min-w-0">
+              {/* eyebrow */}
+              <div className="mb-4 flex items-center gap-3">
+                {event?.logo_url ? (
+                  <img src={event.logo_url} alt="" className="h-11 w-11 rounded-xl bg-white p-1 object-contain" />
+                ) : (
+                  <span
+                    className="flex h-11 w-11 items-center justify-center rounded-xl text-sm font-black text-white ring-1 ring-white/20"
+                    style={{ backgroundColor: accent }}
+                  >
+                    {monogram.slice(0, 3)}
+                  </span>
                 )}
-                <div className={cn("flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 sm:mt-3 text-xs sm:text-sm", themeConfig.headerText)}>
-                  {event?.start_date && event?.end_date && (
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="h-4 w-4 flex-shrink-0" />
-                      <span className="break-words">{formatDateRange(event.start_date, event.end_date)}</span>
+                <span className="text-[0.7rem] font-semibold uppercase tracking-[0.35em] text-white/60">
+                  {COMPANY_CONFIG.name}
+                </span>
+              </div>
+
+              <h1 className="text-3xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl">
+                {titleText}
+              </h1>
+              {event?.tagline && (
+                <p className="mt-3 max-w-xl text-base text-white/70">{event.tagline}</p>
+              )}
+
+              <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/80">
+                {event?.start_date && event?.end_date && (
+                  <span className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" style={{ color: accent }} />
+                    {formatDateRange(event.start_date, event.end_date)}
+                  </span>
+                )}
+                {(event?.venue_name || event?.city) && (
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" style={{ color: accent }} />
+                    <span className="break-words">
+                      {[cleanVenue(event?.venue_name), event?.city].filter(Boolean).join(", ")}
                     </span>
-                  )}
-                  {event?.venue_name && (
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      <MapPin className="h-4 w-4 flex-shrink-0" />
-                      <span className="break-words">{event.venue_name}{event.city ? `, ${event.city}` : ""}</span>
-                    </span>
-                  )}
-                </div>
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Button
-                className="bg-white text-gray-900 hover:bg-gray-100 font-semibold w-full md:w-auto min-h-[44px]"
-                asChild
-              >
-                <a href={`/register/${event?.slug || eventId}`}>
-                  Register Now
-                </a>
-              </Button>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
-              <p className="text-3xl font-bold">{stats.totalDays}</p>
-              <p className={cn("text-sm", themeConfig.headerText)}>Days</p>
-            </div>
-            <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
-              <p className="text-3xl font-bold">{stats.totalSessions}</p>
-              <p className={cn("text-sm", themeConfig.headerText)}>Sessions</p>
-            </div>
-            <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
-              <p className="text-3xl font-bold">{stats.totalSpeakers}</p>
-              <p className={cn("text-sm", themeConfig.headerText)}>Speakers</p>
-            </div>
-            <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
-              <p className="text-3xl font-bold">{stats.totalHalls}</p>
-              <p className={cn("text-sm", themeConfig.headerText)}>Halls</p>
-            </div>
+            <Button
+              asChild
+              className="h-12 shrink-0 px-7 text-base font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] hover:opacity-95"
+              style={{ backgroundColor: accent }}
+            >
+              <a href={registerHref}>
+                Register Now
+                <ArrowRight className="ml-1.5 h-4 w-4" />
+              </a>
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Configurable Tracks Section */}
+      {/* ===== Stat strip (overlaps hero) ===== */}
+      <div className="relative z-10 max-w-6xl mx-auto px-4 -mt-12">
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl shadow-slate-900/5 sm:grid-cols-4 sm:divide-y-0">
+          {statItems.map((s) => (
+            <div key={s.label} className="px-6 py-5 text-center">
+              <p className="text-3xl font-bold tracking-tight" style={{ color: accent }}>
+                {s.value}
+              </p>
+              <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-slate-400">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Configurable Tracks */}
       {publicSettings?.show_tracks && publicSettings.tracks && publicSettings.tracks.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 py-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Conference Tracks</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <section className="max-w-6xl mx-auto px-4 pt-12">
+          <h2 className="mb-4 text-lg font-bold text-slate-800">Conference Tracks</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {publicSettings.tracks.map((track) => {
               const colorMap: Record<string, string> = {
-                blue: "bg-blue-600",
-                pink: "bg-pink-600",
-                purple: "bg-purple-600",
-                green: "bg-green-600",
-                orange: "bg-orange-600",
-                amber: "bg-amber-600",
+                blue: "#2563eb", pink: "#db2777", purple: "#7c3aed",
+                green: "#16a34a", orange: "#ea580c", amber: "#d97706",
               }
+              const c = colorMap[track.color] || "#475569"
               return (
-                <div key={track.id} className={`${colorMap[track.color] || "bg-gray-600"} text-white rounded-xl p-5`}>
-                  <h3 className="font-bold text-lg">{track.name}</h3>
-                  <p className="text-white/80 text-sm mt-1">{track.description}</p>
+                <div key={track.id} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                  <span className="mb-3 inline-block h-1.5 w-10 rounded-full" style={{ backgroundColor: c }} />
+                  <h3 className="text-lg font-bold text-slate-900">{track.name}</h3>
+                  <p className="mt-1 text-sm text-slate-500">{track.description}</p>
                 </div>
               )
             })}
@@ -494,41 +486,40 @@ export default function LegacyPublicProgram() {
         </section>
       )}
 
-      {/* Day Tabs & Filters */}
-      <div className={cn("sticky top-0 z-40", themeConfig.nav)}>
-        <div className="max-w-7xl mx-auto px-4">
-          {/* Day tabs + filters - stack on mobile, single row on desktop */}
-          <div className="flex flex-col lg:flex-row lg:items-center gap-2 py-3">
-            {/* Day tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
-              {dates.map((date, index) => (
-                <button
-                  key={date}
-                  onClick={() => setSelectedDay(date)}
-                  className={cn(
-                    "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all min-h-[44px] flex items-center",
-                    selectedDay === date
-                      ? "bg-blue-600 text-white shadow-lg"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  )}
-                >
-                  Day {index + 1}
-                  <span className="ml-1.5 text-xs opacity-75">{formatDate(date)}</span>
-                </button>
-              ))}
+      {/* ===== Sticky day tabs + filters ===== */}
+      <div className="sticky top-0 z-40 mt-12 border-b border-slate-100 bg-white/90 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex flex-col gap-2 py-3 lg:flex-row lg:items-center">
+            <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 scrollbar-hide">
+              {dates.map((date, index) => {
+                const active = selectedDay === date
+                return (
+                  <button
+                    key={date}
+                    onClick={() => setSelectedDay(date)}
+                    className={cn(
+                      "flex min-h-[42px] items-center whitespace-nowrap rounded-full px-4 text-sm font-medium transition-all",
+                      active ? "text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    )}
+                    style={active ? { backgroundColor: accent } : undefined}
+                  >
+                    Day {index + 1}
+                    <span className="ml-1.5 text-xs opacity-70">{formatDate(date)}</span>
+                  </button>
+                )
+              })}
             </div>
 
-            <div className="hidden lg:block flex-1" />
+            <div className="hidden flex-1 lg:block" />
 
-            {/* Search & Filter */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 lg:flex-initial min-w-0">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <div className="relative min-w-0 flex-1 lg:flex-initial">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
-                  placeholder="Search sessions, speakers..."
+                  placeholder="Search sessions, faculty…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-full lg:w-64"
+                  className="w-full border-slate-200 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:ring-slate-300 lg:w-60"
                 />
                 {searchQuery && (
                   <button
@@ -536,49 +527,43 @@ export default function LegacyPublicProgram() {
                     className="absolute right-3 top-1/2 -translate-y-1/2"
                     aria-label="Clear search"
                   >
-                    <X className="h-4 w-4 text-gray-400" />
+                    <X className="h-4 w-4 text-slate-400" />
                   </button>
                 )}
               </div>
-              {/* Group By Toggle */}
-              <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
-                <button
-                  onClick={() => setGroupBy("track")}
-                  className={cn(
-                    "px-3 py-2 text-xs font-medium rounded-md transition-all min-h-[36px]",
-                    groupBy === "track" ? "bg-white shadow text-blue-600" : "text-gray-500 hover:text-gray-700"
-                  )}
-                >
-                  By Track
-                </button>
-                <button
-                  onClick={() => setGroupBy("hall")}
-                  className={cn(
-                    "px-3 py-2 text-xs font-medium rounded-md transition-all min-h-[36px]",
-                    groupBy === "hall" ? "bg-white shadow text-blue-600" : "text-gray-500 hover:text-gray-700"
-                  )}
-                >
-                  By Hall
-                </button>
+              <div className="flex items-center rounded-lg bg-slate-100 p-0.5">
+                {(["track", "hall"] as const).map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => setGroupBy(g)}
+                    className={cn(
+                      "min-h-[34px] rounded-md px-3 text-xs font-medium transition-all",
+                      groupBy === g ? "bg-white shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
+                    style={groupBy === g ? { color: accent } : undefined}
+                  >
+                    {g === "track" ? "By Track" : "By Hall"}
+                  </button>
+                ))}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className={cn("min-h-[36px]", selectedHalls.length > 0 && "border-blue-500 text-blue-600")}
-              >
-                <Filter className="h-4 w-4 mr-1" />
-                Halls
-                {selectedHalls.length > 0 && (
-                  <Badge className="ml-1.5 h-5 px-1.5">{selectedHalls.length}</Badge>
-                )}
-              </Button>
+              {halls.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="min-h-[34px] border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  style={selectedHalls.length > 0 ? { color: accent, borderColor: accent } : undefined}
+                >
+                  <Filter className="mr-1 h-4 w-4" />
+                  Halls
+                  {selectedHalls.length > 0 && <Badge className="ml-1.5 h-5 px-1.5">{selectedHalls.length}</Badge>}
+                </Button>
+              )}
             </div>
           </div>
 
-          {/* Hall filters */}
-          {showFilters && (
-            <div className="pb-3 flex flex-wrap gap-2">
+          {showFilters && halls.length > 0 && (
+            <div className="flex flex-wrap gap-2 pb-3">
               {halls.map((hall) => {
                 const colors = getHallColor(hall)
                 const isSelected = selectedHalls.includes(hall)
@@ -587,13 +572,11 @@ export default function LegacyPublicProgram() {
                     key={hall}
                     onClick={() => toggleHall(hall)}
                     className={cn(
-                      "px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5",
-                      isSelected
-                        ? `${colors.bg} text-white`
-                        : `${colors.light} ${colors.text} ${colors.border} border`
+                      "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all",
+                      isSelected ? `${colors.bg} text-white` : `${colors.light} ${colors.text} ${colors.border} border`
                     )}
                   >
-                    <span className={cn("w-2 h-2 rounded-full", isSelected ? "bg-white" : colors.bg)} />
+                    <span className={cn("h-2 w-2 rounded-full", isSelected ? "bg-white" : colors.bg)} />
                     {hall}
                   </button>
                 )
@@ -601,7 +584,7 @@ export default function LegacyPublicProgram() {
               {selectedHalls.length > 0 && (
                 <button
                   onClick={() => setSelectedHalls([])}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium text-gray-500 hover:text-gray-700"
+                  className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
                 >
                   Clear all
                 </button>
@@ -611,236 +594,168 @@ export default function LegacyPublicProgram() {
         </div>
       </div>
 
-      {/* Sessions Grid */}
-      <section className="max-w-7xl mx-auto px-4 py-6">
+      {/* ===== Sessions ===== */}
+      <section className="max-w-6xl mx-auto px-4 py-8">
         {selectedDay && (
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">
-              {formatFullDate(selectedDay)}
-            </h2>
-            <p className="text-sm text-gray-500">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold tracking-tight text-slate-900">{formatFullDate(selectedDay)}</h2>
+            <p className="mt-0.5 text-sm text-slate-500">
               {filteredSessions.length} session{filteredSessions.length !== 1 ? "s" : ""}
-              {selectedHalls.length > 0 && ` in ${selectedHalls.length} hall${selectedHalls.length !== 1 ? "s" : ""}`}
+              {selectedHalls.length > 0 && ` · ${selectedHalls.length} hall${selectedHalls.length !== 1 ? "s" : ""}`}
             </p>
           </div>
         )}
 
-        {/* Sessions - Group by Track or Hall */}
         <div className="space-y-6">
-          {groupBy === "track" ? (
-            // Group by Track View
-            Object.entries(sessionsByTrack).map(([trackName, { track, sessions: trackSessions }]) => {
-              const trackColor = track?.color || "#3B82F6"
-              return (
-                <div key={trackName} className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                  {/* Session Header with Description & Chairpersons */}
-                  <div className="px-4 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-                    <div className="flex items-start gap-3">
-                      <span
-                        className="w-4 h-4 rounded-full mt-1.5 flex-shrink-0"
-                        style={{ backgroundColor: trackColor }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Session</p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-xl text-gray-900">{trackName}</h3>
-                          <Badge variant="secondary" className="bg-white">
+          {groupBy === "track"
+            ? Object.entries(sessionsByTrack).map(([trackName, { track, sessions: trackSessions }]) => {
+                const trackColor = track?.color || accent
+                const heading = trackName === "Other" ? "Programme" : trackName
+                return (
+                  <div key={trackName} className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+                    {/* Track header */}
+                    <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4" style={{ backgroundColor: withAlpha(typeof trackColor === "string" && trackColor.startsWith("#") ? trackColor : accent, "0d") }}>
+                      <span className="mt-1.5 h-3.5 w-3.5 shrink-0 rounded-full" style={{ backgroundColor: trackColor }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-bold text-slate-900">{heading}</h3>
+                          <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-slate-200">
                             {trackSessions.length} topic{trackSessions.length !== 1 ? "s" : ""}
-                          </Badge>
+                          </span>
                         </div>
-                        {/* Session Description/Title */}
-                        {track?.description && (
-                          <p className="text-gray-700 mt-1 text-base font-medium">{track.description}</p>
-                        )}
-                        {/* Session Chairpersons - Names only (no contact details in public view) */}
+                        {track?.description && <p className="mt-1 text-sm font-medium text-slate-600">{track.description}</p>}
                         {track?.chairpersons && (
-                          <div className="mt-3 p-2 bg-white/60 rounded-lg">
-                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Chairpersons</p>
-                            <p className="text-sm text-gray-800 flex items-center gap-2">
-                              <Users className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                              {extractNames(track.chairpersons).join(", ")}
-                            </p>
-                          </div>
+                          <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
+                            <Users className="h-3.5 w-3.5 shrink-0" style={{ color: accent }} />
+                            <span className="font-medium text-slate-600">Chairs:</span> {extractNames(track.chairpersons).join(", ")}
+                          </p>
                         )}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Individual Topics */}
-                  <div className="divide-y">
-                    {trackSessions.map((session) => {
-                      const SessionIcon = getSessionIcon(session.session_name, session.session_type)
-                      return (
-                        <div
-                          key={session.id}
-                          className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                          onClick={() => setSelectedSession(session)}
-                        >
-                          <div className="flex items-start gap-4">
-                            {/* Time */}
-                            <div className="text-sm text-gray-500 min-w-[60px] sm:min-w-[80px]">
-                              <p className="font-medium">{formatTime(session.start_time)}</p>
-                              <p>{formatTime(session.end_time)}</p>
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start gap-2">
-                                {SessionIcon && (
-                                  <SessionIcon className="h-4 w-4 text-blue-500 mt-1 flex-shrink-0" />
-                                )}
-                                <div className="flex-1">
-                                  {/* Topic */}
-                                  <p className="text-xs font-medium text-gray-400 uppercase">Topic</p>
-                                  <h4 className="font-medium text-gray-900 line-clamp-2">
-                                    {session.session_name}
-                                  </h4>
-
-                                  {/* Speaker - Names only (no contact details in public view) */}
-                                  {session.speakers && (
-                                    <div className="mt-2">
-                                      <p className="text-xs font-medium text-gray-400 uppercase">Speaker</p>
-                                      <p className="text-sm text-gray-700 flex items-center gap-1">
-                                        <User className="h-3.5 w-3.5 text-gray-500" />
-                                        {session.speakers}
-                                      </p>
-                                    </div>
-                                  )}
-
-                                  {/* Hall */}
-                                  {session.hall && (
-                                    <Badge variant="outline" className="mt-2 text-xs">
-                                      <MapPin className="h-3 w-3 mr-1" />
-                                      {session.hall}
-                                    </Badge>
-                                  )}
-                                </div>
+                    <div className="divide-y divide-slate-100">
+                      {trackSessions.map((session) => {
+                        const SessionIcon = getSessionIcon(session.session_name, session.session_type)
+                        const speakers = splitNames(session.speakers)
+                        return (
+                          <button
+                            key={session.id}
+                            onClick={() => setSelectedSession(session)}
+                            className="group flex w-full items-stretch gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50"
+                          >
+                            {/* time rail */}
+                            <div className="flex shrink-0 gap-3">
+                              <div className="w-[58px] sm:w-[66px]">
+                                <p className="text-sm font-bold text-slate-900">{formatTime(session.start_time)}</p>
+                                <p className="text-xs text-slate-400">{formatTime(session.end_time)}</p>
                               </div>
+                              <span className="w-0.5 rounded-full" style={{ backgroundColor: withAlpha(accent, "40") }} />
                             </div>
 
-                            <ChevronRight className="h-5 w-5 text-gray-300 flex-shrink-0" />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })
-          ) : (
-            // Group by Hall View (Original)
-            Object.entries(sessionsByHall).map(([hall, hallSessions]) => {
-              const colors = getHallColor(hall)
-              return (
-                <div key={hall} className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                  {/* Hall Header */}
-                  <div className={cn("px-4 py-3 flex items-center gap-3", colors.light)}>
-                    <span className={cn("w-3 h-3 rounded-full", colors.bg)} />
-                    <h3 className={cn("font-semibold", colors.text)}>{hall}</h3>
-                    <Badge variant="secondary" className="ml-auto">
-                      {hallSessions.length} session{hallSessions.length !== 1 ? "s" : ""}
-                    </Badge>
-                  </div>
-
-                  {/* Sessions */}
-                  <div className="divide-y">
-                    {hallSessions.map((session) => {
-                      const SessionIcon = getSessionIcon(session.session_name, session.session_type)
-                      return (
-                        <div
-                          key={session.id}
-                          className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                          onClick={() => setSelectedSession(session)}
-                        >
-                          <div className="flex items-start gap-4">
-                            {/* Time */}
-                            <div className="text-sm text-gray-500 min-w-[60px] sm:min-w-[80px]">
-                              <p className="font-medium">{formatTime(session.start_time)}</p>
-                              <p>{formatTime(session.end_time)}</p>
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
+                            <div className="min-w-0 flex-1">
                               <div className="flex items-start gap-2">
-                                {SessionIcon && (
-                                  <SessionIcon className="h-4 w-4 text-blue-500 mt-1 flex-shrink-0" />
-                                )}
-                                <div className="flex-1">
-                                  <h4 className="font-medium text-gray-900 line-clamp-2">
-                                    {session.session_name}
-                                  </h4>
-
-                                  {/* Speakers */}
-                                  {session.speakers && (
-                                    <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
-                                      <User className="h-3.5 w-3.5" />
-                                      <span className="line-clamp-1">{session.speakers}</span>
-                                    </p>
-                                  )}
-
-                                  {/* Chairpersons */}
-                                  {session.chairpersons && (
-                                    <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                                      <Users className="h-3 w-3" />
-                                      <span className="line-clamp-1">Chair: {session.chairpersons}</span>
-                                    </p>
-                                  )}
-
-                                  {/* Duration */}
-                                  {session.duration_minutes && (
-                                    <Badge variant="outline" className="mt-2 text-xs">
-                                      <Clock className="h-3 w-3 mr-1" />
-                                      {session.duration_minutes} min
-                                    </Badge>
-                                  )}
-                                </div>
+                                {SessionIcon && <SessionIcon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: accent }} />}
+                                <h4 className="font-semibold leading-snug text-slate-900">{session.session_name}</h4>
                               </div>
+                              <SpeakerLine names={speakers} />
+                              {session.hall && (
+                                <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-slate-200">
+                                  <MapPin className="h-3 w-3" />
+                                  {session.hall}
+                                </span>
+                              )}
                             </div>
 
-                            <ChevronRight className="h-5 w-5 text-gray-300 flex-shrink-0" />
-                          </div>
-                        </div>
-                      )
-                    })}
+                            <ChevronRight className="h-5 w-5 shrink-0 self-center text-slate-300 transition-transform group-hover:translate-x-0.5" />
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              )
-            })
-          )}
+                )
+              })
+            : Object.entries(sessionsByHall).map(([hall, hallSessions]) => {
+                const colors = getHallColor(hall)
+                return (
+                  <div key={hall} className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+                    <div className={cn("flex items-center gap-3 px-5 py-3", colors.light)}>
+                      <span className={cn("h-3 w-3 rounded-full", colors.bg)} />
+                      <h3 className={cn("font-bold", colors.text)}>{hall === "Other" ? "Programme" : hall}</h3>
+                      <span className="ml-auto rounded-full bg-white px-2 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-slate-200">
+                        {hallSessions.length} session{hallSessions.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {hallSessions.map((session) => {
+                        const SessionIcon = getSessionIcon(session.session_name, session.session_type)
+                        const speakers = splitNames(session.speakers)
+                        const chairs = splitNames(session.chairpersons)
+                        return (
+                          <button
+                            key={session.id}
+                            onClick={() => setSelectedSession(session)}
+                            className="group flex w-full items-stretch gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50"
+                          >
+                            <div className="flex shrink-0 gap-3">
+                              <div className="w-[58px] sm:w-[66px]">
+                                <p className="text-sm font-bold text-slate-900">{formatTime(session.start_time)}</p>
+                                <p className="text-xs text-slate-400">{formatTime(session.end_time)}</p>
+                              </div>
+                              <span className="w-0.5 rounded-full" style={{ backgroundColor: withAlpha(accent, "40") }} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start gap-2">
+                                {SessionIcon && <SessionIcon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: accent }} />}
+                                <h4 className="font-semibold leading-snug text-slate-900">{session.session_name}</h4>
+                              </div>
+                              <SpeakerLine names={speakers} />
+                              {chairs.length > 0 && (
+                                <p className="mt-1.5 flex items-center gap-1 text-xs text-slate-400">
+                                  <Users className="h-3 w-3" /> Chair: {chairs.join(", ")}
+                                </p>
+                              )}
+                            </div>
+                            <ChevronRight className="h-5 w-5 shrink-0 self-center text-slate-300 transition-transform group-hover:translate-x-0.5" />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
         </div>
 
         {filteredSessions.length === 0 && (
-          <div className="text-center py-16 bg-white rounded-xl border">
-            <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-600 mb-2">No sessions found</h3>
-            <p className="text-gray-500">Try adjusting your filters or search query</p>
+          <div className="rounded-2xl border border-slate-100 bg-white py-16 text-center">
+            <Search className="mx-auto mb-4 h-12 w-12 text-slate-200" />
+            <h3 className="mb-1 text-lg font-semibold text-slate-700">No sessions found</h3>
+            <p className="text-slate-400">Try adjusting your filters or search</p>
           </div>
         )}
       </section>
 
-      {/* Examination Section (Configurable) */}
+      {/* Examination */}
       {publicSettings?.show_exam_details && publicSettings.exam_theory && (
-        <section className="max-w-7xl mx-auto px-4 pb-8">
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
-            <h2 className="text-xl font-bold text-green-800 mb-4 flex items-center gap-2">
-              <Award className="h-5 w-5" />
-              Examination Details
+        <section className="max-w-6xl mx-auto px-4 pb-8">
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-6">
+            <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-emerald-800">
+              <Award className="h-5 w-5" /> Examination Details
             </h2>
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid gap-6 md:grid-cols-2">
               <div>
-                <h3 className="font-semibold text-green-700 mb-2">Theory Examination</h3>
-                <ul className="text-sm text-green-800 space-y-1">
-                  <li>{publicSettings.exam_theory.questions} MCQ Questions - {publicSettings.exam_theory.marks} Marks</li>
-                  <li>{publicSettings.exam_theory.negative_marking ? "Negative marking applies" : "No Negative Marking"}</li>
+                <h3 className="mb-2 font-semibold text-emerald-700">Theory Examination</h3>
+                <ul className="space-y-1 text-sm text-emerald-800">
+                  <li>{publicSettings.exam_theory.questions} MCQ Questions · {publicSettings.exam_theory.marks} Marks</li>
+                  <li>{publicSettings.exam_theory.negative_marking ? "Negative marking applies" : "No negative marking"}</li>
                   <li>Duration: {publicSettings.exam_theory.duration_minutes} minutes</li>
                 </ul>
               </div>
               {publicSettings.exam_practical && publicSettings.exam_practical.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-green-700 mb-2">Practical Assessment</h3>
-                  <ul className="text-sm text-green-800 space-y-1">
+                  <h3 className="mb-2 font-semibold text-emerald-700">Practical Assessment</h3>
+                  <ul className="space-y-1 text-sm text-emerald-800">
                     {publicSettings.exam_practical.map((comp) => (
-                      <li key={comp.id}>{comp.name} - {comp.marks} Marks</li>
+                      <li key={comp.id}>{comp.name} · {comp.marks} Marks</li>
                     ))}
                   </ul>
                 </div>
@@ -850,132 +765,124 @@ export default function LegacyPublicProgram() {
         </section>
       )}
 
-      {/* FAQ Section (Configurable) */}
+      {/* FAQ */}
       {publicSettings?.show_faq && publicSettings.faqs && publicSettings.faqs.length > 0 && (
-        <section id="faq" className="max-w-7xl mx-auto px-4 pb-12">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <HelpCircle className="h-5 w-5" />
-            Frequently Asked Questions
+        <section id="faq" className="max-w-6xl mx-auto px-4 pb-12">
+          <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-slate-800">
+            <HelpCircle className="h-5 w-5" /> Frequently Asked Questions
           </h2>
-          <Accordion type="single" collapsible className="bg-white rounded-xl shadow-sm border">
+          <Accordion type="single" collapsible className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
             {publicSettings.faqs.map((faq, index) => (
-              <AccordionItem key={faq.id} value={`faq-${index}`} className="border-b last:border-0">
-                <AccordionTrigger className="px-6 hover:no-underline text-gray-800 font-medium text-left">
+              <AccordionItem key={faq.id} value={`faq-${index}`} className="border-b border-slate-100 last:border-0">
+                <AccordionTrigger className="px-6 text-left font-medium text-slate-800 hover:no-underline">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-gray-600">
-                  {faq.answer}
-                </AccordionContent>
+                <AccordionContent className="px-6 pb-4 text-slate-600">{faq.answer}</AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
         </section>
       )}
 
-      {/* Register CTA */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 py-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Ready to Join?</h2>
-          <p className="text-blue-100 mb-6">Secure your spot at {event?.short_name || event?.name || "the conference"}</p>
-          <Button size="lg" className="bg-white text-blue-700 hover:bg-gray-100 font-semibold text-lg px-8" asChild>
-            <a href={`/register/${event?.slug || eventId}`}>
+      {/* CTA */}
+      <section className="relative overflow-hidden" style={{ backgroundColor: accent }}>
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{ backgroundImage: "radial-gradient(#fff 1px, transparent 1px)", backgroundSize: "20px 20px" }}
+        />
+        <div className="relative mx-auto max-w-6xl px-4 py-14 text-center">
+          <h2 className="text-2xl font-bold text-white sm:text-3xl">Ready to join us?</h2>
+          <p className="mx-auto mt-2 max-w-md text-white/80">
+            Secure your spot at {event?.short_name || event?.name || "the conference"}.
+          </p>
+          <Button
+            asChild
+            size="lg"
+            className="mt-6 h-12 bg-white px-8 text-base font-semibold shadow-lg hover:bg-white/90"
+            style={{ color: accent }}
+          >
+            <a href={registerHref}>
               Register Now
+              <ArrowRight className="ml-1.5 h-4 w-4" />
             </a>
           </Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-white py-8">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-gray-400 text-sm">
-            {publicSettings?.footer_text || `${event?.name || "Conference"} - Powered by ${COMPANY_CONFIG.name}`}
-          </p>
+      <footer className="bg-slate-950 py-8">
+        <div className="mx-auto max-w-6xl px-4 text-center text-sm text-slate-400">
+          {publicSettings?.footer_text || `${event?.name || "Conference"} · Powered by ${COMPANY_CONFIG.name}`}
         </div>
       </footer>
 
-      {/* Session Detail Dialog */}
+      {/* Session detail dialog */}
       <Dialog open={!!selectedSession} onOpenChange={() => setSelectedSession(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
           {selectedSession && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-xl pr-8">{selectedSession.session_name}</DialogTitle>
+                <DialogTitle className="pr-8 text-xl leading-snug">{selectedSession.session_name}</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 mt-4">
-                {/* Time & Hall */}
-                <div className="flex flex-wrap gap-3">
+              <div className="mt-4 space-y-5">
+                <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="text-sm">
-                    <Clock className="h-3.5 w-3.5 mr-1" />
-                    {formatTime(selectedSession.start_time)} - {formatTime(selectedSession.end_time)}
+                    <Clock className="mr-1 h-3.5 w-3.5" />
+                    {formatTime(selectedSession.start_time)} – {formatTime(selectedSession.end_time)}
                   </Badge>
                   {selectedSession.hall && (
                     <Badge className={cn(getHallColor(selectedSession.hall).bg, "text-white")}>
-                      <MapPin className="h-3.5 w-3.5 mr-1" />
+                      <MapPin className="mr-1 h-3.5 w-3.5" />
                       {selectedSession.hall}
                     </Badge>
                   )}
                   {selectedSession.duration_minutes && (
-                    <Badge variant="secondary">
-                      {selectedSession.duration_minutes} minutes
-                    </Badge>
+                    <Badge variant="secondary">{selectedSession.duration_minutes} minutes</Badge>
                   )}
                 </div>
 
-                {/* Description */}
-                {selectedSession.description && (
-                  <p className="text-gray-600">{selectedSession.description}</p>
-                )}
+                {selectedSession.description && <p className="text-slate-600">{selectedSession.description}</p>}
 
-                {/* Speakers */}
                 {selectedSession.speakers && (
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                    <h4 className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
                       <User className="h-4 w-4" />
-                      Speaker{selectedSession.speakers.includes(",") ? "s" : ""}
+                      Faculty
                     </h4>
                     <div className="space-y-2">
-                      {selectedSession.speakers.split(",").map((speaker, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <User className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <span className="font-medium">{speaker.trim()}</span>
+                      {splitNames(selectedSession.speakers).map((speaker, i) => (
+                        <div key={i} className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5">
+                          <SpeakerAvatar name={speaker} size="md" />
+                          <span className="font-medium text-slate-800">{speaker}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Chairpersons */}
                 {selectedSession.chairpersons && (
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                    <h4 className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
                       <Users className="h-4 w-4" />
-                      Chairperson{selectedSession.chairpersons.includes(",") ? "s" : ""}
+                      Chairperson{splitNames(selectedSession.chairpersons).length > 1 ? "s" : ""}
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {selectedSession.chairpersons.split(",").map((chair, i) => (
-                        <Badge key={i} variant="outline" className="py-1.5">
-                          {chair.trim()}
-                        </Badge>
+                      {splitNames(selectedSession.chairpersons).map((chair, i) => (
+                        <Badge key={i} variant="outline" className="py-1.5">{chair}</Badge>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Moderators */}
                 {selectedSession.moderators && (
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                    <h4 className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
                       <Mic2 className="h-4 w-4" />
-                      Moderator{selectedSession.moderators.includes(",") ? "s" : ""}
+                      Moderator{splitNames(selectedSession.moderators).length > 1 ? "s" : ""}
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {selectedSession.moderators.split(",").map((mod, i) => (
-                        <Badge key={i} variant="secondary" className="py-1.5">
-                          {mod.trim()}
-                        </Badge>
+                      {splitNames(selectedSession.moderators).map((mod, i) => (
+                        <Badge key={i} variant="secondary" className="py-1.5">{mod}</Badge>
                       ))}
                     </div>
                   </div>
