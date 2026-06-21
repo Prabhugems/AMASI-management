@@ -601,7 +601,7 @@ export async function POST(request: NextRequest) {
           attendee_phone,
           attendee_name,
           "delegate_login",
-          { "1": attendee_name, "2": eventName, "3": portalUrl }
+          { "Delegate_Name": attendee_name, "Event_Name": eventName, "Portal_URL": portalUrl }
         ).then(waResult => {
           if (waResult.success) {
             console.log(`[WhatsApp/Gallabox] delegate_login sent to ${attendee_phone} - ID: ${waResult.messageId}`)
