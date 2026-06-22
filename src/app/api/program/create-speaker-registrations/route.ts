@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     // Legacy format stores in description as "Name | Email | Phone"
     const { data: sessions } = await (supabase as any)
       .from("sessions")
-      .select("session_name, description, speakers_text, chairpersons_text, moderators_text")
+      .select("session_name, description, speakers, chairpersons, moderators, speakers_text, chairpersons_text, moderators_text")
       .eq("event_id", event_id)
 
     if (!sessions || sessions.length === 0) {
@@ -88,6 +88,33 @@ export async function POST(request: NextRequest) {
             }
           })
         }
+      })
+
+      // Parse from the plain speakers/chairpersons/moderators columns (used by
+      // the program board). These hold names, optionally comma/pipe separated,
+      // e.g. "Dr. Mayank Gupta" or "Dr A, Dr B". Some programmes are built with
+      // only these columns populated (not the *_text variants), so the importer
+      // must read them or it finds no faculty.
+      const plainFields = [session.speakers, session.chairpersons, session.moderators]
+      plainFields.forEach((text: string | null) => {
+        if (!text) return
+        const hasContactFormat = text.includes("(") && text.includes("@")
+        const people = hasContactFormat
+          ? parseContactText(text)
+          : text
+              .split(/[|,]/)
+              .map((s: string) => ({ name: stripTitle(s.trim()), email: "", phone: "" }))
+              .filter((p) => p.name)
+        people.forEach((person) => {
+          if (person.email && person.email.includes("@")) {
+            if (!facultyMap.has(person.email)) facultyMap.set(person.email, person)
+            trackSession(person.email, sessionIsOnline)
+          } else if (person.name) {
+            const key = `name:${person.name.toLowerCase()}`
+            if (!facultyMap.has(key)) facultyMap.set(key, person)
+            trackSession(key, sessionIsOnline)
+          }
+        })
       })
 
       // Parse from description field
