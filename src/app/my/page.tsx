@@ -949,7 +949,7 @@ export default function DelegatePortalPage() {
                       value={verifyRpId}
                       onChange={(e) => setVerifyRpId(e.target.value)}
                       placeholder="pay_XXXXXXXXXXXXXX"
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm font-mono bg-white text-gray-900 placeholder:text-gray-400 [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Check your UPI app, bank SMS, or email for this ID. Leave blank to auto-check.
@@ -1954,7 +1954,7 @@ export default function DelegatePortalPage() {
                     value={verifyRpId}
                     onChange={(e) => setVerifyRpId(e.target.value)}
                     placeholder="pay_XXXXXXXXXXXXXX"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono bg-white text-gray-900 placeholder:text-gray-400 [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Check your UPI app, bank SMS, or email for this ID. Leave blank to auto-check.
@@ -2142,7 +2142,7 @@ export default function DelegatePortalPage() {
                 value={councilValue}
                 onChange={(e) => setCouncilValue(e.target.value)}
                 disabled={savingCouncil}
-                className="w-full mb-4 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                className="w-full mb-4 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white text-gray-900 [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Select your medical council…</option>
                 {MEDICAL_COUNCILS.map((c) => (
@@ -2161,7 +2161,7 @@ export default function DelegatePortalPage() {
                 onChange={(e) => setCouncilRegNum(e.target.value)}
                 disabled={savingCouncil}
                 placeholder="e.g. 12345"
-                className="w-full mb-5 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full mb-5 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
 
               <div className="flex gap-3">
@@ -2997,7 +2997,7 @@ function DelegateHelpForm({
                                 setReplyTexts((prev) => ({ ...prev, [req.id]: e.target.value }))
                               }
                               placeholder="Type your reply..."
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 placeholder:text-gray-400 [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" && !e.shiftKey) {
                                   e.preventDefault()
@@ -3045,7 +3045,7 @@ function DelegateHelpForm({
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="">General</option>
                 <option value="Registration">Registration Issue</option>
@@ -3066,7 +3066,7 @@ function DelegateHelpForm({
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Please describe what you need help with..."
                 rows={4}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 placeholder:text-gray-400 [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
               />
             </div>
 
