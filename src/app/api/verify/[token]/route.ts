@@ -98,18 +98,31 @@ export async function GET(
     }, { status: 400 })
   }
 
-  // Check if certificate templates exist for this event
+  // Check if a certificate template exists for this registration. Match by
+  // ticket type so the verification page shows the right template name (e.g.
+  // a delegate isn't told they hold a "Faculty Certificate"); fall back to a
+  // catch-all template and then, only when a single active template exists, to
+  // that one. Mirrors the selection in /api/certificate/[regNumber]/download.
   let certificateTemplate: { id: string; name: string } | null = null
   try {
-    const { data: certTemplate } = await (supabase as any)
+    const { data: activeTemplatesRaw } = await (supabase as any)
       .from("certificate_templates")
-      .select("id, name")
+      .select("id, name, ticket_type_ids")
       .eq("event_id", registration.event_id)
       .eq("is_active", true)
-      .limit(1)
-      .single()
-    if (certTemplate) {
-      certificateTemplate = certTemplate
+
+    const activeTemplates = (activeTemplatesRaw || []) as any[]
+    const ticketTypeId = registration.ticket_type_id
+    const matchesTicket = (t: any) =>
+      Array.isArray(t.ticket_type_ids) && ticketTypeId && t.ticket_type_ids.includes(ticketTypeId)
+    const isCatchAll = (t: any) => !t.ticket_type_ids || t.ticket_type_ids.length === 0
+
+    const match =
+      activeTemplates.find(matchesTicket) ||
+      activeTemplates.find(isCatchAll) ||
+      (activeTemplates.length === 1 ? activeTemplates[0] : null)
+    if (match) {
+      certificateTemplate = { id: match.id, name: match.name }
     }
   } catch {
     // No certificate template found - that's fine
