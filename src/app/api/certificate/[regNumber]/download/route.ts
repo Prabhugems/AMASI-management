@@ -138,17 +138,40 @@ export async function GET(
       return NextResponse.json({ error: "Certificate has not been generated yet" }, { status: 404 })
     }
 
-    // Find active certificate template for this event
-    const { data: template } = await (supabase as any)
+    // Select the active certificate template that matches this registration's
+    // ticket type. An event can have several active templates (e.g. a Delegate
+    // template scoped to delegate ticket types and a Faculty template scoped to
+    // the faculty ticket type); a template with no ticket types is a catch-all.
+    // Previously this grabbed the first active template regardless of ticket
+    // type, so once a Faculty template was added every delegate downloading
+    // from /my received the Faculty certificate (bug: REG-20260617-MGPMMHS, a
+    // Complimentary Delegate, got "PARTICIPATED AS FACULTY").
+    const { data: activeTemplatesRaw } = await (supabase as any)
       .from("certificate_templates")
       .select("*")
       .eq("event_id", registration.event_id)
       .eq("is_active", true)
-      .limit(1)
-      .maybeSingle()
+
+    const activeTemplates = (activeTemplatesRaw || []) as any[]
+    const ticketTypeId = registration.ticket_type_id
+    const matchesTicket = (t: any) =>
+      Array.isArray(t.ticket_type_ids) && ticketTypeId && t.ticket_type_ids.includes(ticketTypeId)
+    const isCatchAll = (t: any) => !t.ticket_type_ids || t.ticket_type_ids.length === 0
+
+    const template =
+      activeTemplates.find(matchesTicket) ||
+      activeTemplates.find(isCatchAll) ||
+      // Back-compat: a single active template applies to everyone, even when it
+      // happens to carry a ticket-type restriction. Only fall through to an
+      // error when there are multiple competing templates and none match — far
+      // safer than handing out the wrong-role certificate.
+      (activeTemplates.length === 1 ? activeTemplates[0] : null)
 
     if (!template) {
-      return NextResponse.json({ error: "No certificate template found for this event" }, { status: 404 })
+      return NextResponse.json(
+        { error: "No certificate template configured for your registration type" },
+        { status: 404 },
+      )
     }
 
     // Fetch event
