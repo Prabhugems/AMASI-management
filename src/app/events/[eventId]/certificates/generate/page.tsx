@@ -37,6 +37,12 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { PDFDocument } from "pdf-lib"
+
+// Generate in chunks well under the API's 500-per-request cap and the
+// serverless timeout — each cert renders a full-page background image, so
+// large single requests both exceed the cap and risk timing out.
+const BATCH_SIZE = 150
 
 type Attendee = {
   id: string
@@ -69,6 +75,7 @@ export default function GenerateCertificatesPage() {
   const [selectedAttendees, setSelectedAttendees] = useState<Set<string>>(new Set())
   const [selectedTemplate, setSelectedTemplate] = useState<string>("")
   const [generating, setGenerating] = useState(false)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   // Fetch attendees
   const { data: attendees, isLoading: attendeesLoading } = useQuery({
@@ -161,44 +168,74 @@ export default function GenerateCertificatesPage() {
       return
     }
 
+    const registrationIds = Array.from(selectedAttendees)
+
+    // Split into batches so each request stays under the API's per-request cap
+    // and the serverless timeout. The returned per-batch PDFs are stitched into
+    // a single file client-side so the admin still gets one download.
+    const batches: string[][] = []
+    for (let i = 0; i < registrationIds.length; i += BATCH_SIZE) {
+      batches.push(registrationIds.slice(i, i + BATCH_SIZE))
+    }
+
     setGenerating(true)
+    setProgress({ done: 0, total: registrationIds.length })
+
+    const mergedPdf = await PDFDocument.create()
+    const succeededIds: string[] = []
+    let failedCount = 0
+
     try {
-      const registrationIds = Array.from(selectedAttendees)
-
-      // Call the certificate generation API
-      const response = await fetch("/api/certificates/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event_id: eventId,
-          template_id: selectedTemplate,
-          registration_ids: registrationIds,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to generate certificates")
-      }
-
-      // Mark registrations as certificate generated immediately (PDF was created server-side)
-      const now = new Date().toISOString()
-      for (const id of registrationIds) {
-        await (supabase as any)
-          .from("registrations")
-          .update({
-            certificate_generated_at: now,
-            custom_fields: {
-              ...(attendees?.find(a => a.id === id)?.custom_fields || {}),
-              certificate_generated: true,
-              certificate_generated_at: now,
-            },
+      for (let b = 0; b < batches.length; b++) {
+        const batch = batches[b]
+        try {
+          const response = await fetch("/api/certificates/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              event_id: eventId,
+              template_id: selectedTemplate,
+              registration_ids: batch,
+            }),
           })
-          .eq("id", id)
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.error || `Batch ${b + 1} failed`)
+          }
+
+          // Merge this batch's pages into the combined document.
+          const bytes = await response.arrayBuffer()
+          const batchPdf = await PDFDocument.load(bytes)
+          const pages = await mergedPdf.copyPages(batchPdf, batchPdf.getPageIndices())
+          pages.forEach((p) => mergedPdf.addPage(p))
+
+          succeededIds.push(...batch)
+          setProgress({ done: succeededIds.length, total: registrationIds.length })
+        } catch (err: any) {
+          // Don't abort the whole run on one bad batch — report it and continue
+          // so a single timeout doesn't lose the other 400+ certificates.
+          failedCount += batch.length
+          toast.error(`Batch ${b + 1} of ${batches.length} failed: ${err.message}`)
+        }
       }
 
-      // Download the generated PDF
-      const blob = await response.blob()
+      if (succeededIds.length === 0) {
+        throw new Error("All batches failed — no certificates generated")
+      }
+
+      // Mark the succeeded registrations generated in one bulk update.
+      // `certificate_generated_at` is the canonical signal read everywhere
+      // (Send, Reports, Verify, delegate portal, /my).
+      const now = new Date().toISOString()
+      await (supabase as any)
+        .from("registrations")
+        .update({ certificate_generated_at: now })
+        .in("id", succeededIds)
+
+      // Download the merged PDF.
+      const mergedBytes = await mergedPdf.save()
+      const blob = new Blob([new Uint8Array(mergedBytes)], { type: "application/pdf" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
@@ -209,12 +246,18 @@ export default function GenerateCertificatesPage() {
       URL.revokeObjectURL(url)
 
       queryClient.invalidateQueries({ queryKey: ["certificate-attendees", eventId] })
-      toast.success(`Generated and downloaded ${selectedAttendees.size} certificates`)
-      setSelectedAttendees(new Set())
+      toast.success(
+        failedCount > 0
+          ? `Generated ${succeededIds.length} certificates (${failedCount} failed — retry the pending ones)`
+          : `Generated and downloaded ${succeededIds.length} certificates`
+      )
+      // Keep failed rows selected so the admin can simply click Generate again.
+      setSelectedAttendees(new Set(registrationIds.filter((id) => !succeededIds.includes(id))))
     } catch (error: any) {
       toast.error(error.message || "Failed to generate certificates")
     } finally {
       setGenerating(false)
+      setProgress(null)
     }
   }
 
@@ -366,7 +409,8 @@ export default function GenerateCertificatesPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
           <p className="text-sm text-amber-700">
-            Large batches ({selectedAttendees.size} selected) may timeout. Consider generating in batches of 200.
+            Large selection ({selectedAttendees.size}) — these are generated automatically in
+            batches of {BATCH_SIZE} and stitched into one PDF. Keep this tab open until it finishes.
           </p>
         </div>
       )}
@@ -385,8 +429,16 @@ export default function GenerateCertificatesPage() {
             Preview
           </Button>
           <Button size="sm" onClick={generateCertificates} disabled={generating || !selectedTemplate}>
-            <Download className="h-4 w-4 mr-2" />
-            {generating ? "Generating..." : "Generate"}
+            {generating ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            {generating
+              ? progress
+                ? `Generating ${progress.done}/${progress.total}...`
+                : "Generating..."
+              : "Generate"}
           </Button>
         </div>
       )}
