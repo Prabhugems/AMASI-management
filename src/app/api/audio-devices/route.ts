@@ -11,6 +11,25 @@ export async function POST(request: NextRequest) {
     }
     const cleanCode = String(device_code).trim().toUpperCase()
 
+    // Guard against mis-scans. Staff sometimes scan the attendee's badge QR
+    // (a /v/<token> verification URL) or their registration number into the
+    // device field. That silently mints a phantom "device" which can never be
+    // returned (returns scan the physical barcode), permanently inflating the
+    // outstanding count. Real device codes are short numeric barcodes, so
+    // reject anything that is clearly a URL or a registration number.
+    const looksLikeUrl = /HTTPS?:|:\/\/|\/V\//.test(cleanCode)
+    const looksLikeRegNumber =
+      /^(REG|TECH)[-_]/.test(cleanCode) ||
+      /^[0-9]{3}[A-Z][0-9]{3}/.test(cleanCode) ||
+      cleanCode.startsWith("TECHNOSURG") ||
+      cleanCode.startsWith("AMASI")
+    if (looksLikeUrl || looksLikeRegNumber || cleanCode.length > 12) {
+      return NextResponse.json(
+        { error: `"${String(device_code).trim()}" doesn't look like a device code. Scan the numeric barcode on the audio device, not the attendee's badge or QR code.` },
+        { status: 400 },
+      )
+    }
+
     const supabase = await createAdminClient()
 
     // 1. Find the registration
@@ -19,6 +38,15 @@ export async function POST(request: NextRequest) {
     else regQuery = regQuery.ilike("registration_number", registration_number)
     const { data: reg } = await regQuery.maybeSingle()
     if (!reg) return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+
+    // Belt-and-suspenders: reject the attendee's own registration number scanned
+    // into the device field (covers reg-number formats the patterns above miss).
+    if (cleanCode === String(reg.registration_number || "").toUpperCase()) {
+      return NextResponse.json(
+        { error: "That's the attendee's registration number, not a device code. Scan the numeric barcode on the audio device." },
+        { status: 400 },
+      )
+    }
 
     // 2. Find or create the device
     let { data: device } = await (supabase as any)
