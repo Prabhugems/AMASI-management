@@ -58,6 +58,10 @@ interface PrintStation {
     printer_type?: "browser" | "zebra" | "thermal" | "usb"
     printer_ip?: string
     printer_port?: number
+    // CUPS printer name on the local print-proxy host. When set, printViaProxy
+    // sends jobs to this exact printer (`lp -d <name>`); otherwise it picks
+    // the first USB printer the proxy reports.
+    proxy_printer_name?: string
     margins: { top: number; right: number; bottom: number; left: number }
     scale: number
     copies: number
@@ -157,6 +161,7 @@ function PrintStationKioskPage() {
     printer_type: "browser" as "browser" | "zebra" | "thermal" | "usb",
     printer_ip: "",
     printer_port: 9100,
+    proxy_printer_name: "",
     auto_print: false,
   })
   const [thermalPrinting, setThermalPrinting] = useState(false)
@@ -423,33 +428,38 @@ function PrintStationKioskPage() {
           }
         }
 
-        // Try local USB printing first (for Zebra connected via USB)
-        try {
-          const { generateZPL } = await import("@/lib/zpl-generator")
-          const zpl = generateZPL(
-            data.registration,
-            {
-              id: station?.id,
-              name: station?.name,
-              print_settings: station?.print_settings,
-              events: station?.events,
-            },
-            station?.badge_templates,
-            station?.print_mode
-          )
-          const localRes = await fetch("/api/local-print", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ zpl })
-          })
-          if (localRes.ok) {
-            setZplStatus({ success: true, message: "Printed to USB Zebra!" })
-            setTimeout(() => resetScan(), 1500)
-            return
+        // Try direct USB Zebra (via /api/local-print) only when the local
+        // print proxy is NOT online. The proxy is the preferred path for any
+        // USB CUPS printer that needs a vendor driver (e.g. Dcode/4BARCODE),
+        // so when it's available let triggerPrint → printViaProxy handle it.
+        // Otherwise /api/local-print falls back to a real Zebra over raw ZPL.
+        if (!proxyOnline) {
+          try {
+            const { generateZPL } = await import("@/lib/zpl-generator")
+            const zpl = generateZPL(
+              data.registration,
+              {
+                id: station?.id,
+                name: station?.name,
+                print_settings: station?.print_settings,
+                events: station?.events,
+              },
+              station?.badge_templates,
+              station?.print_mode
+            )
+            const localRes = await fetch("/api/local-print", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ zpl })
+            })
+            if (localRes.ok) {
+              setZplStatus({ success: true, message: "Printed to USB Zebra!" })
+              setTimeout(() => resetScan(), 1500)
+              return
+            }
+          } catch (e) {
+            console.log("Local print unavailable, using browser print")
           }
-        } catch (e) {
-          // Local print not available, fall back to browser print
-          console.log("Local print unavailable, using browser print")
         }
         triggerPrint(printData)
       }
@@ -620,7 +630,12 @@ function PrintStationKioskPage() {
 
   // Print via local proxy (for USB thermal printers with auto-cut)
   const printViaProxy = async (htmlContent: string) => {
-    const printerName = proxyPrinters.find(p => p.usb)?.name || proxyPrinters[0]?.name
+    // Prefer the station's pinned proxy printer (set in Settings); only fall
+    // back to "first USB" auto-pick when nothing is pinned or the pinned
+    // printer isn't currently visible to the proxy.
+    const pinned = station?.print_settings?.proxy_printer_name
+    const pinnedMatch = pinned && proxyPrinters.find(p => p.name === pinned)
+    const printerName = pinnedMatch?.name || proxyPrinters.find(p => p.usb)?.name || proxyPrinters[0]?.name
     if (!printerName) throw new Error("No printer found on proxy")
 
     const paperMap: Record<string, string> = {
@@ -923,9 +938,11 @@ function PrintStationKioskPage() {
     // Create printable content based on print mode and template
     const printContent = generatePrintContent(data)
 
-    // If local print proxy is running and printer_type is thermal, use proxy (auto-cut via CUPS)
+    // If local print proxy is running, prefer it for any USB/thermal/browser
+    // station type. The proxy prints via CUPS lp, which works on macOS where
+    // WebUSB cannot claim a printer that the OS has installed.
     const printerType = station?.print_settings?.printer_type || "browser"
-    if (proxyOnline && (printerType === "thermal" || printerType === "browser")) {
+    if (proxyOnline && (printerType === "thermal" || printerType === "browser" || printerType === "usb")) {
       try {
         await printViaProxy(printContent)
         if (soundEnabled) playSuccessSound()
@@ -1045,18 +1062,29 @@ function PrintStationKioskPage() {
 
       // Generate the badge HTML
       const printContent = generatePrintContent(data)
+      const settings = station?.print_settings
+      const dim = getPaperDimensions(settings?.paper_size || "4x6", settings?.orientation || "portrait")
 
-      // Render HTML to a temporary container
+      // Render HTML to a temporary container. We strip the <head> so its
+      // global styles don't affect the host page; the badge wrapper styles
+      // (which lived there) are re-applied via scoped CSS below — without
+      // them the absolutely-positioned children collapse the container to
+      // 0×0 and html2canvas produces an empty canvas.
       const container = document.createElement("div")
+      container.id = `print-render-${Date.now()}`
       container.style.position = "absolute"
       container.style.left = "-9999px"
       container.style.top = "0"
-      container.innerHTML = printContent
-      // Extract just the body content from the full HTML
+      container.style.width = dim.width
+      container.style.height = dim.height
       const bodyMatch = printContent.match(/<body[^>]*>([\s\S]*)<\/body>/)
-      if (bodyMatch) {
-        container.innerHTML = bodyMatch[1]
-      }
+      const scopedStyle = `<style>
+        #${container.id} .badge-wrapper, #${container.id} .badge-container {
+          width: ${dim.width}; height: ${dim.height};
+        }
+        #${container.id} .badge-container { position: relative; overflow: hidden; }
+      </style>`
+      container.innerHTML = scopedStyle + (bodyMatch ? bodyMatch[1] : printContent)
       document.body.appendChild(container)
 
       // Wait for fonts/images to load
@@ -1071,6 +1099,10 @@ function PrintStationKioskPage() {
       })
 
       document.body.removeChild(container)
+
+      if (!canvas.width || !canvas.height) {
+        throw new Error("Rendered badge canvas was empty — check that the template has elements within the paper bounds.")
+      }
 
       // Convert to ESC/POS raster data
       const escposData = await canvasToEscPos(
@@ -1107,6 +1139,26 @@ function PrintStationKioskPage() {
     setUsbPrinting(true)
     setUsbStatus(null)
 
+    // On macOS, CUPS owns USB printers installed at the OS level, so
+    // WebUSB's claimInterface fails. If the local print-proxy is online,
+    // prefer it — it prints via CUPS lp, which works regardless. The same
+    // station config then works on an Android tablet via WebUSB too.
+    if (proxyOnline) {
+      try {
+        const printContent = generatePrintContent(data)
+        await printViaProxy(printContent)
+        setUsbStatus({ success: true, message: "Printed via proxy!" })
+        if (soundEnabled) playSuccessSound()
+        setPrintSuccess(true)
+        setTimeout(() => resetScan(), 1500)
+        setUsbPrinting(false)
+        return
+      } catch (err: any) {
+        // Proxy failed — fall through to WebUSB
+        console.warn("Proxy print failed, trying WebUSB:", err?.message)
+      }
+    }
+
     try {
       const { isUsbPrinterConnected, printBadgeViaUsb } = await import("@/lib/usb-printer")
       const html2canvas = (await import("html2canvas")).default
@@ -1139,18 +1191,27 @@ function PrintStationKioskPage() {
 
       // Generate the badge HTML
       const printContent = generatePrintContent(data)
+      const settings = station?.print_settings
+      const dim = getPaperDimensions(settings?.paper_size || "4x6", settings?.orientation || "portrait")
 
-      // Render HTML to a temporary container
+      // See triggerThermalPrint for why we re-apply scoped wrapper styles
+      // here (the <style> block from <head> is intentionally not injected
+      // into the host document).
       const container = document.createElement("div")
+      container.id = `print-render-usb-${Date.now()}`
       container.style.position = "absolute"
       container.style.left = "-9999px"
       container.style.top = "0"
+      container.style.width = dim.width
+      container.style.height = dim.height
       const bodyMatch = printContent.match(/<body[^>]*>([\s\S]*)<\/body>/)
-      if (bodyMatch) {
-        container.innerHTML = bodyMatch[1]
-      } else {
-        container.innerHTML = printContent
-      }
+      const scopedStyle = `<style>
+        #${container.id} .badge-wrapper, #${container.id} .badge-container {
+          width: ${dim.width}; height: ${dim.height};
+        }
+        #${container.id} .badge-container { position: relative; overflow: hidden; }
+      </style>`
+      container.innerHTML = scopedStyle + (bodyMatch ? bodyMatch[1] : printContent)
       document.body.appendChild(container)
 
       // Wait for fonts/images to load
@@ -1165,6 +1226,10 @@ function PrintStationKioskPage() {
       })
 
       document.body.removeChild(container)
+
+      if (!canvas.width || !canvas.height) {
+        throw new Error("Rendered badge canvas was empty — check that the template has elements within the paper bounds.")
+      }
 
       // Send via USB
       const result = await printBadgeViaUsb(
@@ -1584,6 +1649,7 @@ function PrintStationKioskPage() {
         printer_type: station.print_settings?.printer_type || "browser",
         printer_ip: station.print_settings?.printer_ip || "",
         printer_port: station.print_settings?.printer_port || 9100,
+        proxy_printer_name: station.print_settings?.proxy_printer_name || "",
         auto_print: station.auto_print || false,
       })
     }
@@ -1608,6 +1674,7 @@ function PrintStationKioskPage() {
             printer_type: settingsForm.printer_type || "browser",
             printer_ip: settingsForm.printer_ip || undefined,
             printer_port: settingsForm.printer_ip ? settingsForm.printer_port : undefined,
+            proxy_printer_name: settingsForm.proxy_printer_name || undefined,
           },
           auto_print: settingsForm.auto_print,
         })
@@ -1964,6 +2031,37 @@ function PrintStationKioskPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Print-proxy printer picker — only relevant when the local proxy is online */}
+              {proxyOnline && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Proxy Printer
+                    <span className="ml-2 text-xs text-emerald-600">● online</span>
+                  </label>
+                  <Select
+                    value={settingsForm.proxy_printer_name || "__auto__"}
+                    onValueChange={(v) => setSettingsForm({ ...settingsForm, proxy_printer_name: v === "__auto__" ? "" : v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__auto__">Auto (first USB printer)</SelectItem>
+                      {proxyPrinters.map(p => (
+                        <SelectItem key={p.name} value={p.name}>
+                          {p.name}{p.usb ? " (USB)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {settingsForm.proxy_printer_name && !proxyPrinters.find(p => p.name === settingsForm.proxy_printer_name) && (
+                    <p className="text-xs text-amber-600">
+                      Pinned printer &quot;{settingsForm.proxy_printer_name}&quot; not visible on this proxy host. Will fall back to auto-pick.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Printer IP - shown for Zebra and Thermal (not USB) */}
               {settingsForm.printer_type !== "browser" && settingsForm.printer_type !== "usb" && (
@@ -2579,7 +2677,9 @@ function PrintStationKioskPage() {
                   {hasUsbPrinter && (
                     <button
                       onClick={() => {
-                        if (!usbConnected) {
+                        // Proxy path doesn't need WebUSB connection — only gate
+                        // the connect-first message when neither route exists.
+                        if (!usbConnected && !proxyOnline) {
                           setUsbStatus({ success: false, message: "Connect printer first via Settings" })
                           setTimeout(() => setUsbStatus(null), 3000)
                           return
@@ -2781,30 +2881,50 @@ function PrintStationKioskPage() {
             {(hasZplPrinter || hasThermalPrinter || hasUsbPrinter) && (
               <>
                 <span className="text-muted-foreground">•</span>
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    hasUsbPrinter
-                      ? (usbConnected ? "bg-emerald-500" : "bg-red-500")
-                      : (printerOnline === null ? "bg-gray-400" : printerOnline ? "bg-emerald-500" : "bg-red-500")
-                  }`} />
-                  {hasUsbPrinter ? <Usb className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
-                  <span className={
-                    hasUsbPrinter
-                      ? (usbConnected ? "text-emerald-600" : "text-red-600")
-                      : (printerOnline ? "text-emerald-600" : printerOnline === false ? "text-red-600" : "text-muted-foreground")
-                  }>
-                    {hasUsbPrinter
-                      ? (usbConnected ? "USB Connected" : "USB Disconnected")
-                      : (printerOnline === null ? "Checking..." : printerOnline ? "Printer Online" : "Printer Offline")
-                    }
-                  </span>
-                  <span className="text-muted-foreground text-xs">
-                    {hasUsbPrinter
-                      ? (usbPrinterName || "Decode")
-                      : `(${hasThermalPrinter ? "Thermal" : "Zebra"} ${station.print_settings?.printer_ip})`
-                    }
-                  </span>
-                </div>
+                {(() => {
+                  // Proxy takes precedence: if it's online, printing is ready
+                  // regardless of WebUSB pairing or remote-printer IP reachability.
+                  const proxyName = station.print_settings?.proxy_printer_name
+                  const proxyResolved = proxyName && proxyPrinters.find(p => p.name === proxyName)
+                    ? proxyName
+                    : (proxyPrinters.find(p => p.usb)?.name || proxyPrinters[0]?.name || "auto")
+                  if (proxyOnline) {
+                    return (
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <Printer className="w-4 h-4" />
+                        <span className="text-emerald-600">Proxy Ready</span>
+                        <span className="text-muted-foreground text-xs truncate max-w-[280px]">({proxyResolved})</span>
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        hasUsbPrinter
+                          ? (usbConnected ? "bg-emerald-500" : "bg-red-500")
+                          : (printerOnline === null ? "bg-gray-400" : printerOnline ? "bg-emerald-500" : "bg-red-500")
+                      }`} />
+                      {hasUsbPrinter ? <Usb className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
+                      <span className={
+                        hasUsbPrinter
+                          ? (usbConnected ? "text-emerald-600" : "text-red-600")
+                          : (printerOnline ? "text-emerald-600" : printerOnline === false ? "text-red-600" : "text-muted-foreground")
+                      }>
+                        {hasUsbPrinter
+                          ? (usbConnected ? "USB Connected" : "USB Disconnected")
+                          : (printerOnline === null ? "Checking..." : printerOnline ? "Printer Online" : "Printer Offline")
+                        }
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        {hasUsbPrinter
+                          ? (usbPrinterName || "Decode")
+                          : `(${hasThermalPrinter ? "Thermal" : "Zebra"} ${station.print_settings?.printer_ip})`
+                        }
+                      </span>
+                    </div>
+                  )
+                })()}
               </>
             )}
           </div>

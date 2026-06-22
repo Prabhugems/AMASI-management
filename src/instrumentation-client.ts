@@ -17,6 +17,11 @@ Sentry.init({
   // Id:1, MethodName:update, ParamCount:4"), which hit 20 users on /my as noise.
   ignoreErrors: [
     "Object Not Found Matching Id",
+    /The play\(\) request was interrupted/,
+    // Local print-proxy probe runs every 30s and is expected to fail when
+    // the proxy isn't running on this machine. The page handles it; Sentry
+    // shouldn't.
+    /Failed to fetch.*localhost:300[12]/,
   ],
   // Drop errors whose frames originate from browser extensions, not our bundle.
   denyUrls: [

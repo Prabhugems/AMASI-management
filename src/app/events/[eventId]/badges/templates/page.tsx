@@ -19,7 +19,7 @@ import {
   Sparkles,
   Lock,
   LockOpen,
-  Type,
+  PencilLine,
   X,
   AlertTriangle,
 } from "lucide-react"
@@ -387,7 +387,7 @@ export default function BadgeTemplatesPage() {
                       className="p-2 hover:bg-muted rounded-lg transition-colors"
                       title="Rename"
                     >
-                      <Type className="w-4 h-4 text-muted-foreground" />
+                      <PencilLine className="w-4 h-4 text-muted-foreground" />
                     </button>
                     <button
                       onClick={() => duplicateMutation.mutate(template)}

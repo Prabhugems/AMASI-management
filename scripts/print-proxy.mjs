@@ -24,6 +24,31 @@ import os from "node:os"
 
 const PORT = parseInt(process.env.PORT || "3001", 10)
 
+// macOS CUPS lp can't parse text/html — we render HTML to PDF first via
+// headless Chrome, then send the PDF to lp (it accepts application/pdf).
+const CHROME_BIN =
+  process.env.CHROME_PATH ||
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+// 4BARCODE (Godex DC421/4B-2054TG family) ships with a CUPS filter that
+// emits TSPL2 but never sends SET BACK ON. With a cutter installed, the
+// print-head-to-cutter distance causes the printer to waste one label per
+// cut. We detour those printers through the filter manually, inject
+// SET BACK ON, and re-submit via `lp -o raw`. Other printers keep the
+// straight PDF→lp path.
+const FOURBARCODE_FILTER = `/Library/Printers/4BARCODE/bin/rastertosnailtspl-mac${
+  process.arch === "arm64" ? "arm64" : "x64"
+}`
+// Backfeed/cut injection is parked. On the DC421-PRO the firmware ignored
+// every TSPL2 variant we tried (SET BACK ON, FEED→CUT→BACKFEED) and the
+// EZPL ^XSET,SMARTBACK,1 didn't persist either. Permanent fix is the
+// Windows Diagnostic Tool or Label LIVE on Mac writing Backfeed=ON to
+// EEPROM. Until then we run tear-off (one label per print, hand-tear).
+// Flip this to `/4BARCODE|4B-/i.test(printer) && fs.existsSync(...)`
+// to re-enable the injection branch below.
+const usesBackfeedInjection = () => false
+void FOURBARCODE_FILTER
+
 // Auto-detect thermal printers connected via USB
 function detectPrinters() {
   try {
@@ -158,36 +183,120 @@ const handler = async (req, res) => {
       return
     }
 
-    // Write HTML to a temp file
-    const tmpFile = path.join(os.tmpdir(), `badge-${Date.now()}.html`)
-    fs.writeFileSync(tmpFile, html)
+    const stamp = Date.now()
+    const htmlFile = path.join(os.tmpdir(), `badge-${stamp}.html`)
+    const pdfFile = path.join(os.tmpdir(), `badge-${stamp}.pdf`)
+    fs.writeFileSync(htmlFile, html)
 
-    // Build lp command with options
-    const opts = []
-    if (paperSize) opts.push(`-o media=${paperSize}`)
-    if (copies > 1) opts.push(`-n ${copies}`)
-    if (labelMark) opts.push("-o PaperType=LabelMark")
-    if (autoCut) opts.push("-o PostAction=Cut")
+    const cleanup = () => {
+      try { fs.unlinkSync(htmlFile) } catch {}
+      try { fs.unlinkSync(pdfFile) } catch {}
+    }
 
-    const cmd = `lp -d ${printer} ${opts.join(" ")} ${tmpFile}`
+    // 1) HTML -> PDF via headless Chrome (lp won't accept text/html on macOS).
+    // --headless=new honors CSS @page { size: ... } so a 4x6 badge produces a
+    // 4x6 PDF (old --headless hardcodes Letter, splitting the badge across
+    // multiple labels). --no-pdf-header-footer drops the default
+    // date/title bar.
+    const chromeCmd =
+      `"${CHROME_BIN}" --headless=new --disable-gpu --no-sandbox ` +
+      `--no-pdf-header-footer --virtual-time-budget=2000 ` +
+      `--print-to-pdf="${pdfFile}" "file://${htmlFile}"`
 
-    exec(cmd, (error, stdout, stderr) => {
-      // Cleanup temp file
-      try { fs.unlinkSync(tmpFile) } catch {}
-
-      if (error) {
-        console.error(`Print failed: ${error.message}`)
+    exec(chromeCmd, (chromeErr) => {
+      if (chromeErr || !fs.existsSync(pdfFile) || fs.statSync(pdfFile).size === 0) {
+        cleanup()
+        const msg = chromeErr ? chromeErr.message : "Chrome produced an empty PDF"
+        console.error(`Print failed (HTML→PDF): ${msg}`)
         res.writeHead(500, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ success: false, error: error.message }))
+        res.end(JSON.stringify({ success: false, error: `HTML→PDF failed: ${msg}` }))
         return
       }
 
-      const jobMatch = stdout.match(/request id is (\S+)/)
-      const jobId = jobMatch ? jobMatch[1] : null
-      console.log(`Printed: ${jobId || stdout.trim()}`)
+      const opts = []
+      if (paperSize) opts.push(`-o media=${paperSize}`)
+      if (copies > 1) opts.push(`-n ${copies}`)
+      if (labelMark) opts.push("-o PaperType=LabelMark")
+      if (autoCut) opts.push("-o PostAction=Cut")
 
-      res.writeHead(200, { "Content-Type": "application/json" })
-      res.end(JSON.stringify({ success: true, jobId, message: stdout.trim() }))
+      const sendOk = (jobId, stdout) => {
+        cleanup()
+        console.log(`Printed: ${jobId || stdout.trim()}`)
+        res.writeHead(200, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({ success: true, jobId, message: stdout.trim() }))
+      }
+      const sendErr = (where, message) => {
+        cleanup()
+        console.error(`Print failed (${where}): ${message}`)
+        res.writeHead(500, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({ success: false, error: message }))
+      }
+
+      // 2a) 4BARCODE path: run the driver pipeline manually, inject
+      //     SET BACK ON, then send raw. Avoids wasting a label per cut.
+      if (usesBackfeedInjection(printer)) {
+        const ppdPath = `/etc/cups/ppd/${printer}.ppd`
+        const rasterFile = path.join(os.tmpdir(), `raster-${stamp}.bin`)
+        const tsplFile = path.join(os.tmpdir(), `tspl-${stamp}.bin`)
+        const cleanupExtra = () => {
+          try { fs.unlinkSync(rasterFile) } catch {}
+          try { fs.unlinkSync(tsplFile) } catch {}
+        }
+
+        const optStr = opts.map((o) => o.replace(/^-o\s+/, "")).join(" ")
+        const rasterCmd = `cupsfilter -p "${ppdPath}" -m application/vnd.cups-raster "${pdfFile}" > "${rasterFile}" 2>/dev/null`
+
+        exec(rasterCmd, (rasterErr) => {
+          if (rasterErr || !fs.existsSync(rasterFile) || fs.statSync(rasterFile).size === 0) {
+            cleanupExtra()
+            return sendErr("pdf→raster", rasterErr ? rasterErr.message : "empty raster")
+          }
+
+          const filterCmd =
+            `PPD="${ppdPath}" "${FOURBARCODE_FILTER}" 1 user "badge" 1 "${optStr}" ` +
+            `"${rasterFile}" > "${tsplFile}" 2>/dev/null`
+
+          exec(filterCmd, (filterErr) => {
+            try { fs.unlinkSync(rasterFile) } catch {}
+            if (filterErr || !fs.existsSync(tsplFile) || fs.statSync(tsplFile).size === 0) {
+              try { fs.unlinkSync(tsplFile) } catch {}
+              return sendErr("raster→tspl", filterErr ? filterErr.message : "empty TSPL")
+            }
+
+            // Driver emits SET CUTTER ON which makes the printer feed
+            // ~3.5 in past the print head before auto-cutting, wasting one
+            // label per print (output = 9.5" for a 6" label). We disable
+            // the driver's auto-cut and do FEED→CUT→BACKFEED manually so
+            // the cut lands on the label boundary and the next label is
+            // restored at the print head. latin1 is byte-safe for the
+            // binary bitmap payload that follows the ASCII preamble.
+            let tspl = fs.readFileSync(tsplFile, "latin1")
+            tspl = tspl.replace(/SET CUTTER ON\r?\n/, "SET CUTTER OFF\r\n")
+            tspl = tspl.replace(
+              /(PRINT 1,1\r?\n?)$/,
+              `$1FEED ${CUTTER_OFFSET_DOTS}\r\nCUT\r\nBACKFEED ${CUTTER_OFFSET_DOTS}\r\n`,
+            )
+            fs.writeFileSync(tsplFile, tspl, "latin1")
+
+            const rawCmd = `lp -d ${printer} -o raw "${tsplFile}"`
+            exec(rawCmd, (lpErr, stdout) => {
+              try { fs.unlinkSync(tsplFile) } catch {}
+              if (lpErr) return sendErr("lp raw", lpErr.message)
+              const jobMatch = stdout.match(/request id is (\S+)/)
+              sendOk(jobMatch ? jobMatch[1] : null, stdout)
+            })
+          })
+        })
+        return
+      }
+
+      // 2b) Standard path: PDF straight to lp (driver does rasterization).
+      const lpCmd = `lp -d ${printer} ${opts.join(" ")} "${pdfFile}"`
+      exec(lpCmd, (lpErr, stdout) => {
+        if (lpErr) return sendErr("lp", lpErr.message)
+        const jobMatch = stdout.match(/request id is (\S+)/)
+        sendOk(jobMatch ? jobMatch[1] : null, stdout)
+      })
     })
     return
   }

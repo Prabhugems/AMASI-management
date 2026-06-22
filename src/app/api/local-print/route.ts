@@ -17,7 +17,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "ZPL data required" }, { status: 400 })
     }
 
-    // Default to Zebra printer
+    // If the local print proxy is reachable AND the caller did not pin a
+    // specific printer, refuse so the page falls through to its proxy path.
+    // Stops cached browsers from silently sending raw ZPL to the wrong
+    // (Zebra) printer when the user actually has a Dcode/4BARCODE on the
+    // proxy. Pinning printer_name keeps the legacy direct-to-Zebra path.
+    if (!printer_name) {
+      try {
+        const probe = await fetch("http://localhost:3001/status", {
+          signal: AbortSignal.timeout(800),
+        })
+        if (probe.ok) {
+          return NextResponse.json(
+            { success: false, error: "Local print proxy is online; use proxy path." },
+            { status: 503 },
+          )
+        }
+      } catch {
+        // Proxy not reachable — fall through to direct ZPL path
+      }
+    }
+
+    // Default to Zebra printer when caller has not specified one and no proxy.
     const printerName = printer_name || "Zebra_Technologies_ZTC_ZD230_203dpi_ZPL"
 
     // Send ZPL to printer via lp command
