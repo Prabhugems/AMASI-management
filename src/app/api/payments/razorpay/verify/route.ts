@@ -786,7 +786,7 @@ async function triggerAutoActions(supabase: any, registrationId: string, eventId
       .from("registrations")
       .select(`
         id, registration_number, attendee_name, attendee_email, quantity, total_amount,
-        payment_status, event_id,
+        payment_status, event_id, ticket_type_id,
         events!inner(name, start_date, venue_name),
         ticket_types!inner(name)
       `)
@@ -886,12 +886,28 @@ async function triggerAutoActions(supabase: any, registrationId: string, eventId
     // Auto-generate certificate
     if (eventSettings?.auto_generate_certificate) {
       try {
-        const { data: certTemplate } = await supabase
+        // Pick the active template matching this registration's ticket type
+        // (delegate vs faculty etc.), not just is_default — auto-emailing the
+        // wrong-role certificate is worse than picking by ticket type. Falls
+        // back to the default/catch-all, then a single active template.
+        const { data: certTemplatesRaw } = await supabase
           .from("certificate_templates")
-          .select("id")
+          .select("id, is_default, ticket_type_ids")
           .eq("event_id", eventId)
-          .eq("is_default", true)
-          .single()
+          .eq("is_active", true)
+
+        const certTemplates = (certTemplatesRaw || []) as any[]
+        const certTicketTypeId = regData.ticket_type_id
+        const certTemplate =
+          certTemplates.find(
+            (t: any) =>
+              Array.isArray(t.ticket_type_ids) &&
+              certTicketTypeId &&
+              t.ticket_type_ids.includes(certTicketTypeId),
+          ) ||
+          certTemplates.find((t: any) => t.is_default) ||
+          certTemplates.find((t: any) => !t.ticket_type_ids || t.ticket_type_ids.length === 0) ||
+          (certTemplates.length === 1 ? certTemplates[0] : null)
 
         if (certTemplate) {
           console.log(`[AUTO] Generating certificate for registration ${regData.registration_number}`)
