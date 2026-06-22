@@ -6,6 +6,7 @@ import {
   sendQikchatTemplate,
   QIKCHAT_TEMPLATE_WELCOME,
 } from "@/lib/qikchat"
+import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 
 // POST /api/registrations/whatsapp-welcome
 // Manually (re)send the welcome WhatsApp to one registration. Same template
@@ -19,9 +20,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "registration_id is required" }, { status: 400 })
     }
 
-    if (!isQikchatEnabled()) {
+    if (!isQikchatEnabled() && !isGallaboxEnabled()) {
       return NextResponse.json(
-        { error: "WhatsApp is not configured. Set QIKCHAT_API_KEY." },
+        { error: "WhatsApp is not configured. Set QIKCHAT_API_KEY or GALLABOX_API_KEY." },
         { status: 503 }
       )
     }
@@ -75,11 +76,29 @@ export async function POST(request: NextRequest) {
     // Prefill /my with the phone so taps from the link land on their registration.
     const portalUrl = `${baseUrl}/my?q=${encodeURIComponent(registration.attendee_phone)}`
 
-    const result = await sendQikchatTemplate(
-      registration.attendee_phone,
-      QIKCHAT_TEMPLATE_WELCOME,
-      [attendeeName, eventName, registration.registration_number, portalUrl]
-    )
+    // Prefer Qikchat when configured; otherwise fall back to Gallabox
+    // (college uses Gallabox via the approved `delegate_login` template).
+    let result: { success: boolean; messageId?: string; error?: string }
+    let providerUsed: string
+    let templateUsed: string
+    if (isQikchatEnabled()) {
+      providerUsed = "qikchat"
+      templateUsed = QIKCHAT_TEMPLATE_WELCOME
+      result = await sendQikchatTemplate(
+        registration.attendee_phone,
+        QIKCHAT_TEMPLATE_WELCOME,
+        [attendeeName, eventName, registration.registration_number, portalUrl]
+      )
+    } else {
+      providerUsed = "gallabox"
+      templateUsed = "delegate_login"
+      result = await sendGallaboxTemplate(
+        registration.attendee_phone,
+        attendeeName,
+        "delegate_login",
+        { Delegate_Name: attendeeName, Event_Name: eventName, Portal_URL: portalUrl }
+      )
+    }
 
     // Log to message_logs (same shape as /api/whatsapp/send)
     try {
@@ -87,11 +106,11 @@ export async function POST(request: NextRequest) {
         event_id: eventIdToUse || null,
         registration_id: registration.id,
         channel: "whatsapp",
-        provider: "qikchat",
+        provider: providerUsed,
         recipient: registration.attendee_phone,
         recipient_name: attendeeName,
         subject: null,
-        message_body: `Template: ${QIKCHAT_TEMPLATE_WELCOME}`,
+        message_body: `Template: ${templateUsed}`,
         status: result.success ? "sent" : "failed",
         provider_message_id: result.messageId || null,
         error_message: result.error || null,
