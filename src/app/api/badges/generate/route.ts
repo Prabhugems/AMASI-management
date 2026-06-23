@@ -107,8 +107,8 @@ function replacePlaceholders(text: string, registration: any, event: any): strin
     .join(", ")
   result = result.replace(/\{\{addons\}\}/g, addonNames)
 
-  // Secure check-in token (for QR codes - like Tito)
-  const checkinToken = registration.checkin_token || registration.registration_number
+  // Secure check-in token only — never encode a guessable registration_number into a QR
+  const checkinToken = registration.checkin_token
   result = result.replace(/\{\{checkin_token\}\}/g, checkinToken)
 
   // Full verification URL for QR codes
@@ -219,6 +219,15 @@ export async function POST(request: NextRequest) {
 
     if (regError || !registrations?.length) {
       return NextResponse.json({ error: "No registrations found" }, { status: 404 })
+    }
+
+    // Fail closed: never emit a guessable registration_number QR.
+    const missingToken = (registrations as any[]).filter((r) => !r.checkin_token)
+    if (missingToken.length > 0) {
+      return NextResponse.json({
+        error: `Cannot generate badges — ${missingToken.length} registration(s) are missing a secure checkin_token. Regenerate tokens and retry.`,
+        registration_numbers: missingToken.map((r) => r.registration_number),
+      }, { status: 409 })
     }
 
     // Get badge size
@@ -416,11 +425,10 @@ export async function POST(request: NextRequest) {
         }
 
         if (element.type === "qr_code") {
-          // Use secure verification URL by default (like Tito)
-          // Falls back to registration_number for backward compatibility
+          // Secure verification URL only (encodes checkin_token, never registration_number)
           const qrContent = replacePlaceholders(element.content || "{{checkin_url}}", registration, event)
           try {
-            const qrDataUrl = await QRCode.toDataURL(qrContent, { width: Math.round(width * 2), margin: 1, errorCorrectionLevel: "M" })
+            const qrDataUrl = await QRCode.toDataURL(qrContent, { width: Math.round(width * 3), margin: 4, errorCorrectionLevel: "Q" })
             const qrBase64 = qrDataUrl.split(",")[1]
             const qrBytes = Uint8Array.from(atob(qrBase64), (c) => c.charCodeAt(0))
             const qrImage = await pdfDoc.embedPng(qrBytes)

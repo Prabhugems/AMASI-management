@@ -16,46 +16,25 @@ export async function GET(
   const rateLimit = checkRateLimit(`verify:${clientIp}`, "public")
   if (!rateLimit.success) return rateLimitExceededResponse(rateLimit)
 
-  if (!token || token.length < 3) {
+  // Public verification accepts ONLY the 32-char secure checkin_token.
+  // registration_number is an identifier, never a credential — no public lookup by it.
+  if (!token || token.length < 32) {
     return NextResponse.json(
-      { valid: false, error: "Invalid token format" },
+      { valid: false, error: "Invalid token" },
       { status: 400 }
     )
   }
 
   const supabase = await createAdminClient()
 
-  // Determine if this is a checkin_token (long) or registration_number (short).
-  // Use >= 32 because reg numbers run up to 20 chars (e.g. "REG-20260605-Q7ILBX2")
-  // and the shortest checkin_token is 32. A 20-char threshold misclassifies the
-  // older REG-YYYYMMDD-XXXXXXX reg numbers as secure tokens and looks them up in
-  // the wrong column, surfacing as "Invalid or expired QR code".
-  const isSecureToken = token.length >= 32
-
-  // Optional event_id query param. REQUIRED for short registration_number
-  // lookups — otherwise the same number across two events could resolve to
-  // the wrong registration.
-  const { searchParams } = new URL(request.url)
-  const scopedEventId = searchParams.get("event_id")
-
-  if (!isSecureToken && !scopedEventId) {
-    return NextResponse.json(
-      { valid: false, error: "event_id is required when verifying by registration number" },
-      { status: 400 }
-    )
-  }
-
-  // Look up registration by checkin_token or registration_number
-  let query = (supabase as any)
+  // Look up registration by secure checkin_token only. No PII columns are
+  // selected — the public response returns name + check-in status, not contact data.
+  const { data: registration, error } = await (supabase as any)
     .from("registrations")
     .select(`
       id,
       registration_number,
       attendee_name,
-      attendee_email,
-      attendee_phone,
-      attendee_designation,
-      attendee_institution,
       status,
       checked_in,
       checked_in_at,
@@ -72,15 +51,8 @@ export async function GET(
         end_date
       )
     `)
-
-  if (isSecureToken) {
-    query = query.eq("checkin_token", token)
-  } else {
-    // Look up by registration number (case insensitive), scoped to event
-    query = query.ilike("registration_number", token).eq("event_id", scopedEventId)
-  }
-
-  const { data: registration, error } = await query.maybeSingle()
+    .eq("checkin_token", token)
+    .maybeSingle()
 
   if (error || !registration) {
     return NextResponse.json(
@@ -128,17 +100,13 @@ export async function GET(
     // No certificate template found - that's fine
   }
 
-  // Return attendee info (without sensitive data like token)
+  // Public response: name + check-in status only. No email/phone/designation/institution.
   return NextResponse.json({
     valid: true,
     registration: {
       id: registration.id,
       registration_number: registration.registration_number,
       attendee_name: registration.attendee_name,
-      attendee_email: registration.attendee_email,
-      attendee_phone: registration.attendee_phone,
-      attendee_designation: registration.attendee_designation,
-      attendee_institution: registration.attendee_institution,
       checked_in: registration.checked_in,
       checked_in_at: registration.checked_in_at,
       ticket_type: registration.ticket_types,
@@ -192,8 +160,9 @@ export async function POST(
     )
   }
 
-  // Verify staff access token and extract the authorized checkin_list_id
+  // Verify staff access token and extract the authorized checkin_list_id + event
   let verified_checkin_list_id: string
+  let verified_event_id: string
   {
     const { data: checkinList, error: listError } = await (supabase as any)
       .from("checkin_lists")
@@ -219,6 +188,7 @@ export async function POST(
 
     // Use the checkin_list_id from the validated token, not the user-supplied one
     verified_checkin_list_id = checkinList.id
+    verified_event_id = checkinList.event_id
   }
 
   // Determine if this is a checkin_token (long) or registration_number (short).
@@ -249,8 +219,10 @@ export async function POST(
   if (isSecureToken) {
     query2 = query2.eq("checkin_token", token)
   } else {
-    // Look up by registration number (case insensitive)
-    query2 = query2.ilike("registration_number", token)
+    // Reg-number lookup is permitted here ONLY because the staff access_token
+    // authorizes it, and it is scoped to that token's event so a number can't
+    // resolve to a registration in a different event.
+    query2 = query2.ilike("registration_number", token).eq("event_id", verified_event_id)
   }
 
   const { data: registration, error: regError } = await query2.maybeSingle()

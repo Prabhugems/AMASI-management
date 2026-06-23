@@ -64,7 +64,7 @@ function replacePlaceholders(text: string, registration: any, event: any): strin
     .join(", ")
   result = result.replace(/\{\{addons\}\}/g, addonNames)
 
-  const checkinToken = registration.checkin_token || registration.registration_number
+  const checkinToken = registration.checkin_token
   result = result.replace(/\{\{checkin_token\}\}/g, checkinToken)
 
   const baseUrl = getBaseUrl()
@@ -143,6 +143,11 @@ export async function GET(
 
   if (registration.status !== "confirmed") {
     return NextResponse.json({ error: `Registration is ${registration.status}` }, { status: 400 })
+  }
+
+  // Fail closed: the badge QR encodes the secure checkin_token only — never a registration_number.
+  if (!registration.checkin_token) {
+    return NextResponse.json({ error: "Cannot generate badge — missing a secure checkin_token. Regenerate the token and retry." }, { status: 409 })
   }
 
   // If badge already stored, redirect to it
@@ -363,7 +368,7 @@ export async function GET(
     if (element.type === "qr_code") {
       const qrContent = replacePlaceholders(element.content || "{{checkin_url}}", registration, event)
       try {
-        const qrDataUrl = await QRCode.toDataURL(qrContent, { width: Math.round(width * 2), margin: 1, errorCorrectionLevel: "M" })
+        const qrDataUrl = await QRCode.toDataURL(qrContent, { width: Math.round(width * 3), margin: 4, errorCorrectionLevel: "Q" })
         const qrBase64 = qrDataUrl.split(",")[1]
         const qrBytes = Uint8Array.from(atob(qrBase64), (c) => c.charCodeAt(0))
         const qrImage = await pdfDoc.embedPng(qrBytes)
