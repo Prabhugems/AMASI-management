@@ -305,25 +305,25 @@ export default function TravelOverviewPage() {
       </div>
 
       {/* Agent Portal Links */}
-      <div className="bg-gradient-to-r from-slate-50 to-slate-100/50 border rounded-lg p-4">
+      <div className="bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-muted/40 dark:to-muted/20 border rounded-lg p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Link2 className="h-4 w-4 text-slate-600" />
+          <Link2 className="h-4 w-4 text-muted-foreground" />
           <span className="font-semibold text-sm">Share Portal Links with Agents</span>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {agentLinks.map((link) => {
             const Icon = link.icon
             const colorClasses: Record<string, string> = {
-              indigo: "border-indigo-200 bg-indigo-50 hover:bg-indigo-100",
-              blue: "border-blue-200 bg-blue-50 hover:bg-blue-100",
-              orange: "border-orange-200 bg-orange-50 hover:bg-orange-100",
-              green: "border-green-200 bg-green-50 hover:bg-green-100",
+              indigo: "border-indigo-200 bg-indigo-50 hover:bg-indigo-100 dark:border-indigo-900 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40",
+              blue: "border-blue-200 bg-blue-50 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:hover:bg-blue-900/40",
+              orange: "border-orange-200 bg-orange-50 hover:bg-orange-100 dark:border-orange-900 dark:bg-orange-950/40 dark:hover:bg-orange-900/40",
+              green: "border-green-200 bg-green-50 hover:bg-green-100 dark:border-green-900 dark:bg-green-950/40 dark:hover:bg-green-900/40",
             }
             const iconColorClasses: Record<string, string> = {
-              indigo: "text-indigo-600",
-              blue: "text-blue-600",
-              orange: "text-orange-600",
-              green: "text-green-600",
+              indigo: "text-indigo-600 dark:text-indigo-400",
+              blue: "text-blue-600 dark:text-blue-400",
+              orange: "text-orange-600 dark:text-orange-400",
+              green: "text-green-600 dark:text-green-400",
             }
             return (
               <div key={link.key} className={cn("rounded-lg border p-3 transition-colors", colorClasses[link.color])}>
@@ -350,7 +350,7 @@ export default function TravelOverviewPage() {
       {/* Completion Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Overall Progress Ring */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-4">
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 rounded-lg border border-blue-200 dark:border-blue-900 p-4">
           <div className="flex items-center gap-4">
             <div className="relative w-20 h-20">
               <svg className="w-20 h-20 transform -rotate-90">
@@ -365,12 +365,12 @@ export default function TravelOverviewPage() {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xl font-bold text-blue-600">{stats?.overallCompletion || 0}%</span>
+                <span className="text-xl font-bold text-blue-600 dark:text-blue-300">{stats?.overallCompletion || 0}%</span>
               </div>
             </div>
             <div>
-              <p className="font-semibold text-blue-800">Overall Progress</p>
-              <p className="text-sm text-blue-600">{stats?.total || 0} travelers</p>
+              <p className="font-semibold text-blue-800 dark:text-blue-200">Overall Progress</p>
+              <p className="text-sm text-blue-600 dark:text-blue-300">{stats?.total || 0} travelers</p>
             </div>
           </div>
         </div>
@@ -580,7 +580,7 @@ export default function TravelOverviewPage() {
             </Link>
 
             {/* Cost Breakdown Mini */}
-            <div className="p-3 rounded-lg bg-gradient-to-r from-slate-50 to-slate-100 border">
+            <div className="p-3 rounded-lg bg-gradient-to-r from-slate-50 to-slate-100 dark:from-muted/40 dark:to-muted/20 border">
               <p className="text-xs font-medium text-muted-foreground mb-2">Cost Breakdown</p>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
@@ -612,19 +612,19 @@ export default function TravelOverviewPage() {
             </h3>
             <div className="space-y-2">
               {(stats?.onwardPending || 0) > 0 && (
-                <Link href={`${basePath}/flights`} className="flex items-center justify-between p-3 rounded-lg bg-amber-50 hover:bg-amber-100">
+                <Link href={`${basePath}/flights`} className="flex items-center justify-between p-3 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40">
                   <span className="text-sm">{stats?.onwardPending} onward flights pending booking</span>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               )}
               {(stats?.idMissing || 0) > 0 && (
-                <Link href={`${basePath}/guests?id=missing`} className="flex items-center justify-between p-3 rounded-lg bg-red-50 hover:bg-red-100">
+                <Link href={`${basePath}/guests?id=missing`} className="flex items-center justify-between p-3 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40">
                   <span className="text-sm">{stats?.idMissing} guests missing travel ID</span>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               )}
               {(stats?.vouchersPending || 0) > 0 && (
-                <Link href={`${basePath}/itineraries`} className="flex items-center justify-between p-3 rounded-lg bg-purple-50 hover:bg-purple-100">
+                <Link href={`${basePath}/itineraries`} className="flex items-center justify-between p-3 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/40">
                   <span className="text-sm">{stats?.vouchersPending} itineraries pending</span>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -632,12 +632,12 @@ export default function TravelOverviewPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-green-50 rounded-lg border border-green-200 p-4">
-            <h3 className="font-semibold mb-2 flex items-center gap-2 text-green-700">
+          <div className="bg-green-50 dark:bg-green-950/40 rounded-lg border border-green-200 dark:border-green-900 p-4">
+            <h3 className="font-semibold mb-2 flex items-center gap-2 text-green-700 dark:text-green-300">
               <Check className="h-4 w-4" />
               All Good!
             </h3>
-            <p className="text-sm text-green-600">All travel bookings are in order.</p>
+            <p className="text-sm text-green-600 dark:text-green-400">All travel bookings are in order.</p>
           </div>
         )}
 
