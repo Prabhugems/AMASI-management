@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { getApiUser, requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // GET /api/checkin-lists - Get all check-in lists for an event
 export async function GET(request: NextRequest) {
@@ -106,9 +106,6 @@ export async function GET(request: NextRequest) {
 
 // POST /api/checkin-lists - Create a new check-in list
 export async function POST(request: NextRequest) {
-  const { error: authError } = await getApiUser()
-  if (authError) return authError
-
   try {
     const body = await request.json()
     const { event_id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, allow_multiple_checkins } = body
@@ -116,6 +113,10 @@ export async function POST(request: NextRequest) {
     if (!event_id || !name) {
       return NextResponse.json({ error: "event_id and name are required" }, { status: 400 })
     }
+
+    // Authorize against the target event — not just "any logged-in user".
+    const { error: authError } = await requireEventAndPermission(event_id, "checkin")
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 
@@ -168,9 +169,6 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/checkin-lists - Update a check-in list
 export async function PUT(request: NextRequest) {
-  const { error: authError } = await getApiUser()
-  if (authError) return authError
-
   try {
     const body = await request.json()
     const { id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, is_active, allow_multiple_checkins, sort_order } = body
@@ -181,12 +179,20 @@ export async function PUT(request: NextRequest) {
 
     const supabase = await createAdminClient()
 
-    // Get the current list to check for event_id
+    // Get the current list to resolve its event (for authz + the cleanup below)
     const { data: currentList } = await (supabase as any)
       .from("checkin_lists")
       .select("event_id, ticket_type_ids, addon_ids")
       .eq("id", id)
       .single()
+
+    if (!currentList) {
+      return NextResponse.json({ error: "Check-in list not found" }, { status: 404 })
+    }
+
+    // Authorize against the list's event.
+    const { error: authError } = await requireEventAndPermission(currentList.event_id, "checkin")
+    if (authError) return authError
 
     const updateData: any = { updated_at: new Date().toISOString() }
     if (name !== undefined) updateData.name = name
@@ -266,9 +272,6 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/checkin-lists - Delete a check-in list
 export async function DELETE(request: NextRequest) {
-  const { error: authError } = await getApiUser()
-  if (authError) return authError
-
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
@@ -278,6 +281,20 @@ export async function DELETE(request: NextRequest) {
     }
 
     const supabase = await createAdminClient()
+
+    // Resolve the list's event for authorization.
+    const { data: list } = await (supabase as any)
+      .from("checkin_lists")
+      .select("event_id")
+      .eq("id", id)
+      .single()
+
+    if (!list) {
+      return NextResponse.json({ error: "Check-in list not found" }, { status: 404 })
+    }
+
+    const { error: authError } = await requireEventAndPermission(list.event_id, "checkin")
+    if (authError) return authError
 
     const { error } = await (supabase as any)
       .from("checkin_lists")

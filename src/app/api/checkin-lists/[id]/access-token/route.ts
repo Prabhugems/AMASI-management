@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // 24-char CSPRNG token (hex), matching generate_secure_token(24).
 function newAccessToken(): string {
@@ -20,12 +20,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error: authError } = await getApiUser()
-  if (authError) return authError
-
   const { id } = await params
   const supabase = await createAdminClient()
 
+  // Resolve the list's event first, then authorize against THAT event so a
+  // user can't rotate a token for an event they don't manage.
   const { data: list, error: findErr } = await (supabase as any)
     .from("checkin_lists")
     .select("id, event_id")
@@ -35,6 +34,9 @@ export async function POST(
   if (findErr || !list) {
     return NextResponse.json({ error: "Check-in list not found" }, { status: 404 })
   }
+
+  const { error: authError } = await requireEventAndPermission(list.event_id, "checkin")
+  if (authError) return authError
 
   const access_token = newAccessToken()
   const access_token_expires_at = await expiryForEvent(supabase, list.event_id)
@@ -57,11 +59,22 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error: authError } = await getApiUser()
-  if (authError) return authError
-
   const { id } = await params
   const supabase = await createAdminClient()
+
+  // Resolve the list's event first, then authorize against THAT event.
+  const { data: list, error: findErr } = await (supabase as any)
+    .from("checkin_lists")
+    .select("event_id")
+    .eq("id", id)
+    .single()
+
+  if (findErr || !list) {
+    return NextResponse.json({ error: "Check-in list not found" }, { status: 404 })
+  }
+
+  const { error: authError } = await requireEventAndPermission(list.event_id, "checkin")
+  if (authError) return authError
 
   const { error } = await (supabase as any)
     .from("checkin_lists")
