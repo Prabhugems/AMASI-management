@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { QrImage } from "@/components/QrImage"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import {
   ArrowLeft,
@@ -571,11 +572,7 @@ export default function CheckinScanPage() {
               </button>
             </div>
             <div className="mt-4 flex justify-center">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getScanUrl())}&bgcolor=1f2937&color=ffffff`}
-                alt="QR Code"
-                className="w-48 h-48 rounded-lg"
-              />
+              <QrImage value={getScanUrl()} size={192} className="w-48 h-48 rounded-lg" light="#1f2937" dark="#ffffff" />
             </div>
           </div>
         </div>
