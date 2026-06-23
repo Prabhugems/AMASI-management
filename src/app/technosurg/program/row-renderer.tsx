@@ -274,7 +274,7 @@ function SpeakerLine({
   // MODERATORS prefix below, otherwise the regex anchor at "^MODERATORS"
   // can't fire.
   const panelMatch = stripped.match(
-    /^MODERATORS?\s*[:\-]?\s*(.+?)\s+PANELISTS?\s*[-–:]?\s*(.+)$/i,
+    /^MODERATORS?\s*[:\-]?\s*(.+?)\s+PANELISTS?\s*[:–-]?\s*(.+)$/i,
   )
   // Strip any leftover "MODERATORS [FOR LIVE]:" prefix so the first name
   // doesn't render as "Moderators: Dr X" when there's no PANELISTS portion.
