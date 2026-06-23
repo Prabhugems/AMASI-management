@@ -365,12 +365,36 @@ export async function POST(
       .maybeSingle()
 
     if (!existingBeforeInsert) {
-      await (supabase as any).from("checkin_records").insert({
+      const { error: insertErr } = await (supabase as any).from("checkin_records").insert({
         checkin_list_id: verified_checkin_list_id,
         registration_id: registration.id,
         checked_in_at: new Date().toISOString(),
         checked_in_by: performed_by,
       })
+      // 23505 = unique_violation: a concurrent scan won the race against the
+      // UNIQUE(checkin_list_id, registration_id) constraint. That's a successful
+      // idempotent check-in, so fall through. Any OTHER error was being silently
+      // swallowed (the scan appeared to succeed while nothing was recorded) —
+      // surface it instead.
+      if (insertErr && insertErr.code !== "23505") {
+        console.error("[verify] check-in insert failed:", insertErr)
+        await logAudit(supabase, {
+          event_id: registration.event_id,
+          checkin_list_id: verified_checkin_list_id,
+          registration_id: registration.id,
+          action,
+          performed_by,
+          performed_via: "qr_scan",
+          device_info,
+          token_used: token,
+          success: false,
+          error_message: "Failed to record check-in",
+        })
+        return NextResponse.json(
+          { success: false, error: "Failed to record check-in. Please try again." },
+          { status: 500 }
+        )
+      }
     }
   } else {
     // Check-out: update the record with checkout time

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { QrImage } from "@/components/QrImage"
 import Link from "next/link"
 import {
   Plus,
@@ -987,11 +988,7 @@ export default function PrintStationHubPage() {
             </div>
             <div className="p-8 flex flex-col items-center">
               <div className="bg-white p-4 rounded-2xl shadow-lg">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getPrintUrl(showQRModal))}`}
-                  alt="QR Code"
-                  className="w-48 h-48"
-                />
+                <QrImage value={getPrintUrl(showQRModal)} size={192} className="w-48 h-48" />
               </div>
               <p className="mt-4 text-sm text-muted-foreground text-center">
                 Staff can scan this QR code to open the print station on their device
