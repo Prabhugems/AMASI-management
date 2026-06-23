@@ -6,6 +6,7 @@ import {
   sendQikchatTemplate,
   QIKCHAT_TEMPLATE_CERTIFICATE_READY,
 } from "@/lib/qikchat"
+import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 
 // POST /api/certificates/whatsapp - Send "certificate ready" WhatsApp to one attendee.
 // Mirrors /api/certificates/email but uses the approved Qikchat template; the
@@ -18,9 +19,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "registration_id is required" }, { status: 400 })
     }
 
-    if (!isQikchatEnabled()) {
+    if (!isQikchatEnabled() && !isGallaboxEnabled()) {
       return NextResponse.json(
-        { error: "WhatsApp is not configured. Set QIKCHAT_API_KEY." },
+        { error: "WhatsApp is not configured. Set QIKCHAT_API_KEY or GALLABOX_API_KEY." },
         { status: 503 }
       )
     }
@@ -74,11 +75,29 @@ export async function POST(request: NextRequest) {
     // Prefill /my with the phone so taps on the link land directly on the registration.
     const portalUrl = `${baseUrl}/my?q=${encodeURIComponent(registration.attendee_phone)}`
 
-    const result = await sendQikchatTemplate(
-      registration.attendee_phone,
-      QIKCHAT_TEMPLATE_CERTIFICATE_READY,
-      [attendeeName, eventName, portalUrl]
-    )
+    // Prefer Qikchat when configured; otherwise fall back to Gallabox using the
+    // approved `certificate_ready` template (named vars, links to /my).
+    let result: { success: boolean; messageId?: string; error?: string }
+    let providerUsed: string
+    let templateUsed: string
+    if (isQikchatEnabled()) {
+      providerUsed = "qikchat"
+      templateUsed = QIKCHAT_TEMPLATE_CERTIFICATE_READY
+      result = await sendQikchatTemplate(
+        registration.attendee_phone,
+        QIKCHAT_TEMPLATE_CERTIFICATE_READY,
+        [attendeeName, eventName, portalUrl]
+      )
+    } else {
+      providerUsed = "gallabox"
+      templateUsed = (process.env.GALLABOX_TEMPLATE_CERTIFICATE_READY || "certificate_ready").trim()
+      result = await sendGallaboxTemplate(
+        registration.attendee_phone,
+        attendeeName,
+        templateUsed,
+        { Name: attendeeName, Event_Name: eventName, Portal_URL: portalUrl }
+      )
+    }
 
     // Log to message_logs
     try {
@@ -86,11 +105,11 @@ export async function POST(request: NextRequest) {
         event_id: eventIdToUse || null,
         registration_id: registration.id,
         channel: "whatsapp",
-        provider: "qikchat",
+        provider: providerUsed,
         recipient: registration.attendee_phone,
         recipient_name: attendeeName,
         subject: null,
-        message_body: `Template: ${QIKCHAT_TEMPLATE_CERTIFICATE_READY}`,
+        message_body: `Template: ${templateUsed}`,
         status: result.success ? "sent" : "failed",
         provider_message_id: result.messageId || null,
         error_message: result.error || null,
