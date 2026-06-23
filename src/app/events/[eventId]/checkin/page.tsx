@@ -29,11 +29,13 @@ import {
   Eye,
   ScanLine,
   RefreshCw,
+  Ban,
   Timer,
   UserCheck,
   Wifi,
 } from "lucide-react"
 import { HelpTooltip } from "@/components/ui/help-tooltip"
+import { QrImage } from "@/components/QrImage"
 
 interface CheckinList {
   id: string
@@ -281,6 +283,31 @@ export default function CheckinHubPage() {
 
   const openStaffAccessInNewWindow = (accessToken: string) => {
     window.open(getStaffAccessUrl(accessToken), "_blank", "width=500,height=800")
+  }
+
+  // Mint a fresh staff token + expiry; the previous link stops working at once.
+  const regenerateStaffLink = async (list: CheckinList) => {
+    try {
+      const res = await fetch(`/api/checkin-lists/${list.id}/access-token`, { method: "POST" })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setShowStaffShareModal({ ...list, access_token: data.access_token })
+      toast.success("New staff link generated — the previous link no longer works")
+    } catch {
+      toast.error("Failed to regenerate link")
+    }
+  }
+
+  // Expire the staff link immediately (no new token issued).
+  const revokeStaffLink = async (list: CheckinList) => {
+    try {
+      const res = await fetch(`/api/checkin-lists/${list.id}/access-token`, { method: "DELETE" })
+      if (!res.ok) throw new Error()
+      toast.success("Staff link revoked")
+      setShowStaffShareModal(null)
+    } catch {
+      toast.error("Failed to revoke link")
+    }
   }
 
   const getListIcon = (name: string, size = "w-6 h-6") => {
@@ -783,11 +810,7 @@ export default function CheckinHubPage() {
             </div>
             <div className="p-8 flex flex-col items-center">
               <div className="bg-white p-4 rounded-2xl shadow-lg">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getScanUrl(showQRModal))}`}
-                  alt="QR Code"
-                  className="w-48 h-48"
-                />
+                <QrImage value={getScanUrl(showQRModal)} size={192} className="w-48 h-48" />
               </div>
               <p className="mt-4 text-sm text-muted-foreground text-center">
                 Staff can scan this QR code to open the check-in scanner on their device
@@ -845,11 +868,7 @@ export default function CheckinHubPage() {
               {/* QR Code */}
               <div className="flex flex-col items-center mb-6">
                 <div className="bg-white p-4 rounded-2xl shadow-lg">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getStaffAccessUrl(showStaffShareModal.access_token))}`}
-                    alt="Staff Access QR Code"
-                    className="w-48 h-48"
-                  />
+                  <QrImage value={getStaffAccessUrl(showStaffShareModal.access_token!)} size={192} className="w-48 h-48" />
                 </div>
                 <p className="mt-3 text-sm text-muted-foreground text-center">
                   Volunteers scan this to access check-in
@@ -879,6 +898,24 @@ export default function CheckinHubPage() {
                 >
                   <ExternalLink className="w-4 h-4" />
                   Open
+                </button>
+              </div>
+
+              {/* Link security — rotate (invalidates old link) or revoke */}
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => regenerateStaffLink(showStaffShareModal)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-muted rounded-xl hover:bg-muted/80 text-sm font-medium transition-colors border border-border"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Regenerate
+                </button>
+                <button
+                  onClick={() => revokeStaffLink(showStaffShareModal)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-600 rounded-xl hover:bg-red-500/20 text-sm font-medium transition-colors border border-red-500/20"
+                >
+                  <Ban className="w-4 h-4" />
+                  Revoke
                 </button>
               </div>
 

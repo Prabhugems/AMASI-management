@@ -1277,10 +1277,15 @@ function PrintStationKioskPage() {
       const qrValue = replacePlaceholders(element.content || "", registration)
       const qrSize = Math.min(element.width, element.height)
       // Use pre-generated data URL if available, fallback to external API
+      // _qrDataUrl is generated locally in triggerPrint() before this runs.
+      // No external fallback — never ship the verify URL / token to a third-party
+      // QR service. If generation somehow failed, show a placeholder (rescan).
       const qrDataUrl = element._qrDataUrl
-      const qrSrc = qrDataUrl || `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(qrValue)}`
+      const inner = qrDataUrl
+        ? `<img src="${qrDataUrl}" style="width: ${qrSize}px; height: ${qrSize}px;" />`
+        : `<div style="width: ${qrSize}px; height: ${qrSize}px; display: flex; align-items: center; justify-content: center; border: 1px dashed #999; font-size: 10px; color: #999; text-align: center;">QR unavailable&mdash;rescan</div>`
       return `<div style="${baseStyle} display: flex; align-items: center; justify-content: center;">
-        <img src="${qrSrc}" style="width: ${qrSize}px; height: ${qrSize}px;" />
+        ${inner}
       </div>`
     }
 
