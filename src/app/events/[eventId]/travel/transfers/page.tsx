@@ -485,7 +485,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
           {/* Header with gradient */}
           <div className={cn(
             "px-6 py-4 border-b",
-            editingType === "pickup" ? "bg-gradient-to-r from-green-50 to-green-100/50" : "bg-gradient-to-r from-orange-50 to-orange-100/50"
+            editingType === "pickup" ? "bg-gradient-to-r from-green-50 to-green-100/50 dark:from-green-950/40 dark:to-green-900/40" : "bg-gradient-to-r from-orange-50 to-orange-100/50 dark:from-orange-950/40 dark:to-orange-900/40"
           )}>
             <SheetHeader>
               <SheetTitle className="flex items-center gap-3">
@@ -514,7 +514,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
 
               return (
                 <>
-                  <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-900">
                     <div className="flex items-start gap-3">
                       {photoUrl ? (
                         <img src={photoUrl} alt={editingGuest.attendee_name} className="w-20 h-20 rounded-lg object-cover border-2 border-white shadow-sm" />
@@ -524,10 +524,10 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">Guest to {editingType === "pickup" ? "Pickup" : "Drop"}</p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wide mb-1">Guest to {editingType === "pickup" ? "Pickup" : "Drop"}</p>
                         <p className="font-semibold text-lg">{editingGuest.attendee_name}</p>
                         {editingGuest.attendee_phone && (
-                          <a href={`tel:${editingGuest.attendee_phone}`} className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline mt-1 font-medium">
+                          <a href={`tel:${editingGuest.attendee_phone}`} className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline mt-1 font-medium">
                             <Phone className="h-4 w-4" />
                             {editingGuest.attendee_phone}
                           </a>
@@ -585,9 +585,9 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
                   </div>
 
                   {/* Hotel Info - Critical for driver */}
-                  <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-900">
                     <div className="flex items-center gap-2 text-sm font-medium mb-3">
-                      <Building2 className="h-4 w-4 text-amber-600" />
+                      <Building2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                       {editingType === "pickup" ? "Drop Location (Hotel)" : "Pickup Location (Hotel)"}
                     </div>
                     <div className="space-y-2">
@@ -611,7 +611,7 @@ Driver: ${booking.drop_driver || "-"} (${booking.drop_driver_phone || "-"})`
                         </div>
                       )}
                       {!hotel && (
-                        <p className="text-sm text-amber-600">Hotel not yet assigned</p>
+                        <p className="text-sm text-amber-600 dark:text-amber-400">Hotel not yet assigned</p>
                       )}
                     </div>
                   </div>
@@ -779,7 +779,7 @@ function TransferTable({
             const isNewRequest = speakerRequested && !adminSetup
 
             return (
-              <TableRow key={guest.id} className={cn("cursor-pointer hover:bg-muted/50", isNewRequest && "bg-blue-50")} onClick={() => onEdit(guest)}>
+              <TableRow key={guest.id} className={cn("cursor-pointer hover:bg-muted/50", isNewRequest && "bg-blue-50 dark:bg-blue-950/40")} onClick={() => onEdit(guest)}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div>
@@ -787,7 +787,7 @@ function TransferTable({
                       <p className="text-xs text-muted-foreground">{guest.attendee_phone}</p>
                     </div>
                     {isNewRequest && (
-                      <Badge variant="outline" className="text-xs text-blue-600 border-blue-300 bg-blue-50">
+                      <Badge variant="outline" className="text-xs text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40">
                         Speaker Request
                       </Badge>
                     )}

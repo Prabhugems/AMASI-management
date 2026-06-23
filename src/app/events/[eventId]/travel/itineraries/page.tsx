@@ -356,9 +356,9 @@ export default function ItinerariesPage() {
 
       {/* Actions */}
       {selectedGuests.size > 0 && (
-        <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <Mail className="h-5 w-5 text-blue-600" />
-          <span className="font-medium text-blue-800">{selectedGuests.size} selected</span>
+        <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-lg">
+          <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <span className="font-medium text-blue-800 dark:text-blue-300">{selectedGuests.size} selected</span>
           <div className="flex-1" />
           <Button size="sm" variant="outline" onClick={() => setSelectedGuests(new Set())}>Clear</Button>
           <Button size="sm" onClick={sendItineraries} disabled={sending}>

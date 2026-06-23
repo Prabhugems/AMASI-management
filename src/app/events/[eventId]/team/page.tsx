@@ -82,6 +82,7 @@ import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 import { SkeletonTable } from "@/components/ui/skeleton"
 import { CategoryPermissionPicker } from "@/components/team/category-permission-picker"
+import { useConfirm } from "@/hooks/use-confirm"
 import {
   PERMISSION_CATEGORIES,
   ROLE_PRESETS as SHARED_ROLE_PRESETS,
@@ -163,12 +164,14 @@ export default function EventTeamPage() {
   const eventId = params.eventId as string
   const supabase = createClient()
   const queryClient = useQueryClient()
+  const confirm = useConfirm()
 
   const [search, setSearch] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
   const [sendingInvite, setSendingInvite] = useState<string | null>(null)
   const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null)
+  const [creatingCheckins, setCreatingCheckins] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -457,6 +460,48 @@ export default function EventTeamPage() {
     }
   }
 
+  // Add the organising team to event check-in by creating complimentary,
+  // confirmed registrations (under an "Organising Team" ticket). Idempotent —
+  // members who already have a registration are skipped.
+  const handleCreateCheckins = async () => {
+    const memberCount = eventTeam?.length || 0
+    const ok = await confirm({
+      title: "Enable check-in for the organising team?",
+      description:
+        `This creates a complimentary, confirmed registration (and QR badge) for each of the ${memberCount} active team member${memberCount === 1 ? "" : "s"} on this event, so they can be checked in at the door. Members who already have a registration are skipped.`,
+      confirmText: "Create registrations",
+    })
+    if (!ok) return
+
+    setCreatingCheckins(true)
+    try {
+      const res = await fetch(`/api/events/${eventId}/team/create-registrations`, {
+        method: "POST",
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to create registrations")
+
+      if (data.created > 0) {
+        toast.success(
+          `${data.created} team member${data.created === 1 ? "" : "s"} added to check-in`,
+          { description: data.skipped > 0 ? `${data.skipped} already registered (skipped)` : undefined }
+        )
+        // Refresh any registration-backed views
+        queryClient.invalidateQueries({ queryKey: ["registrations", eventId] })
+      } else {
+        toast.info(
+          data.total_team === 0
+            ? "No active team members are assigned to this event"
+            : "All team members already have registrations"
+        )
+      }
+    } catch (error: any) {
+      toast.error("Failed to add team to check-in", { description: error.message })
+    } finally {
+      setCreatingCheckins(false)
+    }
+  }
+
   // Filter by search
   const filteredTeam = eventTeam?.filter(member =>
     member.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -498,6 +543,18 @@ export default function EventTeamPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleCreateCheckins}
+            disabled={creatingCheckins}
+          >
+            {creatingCheckins ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <QrCode className="h-4 w-4 mr-2" />
+            )}
+            Add to Check-in
+          </Button>
           <Button
             variant="outline"
             onClick={() => window.open(`/api/events/${eventId}/team/handover-pack`, '_blank')}
@@ -747,8 +804,14 @@ export default function EventTeamPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
-                              onClick={() => {
-                                if (confirm("Remove this team member?")) {
+                              onClick={async () => {
+                                const ok = await confirm({
+                                  title: "Remove this team member?",
+                                  description: `${member.name} will lose access to ${event?.short_name || event?.name || "this event"}.`,
+                                  variant: "destructive",
+                                  confirmText: "Remove",
+                                })
+                                if (ok) {
                                   deleteMutation.mutate(member.id)
                                 }
                               }}
