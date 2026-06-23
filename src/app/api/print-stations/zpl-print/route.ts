@@ -238,7 +238,12 @@ function generateZPLFromTemplate(
       // Center QR within its designed area
       const qrX = x + Math.floor((width - actualQrSize) / 2)
       const qrY = y + Math.floor((height - actualQrSize) / 2)
-      zplElements += `^FO${Math.max(0, qrX)},${Math.max(0, qrY)}^BQN,2,${magnification}^FDQA,${qrContent}^FS\n`
+      // ^BQ adds no quiet zone — guarantee >=4 modules (1 module = `magnification` dots)
+      // while keeping the code on-label (smallest stock is 4x2 = 812x406 dots).
+      const quiet = magnification * 4
+      const safeX = Math.min(Math.max(quiet, qrX), Math.max(quiet, dimensions.width - actualQrSize - quiet))
+      const safeY = Math.min(Math.max(quiet, qrY), Math.max(quiet, dimensions.height - actualQrSize - quiet))
+      zplElements += `^FO${safeX},${safeY}^BQN,2,${magnification}^FDQA,${qrContent}^FS\n`
     }
     else if (element.type === "barcode") {
       const barcodeContent = replacePlaceholders(element.content || "", registration, station)

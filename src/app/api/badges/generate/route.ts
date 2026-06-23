@@ -428,7 +428,7 @@ export async function POST(request: NextRequest) {
           // Secure verification URL only (encodes checkin_token, never registration_number)
           const qrContent = replacePlaceholders(element.content || "{{checkin_url}}", registration, event)
           try {
-            const qrDataUrl = await QRCode.toDataURL(qrContent, { width: Math.round(width * 2), margin: 1, errorCorrectionLevel: "M" })
+            const qrDataUrl = await QRCode.toDataURL(qrContent, { width: Math.round(width * 3), margin: 4, errorCorrectionLevel: "Q" })
             const qrBase64 = qrDataUrl.split(",")[1]
             const qrBytes = Uint8Array.from(atob(qrBase64), (c) => c.charCodeAt(0))
             const qrImage = await pdfDoc.embedPng(qrBytes)
