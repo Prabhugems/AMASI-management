@@ -66,8 +66,8 @@ function replacePlaceholders(text: string, registration: any, event: any): strin
   result = result.replace(/\{\{designation\}\}/g, registration.attendee_designation || "")
   result = result.replace(/\{\{event_name\}\}/g, event?.name || "")
 
-  // Verification URL - encodes the registration number into a scannable verification link
-  const verificationUrl = `${getBaseUrl()}/v/${encodeURIComponent(registration.registration_number || "")}`
+  // Verification URL — encodes the secure checkin_token only (never the registration_number)
+  const verificationUrl = `${getBaseUrl()}/v/${encodeURIComponent(registration.checkin_token || "")}`
   result = result.replace(/\{\{verification_url\}\}/g, verificationUrl)
 
   // Event date
@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
         attendee_institution,
         attendee_designation,
         ticket_type_id,
+        checkin_token,
         ticket_types (name)
       `)
       .eq("event_id", event_id)
@@ -167,6 +168,15 @@ export async function POST(request: NextRequest) {
 
     if (regError || !registrations?.length) {
       return NextResponse.json({ error: "No registrations found" }, { status: 404 })
+    }
+
+    // Fail closed: the certificate QR encodes the secure checkin_token only.
+    const missingToken = (registrations as any[]).filter((r) => !r.checkin_token)
+    if (missingToken.length > 0) {
+      return NextResponse.json({
+        error: `Cannot generate certificates — ${missingToken.length} registration(s) are missing a secure checkin_token. Regenerate tokens and retry.`,
+        registration_numbers: missingToken.map((r) => r.registration_number),
+      }, { status: 409 })
     }
 
     // Get certificate size

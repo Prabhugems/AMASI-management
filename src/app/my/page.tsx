@@ -574,7 +574,12 @@ export default function DelegatePortalPage() {
 
     setDownloadingBadge(true)
     try {
-      const token = selectedRegistration.checkin_token || selectedRegistration.registration_number
+      const token = selectedRegistration.checkin_token
+      if (!token) {
+        toast.error("Secure check-in code unavailable for this registration. Please contact the desk.")
+        setDownloadingBadge(false)
+        return
+      }
       const res = await fetch(`/api/badge/${token}/download`)
 
       if (!res.ok) {
@@ -1455,16 +1460,20 @@ export default function DelegatePortalPage() {
                   <QrCode className="w-3.5 h-3.5" />
                   {registration.checked_in ? "CHECKED IN" : "SHOW FOR QUICK CHECK-IN"}
                 </p>
-                <CheckinQRCode
-                  token={(() => {
-                    const t = registration.checkin_token || registration.registration_number
-                    const origin = typeof window !== "undefined"
-                      ? window.location.origin
-                      : (process.env.NEXT_PUBLIC_APP_URL || "")
-                    return `${origin.replace(/\/$/, "")}/v/${t}`
-                  })()}
-                  size={160}
-                />
+                {registration.checkin_token ? (
+                  <CheckinQRCode
+                    token={(() => {
+                      const t = registration.checkin_token
+                      const origin = typeof window !== "undefined"
+                        ? window.location.origin
+                        : (process.env.NEXT_PUBLIC_APP_URL || "")
+                      return `${origin.replace(/\/$/, "")}/v/${t}`
+                    })()}
+                    size={160}
+                  />
+                ) : (
+                  <p className="text-xs text-indigo-400 py-8">Check-in code unavailable — please contact the desk.</p>
+                )}
               </div>
             </div>
           </div>

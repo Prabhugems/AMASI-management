@@ -66,7 +66,7 @@ function replacePlaceholders(text: string, registration: any, event: any, checki
   result = result.replace(/\{\{issue_date\}\}/g, today)
   result = result.replace(/\{\{today\}\}/g, today)
 
-  const checkinToken = checkinTokenOverride || registration.checkin_token || registration.registration_number
+  const checkinToken = checkinTokenOverride || registration.checkin_token || null
   const baseUrl = getBaseUrl()
   const verifyUrl = `${baseUrl}/v/${checkinToken}`
   result = result.replace(/\{\{verification_url\}\}/g, verifyUrl)
@@ -131,6 +131,11 @@ export async function GET(
     // Check if delegate has checked in
     if (!registration.checked_in) {
       return NextResponse.json({ error: "You must check in at the event before downloading your certificate" }, { status: 403 })
+    }
+
+    // Fail closed: the certificate QR encodes the secure checkin_token only.
+    if (!checkinToken) {
+      return NextResponse.json({ error: "Cannot generate certificate — missing a secure checkin_token. Regenerate the token and retry." }, { status: 409 })
     }
 
     // Check if certificate has been generated
