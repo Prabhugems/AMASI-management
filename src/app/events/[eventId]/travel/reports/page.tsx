@@ -278,16 +278,16 @@ export default function TravelReportsPage() {
             <div>
               <p className="text-sm text-muted-foreground mb-2">Onward Journey</p>
               <div className="flex gap-2">
-                <div className="flex-1 bg-amber-50 rounded p-2 text-center">
-                  <p className="text-lg font-bold text-amber-600">{report.status.onward.pending}</p>
+                <div className="flex-1 bg-amber-50 dark:bg-amber-950/40 rounded p-2 text-center">
+                  <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{report.status.onward.pending}</p>
                   <p className="text-xs">Pending</p>
                 </div>
-                <div className="flex-1 bg-blue-50 rounded p-2 text-center">
-                  <p className="text-lg font-bold text-blue-600">{report.status.onward.booked}</p>
+                <div className="flex-1 bg-blue-50 dark:bg-blue-950/40 rounded p-2 text-center">
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{report.status.onward.booked}</p>
                   <p className="text-xs">Booked</p>
                 </div>
-                <div className="flex-1 bg-green-50 rounded p-2 text-center">
-                  <p className="text-lg font-bold text-green-600">{report.status.onward.confirmed}</p>
+                <div className="flex-1 bg-green-50 dark:bg-green-950/40 rounded p-2 text-center">
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">{report.status.onward.confirmed}</p>
                   <p className="text-xs">Confirmed</p>
                 </div>
               </div>
@@ -295,16 +295,16 @@ export default function TravelReportsPage() {
             <div>
               <p className="text-sm text-muted-foreground mb-2">Return Journey</p>
               <div className="flex gap-2">
-                <div className="flex-1 bg-amber-50 rounded p-2 text-center">
-                  <p className="text-lg font-bold text-amber-600">{report.status.return.pending}</p>
+                <div className="flex-1 bg-amber-50 dark:bg-amber-950/40 rounded p-2 text-center">
+                  <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{report.status.return.pending}</p>
                   <p className="text-xs">Pending</p>
                 </div>
-                <div className="flex-1 bg-blue-50 rounded p-2 text-center">
-                  <p className="text-lg font-bold text-blue-600">{report.status.return.booked}</p>
+                <div className="flex-1 bg-blue-50 dark:bg-blue-950/40 rounded p-2 text-center">
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{report.status.return.booked}</p>
                   <p className="text-xs">Booked</p>
                 </div>
-                <div className="flex-1 bg-green-50 rounded p-2 text-center">
-                  <p className="text-lg font-bold text-green-600">{report.status.return.confirmed}</p>
+                <div className="flex-1 bg-green-50 dark:bg-green-950/40 rounded p-2 text-center">
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">{report.status.return.confirmed}</p>
                   <p className="text-xs">Confirmed</p>
                 </div>
               </div>

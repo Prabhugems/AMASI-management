@@ -282,7 +282,7 @@ export default function TravelLayout({
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="text-slate-300 hover:text-white hover:bg-white/10"
+              className="text-slate-300 hover:text-white hover:bg-white/10 dark:hover:bg-white/10"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Logout

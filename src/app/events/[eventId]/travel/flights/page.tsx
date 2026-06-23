@@ -582,7 +582,7 @@ export default function FlightsPage() {
           {/* Header with gradient */}
           <div className={cn(
             "px-6 py-4 border-b",
-            editingType === "onward" ? "bg-gradient-to-r from-blue-50 to-blue-100/50" : "bg-gradient-to-r from-purple-50 to-purple-100/50"
+            editingType === "onward" ? "bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-950/40 dark:to-blue-900/40" : "bg-gradient-to-r from-purple-50 to-purple-100/50 dark:from-purple-950/40 dark:to-purple-900/40"
           )}>
             <SheetHeader>
               <SheetTitle className="flex items-center gap-3">
@@ -604,8 +604,8 @@ export default function FlightsPage() {
             {/* LEFT: Speaker's Request */}
             <div className="p-5 bg-muted/30">
               <div className="flex items-center gap-2 mb-4">
-                <div className="p-1.5 rounded-md bg-blue-100">
-                  <Plane className="h-4 w-4 text-blue-600" />
+                <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-950/40">
+                  <Plane className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </div>
                 <h3 className="font-semibold text-sm">Speaker's Request</h3>
               </div>
@@ -681,10 +681,10 @@ export default function FlightsPage() {
                     </div>
 
                     {/* Airport Transfers */}
-                    <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                    <div className="p-4 bg-green-50 dark:bg-green-950/40 rounded-xl border border-green-200 dark:border-green-900">
                       <div className="flex items-center gap-2 mb-3">
-                        <Car className="h-4 w-4 text-green-600" />
-                        <p className="text-sm font-medium text-green-800">Airport Transfers</p>
+                        <Car className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <p className="text-sm font-medium text-green-800 dark:text-green-300">Airport Transfers</p>
                       </div>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
@@ -732,8 +732,8 @@ export default function FlightsPage() {
             <div className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-green-100">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  <div className="p-1.5 rounded-md bg-green-100 dark:bg-green-950/40">
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                   </div>
                   <h3 className="font-semibold text-sm">Booking Details</h3>
                 </div>
@@ -751,7 +751,7 @@ export default function FlightsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-2 text-xs border-purple-200 hover:bg-purple-50 hover:border-purple-300"
+                    className="gap-2 text-xs border-purple-200 dark:border-purple-900 hover:bg-purple-50 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-800"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isExtracting}
                   >
@@ -775,8 +775,8 @@ export default function FlightsPage() {
                 <div className="mb-4 space-y-3">
                   {/* Cross-check Discrepancies */}
                   {extractionResult.discrepancies && extractionResult.discrepancies.length > 0 && (
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                      <div className="flex items-center gap-2 text-amber-700 mb-2">
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-lg">
+                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 mb-2">
                         <AlertTriangle className="h-4 w-4" />
                         <span className="font-medium text-sm">Itinerary Mismatch</span>
                       </div>
@@ -785,7 +785,7 @@ export default function FlightsPage() {
                           <div key={i} className="text-xs flex items-start gap-2">
                             <span className={cn(
                               "px-1.5 py-0.5 rounded font-medium",
-                              d.severity === "error" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                              d.severity === "error" ? "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300" : "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
                             )}>
                               {d.field}
                             </span>
@@ -800,17 +800,17 @@ export default function FlightsPage() {
 
                   {/* Pickup/Drop Timing Suggestions */}
                   {(extractionResult.pickup_timing?.notes?.length || extractionResult.drop_timing?.notes?.length) && (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center gap-2 text-blue-700 mb-2">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-lg">
+                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 mb-2">
                         <Car className="h-4 w-4" />
                         <span className="font-medium text-sm">Transfer Timing</span>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         {editingType === "onward" && extractionResult.drop_timing?.notes?.map((note, i) => (
-                          <p key={i} className="text-blue-700">{note}</p>
+                          <p key={i} className="text-blue-700 dark:text-blue-300">{note}</p>
                         ))}
                         {editingType === "return" && extractionResult.pickup_timing?.notes?.map((note, i) => (
-                          <p key={i} className="text-blue-700">{note}</p>
+                          <p key={i} className="text-blue-700 dark:text-blue-300">{note}</p>
                         ))}
                       </div>
                     </div>
@@ -824,9 +824,9 @@ export default function FlightsPage() {
                     </span>
                     <span className={cn(
                       "px-2 py-0.5 rounded-full font-medium",
-                      extractionResult.confidence >= 80 ? "bg-green-100 text-green-700" :
-                      extractionResult.confidence >= 60 ? "bg-amber-100 text-amber-700" :
-                      "bg-red-100 text-red-700"
+                      extractionResult.confidence >= 80 ? "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300" :
+                      extractionResult.confidence >= 60 ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300" :
+                      "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300"
                     )}>
                       {extractionResult.confidence}% confidence
                     </span>

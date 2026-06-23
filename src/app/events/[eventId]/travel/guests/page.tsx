@@ -388,9 +388,9 @@ export default function TravelGuestsPage() {
 
       {/* Bulk Selection Toolbar */}
       {selectedGuests.size > 0 && (
-        <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <CheckSquare className="h-5 w-5 text-blue-600" />
-          <span className="font-medium text-blue-800">{selectedGuests.size} selected</span>
+        <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-lg">
+          <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <span className="font-medium text-blue-800 dark:text-blue-300">{selectedGuests.size} selected</span>
           <div className="flex-1" />
           <Button size="sm" variant="outline" onClick={clearSelection}>Clear</Button>
           <Button size="sm" onClick={sendBulkRequest} disabled={sendingRequests}>
@@ -446,7 +446,7 @@ export default function TravelGuestsPage() {
           onClick={() => setIdFilter(idFilter === "submitted" ? "all" : "submitted")}
           className={cn("bg-card rounded-lg border p-3 text-left hover:shadow-md", idFilter === "submitted" && "ring-2 ring-green-500")}
         >
-          <div className="flex items-center gap-2 text-green-600">
+          <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
             <FileCheck className="h-4 w-4" />
             <span className="text-xs">ID Submitted</span>
           </div>
@@ -520,7 +520,7 @@ export default function TravelGuestsPage() {
                 const isSelected = selectedGuests.has(speaker.id)
 
                 return (
-                  <TableRow key={speaker.id} className={cn("cursor-pointer hover:bg-muted/50", isSelected && "bg-blue-50")} onClick={() => setSelectedSpeaker(speaker)}>
+                  <TableRow key={speaker.id} className={cn("cursor-pointer hover:bg-muted/50", isSelected && "bg-blue-50 dark:bg-blue-950/40")} onClick={() => setSelectedSpeaker(speaker)}>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={isSelected} onCheckedChange={() => toggleGuestSelection(speaker.id)} />
                     </TableCell>
@@ -672,8 +672,8 @@ export default function TravelGuestsPage() {
               </SheetHeader>
               <div className="mt-6 space-y-6">
                 <div className="flex items-start gap-4">
-                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                    <User className="h-6 w-6 text-blue-600" />
+                  <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center">
+                    <User className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg">{selectedSpeaker.attendee_name}</h3>
@@ -683,9 +683,9 @@ export default function TravelGuestsPage() {
                 </div>
 
                 {/* Onward Journey */}
-                <div className="space-y-3 p-4 bg-blue-50 rounded-lg">
+                <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-950/40 rounded-lg">
                   <h4 className="font-medium text-sm flex items-center gap-2">
-                    <PlaneTakeoff className="h-4 w-4 text-blue-600" />
+                    <PlaneTakeoff className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     Onward Journey
                   </h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
@@ -721,9 +721,9 @@ export default function TravelGuestsPage() {
                 </div>
 
                 {/* Return Journey */}
-                <div className="space-y-3 p-4 bg-purple-50 rounded-lg">
+                <div className="space-y-3 p-4 bg-purple-50 dark:bg-purple-950/40 rounded-lg">
                   <h4 className="font-medium text-sm flex items-center gap-2">
-                    <PlaneLanding className="h-4 w-4 text-purple-600" />
+                    <PlaneLanding className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                     Return Journey
                   </h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
@@ -759,9 +759,9 @@ export default function TravelGuestsPage() {
 
                 {/* Hotel Requirements */}
                 {selectedSpeaker.custom_fields?.travel_details?.hotel_required && (
-                  <div className="space-y-3 p-4 bg-amber-50 rounded-lg">
+                  <div className="space-y-3 p-4 bg-amber-50 dark:bg-amber-950/40 rounded-lg">
                     <h4 className="font-medium text-sm flex items-center gap-2">
-                      <Hotel className="h-4 w-4 text-amber-600" />
+                      <Hotel className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                       Hotel Required
                     </h4>
                     <div className="grid grid-cols-2 gap-3 text-sm">
@@ -790,9 +790,9 @@ export default function TravelGuestsPage() {
                 )}
 
                 {/* Airport Transfers */}
-                <div className="space-y-3 p-4 bg-green-50 rounded-lg">
+                <div className="space-y-3 p-4 bg-green-50 dark:bg-green-950/40 rounded-lg">
                   <h4 className="font-medium text-sm flex items-center gap-2">
-                    <Car className="h-4 w-4 text-green-600" />
+                    <Car className="h-4 w-4 text-green-600 dark:text-green-400" />
                     Airport Transfers
                   </h4>
                   <div className="space-y-3">
@@ -833,7 +833,7 @@ export default function TravelGuestsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-3 p-4 bg-blue-50 rounded-lg">
+                <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-950/40 rounded-lg">
                   <h4 className="font-medium text-sm">Booking Status</h4>
                   <div className="flex items-center gap-4">
                     <div className="flex-1">

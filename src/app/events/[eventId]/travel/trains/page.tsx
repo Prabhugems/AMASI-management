@@ -342,7 +342,7 @@ export default function TrainsPage() {
       <Sheet open={showAddBooking || !!editingBooking} onOpenChange={(open) => { if (!open) { setShowAddBooking(false); setEditingBooking(null) } }}>
         <ResizableSheetContent defaultWidth={550} minWidth={400} maxWidth={900} storageKey="trains-sheet-width" className="overflow-y-auto p-0">
           {/* Header with gradient */}
-          <div className="px-6 py-4 border-b bg-gradient-to-r from-orange-50 to-orange-100/50">
+          <div className="px-6 py-4 border-b bg-gradient-to-r from-orange-50 to-orange-100/50 dark:from-orange-950/40 dark:to-orange-900/40">
             <SheetHeader>
               <SheetTitle className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-orange-500">
