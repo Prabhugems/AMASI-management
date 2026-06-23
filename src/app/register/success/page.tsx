@@ -21,6 +21,7 @@ import {
   Check,
 } from "lucide-react"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { QrImage } from "@/components/QrImage"
 
 function SuccessContent() {
   const { resolvedTheme } = useTheme()
@@ -55,10 +56,8 @@ function SuccessContent() {
     enabled: !!registrationNumber,
   })
 
-  // Generate QR code URL
-  const qrCodeUrl = registrationNumber
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(registrationNumber)}`
-    : null
+  // QR encodes the registration number for quick check-in (rendered locally).
+  const showQr = !!registrationNumber
 
   // Copy registration number
   const handleCopy = async () => {
@@ -158,14 +157,10 @@ function SuccessContent() {
         <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-8">
           <div className="flex flex-col md:flex-row gap-6">
             {/* QR Code */}
-            {qrCodeUrl && (
+            {showQr && (
               <div className="flex flex-col items-center qr-fade-in">
                 <div className="p-3 bg-white border-2 border-gray-100 rounded-xl">
-                  <img
-                    src={qrCodeUrl}
-                    alt="Registration QR Code"
-                    className="w-40 h-40"
-                  />
+                  <QrImage value={registrationNumber!} size={160} className="w-40 h-40" />
                 </div>
                 <p className="text-xs text-gray-500 mt-2">Scan for quick check-in</p>
               </div>
