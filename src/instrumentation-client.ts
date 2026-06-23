@@ -10,6 +10,21 @@ Sentry.init({
   // Add optional integrations for additional features
   integrations: [Sentry.replayIntegration()],
 
+  // Filter out benign browser-extension noise. These rejections are emitted by
+  // injected extension scripts (password managers, Office/Outlook-type add-ons)
+  // via window.onunhandledrejection — they carry no app stacktrace and are not
+  // bugs in our code. See Sentry AMASI-MANAGEMENT-9 ("Object Not Found Matching
+  // Id:1, MethodName:update, ParamCount:4"), which hit 20 users on /my as noise.
+  ignoreErrors: [
+    "Object Not Found Matching Id",
+  ],
+  // Drop errors whose frames originate from browser extensions, not our bundle.
+  denyUrls: [
+    /^chrome-extension:\/\//i,
+    /^moz-extension:\/\//i,
+    /^safari-(web-)?extension:\/\//i,
+  ],
+
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
   tracesSampleRate: 1,
   // Enable logs to be sent to Sentry
