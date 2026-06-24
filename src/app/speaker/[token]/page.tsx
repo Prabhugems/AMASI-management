@@ -427,6 +427,35 @@ export default function SpeakerPortalPage() {
         </div>
 
         <div className="max-w-4xl mx-auto px-4 py-8 space-y-6 print:p-0 print:max-w-none">
+          {/* Content upload CTA */}
+          <Card className="bg-indigo-500/15 border-indigo-400/30 print:hidden">
+            <CardContent className="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-indigo-500/30 text-indigo-100 shrink-0">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm sm:text-base font-semibold text-white">
+                    Share your session materials
+                  </p>
+                  <p className="text-xs sm:text-sm text-white/70">
+                    Upload slides, handouts and supporting files for each of your sessions.
+                  </p>
+                </div>
+              </div>
+              <Button
+                asChild
+                size="sm"
+                className="bg-indigo-500 hover:bg-indigo-400 text-white"
+              >
+                <a href={`/speaker/${token}/content`}>
+                  Upload your slides &amp; handouts
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Welcome */}
           <Card className="bg-white/10 backdrop-blur border-white/20 print:hidden">
             <CardHeader>
@@ -715,6 +744,35 @@ export default function SpeakerPortalPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 print:p-0 print:max-w-none">
+        {/* Content upload CTA */}
+        <Card className="bg-indigo-500/15 border-indigo-400/30 print:hidden">
+          <CardContent className="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-indigo-500/30 text-indigo-100 shrink-0">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm sm:text-base font-semibold text-white">
+                  Share your session materials
+                </p>
+                <p className="text-xs sm:text-sm text-white/70">
+                  Upload slides, handouts and supporting files for each of your sessions.
+                </p>
+              </div>
+            </div>
+            <Button
+              asChild
+              size="sm"
+              className="bg-indigo-500 hover:bg-indigo-400 text-white"
+            >
+              <a href={`/speaker/${token}/content`}>
+                Upload your slides &amp; handouts
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Welcome Card */}
         <Card className="bg-white/10 backdrop-blur border-white/20 print:hidden">
           <CardHeader className="pb-3">
