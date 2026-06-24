@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { sendEmail } from "@/lib/email"
+import { sendEmail, getEmailProvider } from "@/lib/email"
 import { escapeHtml } from "@/lib/string-utils"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       .select(`
         id,
         registration_number,
+        checkin_token,
         attendee_name,
         attendee_email,
         attendee_designation,
@@ -36,6 +37,13 @@ export async function POST(request: NextRequest) {
 
     if (regError || !registration) {
       return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+
+    // Fail closed if no checkin_token — the download route is token-keyed
+    // (reg-number lookup was an IDOR and has been removed). Without a token
+    // we'd email a 404-able URL.
+    if (!registration.checkin_token) {
+      return NextResponse.json({ error: "Cannot email badge — registration is missing a checkin_token. Backfill the token and retry." }, { status: 409 })
     }
 
     // Get event details
@@ -51,14 +59,16 @@ export async function POST(request: NextRequest) {
       : ""
     const venue = event?.venue_name ? `${event.venue_name}${event.city ? `, ${event.city}` : ""}` : ""
 
-    // Generate badge download URL using registration number
+    // Build badge download URL keyed on checkin_token (NOT registration_number —
+    // download route is token-only as of 2026-06-24; reg-number lookup was IDOR).
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    const badgeUrl = `${baseUrl}/api/badge/${registration.registration_number}/download`
+    const badgeUrl = `${baseUrl}/api/badge/${registration.checkin_token}/download`
 
     // Send email with badge
+    const emailSubject = `Your Badge for ${eventName}`
     const emailResult = await sendEmail({
       to: registration.attendee_email,
-      subject: `Your Badge for ${eventName}`,
+      subject: emailSubject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
@@ -128,6 +138,29 @@ export async function POST(request: NextRequest) {
         </div>
       `,
     })
+
+    // Audit log (best-effort): record this badge-email send/attempt. Wrapped
+    // in try/catch so a log-write failure can NEVER block or fail the actual
+    // email. On 2026-06-24 we discovered there was no DB record of which
+    // delegates received a badge email (email_logs was empty, message_logs
+    // never received badge entries) — this closes that gap going forward.
+    // template_type='badge' so future re-send queries can filter by route,
+    // not by subject text.
+    try {
+      await (supabase as any).from("email_logs").insert({
+        registration_id: registration.id,
+        event_id,
+        recipient_email: registration.attendee_email,
+        subject: emailSubject,
+        template_type: "badge",
+        status: emailResult.success ? "sent" : "failed",
+        provider: getEmailProvider(),
+        provider_message_id: emailResult.id ?? null,
+        error: emailResult.success ? null : (emailResult.error ?? null),
+      })
+    } catch (logError) {
+      console.error("[badges/email] audit log insert failed (non-fatal):", logError)
+    }
 
     if (!emailResult.success) {
       return NextResponse.json({ error: "Failed to send email" }, { status: 500 })

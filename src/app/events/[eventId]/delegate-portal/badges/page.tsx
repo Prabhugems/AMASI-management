@@ -38,7 +38,7 @@ export default function DelegatePortalBadgesPage() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("registrations")
-        .select("id, registration_number, attendee_name, attendee_email, attendee_phone, badge_generated_at, badge_downloaded_by_delegate_at, ticket_type_id, ticket_type:ticket_types(name)")
+        .select("id, registration_number, checkin_token, attendee_name, attendee_email, attendee_phone, badge_generated_at, badge_downloaded_by_delegate_at, ticket_type_id, ticket_type:ticket_types(name)")
         .eq("event_id", eventId)
         .eq("status", "confirmed")
         .order("attendee_name")
@@ -190,8 +190,15 @@ export default function DelegatePortalBadgesPage() {
 
   const sendBadgeWhatsApp = async (reg: any) => {
     try {
+      // Badge download is token-keyed (IDOR fix, 2026-06-24). Refuse to send
+      // a link we know will 404, so admins see the gap instead of silently
+      // sending broken URLs to delegates.
+      if (!reg.checkin_token) {
+        toast.error(`Cannot WhatsApp badge for ${reg.registration_number}: missing checkin_token`)
+        return false
+      }
       const baseUrl = window.location.origin
-      const downloadLink = `${baseUrl}/api/badge/${reg.registration_number}/download`
+      const downloadLink = `${baseUrl}/api/badge/${reg.checkin_token}/download`
       const text = `Hi ${reg.attendee_name}, your badge is ready! Download it here: ${downloadLink}`
       const res = await fetch("/api/whatsapp/send", {
         method: "POST",

@@ -96,11 +96,16 @@ export async function GET(
 
   const supabase = await createAdminClient()
 
-  // The token can be either a registration_number (e.g. REG-20260430-YZW9ZGK)
-  // or a 64-char secure checkin_token. Their lengths overlap (a reg number can
-  // be 20+ chars), so a length heuristic mis-routes lookups. Try reg number
-  // first, then fall back to checkin_token — two plain queries avoid the
-  // PostgREST .or() filter quirks that silently fail to match.
+  // Look up registration by checkin_token only.
+  //
+  // IDOR fix (2026-06-24): the route previously tried `registration_number`
+  // (ILIKE) first and fell back to `checkin_token`. registration_number is
+  // human-readable, sequential-ish, and not secret — and the auto-email put
+  // those reg-number URLs in inboxes — so an unauthenticated attacker could
+  // iterate or guess reg-numbers to harvest other delegates' badge PDFs
+  // (and attendee_name / email / phone / institution rendered onto them).
+  // Token-keyed lookup requires the 32-char CSPRNG checkin_token the
+  // requester must already possess. Any old reg-number URL now 404s.
   const selectCols = `
       id,
       registration_number,
@@ -122,20 +127,11 @@ export async function GET(
       )
     `
 
-  // Look up registration by registration_number, then by checkin_token
-  let { data: registration, error: regError } = await (supabase as any)
+  const { data: registration, error: regError } = await (supabase as any)
     .from("registrations")
     .select(selectCols)
-    .ilike("registration_number", token)
+    .eq("checkin_token", token)
     .maybeSingle()
-
-  if (!registration && !regError) {
-    ;({ data: registration, error: regError } = await (supabase as any)
-      .from("registrations")
-      .select(selectCols)
-      .eq("checkin_token", token)
-      .maybeSingle())
-  }
 
   if (regError || !registration) {
     return NextResponse.json({ error: "Registration not found" }, { status: 404 })

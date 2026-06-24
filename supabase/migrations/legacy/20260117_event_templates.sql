@@ -1,11 +1,30 @@
 -- Beautiful Message Templates for Events
 -- Professional templates for medical conferences and events
+--
+-- IDEMPOTENCY GUARD (added 2026-06-24): the body below was originally a
+-- DELETE+INSERT, which means a `supabase db push` from a fresh clone (or a
+-- rebuild that doesn't know this is already applied) would WIPE every
+-- admin-customized message template for the 121 FMAS event before re-seeding
+-- the defaults. The DO/IF NOT EXISTS wrapper makes the migration a no-op on
+-- any environment where templates already exist for this event_id, so the
+-- destructive DELETE can never fire a second time. See companion migration
+-- 20260624010000_register_legacy_20260117_migrations.sql which also marks
+-- this file as applied in supabase_migrations.schema_migrations.
 
--- Delete existing event-specific templates for clean insert
-DELETE FROM message_templates WHERE event_id = 'eadf8aa1-9e1d-4f96-b755-217289518709';
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM message_templates
+    WHERE event_id = 'eadf8aa1-9e1d-4f96-b755-217289518709'
+  ) THEN
+    -- Delete existing event-specific templates for clean insert
+    -- (kept inside the guard for symmetry; with the guard this is a no-op
+    -- against an empty set, but it preserves the original intent in the
+    -- only legitimate "first run" case.)
+    DELETE FROM message_templates WHERE event_id = 'eadf8aa1-9e1d-4f96-b755-217289518709';
 
--- Insert beautiful templates for 121 FMAS event
-INSERT INTO message_templates (event_id, name, description, channel, email_subject, email_body, message_body, variables, is_system, is_active) VALUES
+    -- Insert beautiful templates for 121 FMAS event
+    INSERT INTO message_templates (event_id, name, description, channel, email_subject, email_body, message_body, variables, is_system, is_active) VALUES
 
 -- 1. Welcome & Registration Confirmation
 ('eadf8aa1-9e1d-4f96-b755-217289518709',
@@ -510,8 +529,10 @@ For queries, contact us.
 _Team AMASI_',
  '["name"]',
  false, true);
+  END IF;
+END $$;
 
--- Verify insertion
+-- Verify insertion (runs unconditionally; harmless on any state)
 SELECT name, channel, is_active FROM message_templates
 WHERE event_id = 'eadf8aa1-9e1d-4f96-b755-217289518709'
 ORDER BY name;
