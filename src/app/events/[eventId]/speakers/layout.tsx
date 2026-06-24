@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
   Users,
+  LayoutGrid,
   Send,
   Link2,
   FileText,
@@ -23,6 +24,9 @@ import {
   Calendar,
   MapPin,
   UserCheck,
+  Award,
+  Shield,
+  IndianRupee,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
@@ -32,6 +36,11 @@ const sidebarItems = [
     title: "Overview",
     href: "",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Directory",
+    href: "/directory",
+    icon: LayoutGrid,
   },
   {
     title: "All Speakers",
@@ -62,6 +71,21 @@ const sidebarItems = [
     title: "Accommodation",
     href: "/accommodation",
     icon: Hotel,
+  },
+  {
+    title: "CME",
+    href: "/cme",
+    icon: Award,
+  },
+  {
+    title: "Disclosures",
+    href: "/disclosures",
+    icon: Shield,
+  },
+  {
+    title: "Honoraria",
+    href: "/honoraria",
+    icon: IndianRupee,
   },
   {
     title: "Reports",
@@ -191,7 +215,7 @@ export default function SpeakersLayout({
         <div className="text-center">
           <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-          <p className="text-muted-foreground mb-4">You don't have permission to access Speakers.</p>
+          <p className="text-muted-foreground mb-4">You don&apos;t have permission to access Speakers.</p>
           <Link
             href={`/events/${eventId}`}
             className="text-primary hover:underline"
