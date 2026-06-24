@@ -97,3 +97,31 @@ return NextResponse.json({ data })
 
 ## Live Site
 collegeofmas.org.in (Vercel)
+
+## Migration Pipeline — Known Debt (captured 2026-06-24, post-AMASICON project)
+
+**Root cause (don't try to fix this during conference week, parked until after AMASICON Aug 30):**
+
+Supabase DB `jmdwxymbgxwdsmcwbahp` is **shared by two repos**:
+- `amasi-faculty-management` (this repo) — events, abstracts, registrations, check-in
+- `amasi-membership` (sibling repo) — members, credentials, electoral, zones, skill-courses
+
+**Neither repo has a working migration CI today.**
+- This repo's `.github/workflows/migrations.yml` runs `supabase db push` on main, but FAILS on a 63-version drift error (remote `schema_migrations` has 63 versions whose files this repo doesn't carry — they belong to amasi-membership).
+- `amasi-membership` has NO migration workflow at all. Its `test.yml` only runs typecheck/lint/test/build. It keeps 30+ DDL files in a `sql/` directory (e.g. `sql/022_email_campaigns.sql`, `sql/028_ocr_score.sql`), OUTSIDE the Supabase CLI's `supabase/migrations/` path. Those files have been **hand-applied via SQL editor and back-recorded in `schema_migrations`** with synthetic timestamps.
+
+**Net consequence:** every migration on this DB, both repos, all year, was applied **out-of-band**. That's the source of every "merged but not live" / "applied but no file" / "the file lies / the table lies" issue we've found this week — including the 5 legacy `20260117_*.sql` files we moved to `legacy/` on 2026-06-24, the access-token expiry backfill that never ran, and the podium UNIQUE constraint that's now committed-but-unapplied.
+
+**Post-AMASICON fix (NOT now):**
+1. Choose one owner repo (or a new dedicated migrations repo) for the shared DB.
+2. Normalize all migrations into Supabase CLI format under `supabase/migrations/` with full timestamp versions matching `schema_migrations`.
+3. Get `supabase db push` running green against the DB in **isolation** first.
+4. Then consolidate the second repo's migrations onto the owner.
+
+**Standing instruction (until the pipeline project is done):**
+- No migrations applied via Supabase MCP or SQL editor without explicit user go.
+- The one declared exception: the access-token expiry backfill (`20260623_access_token_expiry.sql`) MAY be applied manually before AMASICON if the 13 staff links still need to expire and the pipeline isn't fixed by then — as a **documented one-off**, not as precedent.
+
+**Migrations currently committed-but-unapplied (waiting on the pipeline project):**
+- `20260623_access_token_expiry.sql` — Phase 3 staff access-token expiry backfill (manual exception possible, see above)
+- `20260624020000_abstract_presenter_checkins_unique_abstract.sql` — Podium UNIQUE(abstract_id) (waits unconditionally; CAS in the podium route guards races at app layer until the constraint lands)
