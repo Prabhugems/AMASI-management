@@ -4,6 +4,17 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import { COMPANY_CONFIG } from "@/lib/config"
 
+// Mirrors the helper already used in src/app/api/badges/generate/route.ts and
+// src/app/api/badge/[token]/download/route.ts — kept inline (not extracted)
+// to stay within this PR's scope; refactor into a shared util is left as a
+// follow-up.
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  if (process.env.NODE_ENV === "development") return "http://localhost:3000"
+  return ""
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -40,6 +51,7 @@ export async function GET(
     // Type assertion for the registration data
     const registration = data as {
       registration_number: string
+      checkin_token: string | null
       attendee_name: string
       attendee_email: string
       attendee_phone: string | null
@@ -144,19 +156,31 @@ export async function GET(
       color: primaryColor,
     })
 
-    // Generate QR Code
-    const qrDataUrl = await QRCode.toDataURL(registration.registration_number, {
-      width: 100,
-      margin: 0,
-    })
-    const qrImageBytes = Buffer.from(qrDataUrl.split(",")[1], "base64")
-    const qrImage = await pdfDoc.embedPng(qrImageBytes)
-    page.drawImage(qrImage, {
-      x: width - 150,
-      y: height - 180,
-      width: 100,
-      height: 100,
-    })
+    // Generate QR Code — encodes the secure check-in URL (/v/<checkin_token>),
+    // matching the badge QR (badges/generate/route.ts:116 and
+    // badge/[token]/download/route.ts:71). Bare registration_number was
+    // removed 2026-06-24: it is guessable, and a QR encoding a reg-number
+    // was load-bearing only in the cosmetic sense — anyone wanting to scan
+    // it at the desk now hits the token-only verify endpoint instead.
+    // Defensive: skip the QR (and the surrounding 100×100 layout slot) if
+    // the row has no checkin_token. The DB trigger
+    // trigger_set_registration_checkin_token mints one on INSERT, so this
+    // only fires for any legacy NULL row that escaped the backfill.
+    if (registration.checkin_token) {
+      const verifyUrl = `${getBaseUrl()}/v/${registration.checkin_token}`
+      const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+        width: 100,
+        margin: 0,
+      })
+      const qrImageBytes = Buffer.from(qrDataUrl.split(",")[1], "base64")
+      const qrImage = await pdfDoc.embedPng(qrImageBytes)
+      page.drawImage(qrImage, {
+        x: width - 150,
+        y: height - 180,
+        width: 100,
+        height: 100,
+      })
+    }
 
     // Divider
     y -= 20

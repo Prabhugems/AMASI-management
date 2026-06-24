@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       .select(`
         id,
         registration_number,
+        checkin_token,
         attendee_name,
         attendee_email,
         attendee_designation,
@@ -36,6 +37,13 @@ export async function POST(request: NextRequest) {
 
     if (regError || !registration) {
       return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+
+    // Fail closed if no checkin_token — the download route is token-keyed
+    // (reg-number lookup was an IDOR and has been removed). Without a token
+    // we'd email a 404-able URL.
+    if (!registration.checkin_token) {
+      return NextResponse.json({ error: "Cannot email badge — registration is missing a checkin_token. Backfill the token and retry." }, { status: 409 })
     }
 
     // Get event details
@@ -51,9 +59,10 @@ export async function POST(request: NextRequest) {
       : ""
     const venue = event?.venue_name ? `${event.venue_name}${event.city ? `, ${event.city}` : ""}` : ""
 
-    // Generate badge download URL using registration number
+    // Build badge download URL keyed on checkin_token (NOT registration_number —
+    // download route is token-only as of 2026-06-24; reg-number lookup was IDOR).
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    const badgeUrl = `${baseUrl}/api/badge/${registration.registration_number}/download`
+    const badgeUrl = `${baseUrl}/api/badge/${registration.checkin_token}/download`
 
     // Send email with badge
     const emailResult = await sendEmail({
