@@ -23,6 +23,12 @@ import {
   Users,
 } from "lucide-react"
 import { Html5Qrcode } from "html5-qrcode"
+import {
+  enqueueScan,
+  flushQueue,
+  pendingCount,
+  type FlushResult,
+} from "@/lib/offline-scan-queue"
 
 interface CheckinList {
   id: string
@@ -93,6 +99,17 @@ export default function StaffCheckinPage() {
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment")
   const [recentCheckins, setRecentCheckins] = useState<RecentCheckin[]>([])
   const autoContinueTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Offline scan queue (src/lib/offline-scan-queue.ts) state.
+  // online = browser's `navigator.onLine` mirror, kept in sync via the
+  //   "online" / "offline" window events.
+  // queueCount = number of pending scans in IndexedDB for THIS access token,
+  //   recomputed after each enqueue and after each flush.
+  // Initialise pessimistically (online=true on SSR; nav.onLine is read in the
+  // mount effect below).
+  const [online, setOnline] = useState(true)
+  const [queueCount, setQueueCount] = useState(0)
+  const flushInFlightRef = useRef(false)
 
   // List view state
   const [listAttendees, setListAttendees] = useState<ListAttendee[]>([])
@@ -190,6 +207,86 @@ export default function StaffCheckinPage() {
     }
   }
 
+  // Refresh queue count from IndexedDB. Called after every mutation
+  // (enqueue, flush) so the header badge stays in sync. Cheap (single IDB
+  // store scan filtered by access_token); no need to be debounced.
+  const refreshQueueCount = useCallback(async () => {
+    try {
+      const n = await pendingCount(accessToken)
+      setQueueCount(n)
+    } catch {
+      // IDB unavailable (e.g. private browsing on some browsers) — fall back
+      // to "no queue" rather than blocking the scanner UI.
+    }
+  }, [accessToken])
+
+  // Drain the offline queue. Idempotent + concurrency-guarded via
+  // flushInFlightRef so the `online` event firing while we're already
+  // flushing doesn't kick off a parallel drain. Each synced scan appends
+  // a row to recentCheckins so the volunteer sees what just landed.
+  const flushAllPending = useCallback(async () => {
+    if (flushInFlightRef.current) return
+    flushInFlightRef.current = true
+    try {
+      await flushQueue(accessToken, (result: FlushResult) => {
+        const fallbackName = result.terminalError || "Unknown"
+        if (result.success) {
+          const reg = (result.response as { registration?: { id?: string; attendee_name?: string; registration_number?: string; ticket_type?: { name?: string }; attendee_institution?: string } } | undefined)?.registration
+          setStats((prev) => ({ ...prev, checkedIn: prev.checkedIn + 1 }))
+          setRecentCheckins((prev) => [{
+            id: reg?.id || `synced-${result.scan.id}`,
+            name: reg?.attendee_name || "Synced (offline)",
+            regNumber: reg?.registration_number || result.scan.token,
+            ticketType: reg?.ticket_type?.name,
+            institution: reg?.attendee_institution,
+            time: new Date(),
+            success: true,
+          }, ...prev].slice(0, 20))
+        } else {
+          setRecentCheckins((prev) => [{
+            id: `synced-fail-${result.scan.id}`,
+            name: fallbackName,
+            regNumber: result.scan.token,
+            time: new Date(),
+            success: false,
+          }, ...prev].slice(0, 20))
+        }
+      })
+    } finally {
+      flushInFlightRef.current = false
+      await refreshQueueCount()
+    }
+  }, [accessToken, refreshQueueCount])
+
+  // Wire online/offline detection + initial queue load.
+  // Effect runs once per accessToken (when the page mounts after the access
+  // token is in scope). Sets the initial online state from navigator.onLine,
+  // subscribes to the window events, and kicks off a flush attempt on mount
+  // in case a previous session left scans behind.
+  useEffect(() => {
+    if (!accessToken) return
+
+    const onOnline = () => {
+      setOnline(true)
+      // Don't await — best-effort; errors handled inside flushAllPending.
+      flushAllPending()
+    }
+    const onOffline = () => setOnline(false)
+
+    setOnline(typeof navigator !== "undefined" ? navigator.onLine : true)
+    refreshQueueCount()
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      flushAllPending()
+    }
+
+    window.addEventListener("online", onOnline)
+    window.addEventListener("offline", onOffline)
+    return () => {
+      window.removeEventListener("online", onOnline)
+      window.removeEventListener("offline", onOffline)
+    }
+  }, [accessToken, refreshQueueCount, flushAllPending])
+
   const handleScan = useCallback(async (value: string) => {
     if (!value.trim() || processing || !checkinList) return
 
@@ -209,16 +306,40 @@ export default function StaffCheckinPage() {
       setScannerReady(false)
     }
 
+    // Parse the token OUTSIDE the try so the catch block can also enqueue it.
+    // The QR may encode either a bare token or a /v/<token> URL — extract.
+    let token = value.trim()
+    const urlMatch = value.match(/\/v\/([A-Za-z0-9_-]+)/)
+    if (urlMatch) {
+      token = urlMatch[1]
+    }
+
+    // Offline pre-check: if we know we're offline, skip the fetch and
+    // queue immediately. Volunteer keeps scanning; sync happens when the
+    // browser fires the "online" event. The catch below handles the case
+    // where navigator.onLine lies (DNS works, server unreachable) — the
+    // fetch throws TypeError there and we queue from the catch.
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await enqueueScan(accessToken, token)
+      await refreshQueueCount()
+      playSound("success")
+      setLastResult({
+        success: true,
+        message: "Queued offline — will sync when online",
+      })
+      setRecentCheckins((prev) => [{
+        id: `queued-${Date.now()}`,
+        name: "Queued offline",
+        regNumber: token,
+        time: new Date(),
+        success: true,
+      }, ...prev].slice(0, 20))
+      setProcessing(false)
+      setInputValue("")
+      return
+    }
+
     try {
-      // Check if it's a verification URL or direct token
-      let token = value.trim()
-
-      // Extract token from URL if it's a full URL
-      const urlMatch = value.match(/\/v\/([A-Za-z0-9_-]+)/)
-      if (urlMatch) {
-        token = urlMatch[1]
-      }
-
       // Try to check in using the token
       const res = await fetch(`/api/verify/${token}`, {
         method: "POST",
@@ -270,6 +391,36 @@ export default function StaffCheckinPage() {
         }, ...prev].slice(0, 20))
       }
     } catch (err) {
+      // Network failure (fetch throws TypeError for offline / DNS / TLS /
+      // aborted-by-network). Queue the scan rather than losing it. Anything
+      // else — JSON parse errors, etc. — falls into the error UI.
+      if (err instanceof TypeError) {
+        try {
+          await enqueueScan(accessToken, token)
+          await refreshQueueCount()
+          // Mark online=false so the header pill reflects reality —
+          // navigator.onLine was true (else we'd have queued pre-emptively),
+          // but the network test just disproved it.
+          setOnline(false)
+          playSound("success")
+          setLastResult({
+            success: true,
+            message: "Queued offline — will sync when online",
+          })
+          setRecentCheckins((prev) => [{
+            id: `queued-${Date.now()}`,
+            name: "Queued offline",
+            regNumber: token,
+            time: new Date(),
+            success: true,
+          }, ...prev].slice(0, 20))
+          return
+        } catch (queueErr) {
+          // IDB write itself failed (private browsing, quota, etc.) — fall
+          // through to the error UI so the volunteer knows the scan was lost.
+          console.error("Failed to enqueue offline scan:", queueErr)
+        }
+      }
       playSound("error")
       setLastResult({
         success: false,
@@ -279,7 +430,7 @@ export default function StaffCheckinPage() {
       setProcessing(false)
       setInputValue("")
     }
-  }, [processing, checkinList, accessToken, soundEnabled])
+  }, [processing, checkinList, accessToken, soundEnabled, refreshQueueCount])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -556,13 +707,44 @@ export default function StaffCheckinPage() {
             >
               {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
-            <div className="flex items-center gap-1.5 ml-2 px-3 py-1.5 bg-emerald-500/20 rounded-full">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-xs text-emerald-400 font-medium">Live</span>
-            </div>
+            {(() => {
+              // Header connectivity pill — four states:
+              //   online + queue=0   -> green "Live" (the existing default)
+              //   online + queue>0   -> amber "Syncing N"  (auto-flush in progress / pending)
+              //   offline + queue=0  -> red "Offline"
+              //   offline + queue>0  -> red "Offline · N queued"
+              // Clicking the pill while online+pending forces a flush (defensive
+              // affordance for the rare case the "online" event was missed).
+              const isOffline = !online
+              const hasQueue = queueCount > 0
+              const cls = isOffline
+                ? "bg-red-500/20 text-red-300"
+                : hasQueue
+                  ? "bg-amber-500/20 text-amber-300"
+                  : "bg-emerald-500/20 text-emerald-400"
+              const dotCls = isOffline ? "bg-red-500" : hasQueue ? "bg-amber-500" : "bg-emerald-500"
+              const label = isOffline
+                ? hasQueue ? `Offline · ${queueCount} queued` : "Offline"
+                : hasQueue ? `Syncing ${queueCount}` : "Live"
+              const isClickable = online && hasQueue
+              return (
+                <button
+                  type="button"
+                  disabled={!isClickable}
+                  onClick={() => { if (isClickable) flushAllPending() }}
+                  className={`flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-full ${cls} ${isClickable ? "cursor-pointer hover:opacity-90" : "cursor-default"}`}
+                  title={isClickable ? "Tap to retry syncing queued scans" : undefined}
+                >
+                  <span className="relative flex h-2 w-2">
+                    {!isOffline && !hasQueue && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    )}
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${dotCls}`}></span>
+                  </span>
+                  <span className="text-xs font-medium">{label}</span>
+                </button>
+              )
+            })()}
           </div>
         </div>
       </div>
