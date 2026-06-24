@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { sendEmail, isEmailEnabled } from "@/lib/email"
+import { sendEmail, isEmailEnabled, getEmailProvider } from "@/lib/email"
 import { escapeHtml } from "@/lib/string-utils"
 import { COMPANY_CONFIG } from "@/lib/config"
 
@@ -130,6 +130,16 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
+    // Event-scope: a hall coordinator may only mark abstracts from their own
+    // event. The GET endpoint already enforces this (see L364-367 below); the
+    // POST did not, which made cross-event marking possible — confirmed in
+    // the 2026-06-24 audit. Must run BEFORE any DB write below, otherwise an
+    // Event-A coordinator could flip presentation_completed on an Event-B
+    // abstract before this guard fires.
+    if (abstract.event_id !== coordinator.event_id) {
+      return NextResponse.json({ error: "Access denied for this event" }, { status: 403 })
+    }
+
     if (abstract.status !== "accepted") {
       return NextResponse.json({
         error: "Abstract not accepted",
@@ -156,28 +166,64 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Mark as presented
+    // Mark as presented — compare-and-set on `presentation_completed`.
+    // Only the scan that successfully flips false -> true proceeds to
+    // INSERT + email. A concurrent scan whose UPDATE sees presentation_
+    // completed already true (set by the first scan in the window between
+    // the optimistic pre-check above and this UPDATE) returns zero rows —
+    // the loser path: respond already_presented, send NO email. This is
+    // the authoritative race-guard; the pre-check above is just a fast
+    // path that avoids the round-trip on cached reads.
     const presentedAt = new Date().toISOString()
-    const { error: updateError } = await (supabase as any)
+    const updateFields: Record<string, unknown> = {
+      presentation_completed: true,
+      presentation_completed_at: presentedAt,
+      presenter_checked_in: true,
+      podium_checkin_hall: hall_name || coordinatorInfo?.hall_name,
+      podium_checkin_by: coordinatorInfo?.coordinator_name,
+      podium_checkin_notes: notes,
+    }
+    if (!abstract.presenter_checked_in) {
+      updateFields.presenter_checked_in_at = presentedAt
+    }
+
+    const { data: casRows, error: updateError } = await (supabase as any)
       .from("abstracts")
-      .update({
-        presentation_completed: true,
-        presentation_completed_at: presentedAt,
-        presenter_checked_in: true,
-        presenter_checked_in_at: abstract.presenter_checked_in ? undefined : presentedAt,
-        podium_checkin_hall: hall_name || coordinatorInfo?.hall_name,
-        podium_checkin_by: coordinatorInfo?.coordinator_name,
-        podium_checkin_notes: notes,
-      })
+      .update(updateFields)
       .eq("id", abstract.id)
+      .eq("presentation_completed", false)
+      .select("id")
 
     if (updateError) {
       console.error("Error updating abstract:", updateError)
       return NextResponse.json({ error: "Failed to record presentation" }, { status: 500 })
     }
 
-    // Record in checkins table
-    await (supabase as any)
+    if (!casRows || casRows.length === 0) {
+      // CAS lost — a concurrent scan completed the presentation between
+      // our optimistic pre-check and this UPDATE. No INSERT, no email.
+      // This early-return MUST stay before the email block below — moving
+      // the email block above this point would cause a duplicate send.
+      return NextResponse.json({
+        already_presented: true,
+        message: `${abstract.presenting_author_name} already presented`,
+        abstract: {
+          number: abstract.abstract_number,
+          title: abstract.title,
+          presenter: abstract.presenting_author_name,
+        },
+      })
+    }
+
+    // Record in checkins table. Idempotency: same 23505 pattern as
+    // /api/verify/[token]/route.ts:379. A unique-violation here means a
+    // concurrent scan inserted the row first under the UNIQUE(abstract_id)
+    // constraint (held in this PR until CI applies it; until then the CAS
+    // above is the only race-guard). Any OTHER insert error is logged but
+    // does NOT fail the response — the abstract is already marked
+    // presented; failing here would mislead the volunteer into rescanning
+    // and emitting a duplicate email.
+    const { error: insertError } = await (supabase as any)
       .from("abstract_presenter_checkins")
       .insert({
         abstract_id: abstract.id,
@@ -189,6 +235,9 @@ export async function POST(request: NextRequest) {
         presentation_ended_at: presentedAt,
         notes: notes || "Podium check-in via QR scan",
       })
+    if (insertError && insertError.code !== "23505") {
+      console.error("Failed to record presenter check-in (non-fatal):", insertError)
+    }
 
     // Send presenter certificate email
     let emailSent = false
@@ -294,13 +343,37 @@ export async function POST(request: NextRequest) {
           </html>
         `
 
+        const emailSubject = `Your Presenter Certificate - ${eventName}`
         const result = await sendEmail({
           to: abstract.presenting_author_email,
-          subject: `Your Presenter Certificate - ${eventName}`,
+          subject: emailSubject,
           html: emailHtml,
         })
 
         emailSent = result.success
+
+        // Audit log (best-effort): record this presenter-certificate send.
+        // Same log-only / after-send / swallow-on-error contract as the
+        // badges/email route added 2026-06-24 — a logging bug here MUST
+        // NEVER block the check-in or the email. We discovered during
+        // today's podium audit that without a log we cannot objectively
+        // verify "one row, one email" — this closes that gap.
+        try {
+          await (supabase as any).from("email_logs").insert({
+            registration_id: null, // podium is keyed on abstract, not registration
+            event_id: abstract.event_id,
+            recipient_email: abstract.presenting_author_email,
+            subject: emailSubject,
+            template_type: "presenter_certificate",
+            status: result.success ? "sent" : "failed",
+            provider: getEmailProvider(),
+            provider_message_id: result.id ?? null,
+            error: result.success ? null : (result.error ?? null),
+          })
+        } catch (logError) {
+          console.error("[podium-checkin] email_logs insert failed (non-fatal):", logError)
+        }
+
         if (result.success) {
           console.log(`Presenter certificate email sent to ${abstract.presenting_author_email}`)
         }
