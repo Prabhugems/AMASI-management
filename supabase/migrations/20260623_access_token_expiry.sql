@@ -13,6 +13,16 @@
 -- auto-apply migrations. Run via the Supabase MCP / SQL editor only after
 -- confirming no list is mid-event. (Verified idle 2026-06-23: zero check-ins
 -- in the prior 24h across all 13 lists; latest activity 2026-03-19.)
+--
+-- APPLIED 2026-06-24 — the documented one-off exception to the standing
+-- "no out-of-band migrations" rule (see CLAUDE.md, "Migration Pipeline — Known
+-- Debt"). Pre-flight: 13 lists NULL, 0 mid-event, 0 with NULL events.end_date,
+-- 0 with check-in activity in prior 24h. UPDATE returned 13 rows: 12 now-
+-- expired (past events — staff links effectively dead, intended), 2 still
+-- valid (future events). Recorded in supabase_migrations.schema_migrations
+-- under synthetic version 20260624030000 / name "access_token_expiry_backfill"
+-- so a fresh clone via the eventual pipeline-fix project sees this as applied
+-- and skips it.
 UPDATE checkin_lists cl
    SET access_token_expires_at = (e.end_date::date + INTERVAL '2 days')
   FROM events e

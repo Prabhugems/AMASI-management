@@ -120,8 +120,10 @@ Supabase DB `jmdwxymbgxwdsmcwbahp` is **shared by two repos**:
 
 **Standing instruction (until the pipeline project is done):**
 - No migrations applied via Supabase MCP or SQL editor without explicit user go.
-- The one declared exception: the access-token expiry backfill (`20260623_access_token_expiry.sql`) MAY be applied manually before AMASICON if the 13 staff links still need to expire and the pipeline isn't fixed by then — as a **documented one-off**, not as precedent.
+- The exception slot has been exercised once (see access-token expiry below). Future requests for additional MCP applies should be treated with the same scepticism even with explicit go — they expand the precedent.
+
+**Migration application history (out-of-band, recorded so it isn't invisible):**
+- `20260623_access_token_expiry.sql` — Phase 3 staff access-token expiry backfill. **APPLIED 2026-06-24 via Supabase MCP** as the documented one-off exception. Pre-flight: 13 NULL rows; 0 mid-event; 0 with NULL `events.end_date`; 0 with 24h check-in activity. UPDATE returned 13 rows. Recorded in `supabase_migrations.schema_migrations` under synthetic version `20260624030000 / access_token_expiry_backfill`.
 
 **Migrations currently committed-but-unapplied (waiting on the pipeline project):**
-- `20260623_access_token_expiry.sql` — Phase 3 staff access-token expiry backfill (manual exception possible, see above)
-- `20260624020000_abstract_presenter_checkins_unique_abstract.sql` — Podium UNIQUE(abstract_id) (waits unconditionally; CAS in the podium route guards races at app layer until the constraint lands)
+- `20260624020000_abstract_presenter_checkins_unique_abstract.sql` — Podium UNIQUE(abstract_id). CAS in the podium route guards races at app layer until the constraint lands.
