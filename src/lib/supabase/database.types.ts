@@ -252,7 +252,7 @@ export interface Database {
           id: string
           title: string | null
           name: string
-          email: string
+          email: string | null
           email_secondary: string | null
           phone: string | null
           phone_secondary: string | null
@@ -304,12 +304,16 @@ export interface Database {
           created_by: string | null
           created_at: string
           updated_at: string
+          bio_markdown: string | null
+          expertise_tags: string[]
+          headshot_urls: Array<{ url: string; label?: string; uploaded_at?: string; is_primary?: boolean }>
+          youtube_reel_url: string | null
         }
         Insert: {
           id?: string
           title?: string | null
           name: string
-          email: string
+          email?: string | null
           email_secondary?: string | null
           phone?: string | null
           phone_secondary?: string | null
@@ -361,6 +365,10 @@ export interface Database {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          bio_markdown?: string | null
+          expertise_tags?: string[]
+          headshot_urls?: Array<{ url: string; label?: string; uploaded_at?: string; is_primary?: boolean }>
+          youtube_reel_url?: string | null
         }
         Update: {
           id?: string
@@ -418,6 +426,196 @@ export interface Database {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          bio_markdown?: string | null
+          expertise_tags?: string[]
+          headshot_urls?: Array<{ url: string; label?: string; uploaded_at?: string; is_primary?: boolean }>
+          youtube_reel_url?: string | null
+        }
+      }
+      faculty_assignments: {
+        Row: {
+          id: string
+          event_id: string
+          session_id: string | null
+          faculty_id: string | null
+          faculty_name: string
+          faculty_email: string | null
+          faculty_phone: string | null
+          role: 'speaker' | 'chairperson' | 'moderator' | 'panelist' | 'keynote' | 'discussant'
+          topic_title: string | null
+          topic_description: string | null
+          session_date: string | null
+          start_time: string | null
+          end_time: string | null
+          hall: string | null
+          session_name: string | null
+          status: 'pending' | 'invited' | 'confirmed' | 'declined' | 'change_requested' | 'cancelled'
+          response_notes: string | null
+          responded_at: string | null
+          invitation_sent_at: string | null
+          invitation_token: string | null
+          registration_id: string | null
+          participation_mode: 'online' | 'offline' | 'hybrid'
+          display_order: number
+          replaced_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          session_id?: string | null
+          faculty_id?: string | null
+          faculty_name: string
+          faculty_email?: string | null
+          faculty_phone?: string | null
+          role: 'speaker' | 'chairperson' | 'moderator' | 'panelist' | 'keynote' | 'discussant'
+          topic_title?: string | null
+          topic_description?: string | null
+          session_date?: string | null
+          start_time?: string | null
+          end_time?: string | null
+          hall?: string | null
+          session_name?: string | null
+          status?: 'pending' | 'invited' | 'confirmed' | 'declined' | 'change_requested' | 'cancelled'
+          response_notes?: string | null
+          responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_token?: string | null
+          registration_id?: string | null
+          participation_mode?: 'online' | 'offline' | 'hybrid'
+          display_order?: number
+          replaced_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          session_id?: string | null
+          faculty_id?: string | null
+          faculty_name?: string
+          faculty_email?: string | null
+          faculty_phone?: string | null
+          role?: 'speaker' | 'chairperson' | 'moderator' | 'panelist' | 'keynote' | 'discussant'
+          topic_title?: string | null
+          topic_description?: string | null
+          session_date?: string | null
+          start_time?: string | null
+          end_time?: string | null
+          hall?: string | null
+          session_name?: string | null
+          status?: 'pending' | 'invited' | 'confirmed' | 'declined' | 'change_requested' | 'cancelled'
+          response_notes?: string | null
+          responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_token?: string | null
+          registration_id?: string | null
+          participation_mode?: 'online' | 'offline' | 'hybrid'
+          display_order?: number
+          replaced_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      speaker_content: {
+        Row: {
+          id: string
+          faculty_assignment_id: string
+          event_id: string
+          faculty_id: string | null
+          content_type: 'slides' | 'handout' | 'video' | 'poster' | 'supplementary'
+          storage_bucket: string
+          storage_path: string
+          public_url: string | null
+          original_filename: string
+          file_size_bytes: number
+          mime_type: string
+          version: number
+          is_current: boolean
+          notes: string | null
+          uploaded_by_token: string | null
+          uploaded_by_email: string | null
+          uploaded_at: string
+          superseded_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          faculty_assignment_id: string
+          event_id: string
+          faculty_id?: string | null
+          content_type: 'slides' | 'handout' | 'video' | 'poster' | 'supplementary'
+          storage_bucket?: string
+          storage_path: string
+          public_url?: string | null
+          original_filename: string
+          file_size_bytes: number
+          mime_type: string
+          version?: number
+          is_current?: boolean
+          notes?: string | null
+          uploaded_by_token?: string | null
+          uploaded_by_email?: string | null
+          uploaded_at?: string
+          superseded_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          faculty_assignment_id?: string
+          event_id?: string
+          faculty_id?: string | null
+          content_type?: 'slides' | 'handout' | 'video' | 'poster' | 'supplementary'
+          storage_bucket?: string
+          storage_path?: string
+          public_url?: string | null
+          original_filename?: string
+          file_size_bytes?: number
+          mime_type?: string
+          version?: number
+          is_current?: boolean
+          notes?: string | null
+          uploaded_by_token?: string | null
+          uploaded_by_email?: string | null
+          uploaded_at?: string
+          superseded_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      speaker_portal_actions: {
+        Row: {
+          id: string
+          faculty_assignment_id: string
+          event_id: string
+          action_type: 'viewed_portal' | 'confirmed_times' | 'uploaded_content' | 'replaced_content' | 'deleted_content' | 'signed_disclosure' | 'requested_change'
+          payload: Record<string, unknown> | null
+          ip_address: string | null
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          faculty_assignment_id: string
+          event_id: string
+          action_type: 'viewed_portal' | 'confirmed_times' | 'uploaded_content' | 'replaced_content' | 'deleted_content' | 'signed_disclosure' | 'requested_change'
+          payload?: Record<string, unknown> | null
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          faculty_assignment_id?: string
+          event_id?: string
+          action_type?: 'viewed_portal' | 'confirmed_times' | 'uploaded_content' | 'replaced_content' | 'deleted_content' | 'signed_disclosure' | 'requested_change'
+          payload?: Record<string, unknown> | null
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
         }
       }
       members: {
