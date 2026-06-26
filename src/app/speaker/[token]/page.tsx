@@ -520,13 +520,13 @@ export default function SpeakerPortalPage() {
                 <Mic className="h-5 w-5" />
                 Your Sessions ({portalSessions.length})
               </CardTitle>
-              <CardDescription className="text-white/70 flex items-center justify-between">
+              <CardDescription className="text-white/70 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span>Sessions you are assigned to present</span>
                 {portalSessions.length > 0 && (
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="h-7 text-xs gap-1.5"
+                    className="h-8 w-full sm:w-auto text-xs gap-1.5"
                     onClick={downloadCalendar}
                   >
                     <CalendarPlus className="h-3.5 w-3.5" />
@@ -548,8 +548,8 @@ export default function SpeakerPortalPage() {
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-white">{session.session_name}</h4>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs sm:text-sm text-white/60">
-                            <span className="flex items-center gap-1">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-2 text-xs sm:text-sm text-white/60">
+                            <span className="flex items-center gap-1 whitespace-nowrap">
                               <Calendar className="h-3.5 w-3.5 shrink-0" />
                               {new Date(session.session_date).toLocaleDateString("en-IN", {
                                 weekday: "short",
@@ -557,12 +557,12 @@ export default function SpeakerPortalPage() {
                                 month: "short",
                               })}
                             </span>
-                            <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-1 whitespace-nowrap">
                               <Clock className="h-3.5 w-3.5 shrink-0" />
                               {formatTime(session.start_time)} - {formatTime(session.end_time)}
                             </span>
                             {session.hall && (
-                              <span className="flex items-center gap-1">
+                              <span className="flex items-center gap-1 whitespace-nowrap">
                                 <Building2 className="h-3.5 w-3.5 shrink-0" />
                                 {session.hall}
                               </span>
