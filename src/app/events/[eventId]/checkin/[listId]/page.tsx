@@ -371,13 +371,23 @@ export default function CheckinListAttendeesPage() {
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search by name, email, phone, or registration #..."
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="w-full pl-12 pr-10 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
                 />
               </div>
             </div>
@@ -421,7 +431,7 @@ export default function CheckinListAttendeesPage() {
               <select
                 value={ticketFilter}
                 onChange={(e) => setTicketFilter(e.target.value)}
-                className="px-4 py-2 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               >
                 <option value="all">All Tickets</option>
                 {ticketTypes?.map((t) => (
@@ -432,7 +442,7 @@ export default function CheckinListAttendeesPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               >
                 <option value="all">All Status</option>
                 <option value="checked_in">Checked In</option>
