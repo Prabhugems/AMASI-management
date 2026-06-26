@@ -111,6 +111,11 @@ const HALL_COLORS: Record<string, { bg: string; text: string; border: string; li
 const getHallColor = (hall: string | null) => {
   if (!hall) return HALL_COLORS.default
   const h = hall.toLowerCase()
+  // Specialty-specific halls (115 / 121-127 FMAS, AMASICON pattern)
+  if (h.includes("surge") || h.includes("surgi")) return HALL_COLORS.blue
+  if (h.includes("gyn") || h.includes("obg")) return HALL_COLORS.red
+  if (h.includes("exam")) return HALL_COLORS.yellow
+  // Generic color-keyword fallback
   if (h.includes("red")) return HALL_COLORS.red
   if (h.includes("green")) return HALL_COLORS.green
   if (h.includes("blue")) return HALL_COLORS.blue
@@ -804,46 +809,46 @@ export default function PublicProgramPage() {
                   </div>
 
                   {/* Individual Topics */}
-                  <div className="divide-y">
+                  <div className="divide-y divide-gray-100">
                     {trackSessions.map((session) => {
                       const SessionIcon = getSessionIcon(session.session_name, session.session_type)
                       const isPanelSession = trackName.toLowerCase().includes("panel") || trackName.toLowerCase().includes("discussion")
                       const panelists: string[] = []
+                      const hallColors = getHallColor(session.hall)
                       return (
                         <div
                           key={session.id}
-                          className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                          className="px-4 py-3 sm:px-5 sm:py-4 hover:bg-gray-50 cursor-pointer transition-colors"
                           onClick={() => setSelectedSession(session)}
                         >
-                          <div className="flex items-start gap-4">
+                          <div className="flex items-start gap-3 sm:gap-4">
                             {/* Time */}
-                            <div className="text-sm min-w-[140px] whitespace-nowrap leading-tight">
+                            <div
+                              className="text-sm min-w-[88px] sm:min-w-[110px] whitespace-nowrap leading-tight pl-3 border-l-4"
+                              style={{ borderLeftColor: trackColor }}
+                            >
                               <p className="font-semibold text-gray-900">{formatTime(session.start_time)}</p>
-                              <p className="text-gray-500">{formatTime(session.end_time)}</p>
+                              <p className="text-gray-500 text-xs">→ {formatTime(session.end_time)}</p>
                             </div>
 
                             {/* Content */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start gap-2">
                                 {SessionIcon && (
-                                  <SessionIcon className="h-4 w-4 text-blue-500 mt-1 flex-shrink-0" />
+                                  <SessionIcon className="h-4 w-4 mt-1 flex-shrink-0" style={{ color: trackColor }} />
                                 )}
                                 <div className="flex-1">
                                   {/* Topic */}
-                                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Topic</p>
-                                  <h4 className="font-medium text-gray-900 line-clamp-2">
+                                  <h4 className="font-semibold text-gray-900 leading-snug">
                                     {session.session_name}
                                   </h4>
 
                                   {/* Speaker - Names only (no contact details in public view) */}
                                   {session.speakers && (
-                                    <div className="mt-2">
-                                      <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Speaker</p>
-                                      <p className="text-sm text-gray-700 flex items-center gap-1">
-                                        <User className="h-3.5 w-3.5 text-gray-500" />
-                                        {session.speakers}
-                                      </p>
-                                    </div>
+                                    <p className="mt-1.5 text-sm text-gray-700 flex items-center gap-1.5">
+                                      <User className="h-3.5 w-3.5 text-gray-500 flex-shrink-0" />
+                                      <span className="font-medium">{session.speakers}</span>
+                                    </p>
                                   )}
 
                                   {/* Panel Discussion details */}
@@ -872,7 +877,12 @@ export default function PublicProgramPage() {
 
                                   {/* Hall */}
                                   {session.hall && (
-                                    <Badge variant="outline" className="mt-2 text-xs">
+                                    <Badge
+                                      className={cn(
+                                        "mt-2 text-xs font-medium border",
+                                        hallColors.light, hallColors.text, hallColors.border
+                                      )}
+                                    >
                                       <MapPin className="h-3 w-3 mr-1" />
                                       {session.hall}
                                     </Badge>
