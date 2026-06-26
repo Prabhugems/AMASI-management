@@ -634,7 +634,7 @@ function PrintStationKioskPage() {
     // back to "first USB" auto-pick when nothing is pinned or the pinned
     // printer isn't currently visible to the proxy.
     const pinned = station?.print_settings?.proxy_printer_name
-    const pinnedMatch = pinned && proxyPrinters.find(p => p.name === pinned)
+    const pinnedMatch = pinned ? proxyPrinters.find(p => p.name === pinned) : undefined
     const printerName = pinnedMatch?.name || proxyPrinters.find(p => p.usb)?.name || proxyPrinters[0]?.name
     if (!printerName) throw new Error("No printer found on proxy")
 
