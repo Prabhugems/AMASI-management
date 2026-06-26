@@ -570,19 +570,19 @@ export default function PublicProgramPage() {
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
+            <div className={cn("backdrop-blur rounded-xl p-4 text-center ring-1 ring-white/20", theme === "classic" ? "bg-[#1B6B93]/25" : "bg-white/20")}>
               <p className="text-2xl sm:text-3xl font-bold">{stats.totalDays}</p>
               <p className={cn("text-sm", themeConfig.headerText)}>Days</p>
             </div>
-            <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
+            <div className={cn("backdrop-blur rounded-xl p-4 text-center ring-1 ring-white/20", theme === "classic" ? "bg-[#1B6B93]/25" : "bg-white/20")}>
               <p className="text-2xl sm:text-3xl font-bold">{stats.totalSessions}</p>
               <p className={cn("text-sm", themeConfig.headerText)}>Sessions</p>
             </div>
-            <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
+            <div className={cn("backdrop-blur rounded-xl p-4 text-center ring-1 ring-white/20", theme === "classic" ? "bg-[#1B6B93]/25" : "bg-white/20")}>
               <p className="text-2xl sm:text-3xl font-bold">{stats.totalSpeakers}</p>
               <p className={cn("text-sm", themeConfig.headerText)}>Speakers</p>
             </div>
-            <div className={cn("backdrop-blur rounded-xl p-4 text-center", theme === "classic" ? "bg-[#1B6B93]/20" : "bg-white/10")}>
+            <div className={cn("backdrop-blur rounded-xl p-4 text-center ring-1 ring-white/20", theme === "classic" ? "bg-[#1B6B93]/25" : "bg-white/20")}>
               <p className="text-2xl sm:text-3xl font-bold">{stats.totalHalls}</p>
               <p className={cn("text-sm", themeConfig.headerText)}>Halls</p>
             </div>
@@ -623,7 +623,7 @@ export default function PublicProgramPage() {
             {datePhases.map((phase, phaseIdx) => (
               <div key={phase.label} className="flex items-center gap-2">
                 {phaseIdx > 0 && <div className="w-px h-8 bg-gray-300 mx-1" />}
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap mr-1">
+                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap mr-1">
                   {phase.label}
                 </span>
                 {phase.dates.map((date, dayIdx) => (
@@ -647,12 +647,12 @@ export default function PublicProgramPage() {
             {/* Search & Filter */}
             <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
                 <Input
                   placeholder="Search sessions, speakers..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-48 md:w-64"
+                  className="pl-10 pr-8 w-48 md:w-64 border-gray-300 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/30"
                 />
                 {searchQuery && (
                   <button
@@ -738,10 +738,10 @@ export default function PublicProgramPage() {
       <section className="max-w-7xl mx-auto px-4 py-6">
         {selectedDay && (
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">
+            <h2 className="text-2xl font-bold text-gray-900">
               {formatFullDate(selectedDay)}
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-600 mt-0.5">
               {filteredSessions.length} session{filteredSessions.length !== 1 ? "s" : ""}
               {selectedHalls.length > 0 && ` in ${selectedHalls.length} hall${selectedHalls.length !== 1 ? "s" : ""}`}
             </p>
@@ -755,16 +755,23 @@ export default function PublicProgramPage() {
             Object.entries(sessionsByTrack).map(([trackName, { track, sessions: trackSessions }]) => {
               const trackColor = track?.color || "#3B82F6"
               return (
-                <div key={trackName} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden" key={trackName}>
                   {/* Session Header with Moderator & Chairpersons */}
-                  <div className="px-4 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+                  <div
+                    className="px-5 py-4 border-b border-gray-200"
+                    style={{
+                      background: `linear-gradient(135deg, ${trackColor}14 0%, ${trackColor}06 100%)`,
+                      borderLeftWidth: 4,
+                      borderLeftColor: trackColor,
+                    }}
+                  >
                     <div className="flex items-start gap-3">
                       <span
-                        className="w-4 h-4 rounded-full mt-1.5 flex-shrink-0"
+                        className="w-3 h-3 rounded-full mt-2 flex-shrink-0 ring-2 ring-white shadow"
                         style={{ backgroundColor: trackColor }}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Session</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: trackColor }}>Session</p>
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-bold text-xl text-gray-900">{trackName}</h3>
                           <Badge variant="secondary" className="bg-white">
@@ -810,9 +817,9 @@ export default function PublicProgramPage() {
                         >
                           <div className="flex items-start gap-4">
                             {/* Time */}
-                            <div className="text-sm text-gray-500 min-w-[140px] whitespace-nowrap">
-                              <p className="font-medium">{formatTime(session.start_time)}</p>
-                              <p>{formatTime(session.end_time)}</p>
+                            <div className="text-sm min-w-[140px] whitespace-nowrap leading-tight">
+                              <p className="font-semibold text-gray-900">{formatTime(session.start_time)}</p>
+                              <p className="text-gray-500">{formatTime(session.end_time)}</p>
                             </div>
 
                             {/* Content */}
@@ -823,7 +830,7 @@ export default function PublicProgramPage() {
                                 )}
                                 <div className="flex-1">
                                   {/* Topic */}
-                                  <p className="text-xs font-medium text-gray-400 uppercase">Topic</p>
+                                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Topic</p>
                                   <h4 className="font-medium text-gray-900 line-clamp-2">
                                     {session.session_name}
                                   </h4>
@@ -831,7 +838,7 @@ export default function PublicProgramPage() {
                                   {/* Speaker - Names only (no contact details in public view) */}
                                   {session.speakers && (
                                     <div className="mt-2">
-                                      <p className="text-xs font-medium text-gray-400 uppercase">Speaker</p>
+                                      <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Speaker</p>
                                       <p className="text-sm text-gray-700 flex items-center gap-1">
                                         <User className="h-3.5 w-3.5 text-gray-500" />
                                         {session.speakers}
@@ -844,13 +851,13 @@ export default function PublicProgramPage() {
                                     <div className="mt-2 space-y-2">
                                       {session.moderators && (
                                         <div>
-                                          <p className="text-xs font-medium text-gray-400 uppercase">Moderator</p>
+                                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Moderator</p>
                                           <p className="text-sm text-gray-700">{session.moderators}</p>
                                         </div>
                                       )}
                                       {panelists.length > 0 && (
                                         <div>
-                                          <p className="text-xs font-medium text-gray-400 uppercase">Panelists</p>
+                                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Panelists</p>
                                           <div className="flex flex-wrap gap-1.5 mt-1">
                                             {panelists.map((name, i) => (
                                               <span key={i} className="text-xs bg-gray-100 px-2 py-1 rounded-full text-gray-700">
@@ -874,7 +881,7 @@ export default function PublicProgramPage() {
                               </div>
                             </div>
 
-                            <ChevronRight className="h-5 w-5 text-gray-300 flex-shrink-0" />
+                            <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
                           </div>
                         </div>
                       )
@@ -910,9 +917,9 @@ export default function PublicProgramPage() {
                         >
                           <div className="flex items-start gap-4">
                             {/* Time */}
-                            <div className="text-sm text-gray-500 min-w-[140px] whitespace-nowrap">
-                              <p className="font-medium">{formatTime(session.start_time)}</p>
-                              <p>{formatTime(session.end_time)}</p>
+                            <div className="text-sm min-w-[140px] whitespace-nowrap leading-tight">
+                              <p className="font-semibold text-gray-900">{formatTime(session.start_time)}</p>
+                              <p className="text-gray-500">{formatTime(session.end_time)}</p>
                             </div>
 
                             {/* Content */}
@@ -953,7 +960,7 @@ export default function PublicProgramPage() {
                               </div>
                             </div>
 
-                            <ChevronRight className="h-5 w-5 text-gray-300 flex-shrink-0" />
+                            <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
                           </div>
                         </div>
                       )
