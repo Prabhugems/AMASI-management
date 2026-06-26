@@ -488,26 +488,24 @@ export default function SpeakerPortalPage() {
               )}
 
               {portalRegistration.status === "confirmed" && (
-                <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-2 text-green-400">
-                      <CheckCircle className="h-5 w-5 shrink-0" />
-                      <span className="font-medium">Your participation is confirmed!</span>
-                    </div>
-                    {event?.id && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto border-green-400/50 text-green-300 hover:bg-green-500/20"
-                        onClick={() => {
-                          window.open(`/api/events/${event.id}/invitation-pdf?type=speaker&name=${encodeURIComponent(faculty?.name || "")}&email=${encodeURIComponent(faculty?.email || "")}`, "_blank")
-                        }}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Invitation
-                      </Button>
-                    )}
+                <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20 space-y-3">
+                  <div className="flex items-center gap-2 text-green-400">
+                    <CheckCircle className="h-5 w-5 shrink-0" />
+                    <span className="font-medium">Your participation is confirmed!</span>
                   </div>
+                  {event?.id && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full sm:w-auto border-green-400/50 text-green-300 hover:bg-green-500/20"
+                      onClick={() => {
+                        window.open(`/api/events/${event.id}/invitation-pdf?type=speaker&name=${encodeURIComponent(faculty?.name || "")}&email=${encodeURIComponent(faculty?.email || "")}`, "_blank")
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Invitation
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -515,25 +513,25 @@ export default function SpeakerPortalPage() {
 
           {/* Sessions */}
           <Card className="bg-white/10 backdrop-blur border-white/20 print:hidden">
-            <CardHeader>
+            <CardHeader className="space-y-3">
               <CardTitle className="text-white flex items-center gap-2">
                 <Mic className="h-5 w-5" />
                 Your Sessions ({portalSessions.length})
               </CardTitle>
-              <CardDescription className="text-white/70 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <span>Sessions you are assigned to present</span>
-                {portalSessions.length > 0 && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-8 w-full sm:w-auto text-xs gap-1.5"
-                    onClick={downloadCalendar}
-                  >
-                    <CalendarPlus className="h-3.5 w-3.5" />
-                    Subscribe to Calendar
-                  </Button>
-                )}
+              <CardDescription className="text-white/70">
+                Sessions you are assigned to present
               </CardDescription>
+              {portalSessions.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-8 w-full sm:w-auto text-xs gap-1.5"
+                  onClick={downloadCalendar}
+                >
+                  <CalendarPlus className="h-3.5 w-3.5" />
+                  Subscribe to Calendar
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {portalSessions.length === 0 ? (
