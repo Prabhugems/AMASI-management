@@ -400,14 +400,14 @@ export function TravelForm({
       {/* Locked State Banner */}
       {isFormLocked && needsTravel && (
         <div className={cn(
-          "flex items-center justify-between p-4 rounded-lg border",
+          "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border",
           cannotChange
             ? "bg-emerald-500/20 border-emerald-500/30"
             : "bg-green-500/20 border-green-500/30"
         )}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <div className={cn(
-              "h-10 w-10 rounded-full flex items-center justify-center",
+              "h-10 w-10 shrink-0 rounded-full flex items-center justify-center",
               cannotChange ? "bg-emerald-500/20" : "bg-green-500/20"
             )}>
               <Check className={cn(
@@ -415,7 +415,7 @@ export function TravelForm({
                 cannotChange ? "text-emerald-400" : "text-green-400"
               )} />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className={cn(
                 "font-medium",
                 cannotChange ? "text-emerald-400" : "text-green-400"
@@ -434,7 +434,7 @@ export function TravelForm({
               variant="outline"
               size="sm"
               onClick={() => setIsFormLocked(false)}
-              className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+              className="w-full sm:w-auto border-green-500/30 text-green-400 hover:bg-green-500/10"
             >
               Request Change
             </Button>
@@ -502,7 +502,7 @@ export function TravelForm({
                   <Label className="text-white/80 text-sm">Route</Label>
                   <Input placeholder="e.g. Kolkata → Patna" value={onwardFromCity} onChange={(e) => setOnwardFromCity(e.target.value)} disabled={isFormLocked} className="bg-white/10 border-white/20 text-white placeholder:text-white/40" />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-white/80 text-sm">Date *</Label>
                     <Input type="date" value={onwardDate} onChange={(e) => setOnwardDate(e.target.value)} disabled={isFormLocked} className="bg-white/10 border-white/20 text-white" />
@@ -549,7 +549,7 @@ export function TravelForm({
                   <Label className="text-white/80 text-sm">Route</Label>
                   <Input placeholder="e.g. Patna → Kolkata" value={returnFromCity} onChange={(e) => setReturnFromCity(e.target.value)} disabled={isFormLocked} className="bg-white/10 border-white/20 text-white placeholder:text-white/40" />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-white/80 text-sm">Date *</Label>
                     <Input type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} disabled={isFormLocked} className="bg-white/10 border-white/20 text-white" />
@@ -635,13 +635,13 @@ export function TravelForm({
 
             {onwardRequired && (
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <CitySelector label="From City *" value={onwardFromCity} onChange={(city) => { setOnwardFromCity(city); if (!returnToCity) setReturnToCity(city); }} placeholder="Departure city" disabled={isFormLocked} />
                   <CitySelector label="Via City (if connecting)" value={onwardViaCity} onChange={setOnwardViaCity} placeholder="Optional" disabled={isFormLocked} />
                   <CitySelector label="To City *" value={onwardToCity} onChange={(city) => { setOnwardToCity(city); if (!returnFromCity) setReturnFromCity(city); }} placeholder="Arrival city" disabled={isFormLocked} />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-white/80 text-sm">Travel Date *</Label>
                     <Input type="date" value={onwardDate} onChange={(e) => { setOnwardDate(e.target.value); if (!hotelCheckIn) setHotelCheckIn(e.target.value); }} disabled={isFormLocked} className="bg-white/10 border-white/20 text-white disabled:opacity-60" />
@@ -724,13 +724,13 @@ export function TravelForm({
 
             {returnRequired && (
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <CitySelector label="From City *" value={returnFromCity} onChange={setReturnFromCity} placeholder="Departure city" disabled={isFormLocked} />
                   <CitySelector label="Via City (if connecting)" value={returnViaCity} onChange={setReturnViaCity} placeholder="Optional" disabled={isFormLocked} />
                   <CitySelector label="To City *" value={returnToCity} onChange={setReturnToCity} placeholder="Arrival city" disabled={isFormLocked} />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-white/80 text-sm">Return Date *</Label>
                     <Input type="date" value={returnDate} onChange={(e) => { setReturnDate(e.target.value); if (!hotelCheckOut) setHotelCheckOut(e.target.value); }} disabled={isFormLocked} className="bg-white/10 border-white/20 text-white disabled:opacity-60" />

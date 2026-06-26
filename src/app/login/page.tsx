@@ -278,7 +278,7 @@ function LoginForm() {
                         setCode(e.target.value.replace(/\D/g, "").slice(0, 10))
                       }}
                       placeholder="Enter code from email"
-                      className="text-center text-xl tracking-[0.4em] font-mono"
+                      className="text-center text-lg sm:text-xl tracking-[0.2em] sm:tracking-[0.4em] font-mono"
                       aria-invalid={!!verifyError}
                     />
                   </div>
