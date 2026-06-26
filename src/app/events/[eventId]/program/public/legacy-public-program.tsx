@@ -1069,16 +1069,16 @@ export default function PublicProgramPage() {
 
       {/* Session Detail Dialog */}
       <Dialog open={!!selectedSession} onOpenChange={() => setSelectedSession(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto !bg-white !text-gray-900">
           {selectedSession && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-xl pr-8">{selectedSession.session_name}</DialogTitle>
+                <DialogTitle className="text-xl pr-8 text-gray-900">{selectedSession.session_name}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 {/* Time & Hall */}
-                <div className="flex flex-wrap gap-3">
-                  <Badge variant="outline" className="text-sm">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="text-sm border-gray-300 text-gray-700">
                     <Clock className="h-3.5 w-3.5 mr-1" />
                     {formatTime(selectedSession.start_time)} - {formatTime(selectedSession.end_time)}
                   </Badge>
@@ -1089,7 +1089,7 @@ export default function PublicProgramPage() {
                     </Badge>
                   )}
                   {selectedSession.duration_minutes && (
-                    <Badge variant="secondary">
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-700">
                       {selectedSession.duration_minutes} minutes
                     </Badge>
                   )}
@@ -1097,23 +1097,23 @@ export default function PublicProgramPage() {
 
                 {/* Description */}
                 {selectedSession.description && (
-                  <p className="text-gray-600">{selectedSession.description}</p>
+                  <p className="text-gray-700">{selectedSession.description}</p>
                 )}
 
                 {/* Speakers */}
                 {selectedSession.speakers && (
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                      <User className="h-4 w-4" />
+                    <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                      <User className="h-4 w-4 text-gray-700" />
                       Speaker{selectedSession.speakers.includes(",") ? "s" : ""}
                     </h4>
                     <div className="space-y-2">
                       {selectedSession.speakers.split(",").map((speaker, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <div key={i} className="flex items-center gap-3 p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                             <User className="h-5 w-5 text-blue-600" />
                           </div>
-                          <span className="font-medium">{speaker.trim()}</span>
+                          <span className="font-medium text-gray-900">{speaker.trim()}</span>
                         </div>
                       ))}
                     </div>
@@ -1123,13 +1123,13 @@ export default function PublicProgramPage() {
                 {/* Chairpersons */}
                 {selectedSession.chairpersons && (
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                      <Users className="h-4 w-4" />
+                    <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                      <Users className="h-4 w-4 text-gray-700" />
                       Chairperson{selectedSession.chairpersons.includes(",") ? "s" : ""}
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedSession.chairpersons.split(",").map((chair, i) => (
-                        <Badge key={i} variant="outline" className="py-1.5">
+                        <Badge key={i} variant="outline" className="py-1.5 border-gray-300 text-gray-800 bg-white">
                           {chair.trim()}
                         </Badge>
                       ))}
@@ -1140,13 +1140,13 @@ export default function PublicProgramPage() {
                 {/* Moderators */}
                 {selectedSession.moderators && (
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                      <Mic2 className="h-4 w-4" />
+                    <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                      <Mic2 className="h-4 w-4 text-gray-700" />
                       Moderator{selectedSession.moderators.includes(",") ? "s" : ""}
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedSession.moderators.split(",").map((mod, i) => (
-                        <Badge key={i} variant="secondary" className="py-1.5">
+                        <Badge key={i} variant="secondary" className="py-1.5 bg-gray-100 text-gray-800">
                           {mod.trim()}
                         </Badge>
                       ))}
