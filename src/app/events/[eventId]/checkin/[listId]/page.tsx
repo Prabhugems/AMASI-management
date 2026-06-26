@@ -265,7 +265,7 @@ export default function CheckinListAttendeesPage() {
               </Link>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">{stats?.list?.name || "Check-in List"}</h1>
-                <p className="text-sm text-gray-500">{event?.name}</p>
+                <p className="text-sm text-gray-700">{event?.name}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -304,7 +304,7 @@ export default function CheckinListAttendeesPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl font-bold text-gray-900">{stats?.total || 0}</div>
-                <div className="text-sm text-gray-500">Total</div>
+                <div className="text-sm font-medium text-gray-700">Total</div>
               </div>
             </div>
           </button>
@@ -322,7 +322,7 @@ export default function CheckinListAttendeesPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl font-bold text-emerald-600">{stats?.checkedIn || 0}</div>
-                <div className="text-sm text-gray-500">Checked In</div>
+                <div className="text-sm font-medium text-gray-700">Checked In</div>
               </div>
             </div>
           </button>
@@ -340,7 +340,7 @@ export default function CheckinListAttendeesPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl font-bold text-amber-600">{stats?.notCheckedIn || 0}</div>
-                <div className="text-sm text-gray-500">Remaining</div>
+                <div className="text-sm font-medium text-gray-700">Remaining</div>
               </div>
             </div>
           </button>
@@ -358,7 +358,7 @@ export default function CheckinListAttendeesPage() {
                     style={{ width: `${stats?.percentage || 0}%` }}
                   />
                 </div>
-                <div className="text-sm text-gray-500 mt-1">Progress</div>
+                <div className="text-sm font-medium text-gray-700 mt-1">Progress</div>
               </div>
             </div>
           </div>
@@ -498,8 +498,8 @@ export default function CheckinListAttendeesPage() {
           ) : registrations.length === 0 ? (
             <div className="text-center py-16">
               <Users className="w-16 h-16 text-gray-200 mx-auto" />
-              <p className="mt-4 text-gray-500 font-medium">No attendees found</p>
-              <p className="text-sm text-gray-400 mt-1">Try adjusting your search or filters</p>
+              <p className="mt-4 text-gray-700 font-semibold">No attendees found</p>
+              <p className="text-sm text-gray-600 mt-1">Try adjusting your search or filters</p>
             </div>
           ) : (
             <>
@@ -516,10 +516,10 @@ export default function CheckinListAttendeesPage() {
                           className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                         />
                       </th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600">Attendee</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600">Ticket</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600">Time</th>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Attendee</th>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Ticket</th>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Time</th>
                       <th className="px-4 py-4 text-right text-sm font-semibold text-gray-600">Action</th>
                     </tr>
                   </thead>
@@ -541,8 +541,8 @@ export default function CheckinListAttendeesPage() {
                             </div>
                             <div>
                               <div className="font-semibold text-gray-900">{reg.attendee_name}</div>
-                              <div className="text-sm text-gray-500">{reg.attendee_email}</div>
-                              <div className="text-xs text-gray-400 font-mono">{reg.registration_number}</div>
+                              <div className="text-sm text-gray-700">{reg.attendee_email}</div>
+                              <div className="text-xs text-gray-600 font-mono font-medium">{reg.registration_number}</div>
                             </div>
                           </div>
                         </td>
@@ -564,14 +564,14 @@ export default function CheckinListAttendeesPage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-500">
+                        <td className="px-4 py-4 text-sm text-gray-700">
                           {reg.checked_in_at ? (
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-4 h-4" />
                               {new Date(reg.checked_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
                           ) : (
-                            <span className="text-gray-300">-</span>
+                            <span className="text-gray-400">—</span>
                           )}
                         </td>
                         <td className="px-4 py-4 text-right">
@@ -614,7 +614,7 @@ export default function CheckinListAttendeesPage() {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="font-semibold text-gray-900">{reg.attendee_name}</div>
-                            <div className="text-sm text-gray-500 truncate">{reg.attendee_email}</div>
+                            <div className="text-sm text-gray-700 truncate">{reg.attendee_email}</div>
                           </div>
                           {reg.checked_in ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium flex-shrink-0">
@@ -628,9 +628,9 @@ export default function CheckinListAttendeesPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs font-mono text-gray-400">{reg.registration_number}</span>
-                          <span className="text-xs text-gray-300">•</span>
-                          <span className="text-xs text-gray-500">{reg.ticket_types?.name}</span>
+                          <span className="text-xs font-mono font-medium text-gray-700">{reg.registration_number}</span>
+                          <span className="text-xs text-gray-400">•</span>
+                          <span className="text-xs text-gray-700">{reg.ticket_types?.name}</span>
                         </div>
                         <button
                           onClick={() => checkinMutation.mutate({
