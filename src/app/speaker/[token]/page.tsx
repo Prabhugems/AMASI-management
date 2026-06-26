@@ -393,10 +393,10 @@ export default function SpeakerPortalPage() {
         {/* Header */}
         <div className="bg-white/5 backdrop-blur border-b border-white/10 print:hidden">
           <div className="max-w-4xl mx-auto px-4 py-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-white">{event?.short_name || event?.name}</h1>
-                <div className="flex items-center gap-4 mt-2 text-white/70 text-sm">
+                <h1 className="text-xl sm:text-2xl font-bold text-white">{event?.short_name || event?.name}</h1>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-white/70 text-xs sm:text-sm">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
                     {event?.start_date && formatDate(event.start_date)}
@@ -411,7 +411,7 @@ export default function SpeakerPortalPage() {
               </div>
               <Badge
                 className={cn(
-                  "text-sm px-3 py-1",
+                  "self-start sm:self-auto text-sm px-3 py-1",
                   portalRegistration.status === "confirmed"
                     ? "bg-green-500/20 text-green-400 border-green-500/30"
                     : portalRegistration.status === "declined"
@@ -439,14 +439,14 @@ export default function SpeakerPortalPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-4 text-white/70 text-sm">
-                <span className="flex items-center gap-1">
-                  <Mail className="h-4 w-4" />
-                  {portalRegistration.attendee_email}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-white/70 text-xs sm:text-sm break-all sm:break-normal">
+                <span className="flex items-center gap-1 max-w-full">
+                  <Mail className="h-4 w-4 shrink-0" />
+                  <span className="break-all">{portalRegistration.attendee_email}</span>
                 </span>
                 {portalRegistration.attendee_phone && (
                   <span className="flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
+                    <Phone className="h-4 w-4 shrink-0" />
                     {portalRegistration.attendee_phone}
                   </span>
                 )}
@@ -454,7 +454,7 @@ export default function SpeakerPortalPage() {
 
               {/* Accept/Decline Buttons */}
               {portalRegistration.status === "pending" && (
-                <div className="flex gap-3 pt-4">
+                <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:gap-3">
                   <Button
                     onClick={() => acceptInvitation.mutate()}
                     disabled={acceptInvitation.isPending}
@@ -475,7 +475,7 @@ export default function SpeakerPortalPage() {
                       }
                     }}
                     disabled={declineInvitation.isPending}
-                    className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                    className="w-full sm:w-auto border-red-500/50 text-red-400 hover:bg-red-500/20"
                   >
                     {declineInvitation.isPending ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -489,16 +489,16 @@ export default function SpeakerPortalPage() {
 
               {portalRegistration.status === "confirmed" && (
                 <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2 text-green-400">
-                      <CheckCircle className="h-5 w-5" />
+                      <CheckCircle className="h-5 w-5 shrink-0" />
                       <span className="font-medium">Your participation is confirmed!</span>
                     </div>
                     {event?.id && (
                       <Button
                         variant="outline"
                         size="sm"
-                        className="border-green-400/50 text-green-300 hover:bg-green-500/20"
+                        className="w-full sm:w-auto border-green-400/50 text-green-300 hover:bg-green-500/20"
                         onClick={() => {
                           window.open(`/api/events/${event.id}/invitation-pdf?type=speaker&name=${encodeURIComponent(faculty?.name || "")}&email=${encodeURIComponent(faculty?.email || "")}`, "_blank")
                         }}
@@ -545,12 +545,12 @@ export default function SpeakerPortalPage() {
                       key={session.id}
                       className="p-4 bg-white/5 rounded-lg border border-white/10"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                        <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-white">{session.session_name}</h4>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-white/60">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs sm:text-sm text-white/60">
                             <span className="flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5" />
+                              <Calendar className="h-3.5 w-3.5 shrink-0" />
                               {new Date(session.session_date).toLocaleDateString("en-IN", {
                                 weekday: "short",
                                 day: "numeric",
@@ -558,18 +558,18 @@ export default function SpeakerPortalPage() {
                               })}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Clock className="h-3.5 w-3.5" />
+                              <Clock className="h-3.5 w-3.5 shrink-0" />
                               {formatTime(session.start_time)} - {formatTime(session.end_time)}
                             </span>
                             {session.hall && (
                               <span className="flex items-center gap-1">
-                                <Building2 className="h-3.5 w-3.5" />
+                                <Building2 className="h-3.5 w-3.5 shrink-0" />
                                 {session.hall}
                               </span>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           {session.specialty_track && (
                             <Badge variant="outline" className="text-xs text-white/70 border-white/30">
                               {session.specialty_track}
@@ -578,7 +578,7 @@ export default function SpeakerPortalPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 text-xs text-white/60 hover:text-white hover:bg-white/10"
+                            className="h-8 text-xs text-white/60 hover:text-white hover:bg-white/10"
                             onClick={() => window.open(getGoogleCalendarUrl(session), "_blank")}
                           >
                             <CalendarPlus className="h-3.5 w-3.5 mr-1" />
@@ -653,18 +653,18 @@ export default function SpeakerPortalPage() {
       <div className="bg-white/5 backdrop-blur border-b border-white/10 print:hidden">
         <div className="max-w-3xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               {invitationEvent?.logo_url && (
-                <img src={invitationEvent.logo_url} alt="" className="h-12 rounded" />
+                <img src={invitationEvent.logo_url} alt="" className="h-10 sm:h-12 rounded shrink-0" />
               )}
-              <div>
-                <h1 className="text-2xl font-bold text-white">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-white break-words">
                   {event?.short_name || event?.name || "Conference"}
                 </h1>
-                <div className="flex items-center gap-4 mt-1 text-white/70 text-sm">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-white/70 text-xs sm:text-sm">
                   {event?.venue_name && (
                     <span className="flex items-center gap-1">
-                      <Building2 className="h-3.5 w-3.5" />
+                      <Building2 className="h-3.5 w-3.5 shrink-0" />
                       {event.venue_name}
                     </span>
                   )}
@@ -674,7 +674,7 @@ export default function SpeakerPortalPage() {
           </div>
 
           {/* Step Indicator */}
-          <div className="flex items-center gap-3 mt-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-4">
             <button
               onClick={() => {
                 const allPreviouslyResponded = assignments.every(
