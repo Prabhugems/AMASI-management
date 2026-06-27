@@ -569,6 +569,13 @@ export default function DelegatePortalPage() {
     }
   }, [executeSearch])
 
+  // When the user switches between registrations, reset the feedback gate to
+  // its safe-locked default so a previous registration's `false` doesn't grant
+  // a transient unlock on the new one while EventFeedbackForms re-fetches.
+  useEffect(() => {
+    setCertGatedByFeedback(true)
+  }, [selectedRegistration?.id])
+
   const handleDownloadBadge = async () => {
     if (!selectedRegistration) return
 
@@ -2561,9 +2568,15 @@ function EventFeedbackForms({
           (f: any) => f.release_certificate_on_submission && !f.submitted
         )
         onCertGateChange(hasGatingForm)
+      } else {
+        // Endpoint reachable but errored — don't strand the user behind a gate
+        // we can't evaluate. Server still enforces check-in + cert_generated.
+        onCertGateChange(false)
       }
     } catch (error) {
       console.error("Failed to fetch feedback forms:", error)
+      // Network failure: same reasoning — fail open on a soft UX gate.
+      onCertGateChange(false)
     } finally {
       setLoading(false)
     }
