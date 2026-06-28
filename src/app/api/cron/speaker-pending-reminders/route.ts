@@ -63,6 +63,26 @@ export async function GET(request: Request) {
           skipped++
           continue
         }
+        // The /speaker-portal/[token] endpoint (the URL inside this WhatsApp
+        // template) only writes custom_fields and never flips registrations.
+        // status — so a speaker who has clearly engaged (uploaded bio / photo /
+        // presentation, or had invitation_status set) would otherwise stay
+        // status='pending' forever and keep getting daily reminders. Treat
+        // any of those soft signals as "they have already confirmed" and stop
+        // reminding them. Loose truthy check so hand-written backfill scripts
+        // that stored strings/1 don't silently slip past.
+        const invStatus = cf.invitation_status
+        const hasEngaged =
+          !!cf.bio_submitted ||
+          !!cf.photo_submitted ||
+          !!cf.presentation_submitted ||
+          !!cf.documents_submitted ||
+          invStatus === "confirmed" ||
+          invStatus === "declined"
+        if (hasEngaged) {
+          skipped++
+          continue
+        }
         // One message per day: skip if already reminded today.
         const last = cf.last_speaker_reminder_at ? String(cf.last_speaker_reminder_at).split("T")[0] : null
         if (last === today) {
