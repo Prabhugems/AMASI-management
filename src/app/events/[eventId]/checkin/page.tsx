@@ -144,6 +144,24 @@ export default function CheckinHubPage() {
     }
   }, [checkinLists, selectedList])
 
+  // Escape closes any open modal
+  useEffect(() => {
+    if (!showQRModal && !showStaffShareModal && !showCreateModal && !editingList) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (showQRModal) setShowQRModal(null)
+        if (showStaffShareModal) setShowStaffShareModal(null)
+        if (showCreateModal || editingList) {
+          setShowCreateModal(false)
+          setEditingList(null)
+          resetForm()
+        }
+      }
+    }
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
+  })
+
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -794,8 +812,14 @@ export default function CheckinHubPage() {
 
       {/* QR Code Modal (for logged-in staff) */}
       {showQRModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-3xl w-full max-w-sm shadow-2xl border-2 border-border">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowQRModal(null)}
+        >
+          <div
+            className="bg-card rounded-3xl w-full max-w-sm shadow-2xl border-2 border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6 border-b border-border flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold">QR Code</h2>
@@ -837,8 +861,14 @@ export default function CheckinHubPage() {
 
       {/* Share with Staff Modal (no login required - like Tito) */}
       {showStaffShareModal && showStaffShareModal.access_token && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-3xl w-full max-w-md shadow-2xl border-2 border-border">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowStaffShareModal(null)}
+        >
+          <div
+            className="bg-card rounded-3xl w-full max-w-md shadow-2xl border-2 border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6 border-b border-border flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold">Share with Staff</h2>
@@ -946,8 +976,18 @@ export default function CheckinHubPage() {
 
       {/* Create/Edit Modal */}
       {(showCreateModal || editingList) && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-3xl w-full max-w-lg shadow-2xl border-2 border-border">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowCreateModal(false)
+            setEditingList(null)
+            resetForm()
+          }}
+        >
+          <div
+            className="bg-card rounded-3xl w-full max-w-lg shadow-2xl border-2 border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6 border-b border-border flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold">

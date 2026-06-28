@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Eraser, RotateCcw, Download, Check } from "lucide-react"
+import { Eraser, RotateCcw, Download, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -243,6 +243,15 @@ export function SignatureInput({
 }) {
   const [isOpen, setIsOpen] = React.useState(false)
 
+  React.useEffect(() => {
+    if (!isOpen) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false)
+    }
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
+  }, [isOpen])
+
   const handleSave = (dataUrl: string) => {
     onChange?.(dataUrl)
     setIsOpen(false)
@@ -292,16 +301,23 @@ export function SignatureInput({
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="bg-background border rounded-lg p-4 shadow-lg">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+          onClick={() => setIsOpen(false)}
+        >
+          <div
+            className="bg-background border rounded-lg p-4 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-medium">Draw your signature</h3>
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Close"
                 onClick={() => setIsOpen(false)}
               >
-                <Eraser className="h-4 w-4" />
+                <X className="h-4 w-4" />
               </Button>
             </div>
             <SignaturePad

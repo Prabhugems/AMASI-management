@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { X, GripVertical } from "lucide-react"
+import { X, GripVertical, ChevronLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const MIN_WIDTH = 320
@@ -159,7 +159,16 @@ export function SlideOver({
             )}
 
             {/* Header */}
-            <div className="flex items-start justify-between px-6 py-5 border-b border-border bg-secondary/30">
+            <div className="flex items-start gap-3 px-6 py-5 border-b border-border bg-secondary/30">
+              <button
+                onClick={onClose}
+                aria-label="Close panel"
+                title="Close (Esc)"
+                className="flex h-8 shrink-0 items-center gap-1 -ml-1 rounded-lg px-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Close</span>
+              </button>
               <div className="flex-1 min-w-0">
                 {title && (
                   <h2 className="text-lg font-semibold text-foreground truncate">
@@ -174,7 +183,9 @@ export function SlideOver({
               </div>
               <button
                 onClick={onClose}
-                className="ml-4 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                aria-label="Close panel"
+                title="Close (Esc)"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>

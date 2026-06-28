@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { QrImage } from "@/components/QrImage"
@@ -275,6 +275,23 @@ export default function PrintStationHubPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["print-stations", eventId] })
     }
+  })
+
+  // Escape closes any open modal
+  useEffect(() => {
+    if (!showCreateModal && !editingStation && !showQRModal && !showDesktopAppModal) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      if (showCreateModal || editingStation) {
+        resetForm()
+        setShowCreateModal(false)
+        setEditingStation(null)
+      }
+      if (showQRModal) setShowQRModal(null)
+      if (showDesktopAppModal) setShowDesktopAppModal(null)
+    }
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
   })
 
   const resetForm = () => {
@@ -699,15 +716,40 @@ export default function PrintStationHubPage() {
 
       {/* Create/Edit Modal */}
       {(showCreateModal || editingStation) && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-card rounded-3xl w-full max-w-lg shadow-2xl border-2 border-border my-8">
-            <div className="p-6 border-b border-border">
-              <h2 className="text-xl font-bold">
-                {editingStation ? "Edit Print Station" : "Create Print Station"}
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {editingStation ? "Update station settings" : "Create a new print station with shareable link"}
-              </p>
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto"
+          onClick={() => {
+            resetForm()
+            setShowCreateModal(false)
+            setEditingStation(null)
+          }}
+        >
+          <div
+            className="bg-card rounded-3xl w-full max-w-lg shadow-2xl border-2 border-border my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-border flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h2 className="text-xl font-bold">
+                  {editingStation ? "Edit Print Station" : "Create Print Station"}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {editingStation ? "Update station settings" : "Create a new print station with shareable link"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm()
+                  setShowCreateModal(false)
+                  setEditingStation(null)
+                }}
+                aria-label="Close"
+                title="Close (Esc)"
+                className="p-2 hover:bg-muted rounded-xl transition-colors shrink-0"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
               <div>
@@ -972,8 +1014,14 @@ export default function PrintStationHubPage() {
 
       {/* QR Code Modal */}
       {showQRModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-3xl w-full max-w-sm shadow-2xl border-2 border-border">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowQRModal(null)}
+        >
+          <div
+            className="bg-card rounded-3xl w-full max-w-sm shadow-2xl border-2 border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6 border-b border-border flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold">QR Code</h2>
@@ -1017,8 +1065,14 @@ export default function PrintStationHubPage() {
 
       {/* Desktop App Modal */}
       {showDesktopAppModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-3xl w-full max-w-md shadow-2xl border-2 border-border">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowDesktopAppModal(null)}
+        >
+          <div
+            className="bg-card rounded-3xl w-full max-w-md shadow-2xl border-2 border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6 border-b border-border flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold flex items-center gap-2">
