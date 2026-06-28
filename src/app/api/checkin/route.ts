@@ -373,6 +373,26 @@ export async function POST(request: NextRequest) {
           .maybeSingle()
 
         if (insertError) {
+          // 23505 = unique_violation on (checkin_list_id, registration_id):
+          // a concurrent scan won the race. The check-in IS recorded, so
+          // report idempotent success in the same shape as the
+          // already-checked-in branch above. Same pattern as
+          // /api/verify/[token]/route.ts:374-378.
+          if (insertError.code === "23505") {
+            const { data: raced } = await (supabase as any)
+              .from("checkin_records")
+              .select("*")
+              .eq("checkin_list_id", checkin_list_id)
+              .eq("registration_id", registration.id)
+              .is("checked_out_at", null)
+              .maybeSingle()
+            return NextResponse.json({
+              success: true,
+              action: "already_checked_in",
+              message: `${registration.attendee_name} is already checked in to ${checkinList.name}`,
+              registration: { ...registration, checked_in: true, checked_in_at: raced?.checked_in_at }
+            })
+          }
           return NextResponse.json({ error: "Failed to check in attendee" }, { status: 500 })
         }
         newRecord = inserted

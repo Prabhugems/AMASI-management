@@ -87,6 +87,12 @@ export default function CheckinScanPage() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const successAudioRef = useRef<HTMLAudioElement | null>(null)
   const errorAudioRef = useRef<HTMLAudioElement | null>(null)
+  // Phone-camera QR scanners decode the same QR on every frame while it's in
+  // view, firing this handler 5-10 times per scan. Track the last accepted
+  // value so re-emits of the same code inside the window are silently dropped.
+  // Mode is part of the key so that toggling check-in <-> check-out within the
+  // window on the same badge is treated as a different action and goes through.
+  const lastSubmitRef = useRef<{ value: string; mode: "in" | "out"; ts: number } | null>(null)
 
   // Initialize audio
   useEffect(() => {
@@ -225,6 +231,11 @@ export default function CheckinScanPage() {
           }
         }
       } else {
+        // Server returned success: false (e.g. attendee not found, ticket
+        // type not allowed). Clear the dedupe ref so the volunteer can
+        // immediately retry the same value once the underlying issue is
+        // resolved.
+        lastSubmitRef.current = null
         setScanResult({
           type: "error",
           message: data.error || "Check-in failed"
@@ -238,6 +249,8 @@ export default function CheckinScanPage() {
       setCountdown(5)
     },
     onError: (error: any) => {
+      // Network/parse failure — let the volunteer retry the same value.
+      lastSubmitRef.current = null
       setScanResult({
         type: "error",
         message: error.message || "Check-in failed"
@@ -265,6 +278,9 @@ export default function CheckinScanPage() {
     },
     onSuccess: (data) => {
       if (data.success) {
+        // Free the dedupe ref so re-scanning the same badge immediately after
+        // an undo (the common "oops wrong button" recovery) goes through.
+        lastSubmitRef.current = null
         setScanResult({
           type: "warning",
           message: `Undone: ${data.registration?.attendee_name} checked out`
@@ -301,10 +317,31 @@ export default function CheckinScanPage() {
 
   const handleManualSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (manualSearch.trim()) {
-      checkinMutation.mutate(manualSearch.trim())
+    // Strip invisible chars some bluetooth scanners inject (NBSP, ZWSP, BOM)
+    // before trim, so visually-identical scans dedupe correctly.
+    const value = manualSearch.replace(/[\u200B\uFEFF\u00A0]/g, "").trim()
+    if (!value) return
+
+    // Block while a previous scan is still in flight, otherwise duplicate
+    // submits race the INSERT and the later response paints "already
+    // checked in" over a real success.
+    if (checkinMutation.isPending) {
       setManualSearch("")
+      return
     }
+
+    // Drop same-value, same-mode re-emits from the camera scanner within 5s.
+    const mode: "in" | "out" = checkoutMode ? "out" : "in"
+    const now = Date.now()
+    const last = lastSubmitRef.current
+    if (last && last.value === value && last.mode === mode && now - last.ts < 5000) {
+      setManualSearch("")
+      return
+    }
+
+    lastSubmitRef.current = { value, mode, ts: now }
+    checkinMutation.mutate(value)
+    setManualSearch("")
   }
 
   // Countdown timer for auto-clear
