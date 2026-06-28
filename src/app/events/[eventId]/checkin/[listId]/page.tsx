@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useMutation } from "@tanstack/react-query"
@@ -73,6 +73,16 @@ export default function CheckinListAttendeesPage() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+
+  // Escape closes the share modal
+  useEffect(() => {
+    if (!showShareModal) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowShareModal(false)
+    }
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
+  }, [showShareModal])
 
   // Fetch event
   const { data: event } = useQuery({
@@ -668,8 +678,14 @@ export default function CheckinListAttendeesPage() {
 
       {/* Share Modal */}
       {showShareModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowShareModal(false)}
+        >
+          <div
+            className="bg-white rounded-3xl w-full max-w-md shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6 border-b flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Share with Staff</h2>

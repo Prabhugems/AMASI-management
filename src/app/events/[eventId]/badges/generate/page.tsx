@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
@@ -423,6 +423,16 @@ export default function GenerateBadgesPage() {
       setPreviewUrl(null)
     }
   }
+
+  // Escape closes the preview modal
+  useEffect(() => {
+    if (!showPreview) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closePreview()
+    }
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
+  })
 
   return (
     <div className="min-h-screen bg-background">
@@ -976,8 +986,14 @@ export default function GenerateBadgesPage() {
 
       {/* Preview Modal */}
       {showPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-card rounded-xl border shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={closePreview}
+        >
+          <div
+            className="bg-card rounded-xl border shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-4 border-b">
               <div>
                 <h3 className="font-semibold">Badge Preview</h3>

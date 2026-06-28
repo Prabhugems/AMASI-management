@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
@@ -88,6 +88,21 @@ export default function BadgeTemplatesPage() {
   const [renameTemplate, setRenameTemplate] = useState<BadgeTemplate | null>(null)
   const [newName, setNewName] = useState("")
   const [unlockTemplate, setUnlockTemplate] = useState<BadgeTemplate | null>(null)
+
+  // Escape closes whichever confirmation/rename modal is open
+  useEffect(() => {
+    if (!renameTemplate && !unlockTemplate) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      if (renameTemplate) {
+        setRenameTemplate(null)
+        setNewName("")
+      }
+      if (unlockTemplate) setUnlockTemplate(null)
+    }
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
+  })
 
   // Fetch templates
   const { data: templates, isLoading, error } = useQuery({
@@ -503,8 +518,17 @@ export default function BadgeTemplatesPage() {
 
       {/* Rename Dialog */}
       {renameTemplate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl border border-border p-6 w-full max-w-md mx-4">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => {
+            setRenameTemplate(null)
+            setNewName("")
+          }}
+        >
+          <div
+            className="bg-card rounded-xl border border-border p-6 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Rename Template</h3>
               <button
@@ -556,8 +580,14 @@ export default function BadgeTemplatesPage() {
 
       {/* Unlock Confirmation Dialog */}
       {unlockTemplate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl border border-border p-6 w-full max-w-md mx-4">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setUnlockTemplate(null)}
+        >
+          <div
+            className="bg-card rounded-xl border border-border p-6 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-full bg-amber-100">
                 <AlertTriangle className="w-6 h-6 text-amber-600" />
