@@ -1070,7 +1070,7 @@ export default function PrintStationHubPage() {
           onClick={() => setShowDesktopAppModal(null)}
         >
           <div
-            className="bg-card rounded-3xl w-full max-w-md shadow-2xl border-2 border-border"
+            className="bg-card rounded-3xl w-full max-w-md shadow-2xl border-2 border-border max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-border flex items-center justify-between">

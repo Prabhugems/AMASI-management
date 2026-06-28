@@ -128,8 +128,10 @@ export function SlideOver({
         />
       )}
 
-      {/* Panel - positioned independently so clicks outside work */}
-      <div className="fixed inset-y-0 right-0 z-50 flex max-w-full pointer-events-none">
+      {/* Panel - top-16 clears the 64px fixed dashboard header so the panel's own
+          header (title + close buttons) doesn't overlap the dashboard's hamburger /
+          notification cluster at y=0-64px */}
+      <div className="fixed top-16 bottom-0 right-0 z-50 flex max-w-full pointer-events-none">
         <div
           ref={panelRef}
           style={resizable ? { width: panelWidth } : undefined}
