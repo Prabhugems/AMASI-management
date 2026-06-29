@@ -337,6 +337,24 @@ export default function SpeakerPortalPage() {
     window.open(url, "_blank")
   }
 
+  // Download the AES faculty invitation/commitment PDF. Uses a same-origin
+  // anchor with `download` rather than window.open(_blank): mobile browsers and
+  // in-app webviews (WhatsApp/Gmail/Instagram) block the popup, so the button
+  // appeared to do nothing. The endpoint sends Content-Disposition: attachment,
+  // so the click saves the file. The handler is synchronous (fired directly
+  // from the user gesture) to avoid popup/gesture heuristics.
+  const downloadInvitation = () => {
+    if (!event?.id) return
+    const url = `/api/events/${event.id}/aes-faculty-pdf?token=${encodeURIComponent(token)}`
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "" // let the server's Content-Disposition filename win
+    a.rel = "noopener"
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
+
   // --- Computed values for invitation flow ---
   const confirmedCount = Object.values(responses).filter((r) => r === "confirmed").length
   const declinedCount = Object.values(responses).filter((r) => r === "declined").length
@@ -527,9 +545,7 @@ export default function SpeakerPortalPage() {
                       variant="outline"
                       size="sm"
                       className="w-full sm:w-auto border-green-400/50 text-green-300 hover:bg-green-500/20"
-                      onClick={() => {
-                        window.open(`/api/events/${event.id}/aes-faculty-pdf?token=${encodeURIComponent(token)}`, "_blank")
-                      }}
+                      onClick={downloadInvitation}
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Download Invitation
@@ -1126,9 +1142,7 @@ export default function SpeakerPortalPage() {
                     <Button
                       variant="outline"
                       className="w-full sm:w-auto bg-transparent border-white/15 text-white hover:bg-white/10"
-                      onClick={() => {
-                        window.open(`/api/events/${event.id}/aes-faculty-pdf?token=${encodeURIComponent(token)}`, "_blank")
-                      }}
+                      onClick={downloadInvitation}
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Download PDF

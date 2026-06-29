@@ -4,8 +4,8 @@ import { getApiUser } from "@/lib/auth/api-auth"
 
 // GET - Fetch activity logs
 export async function GET(request: NextRequest) {
-  const user = await getApiUser()
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
 
   const supabase = await createServerSupabaseClient()
   const { searchParams } = new URL(request.url)
@@ -68,8 +68,8 @@ export async function GET(request: NextRequest) {
 
 // POST - Create activity log entry
 export async function POST(request: NextRequest) {
-  const user = await getApiUser()
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const { error: authError } = await getApiUser()
+  if (authError) return authError
 
   const supabase = await createServerSupabaseClient()
 

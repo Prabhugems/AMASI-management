@@ -77,10 +77,8 @@ export async function POST(request: NextRequest) {
     // Cron trigger - OK
   } else {
     const { getApiUser } = await import("@/lib/auth/api-auth")
-    const user = await getApiUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { error: authError } = await getApiUser()
+    if (authError) return authError
   }
 
   return handleReminder()
