@@ -5,10 +5,8 @@ import { getApiUser } from "@/lib/auth/api-auth"
 // GET /api/email/logs - Get email logs with filters
 export async function GET(request: NextRequest) {
   try {
-    const user = await getApiUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { error: authError } = await getApiUser()
+    if (authError) return authError
 
     const supabase = await createServerSupabaseClient()
     const { searchParams } = new URL(request.url)

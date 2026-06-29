@@ -14,10 +14,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const user = await getApiUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { error: authError } = await getApiUser()
+    if (authError) return authError
 
     if (!isEmailEnabled()) {
       return NextResponse.json({ error: "Email not configured" }, { status: 500 })

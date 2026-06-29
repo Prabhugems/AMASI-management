@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -39,13 +39,13 @@ export async function POST(request: NextRequest) {
     let senderEmail: string | null = null
 
     if (sender_type === "admin") {
-      // Require auth for admin replies
-      const authResult = await getApiUser()
-      if (!authResult.user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      // Require auth + access to the event this request belongs to
+      const { user: authUser, error: accessError } = await requireEventAccess(helpRequest.event_id)
+      if (accessError || !authUser) {
+        return accessError ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       }
-      senderName = authResult.user.name || authResult.user.email
-      senderEmail = authResult.user.email
+      senderName = authUser.name || authUser.email
+      senderEmail = authUser.email
     } else if (sender_type === "delegate") {
       // Verify email matches the help request
       const { email } = body
@@ -161,11 +161,19 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Access denied" }, { status: 403 })
       }
     } else {
-      // Admin access — require auth
-      const authResult = await getApiUser()
-      if (!authResult.user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      // Admin access — require access to the event this request belongs to
+      const { data: hr } = await supabase
+        .from("help_requests")
+        .select("event_id")
+        .eq("id", helpRequestId)
+        .single()
+
+      if (!hr) {
+        return NextResponse.json({ error: "Help request not found" }, { status: 404 })
       }
+
+      const { error: accessError } = await requireEventAccess(hr.event_id)
+      if (accessError) return accessError
     }
 
     const { data, error } = await supabase

@@ -13,10 +13,8 @@ export async function POST(
   // Allow both authenticated users and cron calls
   const cronSecret = request.headers.get("x-cron-secret")
   if (cronSecret !== process.env.CRON_SECRET) {
-    const user = await getApiUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { error: authError } = await getApiUser()
+    if (authError) return authError
   }
 
   try {

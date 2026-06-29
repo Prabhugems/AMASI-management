@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -116,11 +116,6 @@ ${registration_number ? `<tr><td style="padding:8px 0;color:#6b7280;">Reg. Numbe
 // GET /api/help-request?event_id=X - List help requests for an event (admin)
 export async function GET(request: NextRequest) {
   try {
-    const user = await getApiUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
     const priority = searchParams.get("priority")
@@ -129,6 +124,9 @@ export async function GET(request: NextRequest) {
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
+
+    const { error: accessError } = await requireEventAccess(eventId)
+    if (accessError) return accessError
 
     const supabase: SupabaseClient = await createAdminClient()
 
@@ -178,11 +176,6 @@ export async function GET(request: NextRequest) {
 // PATCH /api/help-request - Update help request status (admin)
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await getApiUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const body = await request.json()
     const { id, status, admin_notes, priority, assigned_to } = body
 
@@ -191,6 +184,20 @@ export async function PATCH(request: NextRequest) {
     }
 
     const supabase: SupabaseClient = await createAdminClient()
+
+    // Scope access to the event this help request belongs to
+    const { data: existing } = await supabase
+      .from("help_requests")
+      .select("event_id")
+      .eq("id", id)
+      .single()
+
+    if (!existing) {
+      return NextResponse.json({ error: "Help request not found" }, { status: 404 })
+    }
+
+    const { error: accessError } = await requireEventAccess(existing.event_id)
+    if (accessError) return accessError
 
     const updates: Record<string, any> = {}
     if (status) updates.status = status
