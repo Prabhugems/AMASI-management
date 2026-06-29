@@ -93,13 +93,13 @@ export async function GET(
   const supabase = (await createAdminClient()) as any
 
   // Token resolution: pull email from the registration matching the portal token.
-  // Supports both faculty_assignments.invitation_token and registrations.custom_fields.portal_token.
+  // Supports both registrations.custom_fields.portal_token and faculty_assignments.invitation_token.
   if (!email && token) {
     const { data: regByToken } = await supabase
       .from("registrations")
       .select("attendee_email")
       .eq("event_id", eventId)
-      .eq("custom_fields->>portal_token", token)
+      .filter("custom_fields->>portal_token", "eq", token)
       .maybeSingle()
     if (regByToken?.attendee_email) email = regByToken.attendee_email
     if (!email) {
