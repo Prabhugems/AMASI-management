@@ -64,6 +64,19 @@ interface RecentCheckin {
 
 type ScanMode = "manual" | "camera" | "list"
 
+// How long the result card stays up before the scanner auto-resets and the
+// camera restarts. Used by the auto-continue effect below.
+const AUTO_CONTINUE_MS = 5000
+
+// Camera de-dup window — DERIVED from AUTO_CONTINUE_MS so the two numbers can't
+// silently drift apart. It MUST exceed the auto-continue delay: when the camera
+// restarts after a successful scan, a badge still sitting in frame must NOT be
+// re-decoded into a second /api/verify call (which the server correctly rejects
+// as "already checked in"). The +2000ms margin also absorbs decode latency. A
+// deliberate re-scan of the same badge on an allow_multiple_checkins list still
+// works once this window elapses.
+const SCAN_REPEAT_WINDOW_MS = AUTO_CONTINUE_MS + 2000
+
 interface ListAttendee {
   id: string
   registration_number: string
@@ -123,7 +136,11 @@ export default function StaffCheckinPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
-  const lastScannedRef = useRef<string>("")
+  // Last camera scan ACCEPTED by the decode callback, keyed on the RAW
+  // decodedText (not the parsed token) + a timestamp. Used for time-windowed
+  // de-dup; intentionally NOT cleared by resetResult so an auto-restart can't
+  // re-fire the same badge.
+  const lastScannedRef = useRef<{ value: string; ts: number }>({ value: "", ts: 0 })
   const scanCooldownRef = useRef<boolean>(false)
   const isStartingRef = useRef(false)
 
@@ -362,7 +379,9 @@ export default function StaffCheckinPage() {
           attendee: data.registration,
         })
         setStats(prev => ({ ...prev, checkedIn: prev.checkedIn + 1 }))
-        lastScannedRef.current = token
+        // NOTE: camera de-dup memory is set in the decode callback (keyed on the
+        // RAW decodedText), not here — setting it to the parsed `token` here was
+        // the bug that broke de-dup for /v/<token> URL QR codes.
         // Add to recent check-ins
         setRecentCheckins(prev => [{
           id: data.registration?.id || Date.now().toString(),
@@ -440,7 +459,10 @@ export default function StaffCheckinPage() {
 
   const resetResult = () => {
     setLastResult(null)
-    lastScannedRef.current = ""
+    // Do NOT clear lastScannedRef here. resetResult runs on the 5s auto-continue
+    // which re-starts the camera; wiping the de-dup memory would let a badge
+    // still in frame be re-decoded and fire a duplicate /api/verify. The
+    // time-windowed check in the decode callback handles legitimate re-scans.
     if (autoContinueTimerRef.current) {
       clearTimeout(autoContinueTimerRef.current)
       autoContinueTimerRef.current = null
@@ -455,7 +477,7 @@ export default function StaffCheckinPage() {
     if (lastResult) {
       autoContinueTimerRef.current = setTimeout(() => {
         resetResult()
-      }, 5000) // Always 5 seconds
+      }, AUTO_CONTINUE_MS) // SCAN_REPEAT_WINDOW_MS is derived from this — see top of file
     }
     return () => {
       if (autoContinueTimerRef.current) {
@@ -580,7 +602,18 @@ export default function StaffCheckinPage() {
             aspectRatio: 1,
           },
           (decodedText) => {
-            if (decodedText !== lastScannedRef.current && !scanCooldownRef.current) {
+            // Time-windowed de-dup keyed on the RAW decodedText. Accept a scan
+            // only when the 2s cooldown is clear AND this is not a repeat of the
+            // same value within SCAN_REPEAT_WINDOW_MS (>5s auto-continue), so a
+            // badge still in frame when the camera auto-restarts can't fire a
+            // second check-in. A different badge has a different value and is
+            // accepted immediately; the same badge re-scans once the window passes.
+            const now = Date.now()
+            const last = lastScannedRef.current
+            const isWindowedRepeat =
+              decodedText === last.value && now - last.ts < SCAN_REPEAT_WINDOW_MS
+            if (!scanCooldownRef.current && !isWindowedRepeat) {
+              lastScannedRef.current = { value: decodedText, ts: now }
               handleScan(decodedText)
             }
           },
