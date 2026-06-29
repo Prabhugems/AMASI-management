@@ -140,7 +140,7 @@ export async function GET(
   }
 
   const facultyName = assignments[0].faculty_name || "Faculty"
-  const eventName = event.short_name || event.name || "Event"
+  const eventName = event.name || event.short_name || "Event"
   const venueParts = [event.venue_name, event.city].filter(Boolean)
   const venue = venueParts.length ? venueParts.join(", ") : "the venue"
   const dateRange = eventDateRange(event.start_date, event.end_date)
