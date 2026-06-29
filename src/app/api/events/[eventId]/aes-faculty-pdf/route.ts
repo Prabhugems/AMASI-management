@@ -242,7 +242,10 @@ export async function GET(
   return new NextResponse(pdf, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${filename}"`,
+      // attachment (not inline): the speaker portal "Download" buttons should
+      // save the file. inline made mobile browsers open it in an in-page viewer
+      // with no obvious save, which read as "can't download it".
+      "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store",
     },
   })
