@@ -135,11 +135,18 @@ const A4_HEIGHT = 842
 
 // POST /api/badges/generate - Generate PDF badges
 export async function POST(request: NextRequest) {
-  // Rate limit: bulk tier for badge generation (resource intensive)
-  const ip = getClientIp(request)
-  const rateLimit = checkRateLimit(ip, "bulk")
-  if (!rateLimit.success) {
-    return rateLimitExceededResponse(rateLimit)
+  // Internal cron caller bypasses rate limit + user auth. The auto-generate-badges
+  // cron loops over hundreds of registrations and is service-to-service, not user-facing.
+  const cronSecret = process.env.CRON_SECRET?.trim()
+  const isCronCall = !!cronSecret && request.headers.get("x-cron-secret") === cronSecret
+
+  if (!isCronCall) {
+    // Rate limit: bulk tier for badge generation (resource intensive)
+    const ip = getClientIp(request)
+    const rateLimit = checkRateLimit(ip, "bulk")
+    if (!rateLimit.success) {
+      return rateLimitExceededResponse(rateLimit)
+    }
   }
 
   try {
@@ -150,8 +157,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "event_id and template_id are required" }, { status: 400 })
     }
 
-    const { error: authError } = await requireEventAndPermission(event_id, 'badges')
-    if (authError) return authError
+    if (!isCronCall) {
+      const { error: authError } = await requireEventAndPermission(event_id, 'badges')
+      if (authError) return authError
+    }
 
     const supabase = await createAdminClient()
 

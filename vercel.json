@@ -32,6 +32,10 @@
     {
       "path": "/api/cron/speaker-pending-reminders",
       "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/auto-generate-badges",
+      "schedule": "*/30 * * * *"
     }
   ]
 }
