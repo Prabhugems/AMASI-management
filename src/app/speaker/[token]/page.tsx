@@ -528,7 +528,7 @@ export default function SpeakerPortalPage() {
                       size="sm"
                       className="w-full sm:w-auto border-green-400/50 text-green-300 hover:bg-green-500/20"
                       onClick={() => {
-                        window.open(`/api/events/${event.id}/aes-faculty-pdf?email=${encodeURIComponent(faculty?.email || "")}`, "_blank")
+                        window.open(`/api/events/${event.id}/aes-faculty-pdf?token=${encodeURIComponent(token)}`, "_blank")
                       }}
                     >
                       <Download className="h-4 w-4 mr-2" />
@@ -1127,7 +1127,7 @@ export default function SpeakerPortalPage() {
                       variant="outline"
                       className="w-full sm:w-auto bg-transparent border-white/15 text-white hover:bg-white/10"
                       onClick={() => {
-                        window.open(`/api/events/${event.id}/aes-faculty-pdf?email=${encodeURIComponent(faculty?.email || "")}`, "_blank")
+                        window.open(`/api/events/${event.id}/aes-faculty-pdf?token=${encodeURIComponent(token)}`, "_blank")
                       }}
                     >
                       <Download className="h-4 w-4 mr-2" />
