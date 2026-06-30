@@ -143,74 +143,27 @@ export default function KioskPage() {
     setIsProcessing(true)
 
     try {
-      // Find registration by reg number, name, email, or phone
-      const { data: registration, error: regError } = await (supabase as any)
-        .from("registrations")
-        .select(`
-          id,
-          registration_number,
-          attendee_name,
-          attendee_email,
-          attendee_phone,
-          attendee_designation,
-          attendee_institution,
-          ticket_type:ticket_types(name)
-        `)
-        .eq("event_id", eventId)
-        .or(`registration_number.ilike.%${searchTerm}%,attendee_email.ilike.%${searchTerm}%,attendee_name.ilike.%${searchTerm}%,attendee_phone.ilike.%${searchTerm}%`)
-        .limit(1)
-        .maybeSingle()
-
-      if (regError || !registration) {
-        setResult({
-          success: false,
-          message: "Registration not found. Please check your registration number.",
-        })
-        return
-      }
-
-      // Check if already checked in (if multiple not allowed)
-      if (!list?.allow_multiple_checkins) {
-        const { data: existingCheckin } = await (supabase as any)
-          .from("checkin_records")
-          .select("id")
-          .eq("registration_id", registration.id)
-          .eq("checkin_list_id", listId)
-          .limit(1)
-          .maybeSingle()
-
-        if (existingCheckin) {
-          setResult({
-            success: true,
-            message: "You're already checked in!",
-            registration,
-            alreadyCheckedIn: true,
-          })
-          return
-        }
-      }
-
-      // Create check-in record
-      const { error: checkinError } = await (supabase as any)
-        .from("checkin_records")
-        .insert({
-          registration_id: registration.id,
+      // The check-in runs server-side via the admin client. The kiosk is a
+      // public (anon) page and checkin_records has RLS with no policy, so a
+      // direct browser insert is always denied — see /api/kiosk/checkin.
+      const res = await fetch("/api/kiosk/checkin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
           checkin_list_id: listId,
-          checked_in_at: new Date().toISOString(),
-        })
-
-      if (checkinError) {
-        setResult({
-          success: false,
-          message: "Failed to check in. Please try again.",
-        })
-        return
-      }
+          search: searchTerm,
+        }),
+      })
+      const data = (await res.json().catch(() => ({}))) as CheckinResult
 
       setResult({
-        success: true,
-        message: "Check-in successful!",
-        registration,
+        success: !!data.success,
+        message:
+          data.message ||
+          (data.success ? "Check-in successful!" : "Failed to check in. Please try again."),
+        registration: data.registration,
+        alreadyCheckedIn: data.alreadyCheckedIn,
       })
     } catch (_error) {
       setResult({
