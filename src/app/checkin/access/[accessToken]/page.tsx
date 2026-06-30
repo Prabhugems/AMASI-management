@@ -77,6 +77,12 @@ const AUTO_CONTINUE_MS = 5000
 // works once this window elapses.
 const SCAN_REPEAT_WINDOW_MS = AUTO_CONTINUE_MS + 2000
 
+// Manual/barcode mode re-arms much faster on a SUCCESSFUL check-in so staff can
+// scan a queue of delegates back-to-back. Kept separate from AUTO_CONTINUE_MS so
+// the camera de-dup window (derived above) is unaffected. Failures still use the
+// full AUTO_CONTINUE_MS so staff can read the reason (not found / already in).
+const MANUAL_AUTO_CONTINUE_MS = 1500
+
 interface ListAttendee {
   id: string
   registration_number: string
@@ -142,6 +148,15 @@ export default function StaffCheckinPage() {
   // re-fire the same badge.
   const lastScannedRef = useRef<{ value: string; ts: number }>({ value: "", ts: 0 })
   const scanCooldownRef = useRef<boolean>(false)
+
+  // Manual-entry scanner auto-submit. A USB/QR scanner types the whole code in a
+  // fast burst (characters land a few ms apart) and many models do NOT send a
+  // trailing Enter, so the box used to just fill and wait for a manual "Check
+  // In" press. We detect the burst and auto-check-in on a brief idle. Human
+  // typing is slower, so it falls through to the button instead of mis-firing.
+  const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const burstStartRef = useRef<number>(0)
+  const lastKeyTimeRef = useRef<number>(0)
   const isStartingRef = useRef(false)
 
   // Validate access token and get checkin list info
@@ -451,11 +466,56 @@ export default function StaffCheckinPage() {
     }
   }, [processing, checkinList, accessToken, soundEnabled, refreshQueueCount])
 
+  // Tunables for scanner-burst detection.
+  const MANUAL_MIN_LEN = 3            // ignore stray 1-2 char input
+  const SCANNER_MAX_AVG_GAP_MS = 50  // avg ms/keystroke at/below this = scanner
+  const AUTO_SUBMIT_IDLE_MS = 200    // idle after last keystroke before submit
+
+  const handleManualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toUpperCase()
+    setInputValue(value)
+
+    // Anchor a fresh burst whenever the gap since the last keystroke is large
+    // (new delegate / after a pause). Timing-based on purpose: a fast scanner
+    // can outrun React so we must NOT depend on the `inputValue` state here.
+    const now = Date.now()
+    if (now - lastKeyTimeRef.current > 500) burstStartRef.current = now
+    lastKeyTimeRef.current = now
+
+    // Schedule an auto-submit for a brief idle after typing stops. Only fires if
+    // the whole entry arrived at scanner speed — manual typing is too slow and
+    // is left for the "Check In" button. Reads the live DOM value, not React
+    // state, since a fast burst can outrun React's render.
+    if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current)
+    autoSubmitTimerRef.current = setTimeout(() => {
+      autoSubmitTimerRef.current = null
+      const current = (inputRef.current?.value || "").trim().toUpperCase()
+      if (current.length < MANUAL_MIN_LEN) return
+      const span = lastKeyTimeRef.current - burstStartRef.current
+      const avgGap = current.length > 1 ? span / (current.length - 1) : 0
+      if (avgGap <= SCANNER_MAX_AVG_GAP_MS) handleScan(current)
+    }, AUTO_SUBMIT_IDLE_MS)
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      handleScan(inputValue)
+      // A scanner configured with an Enter/CR suffix lands here. Cancel any
+      // pending burst auto-submit and submit immediately. Read the DOM value,
+      // not React state — the Enter can arrive before React flushes the last
+      // characters into `inputValue` (which would submit a truncated code).
+      if (autoSubmitTimerRef.current) {
+        clearTimeout(autoSubmitTimerRef.current)
+        autoSubmitTimerRef.current = null
+      }
+      const current = ((inputRef.current?.value || inputValue) ?? "").trim().toUpperCase()
+      handleScan(current)
     }
   }
+
+  // Clear any pending burst auto-submit on unmount.
+  useEffect(() => () => {
+    if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current)
+  }, [])
 
   const resetResult = () => {
     setLastResult(null)
@@ -472,19 +532,25 @@ export default function StaffCheckinPage() {
     }
   }
 
-  // Auto-continue effect - always auto-continue after 5 seconds
+  // Auto-continue effect. Manual/barcode mode re-arms fast on a SUCCESSFUL scan
+  // (MANUAL_AUTO_CONTINUE_MS) so a queue can be scanned back-to-back; failures
+  // and camera mode keep the full AUTO_CONTINUE_MS (the camera dedup window is
+  // derived from it, so it stays untouched).
   useEffect(() => {
     if (lastResult) {
+      const delay = scanMode === "manual" && lastResult.success
+        ? MANUAL_AUTO_CONTINUE_MS
+        : AUTO_CONTINUE_MS
       autoContinueTimerRef.current = setTimeout(() => {
         resetResult()
-      }, AUTO_CONTINUE_MS) // SCAN_REPEAT_WINDOW_MS is derived from this — see top of file
+      }, delay)
     }
     return () => {
       if (autoContinueTimerRef.current) {
         clearTimeout(autoContinueTimerRef.current)
       }
     }
-  }, [lastResult])
+  }, [lastResult, scanMode])
 
   // Fetch attendee roster for list view (debounced on search/filter)
   const fetchListAttendees = useCallback(async (signal?: AbortSignal) => {
@@ -1054,7 +1120,7 @@ export default function StaffCheckinPage() {
                   ref={inputRef}
                   type="text"
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value.toUpperCase())}
+                  onChange={handleManualChange}
                   onKeyDown={handleKeyDown}
                   placeholder="Enter reg number..."
                   className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 text-center text-base sm:text-lg font-mono tracking-wider"
@@ -1067,7 +1133,13 @@ export default function StaffCheckinPage() {
 
               {inputValue && (
                 <button
-                  onClick={() => handleScan(inputValue)}
+                  onClick={() => {
+                    if (autoSubmitTimerRef.current) {
+                      clearTimeout(autoSubmitTimerRef.current)
+                      autoSubmitTimerRef.current = null
+                    }
+                    handleScan(inputValue)
+                  }}
                   disabled={processing}
                   className="mt-4 w-full px-4 py-3.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-xl font-medium transition-all hover:shadow-lg hover:shadow-emerald-500/25 disabled:opacity-50"
                 >
