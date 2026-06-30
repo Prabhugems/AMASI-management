@@ -39,6 +39,14 @@ type CheckinResult = {
   alreadyCheckedIn?: boolean
 }
 
+// Scanner-burst auto-submit tunables (mirror of the staff check-in kiosk): a
+// barcode/QR scanner types the whole code in a fast burst and often omits a
+// trailing Enter, so we auto-submit on a brief idle when the input arrived at
+// scanner speed. Manual typing is slower and still uses the "Check in" button.
+const MANUAL_MIN_LEN = 3
+const SCANNER_MAX_AVG_GAP_MS = 50
+const AUTO_SUBMIT_IDLE_MS = 200
+
 export default function KioskPage() {
   const params = useParams()
   const eventId = params.eventId as string
@@ -52,6 +60,11 @@ export default function KioskPage() {
   const [sendingEmail, setSendingEmail] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Scanner-burst auto-submit + double-submit guard (see handleRegChange).
+  const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const burstStartRef = useRef<number>(0)
+  const lastKeyTimeRef = useRef<number>(0)
+  const submittingRef = useRef<boolean>(false)
 
   // Fetch event and list details
   const { data: event } = useQuery({
@@ -109,17 +122,28 @@ export default function KioskPage() {
     }
   }, [result])
 
-  const handleCheckin = async () => {
-    if (!registrationNumber.trim()) {
+  // Clear any pending burst auto-submit on unmount.
+  useEffect(() => () => {
+    if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current)
+  }, [])
+
+  const handleCheckin = async (override?: string) => {
+    // `override` lets the scanner-burst auto-submit and the Enter handler pass
+    // the live DOM value, which a fast scanner can fill before React flushes
+    // `registrationNumber` state.
+    const searchTerm = (override ?? registrationNumber).trim()
+    if (!searchTerm) {
       toast.error("Please enter a registration number")
       return
     }
 
+    // Guard against a double submit (burst timer racing the Enter key / a tap).
+    if (submittingRef.current) return
+    submittingRef.current = true
     setIsProcessing(true)
 
     try {
       // Find registration by reg number, name, email, or phone
-      const searchTerm = registrationNumber.trim()
       const { data: registration, error: regError } = await (supabase as any)
         .from("registrations")
         .select(`
@@ -195,6 +219,7 @@ export default function KioskPage() {
       })
     } finally {
       setIsProcessing(false)
+      submittingRef.current = false
     }
   }
 
@@ -225,9 +250,38 @@ export default function KioskPage() {
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleRegChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toUpperCase()
+    setRegistrationNumber(value)
+
+    // Anchor a fresh burst after any pause; timing-based so a fast scanner
+    // outrunning React state can't confuse the detection.
+    const now = Date.now()
+    if (now - lastKeyTimeRef.current > 500) burstStartRef.current = now
+    lastKeyTimeRef.current = now
+
+    // Auto-submit shortly after typing stops, but only if the whole entry
+    // arrived at scanner speed. Reads the live DOM value, not React state.
+    if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current)
+    autoSubmitTimerRef.current = setTimeout(() => {
+      autoSubmitTimerRef.current = null
+      const current = (inputRef.current?.value || "").trim().toUpperCase()
+      if (current.length < MANUAL_MIN_LEN) return
+      const span = lastKeyTimeRef.current - burstStartRef.current
+      const avgGap = current.length > 1 ? span / (current.length - 1) : 0
+      if (avgGap <= SCANNER_MAX_AVG_GAP_MS) handleCheckin(current)
+    }, AUTO_SUBMIT_IDLE_MS)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      handleCheckin()
+      // Scanner with an Enter/CR suffix lands here. Cancel any pending burst
+      // submit and submit the live DOM value (not possibly-stale state).
+      if (autoSubmitTimerRef.current) {
+        clearTimeout(autoSubmitTimerRef.current)
+        autoSubmitTimerRef.current = null
+      }
+      handleCheckin(inputRef.current?.value || registrationNumber)
     }
   }
 
@@ -476,8 +530,8 @@ export default function KioskPage() {
                 type="text"
                 placeholder="Registration #, name, phone, or email…"
                 value={registrationNumber}
-                onChange={(e) => setRegistrationNumber(e.target.value.toUpperCase())}
-                onKeyPress={handleKeyPress}
+                onChange={handleRegChange}
+                onKeyDown={handleKeyDown}
                 className="h-14 sm:h-16 text-base sm:text-xl text-center bg-white text-slate-900 border-0 rounded-xl placeholder:text-slate-400 pr-14"
                 autoComplete="off"
                 autoFocus
@@ -488,7 +542,7 @@ export default function KioskPage() {
             <Button
               size="lg"
               className="w-full h-14 sm:h-16 mt-4 text-base sm:text-xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl"
-              onClick={handleCheckin}
+              onClick={() => handleCheckin()}
               disabled={isProcessing || !registrationNumber.trim()}
             >
               {isProcessing ? (
