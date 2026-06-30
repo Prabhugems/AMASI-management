@@ -188,6 +188,7 @@ export async function GET(
         .from("faculty_assignments")
         .select("session_id")
         .eq("event_id", registration.event_id)
+        .eq("role", "speaker")
         .ilike("faculty_email", speakerEmail || "")
 
       const assignedSessionIds = new Set(
@@ -202,28 +203,25 @@ export async function GET(
         .order("session_date")
         .order("start_time")
 
-      // Filter sessions that belong to this speaker
+      // Filter sessions where THIS person is a SPEAKER (i.e. assigned to present).
+      // IMPORTANT: only ever match the `speakers` column — never `chairpersons` or
+      // `moderators`. Matching those caused sessions a faculty member merely chairs
+      // to be listed under "Sessions you are assigned to present" (127 FMAS bug:
+      // e.g. a chairperson of a 3-talk block saw all 3 talks as their own).
       const speakerSessions = (sessions || []).filter((session: any) => {
         if (assignedSessionIds.has(session.id)) return true
 
-        const textFields = [session.speakers_text, session.chairpersons_text, session.moderators_text]
-        for (const text of textFields) {
-          if (text && speakerEmail && text.toLowerCase().includes(speakerEmail)) return true
+        // Email match is unambiguous — allow it on the speaker text + description.
+        if (speakerEmail) {
+          if (session.speakers_text && session.speakers_text.toLowerCase().includes(speakerEmail)) return true
+          if (session.description && session.description.toLowerCase().includes(speakerEmail)) return true
         }
 
-        if (session.description && speakerEmail) {
-          if (session.description.toLowerCase().includes(speakerEmail)) return true
-        }
-
-        if (speakerNameStripped) {
-          const nameFields = [session.description, session.speakers, session.chairpersons, session.moderators]
-          for (const field of nameFields) {
-            if (field) {
-              const fieldLower = field.toLowerCase()
-              if (fieldLower.includes(speakerNameStripped)) return true
-              if (speakerName && fieldLower.includes(speakerName.toLowerCase())) return true
-            }
-          }
+        // Name match is restricted to the speakers field only.
+        if (speakerNameStripped && session.speakers) {
+          const speakersLower = session.speakers.toLowerCase()
+          if (speakersLower.includes(speakerNameStripped)) return true
+          if (speakerName && speakersLower.includes(speakerName.toLowerCase())) return true
         }
 
         return false
