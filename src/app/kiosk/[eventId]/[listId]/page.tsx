@@ -11,6 +11,7 @@ import {
   Loader2,
   CheckCircle2,
   Mail,
+  MessageCircle,
   RotateCcw,
   User,
   Calendar,
@@ -59,6 +60,8 @@ export default function KioskPage() {
   const [countdown, setCountdown] = useState(10)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false)
+  const [whatsappSent, setWhatsappSent] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   // Scanner-burst auto-submit + double-submit guard (see handleRegChange).
   const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -96,6 +99,7 @@ export default function KioskPage() {
     setRegistrationNumber("")
     setCountdown(10)
     setEmailSent(false)
+    setWhatsappSent(false)
     setTimeout(() => inputRef.current?.focus(), 100)
   }, [])
 
@@ -200,6 +204,34 @@ export default function KioskPage() {
       toast.error("Failed to send badge")
     } finally {
       setSendingEmail(false)
+    }
+  }
+
+  const handleWhatsappBadge = async () => {
+    if (!result?.registration) return
+
+    setSendingWhatsapp(true)
+    try {
+      const response = await fetch("/api/kiosk/whatsapp-badge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          registration_id: result.registration.id,
+          event_id: eventId,
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (response.ok && data.success) {
+        setWhatsappSent(true)
+        toast.success(data.message || "Badge sent on WhatsApp!")
+      } else {
+        toast.error(data.message || "Couldn't send WhatsApp. Please try again.")
+      }
+    } catch {
+      toast.error("Couldn't send WhatsApp")
+    } finally {
+      setSendingWhatsapp(false)
     }
   }
 
@@ -378,6 +410,30 @@ export default function KioskPage() {
                     >
                       <CheckCircle2 className="h-5 w-5 mr-2" />
                       Badge sent
+                    </Button>
+                  )}
+                  {!whatsappSent ? (
+                    <Button
+                      size="lg"
+                      className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-[#25D366] hover:bg-[#1eb955] text-white"
+                      onClick={handleWhatsappBadge}
+                      disabled={sendingWhatsapp}
+                    >
+                      {sendingWhatsapp ? (
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      ) : (
+                        <MessageCircle className="h-5 w-5 mr-2" />
+                      )}
+                      WhatsApp my badge
+                    </Button>
+                  ) : (
+                    <Button
+                      size="lg"
+                      className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-emerald-600 hover:bg-emerald-600 text-white"
+                      disabled
+                    >
+                      <CheckCircle2 className="h-5 w-5 mr-2" />
+                      Sent on WhatsApp
                     </Button>
                   )}
                 </div>
