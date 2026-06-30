@@ -336,20 +336,24 @@ export async function POST(
     }
   }
 
-  // Update registration's general checked_in status
-  const { error: updateError } = await (supabase as any)
-    .from("registrations")
-    .update({
-      checked_in: isCheckIn,
-      checked_in_at: isCheckIn ? new Date().toISOString() : null,
-    })
-    .eq("id", registration.id)
+  // On check-in, mark the registration checked in. Check-out does NOT clear the
+  // flag here — it's cleared later in the check-out branch, and only if no
+  // active check-in records remain on any OTHER list (multi-list drift fix).
+  if (isCheckIn) {
+    const { error: updateError } = await (supabase as any)
+      .from("registrations")
+      .update({
+        checked_in: true,
+        checked_in_at: new Date().toISOString(),
+      })
+      .eq("id", registration.id)
 
-  if (updateError) {
-    return NextResponse.json(
-      { success: false, error: "Failed to update check-in status" },
-      { status: 500 }
-    )
+    if (updateError) {
+      return NextResponse.json(
+        { success: false, error: "Failed to update check-in status" },
+        { status: 500 }
+      )
+    }
   }
 
   // Create check-in record
@@ -404,6 +408,23 @@ export async function POST(
       .eq("checkin_list_id", verified_checkin_list_id)
       .eq("registration_id", registration.id)
       .is("checked_out_at", null)
+
+    // Only clear the global registrations.checked_in flag if NO active check-in
+    // records remain across ANY list. On a multi-list event the delegate may
+    // still be checked in elsewhere, in which case the flag must stay true.
+    const { data: remainingRecords } = await (supabase as any)
+      .from("checkin_records")
+      .select("id")
+      .eq("registration_id", registration.id)
+      .is("checked_out_at", null)
+      .limit(1)
+
+    if (!remainingRecords || remainingRecords.length === 0) {
+      await (supabase as any)
+        .from("registrations")
+        .update({ checked_in: false, checked_in_at: null })
+        .eq("id", registration.id)
+    }
   }
 
   // Log successful action
