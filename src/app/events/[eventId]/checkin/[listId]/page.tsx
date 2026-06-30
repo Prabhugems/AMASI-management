@@ -100,7 +100,7 @@ export default function CheckinListAttendeesPage() {
       const res = await fetch(`/api/checkin/stats?event_id=${eventId}&checkin_list_id=${listId}`)
       return res.json() as Promise<Stats>
     },
-    refetchInterval: 5000
+    refetchInterval: 15000
   })
 
   // Fetch ticket types
