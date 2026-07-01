@@ -177,6 +177,7 @@ function PrintStationKioskPage() {
   const [testingUsb, setTestingUsb] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
+  const manualInputRef = useRef("")
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const printFrameRef = useRef<HTMLIFrameElement>(null)
   const scannerContainerId = "qr-scanner-container"
@@ -896,15 +897,45 @@ function PrintStationKioskPage() {
     }
   }, [scanMode, selectedCameraId, scannedRegistration, cameraActive, startScanner])
 
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!manualInput.trim()) return
+  useEffect(() => {
+    manualInputRef.current = manualInput
+  }, [manualInput])
 
+  const submitManualCode = useCallback((code: string) => {
+    const trimmed = code.trim()
+    if (!trimmed) return
     setError(null)
     setIsPrinting(true)
-    printMutation.mutate(manualInput.trim())
+    printMutation.mutate(trimmed)
     setManualInput("")
+  }, [printMutation])
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    submitManualCode(manualInput)
   }
+
+  // Handheld QR/barcode scanners type into this field like a keyboard but don't
+  // always send a trailing Enter, so scans would otherwise sit in the box until
+  // someone pressed Enter manually. Once the typed value matches a full
+  // registration code shape, auto-submit after a short pause instead of waiting
+  // for Enter. The ref check at fire time skips this if Enter (or another scan)
+  // already submitted/cleared the field in the meantime, so a code never
+  // double-submits.
+  useEffect(() => {
+    if (scanMode !== "manual" || scannedRegistration || searchResults) return
+    const value = manualInput.trim()
+    const looksLikeFullCode =
+      /^(124A|SPK|REG|DEL|FAC)[A-Z0-9-]+$/i.test(value) ||
+      /^[A-Z]{2,4}[0-9]{4,}$/i.test(value) ||
+      /^[0-9]{2,4}[A-Z]{1,4}[0-9]{3,6}$/i.test(value)
+    if (!looksLikeFullCode) return
+
+    const timer = setTimeout(() => {
+      if (manualInputRef.current.trim() === value) submitManualCode(value)
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [manualInput, scanMode, scannedRegistration, searchResults, submitManualCode])
 
   const _handlePrint = () => {
     if (!scannedRegistration) return
