@@ -94,6 +94,15 @@ export default function CheckinScanPage() {
   // window on the same badge is treated as a different action and goes through.
   const lastSubmitRef = useRef<{ value: string; mode: "in" | "out"; ts: number } | null>(null)
 
+  // Manual-entry scanner auto-submit. A USB/QR scanner types the whole code in a
+  // fast burst (characters land a few ms apart) and many models do NOT send a
+  // trailing Enter, so the box used to just fill and wait for a manual submit.
+  // We detect the burst and auto-submit on a brief idle. Human typing is
+  // slower, so it falls through to the button/Enter instead of mis-firing.
+  const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const burstStartRef = useRef<number>(0)
+  const lastKeyTimeRef = useRef<number>(0)
+
   // Initialize audio
   useEffect(() => {
     successAudioRef.current = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2NgI17cF1qfIGKhX9zam15f4eFg3htYnOBhoaAfHBrcX+ChYR/eXNwdX5/gYCAf3x5eHp8foCBgYGAf358e3t9foCAgoOCgYB+fHt7fH1+f4GCgoKBgH59fHx8fX5/gIGBgYGAf359fHx8fX5/gIGBgYGAgH59fHx8fX5/gICBgYGAgH59fHx9fX5/gICBgYGAf359fX19fn9/gICBgYCAf359fX19fn9/gICAgICAgH59fX19fn5/f4CAgICAgH9+fX19fX5+f3+AgICAgIB/fn19fX1+fn9/gICAgICAf359fX19fn5/f4CAgICAgH9+fX19fX5+f3+AgICAf4B/fn19fX1+fn9/gICAgH+Af359fX19fn5/f4CAgIB/gH9+fX19fX5+f3+AgICAf4B/fn19fX5+fn9/gICAgH+Af359fX1+fn5/f4CAgIB/gH9+fX19fn5+f3+AgICAf4B/fn59fX5+fn9/gICAgH+Af359fX1+fn5/f4CAgIB/gH9+fn19fn5+f3+AgICAf4B/fn59fX5+fn9/gICAgH+Af35+fX1+fn5/f4CAgIB/gH9+fn59fn5+f3+AgICAf4B/fn59fX5+fn9/gICAgH+Af359fX5+fn5/f4CAgIB/gH9+fn19fn5+f4CAgICAf4B/fn59fX5+fn9/gICAgH+Af35+fX1+fn5/f4CAgIB/gH9+fn59fn5+f3+AgICAf39/fn59fX5+fn9/gICAgH9/f35+fX1+fn5/f4CAgIB/f39+fn59fn5+f3+AgICAf39/fn59fX5+fn9/gICAgH9/f35+fn1+fn5/f4CAgIB/f39+fn59fn5+f3+AgIB/f39/fn59fX5+fn9/gICAgH9/f35+fn1+fn5/f4CAgH9/f39+fn59fn5+f3+AgIB/f39/fn5+fX5+fn9/gICAf39/f35+fn1+fn5/f4CAgH9/f39+fn59fn5+f3+AgIB/f39/fn5+fX5+fn9/gICAf39/f35+fn5+fn5/f4CAgH9/f39+fn59fn5+f3+AgIB/f39/fn5+fX5+fn9/gICAf39/f35+fn5+fn5/f4CAf39/f39+fn59fn5+f3+AgIB/f39/fn5+fX5+fn9/gIB/f39/f35+fn1+fn5/f4CAf39/f39+fn59fn5+f39/gH9/f39/fn5+fX5+fn9/f4B/f39/f35+fn5+fn5/f3+Af39/f39+fn59fn5+f39/gH9/f39/fn5+fn5+fn9/f4B/f39/f35+fn1+fn5/f3+Af39/f39+fn5+fn5+f39/gH9/f39/fn5+fn5+fn9/f4B/f39/f35+fn5+fn5/f3+Af39/f39+fn5+fn5+f39/gH9/f39/fn5+fn5+fn9/f4B/f39/f35+fn5+fn5/f3+Af39/f39+fn5+fn5+f39/gH9/f39/fn5+fn5+fn9/f4B/f39/f35+fn5+fn5/f3+A")
@@ -315,11 +324,13 @@ export default function CheckinScanPage() {
     setRecentScans([])
   }
 
-  const handleManualSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+  // Shared finalize logic for the manual-entry box, used by both the form's
+  // Enter/submit-button path and the scanner-burst auto-submit path below, so
+  // the dedupe/guard logic isn't duplicated.
+  const submitManualValue = (raw: string) => {
     // Strip invisible chars some bluetooth scanners inject (NBSP, ZWSP, BOM)
     // before trim, so visually-identical scans dedupe correctly.
-    const value = manualSearch.replace(/[\u200B\uFEFF\u00A0]/g, "").trim()
+    const value = raw.replace(/[\u200B\uFEFF\u00A0]/g, "").trim()
     if (!value) return
 
     // Block while a previous scan is still in flight, otherwise duplicate
@@ -343,6 +354,70 @@ export default function CheckinScanPage() {
     checkinMutation.mutate(value)
     setManualSearch("")
   }
+
+  const handleManualSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (autoSubmitTimerRef.current) {
+      clearTimeout(autoSubmitTimerRef.current)
+      autoSubmitTimerRef.current = null
+    }
+    submitManualValue(manualSearch)
+  }
+
+  // Tunables for scanner-burst detection (see `lastSubmitRef` comment above
+  // for why we still need per-value/mode de-dup on top of this).
+  const MANUAL_MIN_LEN = 3            // ignore stray 1-2 char input
+  const SCANNER_MAX_AVG_GAP_MS = 50  // avg ms/keystroke at/below this = scanner
+  const AUTO_SUBMIT_IDLE_MS = 200    // idle after last keystroke before submit
+
+  const handleManualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setManualSearch(value)
+
+    // Anchor a fresh burst whenever the gap since the last keystroke is large
+    // (new attendee / after a pause). Timing-based on purpose: a fast scanner
+    // can outrun React so we must NOT depend on the `manualSearch` state here.
+    const now = Date.now()
+    if (now - lastKeyTimeRef.current > 500) burstStartRef.current = now
+    lastKeyTimeRef.current = now
+
+    // Schedule an auto-submit for a brief idle after typing stops. Only fires
+    // if the whole entry arrived at scanner speed - manual typing is too slow
+    // and is left for Enter/the submit button. Reads the live DOM value, not
+    // React state, since a fast burst can outrun React's render.
+    if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current)
+    autoSubmitTimerRef.current = setTimeout(() => {
+      autoSubmitTimerRef.current = null
+      const current = (searchInputRef.current?.value || "").trim()
+      if (current.length < MANUAL_MIN_LEN) return
+      const span = lastKeyTimeRef.current - burstStartRef.current
+      const avgGap = current.length > 1 ? span / (current.length - 1) : 0
+      if (avgGap <= SCANNER_MAX_AVG_GAP_MS) submitManualValue(current)
+    }, AUTO_SUBMIT_IDLE_MS)
+  }
+
+  const handleManualKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      // A scanner configured with an Enter/CR suffix (or an operator typing
+      // manually) lands here. Cancel any pending burst auto-submit, prevent
+      // the native form submit (which would otherwise also fire and re-read
+      // possibly-stale state), and submit immediately reading the DOM value -
+      // the Enter can arrive before React flushes the last characters into
+      // `manualSearch` (which would submit a truncated code).
+      e.preventDefault()
+      if (autoSubmitTimerRef.current) {
+        clearTimeout(autoSubmitTimerRef.current)
+        autoSubmitTimerRef.current = null
+      }
+      const current = searchInputRef.current?.value ?? manualSearch
+      submitManualValue(current)
+    }
+  }
+
+  // Clear any pending burst auto-submit on unmount.
+  useEffect(() => () => {
+    if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current)
+  }, [])
 
   // Countdown timer for auto-clear
   useEffect(() => {
@@ -705,7 +780,8 @@ export default function CheckinScanPage() {
                 ref={searchInputRef}
                 type="text"
                 value={manualSearch}
-                onChange={(e) => setManualSearch(e.target.value)}
+                onChange={handleManualChange}
+                onKeyDown={handleManualKeyDown}
                 placeholder={checkoutMode ? "Scan to check out attendee..." : "Scan QR code or type registration number..."}
                 className={`w-full pl-14 pr-4 py-4 bg-gray-800 border rounded-xl text-lg focus:outline-none focus:ring-2 transition-all ${
                   checkoutMode
