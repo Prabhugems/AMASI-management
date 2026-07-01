@@ -363,34 +363,39 @@ export default function LegacyPublicProgram() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+    <div className="min-h-screen bg-slate-50 text-slate-900 antialiased print:bg-white">
+      <style jsx global>{`
+        @media print {
+          @page { size: A4; margin: 12mm; }
+        }
+      `}</style>
       {/* ===== Hero ===== */}
-      <header className="relative overflow-hidden bg-slate-950">
+      <header className="relative overflow-hidden bg-slate-950 print:bg-white print:border-b print:border-slate-200">
         {event?.banner_url && (
-          <img src={event.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
+          <img src={event.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30 print:hidden" />
         )}
         {/* brand-colour glows */}
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 print:hidden"
           style={{
             background: `radial-gradient(70% 90% at 88% -20%, ${withAlpha(accent, "66")}, transparent 60%), radial-gradient(60% 70% at -10% 120%, ${withAlpha(accent, "30")}, transparent 55%)`,
           }}
         />
         {/* dot texture */}
         <div
-          className="absolute inset-0 opacity-[0.05]"
+          className="absolute inset-0 opacity-[0.05] print:hidden"
           style={{ backgroundImage: "radial-gradient(#fff 1px, transparent 1px)", backgroundSize: "22px 22px" }}
         />
         {/* giant edition monogram */}
         <span
           aria-hidden
-          className="pointer-events-none absolute right-0 top-1/2 hidden -translate-y-1/2 select-none font-black leading-none tracking-tighter sm:block"
+          className="pointer-events-none absolute right-0 top-1/2 hidden -translate-y-1/2 select-none font-black leading-none tracking-tighter sm:block print:hidden"
           style={{ fontSize: "18rem", color: "#ffffff", opacity: 0.04 }}
         >
           {monogram}
         </span>
 
-        <div className="relative max-w-6xl mx-auto px-4 pt-12 pb-24 sm:pt-16 sm:pb-28">
+        <div className="relative max-w-6xl mx-auto px-4 pt-12 pb-24 sm:pt-16 sm:pb-28 print:px-0 print:py-6">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="min-w-0">
               {/* eyebrow */}
@@ -399,25 +404,25 @@ export default function LegacyPublicProgram() {
                   <img src={event.logo_url} alt="" className="h-11 w-11 rounded-xl bg-white p-1 object-contain" />
                 ) : (
                   <span
-                    className="flex h-11 w-11 items-center justify-center rounded-xl text-sm font-black text-white ring-1 ring-white/20"
+                    className="flex h-11 w-11 items-center justify-center rounded-xl text-sm font-black text-white ring-1 ring-white/20 print:ring-0"
                     style={{ backgroundColor: accent }}
                   >
                     {monogram.slice(0, 3)}
                   </span>
                 )}
-                <span className="text-[0.7rem] font-semibold uppercase tracking-[0.35em] text-white/60">
+                <span className="text-[0.7rem] font-semibold uppercase tracking-[0.35em] text-white/60 print:text-slate-500">
                   {COMPANY_CONFIG.name}
                 </span>
               </div>
 
-              <h1 className="text-3xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl">
+              <h1 className="text-3xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl print:text-slate-900">
                 {titleText}
               </h1>
               {event?.tagline && (
-                <p className="mt-3 max-w-xl text-base text-white/70">{event.tagline}</p>
+                <p className="mt-3 max-w-xl text-base text-white/70 print:text-slate-600">{event.tagline}</p>
               )}
 
-              <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/80">
+              <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/80 print:text-slate-600">
                 {event?.start_date && event?.end_date && (
                   <span className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" style={{ color: accent }} />
@@ -437,7 +442,7 @@ export default function LegacyPublicProgram() {
 
             <Button
               asChild
-              className="h-12 shrink-0 px-7 text-base font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] hover:opacity-95"
+              className="h-12 shrink-0 px-7 text-base font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] hover:opacity-95 print:hidden"
               style={{ backgroundColor: accent }}
             >
               <a href={registerHref}>
@@ -487,7 +492,7 @@ export default function LegacyPublicProgram() {
       )}
 
       {/* ===== Sticky day tabs + filters ===== */}
-      <div className="sticky top-0 z-40 mt-12 border-b border-slate-100 bg-white/90 backdrop-blur-md">
+      <div className="sticky top-0 z-40 mt-12 border-b border-slate-100 bg-white/90 backdrop-blur-md print:hidden">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex flex-col gap-2 py-3 lg:flex-row lg:items-center">
             <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 scrollbar-hide">
@@ -785,7 +790,7 @@ export default function LegacyPublicProgram() {
       )}
 
       {/* CTA */}
-      <section className="relative overflow-hidden" style={{ backgroundColor: accent }}>
+      <section className="relative overflow-hidden print:hidden" style={{ backgroundColor: accent }}>
         <div
           className="absolute inset-0 opacity-[0.07]"
           style={{ backgroundImage: "radial-gradient(#fff 1px, transparent 1px)", backgroundSize: "20px 20px" }}
@@ -810,7 +815,7 @@ export default function LegacyPublicProgram() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-950 py-8">
+      <footer className="bg-slate-950 py-8 print:hidden">
         <div className="mx-auto max-w-6xl px-4 text-center text-sm text-slate-400">
           {publicSettings?.footer_text || `${event?.name || "Conference"} · Powered by ${COMPANY_CONFIG.name}`}
         </div>

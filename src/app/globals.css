@@ -669,6 +669,22 @@
     color-adjust: exact !important;
   }
 
+  /* Reset the dark-theme body gradient to plain white for print.
+     Must match `.dark body` specificity to beat its !important gradient. */
+  html,
+  body,
+  .dark body {
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+
+  /* Remove the dark-theme decorative glow blobs (fixed pseudo-elements) in print */
+  .dark body::before,
+  .dark body::after {
+    display: none !important;
+    content: none !important;
+  }
+
   /* Hide sidebar completely */
   [data-sidebar],
   .event-sidebar,
