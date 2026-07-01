@@ -159,6 +159,11 @@ export default function PrintProgramPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 print:bg-white print:py-0">
+      <style jsx global>{`
+        @media print {
+          @page { size: A4; margin: 11mm 18mm 11mm 15mm; }
+        }
+      `}</style>
       <div
         className="mx-auto max-w-4xl bg-white px-6 py-8 shadow-sm print:max-w-none print:shadow-none print:px-0 print:py-0"
         style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" } as React.CSSProperties}
