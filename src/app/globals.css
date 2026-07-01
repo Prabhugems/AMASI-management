@@ -676,6 +676,12 @@
   .dark body {
     background: #ffffff !important;
     background-image: none !important;
+    /* theme-script.tsx sets an inline `style="color-scheme: dark"` on <html> on every
+       page load to avoid a flash of light theme. Chromium uses color-scheme to paint the
+       default canvas fill for anything not covered by an element's own background —
+       including @page margin regions — so without this override those margins print
+       with a dark/near-black fill regardless of any background-color reset above. */
+    color-scheme: light !important;
   }
 
   /* Remove the dark-theme decorative glow blobs (fixed pseudo-elements) in print */
