@@ -283,10 +283,14 @@ export default function ConvocationPage() {
         setSyncingAirtable(false)
         return
       }
-      // Call the exam-daily-sync cron to create missing Airtable records
-      const res = await fetch("/api/cron/exam-daily-sync")
+      const res = await fetch("/api/examination/sync-airtable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId }),
+      })
       const result = await res.json()
-      toast.success(`Airtable sync complete!\nCreated: ${result.results?.airtableCreated || 0}\nErrors: ${result.results?.errors?.length || 0}`)
+      if (!res.ok) throw new Error(result.error || "Sync failed")
+      toast.success(`Airtable sync complete!\nCreated: ${result.created || 0}\nErrors: ${result.errors?.length || 0}`)
       await queryClient.invalidateQueries({ queryKey: ["exam-convocation", eventId] })
     } catch (error) {
       toast.error("Airtable sync failed")
