@@ -2,6 +2,7 @@
 
 import React, { useEffect, useId, useMemo, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { SlideOver } from "@/components/ui/slide-over"
 import { Button } from "@/components/ui/button"
@@ -64,7 +65,11 @@ export function EditProfileSheet({ open, onClose, faculty }: Props) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["faculty", faculty.id] })
+      toast.success("Profile updated")
       onClose()
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to save profile")
     },
   })
 
