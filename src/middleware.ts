@@ -111,6 +111,10 @@ export async function middleware(request: NextRequest) {
     '/api/my',              // Delegate portal API
     '/convocation',         // Public convocation portal
     '/api/convocation',     // Public convocation lookup API
+    '/api/sheet-webhook',   // AMASICON 2026 Google Sheets edit webhook (token-gated in-route)
+    '/api/sheet-changes',   // AMASICON 2026 SSE stream to dashboard tabs
+    '/api/sheet-write',     // AMASICON 2026 sheet write-back proxy (token-gated in-route)
+    '/api/gmail-webhook',   // AMASICON 2026 Gmail-reply webhook (token-gated in-route)
   ]
   const _isPublicRoute = publicRoutes.some(
     (route) =>
