@@ -1500,7 +1500,7 @@ export default function DelegatePortalPage() {
                 <Ticket className="w-4 h-4" />
                 Ticket Type
               </span>
-              <span className="font-medium">{registration.ticket_type?.name || "General"}</span>
+              <span className="font-medium text-gray-900">{registration.ticket_type?.name || "General"}</span>
             </div>
 
             <div className="flex items-center justify-between py-2 border-b border-gray-100">
@@ -1570,7 +1570,7 @@ export default function DelegatePortalPage() {
                 <span className="text-gray-600 flex items-center gap-2">
                   Amount
                 </span>
-                <span className="font-medium">Rs.{registration.total_amount.toLocaleString("en-IN")}</span>
+                <span className="font-medium text-gray-900">Rs.{registration.total_amount.toLocaleString("en-IN")}</span>
               </div>
             )}
 
