@@ -51,3 +51,6 @@ public/*.zip
 
 # Generated abstract-management docs
 docs/abstract-management.*
+
+# Superpowers brainstorming companion sessions
+.superpowers/
