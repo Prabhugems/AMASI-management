@@ -273,7 +273,7 @@ export default function ResultsPage() {
                     key={reg.id}
                     className={cn(
                       "transition-colors duration-150 hover:bg-muted/50",
-                      reg.exam_result === "pass" && "bg-green-50/50 print:bg-green-50"
+                      reg.exam_result === "pass" && "bg-green-500/10 print:bg-green-50"
                     )}
                   >
                     <TableCell className="font-medium text-muted-foreground">{i + 1}</TableCell>

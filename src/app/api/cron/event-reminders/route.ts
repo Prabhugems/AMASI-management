@@ -48,12 +48,13 @@ export async function GET(request: Request) {
     const targetDates = [in7Days, in1Day, todayStr]
     const { data: events, error: eventsError } = await supabase
       .from("events")
-      .select("id, name, short_name, start_date, end_date, venue, venue_name, city, status")
+      .select("id, name, short_name, start_date, end_date, venue_name, city, status")
       .in("start_date", targetDates)
       .not("status", "in", '(completed,cancelled,archived)')
 
     if (eventsError) {
       console.error("Cron event-reminders: failed to fetch events:", eventsError)
+      await run.err(eventsError)
       return NextResponse.json({ error: eventsError.message }, { status: 500 })
     }
 
@@ -219,7 +220,6 @@ function buildReminderEmail(
     short_name?: string
     start_date: string
     end_date?: string
-    venue?: string
     venue_name?: string
     city?: string
   },
@@ -228,7 +228,7 @@ function buildReminderEmail(
 ): string {
   const eventName = event.name || event.short_name || "the event"
   const delegateName = registration.attendee_name || "Delegate"
-  const venue = event.venue_name || event.venue || ""
+  const venue = event.venue_name || ""
   const city = event.city || ""
   const venueDisplay = [venue, city].filter(Boolean).join(", ")
   const startDate = formatDateReadable(event.start_date)

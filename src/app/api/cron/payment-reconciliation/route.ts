@@ -211,6 +211,7 @@ export async function GET(request: NextRequest) {
     summary.razorpay_payments_fetched = allRazorpayPayments.length
 
     if (allRazorpayPayments.length === 0) {
+      await run.ok({ syncedCount: 0, metadata: { razorpay_payments_fetched: 0 } })
       return NextResponse.json({
         message: "Payment reconciliation completed - no payments found in window",
         summary,
