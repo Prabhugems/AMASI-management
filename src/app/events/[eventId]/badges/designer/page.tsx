@@ -102,6 +102,7 @@ const BADGE_SIZES: Record<string, { width: number; height: number; label: string
   "3x4": { width: 288, height: 384, label: '3" × 4"' },
   "4x6": { width: 384, height: 576, label: '4" × 6"' },
   "3.5x2": { width: 336, height: 192, label: '3.5" × 2"' },
+  "62x86": { width: 234, height: 325, label: "62mm × 86mm (Brother QL)" },
   A6: { width: 397, height: 559, label: "A6" },
 }
 
