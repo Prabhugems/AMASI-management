@@ -1397,6 +1397,21 @@ function PrintStationKioskPage() {
       ? `text-shadow: ${element.shadowOffsetX || 2}px ${element.shadowOffsetY || 2}px ${element.shadowBlur || 4}px ${element.shadowColor || "rgba(0,0,0,0.3)"};`
       : ""
 
+    // Shared text styling used by every layout mode below (singleLine, lineClamp, default).
+    const textStyle = `
+      font-size: ${element.fontSize || 14}px;
+      font-family: ${element.fontFamily || "Arial, sans-serif"};
+      font-weight: ${element.fontWeight || "normal"};
+      font-style: ${element.fontStyle || "normal"};
+      color: ${element.color || "#000000"};
+      text-align: ${element.align || "left"};
+      background-color: ${element.backgroundColor || "transparent"};
+      letter-spacing: ${element.letterSpacing ? `${element.letterSpacing}px` : "normal"};
+      ${shadowStyle}
+      border: ${element.borderWidth || 0}px solid ${element.borderColor || "transparent"};
+      border-radius: ${element.borderRadius || 0}px;
+    `
+
     // singleLine: truncate to one line with an ellipsis instead of wrapping.
     // Used by narrow labels (e.g. Brother QL 62mm badges) where a long value
     // must not push other elements off the printable area.
@@ -1407,18 +1422,8 @@ function PrintStationKioskPage() {
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
-        font-size: ${element.fontSize || 14}px;
-        font-family: ${element.fontFamily || "Arial, sans-serif"};
-        font-weight: ${element.fontWeight || "normal"};
-        font-style: ${element.fontStyle || "normal"};
-        color: ${element.color || "#000000"};
-        text-align: ${element.align || "left"};
-        background-color: ${element.backgroundColor || "transparent"};
         line-height: ${element.height}px;
-        letter-spacing: ${element.letterSpacing ? `${element.letterSpacing}px` : "normal"};
-        ${shadowStyle}
-        border: ${element.borderWidth || 0}px solid ${element.borderColor || "transparent"};
-        border-radius: ${element.borderRadius || 0}px;
+        ${textStyle}
       ">${content}</div>`
     }
 
@@ -1432,19 +1437,9 @@ function PrintStationKioskPage() {
       ${lineClampStyle}
       overflow: hidden;
       white-space: ${element.lineClamp ? "normal" : "pre-wrap"};
-      font-size: ${element.fontSize || 14}px;
-      font-family: ${element.fontFamily || "Arial, sans-serif"};
-      font-weight: ${element.fontWeight || "normal"};
-      font-style: ${element.fontStyle || "normal"};
-      color: ${element.color || "#000000"};
-      text-align: ${element.align || "left"};
       justify-content: ${element.align === "center" ? "center" : element.align === "right" ? "flex-end" : "flex-start"};
-      background-color: ${element.backgroundColor || "transparent"};
       line-height: ${element.lineHeight || 1.3};
-      letter-spacing: ${element.letterSpacing ? `${element.letterSpacing}px` : "normal"};
-      ${shadowStyle}
-      border: ${element.borderWidth || 0}px solid ${element.borderColor || "transparent"};
-      border-radius: ${element.borderRadius || 0}px;
+      ${textStyle}
     ">${content}</div>`
   }
 
