@@ -1397,12 +1397,41 @@ function PrintStationKioskPage() {
       ? `text-shadow: ${element.shadowOffsetX || 2}px ${element.shadowOffsetY || 2}px ${element.shadowBlur || 4}px ${element.shadowColor || "rgba(0,0,0,0.3)"};`
       : ""
 
+    // singleLine: truncate to one line with an ellipsis instead of wrapping.
+    // Used by narrow labels (e.g. Brother QL 62mm badges) where a long value
+    // must not push other elements off the printable area.
+    if (element.singleLine) {
+      return `<div style="
+        ${baseStyle}
+        display: block;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-size: ${element.fontSize || 14}px;
+        font-family: ${element.fontFamily || "Arial, sans-serif"};
+        font-weight: ${element.fontWeight || "normal"};
+        font-style: ${element.fontStyle || "normal"};
+        color: ${element.color || "#000000"};
+        text-align: ${element.align || "left"};
+        background-color: ${element.backgroundColor || "transparent"};
+        line-height: ${element.height}px;
+        letter-spacing: ${element.letterSpacing ? `${element.letterSpacing}px` : "normal"};
+        ${shadowStyle}
+        border: ${element.borderWidth || 0}px solid ${element.borderColor || "transparent"};
+        border-radius: ${element.borderRadius || 0}px;
+      ">${content}</div>`
+    }
+
+    // lineClamp: wrap normally but cut off after N lines with an ellipsis.
+    const lineClampStyle = element.lineClamp
+      ? `display: -webkit-box; -webkit-line-clamp: ${element.lineClamp}; -webkit-box-orient: vertical;`
+      : "display: flex; align-items: center;"
+
     return `<div style="
       ${baseStyle}
-      display: flex;
-      align-items: center;
+      ${lineClampStyle}
       overflow: hidden;
-      white-space: pre-wrap;
+      white-space: ${element.lineClamp ? "normal" : "pre-wrap"};
       font-size: ${element.fontSize || 14}px;
       font-family: ${element.fontFamily || "Arial, sans-serif"};
       font-weight: ${element.fontWeight || "normal"};
