@@ -1599,6 +1599,7 @@ function PrintStationKioskPage() {
       "4x2": { width: "4in", height: "2in" },
       "4x3": { width: "4in", height: "3in" },
       "4x6": { width: "4in", height: "6in" },
+      "62x86": { width: "62mm", height: "86mm" },
       "a6": { width: "105mm", height: "148mm" },
       "a5": { width: "148mm", height: "210mm" }
     }
