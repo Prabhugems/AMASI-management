@@ -88,6 +88,7 @@ const PAPER_SIZES = [
   { value: "4x2", label: "Label 4×2\"" },
   { value: "4x3", label: "Label 4×3\"" },
   { value: "4x6", label: "Badge 4×6\"" },
+  { value: "62x86", label: "62×86mm (Brother QL)" },
   { value: "a6", label: "A6 (105×148mm)" },
   { value: "a5", label: "A5 (148×210mm)" },
   { value: "custom", label: "Custom Size" }
