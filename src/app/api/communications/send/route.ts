@@ -187,48 +187,25 @@ export async function POST(request: NextRequest) {
                 channelId: settings.whatsapp_provider === "gallabox" ? settings.whatsapp_phone_number_id : undefined,
               }
 
-              // Gallabox: send via the shared pre-approved "basic" template
-              // (one template, reused across every event) so outbound
-              // messages stay compliant with WhatsApp's template rules.
-              // Falls back to a plain text send if the template name/vars
-              // configured in Gallabox don't match.
-              if (whatsappConfig.provider === "gallabox") {
-                const basicTemplateName = process.env.GALLABOX_TEMPLATE_BASIC?.trim() || "basic"
-                sendResult = await sendWhatsAppMessage(whatsappConfig, {
-                  to: recipient,
-                  templateName: basicTemplateName,
-                  templateParams: [personalizedMessage],
-                })
-                if (!sendResult.success) {
-                  sendResult = await sendWhatsAppMessage(whatsappConfig, {
-                    to: recipient,
-                    message: personalizedMessage,
-                  })
-                }
-              } else {
-                sendResult = await sendWhatsAppMessage(whatsappConfig, {
-                  to: recipient,
-                  message: personalizedMessage,
-                })
-              }
+              // Compose sends admin-authored free text, and neither approved
+              // Gallabox template (welcome_template: fixed copy + {{Name}};
+              // delegate_login: fixed copy + Delegate_Name/Event_Name/Portal_URL)
+              // has a variable that can carry an arbitrary message body, so
+              // there's no compliant way to route this through a template —
+              // send as plain text. If a free-text-body template gets
+              // approved in Gallabox, wire it in here.
+              sendResult = await sendWhatsAppMessage(whatsappConfig, {
+                to: recipient,
+                message: personalizedMessage,
+              })
             } else if (useEnvQikchat || (!settings?.whatsapp_provider && qikchatEnvAvailable)) {
               // Use Qikchat from env vars as fallback
               const { sendQikchatText } = await import("@/lib/qikchat")
               sendResult = await sendQikchatText(recipient, personalizedMessage)
             } else if (!settings?.whatsapp_provider && process.env.GALLABOX_API_KEY?.trim()) {
-              // Use Gallabox from env vars as fallback (same basic-template-
-              // then-text-fallback strategy as the per-event Gallabox path)
-              const { sendGallaboxTemplate, sendGallaboxText } = await import("@/lib/gallabox")
-              const basicTemplateName = process.env.GALLABOX_TEMPLATE_BASIC?.trim() || "basic"
-              sendResult = await sendGallaboxTemplate(
-                recipient,
-                reg.attendee_name || "Delegate",
-                basicTemplateName,
-                { "1": personalizedMessage }
-              )
-              if (!sendResult.success) {
-                sendResult = await sendGallaboxText(recipient, reg.attendee_name || "Delegate", personalizedMessage)
-              }
+              // Use Gallabox from env vars as fallback
+              const { sendGallaboxText } = await import("@/lib/gallabox")
+              sendResult = await sendGallaboxText(recipient, reg.attendee_name || "Delegate", personalizedMessage)
             } else {
               // Dev mode
               sendResult = { success: true, messageId: `dev-wa-${Date.now()}` }
