@@ -62,7 +62,7 @@ const TEMPLATE_DATA = {
     },
     {
       id: "regno", type: "text", content: "{{registration_number}}",
-      x: 4, y: 291, width: 226, height: 24, zIndex: 4,
+      x: 4, y: 265, width: 226, height: 24, zIndex: 4,
       fontSize: 14, fontWeight: "bold", fontFamily: "Arial, sans-serif",
       align: "center", color: "#000000",
     },
