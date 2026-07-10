@@ -76,6 +76,9 @@ import {
   Wifi,
   Copy,
   Check,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { SlideOver, SlideOverSection, SlideOverFooter } from "@/components/ui/slide-over"
@@ -161,6 +164,17 @@ function RegistrationsContent() {
   )
   const [addonsOnly, setAddonsOnly] = useState<boolean>(searchParams.get("addons_only") === "1")
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
+  type SortKey = "registration_number" | "attendee_name" | "ticket" | "amount" | "status" | "checkin" | "created_at"
+  const [sortKey, setSortKey] = useState<SortKey>("created_at")
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc")
+    } else {
+      setSortKey(key)
+      setSortDir(key === "created_at" || key === "amount" || key === "checkin" ? "desc" : "asc")
+    }
+  }
 
   // Persist the (multi-select) add-on filter to the URL so it survives refresh
   // and can be shared. Empty = no filter ("All Add-ons").
@@ -1164,6 +1178,42 @@ function RegistrationsContent() {
     )
   })
 
+  const sortedRegistrations = filteredRegistrations ? [...filteredRegistrations].sort((a, b) => {
+    const dir = sortDir === "asc" ? 1 : -1
+    const cmp = (x: string | number | null | undefined, y: string | number | null | undefined) => {
+      if (x == null && y == null) return 0
+      if (x == null) return 1
+      if (y == null) return -1
+      if (typeof x === "number" && typeof y === "number") return (x - y) * dir
+      return String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: "base" }) * dir
+    }
+    switch (sortKey) {
+      case "registration_number": return cmp(a.registration_number, b.registration_number)
+      case "attendee_name": return cmp(a.attendee_name?.toLowerCase(), b.attendee_name?.toLowerCase())
+      case "ticket": {
+        const ta = ticketTypes?.find(t => t.id === a.ticket_type_id)?.name || ""
+        const tb = ticketTypes?.find(t => t.id === b.ticket_type_id)?.name || ""
+        return cmp(ta, tb)
+      }
+      case "amount": return cmp(a.total_amount ?? 0, b.total_amount ?? 0)
+      case "status": return cmp(a.status, b.status)
+      case "checkin": {
+        const av = a.checked_in_at ? new Date(a.checked_in_at).getTime() : (a.checked_in ? 0 : -1)
+        const bv = b.checked_in_at ? new Date(b.checked_in_at).getTime() : (b.checked_in ? 0 : -1)
+        return cmp(av, bv)
+      }
+      case "created_at":
+      default: return cmp(new Date(a.created_at).getTime(), new Date(b.created_at).getTime())
+    }
+  }) : undefined
+
+  const SortIndicator = ({ column }: { column: SortKey }) =>
+    sortKey !== column
+      ? <ChevronsUpDown className="ml-1 h-3 w-3 inline opacity-50" />
+      : sortDir === "asc"
+        ? <ChevronUp className="ml-1 h-3 w-3 inline" />
+        : <ChevronDown className="ml-1 h-3 w-3 inline" />
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -1888,16 +1938,24 @@ function RegistrationsContent() {
                     />
                   </th>
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                    Registration
+                    <button type="button" onClick={() => toggleSort("registration_number")} className="hover:text-foreground flex items-center">
+                      Registration<SortIndicator column="registration_number" />
+                    </button>
                   </th>
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                    Attendee
+                    <button type="button" onClick={() => toggleSort("attendee_name")} className="hover:text-foreground flex items-center">
+                      Attendee<SortIndicator column="attendee_name" />
+                    </button>
                   </th>
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                    Ticket
+                    <button type="button" onClick={() => toggleSort("ticket")} className="hover:text-foreground flex items-center">
+                      Ticket<SortIndicator column="ticket" />
+                    </button>
                   </th>
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                    Amount
+                    <button type="button" onClick={() => toggleSort("amount")} className="hover:text-foreground flex items-center">
+                      Amount<SortIndicator column="amount" />
+                    </button>
                   </th>
                   {addonsOnly && (
                     <th className="text-right p-4 text-sm font-medium text-muted-foreground">
@@ -1905,10 +1963,14 @@ function RegistrationsContent() {
                     </th>
                   )}
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                    Status
+                    <button type="button" onClick={() => toggleSort("status")} className="hover:text-foreground flex items-center">
+                      Status<SortIndicator column="status" />
+                    </button>
                   </th>
                   <th className="text-center p-4 text-sm font-medium text-muted-foreground">
-                    Check-in
+                    <button type="button" onClick={() => toggleSort("checkin")} className="hover:text-foreground inline-flex items-center">
+                      Check-in<SortIndicator column="checkin" />
+                    </button>
                   </th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground">
                     Actions
@@ -1916,7 +1978,7 @@ function RegistrationsContent() {
                 </tr>
               </thead>
               <tbody>
-                {filteredRegistrations?.map((reg) => (
+                {sortedRegistrations?.map((reg) => (
                   <tr
                     key={reg.id}
                     className={cn(
