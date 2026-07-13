@@ -109,6 +109,9 @@ export default function StaffCheckinPage() {
     message: string
     attendee?: Attendee
     alreadyCheckedIn?: boolean
+    checkedInAt?: string
+    errorCode?: string
+    badgeEventName?: string
   } | null>(null)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [stats, setStats] = useState({ total: 0, checkedIn: 0 })
@@ -386,7 +389,28 @@ export default function StaffCheckinPage() {
 
       const data = await res.json()
 
-      if (data.success) {
+      if (data.alreadyCheckedIn) {
+        // Legitimate repeat scan (re-entry, staff confirming status) — not an
+        // error. Play the normal confirmation chime, never the buzzer, and
+        // don't double-count it in the stats bar.
+        playSound("success")
+        setLastResult({
+          success: true,
+          message: data.message || "Already checked in",
+          alreadyCheckedIn: true,
+          checkedInAt: data.registration?.checked_in_at,
+          attendee: data.registration,
+        })
+        setRecentCheckins(prev => [{
+          id: data.registration?.id || Date.now().toString(),
+          name: data.registration?.attendee_name || "Unknown",
+          regNumber: data.registration?.registration_number || token,
+          ticketType: data.registration?.ticket_type?.name,
+          institution: data.registration?.attendee_institution,
+          time: new Date(),
+          success: true,
+        }, ...prev].slice(0, 20))
+      } else if (data.success) {
         playSound("success")
         setLastResult({
           success: true,
@@ -413,6 +437,8 @@ export default function StaffCheckinPage() {
           success: false,
           message: data.error || "Check-in failed",
           alreadyCheckedIn: data.alreadyCheckedIn || false,
+          errorCode: data.error_code,
+          badgeEventName: data.badge_event_name,
           attendee: data.registration,
         })
         // Track failed attempts too
@@ -927,20 +953,20 @@ export default function StaffCheckinPage() {
           <div className={`w-full max-w-md animate-in fade-in zoom-in-95 duration-300`}>
             <div
               className={`p-8 rounded-3xl text-center relative overflow-hidden ${
-                lastResult.success
-                  ? "bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border-2 border-emerald-500/50"
-                  : lastResult.alreadyCheckedIn
+                lastResult.alreadyCheckedIn
                   ? "bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-2 border-amber-500/50"
+                  : lastResult.success
+                  ? "bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border-2 border-emerald-500/50"
                   : "bg-gradient-to-br from-red-500/20 to-pink-500/20 border-2 border-red-500/50"
               }`}
             >
               {/* Background glow */}
               <div className={`absolute inset-0 ${
-                lastResult.success ? "bg-emerald-500/5" : lastResult.alreadyCheckedIn ? "bg-amber-500/5" : "bg-red-500/5"
+                lastResult.alreadyCheckedIn ? "bg-amber-500/5" : lastResult.success ? "bg-emerald-500/5" : "bg-red-500/5"
               }`} />
 
               <div className="relative">
-                {lastResult.success ? (
+                {lastResult.success && !lastResult.alreadyCheckedIn ? (
                   <>
                     <div className="w-24 h-24 mx-auto mb-4 relative">
                       <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping" />
@@ -978,9 +1004,9 @@ export default function StaffCheckinPage() {
                 ) : lastResult.alreadyCheckedIn ? (
                   <>
                     <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <AlertCircle className="w-10 h-10 text-white" />
+                      <CheckCircle className="w-10 h-10 text-white" />
                     </div>
-                    <h2 className="text-xl font-bold text-white mb-2">Already Checked In</h2>
+                    <h2 className="text-xl font-bold text-white mb-2">✓ ALREADY CHECKED IN</h2>
                     {lastResult.attendee && (
                       <p className="text-white text-lg font-semibold mb-2">
                         {lastResult.attendee.attendee_name}
@@ -994,7 +1020,23 @@ export default function StaffCheckinPage() {
                         </span>
                       </div>
                     )}
-                    <p className="text-amber-200">{lastResult.message}</p>
+                    <p className="text-amber-200">
+                      {/* Desk/volunteer identity isn't captured yet (planned in a
+                          follow-up) — shows the check-in time only until then. */}
+                      {lastResult.checkedInAt
+                        ? `Checked in at ${formatTime(new Date(lastResult.checkedInAt))}`
+                        : lastResult.message}
+                    </p>
+                  </>
+                ) : lastResult.errorCode === "wrong_event" ? (
+                  <>
+                    <div className="w-20 h-20 bg-gradient-to-br from-red-400 to-pink-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <XCircle className="w-10 h-10 text-white" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white mb-2">✗ WRONG EVENT</h2>
+                    <p className="text-red-200">
+                      This badge is for {lastResult.badgeEventName || "a different event"}
+                    </p>
                   </>
                 ) : (
                   <>
@@ -1010,20 +1052,35 @@ export default function StaffCheckinPage() {
                   <div className="h-1.5 bg-white/10 rounded-full overflow-hidden max-w-[200px] mx-auto">
                     <div
                       className={`h-full rounded-full ${
-                        lastResult.success ? "bg-emerald-400" : lastResult.alreadyCheckedIn ? "bg-amber-400" : "bg-red-400"
+                        lastResult.alreadyCheckedIn ? "bg-amber-400" : lastResult.success ? "bg-emerald-400" : "bg-red-400"
                       }`}
                       style={{
                         animation: "shrink 5s linear forwards",
                       }}
                     />
                   </div>
-                  <button
-                    onClick={resetResult}
-                    className="mt-4 px-8 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl flex items-center gap-2 mx-auto transition-all font-medium"
-                  >
-                    <RotateCcw className="w-5 h-5" />
-                    Scan Next
-                  </button>
+                  {lastResult.alreadyCheckedIn ? (
+                    // The volunteer build this replaces trained staff to read a
+                    // repeat scan as "stop them." A colour/sound change alone
+                    // won't retrain that reflex — the button has to say the
+                    // instruction outright, and it has to be the loudest thing
+                    // on the screen.
+                    <button
+                      onClick={resetResult}
+                      className="mt-4 w-full max-w-xs mx-auto px-8 py-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xl font-extrabold tracking-wide rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 transition-all"
+                    >
+                      <CheckCircle className="w-7 h-7" />
+                      LET THEM IN
+                    </button>
+                  ) : (
+                    <button
+                      onClick={resetResult}
+                      className="mt-4 px-8 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl flex items-center gap-2 mx-auto transition-all font-medium"
+                    >
+                      <RotateCcw className="w-5 h-5" />
+                      Scan Next
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

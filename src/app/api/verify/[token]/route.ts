@@ -213,6 +213,10 @@ export async function POST(
       ticket_types (
         id,
         name
+      ),
+      events (
+        id,
+        name
       )
     `)
 
@@ -243,6 +247,36 @@ export async function POST(
     return NextResponse.json(
       { success: false, error: "Invalid or expired QR code" },
       { status: 404 }
+    )
+  }
+
+  // A secure checkin_token is globally unique across all events, so without an
+  // explicit event check here a badge from Event A could check in against
+  // Event B's checkin list (the registration-number branch above already
+  // scopes by event_id in the query itself).
+  if (isSecureToken && registration.event_id !== verified_event_id) {
+    await logAudit(supabase, {
+      event_id: registration.event_id,
+      checkin_list_id: verified_checkin_list_id,
+      registration_id: registration.id,
+      action,
+      performed_by,
+      performed_via: "qr_scan",
+      device_info,
+      token_used: token,
+      success: false,
+      error_message: "Wrong event"
+    })
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "This badge is not registered for this event",
+        error_code: "wrong_event",
+        registration_number: registration.registration_number,
+        badge_event_name: registration.events?.name || null,
+      },
+      { status: 400 }
     )
   }
 
@@ -304,6 +338,12 @@ export async function POST(
       .maybeSingle()
 
     if (existingRecord && listSettings?.allow_multiple_checkins !== true) {
+      // A repeat scan of an already-checked-in delegate is expected (re-entry,
+      // a volunteer confirming status) — not an error. success:true / HTTP 200
+      // so the scanner plays its confirmation sound, not the error buzzer, and
+      // the audit trail doesn't record a legitimate re-entry as a failure.
+      // action:"already_checked_in" / alreadyCheckedIn:true still distinguish
+      // it from a fresh check-in so the UI can show the right card.
       const checkedInTime = new Date(existingRecord.checked_in_at).toLocaleTimeString("en-IN", {
         hour: "2-digit",
         minute: "2-digit"
@@ -318,21 +358,24 @@ export async function POST(
         performed_via: "qr_scan",
         device_info,
         token_used: token,
-        success: false,
+        success: true,
         error_message: "Already checked in"
       })
 
       return NextResponse.json({
-        success: false,
-        error: `Already checked in at ${checkedInTime}`,
+        success: true,
+        action: "already_checked_in",
         alreadyCheckedIn: true,
+        message: `Already checked in at ${checkedInTime}`,
         registration: {
           id: registration.id,
           registration_number: registration.registration_number,
           attendee_name: registration.attendee_name,
+          checked_in: true,
+          checked_in_at: existingRecord.checked_in_at,
           ticket_type: registration.ticket_types,
         }
-      }, { status: 400 })
+      })
     }
   }
 
