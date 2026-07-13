@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     // Validate the list and confirm it belongs to the event in the URL.
     const { data: list } = await (supabase as any)
       .from("checkin_lists")
-      .select("id, event_id, allow_multiple_checkins")
+      .select("id, event_id")
       .eq("id", checkinListId)
       .maybeSingle()
 
@@ -68,24 +68,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Already checked in on this list? (active record = not checked out)
-    if (!list.allow_multiple_checkins) {
-      const { data: existing } = await (supabase as any)
-        .from("checkin_records")
-        .select("id")
-        .eq("registration_id", registration.id)
-        .eq("checkin_list_id", checkinListId)
-        .is("checked_out_at", null)
-        .limit(1)
-        .maybeSingle()
+    // allow_multiple_checkins is intentionally ignored: UNIQUE(checkin_list_id,
+    // registration_id) means a second insert always violates the constraint,
+    // so skipping this check for that flag used to fall straight into an
+    // unhandled 23505 below — a hard 500 instead of the friendly message.
+    // Recurring access belongs to a separate list per occurrence.
+    const { data: existing } = await (supabase as any)
+      .from("checkin_records")
+      .select("id")
+      .eq("registration_id", registration.id)
+      .eq("checkin_list_id", checkinListId)
+      .is("checked_out_at", null)
+      .limit(1)
+      .maybeSingle()
 
-      if (existing) {
-        return NextResponse.json({
-          success: true,
-          message: "You're already checked in!",
-          registration,
-          alreadyCheckedIn: true,
-        })
-      }
+    if (existing) {
+      return NextResponse.json({
+        success: true,
+        message: "You're already checked in!",
+        registration,
+        alreadyCheckedIn: true,
+      })
     }
 
     const now = new Date().toISOString()
@@ -100,6 +103,18 @@ export async function POST(request: NextRequest) {
       })
 
     if (insertError) {
+      // 23505 = unique_violation on (checkin_list_id, registration_id): a
+      // concurrent self-checkin from the same kiosk won the race. That's a
+      // successful idempotent check-in, not a failure — same pattern as
+      // /api/verify/[token] and /api/checkin.
+      if (insertError.code === "23505") {
+        return NextResponse.json({
+          success: true,
+          message: "You're already checked in!",
+          registration,
+          alreadyCheckedIn: true,
+        })
+      }
       console.error("Kiosk check-in insert failed:", insertError)
       return NextResponse.json(
         { success: false, message: "Failed to check in. Please try again." },

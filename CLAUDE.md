@@ -82,6 +82,14 @@ return NextResponse.json({ data })
 5. **WhatsApp**: Gallabox integration. Template messages require pre-approved templates in Gallabox dashboard.
 6. **Razorpay**: Payment processing with webhook verification.
 
+## Check-in Model (Tito model — captured 2026-07-13)
+
+**Repeat entry is NOT a check-in concern.** `checkin_records` has `UNIQUE(checkin_list_id, registration_id)` by design: one check-in per list, ever. Hall re-entry, session attendance, and any other "same person, multiple times" tracking do **not** belong on this table — that's a separate RFID/gate-scan table (or, until that exists, a separate `checkin_list` per occurrence: Day 2 = a new list, Lunch = a new list, Session = a new list).
+
+`checkin_lists.allow_multiple_checkins` is a **dead/neutralized column** (as of the PR that added this note): it used to be a no-op on `/api/verify/[token]` (the unique constraint meant a "second check-in" never inserted a new row or updated the timestamp regardless of the flag) and actively harmful on `/api/kiosk/checkin` (skipped the existing-record guard, then hit an unhandled `23505` unique-violation → hard HTTP 500 on a genuine repeat scan). Both endpoints now ignore the column entirely and always treat a repeat as `already_checked_in` (never an error). The list-management UI toggle for it has been removed. The column is left in the schema for now and will be dropped post-AMASICON (September).
+
+A repeat scan of an already-checked-in delegate is **always a success**, never an error: `success:true`, HTTP 200, the confirmation sound, and a `checkin_audit_log` row with `success:true`. A prod data audit (2026-07-13) found 2,205 `checkin_audit_log` rows across 9 checkin_lists where the pre-fix `/api/verify/[token]` had logged a legitimate repeat scan as `success:false` — i.e. that many times a volunteer's device buzzed and the audit trail recorded a false rejection for a real, paid, registered delegate.
+
 ## Key External Services
 - **Supabase**: Database + Auth + Storage
 - **Vercel**: Hosting

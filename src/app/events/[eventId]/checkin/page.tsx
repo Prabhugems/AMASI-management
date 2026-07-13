@@ -91,7 +91,6 @@ export default function CheckinHubPage() {
   const [formStartsAt, setFormStartsAt] = useState("")
   const [formEndsAt, setFormEndsAt] = useState("")
   const [formIsActive, setFormIsActive] = useState(true)
-  const [formAllowMultipleCheckins, setFormAllowMultipleCheckins] = useState(false)
 
   // Fetch event details
   const { data: event } = useQuery({
@@ -230,7 +229,6 @@ export default function CheckinHubPage() {
     setFormStartsAt("")
     setFormEndsAt("")
     setFormIsActive(true)
-    setFormAllowMultipleCheckins(false)
   }
 
   const openEditModal = (list: CheckinList) => {
@@ -241,7 +239,6 @@ export default function CheckinHubPage() {
     setFormStartsAt(list.starts_at ? list.starts_at.slice(0, 16) : "")
     setFormEndsAt(list.ends_at ? list.ends_at.slice(0, 16) : "")
     setFormIsActive(list.is_active)
-    setFormAllowMultipleCheckins(list.allow_multiple_checkins)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -254,7 +251,6 @@ export default function CheckinHubPage() {
       starts_at: formStartsAt || null,
       ends_at: formEndsAt || null,
       is_active: formIsActive,
-      allow_multiple_checkins: formAllowMultipleCheckins
     }
     if (editingList) {
       updateMutation.mutate({ ...data, id: editingList.id })
@@ -1079,25 +1075,6 @@ export default function CheckinHubPage() {
                     className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <div>
-                  <label className="text-sm font-medium">Allow Multiple Check-ins</label>
-                  <p className="text-xs text-muted-foreground">Allow same person to check in multiple times</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFormAllowMultipleCheckins(!formAllowMultipleCheckins)}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
-                    formAllowMultipleCheckins ? "bg-emerald-500" : "bg-muted-foreground/30"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                      formAllowMultipleCheckins ? "left-7" : "left-1"
-                    }`}
-                  />
-                </button>
               </div>
               <div className="flex gap-3 pt-4">
                 <button
