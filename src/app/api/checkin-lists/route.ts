@@ -108,10 +108,20 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { event_id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at } = body
+    const { event_id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, list_purpose } = body
 
     if (!event_id || !name) {
       return NextResponse.json({ error: "event_id and name are required" }, { status: 400 })
+    }
+
+    // Required, no default: a wrong silent default here is exactly the bug
+    // this column exists to prevent (a collection list rendering "LET THEM
+    // IN"). The caller must say which one explicitly.
+    if (list_purpose !== "entry" && list_purpose !== "collection") {
+      return NextResponse.json(
+        { error: "list_purpose is required and must be 'entry' or 'collection'" },
+        { status: 400 }
+      )
     }
 
     // Authorize against the target event — not just "any logged-in user".
@@ -153,6 +163,7 @@ export async function POST(request: NextRequest) {
         // supported mode. Recurring access is a separate list per occurrence,
         // not a repeat check-in on the same one. See CLAUDE.md.
         allow_multiple_checkins: false,
+        list_purpose,
         access_token_expires_at,
         sort_order: nextOrder
       })
@@ -174,10 +185,17 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, is_active, sort_order } = body
+    const { id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, is_active, sort_order, list_purpose } = body
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
+    }
+
+    if (list_purpose !== undefined && list_purpose !== "entry" && list_purpose !== "collection") {
+      return NextResponse.json(
+        { error: "list_purpose must be 'entry' or 'collection'" },
+        { status: 400 }
+      )
     }
 
     const supabase = await createAdminClient()
@@ -206,6 +224,7 @@ export async function PUT(request: NextRequest) {
     if (ends_at !== undefined) updateData.ends_at = ends_at
     if (is_active !== undefined) updateData.is_active = is_active
     if (sort_order !== undefined) updateData.sort_order = sort_order
+    if (list_purpose !== undefined) updateData.list_purpose = list_purpose
 
     const { data, error } = await (supabase as any)
       .from("checkin_lists")

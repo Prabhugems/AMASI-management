@@ -19,6 +19,7 @@ import {
   Ticket,
   Hash,
   AlertCircle,
+  AlertTriangle,
   List as ListIcon,
   Users,
 } from "lucide-react"
@@ -34,6 +35,7 @@ interface CheckinList {
   id: string
   name: string
   event_id: string
+  list_purpose: "entry" | "collection"
   events: {
     id: string
     name: string
@@ -202,12 +204,33 @@ export default function StaffCheckinPage() {
     }
   }, [loading, error, lastResult, scanMode])
 
-  const playSound = (type: "success" | "error") => {
+  const playSound = (type: "success" | "error" | "warning") => {
     if (!soundEnabled || !audioContextRef.current) return
     try {
       const ctx = audioContextRef.current
       if (ctx.state === "suspended") {
         ctx.resume()
+      }
+
+      if (type === "warning") {
+        // Distinct double-tone for "already collected — do not issue again".
+        // Deliberately NOT the success chime (ascending, one sweep) and NOT
+        // the error buzzer (harsh square wave) — two identical flat beeps,
+        // audibly its own thing, so a volunteer working by ear alone can
+        // tell it apart from both other outcomes.
+        for (const startOffset of [0, 0.18]) {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+          osc.frequency.setValueAtTime(660, ctx.currentTime + startOffset)
+          gain.gain.setValueAtTime(0.3, ctx.currentTime + startOffset)
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startOffset + 0.15)
+          osc.start(ctx.currentTime + startOffset)
+          osc.stop(ctx.currentTime + startOffset + 0.15)
+        }
+        if (navigator.vibrate) navigator.vibrate([120, 80, 120])
+        return
       }
 
       const oscillator = ctx.createOscillator()
@@ -391,10 +414,12 @@ export default function StaffCheckinPage() {
       const data = await res.json()
 
       if (data.alreadyCheckedIn) {
-        // Legitimate repeat scan (re-entry, staff confirming status) — not an
-        // error. Play the normal confirmation chime, never the buzzer, and
-        // don't double-count it in the stats bar.
-        playSound("success")
+        // Legitimate repeat scan — never the error buzzer. Which chime
+        // depends on list_purpose: an entry list means "let them in" (normal
+        // confirmation chime); a collection list means "already collected,
+        // do not issue again" (distinct double-tone, so a volunteer working
+        // by ear can't confuse the two). Doesn't double-count in the stats bar.
+        playSound(checkinList?.list_purpose === "collection" ? "warning" : "success")
         setLastResult({
           success: true,
           message: data.message || "Already checked in",
@@ -1003,32 +1028,61 @@ export default function StaffCheckinPage() {
                     <p className="text-emerald-300 text-sm mt-3 font-medium">{lastResult.message}</p>
                   </>
                 ) : lastResult.alreadyCheckedIn ? (
-                  <>
-                    <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <CheckCircle className="w-10 h-10 text-white" />
-                    </div>
-                    <h2 className="text-xl font-bold text-white mb-2">✓ ALREADY CHECKED IN</h2>
-                    {lastResult.attendee && (
-                      <p className="text-white text-lg font-semibold mb-2">
-                        {lastResult.attendee.attendee_name}
-                      </p>
-                    )}
-                    {lastResult.attendee?.registration_number && (
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-xl mb-2">
-                        <Hash className="w-5 h-5 text-amber-300" />
-                        <span className="font-mono text-xl font-bold text-white tracking-wider">
-                          {lastResult.attendee.registration_number}
-                        </span>
+                  checkinList?.list_purpose === "collection" ? (
+                    <>
+                      <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <AlertTriangle className="w-10 h-10 text-white" />
                       </div>
-                    )}
-                    <p className="text-amber-200">
-                      {/* Desk/volunteer identity isn't captured yet (planned in a
-                          follow-up) — shows the check-in time only until then. */}
-                      {lastResult.checkedInAt
-                        ? `Checked in at ${formatTime(new Date(lastResult.checkedInAt))}`
-                        : lastResult.message}
-                    </p>
-                  </>
+                      <h2 className="text-xl font-bold text-white mb-2">⚠ ALREADY COLLECTED</h2>
+                      {lastResult.attendee && (
+                        <p className="text-white text-lg font-semibold mb-2">
+                          {lastResult.attendee.attendee_name}
+                        </p>
+                      )}
+                      {lastResult.attendee?.registration_number && (
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-xl mb-2">
+                          <Hash className="w-5 h-5 text-amber-300" />
+                          <span className="font-mono text-xl font-bold text-white tracking-wider">
+                            {lastResult.attendee.registration_number}
+                          </span>
+                        </div>
+                      )}
+                      <p className="text-amber-200">
+                        {/* Desk/volunteer identity isn't captured yet (planned in a
+                            follow-up) — will append ", by <volunteer>" once it ships. */}
+                        {lastResult.checkedInAt
+                          ? `Collected at ${formatTime(new Date(lastResult.checkedInAt))}`
+                          : lastResult.message}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle className="w-10 h-10 text-white" />
+                      </div>
+                      <h2 className="text-xl font-bold text-white mb-2">✓ ALREADY CHECKED IN</h2>
+                      {lastResult.attendee && (
+                        <p className="text-white text-lg font-semibold mb-2">
+                          {lastResult.attendee.attendee_name}
+                        </p>
+                      )}
+                      {lastResult.attendee?.registration_number && (
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-xl mb-2">
+                          <Hash className="w-5 h-5 text-amber-300" />
+                          <span className="font-mono text-xl font-bold text-white tracking-wider">
+                            {lastResult.attendee.registration_number}
+                          </span>
+                        </div>
+                      )}
+                      <p className="text-amber-200">
+                        {/* Desk/volunteer identity isn't captured yet (planned in a
+                            follow-up) — shows the check-in time only until then. */}
+                        {lastResult.checkedInAt
+                          ? `Checked in at ${formatTime(new Date(lastResult.checkedInAt))}`
+                          : lastResult.message}
+                      </p>
+                    </>
+                  )
                 ) : lastResult.errorCode === "wrong_event" ? (
                   <>
                     <div className="w-20 h-20 bg-gradient-to-br from-red-400 to-pink-400 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1065,13 +1119,24 @@ export default function StaffCheckinPage() {
                     // repeat scan as "stop them." A colour/sound change alone
                     // won't retrain that reflex — the button has to say the
                     // instruction outright, and it has to be the loudest thing
-                    // on the screen.
+                    // on the screen. Which instruction depends on list_purpose:
+                    // entry lets them in; collection is the opposite — don't
+                    // hand out a second one.
                     <button
                       onClick={resetResult}
                       className="mt-4 w-full max-w-xs mx-auto px-8 py-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xl font-extrabold tracking-wide rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 transition-all"
                     >
-                      <CheckCircle className="w-7 h-7" />
-                      LET THEM IN
+                      {checkinList?.list_purpose === "collection" ? (
+                        <>
+                          <AlertTriangle className="w-7 h-7" />
+                          DO NOT ISSUE AGAIN
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-7 h-7" />
+                          LET THEM IN
+                        </>
+                      )}
                     </button>
                   ) : (
                     <button

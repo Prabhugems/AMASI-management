@@ -36,6 +36,7 @@ type CheckinList = {
   name: string
   description?: string
   is_active: boolean
+  list_purpose: "entry" | "collection"
   ticket_type_ids?: string[]
   addon_ids?: string[]
   starts_at?: string
@@ -66,6 +67,9 @@ export default function CheckinListsPage() {
     name: "",
     description: "",
     is_active: true,
+    // "" = not yet chosen. No default — the volunteer amber card is wrong
+    // for one of the two purposes, so this has to be an explicit pick.
+    list_purpose: "" as "" | "entry" | "collection",
     ticket_type_ids: [] as string[],
     addon_ids: [] as string[],
     starts_at: "",
@@ -122,6 +126,7 @@ export default function CheckinListsPage() {
           name: list.name,
           description: list.description || "",
           is_active: list.is_active,
+          list_purpose: list.list_purpose,
           ticket_type_ids: list.ticket_type_ids || [],
           addon_ids: list.addon_ids || [],
           starts_at: list.starts_at ? list.starts_at.slice(0, 16) : "",
@@ -138,6 +143,7 @@ export default function CheckinListsPage() {
         name: data.name,
         description: data.description || null,
         is_active: data.is_active,
+        list_purpose: data.list_purpose,
         ticket_type_ids: data.ticket_type_ids.length > 0 ? data.ticket_type_ids : null,
         addon_ids: data.addon_ids.length > 0 ? data.addon_ids : null,
         starts_at: data.starts_at || null,
@@ -211,6 +217,7 @@ export default function CheckinListsPage() {
       name: "",
       description: "",
       is_active: true,
+      list_purpose: "",
       ticket_type_ids: [],
       addon_ids: [],
       starts_at: "",
@@ -234,10 +241,14 @@ export default function CheckinListsPage() {
       toast.error("Name is required")
       return
     }
+    if (!formData.list_purpose) {
+      toast.error("Choose Entry or Collection before saving")
+      return
+    }
     if (isCreating) {
-      saveMutation.mutate(formData)
+      saveMutation.mutate(formData as typeof formData & { list_purpose: "entry" | "collection" })
     } else if (selectedListId) {
-      saveMutation.mutate({ ...formData, id: selectedListId })
+      saveMutation.mutate({ ...formData, id: selectedListId } as typeof formData & { id: string; list_purpose: "entry" | "collection" })
     }
   }
 
@@ -556,6 +567,49 @@ export default function CheckinListsPage() {
                   </div>
                 </div>
 
+                {/* Purpose — required, no default. Drives which amber card a
+                    repeat scan on this list shows at the desk. */}
+                <div className="bg-card rounded-2xl border p-5 space-y-3">
+                  <h3 className="font-medium flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
+                    Purpose <span className="text-destructive normal-case tracking-normal">(required)</span>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, list_purpose: "entry" })}
+                      className={cn(
+                        "text-left rounded-xl border-2 p-4 transition-all",
+                        formData.list_purpose === "entry"
+                          ? "border-emerald-500 bg-emerald-500/10"
+                          : "border-border hover:border-emerald-500/40"
+                      )}
+                    >
+                      <p className="font-medium">Entry</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Hall, session, re-entry. A repeat scan means &quot;let them in&quot; — never blocks anyone.
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, list_purpose: "collection" })}
+                      className={cn(
+                        "text-left rounded-xl border-2 p-4 transition-all",
+                        formData.list_purpose === "collection"
+                          ? "border-amber-500 bg-amber-500/10"
+                          : "border-border hover:border-amber-500/40"
+                      )}
+                    >
+                      <p className="font-medium">Collection</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Kit, badge, meal, exam paper. A repeat scan means &quot;already collected — do not issue again.&quot;
+                      </p>
+                    </button>
+                  </div>
+                  {!formData.list_purpose && (
+                    <p className="text-xs text-destructive">Pick one — there is no default.</p>
+                  )}
+                </div>
+
                 {/* Settings */}
                 <div className="bg-card rounded-2xl border p-5 space-y-4">
                   <h3 className="font-medium flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
@@ -601,7 +655,7 @@ export default function CheckinListsPage() {
                     )}
                     <Button
                       onClick={handleSave}
-                      disabled={!formData.name.trim() || saveMutation.isPending || showSaved}
+                      disabled={!formData.name.trim() || !formData.list_purpose || saveMutation.isPending || showSaved}
                       className={cn(
                         "min-w-[120px] transition-all",
                         showSaved && "bg-green-600 hover:bg-green-600"
