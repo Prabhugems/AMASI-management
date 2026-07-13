@@ -36,7 +36,6 @@ type CheckinList = {
   name: string
   description?: string
   is_active: boolean
-  allow_multiple_checkins: boolean
   ticket_type_ids?: string[]
   addon_ids?: string[]
   starts_at?: string
@@ -67,7 +66,6 @@ export default function CheckinListsPage() {
     name: "",
     description: "",
     is_active: true,
-    allow_multiple_checkins: false,
     ticket_type_ids: [] as string[],
     addon_ids: [] as string[],
     starts_at: "",
@@ -124,7 +122,6 @@ export default function CheckinListsPage() {
           name: list.name,
           description: list.description || "",
           is_active: list.is_active,
-          allow_multiple_checkins: list.allow_multiple_checkins,
           ticket_type_ids: list.ticket_type_ids || [],
           addon_ids: list.addon_ids || [],
           starts_at: list.starts_at ? list.starts_at.slice(0, 16) : "",
@@ -141,7 +138,6 @@ export default function CheckinListsPage() {
         name: data.name,
         description: data.description || null,
         is_active: data.is_active,
-        allow_multiple_checkins: data.allow_multiple_checkins,
         ticket_type_ids: data.ticket_type_ids.length > 0 ? data.ticket_type_ids : null,
         addon_ids: data.addon_ids.length > 0 ? data.addon_ids : null,
         starts_at: data.starts_at || null,
@@ -215,7 +211,6 @@ export default function CheckinListsPage() {
       name: "",
       description: "",
       is_active: true,
-      allow_multiple_checkins: false,
       ticket_type_ids: [],
       addon_ids: [],
       starts_at: "",
@@ -575,16 +570,6 @@ export default function CheckinListsPage() {
                       <Switch
                         checked={formData.is_active}
                         onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between py-2">
-                      <div>
-                        <Label className="font-medium">Allow Multiple Check-ins</Label>
-                        <p className="text-xs text-muted-foreground mt-0.5">Allow same person to check in multiple times</p>
-                      </div>
-                      <Switch
-                        checked={formData.allow_multiple_checkins}
-                        onCheckedChange={(checked) => setFormData({ ...formData, allow_multiple_checkins: checked })}
                       />
                     </div>
                   </div>

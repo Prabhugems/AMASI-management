@@ -71,10 +71,11 @@ const AUTO_CONTINUE_MS = 5000
 // Camera de-dup window — DERIVED from AUTO_CONTINUE_MS so the two numbers can't
 // silently drift apart. It MUST exceed the auto-continue delay: when the camera
 // restarts after a successful scan, a badge still sitting in frame must NOT be
-// re-decoded into a second /api/verify call (which the server correctly rejects
-// as "already checked in"). The +2000ms margin also absorbs decode latency. A
-// deliberate re-scan of the same badge on an allow_multiple_checkins list still
-// works once this window elapses.
+// re-decoded into a second /api/verify call (which the server reports as
+// already_checked_in, not an error). The +2000ms margin also absorbs decode
+// latency. A deliberate re-scan of the same badge still works once this
+// window elapses — the server always allows it, just doesn't insert a
+// second record (see CLAUDE.md on repeat check-ins).
 const SCAN_REPEAT_WINDOW_MS = AUTO_CONTINUE_MS + 2000
 
 // Manual/barcode mode re-arms much faster on a SUCCESSFUL check-in so staff can

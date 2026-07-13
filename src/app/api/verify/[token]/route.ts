@@ -321,13 +321,6 @@ export async function POST(
 
   // Check if already checked in for this specific list (prevent duplicate food/meals)
   if (isCheckIn) {
-    // Get checkin list settings
-    const { data: listSettings } = await (supabase as any)
-      .from("checkin_lists")
-      .select("allow_multiple_checkins, name")
-      .eq("id", verified_checkin_list_id)
-      .single()
-
     // Check for existing check-in record
     const { data: existingRecord } = await (supabase as any)
       .from("checkin_records")
@@ -337,7 +330,13 @@ export async function POST(
       .is("checked_out_at", null)
       .maybeSingle()
 
-    if (existingRecord && listSettings?.allow_multiple_checkins !== true) {
+    // allow_multiple_checkins is intentionally ignored here — it was a no-op
+    // on this endpoint anyway (a genuine repeat never inserted a new row or
+    // updated the timestamp, since UNIQUE(checkin_list_id, registration_id)
+    // means there can only ever be one row per list+registration). Recurring
+    // access (hall re-entry, sessions) belongs to a separate checkin_list per
+    // occurrence, not a repeat check-in on the same one. See CLAUDE.md.
+    if (existingRecord) {
       // A repeat scan of an already-checked-in delegate is expected (re-entry,
       // a volunteer confirming status) — not an error. success:true / HTTP 200
       // so the scanner plays its confirmation sound, not the error buzzer, and

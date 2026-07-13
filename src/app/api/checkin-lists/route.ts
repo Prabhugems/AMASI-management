@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { event_id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, allow_multiple_checkins } = body
+    const { event_id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at } = body
 
     if (!event_id || !name) {
       return NextResponse.json({ error: "event_id and name are required" }, { status: 400 })
@@ -149,7 +149,10 @@ export async function POST(request: NextRequest) {
         addon_ids: addon_ids || null,
         starts_at,
         ends_at,
-        allow_multiple_checkins: allow_multiple_checkins || false,
+        // Always false — the Tito model (one check-in per list) is the only
+        // supported mode. Recurring access is a separate list per occurrence,
+        // not a repeat check-in on the same one. See CLAUDE.md.
+        allow_multiple_checkins: false,
         access_token_expires_at,
         sort_order: nextOrder
       })
@@ -171,7 +174,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, is_active, allow_multiple_checkins, sort_order } = body
+    const { id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, is_active, sort_order } = body
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
@@ -202,7 +205,6 @@ export async function PUT(request: NextRequest) {
     if (starts_at !== undefined) updateData.starts_at = starts_at
     if (ends_at !== undefined) updateData.ends_at = ends_at
     if (is_active !== undefined) updateData.is_active = is_active
-    if (allow_multiple_checkins !== undefined) updateData.allow_multiple_checkins = allow_multiple_checkins
     if (sort_order !== undefined) updateData.sort_order = sort_order
 
     const { data, error } = await (supabase as any)
