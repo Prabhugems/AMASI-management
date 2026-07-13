@@ -85,8 +85,8 @@ export default function AddonSettingsPage() {
       const currentSettings = (event?.settings || {}) as Record<string, unknown>
 
       // Update with new addon settings
-      const { error } = await (supabase
-        .from("events") as ReturnType<typeof supabase.from>)
+      const { error } = await (supabase as any)
+        .from("events")
         .update({
           settings: {
             ...currentSettings,

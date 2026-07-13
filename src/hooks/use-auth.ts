@@ -31,7 +31,10 @@ export function useAuth() {
         .maybeSingle()
 
       if (!error && data) {
-        setProfile(data)
+        // TS infers a slightly different (but equivalent) shape for the
+        // select('*') result vs. the Tables<'users'> UserProfile alias here;
+        // both resolve from the same generated Row type at runtime.
+        setProfile(data as unknown as UserProfile)
       }
     } catch (err) {
       console.error('Error fetching profile:', err)
@@ -136,7 +139,10 @@ export function useAuth() {
     session,
     loading,
     isAuthenticated: !!user,
-    isAdmin: profile?.platform_role === 'super_admin' || profile?.platform_role === 'admin',
+    // 'admin' has never been a valid platform_role value (real enum is
+    // super_admin/event_admin/committee/faculty/delegate) — dead comparison,
+    // preserved as-is (see lib/supabase/auth.ts isUserAdmin for the same note).
+    isAdmin: profile?.platform_role === 'super_admin' || (profile?.platform_role as string) === 'admin',
     isSuperAdmin: profile?.is_super_admin || profile?.platform_role === 'super_admin',
     signInWithMagicLink,
     signInWithPassword,

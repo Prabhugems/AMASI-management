@@ -202,9 +202,11 @@ export default function FloorPlanEditorPage() {
   const { data: sponsorsData } = useQuery({
     queryKey: ["sponsors-editor", eventId],
     queryFn: async () => {
-      const { data } = await supabase
+      // sponsors has no "name" column — the real column is "company_name".
+      // Aliased here so the rest of this file's Sponsor.name usage is unaffected.
+      const { data } = await (supabase as any)
         .from("sponsors")
-        .select("id, name, logo_url, tier_id")
+        .select("id, name:company_name, logo_url, tier_id")
         .eq("event_id", eventId)
       return (data || []) as Sponsor[]
     },

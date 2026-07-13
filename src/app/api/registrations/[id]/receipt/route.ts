@@ -55,12 +55,11 @@ export async function GET(
       attendee_name: string
       attendee_email: string
       attendee_phone: string | null
-      institution: string | null
-      designation: string | null
+      attendee_institution: string | null
+      attendee_designation: string | null
       quantity: number
       total_amount: number
       payment_status: string
-      payment_method: string | null
       events: {
         name: string
         short_name: string | null
@@ -257,8 +256,8 @@ export async function GET(
       ["Name", registration.attendee_name],
       ["Email", registration.attendee_email],
       ["Phone", registration.attendee_phone || "-"],
-      ["Institution", registration.institution || "-"],
-      ["Designation", registration.designation || "-"],
+      ["Institution", registration.attendee_institution || "-"],
+      ["Designation", registration.attendee_designation || "-"],
     ]
 
     y -= 20
@@ -303,7 +302,10 @@ export async function GET(
       ["Tax (GST)", `Rs. ${taxAmount.toLocaleString("en-IN")}`],
       ["Total Amount", `Rs. ${totalAmount.toLocaleString("en-IN")}`],
       ["Payment Status", registration.payment_status || "Pending"],
-      ["Payment Method", registration.payment_method || "-"],
+      // registrations has no payment_method column — this line has always
+      // rendered "-" (the field access below was silently undefined under
+      // the old untyped client); preserved as-is, not in this fix's scope.
+      ["Payment Method", "-"],
     ]
 
     y -= 20
