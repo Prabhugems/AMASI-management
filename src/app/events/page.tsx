@@ -148,7 +148,7 @@ export default function EventsPage() {
         // Hide archived events by default
         query = query.neq("status", "archived")
       } else {
-        query = query.eq("status", statusFilter)
+        query = query.eq("status", statusFilter as any)
       }
       if (typeFilter !== "all") {
         query = query.eq("event_type", typeFilter)

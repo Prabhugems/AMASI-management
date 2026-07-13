@@ -136,7 +136,11 @@ export default function MembersPage() {
 
       const { data, error } = await query
       if (error) throw error
-      return (data as Member[]) || []
+      // institution/designation/expiry_date don't exist on members;
+      // joined_date's real column is joining_date. Cast preserves existing
+      // (always-blank) behavior for those fields — see add-from-member's
+      // identical Member type for the same note.
+      return (data as unknown as Member[]) || []
     },
   })
 

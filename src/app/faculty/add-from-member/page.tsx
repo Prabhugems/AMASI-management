@@ -107,8 +107,13 @@ export default function AddFacultyFromMemberPage() {
         .limit(100)
 
       if (search) {
+        // members has no institution column (despite the Member type below —
+        // that field has never had real data; see the fetch-stats query's
+        // cast note). Dropped from the search filter: PostgREST errors on a
+        // filter referencing a nonexistent column, so this used to break
+        // every search that reached this branch.
         query = query.or(
-          `name.ilike.%${search}%,email.ilike.%${search}%,institution.ilike.%${search}%,amasi_number.eq.${parseInt(search) || 0}`
+          `name.ilike.%${search}%,email.ilike.%${search}%,amasi_number.eq.${parseInt(search) || 0}`
         )
       }
       if (statusFilter !== "all") {
@@ -117,7 +122,12 @@ export default function AddFacultyFromMemberPage() {
 
       const { data, error } = await query
       if (error) throw error
-      return (data as Member[]) || []
+      // institution/designation/expiry_date don't exist on members;
+      // joined_date's real column is joining_date. Cast preserves existing
+      // (always-blank) behavior for those fields — not fixed here, flagged
+      // separately since fixing institution/designation needs a real design
+      // decision (member_experiences is 1:many, not a flat column).
+      return (data as unknown as Member[]) || []
     },
   })
 

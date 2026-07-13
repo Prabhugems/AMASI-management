@@ -1,8 +1,8 @@
 import { createClient } from './client'
-import type { Tables, UpdateTables } from './database.types'
+import type { Tables, TablesUpdate } from './database.types'
 
 export type UserProfile = Tables<'users'>
-export type UserProfileUpdate = UpdateTables<'users'>
+export type UserProfileUpdate = TablesUpdate<'users'>
 
 // Sign in with magic link (sends custom designed email via API)
 export async function signInWithMagicLink(email: string, redirectTo?: string) {
@@ -57,7 +57,9 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     return null
   }
 
-  return data
+  // Same TS inference quirk as use-auth.ts's fetchProfile — equivalent
+  // shape at runtime, just not structurally identical to TS here.
+  return data as unknown as UserProfile | null
 }
 
 // Update user profile
@@ -79,7 +81,11 @@ export async function updateUserProfile(userId: string, updates: UserProfileUpda
 // Check if user is admin
 export async function isUserAdmin(userId: string): Promise<boolean> {
   const profile = await getUserProfile(userId)
-  return profile?.platform_role === 'super_admin' || profile?.platform_role === 'admin'
+  // 'admin' has never been a valid platform_role value (the real enum is
+  // super_admin/event_admin/committee/faculty/delegate) — this comparison
+  // has always been dead. Cast preserves that exact (harmless, since no
+  // row can ever match) behavior; not changed here, flagged separately.
+  return profile?.platform_role === 'super_admin' || (profile?.platform_role as string) === 'admin'
 }
 
 // Check if user has role

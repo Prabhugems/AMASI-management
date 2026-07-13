@@ -142,7 +142,12 @@ export default function ConfirmationsPage() {
         .order("session_date", { ascending: true })
         .order("start_time", { ascending: true })
         .order("faculty_name", { ascending: true })
-      return (data || []) as FacultyAssignment[]
+      // change_request_details doesn't exist anywhere in the schema;
+      // reminder_count/last_reminder_at live on event_faculty, not this
+      // table — this cast (and the UI reading these fields) predates the
+      // typed client and has never had real data behind it. Not fixed here
+      // (out of scope for a types-only pass); flagged separately.
+      return (data || []) as unknown as FacultyAssignment[]
     },
   })
 
