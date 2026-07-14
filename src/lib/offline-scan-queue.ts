@@ -33,6 +33,8 @@ export interface QueuedScan {
   scanned_at: number
   attempts: number
   last_error?: string
+  performed_by?: string
+  device_info?: Record<string, unknown>
 }
 
 let dbPromise: Promise<IDBPDatabase> | null = null
@@ -57,7 +59,12 @@ function newId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-export async function enqueueScan(listAccessToken: string, token: string): Promise<QueuedScan> {
+export async function enqueueScan(
+  listAccessToken: string,
+  token: string,
+  performedBy?: string,
+  deviceInfo?: Record<string, unknown>,
+): Promise<QueuedScan> {
   const db = await getDb()
   const scan: QueuedScan = {
     id: newId(),
@@ -65,6 +72,8 @@ export async function enqueueScan(listAccessToken: string, token: string): Promi
     token,
     scanned_at: Date.now(),
     attempts: 0,
+    performed_by: performedBy,
+    device_info: deviceInfo,
   }
   await db.put(STORE, scan)
   return scan
@@ -143,7 +152,8 @@ export async function flushQueue(
           checkin_list_id: null,
           access_token: listAccessToken,
           action: "check_in",
-          performed_by: "Staff (synced from offline queue)",
+          performed_by: scan.performed_by || "Staff (synced from offline queue)",
+          device_info: { ...scan.device_info, synced_from_queue: true },
         }),
       })
 
