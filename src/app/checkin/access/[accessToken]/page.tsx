@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef, useCallback } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import {
   CheckCircle,
   XCircle,
@@ -12,16 +12,11 @@ import {
   Keyboard,
   Volume2,
   VolumeX,
-  RotateCcw,
   SwitchCamera,
-  Clock,
-  Building2,
-  Ticket,
-  Hash,
   AlertCircle,
-  AlertTriangle,
   List as ListIcon,
   Users,
+  Pencil,
 } from "lucide-react"
 import { Html5Qrcode } from "html5-qrcode"
 import {
@@ -42,50 +37,6 @@ interface CheckinList {
   }
 }
 
-interface Attendee {
-  id: string
-  registration_number: string
-  attendee_name: string
-  attendee_email: string
-  attendee_designation?: string
-  attendee_institution?: string
-  ticket_type?: { name: string }
-  checked_in: boolean
-  checked_in_at?: string
-}
-
-interface RecentCheckin {
-  id: string
-  name: string
-  regNumber: string
-  ticketType?: string
-  institution?: string
-  time: Date
-  success: boolean
-}
-
-type ScanMode = "manual" | "camera" | "list"
-
-// How long the result card stays up before the scanner auto-resets and the
-// camera restarts. Used by the auto-continue effect below.
-const AUTO_CONTINUE_MS = 5000
-
-// Camera de-dup window — DERIVED from AUTO_CONTINUE_MS so the two numbers can't
-// silently drift apart. It MUST exceed the auto-continue delay: when the camera
-// restarts after a successful scan, a badge still sitting in frame must NOT be
-// re-decoded into a second /api/verify call (which the server reports as
-// already_checked_in, not an error). The +2000ms margin also absorbs decode
-// latency. A deliberate re-scan of the same badge still works once this
-// window elapses — the server always allows it, just doesn't insert a
-// second record (see CLAUDE.md on repeat check-ins).
-const SCAN_REPEAT_WINDOW_MS = AUTO_CONTINUE_MS + 2000
-
-// Manual/barcode mode re-arms much faster on a SUCCESSFUL check-in so staff can
-// scan a queue of delegates back-to-back. Kept separate from AUTO_CONTINUE_MS so
-// the camera de-dup window (derived above) is unaffected. Failures still use the
-// full AUTO_CONTINUE_MS so staff can read the reason (not found / already in).
-const MANUAL_AUTO_CONTINUE_MS = 1500
-
 interface ListAttendee {
   id: string
   registration_number: string
@@ -98,40 +49,77 @@ interface ListAttendee {
   checked_in_at?: string | null
 }
 
+// A running feed of the last ~10 scans, newest first. Replaces the old
+// single "lastResult" card entirely — there is nothing to show/dismiss,
+// just a log that keeps growing while the camera keeps running.
+type FeedStatus = "pending" | "checked_in" | "already_in" | "wrong_event" | "not_found" | "queued_offline" | "error"
+
+interface FeedEntry {
+  id: string
+  code: string // Q5 — every entry is keyed to the scanned code it belongs to
+  status: FeedStatus
+  attendeeName?: string
+  regNumber?: string
+  ticketType?: string
+  checkedInAt?: string
+  badgeEventName?: string
+  message?: string
+  time: Date
+}
+
+interface VolunteerIdentity {
+  volunteerName: string
+  deskLabel: string
+}
+
+type ScanMode = "camera" | "manual" | "list"
+
+// Q2 — same code seen again within this window is silently ignored (still
+// in the volunteer's hand, camera re-saw it). A different code is never
+// throttled, at any point. This replaces the old global 2s cooldown +
+// 7s repeat-window pair entirely; there is no "hold" state left to derive
+// a window from.
+const RECENT_SCAN_DEDUP_MS = 60_000
+
+const FEED_LIMIT = 10
+
+function newFeedId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
 export default function StaffCheckinPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const accessToken = params.accessToken as string
+  // Q-telemetry — the burst-scan investigation harness, kept in behind a
+  // debug flag (docs/telemetry-burst-scan-2026-07.md) so the exact 20-card
+  // burst test can be re-run against this build without redeploying
+  // instrumented code. ?debug=1 on the access link.
+  const debugMode = searchParams.get("debug") === "1"
 
   const [loading, setLoading] = useState(true)
   const [checkinList, setCheckinList] = useState<CheckinList | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState("")
-  const [processing, setProcessing] = useState(false)
-  const [lastResult, setLastResult] = useState<{
-    success: boolean
-    message: string
-    attendee?: Attendee
-    alreadyCheckedIn?: boolean
-    checkedInAt?: string
-    errorCode?: string
-    badgeEventName?: string
-  } | null>(null)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [stats, setStats] = useState({ total: 0, checkedIn: 0 })
   const [scanMode, setScanMode] = useState<ScanMode>("camera")
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [scannerReady, setScannerReady] = useState(false)
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment")
-  const [recentCheckins, setRecentCheckins] = useState<RecentCheckin[]>([])
-  const autoContinueTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Q3/Q6 — the feed and the session counter. Camera never stops for either.
+  const [scanFeed, setScanFeed] = useState<FeedEntry[]>([])
+  const [scannedThisSession, setScannedThisSession] = useState(0)
+
+  // Item 6 — volunteer identity, hard-gated on first open. Persisted per
+  // access token so a reload doesn't re-prompt, but a fresh access link
+  // (different desk) always does.
+  const [identity, setIdentity] = useState<VolunteerIdentity | null>(null)
+  const [showIdentityForm, setShowIdentityForm] = useState(false)
+  const [identityDraft, setIdentityDraft] = useState({ volunteerName: "", deskLabel: "" })
 
   // Offline scan queue (src/lib/offline-scan-queue.ts) state.
-  // online = browser's `navigator.onLine` mirror, kept in sync via the
-  //   "online" / "offline" window events.
-  // queueCount = number of pending scans in IndexedDB for THIS access token,
-  //   recomputed after each enqueue and after each flush.
-  // Initialise pessimistically (online=true on SSR; nav.onLine is read in the
-  // mount effect below).
   const [online, setOnline] = useState(true)
   const [queueCount, setQueueCount] = useState(0)
   const flushInFlightRef = useRef(false)
@@ -148,22 +136,18 @@ export default function StaffCheckinPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
-  // Last camera scan ACCEPTED by the decode callback, keyed on the RAW
-  // decodedText (not the parsed token) + a timestamp. Used for time-windowed
-  // de-dup; intentionally NOT cleared by resetResult so an auto-restart can't
-  // re-fire the same badge.
-  const lastScannedRef = useRef<{ value: string; ts: number }>({ value: "", ts: 0 })
-  const scanCooldownRef = useRef<boolean>(false)
+  const isStartingRef = useRef(false)
+  // Q2's Map: code -> last-accepted timestamp. Read/written by processScan.
+  const recentScanMapRef = useRef<Map<string, number>>(new Map())
 
   // Manual-entry scanner auto-submit. A USB/QR scanner types the whole code in a
   // fast burst (characters land a few ms apart) and many models do NOT send a
   // trailing Enter, so the box used to just fill and wait for a manual "Check
-  // In" press. We detect the burst and auto-check-in on a brief idle. Human
+  // In" press. We detect the burst and auto-submit on a brief idle. Human
   // typing is slower, so it falls through to the button instead of mis-firing.
   const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null)
   const burstStartRef = useRef<number>(0)
   const lastKeyTimeRef = useRef<number>(0)
-  const isStartingRef = useRef(false)
 
   // Validate access token and get checkin list info
   useEffect(() => {
@@ -189,6 +173,41 @@ export default function StaffCheckinPage() {
     }
   }, [accessToken])
 
+  // Load (or prompt for) volunteer identity once the access token is known.
+  useEffect(() => {
+    if (!accessToken) return
+    try {
+      const raw = localStorage.getItem(`checkin_identity_${accessToken}`)
+      if (raw) {
+        setIdentity(JSON.parse(raw))
+        return
+      }
+    } catch {
+      // localStorage unavailable — fall through to the form every time.
+    }
+    setShowIdentityForm(true)
+  }, [accessToken])
+
+  const saveIdentity = () => {
+    const volunteerName = identityDraft.volunteerName.trim()
+    const deskLabel = identityDraft.deskLabel.trim()
+    if (!volunteerName || !deskLabel) return
+    const next: VolunteerIdentity = { volunteerName, deskLabel }
+    setIdentity(next)
+    try {
+      localStorage.setItem(`checkin_identity_${accessToken}`, JSON.stringify(next))
+    } catch {
+      // Best effort — identity still applies for this session even if it
+      // can't persist across a reload.
+    }
+    setShowIdentityForm(false)
+  }
+
+  const openIdentityForm = () => {
+    setIdentityDraft(identity || { volunteerName: "", deskLabel: "" })
+    setShowIdentityForm(true)
+  }
+
   // Initialize audio context
   useEffect(() => {
     audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -197,19 +216,31 @@ export default function StaffCheckinPage() {
     }
   }, [])
 
-  // Focus input on load and after each scan (manual mode only)
-  useEffect(() => {
-    if (!loading && !error && inputRef.current && scanMode === "manual" && !lastResult) {
-      inputRef.current.focus()
-    }
-  }, [loading, error, lastResult, scanMode])
-
-  const playSound = (type: "success" | "error" | "warning") => {
+  const playSound = (type: "tick" | "success" | "error" | "warning") => {
     if (!soundEnabled || !audioContextRef.current) return
     try {
       const ctx = audioContextRef.current
       if (ctx.state === "suspended") {
         ctx.resume()
+      }
+
+      if (type === "tick") {
+        // Q4 — fires the instant a code is accepted by the dedup Map, before
+        // we know the server's verdict. In a burst nobody is watching the
+        // screen; this is the "yes, the camera saw that one" confirmation.
+        // Deliberately quiet/short/neutral so it doesn't compete with the
+        // real success/warning/error tone that follows once the response
+        // resolves (a few hundred ms later, typically).
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.frequency.setValueAtTime(1200, ctx.currentTime)
+        gain.gain.setValueAtTime(0.12, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05)
+        osc.start(ctx.currentTime)
+        osc.stop(ctx.currentTime + 0.05)
+        return
       }
 
       if (type === "warning") {
@@ -282,33 +313,38 @@ export default function StaffCheckinPage() {
   // Drain the offline queue. Idempotent + concurrency-guarded via
   // flushInFlightRef so the `online` event firing while we're already
   // flushing doesn't kick off a parallel drain. Each synced scan appends
-  // a row to recentCheckins so the volunteer sees what just landed.
+  // a feed entry so the volunteer sees what just landed, same as a live scan.
   const flushAllPending = useCallback(async () => {
     if (flushInFlightRef.current) return
     flushInFlightRef.current = true
     try {
       await flushQueue(accessToken, (result: FlushResult) => {
-        const fallbackName = result.terminalError || "Unknown"
         if (result.success) {
-          const reg = (result.response as { registration?: { id?: string; attendee_name?: string; registration_number?: string; ticket_type?: { name?: string }; attendee_institution?: string } } | undefined)?.registration
-          setStats((prev) => ({ ...prev, checkedIn: prev.checkedIn + 1 }))
-          setRecentCheckins((prev) => [{
-            id: reg?.id || `synced-${result.scan.id}`,
-            name: reg?.attendee_name || "Synced (offline)",
-            regNumber: reg?.registration_number || result.scan.token,
+          const reg = (result.response as { registration?: { id?: string; attendee_name?: string; registration_number?: string; ticket_type?: { name?: string }; checked_in_at?: string } } | undefined)?.registration
+          const isAlready = (result.response as { alreadyCheckedIn?: boolean } | undefined)?.alreadyCheckedIn
+          if (!isAlready) {
+            setStats((prev) => ({ ...prev, checkedIn: prev.checkedIn + 1 }))
+          }
+          const entry: FeedEntry = {
+            id: newFeedId(),
+            code: result.scan.token,
+            status: isAlready ? "already_in" : "checked_in",
+            attendeeName: reg?.attendee_name,
+            regNumber: reg?.registration_number,
             ticketType: reg?.ticket_type?.name,
-            institution: reg?.attendee_institution,
+            checkedInAt: reg?.checked_in_at,
             time: new Date(),
-            success: true,
-          }, ...prev].slice(0, 20))
+          }
+          setScanFeed((prev) => [entry, ...prev].slice(0, FEED_LIMIT))
         } else {
-          setRecentCheckins((prev) => [{
-            id: `synced-fail-${result.scan.id}`,
-            name: fallbackName,
-            regNumber: result.scan.token,
+          const entry: FeedEntry = {
+            id: newFeedId(),
+            code: result.scan.token,
+            status: "error",
+            message: result.terminalError || "Sync failed",
             time: new Date(),
-            success: false,
-          }, ...prev].slice(0, 20))
+          }
+          setScanFeed((prev) => [entry, ...prev].slice(0, FEED_LIMIT))
         }
       })
     } finally {
@@ -318,16 +354,11 @@ export default function StaffCheckinPage() {
   }, [accessToken, refreshQueueCount])
 
   // Wire online/offline detection + initial queue load.
-  // Effect runs once per accessToken (when the page mounts after the access
-  // token is in scope). Sets the initial online state from navigator.onLine,
-  // subscribes to the window events, and kicks off a flush attempt on mount
-  // in case a previous session left scans behind.
   useEffect(() => {
     if (!accessToken) return
 
     const onOnline = () => {
       setOnline(true)
-      // Don't await — best-effort; errors handled inside flushAllPending.
       flushAllPending()
     }
     const onOffline = () => setOnline(false)
@@ -346,60 +377,56 @@ export default function StaffCheckinPage() {
     }
   }, [accessToken, refreshQueueCount, flushAllPending])
 
-  const handleScan = useCallback(async (value: string) => {
-    if (!value.trim() || processing || !checkinList) return
+  // The single entry point for every scan — camera decode, manual typing, or
+  // a barcode scanner's auto-submit. Q2's dedup Map lives here: same code
+  // within RECENT_SCAN_DEDUP_MS is silently ignored (no feed entry, no tone,
+  // no network call — it never happened as far as the system is concerned).
+  // Anything else is accepted instantly, no throttle. Q6's counter increments
+  // the moment a scan is ACCEPTED here, before the server verdict is known —
+  // that's what makes a silent drop visible: "scanned 20, feed/list disagree".
+  const processScan = useCallback(async (rawValue: string, source: "camera" | "manual") => {
+    if (!rawValue.trim() || !checkinList) return
 
-    // Prevent duplicate scans
-    if (scanCooldownRef.current) return
-    scanCooldownRef.current = true
-    setTimeout(() => { scanCooldownRef.current = false }, 2000)
+    let token = rawValue.trim()
+    const urlMatch = token.match(/\/v\/([A-Za-z0-9_-]+)/)
+    if (urlMatch) token = urlMatch[1]
 
-    setProcessing(true)
-    setLastResult(null)
+    const now = Date.now()
+    const lastSeen = recentScanMapRef.current.get(token)
+    const isRecentDup = lastSeen !== undefined && now - lastSeen < RECENT_SCAN_DEDUP_MS
+    if (debugMode) {
+      // eslint-disable-next-line no-console
+      console.log("[SCAN_TELEMETRY]", JSON.stringify({
+        token, now, source,
+        msSinceLast: lastSeen !== undefined ? now - lastSeen : null,
+        verdict: isRecentDup ? "SUPPRESSED_RECENT_MAP" : "ACCEPTED",
+      }))
+    }
+    if (isRecentDup) return
+    recentScanMapRef.current.set(token, now)
 
-    // Stop the camera before the result view unmounts #qr-reader, so html5-qrcode's
-    // internal video.play() can't be interrupted (fixes Sentry AMASI-MANAGEMENT-T).
-    if (scannerRef.current) {
-      try { await scannerRef.current.stop() } catch { /* already stopping */ }
-      scannerRef.current = null
-      setScannerReady(false)
+    const feedId = newFeedId()
+    playSound("tick")
+    setScannedThisSession((n) => n + 1)
+    const pendingEntry: FeedEntry = { id: feedId, code: token, status: "pending", time: new Date() }
+    setScanFeed((prev) => [pendingEntry, ...prev].slice(0, FEED_LIMIT))
+
+    const performedBy = identity ? `${identity.volunteerName} (${identity.deskLabel})` : "Staff (via access link)"
+    const deviceInfo = { volunteer: identity?.volunteerName, desk: identity?.deskLabel, source }
+
+    const updateEntry = (patch: Partial<FeedEntry>) => {
+      setScanFeed((prev) => prev.map((e) => (e.id === feedId ? { ...e, ...patch, time: new Date() } : e)))
     }
 
-    // Parse the token OUTSIDE the try so the catch block can also enqueue it.
-    // The QR may encode either a bare token or a /v/<token> URL — extract.
-    let token = value.trim()
-    const urlMatch = value.match(/\/v\/([A-Za-z0-9_-]+)/)
-    if (urlMatch) {
-      token = urlMatch[1]
-    }
-
-    // Offline pre-check: if we know we're offline, skip the fetch and
-    // queue immediately. Volunteer keeps scanning; sync happens when the
-    // browser fires the "online" event. The catch below handles the case
-    // where navigator.onLine lies (DNS works, server unreachable) — the
-    // fetch throws TypeError there and we queue from the catch.
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      await enqueueScan(accessToken, token)
+      await enqueueScan(accessToken, token, performedBy, deviceInfo)
       await refreshQueueCount()
       playSound("success")
-      setLastResult({
-        success: true,
-        message: "Queued offline — will sync when online",
-      })
-      setRecentCheckins((prev) => [{
-        id: `queued-${Date.now()}`,
-        name: "Queued offline",
-        regNumber: token,
-        time: new Date(),
-        success: true,
-      }, ...prev].slice(0, 20))
-      setProcessing(false)
-      setInputValue("")
+      updateEntry({ status: "queued_offline", message: "Queued offline — will sync when online" })
       return
     }
 
     try {
-      // Try to check in using the token
       const res = await fetch(`/api/verify/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -407,7 +434,8 @@ export default function StaffCheckinPage() {
           checkin_list_id: checkinList.id,
           access_token: accessToken,
           action: "check_in",
-          performed_by: "Staff (via access link)",
+          performed_by: performedBy,
+          device_info: deviceInfo,
         }),
       })
 
@@ -415,108 +443,56 @@ export default function StaffCheckinPage() {
 
       if (data.alreadyCheckedIn) {
         // Legitimate repeat scan — never the error buzzer. Which chime
-        // depends on list_purpose: an entry list means "let them in" (normal
-        // confirmation chime); a collection list means "already collected,
-        // do not issue again" (distinct double-tone, so a volunteer working
-        // by ear can't confuse the two). Doesn't double-count in the stats bar.
-        playSound(checkinList?.list_purpose === "collection" ? "warning" : "success")
-        setLastResult({
-          success: true,
-          message: data.message || "Already checked in",
-          alreadyCheckedIn: true,
-          checkedInAt: data.registration?.checked_in_at,
-          attendee: data.registration,
-        })
-        setRecentCheckins(prev => [{
-          id: data.registration?.id || Date.now().toString(),
-          name: data.registration?.attendee_name || "Unknown",
-          regNumber: data.registration?.registration_number || token,
+        // depends on list_purpose: entry means "let them in" (soft chime);
+        // collection means "already collected, do not issue again" (distinct
+        // double-tone).
+        playSound(checkinList.list_purpose === "collection" ? "warning" : "success")
+        updateEntry({
+          status: "already_in",
+          attendeeName: data.registration?.attendee_name,
+          regNumber: data.registration?.registration_number,
           ticketType: data.registration?.ticket_type?.name,
-          institution: data.registration?.attendee_institution,
-          time: new Date(),
-          success: true,
-        }, ...prev].slice(0, 20))
+          checkedInAt: data.registration?.checked_in_at,
+          message: data.message,
+        })
       } else if (data.success) {
         playSound("success")
-        setLastResult({
-          success: true,
-          message: "Checked in successfully!",
-          attendee: data.registration,
-        })
-        setStats(prev => ({ ...prev, checkedIn: prev.checkedIn + 1 }))
-        // NOTE: camera de-dup memory is set in the decode callback (keyed on the
-        // RAW decodedText), not here — setting it to the parsed `token` here was
-        // the bug that broke de-dup for /v/<token> URL QR codes.
-        // Add to recent check-ins
-        setRecentCheckins(prev => [{
-          id: data.registration?.id || Date.now().toString(),
-          name: data.registration?.attendee_name || "Unknown",
-          regNumber: data.registration?.registration_number || token,
+        setStats((prev) => ({ ...prev, checkedIn: prev.checkedIn + 1 }))
+        updateEntry({
+          status: "checked_in",
+          attendeeName: data.registration?.attendee_name,
+          regNumber: data.registration?.registration_number,
           ticketType: data.registration?.ticket_type?.name,
-          institution: data.registration?.attendee_institution,
-          time: new Date(),
-          success: true,
-        }, ...prev].slice(0, 20))
+        })
       } else {
         playSound("error")
-        setLastResult({
-          success: false,
-          message: data.error || "Check-in failed",
-          alreadyCheckedIn: data.alreadyCheckedIn || false,
-          errorCode: data.error_code,
+        updateEntry({
+          status: data.error_code === "wrong_event" ? "wrong_event" : "not_found",
+          attendeeName: data.registration?.attendee_name,
+          regNumber: data.registration?.registration_number,
           badgeEventName: data.badge_event_name,
-          attendee: data.registration,
+          message: data.error,
         })
-        // Track failed attempts too
-        setRecentCheckins(prev => [{
-          id: Date.now().toString(),
-          name: data.registration?.attendee_name || data.error || "Failed",
-          regNumber: data.registration?.registration_number || token,
-          time: new Date(),
-          success: false,
-        }, ...prev].slice(0, 20))
       }
     } catch (err) {
       // Network failure (fetch throws TypeError for offline / DNS / TLS /
-      // aborted-by-network). Queue the scan rather than losing it. Anything
-      // else — JSON parse errors, etc. — falls into the error UI.
+      // aborted-by-network). Queue the scan rather than losing it.
       if (err instanceof TypeError) {
         try {
-          await enqueueScan(accessToken, token)
+          await enqueueScan(accessToken, token, performedBy, deviceInfo)
           await refreshQueueCount()
-          // Mark online=false so the header pill reflects reality —
-          // navigator.onLine was true (else we'd have queued pre-emptively),
-          // but the network test just disproved it.
           setOnline(false)
           playSound("success")
-          setLastResult({
-            success: true,
-            message: "Queued offline — will sync when online",
-          })
-          setRecentCheckins((prev) => [{
-            id: `queued-${Date.now()}`,
-            name: "Queued offline",
-            regNumber: token,
-            time: new Date(),
-            success: true,
-          }, ...prev].slice(0, 20))
+          updateEntry({ status: "queued_offline", message: "Queued offline — will sync when online" })
           return
         } catch (queueErr) {
-          // IDB write itself failed (private browsing, quota, etc.) — fall
-          // through to the error UI so the volunteer knows the scan was lost.
           console.error("Failed to enqueue offline scan:", queueErr)
         }
       }
       playSound("error")
-      setLastResult({
-        success: false,
-        message: "Network error. Please try again.",
-      })
-    } finally {
-      setProcessing(false)
-      setInputValue("")
+      updateEntry({ status: "error", message: "Network error. Please try again." })
     }
-  }, [processing, checkinList, accessToken, soundEnabled, refreshQueueCount])
+  }, [checkinList, accessToken, identity, refreshQueueCount, debugMode, soundEnabled])
 
   // Tunables for scanner-burst detection.
   const MANUAL_MIN_LEN = 3            // ignore stray 1-2 char input
@@ -527,17 +503,10 @@ export default function StaffCheckinPage() {
     const value = e.target.value.toUpperCase()
     setInputValue(value)
 
-    // Anchor a fresh burst whenever the gap since the last keystroke is large
-    // (new delegate / after a pause). Timing-based on purpose: a fast scanner
-    // can outrun React so we must NOT depend on the `inputValue` state here.
     const now = Date.now()
     if (now - lastKeyTimeRef.current > 500) burstStartRef.current = now
     lastKeyTimeRef.current = now
 
-    // Schedule an auto-submit for a brief idle after typing stops. Only fires if
-    // the whole entry arrived at scanner speed — manual typing is too slow and
-    // is left for the "Check In" button. Reads the live DOM value, not React
-    // state, since a fast burst can outrun React's render.
     if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current)
     autoSubmitTimerRef.current = setTimeout(() => {
       autoSubmitTimerRef.current = null
@@ -545,64 +514,28 @@ export default function StaffCheckinPage() {
       if (current.length < MANUAL_MIN_LEN) return
       const span = lastKeyTimeRef.current - burstStartRef.current
       const avgGap = current.length > 1 ? span / (current.length - 1) : 0
-      if (avgGap <= SCANNER_MAX_AVG_GAP_MS) handleScan(current)
+      if (avgGap <= SCANNER_MAX_AVG_GAP_MS) {
+        processScan(current, "manual")
+        setInputValue("")
+      }
     }, AUTO_SUBMIT_IDLE_MS)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      // A scanner configured with an Enter/CR suffix lands here. Cancel any
-      // pending burst auto-submit and submit immediately. Read the DOM value,
-      // not React state — the Enter can arrive before React flushes the last
-      // characters into `inputValue` (which would submit a truncated code).
       if (autoSubmitTimerRef.current) {
         clearTimeout(autoSubmitTimerRef.current)
         autoSubmitTimerRef.current = null
       }
       const current = ((inputRef.current?.value || inputValue) ?? "").trim().toUpperCase()
-      handleScan(current)
+      processScan(current, "manual")
+      setInputValue("")
     }
   }
 
-  // Clear any pending burst auto-submit on unmount.
   useEffect(() => () => {
     if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current)
   }, [])
-
-  const resetResult = () => {
-    setLastResult(null)
-    // Do NOT clear lastScannedRef here. resetResult runs on the 5s auto-continue
-    // which re-starts the camera; wiping the de-dup memory would let a badge
-    // still in frame be re-decoded and fire a duplicate /api/verify. The
-    // time-windowed check in the decode callback handles legitimate re-scans.
-    if (autoContinueTimerRef.current) {
-      clearTimeout(autoContinueTimerRef.current)
-      autoContinueTimerRef.current = null
-    }
-    if (scanMode === "manual" && inputRef.current) {
-      inputRef.current.focus()
-    }
-  }
-
-  // Auto-continue effect. Manual/barcode mode re-arms fast on a SUCCESSFUL scan
-  // (MANUAL_AUTO_CONTINUE_MS) so a queue can be scanned back-to-back; failures
-  // and camera mode keep the full AUTO_CONTINUE_MS (the camera dedup window is
-  // derived from it, so it stays untouched).
-  useEffect(() => {
-    if (lastResult) {
-      const delay = scanMode === "manual" && lastResult.success
-        ? MANUAL_AUTO_CONTINUE_MS
-        : AUTO_CONTINUE_MS
-      autoContinueTimerRef.current = setTimeout(() => {
-        resetResult()
-      }, delay)
-    }
-    return () => {
-      if (autoContinueTimerRef.current) {
-        clearTimeout(autoContinueTimerRef.current)
-      }
-    }
-  }, [lastResult, scanMode])
 
   // Fetch attendee roster for list view (debounced on search/filter)
   const fetchListAttendees = useCallback(async (signal?: AbortSignal) => {
@@ -648,6 +581,7 @@ export default function StaffCheckinPage() {
     if (!checkinList || listCheckinPending) return
     setListCheckinPending(attendee.id)
     try {
+      const performedBy = identity ? `${identity.volunteerName} (${identity.deskLabel})` : "Staff (via access link)"
       const res = await fetch(`/api/verify/${attendee.registration_number}?event_id=${checkinList.event_id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -655,14 +589,14 @@ export default function StaffCheckinPage() {
           checkin_list_id: checkinList.id,
           access_token: accessToken,
           action: "check_in",
-          performed_by: "Staff (via access link)",
+          performed_by: performedBy,
+          device_info: { volunteer: identity?.volunteerName, desk: identity?.deskLabel, source: "list" },
         }),
       })
       const data = await res.json()
       if (data.success) {
-        playSound("success")
+        playSound(data.action === "already_checked_in" && checkinList.list_purpose === "collection" ? "warning" : "success")
         const wasAlready = data.action === "already_checked_in"
-        // Optimistically mark this attendee as checked in
         setListAttendees(prev => prev.map(a =>
           a.id === attendee.id
             ? { ...a, checked_in: true, checked_in_at: data.registration?.checked_in_at || new Date().toISOString() }
@@ -670,15 +604,6 @@ export default function StaffCheckinPage() {
         ))
         if (!wasAlready) {
           setStats(prev => ({ ...prev, checkedIn: prev.checkedIn + 1 }))
-          setRecentCheckins(prev => [{
-            id: data.registration?.id || Date.now().toString(),
-            name: data.registration?.attendee_name || attendee.attendee_name,
-            regNumber: data.registration?.registration_number || attendee.registration_number,
-            ticketType: data.registration?.ticket_type?.name || attendee.ticket_type?.name,
-            institution: data.registration?.attendee_institution || attendee.attendee_institution || undefined,
-            time: new Date(),
-            success: true,
-          }, ...prev].slice(0, 20))
         }
       } else {
         playSound("error")
@@ -690,9 +615,12 @@ export default function StaffCheckinPage() {
     } finally {
       setListCheckinPending(null)
     }
-  }, [checkinList, accessToken, listCheckinPending, soundEnabled])
+  }, [checkinList, accessToken, listCheckinPending, identity])
 
-  // Camera scanner setup
+  // Camera scanner setup. Q1 — this is called once when entering camera mode
+  // and is NEVER stopped in response to a scan result. There is no more
+  // "stop on result, restart after the hold" cycle; the feed and counter
+  // update in place while the camera keeps running underneath.
   const startScanner = useCallback(async () => {
     if (isStartingRef.current) return
     isStartingRef.current = true
@@ -712,6 +640,13 @@ export default function StaffCheckinPage() {
         const scanner = new Html5Qrcode("qr-reader")
         scannerRef.current = scanner
 
+        const handleCameraDecode = (decodedText: string) => {
+          processScan(decodedText, "camera")
+        }
+        if (debugMode && typeof window !== "undefined") {
+          (window as any).__debugFeedDecode = handleCameraDecode
+        }
+
         await scanner.start(
           { facingMode },
           {
@@ -719,22 +654,7 @@ export default function StaffCheckinPage() {
             qrbox: { width: 250, height: 250 },
             aspectRatio: 1,
           },
-          (decodedText) => {
-            // Time-windowed de-dup keyed on the RAW decodedText. Accept a scan
-            // only when the 2s cooldown is clear AND this is not a repeat of the
-            // same value within SCAN_REPEAT_WINDOW_MS (>5s auto-continue), so a
-            // badge still in frame when the camera auto-restarts can't fire a
-            // second check-in. A different badge has a different value and is
-            // accepted immediately; the same badge re-scans once the window passes.
-            const now = Date.now()
-            const last = lastScannedRef.current
-            const isWindowedRepeat =
-              decodedText === last.value && now - last.ts < SCAN_REPEAT_WINDOW_MS
-            if (!scanCooldownRef.current && !isWindowedRepeat) {
-              lastScannedRef.current = { value: decodedText, ts: now }
-              handleScan(decodedText)
-            }
-          },
+          handleCameraDecode,
           () => {}
         )
         setScannerReady(true)
@@ -749,7 +669,7 @@ export default function StaffCheckinPage() {
     } finally {
       isStartingRef.current = false
     }
-  }, [facingMode, handleScan])
+  }, [facingMode, processScan, debugMode])
 
   const stopScanner = useCallback(async () => {
     if (scannerRef.current) {
@@ -763,9 +683,14 @@ export default function StaffCheckinPage() {
     setScannerReady(false)
   }, [])
 
-  // Start/stop scanner based on mode
+  // Start/stop scanner based on mode ONLY — no dependency on any scan result.
+  // Also gated on !showIdentityForm: the #qr-reader div this mounts into only
+  // exists in the main render branch, not the identity-gate branch — without
+  // this check, startScanner() fires (and fails to find the element) the
+  // instant checkinList loads, even while the identity modal is still what's
+  // actually on screen.
   useEffect(() => {
-    if (scanMode === "camera" && checkinList && !lastResult) {
+    if (scanMode === "camera" && checkinList && !showIdentityForm) {
       startScanner()
     } else {
       stopScanner()
@@ -774,7 +699,7 @@ export default function StaffCheckinPage() {
     return () => {
       stopScanner()
     }
-  }, [scanMode, checkinList, lastResult, startScanner, stopScanner])
+  }, [scanMode, checkinList, showIdentityForm, startScanner, stopScanner])
 
   // Restart scanner when facing mode changes
   useEffect(() => {
@@ -785,10 +710,6 @@ export default function StaffCheckinPage() {
 
   const switchCamera = async () => {
     setFacingMode(prev => prev === "environment" ? "user" : "environment")
-  }
-
-  const toggleMode = () => {
-    setScanMode(prev => prev === "camera" ? "manual" : "camera")
   }
 
   const formatTime = (date: Date) => {
@@ -803,6 +724,30 @@ export default function StaffCheckinPage() {
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+  }
+
+  // Display config for a feed row — one place that maps a FeedEntry's status
+  // (+ this list's purpose, for "already_in") to color/icon/label.
+  const feedDisplay = (entry: FeedEntry) => {
+    switch (entry.status) {
+      case "pending":
+        return { color: "border-white/10 bg-white/5", dot: "bg-white/30", label: "Checking…" }
+      case "checked_in":
+        return { color: "border-emerald-500/20 bg-emerald-500/10", dot: "bg-emerald-400", label: "✓ Checked in" }
+      case "already_in":
+        return checkinList?.list_purpose === "collection"
+          ? { color: "border-amber-500/20 bg-amber-500/10", dot: "bg-amber-400", label: "⚠ Already collected" }
+          : { color: "border-amber-500/20 bg-amber-500/10", dot: "bg-amber-400", label: "✓ Already checked in" }
+      case "wrong_event":
+        return { color: "border-red-500/20 bg-red-500/10", dot: "bg-red-400", label: "✗ Wrong event" }
+      case "not_found":
+        return { color: "border-red-500/20 bg-red-500/10", dot: "bg-red-400", label: "✗ Not on this list" }
+      case "queued_offline":
+        return { color: "border-sky-500/20 bg-sky-500/10", dot: "bg-sky-400", label: "Queued offline" }
+      case "error":
+      default:
+        return { color: "border-red-500/20 bg-red-500/10", dot: "bg-red-400", label: "✗ Error" }
+    }
   }
 
   if (loading) {
@@ -838,6 +783,50 @@ export default function StaffCheckinPage() {
     )
   }
 
+  if (showIdentityForm) {
+    const canSave = identityDraft.volunteerName.trim() && identityDraft.deskLabel.trim()
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <div className="bg-black/30 backdrop-blur-sm rounded-3xl max-w-md w-full p-8 border border-white/10">
+          <h1 className="text-white text-xl font-bold mb-1">Who&apos;s scanning?</h1>
+          <p className="text-white/50 text-sm mb-6">
+            Every scan on this list gets attributed to you and your desk. Required before scanning.
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1.5">Your name</label>
+              <input
+                type="text"
+                value={identityDraft.volunteerName}
+                onChange={(e) => setIdentityDraft({ ...identityDraft, volunteerName: e.target.value })}
+                placeholder="e.g. Priya"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1.5">Scan point / desk</label>
+              <input
+                type="text"
+                value={identityDraft.deskLabel}
+                onChange={(e) => setIdentityDraft({ ...identityDraft, deskLabel: e.target.value })}
+                placeholder="e.g. Desk 2"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+            </div>
+            <button
+              onClick={saveIdentity}
+              disabled={!canSave}
+              className="w-full px-4 py-3.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-xl font-medium transition-all hover:shadow-lg hover:shadow-emerald-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Start scanning
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
       {/* Header */}
@@ -846,6 +835,15 @@ export default function StaffCheckinPage() {
           <div>
             <h1 className="text-white font-bold text-lg">{checkinList.name}</h1>
             <p className="text-white/60 text-sm">{checkinList.events?.name}</p>
+            {identity && (
+              <button
+                onClick={openIdentityForm}
+                className="mt-0.5 flex items-center gap-1 text-white/40 hover:text-white/70 text-xs transition-colors"
+              >
+                {identity.volunteerName} · {identity.deskLabel}
+                <Pencil className="w-3 h-3" />
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -859,13 +857,6 @@ export default function StaffCheckinPage() {
               {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
             {(() => {
-              // Header connectivity pill — four states:
-              //   online + queue=0   -> green "Live" (the existing default)
-              //   online + queue>0   -> amber "Syncing N"  (auto-flush in progress / pending)
-              //   offline + queue=0  -> red "Offline"
-              //   offline + queue>0  -> red "Offline · N queued"
-              // Clicking the pill while online+pending forces a flush (defensive
-              // affordance for the rare case the "online" event was missed).
               const isOffline = !online
               const hasQueue = queueCount > 0
               const cls = isOffline
@@ -900,7 +891,8 @@ export default function StaffCheckinPage() {
         </div>
       </div>
 
-      {/* Stats Bar */}
+      {/* Stats Bar — check-ins on the LIST (shared, server truth). NOT the
+          same thing as the session counter below (this device's own tally). */}
       <div className="bg-black/10 px-4 py-3">
         <div className="flex items-center justify-center gap-3 sm:gap-8 max-w-2xl mx-auto">
           <div className="text-center">
@@ -920,7 +912,6 @@ export default function StaffCheckinPage() {
             <p className="text-xs text-white/50 font-medium">Progress</p>
           </div>
         </div>
-        {/* Progress bar */}
         <div className="max-w-md mx-auto mt-3">
           <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
             <div
@@ -943,7 +934,7 @@ export default function StaffCheckinPage() {
             }`}
           >
             <Camera className="w-5 h-5" />
-            Camera
+            Scan
           </button>
           <button
             onClick={() => setScanMode("manual")}
@@ -970,512 +961,316 @@ export default function StaffCheckinPage() {
         </div>
       </div>
 
-      {/* Main Content with Sidebar */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 max-w-6xl mx-auto w-full">
-        {/* Scanner Column */}
-        <div className="flex-1 flex flex-col items-center justify-center">
-        {/* Result Display */}
-        {lastResult && (
-          <div className={`w-full max-w-md animate-in fade-in zoom-in-95 duration-300`}>
-            <div
-              className={`p-8 rounded-3xl text-center relative overflow-hidden ${
-                lastResult.alreadyCheckedIn
-                  ? "bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-2 border-amber-500/50"
-                  : lastResult.success
-                  ? "bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border-2 border-emerald-500/50"
-                  : "bg-gradient-to-br from-red-500/20 to-pink-500/20 border-2 border-red-500/50"
-              }`}
-            >
-              {/* Background glow */}
-              <div className={`absolute inset-0 ${
-                lastResult.alreadyCheckedIn ? "bg-amber-500/5" : lastResult.success ? "bg-emerald-500/5" : "bg-red-500/5"
-              }`} />
-
-              <div className="relative">
-                {lastResult.success && !lastResult.alreadyCheckedIn ? (
-                  <>
-                    <div className="w-24 h-24 mx-auto mb-4 relative">
-                      <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping" />
-                      <div className="relative w-24 h-24 bg-gradient-to-br from-emerald-400 to-cyan-400 rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-12 h-12 text-white" />
-                      </div>
+        <div className="flex-1 flex flex-col items-center">
+          {/* Queue mode: camera + session counter + scan feed. The camera
+              never stops here — there is no result screen to unmount it. */}
+          {scanMode === "camera" && (
+            <div className="w-full max-w-md">
+              <div className="bg-black/30 backdrop-blur-sm rounded-3xl overflow-hidden border border-white/10">
+                {cameraError ? (
+                  <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <XCircle className="w-8 h-8 text-red-400" />
                     </div>
-                    <h2 className="text-2xl font-bold text-white mb-2">
-                      {lastResult.attendee?.attendee_name}
-                    </h2>
-                    {lastResult.attendee?.registration_number && (
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-xl mb-3">
-                        <Hash className="w-5 h-5 text-emerald-300" />
-                        <span className="font-mono text-xl font-bold text-white tracking-wider">
-                          {lastResult.attendee.registration_number}
-                        </span>
-                      </div>
-                    )}
-                    {lastResult.attendee?.ticket_type && (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 rounded-full mb-2">
-                        <Ticket className="w-3.5 h-3.5 text-emerald-300" />
-                        <span className="text-emerald-300 text-sm font-medium">
-                          {lastResult.attendee.ticket_type.name}
-                        </span>
-                      </div>
-                    )}
-                    {lastResult.attendee?.attendee_institution && (
-                      <p className="text-white/60 text-sm flex items-center justify-center gap-1.5 mb-2">
-                        <Building2 className="w-3.5 h-3.5" />
-                        {lastResult.attendee.attendee_institution}
-                      </p>
-                    )}
-                    <p className="text-emerald-300 text-sm mt-3 font-medium">{lastResult.message}</p>
-                  </>
-                ) : lastResult.alreadyCheckedIn ? (
-                  checkinList?.list_purpose === "collection" ? (
-                    <>
-                      <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <AlertTriangle className="w-10 h-10 text-white" />
-                      </div>
-                      <h2 className="text-xl font-bold text-white mb-2">⚠ ALREADY COLLECTED</h2>
-                      {lastResult.attendee && (
-                        <p className="text-white text-lg font-semibold mb-2">
-                          {lastResult.attendee.attendee_name}
-                        </p>
-                      )}
-                      {lastResult.attendee?.registration_number && (
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-xl mb-2">
-                          <Hash className="w-5 h-5 text-amber-300" />
-                          <span className="font-mono text-xl font-bold text-white tracking-wider">
-                            {lastResult.attendee.registration_number}
-                          </span>
-                        </div>
-                      )}
-                      <p className="text-amber-200">
-                        {/* Desk/volunteer identity isn't captured yet (planned in a
-                            follow-up) — will append ", by <volunteer>" once it ships. */}
-                        {lastResult.checkedInAt
-                          ? `Collected at ${formatTime(new Date(lastResult.checkedInAt))}`
-                          : lastResult.message}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle className="w-10 h-10 text-white" />
-                      </div>
-                      <h2 className="text-xl font-bold text-white mb-2">✓ ALREADY CHECKED IN</h2>
-                      {lastResult.attendee && (
-                        <p className="text-white text-lg font-semibold mb-2">
-                          {lastResult.attendee.attendee_name}
-                        </p>
-                      )}
-                      {lastResult.attendee?.registration_number && (
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-xl mb-2">
-                          <Hash className="w-5 h-5 text-amber-300" />
-                          <span className="font-mono text-xl font-bold text-white tracking-wider">
-                            {lastResult.attendee.registration_number}
-                          </span>
-                        </div>
-                      )}
-                      <p className="text-amber-200">
-                        {/* Desk/volunteer identity isn't captured yet (planned in a
-                            follow-up) — shows the check-in time only until then. */}
-                        {lastResult.checkedInAt
-                          ? `Checked in at ${formatTime(new Date(lastResult.checkedInAt))}`
-                          : lastResult.message}
-                      </p>
-                    </>
-                  )
-                ) : lastResult.errorCode === "wrong_event" ? (
-                  <>
-                    <div className="w-20 h-20 bg-gradient-to-br from-red-400 to-pink-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <XCircle className="w-10 h-10 text-white" />
-                    </div>
-                    <h2 className="text-xl font-bold text-white mb-2">✗ WRONG EVENT</h2>
-                    <p className="text-red-200">
-                      This badge is for {lastResult.badgeEventName || "a different event"}
-                    </p>
-                  </>
+                    <p className="text-red-300 mb-4">{cameraError}</p>
+                    <button
+                      onClick={() => startScanner()}
+                      className="px-6 py-2.5 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-colors font-medium"
+                    >
+                      Try Again
+                    </button>
+                  </div>
                 ) : (
                   <>
-                    <div className="w-20 h-20 bg-gradient-to-br from-red-400 to-pink-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <XCircle className="w-10 h-10 text-white" />
+                    <div className="relative">
+                      <div id="qr-reader" className="w-full" style={{ minHeight: "250px" }} />
+                      {!scannerReady && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+                          <div className="text-center">
+                            <Loader2 className="w-10 h-10 text-emerald-400 animate-spin mx-auto" />
+                            <p className="text-white/60 mt-3">Starting camera...</p>
+                          </div>
+                        </div>
+                      )}
+                      {scannerReady && (
+                        <div className="absolute bottom-4 right-4 left-4 flex justify-between items-center">
+                          <div className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                            facingMode === "user"
+                              ? "bg-emerald-500/80 text-white"
+                              : "bg-black/50 text-white/70"
+                          }`}>
+                            {facingMode === "user" ? "Kiosk Mode" : "Staff Mode"}
+                          </div>
+                          <button
+                            onClick={switchCamera}
+                            className="flex items-center gap-2 px-4 py-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors"
+                          >
+                            <SwitchCamera className="w-4 h-4" />
+                            <span className="text-sm font-medium">
+                              {facingMode === "environment" ? "Front" : "Back"}
+                            </span>
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <h2 className="text-xl font-bold text-white mb-2">Check-in Failed</h2>
-                    <p className="text-red-200">{lastResult.message}</p>
+                    <div className="p-4 text-center border-t border-white/10">
+                      <p className="text-white/60 text-sm">
+                        {facingMode === "user"
+                          ? "Hold your badge QR code to the camera"
+                          : "Point camera at the badge QR code — keep scanning, nothing to dismiss"
+                        }
+                      </p>
+                    </div>
                   </>
                 )}
-
-                <div className="mt-6">
-                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden max-w-[200px] mx-auto">
-                    <div
-                      className={`h-full rounded-full ${
-                        lastResult.alreadyCheckedIn ? "bg-amber-400" : lastResult.success ? "bg-emerald-400" : "bg-red-400"
-                      }`}
-                      style={{
-                        animation: "shrink 5s linear forwards",
-                      }}
-                    />
-                  </div>
-                  {lastResult.alreadyCheckedIn ? (
-                    // The volunteer build this replaces trained staff to read a
-                    // repeat scan as "stop them." A colour/sound change alone
-                    // won't retrain that reflex — the button has to say the
-                    // instruction outright, and it has to be the loudest thing
-                    // on the screen. Which instruction depends on list_purpose:
-                    // entry lets them in; collection is the opposite — don't
-                    // hand out a second one.
-                    <button
-                      onClick={resetResult}
-                      className="mt-4 w-full max-w-xs mx-auto px-8 py-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xl font-extrabold tracking-wide rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 transition-all"
-                    >
-                      {checkinList?.list_purpose === "collection" ? (
-                        <>
-                          <AlertTriangle className="w-7 h-7" />
-                          DO NOT ISSUE AGAIN
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="w-7 h-7" />
-                          LET THEM IN
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={resetResult}
-                      className="mt-4 px-8 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl flex items-center gap-2 mx-auto transition-all font-medium"
-                    >
-                      <RotateCcw className="w-5 h-5" />
-                      Scan Next
-                    </button>
-                  )}
-                </div>
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* Camera Scanner */}
-        {!lastResult && scanMode === "camera" && (
-          <div className="w-full max-w-md">
-            <div className="bg-black/30 backdrop-blur-sm rounded-3xl overflow-hidden border border-white/10">
-              {cameraError ? (
-                <div className="p-8 text-center">
-                  <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <XCircle className="w-8 h-8 text-red-400" />
-                  </div>
-                  <p className="text-red-300 mb-4">{cameraError}</p>
-                  <button
-                    onClick={() => startScanner()}
-                    className="px-6 py-2.5 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-colors font-medium"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="relative">
-                    <div id="qr-reader" className="w-full" style={{ minHeight: "250px" }} />
-                    {!scannerReady && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
-                        <div className="text-center">
-                          <Loader2 className="w-10 h-10 text-emerald-400 animate-spin mx-auto" />
-                          <p className="text-white/60 mt-3">Starting camera...</p>
+              {/* Q6 — session counter. NOT the stats bar above: this is
+                  scans on THIS DEVICE, THIS SESSION, so a volunteer can
+                  check it against the physical stack in their hand. */}
+              <div className="mt-4 flex items-center justify-center gap-2 px-4 py-3 bg-white/5 rounded-xl border border-white/10">
+                <span className="text-white/60 text-sm">Scanned this session:</span>
+                <span className="text-white text-xl font-bold">{scannedThisSession}</span>
+              </div>
+
+              {/* Q3 — scan feed. Newest on top, last 10, nothing to dismiss. */}
+              <div className="mt-3 space-y-2">
+                {scanFeed.length === 0 ? (
+                  <p className="text-white/30 text-sm text-center py-6">No scans yet this session</p>
+                ) : (
+                  scanFeed.map((entry) => {
+                    const display = feedDisplay(entry)
+                    return (
+                      <div
+                        key={entry.id}
+                        className={`flex items-center gap-3 p-3 rounded-xl border ${display.color}`}
+                      >
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${display.dot}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium truncate">
+                            {entry.attendeeName || entry.regNumber || entry.code}
+                          </p>
+                          <p className="text-white/50 text-xs truncate">
+                            {display.label}
+                            {entry.ticketType ? ` · ${entry.ticketType}` : ""}
+                            {entry.badgeEventName ? ` · for ${entry.badgeEventName}` : ""}
+                          </p>
                         </div>
+                        <span className="text-white/40 text-xs flex-shrink-0">{formatTime(entry.time)}</span>
                       </div>
-                    )}
-                    {/* Camera controls */}
-                    {scannerReady && (
-                      <div className="absolute bottom-4 right-4 left-4 flex justify-between items-center">
-                        <div className={`px-3 py-1.5 rounded-full text-xs font-medium ${
-                          facingMode === "user"
-                            ? "bg-emerald-500/80 text-white"
-                            : "bg-black/50 text-white/70"
-                        }`}>
-                          {facingMode === "user" ? "Kiosk Mode" : "Staff Mode"}
-                        </div>
-                        <button
-                          onClick={switchCamera}
-                          className="flex items-center gap-2 px-4 py-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors"
-                        >
-                          <SwitchCamera className="w-4 h-4" />
-                          <span className="text-sm font-medium">
-                            {facingMode === "environment" ? "Front" : "Back"}
-                          </span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4 text-center border-t border-white/10">
-                    <p className="text-white/60 text-sm">
-                      {facingMode === "user"
-                        ? "Hold your badge QR code to the camera"
-                        : "Point camera at the badge QR code"
-                      }
-                    </p>
-                  </div>
-                </>
-              )}
+                    )
+                  })
+                )}
+              </div>
             </div>
+          )}
 
-            {processing && (
-              <div className="mt-4 flex items-center justify-center gap-2 text-emerald-400">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span className="font-medium">Processing...</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Manual Input */}
-        {!lastResult && scanMode === "manual" && (
-          <div className="w-full max-w-md">
-            <div className="bg-black/30 backdrop-blur-sm rounded-3xl p-8 text-center border border-white/10">
-              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <QrCode className="w-8 h-8 text-emerald-400" />
-              </div>
-              <h2 className="text-white text-xl font-bold mb-2">Manual Entry</h2>
-              <p className="text-white/50 text-sm mb-6">
-                Use a barcode scanner or enter the registration number
-              </p>
-
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputValue}
-                  onChange={handleManualChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Enter reg number..."
-                  className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 text-center text-base sm:text-lg font-mono tracking-wider"
-                  disabled={processing}
-                  autoFocus
-                  autoComplete="off"
-                  autoCapitalize="characters"
-                />
-              </div>
-
-              {inputValue && (
-                <button
-                  onClick={() => {
-                    if (autoSubmitTimerRef.current) {
-                      clearTimeout(autoSubmitTimerRef.current)
-                      autoSubmitTimerRef.current = null
-                    }
-                    handleScan(inputValue)
-                  }}
-                  disabled={processing}
-                  className="mt-4 w-full px-4 py-3.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-xl font-medium transition-all hover:shadow-lg hover:shadow-emerald-500/25 disabled:opacity-50"
-                >
-                  Check In
-                </button>
-              )}
-
-              {processing && (
-                <div className="mt-4 flex items-center justify-center gap-2 text-emerald-400">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="font-medium">Processing...</span>
+          {/* Manual Input */}
+          {scanMode === "manual" && (
+            <div className="w-full max-w-md">
+              <div className="bg-black/30 backdrop-blur-sm rounded-3xl p-8 text-center border border-white/10">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <QrCode className="w-8 h-8 text-emerald-400" />
                 </div>
-              )}
-            </div>
+                <h2 className="text-white text-xl font-bold mb-2">Manual Entry</h2>
+                <p className="text-white/50 text-sm mb-6">
+                  Use a barcode scanner or enter the registration number
+                </p>
 
-            {/* Quick tips */}
-            <div className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10">
-              <p className="text-white/40 text-xs text-center">
-                Tip: Use a USB/Bluetooth barcode scanner for faster check-ins
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Attendee List */}
-        {!lastResult && scanMode === "list" && (
-          <div className="w-full max-w-2xl">
-            <div className="bg-black/30 backdrop-blur-sm rounded-3xl border border-white/10 flex flex-col max-h-[70vh]">
-              {/* Search + filter */}
-              <div className="p-4 border-b border-white/10 space-y-3">
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                   <input
+                    ref={inputRef}
                     type="text"
-                    value={listSearch}
-                    onChange={(e) => setListSearch(e.target.value)}
-                    placeholder="Search name, reg number, email, or phone..."
-                    className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
+                    value={inputValue}
+                    onChange={handleManualChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Enter reg number..."
+                    className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 text-center text-base sm:text-lg font-mono tracking-wider"
+                    autoFocus
                     autoComplete="off"
+                    autoCapitalize="characters"
                   />
                 </div>
-                <div className="flex gap-2 text-sm">
-                  {([
-                    { key: "all", label: "All" },
-                    { key: "not_checked_in", label: "Pending" },
-                    { key: "checked_in", label: "Checked in" },
-                  ] as const).map(opt => (
-                    <button
-                      key={opt.key}
-                      onClick={() => setListStatusFilter(opt.key)}
-                      className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
-                        listStatusFilter === opt.key
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                          : "bg-white/5 text-white/60 border border-white/10 hover:bg-white/10"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              {/* List body */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                {listLoading && listAttendees.length === 0 ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
-                  </div>
-                ) : listError ? (
-                  <div className="text-center py-8">
-                    <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-                    <p className="text-red-300 text-sm">{listError}</p>
-                  </div>
-                ) : listAttendees.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Users className="w-6 h-6 text-white/20" />
-                    </div>
-                    <p className="text-white/40 text-sm">No attendees match</p>
-                  </div>
-                ) : (
-                  listAttendees.map(attendee => (
-                    <div
-                      key={attendee.id}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                        attendee.checked_in
-                          ? "bg-emerald-500/10 border-emerald-500/20"
-                          : "bg-white/5 border-white/10"
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                        attendee.checked_in
-                          ? "bg-emerald-500/30 text-emerald-300"
-                          : "bg-white/10 text-white/60"
-                      }`}>
-                        {getInitials(attendee.attendee_name)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-medium truncate">{attendee.attendee_name}</p>
-                        <div className="flex items-center gap-2 text-xs text-white/40">
-                          <span className="font-mono">{attendee.registration_number}</span>
-                          {attendee.ticket_type?.name && (
-                            <>
-                              <span>•</span>
-                              <span className="truncate">{attendee.ticket_type.name}</span>
-                            </>
-                          )}
-                          {attendee.checked_in && attendee.checked_in_at && (
-                            <>
-                              <span>•</span>
-                              <span className="text-emerald-300/80 whitespace-nowrap">
-                                In at {formatDateTime(new Date(attendee.checked_in_at))}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      {attendee.checked_in ? (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 rounded-full flex-shrink-0">
-                          <CheckCircle className="w-4 h-4 text-emerald-400" />
-                          <span className="text-xs text-emerald-300 font-medium">In</span>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => checkInFromList(attendee)}
-                          disabled={listCheckinPending === attendee.id}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-full text-xs font-medium disabled:opacity-50 hover:shadow-lg hover:shadow-emerald-500/25 transition-all flex-shrink-0"
-                        >
-                          {listCheckinPending === attendee.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <>
-                              <CheckCircle className="w-4 h-4" />
-                              Check In
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  ))
+                {inputValue && (
+                  <button
+                    onClick={() => {
+                      if (autoSubmitTimerRef.current) {
+                        clearTimeout(autoSubmitTimerRef.current)
+                        autoSubmitTimerRef.current = null
+                      }
+                      processScan(inputValue, "manual")
+                      setInputValue("")
+                    }}
+                    className="mt-4 w-full px-4 py-3.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-xl font-medium transition-all hover:shadow-lg hover:shadow-emerald-500/25"
+                  >
+                    Check In
+                  </button>
                 )}
               </div>
 
-              {/* Footer count */}
-              <div className="px-4 py-2 border-t border-white/10 text-center">
-                <p className="text-white/40 text-xs">
-                  Showing {listAttendees.length} attendee{listAttendees.length === 1 ? "" : "s"}
+              <div className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10">
+                <p className="text-white/40 text-xs text-center">
+                  Tip: Use a USB/Bluetooth barcode scanner for faster check-ins
                 </p>
               </div>
-            </div>
-          </div>
-        )}
-        </div>
 
-        {/* Recent Check-ins Sidebar */}
-        <div className="w-full lg:w-80 flex-shrink-0">
-          <div className="bg-black/30 backdrop-blur-sm rounded-2xl border border-white/10 h-full max-h-[500px] lg:max-h-[600px] flex flex-col">
-            <div className="p-4 border-b border-white/10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-white/60">
-                  <Clock className="w-4 h-4" />
-                  <span className="font-medium text-sm">Recent Scans</span>
-                </div>
-                <span className="text-xs text-white/40 bg-white/10 px-2 py-0.5 rounded-full">
-                  {recentCheckins.length}
-                </span>
+              {/* Same feed + counter as queue mode — manual entries land here too. */}
+              <div className="mt-4 flex items-center justify-center gap-2 px-4 py-3 bg-white/5 rounded-xl border border-white/10">
+                <span className="text-white/60 text-sm">Scanned this session:</span>
+                <span className="text-white text-xl font-bold">{scannedThisSession}</span>
+              </div>
+              <div className="mt-3 space-y-2">
+                {scanFeed.map((entry) => {
+                  const display = feedDisplay(entry)
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`flex items-center gap-3 p-3 rounded-xl border ${display.color}`}
+                    >
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${display.dot}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium truncate">
+                          {entry.attendeeName || entry.regNumber || entry.code}
+                        </p>
+                        <p className="text-white/50 text-xs truncate">{display.label}</p>
+                      </div>
+                      <span className="text-white/40 text-xs flex-shrink-0">{formatTime(entry.time)}</span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
+          )}
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {recentCheckins.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Clock className="w-6 h-6 text-white/20" />
+          {/* Attendee List — second screen, not home */}
+          {scanMode === "list" && (
+            <div className="w-full max-w-2xl">
+              <div className="bg-black/30 backdrop-blur-sm rounded-3xl border border-white/10 flex flex-col max-h-[70vh]">
+                <div className="p-4 border-b border-white/10 space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                    <input
+                      type="text"
+                      value={listSearch}
+                      onChange={(e) => setListSearch(e.target.value)}
+                      placeholder="Search name, reg number, email, or phone..."
+                      className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
+                      autoComplete="off"
+                    />
                   </div>
-                  <p className="text-white/30 text-sm">No scans yet</p>
-                  <p className="text-white/20 text-xs mt-1">Scanned attendees will appear here</p>
+                  <div className="flex gap-2 text-sm">
+                    {([
+                      { key: "all", label: "All" },
+                      { key: "not_checked_in", label: "Pending" },
+                      { key: "checked_in", label: "Checked in" },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.key}
+                        onClick={() => setListStatusFilter(opt.key)}
+                        className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                          listStatusFilter === opt.key
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                            : "bg-white/5 text-white/60 border border-white/10 hover:bg-white/10"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              ) : (
-                recentCheckins.map((checkin, idx) => (
-                  <div
-                    key={checkin.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
-                      checkin.success
-                        ? "bg-emerald-500/10 border border-emerald-500/20"
-                        : "bg-red-500/10 border border-red-500/20"
-                    } ${idx === 0 ? "ring-2 ring-emerald-500/30 animate-in fade-in slide-in-from-top-2 duration-300" : ""}`}
-                  >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                      checkin.success ? "bg-emerald-500/30 text-emerald-300" : "bg-red-500/30 text-red-300"
-                    }`}>
-                      {checkin.success ? getInitials(checkin.name) : "!"}
+
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {listLoading && listAttendees.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-medium truncate ${checkin.success ? "text-emerald-200" : "text-red-200"}`}>
-                        {checkin.name}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-white/40">
-                        <span>{checkin.ticketType || checkin.regNumber}</span>
-                        <span>•</span>
-                        <span>{formatTime(checkin.time)}</span>
+                  ) : listError ? (
+                    <div className="text-center py-8">
+                      <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                      <p className="text-red-300 text-sm">{listError}</p>
+                    </div>
+                  ) : listAttendees.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Users className="w-6 h-6 text-white/20" />
                       </div>
+                      <p className="text-white/40 text-sm">No attendees match</p>
                     </div>
-                    {checkin.success ? (
-                      <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                    )}
-                  </div>
-                ))
-              )}
+                  ) : (
+                    listAttendees.map(attendee => (
+                      <div
+                        key={attendee.id}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                          attendee.checked_in
+                            ? "bg-emerald-500/10 border-emerald-500/20"
+                            : "bg-white/5 border-white/10"
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                          attendee.checked_in
+                            ? "bg-emerald-500/30 text-emerald-300"
+                            : "bg-white/10 text-white/60"
+                        }`}>
+                          {getInitials(attendee.attendee_name)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium truncate">{attendee.attendee_name}</p>
+                          <div className="flex items-center gap-2 text-xs text-white/40">
+                            <span className="font-mono">{attendee.registration_number}</span>
+                            {attendee.ticket_type?.name && (
+                              <>
+                                <span>•</span>
+                                <span className="truncate">{attendee.ticket_type.name}</span>
+                              </>
+                            )}
+                            {attendee.checked_in && attendee.checked_in_at && (
+                              <>
+                                <span>•</span>
+                                <span className="text-emerald-300/80 whitespace-nowrap">
+                                  In at {formatDateTime(new Date(attendee.checked_in_at))}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {attendee.checked_in ? (
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 rounded-full flex-shrink-0">
+                            <CheckCircle className="w-4 h-4 text-emerald-400" />
+                            <span className="text-xs text-emerald-300 font-medium">In</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => checkInFromList(attendee)}
+                            disabled={listCheckinPending === attendee.id}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-full text-xs font-medium disabled:opacity-50 hover:shadow-lg hover:shadow-emerald-500/25 transition-all flex-shrink-0"
+                          >
+                            {listCheckinPending === attendee.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <CheckCircle className="w-4 h-4" />
+                                Check In
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="px-4 py-2 border-t border-white/10 text-center">
+                  <p className="text-white/40 text-xs">
+                    Showing {listAttendees.length} attendee{listAttendees.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -1485,20 +1280,6 @@ export default function StaffCheckinPage() {
           Staff Check-in • {checkinList.name}
         </p>
       </div>
-
-      <style jsx>{`
-        @keyframes shrink {
-          from { width: 100%; }
-          to { width: 0%; }
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
     </div>
   )
 }
