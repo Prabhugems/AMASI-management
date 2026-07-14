@@ -166,11 +166,28 @@ export default function Home() {
     }
   }, [isEventScoped, eventIds, permissionsLoading, router])
 
+  // Single event mode: everyone (including super admins, who bypass
+  // event-scoping above) lands straight on the one event — there's nothing
+  // else to see on this multi-event dashboard in this deployment mode.
+  const { data: soleEventId } = useQuery({
+    queryKey: ["single-event-mode-redirect"],
+    enabled: !FEATURES.multipleEvents && !permissionsLoading && !(isEventScoped && eventIds.length > 0),
+    queryFn: async () => {
+      const { data } = await supabase.from("events").select("id").limit(2)
+      return data && data.length === 1 ? data[0].id : null
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  useEffect(() => {
+    if (soleEventId) router.replace(`/events/${soleEventId}`)
+  }, [soleEventId, router])
+
   // Log stats error if any
   if (statsError) console.error("Stats query error:", statsError)
 
-  // Only block render for event-scoped redirect (brief)
-  if (!permissionsLoading && isEventScoped && eventIds.length > 0) {
+  // Only block render for event-scoped or single-event-mode redirect (brief)
+  if ((!permissionsLoading && isEventScoped && eventIds.length > 0) || soleEventId) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
