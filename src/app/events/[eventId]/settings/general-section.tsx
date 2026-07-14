@@ -215,17 +215,25 @@ export function GeneralSection({ eventId, formData, updateField, setFormData }: 
               <div>
                 <label className="text-sm font-medium text-foreground">Status</label>
                 <Select
-                  value={formData.status || "planning"}
+                  value={formData.status || "draft"}
                   onValueChange={(value) => updateField("status", value)}
                 >
                   <SelectTrigger className="mt-1.5">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    {/* Values must match the event_status DB enum exactly —
+                        "planning" was never a valid value and silently
+                        failed every save that used it (see the identical,
+                        already-fixed incident documented in
+                        src/app/register/page.tsx). */}
                     <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="planning">Planning</SelectItem>
+                    <SelectItem value="setup">Setup</SelectItem>
+                    <SelectItem value="registration_open">Registration Open</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="ongoing">Ongoing</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>

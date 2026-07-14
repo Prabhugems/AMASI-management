@@ -161,7 +161,7 @@ function LoginForm() {
                   <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
-                  <span>Manage {COMPANY_CONFIG.name} members & faculty</span>
+                  <span>Manage {COMPANY_CONFIG.name} {COMPANY_CONFIG.audienceLabel} & faculty</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">

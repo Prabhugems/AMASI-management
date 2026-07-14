@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
             unit_price: ticket.price,
             total_amount: ticket.price,
             status: status,
-            payment_status: ticket.price === 0 ? "free" : "completed",
+            payment_status: "completed",
             confirmed_at: status === "confirmed" ? new Date().toISOString() : null,
             custom_fields: customFields,
           })

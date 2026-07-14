@@ -165,13 +165,21 @@ export async function POST(
     }
 
     // 6. Update registration status
+    // payment_status only allows pending/processing/completed/failed/refunded
+    // (registrations_payment_status_check) — "cancelled" and "refund_pending"
+    // aren't valid values, so payment_status is left untouched in those cases;
+    // status:"cancelled" already communicates the cancellation.
+    const registrationUpdate: Record<string, unknown> = {
+      status: "cancelled",
+      updated_at: new Date().toISOString(),
+    }
+    if (refundAmount > 0 && refundStatus === "processed") {
+      registrationUpdate.payment_status = "refunded"
+    }
+
     await (supabase as any)
       .from("registrations")
-      .update({
-        status: "cancelled",
-        payment_status: refundAmount > 0 ? (refundStatus === "processed" ? "refunded" : "refund_pending") : "cancelled",
-        updated_at: new Date().toISOString(),
-      })
+      .update(registrationUpdate)
       .eq("id", id)
 
     // 7. Restore ticket inventory

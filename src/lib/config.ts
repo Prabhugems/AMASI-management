@@ -12,6 +12,10 @@ export const COMPANY_CONFIG = {
   membershipApplicationUrl: process.env.NEXT_PUBLIC_MEMBERSHIP_APPLICATION_URL || "https://application.amasi.org/application/user-member-application-list",
   membershipLookupUrl: process.env.NEXT_PUBLIC_MEMBERSHIP_LOOKUP_URL || "https://application.amasi.org/application/user-member-application-not-found",
   skillCourseUrl: process.env.NEXT_PUBLIC_SKILL_COURSE_URL || "https://amasi.org/skill-course/",
+  // Marketing copy label for the primary registrant audience (e.g. login page).
+  // AMASI has a membership program ("members"); one-off conferences like
+  // ESSURG register delegates, not members.
+  audienceLabel: process.env.NEXT_PUBLIC_AUDIENCE_LABEL || "members",
 }
 
 // Feature flags for optional modules

@@ -601,7 +601,7 @@ export async function POST(request: NextRequest) {
               attendee_phone: faculty.phone,
               attendee_designation: faculty.role,
               status: "confirmed",
-              payment_status: "paid",
+              payment_status: "completed",
               total_amount: 0,
             } as any)
 

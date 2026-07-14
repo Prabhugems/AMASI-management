@@ -24,7 +24,7 @@ export type EventRole = "event_admin" | "committee_member" | "registration_desk"
 
 // Event types
 export type EventType = "conference" | "course" | "workshop" | "webinar" | "meeting"
-export type EventStatus = "draft" | "setup" | "planning" | "active" | "completed" | "archived"
+export type EventStatus = "draft" | "setup" | "registration_open" | "active" | "ongoing" | "completed" | "archived" | "cancelled"
 
 export interface Event {
   id: string

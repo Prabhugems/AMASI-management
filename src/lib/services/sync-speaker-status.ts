@@ -32,10 +32,14 @@ export async function syncSpeakerStatus(
 
   if (registration) {
     const existingFields = registration.custom_fields || {}
+    // registrations.status only allows pending/confirmed/cancelled/refunded
+    // (registrations_status_check) — "declined" isn't a valid registration
+    // status (a registration itself was never cancelled), so it's recorded
+    // in custom_fields.invitation_status only, not the top-level column.
     await db
       .from("registrations")
       .update({
-        status,
+        ...(status !== "declined" ? { status } : {}),
         ...(status === "confirmed" ? { confirmed_at: new Date().toISOString() } : {}),
         custom_fields: {
           ...existingFields,
