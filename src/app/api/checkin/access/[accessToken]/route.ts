@@ -34,6 +34,7 @@ export async function GET(
       access_token_expires_at,
       ticket_type_ids,
       allow_multiple_checkins,
+      list_purpose,
       starts_at,
       ends_at,
       events (
@@ -88,6 +89,7 @@ export async function GET(
       event_id: checkinList.event_id,
       events: checkinList.events,
       allow_multiple_checkins: checkinList.allow_multiple_checkins,
+      list_purpose: checkinList.list_purpose,
     },
     stats: {
       total: totalCount || 0,

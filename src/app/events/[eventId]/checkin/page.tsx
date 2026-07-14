@@ -46,6 +46,7 @@ interface CheckinList {
   ends_at: string | null
   is_active: boolean
   allow_multiple_checkins: boolean
+  list_purpose: "entry" | "collection"
   sort_order: number
   access_token?: string  // For staff access without login (like Tito)
   stats: {
@@ -91,6 +92,8 @@ export default function CheckinHubPage() {
   const [formStartsAt, setFormStartsAt] = useState("")
   const [formEndsAt, setFormEndsAt] = useState("")
   const [formIsActive, setFormIsActive] = useState(true)
+  // "" = not yet chosen. No default — see lists/page.tsx for why.
+  const [formListPurpose, setFormListPurpose] = useState<"" | "entry" | "collection">("")
 
   // Fetch event details
   const { data: event } = useQuery({
@@ -229,6 +232,7 @@ export default function CheckinHubPage() {
     setFormStartsAt("")
     setFormEndsAt("")
     setFormIsActive(true)
+    setFormListPurpose("")
   }
 
   const openEditModal = (list: CheckinList) => {
@@ -239,10 +243,15 @@ export default function CheckinHubPage() {
     setFormStartsAt(list.starts_at ? list.starts_at.slice(0, 16) : "")
     setFormEndsAt(list.ends_at ? list.ends_at.slice(0, 16) : "")
     setFormIsActive(list.is_active)
+    setFormListPurpose(list.list_purpose)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formListPurpose) {
+      toast.error("Choose Entry or Collection before saving")
+      return
+    }
     const data = {
       event_id: eventId,
       name: formName,
@@ -251,6 +260,7 @@ export default function CheckinHubPage() {
       starts_at: formStartsAt || null,
       ends_at: formEndsAt || null,
       is_active: formIsActive,
+      list_purpose: formListPurpose,
     }
     if (editingList) {
       updateMutation.mutate({ ...data, id: editingList.id })
@@ -1076,6 +1086,44 @@ export default function CheckinHubPage() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Purpose <span className="text-destructive">(required)</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormListPurpose("entry")}
+                    className={`text-left rounded-xl border-2 p-4 transition-all ${
+                      formListPurpose === "entry"
+                        ? "border-emerald-500 bg-emerald-500/10"
+                        : "border-border hover:border-emerald-500/40"
+                    }`}
+                  >
+                    <p className="font-medium">Entry</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Hall, session, re-entry. A repeat scan means &quot;let them in&quot;.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormListPurpose("collection")}
+                    className={`text-left rounded-xl border-2 p-4 transition-all ${
+                      formListPurpose === "collection"
+                        ? "border-amber-500 bg-amber-500/10"
+                        : "border-border hover:border-amber-500/40"
+                    }`}
+                  >
+                    <p className="font-medium">Collection</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Kit, badge, meal, exam paper. A repeat scan means &quot;do not issue again&quot;.
+                    </p>
+                  </button>
+                </div>
+                {!formListPurpose && (
+                  <p className="text-xs text-destructive mt-2">Pick one — there is no default.</p>
+                )}
+              </div>
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
@@ -1090,7 +1138,7 @@ export default function CheckinHubPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!formName.trim() || createMutation.isPending || updateMutation.isPending || showSaved}
+                  disabled={!formName.trim() || !formListPurpose || createMutation.isPending || updateMutation.isPending || showSaved}
                   className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all disabled:opacity-50 ${
                     showSaved
                       ? "bg-green-600 text-white"
