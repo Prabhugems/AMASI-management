@@ -38,6 +38,7 @@ interface EventSettings {
   allow_multiple_ticket_types: boolean
   allow_multiple_addons: boolean
   enable_waitlist?: boolean
+  max_course_addons?: number | null
 }
 
 /* ─── Colors ─── */
@@ -969,6 +970,7 @@ function EventDetailsPage() {
                 onSelectionChange={setSelectedAddons}
                 selectedTicketIds={Array.from(selectedTickets.keys())}
                 taxPercentage={event.ticket_types?.find(t => selectedTickets.has(t.id))?.tax_percentage || 18}
+                maxCourseAddons={eventSettings?.max_course_addons ?? null}
               />
             </div>
           )}

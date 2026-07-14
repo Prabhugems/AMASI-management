@@ -28,7 +28,7 @@ export async function GET(
       .from("registrations")
       .select(`
         *,
-        ticket_types (name, price, tax_percentage),
+        ticket_types (name, price, tax_percentage, gst_inclusive_rate),
         events (
           name,
           short_name,
@@ -75,6 +75,7 @@ export async function GET(
         name: string
         price: number
         tax_percentage: number
+        gst_inclusive_rate: number | null
       }
     }
 
@@ -291,15 +292,28 @@ export async function GET(
 
     const ticket = registration.ticket_types as any
     const ticketPrice = ticket?.price || 0
-    const taxPercent = ticket?.tax_percentage || 18
-    const taxAmount = (ticketPrice * taxPercent) / 100
-    const totalAmount = registration.total_amount || ticketPrice + taxAmount
+    const totalAmount = registration.total_amount || ticketPrice
+
+    // GST-inclusive tickets (tax_percentage=0 so checkout doesn't add tax on
+    // top) carry a display-only gst_inclusive_rate for back-calculating the
+    // base/GST breakdown from the inclusive total, purely for the invoice.
+    const inclusiveRate = ticket?.gst_inclusive_rate
+    let baseAmount: number
+    let taxAmount: number
+    if (inclusiveRate) {
+      baseAmount = totalAmount / (1 + inclusiveRate / 100)
+      taxAmount = totalAmount - baseAmount
+    } else {
+      const taxPercent = ticket?.tax_percentage || 18
+      taxAmount = (ticketPrice * taxPercent) / 100
+      baseAmount = ticketPrice
+    }
 
     const paymentDetails = [
       ["Ticket Type", ticket?.name || "Standard"],
       ["Quantity", String(registration.quantity || 1)],
-      ["Base Amount", `Rs. ${ticketPrice.toLocaleString("en-IN")}`],
-      ["Tax (GST)", `Rs. ${taxAmount.toLocaleString("en-IN")}`],
+      ["Base Amount", `Rs. ${baseAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`],
+      ["Tax (GST)", `Rs. ${taxAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`],
       ["Total Amount", `Rs. ${totalAmount.toLocaleString("en-IN")}`],
       ["Payment Status", registration.payment_status || "Pending"],
       // registrations has no payment_method column — this line has always

@@ -460,12 +460,21 @@ export function TicketSelector({
     return null
   }
 
-  const sortedTickets = [...tickets].sort((a, b) => {
-    if (a.status === "active" && b.status !== "active") return -1
-    if (a.status !== "active" && b.status === "active") return 1
-    if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order
-    return a.price - b.price
-  })
+  const isWithinSaleWindow = (ticket: TicketType) => {
+    const now = new Date()
+    if (ticket.sale_start_date && now < new Date(ticket.sale_start_date)) return false
+    if (ticket.sale_end_date && now > new Date(ticket.sale_end_date)) return false
+    return true
+  }
+
+  const sortedTickets = tickets
+    .filter(isWithinSaleWindow)
+    .sort((a, b) => {
+      if (a.status === "active" && b.status !== "active") return -1
+      if (a.status !== "active" && b.status === "active") return 1
+      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order
+      return a.price - b.price
+    })
 
   return (
     <div className="space-y-4">

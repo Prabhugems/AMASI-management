@@ -53,6 +53,9 @@ export async function GET(
   // Variables for receipt items
   let items: { name: string; quantity: number; unit_price: number; total_price: number }[] = []
   let linkedRegistration: any = null
+  // Sum of GST embedded in GST-inclusive ticket prices, back-calculated for
+  // display only — never affects what was actually charged.
+  let inclusiveTaxTotal = 0
 
   if (isAddonPurchase) {
     // For addon purchases, get the linked registration and show addon details
@@ -119,23 +122,31 @@ export async function GET(
         quantity,
         unit_price,
         total_amount,
-        ticket_types (name, price)
+        ticket_types (name, price, gst_inclusive_rate)
       `)
       .eq("payment_id", id)
 
     if (registrations && registrations.length > 0) {
       linkedRegistration = registrations[0]
 
-      // Add ticket as item
+      // Add ticket as item. GST-inclusive tickets (tax_percentage=0 so
+      // checkout doesn't add tax on top) carry a display-only
+      // gst_inclusive_rate for back-calculating the base/GST breakdown from
+      // the inclusive total, purely for this invoice.
       for (const reg of registrations) {
         const ticketName = reg.ticket_types?.name || "Registration"
         const qty = reg.quantity || 1
         const unitPrice = reg.unit_price || reg.ticket_types?.price || 0
+        const totalPrice = reg.total_amount || (unitPrice * qty)
+        const inclusiveRate = (reg.ticket_types as any)?.gst_inclusive_rate
+        if (inclusiveRate) {
+          inclusiveTaxTotal += totalPrice - totalPrice / (1 + inclusiveRate / 100)
+        }
         items.push({
           name: ticketName,
           quantity: qty,
           unit_price: unitPrice,
-          total_price: reg.total_amount || (unitPrice * qty),
+          total_price: totalPrice,
         })
       }
 
@@ -436,16 +447,16 @@ export async function GET(
 
   y -= 20
 
-  // Subtotal
+  // Subtotal (excludes any GST already embedded in GST-inclusive ticket prices)
   page.drawText("Subtotal", { x: 400, y, size: 10, font: helvetica, color: grayColor })
-  page.drawText(`Rs.${subtotal.toLocaleString("en-IN")}`, { x: 480, y, size: 10, font: helvetica, color: grayColor })
+  page.drawText(`Rs.${(subtotal - inclusiveTaxTotal).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`, { x: 480, y, size: 10, font: helvetica, color: grayColor })
   y -= 15
 
   // Tax
-  const taxAmount = payment.tax_amount || 0
+  const taxAmount = payment.tax_amount || inclusiveTaxTotal
   if (taxAmount > 0) {
     page.drawText("Tax (GST)", { x: 400, y, size: 10, font: helvetica, color: grayColor })
-    page.drawText(`Rs.${taxAmount.toLocaleString("en-IN")}`, { x: 480, y, size: 10, font: helvetica, color: grayColor })
+    page.drawText(`Rs.${taxAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`, { x: 480, y, size: 10, font: helvetica, color: grayColor })
     y -= 15
   }
 

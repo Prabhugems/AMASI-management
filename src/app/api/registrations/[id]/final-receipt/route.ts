@@ -38,7 +38,7 @@ export async function GET(
       created_at,
       event_id,
       ticket_type_id,
-      ticket_types (name, price),
+      ticket_types (name, price, gst_inclusive_rate),
       events (name, short_name, start_date, end_date, venue_name, city)
     `)
     .eq("id", id)
@@ -99,9 +99,17 @@ export async function GET(
 
   // Calculate totals
   const ticketPrice = registration.unit_price || registration.ticket_types?.price || 0
-  const ticketTax = registration.tax_amount || 0
   const ticketDiscount = registration.discount_amount || 0
-  const ticketTotal = registration.total_amount || (ticketPrice + ticketTax - ticketDiscount)
+  const storedTicketTax = registration.tax_amount || 0
+  const ticketTotal = registration.total_amount || (ticketPrice + storedTicketTax - ticketDiscount)
+
+  // GST-inclusive tickets (tax_percentage=0 so checkout doesn't add tax on
+  // top) carry a display-only gst_inclusive_rate for back-calculating the
+  // base/GST breakdown from the inclusive total, purely for the invoice.
+  const ticketInclusiveRate = (registration.ticket_types as any)?.gst_inclusive_rate
+  const ticketTax = ticketInclusiveRate
+    ? ticketTotal - ticketTotal / (1 + ticketInclusiveRate / 100)
+    : storedTicketTax
 
   let addonsSubtotal = 0
   let addonsTax = 0
@@ -341,15 +349,16 @@ export async function GET(
 
   y -= 20
 
-  // Subtotals
+  // Subtotals (ticket base excludes any GST already embedded in ticketPrice)
+  const ticketBase = ticketPrice - (ticketInclusiveRate ? ticketTax : 0)
   page.drawText("Subtotal", { x: 400, y, size: 10, font: helvetica, color: grayColor })
-  page.drawText(`Rs.${(ticketPrice + addonsSubtotal).toLocaleString("en-IN")}`, { x: 480, y, size: 10, font: helvetica, color: grayColor })
+  page.drawText(`Rs.${(ticketBase + addonsSubtotal).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`, { x: 480, y, size: 10, font: helvetica, color: grayColor })
   y -= 15
 
   const totalTax = ticketTax + addonsTax
   if (totalTax > 0) {
     page.drawText("Tax (GST)", { x: 400, y, size: 10, font: helvetica, color: grayColor })
-    page.drawText(`Rs.${totalTax.toLocaleString("en-IN")}`, { x: 480, y, size: 10, font: helvetica, color: grayColor })
+    page.drawText(`Rs.${totalTax.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`, { x: 480, y, size: 10, font: helvetica, color: grayColor })
     y -= 15
   }
 

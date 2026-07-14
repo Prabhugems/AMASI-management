@@ -14163,6 +14163,7 @@ export type Database = {
           event_id: string
           exclusivity_group: string | null
           form_id: string | null
+          gst_inclusive_rate: number | null
           id: string
           is_hidden: boolean
           max_per_order: number
@@ -14186,6 +14187,7 @@ export type Database = {
           event_id: string
           exclusivity_group?: string | null
           form_id?: string | null
+          gst_inclusive_rate?: number | null
           id?: string
           is_hidden?: boolean
           max_per_order?: number
@@ -14209,6 +14211,7 @@ export type Database = {
           event_id?: string
           exclusivity_group?: string | null
           form_id?: string | null
+          gst_inclusive_rate?: number | null
           id?: string
           is_hidden?: boolean
           max_per_order?: number

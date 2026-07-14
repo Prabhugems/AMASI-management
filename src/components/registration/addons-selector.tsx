@@ -45,6 +45,7 @@ interface AddonsSelectorProps {
   onSelectionChange: (selection: Map<string, SelectedAddon>) => void
   selectedTicketIds?: string[] // All selected ticket IDs for filtering
   taxPercentage?: number // GST percentage to display
+  maxCourseAddons?: number | null // Cap on distinct is_course addons selected (null = unlimited)
 }
 
 export function AddonsSelector({
@@ -53,6 +54,7 @@ export function AddonsSelector({
   onSelectionChange,
   selectedTicketIds = [],
   taxPercentage = 18,
+  maxCourseAddons = null,
 }: AddonsSelectorProps) {
   // Filter available addons based on ticket linking
   const availableAddons = useMemo(() => {
@@ -72,6 +74,23 @@ export function AddonsSelector({
     })
   }, [addons, selectedTicketIds])
 
+  // Count of distinct course/workshop addons currently selected (qty > 0),
+  // regardless of variant — each addon counts once even with multiple variants selected.
+  const selectedCourseAddonCount = useMemo(() => {
+    const courseAddonIds = new Set(addons.filter(a => a.is_course).map(a => a.id))
+    const selectedIds = new Set<string>()
+    for (const selected of selectedAddons.values()) {
+      if (courseAddonIds.has(selected.addonId)) selectedIds.add(selected.addonId)
+    }
+    return selectedIds.size
+  }, [addons, selectedAddons])
+
+  const isCourseAddonCapped = (addon: Addon, key: string) => {
+    if (!addon.is_course || maxCourseAddons == null) return false
+    const alreadySelected = selectedAddons.has(key)
+    return !alreadySelected && selectedCourseAddonCount >= maxCourseAddons
+  }
+
   const handleQuantityChange = (addon: Addon, delta: number, variantId?: string) => {
     const key = variantId ? `${addon.id}-${variantId}` : addon.id
     const newSelection = new Map(selectedAddons)
@@ -83,6 +102,8 @@ export function AddonsSelector({
 
     if (newQty === 0) {
       newSelection.delete(key)
+    } else if (delta > 0 && currentQty === 0 && isCourseAddonCapped(addon, key)) {
+      // Selecting a new distinct course/workshop addon would exceed the cap
     } else if (newQty <= maxQty) {
       const variant = addon.variants?.find(v => v.id === variantId)
       const unitPrice = variant ? variant.price : addon.price
@@ -213,10 +234,11 @@ export function AddonsSelector({
                         <button
                           type="button"
                           onClick={() => handleQuantityChange(addon, 1)}
-                          disabled={getSelectedQuantity(addon.id) >= (addon.max_quantity || 10)}
+                          disabled={getSelectedQuantity(addon.id) >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, addon.id)}
+                          title={isCourseAddonCapped(addon, addon.id) ? `You can select up to ${maxCourseAddons} workshops` : undefined}
                           className={cn(
                             "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                            getSelectedQuantity(addon.id) >= (addon.max_quantity || 10)
+                            (getSelectedQuantity(addon.id) >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, addon.id))
                               ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                               : "bg-emerald-600 text-white hover:bg-emerald-700"
                           )}
@@ -227,6 +249,12 @@ export function AddonsSelector({
                     </div>
                   )}
                 </div>
+
+                {addon.is_course && maxCourseAddons != null && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {selectedCourseAddonCount}/{maxCourseAddons} workshops selected
+                  </p>
+                )}
 
                 {/* Variants */}
                 {addon.has_variants && addon.variants && addon.variants.length > 0 && (
@@ -284,10 +312,11 @@ export function AddonsSelector({
                                 <button
                                   type="button"
                                   onClick={() => handleQuantityChange(addon, 1, variant.id)}
-                                  disabled={selected >= (addon.max_quantity || 10)}
+                                  disabled={selected >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, `${addon.id}-${variant.id}`)}
+                                  title={isCourseAddonCapped(addon, `${addon.id}-${variant.id}`) ? `You can select up to ${maxCourseAddons} workshops` : undefined}
                                   className={cn(
                                     "w-6 h-6 rounded flex items-center justify-center text-xs",
-                                    selected >= (addon.max_quantity || 10)
+                                    (selected >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, `${addon.id}-${variant.id}`))
                                       ? "bg-gray-100 text-gray-400"
                                       : "bg-emerald-600 text-white hover:bg-emerald-700"
                                   )}

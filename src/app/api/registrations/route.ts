@@ -256,6 +256,14 @@ export async function POST(request: NextRequest) {
           if (discountData.max_discount_amount && discount_amount > discountData.max_discount_amount) {
             discount_amount = discountData.max_discount_amount
           }
+
+          // Increment current_uses to enforce max_uses (mirrors razorpay create-order route)
+          if (discount_amount > 0) {
+            await (supabase as any)
+              .from("discount_codes")
+              .update({ current_uses: (discountData.current_uses || 0) + 1 })
+              .eq("id", discountData.id)
+          }
         }
       }
     }
