@@ -94,8 +94,12 @@ export default function StaffCheckinPage() {
   // Q-telemetry — the burst-scan investigation harness, kept in behind a
   // debug flag (docs/telemetry-burst-scan-2026-07.md) so the exact 20-card
   // burst test can be re-run against this build without redeploying
-  // instrumented code. ?debug=1 on the access link.
-  const debugMode = searchParams.get("debug") === "1"
+  // instrumented code. This route is unauthenticated (access is via an
+  // unguessable token, not a login) and the link circulates among
+  // volunteers, so ?debug=1 alone would let anyone who's ever held a scan
+  // link turn on verbose logging. NODE_ENV also has to be non-production —
+  // there is no way to arm this in a live deployment.
+  const debugMode = process.env.NODE_ENV !== "production" && searchParams.get("debug") === "1"
 
   const [loading, setLoading] = useState(true)
   const [checkinList, setCheckinList] = useState<CheckinList | null>(null)
@@ -384,8 +388,13 @@ export default function StaffCheckinPage() {
   // Anything else is accepted instantly, no throttle. Q6's counter increments
   // the moment a scan is ACCEPTED here, before the server verdict is known —
   // that's what makes a silent drop visible: "scanned 20, feed/list disagree".
-  const processScan = useCallback(async (rawValue: string, source: "camera" | "manual") => {
-    if (!rawValue.trim() || !checkinList) return
+  // Returns the parsed /api/verify response so callers that need the
+  // outcome (the List tab, to update its own row) can react to it — the
+  // camera/manual paths ignore the return value, same as before. Returns
+  // `null` for a suppressed duplicate, a queued-offline scan, or a network
+  // error — none of those carry a server response to hand back.
+  const processScan = useCallback(async (rawValue: string, source: "camera" | "manual" | "list") => {
+    if (!rawValue.trim() || !checkinList) return null
 
     let token = rawValue.trim()
     const urlMatch = token.match(/\/v\/([A-Za-z0-9_-]+)/)
@@ -402,7 +411,7 @@ export default function StaffCheckinPage() {
         verdict: isRecentDup ? "SUPPRESSED_RECENT_MAP" : "ACCEPTED",
       }))
     }
-    if (isRecentDup) return
+    if (isRecentDup) return null
     recentScanMapRef.current.set(token, now)
 
     const feedId = newFeedId()
@@ -423,7 +432,7 @@ export default function StaffCheckinPage() {
       await refreshQueueCount()
       playSound("success")
       updateEntry({ status: "queued_offline", message: "Queued offline — will sync when online" })
-      return
+      return null
     }
 
     try {
@@ -474,6 +483,7 @@ export default function StaffCheckinPage() {
           message: data.error,
         })
       }
+      return data
     } catch (err) {
       // Network failure (fetch throws TypeError for offline / DNS / TLS /
       // aborted-by-network). Queue the scan rather than losing it.
@@ -484,13 +494,14 @@ export default function StaffCheckinPage() {
           setOnline(false)
           playSound("success")
           updateEntry({ status: "queued_offline", message: "Queued offline — will sync when online" })
-          return
+          return null
         } catch (queueErr) {
           console.error("Failed to enqueue offline scan:", queueErr)
         }
       }
       playSound("error")
       updateEntry({ status: "error", message: "Network error. Please try again." })
+      return null
     }
   }, [checkinList, accessToken, identity, refreshQueueCount, debugMode, soundEnabled])
 
@@ -576,46 +587,36 @@ export default function StaffCheckinPage() {
     }
   }, [scanMode, checkinList, listSearch, listStatusFilter, fetchListAttendees])
 
-  // Check in a single attendee from the list view
+  // Check in a single attendee from the list view. Routes through the same
+  // processScan the camera/manual tabs use — one dedup map, one feed, one
+  // session counter, regardless of which tab a volunteer is on. Before this,
+  // list check-ins were invisible to both: the session counter (item 10 —
+  // the counter existed to catch under-reporting, and a check-in path it
+  // didn't see was exactly the kind of gap it was supposed to catch) and the
+  // scan feed. This still does its own thing on top: updates the row in the
+  // roster table, which processScan has no reason to know about.
   const checkInFromList = useCallback(async (attendee: ListAttendee) => {
     if (!checkinList || listCheckinPending) return
     setListCheckinPending(attendee.id)
     try {
-      const performedBy = identity ? `${identity.volunteerName} (${identity.deskLabel})` : "Staff (via access link)"
-      const res = await fetch(`/api/verify/${attendee.registration_number}?event_id=${checkinList.event_id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          checkin_list_id: checkinList.id,
-          access_token: accessToken,
-          action: "check_in",
-          performed_by: performedBy,
-          device_info: { volunteer: identity?.volunteerName, desk: identity?.deskLabel, source: "list" },
-        }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        playSound(data.action === "already_checked_in" && checkinList.list_purpose === "collection" ? "warning" : "success")
-        const wasAlready = data.action === "already_checked_in"
+      const data = await processScan(attendee.registration_number, "list")
+      if (data?.alreadyCheckedIn || data?.success) {
         setListAttendees(prev => prev.map(a =>
           a.id === attendee.id
             ? { ...a, checked_in: true, checked_in_at: data.registration?.checked_in_at || new Date().toISOString() }
             : a
         ))
-        if (!wasAlready) {
-          setStats(prev => ({ ...prev, checkedIn: prev.checkedIn + 1 }))
-        }
-      } else {
-        playSound("error")
+      } else if (data) {
         setListError(data.error || "Check-in failed")
       }
-    } catch {
-      playSound("error")
-      setListError("Network error. Please try again.")
+      // data === null: either a duplicate suppressed within the last 60s
+      // (processScan already ignored it silently, nothing to surface here)
+      // or a network/offline case processScan already handled — the queued
+      // scan's own feed entry covers that; no separate error needed.
     } finally {
       setListCheckinPending(null)
     }
-  }, [checkinList, accessToken, listCheckinPending, identity])
+  }, [checkinList, listCheckinPending, processScan])
 
   // Camera scanner setup. Q1 — this is called once when entering camera mode
   // and is NEVER stopped in response to a scan result. There is no more

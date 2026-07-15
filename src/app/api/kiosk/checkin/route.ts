@@ -32,12 +32,23 @@ export async function POST(request: NextRequest) {
     // Validate the list and confirm it belongs to the event in the URL.
     const { data: list } = await (supabase as any)
       .from("checkin_lists")
-      .select("id, event_id")
+      .select("id, event_id, list_purpose")
       .eq("id", checkinListId)
       .maybeSingle()
 
     if (!list || list.event_id !== eventId) {
       return NextResponse.json({ success: false, message: "Check-in list not found." }, { status: 404 })
+    }
+
+    // The kiosk is unattended — nobody is standing there to stop a delegate
+    // self-serving a second kit/paper/badge. Collection lists (repeat scan
+    // means "do not issue again") are staff-scanner-only; the kiosk is
+    // entry-only by design, permanently.
+    if (list.list_purpose === "collection") {
+      return NextResponse.json(
+        { success: false, message: "Self check-in isn't available for this list. Please see a staff member." },
+        { status: 403 }
+      )
     }
 
     // Find the registration within this event by reg number / email / name / phone.
