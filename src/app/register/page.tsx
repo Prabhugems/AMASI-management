@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import { format, isAfter, isBefore, startOfMonth, endOfMonth, addMonths } from "date-fns"
 import {
@@ -366,63 +365,33 @@ export default function RegisterPage() {
 
   const activeFilterCount = [eventType, dateFilter, priceFilter].filter((f) => f !== "all").length
 
-  const supabase = createClient()
-
   // Fetch events with registration open (scoped to current tenant)
   const tenant = getTenant()
   const { data: events, isLoading } = useQuery({
     queryKey: ["public-events", tenant, search],
     queryFn: async () => {
-      let query = supabase
-        .from("events")
-        .select(`
-          id, name, short_name, slug, tagline, description, event_type,
-          start_date, end_date, city, state, venue_name, banner_url, logo_url, status
-        `)
-        .eq("tenant", tenant)
-        // 'planning' is not in the event_status enum (real values: draft, setup,
-        // registration_open, active, ongoing, completed, archived). Including
-        // it caused Supabase to reject every public events query with 400.
-        .in("status", ["registration_open", "active", "ongoing"])
-        .order("start_date", { ascending: true })
-
-      if (search) {
-        query = query.or(
-          `name.ilike.%${search}%,city.ilike.%${search}%,short_name.ilike.%${search}%`
-        )
-      }
-
-      const { data: eventsData, error: eventsError } = await query
-
-      if (eventsError) {
-        console.error("Failed to fetch events:", eventsError.message || eventsError)
+      // Goes through the admin-client-backed API route rather than querying
+      // events/ticket_types directly from the browser: there is no
+      // anonymous-read RLS policy on ticket_types, so a direct client-side
+      // query silently returns zero rows (not an error) — every event
+      // looked "Free" to a real anonymous visitor despite real prices
+      // existing. See src/app/api/events/public/route.ts.
+      const res = await fetch("/api/events/public")
+      if (!res.ok) {
+        console.error("Failed to fetch events:", res.status)
         return []
       }
+      const eventsData = (await res.json()) as PublicEvent[]
 
-      if (!eventsData || eventsData.length === 0) return []
+      const filtered = search
+        ? eventsData.filter((e) =>
+            [e.name, e.city, e.short_name].some((f) =>
+              f?.toLowerCase().includes(search.toLowerCase())
+            )
+          )
+        : eventsData
 
-      type EventRow = {
-        id: string; name: string; short_name: string; slug: string
-        tagline: string | null; description: string | null; event_type: string
-        start_date: string; end_date: string; city: string; state: string | null
-        venue_name: string | null; banner_url: string | null; logo_url: string | null
-        status: string
-      }
-      const typedEvents = eventsData as EventRow[]
-
-      const eventIds = typedEvents.map((e) => e.id)
-      const { data: ticketsData } = await (supabase as any)
-        .from("ticket_types")
-        .select("id, name, price, status, event_id, is_hidden, currency")
-        .in("event_id", eventIds)
-        .eq("status", "active")
-
-      const eventsWithTickets = typedEvents.map((event) => ({
-        ...event,
-        ticket_types: ticketsData?.filter((t: any) => t.event_id === event.id) || [],
-      }))
-
-      return eventsWithTickets as PublicEvent[]
+      return filtered
     },
   })
 
