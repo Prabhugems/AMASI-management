@@ -20,13 +20,18 @@ export default function RefundPolicyPage() {
         <tbody>
           <tr>
             <td>On or before 31 August 2026</td>
-            <td>Full refund</td>
-            <td>Full refund, unless the seat has already been transferred from the waitlist</td>
+            <td>Refund after 10% administrative deduction</td>
+            <td>Refund after 10% administrative deduction, unless the seat has already been transferred from the waitlist</td>
           </tr>
           <tr>
-            <td>On or after 1 September 2026</td>
+            <td>1 September &ndash; 31 October 2026</td>
             <td>50% refund</td>
             <td>50% refund, subject to workshop seat status</td>
+          </tr>
+          <tr>
+            <td>On or after 1 November 2026</td>
+            <td>No refund</td>
+            <td>No refund</td>
           </tr>
           <tr>
             <td>No-show / partial attendance</td>
