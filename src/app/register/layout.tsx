@@ -3,6 +3,7 @@
 import { COMPANY_CONFIG } from "@/lib/config"
 import { useEffect } from "react"
 import Link from "next/link"
+import { useTheme } from "next-themes"
 import { getTenant } from "@/lib/tenant"
 import { REG_THEME } from "@/lib/register-theme"
 
@@ -13,11 +14,17 @@ export default function RegisterLayout({
 }) {
   const isEssurg = getTenant() === "essurg"
   const policyLink = (path: string) => (isEssurg ? path : "#")
-  // Force light mode for public registration pages
+  // Force light mode for public registration pages. The app defaults to
+  // dark (src/app/layout.tsx, by design for the admin dashboard), and
+  // every register-flow component reads the theme via its own useTheme()
+  // call — mutating the DOM class directly (the previous approach) never
+  // touches next-themes' React state, so resolvedTheme stayed "dark" and
+  // components like TicketSelector kept rendering the dark palette
+  // regardless. setTheme() is the only thing that actually propagates.
+  const { setTheme } = useTheme()
   useEffect(() => {
-    document.documentElement.classList.remove("dark")
-    document.documentElement.style.colorScheme = "light"
-  }, [])
+    setTheme("light")
+  }, [setTheme])
 
   return (
     <>
