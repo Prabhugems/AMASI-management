@@ -248,26 +248,24 @@ function EventCard({ event, index }: { event: PublicEvent; index: number }) {
             </div>
           </div>
 
-          {/* CTA strip */}
-          <div
-            className="flex items-center justify-between pt-4"
-            style={{ borderTop: '1px solid rgba(28, 25, 23, 0.06)' }}
-          >
-            <span
-              className="text-[13px] font-semibold tracking-wide transition-colors duration-300"
-              style={{ color: isHovered ? REG_THEME.primary : '#57534E' }}
-            >
-              Register Now
-            </span>
+          {/* CTA button */}
+          <div className="pt-4" style={{ borderTop: '1px solid rgba(28, 25, 23, 0.06)' }}>
             <div
-              className="p-2 rounded-full transition-all duration-300"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold tracking-wide transition-all duration-300"
               style={{
-                background: isHovered ? REG_THEME.primary : 'rgba(28, 25, 23, 0.04)',
-                color: isHovered ? '#FFFFFF' : '#78716C',
-                transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
+                background: isHovered
+                  ? `linear-gradient(145deg, ${REG_THEME.primaryDark} 0%, ${REG_THEME.primary} 100%)`
+                  : REG_THEME.primary,
+                color: '#FFFFFF',
+                boxShadow: isHovered ? `0 6px 16px rgba(${REG_THEME.primaryRgb}, 0.3)` : `0 2px 8px rgba(${REG_THEME.primaryRgb}, 0.18)`,
+                transform: isHovered ? 'translateY(-1px)' : 'translateY(0)',
               }}
             >
-              <ArrowRight className="w-4 h-4" />
+              Register Now
+              <ArrowRight
+                className="w-4 h-4 transition-transform duration-300"
+                style={{ transform: isHovered ? 'translateX(2px)' : 'translateX(0)' }}
+              />
             </div>
           </div>
         </div>
