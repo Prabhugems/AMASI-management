@@ -41,7 +41,18 @@ interface PublicEvent {
     name: string
     price: number
     status: string
+    is_hidden?: boolean
+    currency?: string | null
   }[]
+}
+
+// Tickets excluded from these public-facing price displays: hidden tickets
+// aren't purchasable at all (e.g. international categories held back until
+// a payment gateway that can charge their currency is live — see
+// is_hidden on ticket_types), and non-INR tickets would otherwise get
+// mixed into an INR range/sort as if the numbers were rupees.
+function isPubliclyPriceable(t: { is_hidden?: boolean; currency?: string | null }): boolean {
+  return !t.is_hidden && (!t.currency || t.currency === "INR")
 }
 
 const EVENT_TYPES = [
@@ -87,7 +98,7 @@ function EventCard({ event, index }: { event: PublicEvent; index: number }) {
   }, [index])
 
   const prices =
-    event.ticket_types?.filter((t) => t.status === "active").map((t) => t.price) || []
+    event.ticket_types?.filter((t) => t.status === "active" && isPubliclyPriceable(t)).map((t) => t.price) || []
   const minPrice = prices.length > 0 ? Math.min(...prices) : null
   const maxPrice = prices.length > 0 ? Math.max(...prices) : null
   const isFree = minPrice === 0 && maxPrice === 0
@@ -98,7 +109,7 @@ function EventCard({ event, index }: { event: PublicEvent; index: number }) {
       ? minPrice === maxPrice
         ? `₹${minPrice.toLocaleString("en-IN")}`
         : `₹${minPrice.toLocaleString("en-IN")} – ₹${maxPrice?.toLocaleString("en-IN")}`
-      : "Free"
+      : "Registration opening soon"
 
   const eventTypeLabel = event.event_type.charAt(0).toUpperCase() + event.event_type.slice(1)
 
@@ -402,7 +413,7 @@ export default function RegisterPage() {
       const eventIds = typedEvents.map((e) => e.id)
       const { data: ticketsData } = await (supabase as any)
         .from("ticket_types")
-        .select("id, name, price, status, event_id")
+        .select("id, name, price, status, event_id, is_hidden, currency")
         .in("event_id", eventIds)
         .eq("status", "active")
 
@@ -445,7 +456,7 @@ export default function RegisterPage() {
 
     if (priceFilter !== "all") {
       result = result.filter((e) => {
-        const prices = e.ticket_types?.filter((t) => t.status === "active").map((t) => t.price) || []
+        const prices = e.ticket_types?.filter((t) => t.status === "active" && isPubliclyPriceable(t)).map((t) => t.price) || []
         const min = prices.length > 0 ? Math.min(...prices) : 0
         switch (priceFilter) {
           case "free": return min === 0
@@ -458,8 +469,8 @@ export default function RegisterPage() {
     }
 
     result.sort((a, b) => {
-      const aMin = Math.min(...(a.ticket_types?.filter((t) => t.status === "active").map((t) => t.price) || [0]))
-      const bMin = Math.min(...(b.ticket_types?.filter((t) => t.status === "active").map((t) => t.price) || [0]))
+      const aMin = Math.min(...(a.ticket_types?.filter((t) => t.status === "active" && isPubliclyPriceable(t)).map((t) => t.price) || [0]))
+      const bMin = Math.min(...(b.ticket_types?.filter((t) => t.status === "active" && isPubliclyPriceable(t)).map((t) => t.price) || [0]))
       switch (sortBy) {
         case "date_asc": return new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
         case "date_desc": return new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
