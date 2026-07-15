@@ -139,7 +139,7 @@ export default function ResultsPage() {
       const res = await fetch("/api/examination/send-pass-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event_id: eventId, type, venue: "Vapi" }),
+        body: JSON.stringify({ event_id: eventId, type }),
       })
       const result = await res.json()
       if (!res.ok) throw new Error(result.error)

@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email not configured" }, { status: 500 })
     }
 
-    const { event_id, registration_ids, type = "pass", venue = "Vapi" } = await request.json()
+    const { event_id, registration_ids, type = "pass" } = await request.json()
     if (!event_id) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
@@ -158,6 +158,13 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
+
+    const { data: eventRow } = await db
+      .from("events")
+      .select("city")
+      .eq("id", event_id)
+      .maybeSingle()
+    const venue = eventRow?.city || "the examination venue"
 
     if (type === "withheld") {
       let query = db
