@@ -32,6 +32,7 @@ import { RegistrationTypeSelector } from "@/components/registration/registration
 import { AddonsSelector, Addon, SelectedAddon } from "@/components/registration/addons-selector"
 import { TicketType } from "@/lib/types"
 import { usePageTracking } from "@/hooks/usePageTracking"
+import { REG_THEME } from "@/lib/register-theme"
 
 interface EventSettings {
   allow_buyers: boolean
@@ -46,17 +47,18 @@ const C = {
   bg: '#FAFAF7',
   card: '#FFFFFF',
   border: 'rgba(28, 25, 23, 0.06)',
-  borderHover: 'rgba(22, 101, 52, 0.2)',
+  borderHover: `rgba(${REG_THEME.primaryRgb}, 0.2)`,
   text: '#1C1917',
   textSecondary: '#57534E',
   textMuted: '#A8A29E',
   textFaint: '#C4C0BB',
-  green: '#166534',
-  greenLight: '#14532D',
-  greenBg: 'rgba(22, 101, 52, 0.05)',
-  greenBgStrong: 'rgba(22, 101, 52, 0.08)',
-  gold: '#D97706',
-  goldBg: 'rgba(217, 119, 6, 0.06)',
+  green: REG_THEME.primary,
+  greenLight: REG_THEME.primaryDark,
+  greenMid: REG_THEME.primaryMid,
+  greenBg: `rgba(${REG_THEME.primaryRgb}, 0.05)`,
+  greenBgStrong: `rgba(${REG_THEME.primaryRgb}, 0.08)`,
+  gold: REG_THEME.accent,
+  goldBg: `rgba(${REG_THEME.accentRgb}, 0.06)`,
 } as const
 
 /* ─── Progress Step Indicator ─── */
@@ -87,9 +89,9 @@ function ProgressIndicator({ currentStep }: { currentStep: number }) {
                         : 'rgba(28, 25, 23, 0.06)',
                     color: isCompleted || isActive ? '#FFFFFF' : C.textMuted,
                     boxShadow: isActive
-                      ? '0 4px 14px rgba(22, 101, 52, 0.25)'
+                      ? `0 4px 14px rgba(${REG_THEME.primaryRgb}, 0.25)`
                       : isCompleted
-                        ? '0 2px 8px rgba(22, 101, 52, 0.15)'
+                        ? `0 2px 8px rgba(${REG_THEME.primaryRgb}, 0.15)`
                         : 'none',
                     transform: isActive ? 'scale(1.08)' : 'scale(1)',
                   }}
@@ -199,7 +201,7 @@ function EmailCheckWidget({ eventId }: { eventId: string }) {
           }}
           onFocus={(e) => {
             e.currentTarget.style.borderColor = C.green
-            e.currentTarget.style.boxShadow = `0 0 0 3px rgba(22, 101, 52, 0.08)`
+            e.currentTarget.style.boxShadow = `0 0 0 3px rgba(${REG_THEME.primaryRgb}, 0.08)`
           }}
           onBlur={(e) => {
             e.currentTarget.style.borderColor = C.greenBgStrong
@@ -231,7 +233,7 @@ function EmailCheckWidget({ eventId }: { eventId: string }) {
           {result.hasRegistrations ? (
             <div
               className="p-3 rounded-lg"
-              style={{ background: C.goldBg, border: '1px solid rgba(217, 119, 6, 0.15)' }}
+              style={{ background: C.goldBg, border: `1px solid rgba(${REG_THEME.accentRgb}, 0.15)` }}
             >
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: C.gold }} />
@@ -679,7 +681,7 @@ function EventDetailsPage() {
             ) : (
               <div
                 className="w-full h-64 md:h-80 flex items-center justify-center hero-parallax"
-                style={{ background: 'linear-gradient(145deg, #14532D 0%, #166534 40%, #22C55E 100%)' }}
+                style={{ background: `linear-gradient(145deg, ${C.greenLight} 0%, ${C.green} 40%, ${REG_THEME.primaryLight} 100%)` }}
               >
                 <span className="reg-serif text-8xl font-bold" style={{ color: 'rgba(255,255,255,0.12)' }}>
                   {event.short_name?.[0] || event.name[0]}
@@ -1103,21 +1105,21 @@ function EventDetailsPage() {
                 style={{
                   background: totals.count === 0
                     ? 'rgba(28,25,23,0.08)'
-                    : `linear-gradient(145deg, ${C.greenLight} 0%, ${C.green} 50%, #15803D 100%)`,
+                    : `linear-gradient(145deg, ${C.greenLight} 0%, ${C.green} 50%, ${C.greenMid} 100%)`,
                   color: totals.count === 0 ? C.textMuted : '#FFFFFF',
                   cursor: totals.count === 0 ? 'not-allowed' : 'pointer',
-                  boxShadow: totals.count === 0 ? 'none' : '0 4px 14px rgba(22, 101, 52, 0.25)',
+                  boxShadow: totals.count === 0 ? 'none' : `0 4px 14px rgba(${REG_THEME.primaryRgb}, 0.25)`,
                   transform: 'translateY(0)',
                 }}
                 onMouseEnter={(e) => {
                   if (totals.count > 0) {
                     e.currentTarget.style.transform = 'translateY(-2px)'
-                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(22, 101, 52, 0.3)'
+                    e.currentTarget.style.boxShadow = `0 8px 20px rgba(${REG_THEME.primaryRgb}, 0.3)`
                   }
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = totals.count === 0 ? 'none' : '0 4px 14px rgba(22, 101, 52, 0.25)'
+                  e.currentTarget.style.boxShadow = totals.count === 0 ? 'none' : `0 4px 14px rgba(${REG_THEME.primaryRgb}, 0.25)`
                 }}
               >
                 Proceed to Checkout
@@ -1157,7 +1159,7 @@ function EventDetailsPage() {
               className="flex-1 max-w-[200px] py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 active:scale-[0.95] transition-all min-h-[48px]"
               style={{
                 background: `linear-gradient(145deg, ${C.greenLight} 0%, ${C.green} 100%)`,
-                boxShadow: '0 4px 14px rgba(22, 101, 52, 0.25)',
+                boxShadow: `0 4px 14px rgba(${REG_THEME.primaryRgb}, 0.25)`,
               }}
             >
               Checkout

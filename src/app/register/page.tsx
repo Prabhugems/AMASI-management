@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { COMPANY_CONFIG } from "@/lib/config"
 import { getTenant } from "@/lib/tenant"
+import { REG_THEME } from "@/lib/register-theme"
 
 interface PublicEvent {
   id: string
@@ -111,9 +112,9 @@ function EventCard({ event, index }: { event: PublicEvent; index: number }) {
         `}
         style={{
           background: '#FFFFFF',
-          border: `1px solid ${isHovered ? 'rgba(22, 101, 52, 0.2)' : 'rgba(28, 25, 23, 0.06)'}`,
+          border: `1px solid ${isHovered ? `rgba(${REG_THEME.primaryRgb}, 0.2)` : 'rgba(28, 25, 23, 0.06)'}`,
           boxShadow: isHovered
-            ? '0 20px 40px -12px rgba(28, 25, 23, 0.12), 0 0 0 1px rgba(22, 101, 52, 0.08)'
+            ? `0 20px 40px -12px rgba(28, 25, 23, 0.12), 0 0 0 1px rgba(${REG_THEME.primaryRgb}, 0.08)`
             : '0 1px 3px rgba(28, 25, 23, 0.04)',
           transitionDelay: `${index * 80}ms`,
           transform: isHovered ? 'translateY(-4px)' : isVisible ? 'translateY(0)' : 'translateY(24px)',
@@ -134,7 +135,7 @@ function EventCard({ event, index }: { event: PublicEvent; index: number }) {
             <div
               className="w-full h-full flex items-center justify-center"
               style={{
-                background: 'linear-gradient(145deg, #14532D 0%, #166534 40%, #22C55E 100%)',
+                background: `linear-gradient(145deg, ${REG_THEME.primaryDark} 0%, ${REG_THEME.primary} 40%, ${REG_THEME.primaryLight} 100%)`,
               }}
             >
               <span
@@ -202,7 +203,7 @@ function EventCard({ event, index }: { event: PublicEvent; index: number }) {
         <div className="p-4 sm:p-5 pb-5 sm:pb-6">
           <h3
             className="reg-serif text-[17px] font-bold leading-snug mb-2 line-clamp-2 transition-colors duration-300"
-            style={{ color: isHovered ? '#166534' : '#1C1917' }}
+            style={{ color: isHovered ? REG_THEME.primary : '#1C1917' }}
           >
             {event.name}
           </h3>
@@ -244,14 +245,14 @@ function EventCard({ event, index }: { event: PublicEvent; index: number }) {
           >
             <span
               className="text-[13px] font-semibold tracking-wide transition-colors duration-300"
-              style={{ color: isHovered ? '#166534' : '#57534E' }}
+              style={{ color: isHovered ? REG_THEME.primary : '#57534E' }}
             >
               Register Now
             </span>
             <div
               className="p-2 rounded-full transition-all duration-300"
               style={{
-                background: isHovered ? '#166534' : 'rgba(28, 25, 23, 0.04)',
+                background: isHovered ? REG_THEME.primary : 'rgba(28, 25, 23, 0.04)',
                 color: isHovered ? '#FFFFFF' : '#78716C',
                 transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
               }}
@@ -286,8 +287,8 @@ function FilterDropdown({
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200"
         style={{
-          background: value !== "all" ? 'rgba(22, 101, 52, 0.06)' : 'rgba(28, 25, 23, 0.03)',
-          border: `1px solid ${value !== "all" ? 'rgba(22, 101, 52, 0.15)' : 'rgba(28, 25, 23, 0.08)'}`,
+          background: value !== "all" ? `rgba(${REG_THEME.primaryRgb}, 0.06)` : 'rgba(28, 25, 23, 0.03)',
+          border: `1px solid ${value !== "all" ? `rgba(${REG_THEME.primaryRgb}, 0.15)` : 'rgba(28, 25, 23, 0.08)'}`,
           color: '#1C1917',
         }}
       >
@@ -322,15 +323,15 @@ function FilterDropdown({
                 }}
                 className="w-full px-4 py-2.5 text-left text-[13px] transition-colors duration-150"
                 style={{
-                  color: value === option.value ? '#166534' : '#1C1917',
+                  color: value === option.value ? REG_THEME.primary : '#1C1917',
                   fontWeight: value === option.value ? 600 : 400,
-                  background: value === option.value ? 'rgba(22, 101, 52, 0.04)' : 'transparent',
+                  background: value === option.value ? `rgba(${REG_THEME.primaryRgb}, 0.04)` : 'transparent',
                 }}
                 onMouseEnter={(e) => {
                   if (value !== option.value) e.currentTarget.style.background = 'rgba(28,25,23,0.03)'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = value === option.value ? 'rgba(22, 101, 52, 0.04)' : 'transparent'
+                  e.currentTarget.style.background = value === option.value ? `rgba(${REG_THEME.primaryRgb}, 0.04)` : 'transparent'
                 }}
               >
                 {option.label}
@@ -478,14 +479,14 @@ export default function RegisterPage() {
       <div className="text-center mb-16">
         {/* Decorative line */}
         <div className="flex items-center justify-center gap-3 mb-6">
-          <div className="h-px w-8" style={{ background: '#D97706' }} />
+          <div className="h-px w-8" style={{ background: REG_THEME.accent }} />
           <span
             className="text-[11px] font-semibold tracking-[0.2em] uppercase"
-            style={{ color: '#D97706' }}
+            style={{ color: REG_THEME.accent }}
           >
             {COMPANY_CONFIG.name} Events
           </span>
-          <div className="h-px w-8" style={{ background: '#D97706' }} />
+          <div className="h-px w-8" style={{ background: REG_THEME.accent }} />
         </div>
 
         <h1
@@ -533,9 +534,9 @@ export default function RegisterPage() {
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200"
             style={{
-              background: showFilters || activeFilterCount > 0 ? '#166534' : 'rgba(28, 25, 23, 0.03)',
+              background: showFilters || activeFilterCount > 0 ? REG_THEME.primary : 'rgba(28, 25, 23, 0.03)',
               color: showFilters || activeFilterCount > 0 ? '#FFFFFF' : '#1C1917',
-              border: `1px solid ${showFilters || activeFilterCount > 0 ? '#166534' : 'rgba(28, 25, 23, 0.08)'}`,
+              border: `1px solid ${showFilters || activeFilterCount > 0 ? REG_THEME.primary : 'rgba(28, 25, 23, 0.08)'}`,
             }}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -556,7 +557,7 @@ export default function RegisterPage() {
               {eventType !== "all" && (
                 <span
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium"
-                  style={{ background: 'rgba(22, 101, 52, 0.06)', color: '#166534' }}
+                  style={{ background: `rgba(${REG_THEME.primaryRgb}, 0.06)`, color: REG_THEME.primary }}
                 >
                   {EVENT_TYPES.find((t) => t.value === eventType)?.label}
                   <button
@@ -570,7 +571,7 @@ export default function RegisterPage() {
               {dateFilter !== "all" && (
                 <span
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium"
-                  style={{ background: 'rgba(22, 101, 52, 0.06)', color: '#166534' }}
+                  style={{ background: `rgba(${REG_THEME.primaryRgb}, 0.06)`, color: REG_THEME.primary }}
                 >
                   {DATE_FILTERS.find((t) => t.value === dateFilter)?.label}
                   <button
@@ -584,7 +585,7 @@ export default function RegisterPage() {
               {priceFilter !== "all" && (
                 <span
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium"
-                  style={{ background: 'rgba(22, 101, 52, 0.06)', color: '#166534' }}
+                  style={{ background: `rgba(${REG_THEME.primaryRgb}, 0.06)`, color: REG_THEME.primary }}
                 >
                   {PRICE_FILTERS.find((t) => t.value === priceFilter)?.label}
                   <button
@@ -694,7 +695,7 @@ export default function RegisterPage() {
               setSearch("")
             }}
             className="px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-200"
-            style={{ background: '#166534', color: '#FFFFFF' }}
+            style={{ background: REG_THEME.primary, color: '#FFFFFF' }}
           >
             Clear All Filters
           </button>

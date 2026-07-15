@@ -6,6 +6,7 @@ import { Minus, Plus, Clock, Users, Ticket, Check, AlertCircle, Bell, ChevronDow
 import { TicketType } from "@/lib/types"
 import { differenceInDays, differenceInHours, isPast } from "date-fns"
 import { WaitlistForm } from "./waitlist-form"
+import { REG_THEME } from "@/lib/register-theme"
 
 interface TicketSelectorProps {
   tickets: TicketType[]
@@ -52,9 +53,9 @@ function CountdownBadge({ endDate }: { endDate: string; isDark: boolean }) {
     <span
       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
       style={{
-        background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.1) 0%, rgba(245, 158, 11, 0.12) 100%)',
-        color: '#B45309',
-        border: '1px solid rgba(217, 119, 6, 0.15)',
+        background: `linear-gradient(135deg, rgba(${REG_THEME.accentRgb}, 0.1) 0%, rgba(${REG_THEME.accentRgb}, 0.12) 100%)`,
+        color: REG_THEME.accentDark,
+        border: `1px solid rgba(${REG_THEME.accentRgb}, 0.15)`,
       }}
     >
       <Clock className="w-3 h-3" />
@@ -133,10 +134,10 @@ function TicketCard({
       style={{
         background: isDark ? '#1E293B' : '#FFFFFF',
         border: isSelected
-          ? '2px solid #166534'
+          ? `2px solid ${REG_THEME.primary}`
           : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(28,25,23,0.08)'}`,
         boxShadow: isSelected
-          ? '0 8px 24px rgba(22, 101, 52, 0.12), 0 0 0 1px rgba(22, 101, 52, 0.08)'
+          ? `0 8px 24px rgba(${REG_THEME.primaryRgb}, 0.12), 0 0 0 1px rgba(${REG_THEME.primaryRgb}, 0.08)`
           : '0 1px 3px rgba(28, 25, 23, 0.04)',
         transitionDelay: `${index * 80}ms`,
       }}
@@ -146,7 +147,7 @@ function TicketCard({
         <div
           className="flex items-center justify-center gap-2 py-2.5 text-xs font-bold tracking-wider uppercase text-white"
           style={{
-            background: 'linear-gradient(135deg, #D97706 0%, #F59E0B 50%, #D97706 100%)',
+            background: `linear-gradient(135deg, ${REG_THEME.accent} 0%, ${REG_THEME.accentLight} 50%, ${REG_THEME.accent} 100%)`,
             letterSpacing: '0.1em',
           }}
         >
@@ -160,7 +161,7 @@ function TicketCard({
         <div
           className="flex items-center justify-center gap-2 py-2.5 text-xs font-bold tracking-wider uppercase text-white"
           style={{
-            background: 'linear-gradient(135deg, #14532D 0%, #166534 40%, #15803D 100%)',
+            background: `linear-gradient(135deg, ${REG_THEME.primaryDark} 0%, ${REG_THEME.primary} 40%, ${REG_THEME.primaryMid} 100%)`,
             letterSpacing: '0.1em',
           }}
         >
@@ -199,7 +200,7 @@ function TicketCard({
                   <button
                     onClick={() => setShowDescription(!showDescription)}
                     className="text-xs font-semibold mt-1.5 flex items-center gap-0.5 min-h-[44px] sm:min-h-0 py-2 sm:py-0 transition-colors"
-                    style={{ color: '#166534' }}
+                    style={{ color: REG_THEME.primary }}
                   >
                     {showDescription ? "Show less" : "Show more"}
                     <ChevronDown
@@ -229,7 +230,7 @@ function TicketCard({
               {remaining !== null && remaining > 0 && remaining >= 10 && remaining <= 50 && (
                 <span
                   className="inline-flex items-center gap-1.5 text-sm"
-                  style={{ color: isDark ? '#FBBF24' : '#B45309' }}
+                  style={{ color: isDark ? REG_THEME.accentPale : REG_THEME.accentDark }}
                 >
                   <AlertCircle className="w-3.5 h-3.5" />
                   {remaining} seats remaining
@@ -259,7 +260,7 @@ function TicketCard({
               {isExclusivityBlocked && (
                 <span
                   className="inline-flex items-center gap-1.5 text-sm"
-                  style={{ color: '#B45309' }}
+                  style={{ color: REG_THEME.accentDark }}
                 >
                   <AlertCircle className="w-3.5 h-3.5" />
                   Already selected: {disabledByTicket}
@@ -276,7 +277,7 @@ function TicketCard({
                 className="text-xl sm:text-2xl font-black transition-colors duration-200 leading-tight"
                 style={{
                   color: isSelected
-                    ? '#166534'
+                    ? REG_THEME.primary
                     : isDark ? '#F8FAFC' : '#1C1917',
                 }}
               >
@@ -295,9 +296,9 @@ function TicketCard({
                 className="inline-flex items-center gap-0.5 p-1 rounded-xl transition-all duration-200"
                 style={{
                   background: isSelected
-                    ? 'rgba(22, 101, 52, 0.06)'
+                    ? `rgba(${REG_THEME.primaryRgb}, 0.06)`
                     : isDark ? '#1E293B' : 'rgba(28, 25, 23, 0.04)',
-                  border: `1px solid ${isSelected ? 'rgba(22, 101, 52, 0.12)' : 'transparent'}`,
+                  border: `1px solid ${isSelected ? `rgba(${REG_THEME.primaryRgb}, 0.12)` : 'transparent'}`,
                 }}
               >
                 <button
@@ -315,7 +316,7 @@ function TicketCard({
                 <span
                   className="w-10 text-center font-bold text-lg transition-all duration-200"
                   style={{
-                    color: isSelected ? '#166534' : isDark ? '#F8FAFC' : '#1C1917',
+                    color: isSelected ? REG_THEME.primary : isDark ? '#F8FAFC' : '#1C1917',
                     transform: isSelected ? 'scale(1.1)' : 'scale(1)',
                   }}
                 >
@@ -328,8 +329,8 @@ function TicketCard({
                   style={{
                     opacity: quantity >= maxPerOrder ? 0.3 : 1,
                     cursor: quantity >= maxPerOrder ? 'not-allowed' : 'pointer',
-                    color: isDark ? '#F8FAFC' : '#166534',
-                    background: quantity >= maxPerOrder ? 'transparent' : 'rgba(22, 101, 52, 0.06)',
+                    color: isDark ? '#F8FAFC' : REG_THEME.primary,
+                    background: quantity >= maxPerOrder ? 'transparent' : `rgba(${REG_THEME.primaryRgb}, 0.06)`,
                   }}
                 >
                   <Plus className="w-4 h-4" />
@@ -340,9 +341,9 @@ function TicketCard({
                 onClick={() => setShowWaitlist(true)}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold min-h-[44px] transition-all active:scale-[0.97]"
                 style={{
-                  background: 'rgba(217, 119, 6, 0.08)',
-                  color: '#B45309',
-                  border: '1px solid rgba(217, 119, 6, 0.12)',
+                  background: `rgba(${REG_THEME.accentRgb}, 0.08)`,
+                  color: REG_THEME.accentDark,
+                  border: `1px solid rgba(${REG_THEME.accentRgb}, 0.12)`,
                 }}
               >
                 <Bell className="w-4 h-4" />
@@ -366,12 +367,12 @@ function TicketCard({
         {isSelected && (
           <div
             className="mt-5 pt-4 flex items-center justify-between"
-            style={{ borderTop: '1px solid rgba(22, 101, 52, 0.1)' }}
+            style={{ borderTop: `1px solid rgba(${REG_THEME.primaryRgb}, 0.1)` }}
           >
-            <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#166534' }}>
+            <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: REG_THEME.primary }}>
               <div
                 className="w-5 h-5 rounded-full flex items-center justify-center"
-                style={{ background: '#166534' }}
+                style={{ background: REG_THEME.primary }}
               >
                 <Check className="w-3 h-3 text-white" />
               </div>
@@ -480,7 +481,7 @@ export function TicketSelector({
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2.5">
-          <Ticket className="w-5 h-5" style={{ color: '#166534' }} />
+          <Ticket className="w-5 h-5" style={{ color: REG_THEME.primary }} />
           <h2
             className="text-xl font-bold"
             style={{ color: isDark ? '#F8FAFC' : '#1C1917' }}

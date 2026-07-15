@@ -3,12 +3,16 @@
 import { COMPANY_CONFIG } from "@/lib/config"
 import { useEffect } from "react"
 import Link from "next/link"
+import { getTenant } from "@/lib/tenant"
+import { REG_THEME } from "@/lib/register-theme"
 
 export default function RegisterLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const isEssurg = getTenant() === "essurg"
+  const policyLink = (path: string) => (isEssurg ? path : "#")
   // Force light mode for public registration pages
   useEffect(() => {
     document.documentElement.classList.remove("dark")
@@ -30,7 +34,7 @@ export default function RegisterLayout({
         .reg-serif { font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; }
       `}</style>
 
-      <div className="reg-sans register-flow min-h-screen relative" style={{ background: '#FAFAF7' }}>
+      <div className={`reg-sans register-flow${isEssurg ? " tenant-essurg" : ""} min-h-screen relative`} style={{ background: '#FAFAF7' }}>
         {/* Subtle grain texture overlay for warmth */}
         <div
           className="fixed inset-0 pointer-events-none z-[60] opacity-[0.025]"
@@ -54,14 +58,14 @@ export default function RegisterLayout({
               <div className="relative">
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-sm transition-transform duration-300 group-hover:scale-105"
-                  style={{ background: 'linear-gradient(145deg, #14532D 0%, #166534 50%, #15803D 100%)' }}
+                  style={{ background: `linear-gradient(145deg, ${REG_THEME.primaryDark} 0%, ${REG_THEME.primary} 50%, ${REG_THEME.primaryMid} 100%)` }}
                 >
-                  A
+                  {COMPANY_CONFIG.name.charAt(0)}
                 </div>
-                {/* Subtle gold indicator dot */}
+                {/* Subtle accent indicator dot */}
                 <div
                   className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
-                  style={{ background: '#D97706', borderColor: '#FAFAF7' }}
+                  style={{ background: REG_THEME.accent, borderColor: '#FAFAF7' }}
                 />
               </div>
               <div>
@@ -109,9 +113,9 @@ export default function RegisterLayout({
               </p>
               <div className="flex flex-wrap items-center gap-3 sm:gap-8">
                 {[
-                  { label: 'Terms', href: '#' },
-                  { label: 'Privacy', href: '#' },
-                  { label: 'Contact', href: '#' },
+                  { label: 'Terms', href: policyLink('/terms') },
+                  { label: 'Privacy', href: policyLink('/privacy') },
+                  { label: 'Contact', href: policyLink('/contact') },
                 ].map((link) => (
                   <a
                     key={link.label}

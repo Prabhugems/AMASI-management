@@ -1743,3 +1743,90 @@
 
 /* Dark sidebar gradient */
 .dark .sidebar-glass{background:linear-gradient(180deg,#0e0e0e,#141210) !important;}
+
+/* ================================
+   REGISTER FLOW — ESSURG 2026 override
+   Higher-specificity block (.register-flow.tenant-essurg) that
+   re-skins the AMASI green/gold palette above into ESSURG's real
+   navy/sky-blue brand colors (sampled from the logo at essurg2026.org).
+   Keep in sync with src/lib/register-theme.ts's essurg branch.
+   ================================ */
+
+/* --- Emerald → Forest Green --- */
+.register-flow.tenant-essurg .bg-emerald-50  { background-color: rgba(17, 34, 72, 0.05) !important; }
+.register-flow.tenant-essurg .bg-emerald-100 { background-color: rgba(17, 34, 72, 0.08) !important; }
+.register-flow.tenant-essurg .bg-emerald-200 { background-color: rgba(17, 34, 72, 0.12) !important; }
+.register-flow.tenant-essurg .bg-emerald-500 { background-color: #112248 !important; }
+.register-flow.tenant-essurg .bg-emerald-600 { background-color: #112248 !important; }
+.register-flow.tenant-essurg .bg-emerald-700 { background-color: #0a1730 !important; }
+
+.register-flow.tenant-essurg .text-emerald-300 { color: #33a8d6 !important; }
+.register-flow.tenant-essurg .text-emerald-400 { color: #0090cb !important; }
+.register-flow.tenant-essurg .text-emerald-500 { color: #112248 !important; }
+.register-flow.tenant-essurg .text-emerald-600 { color: #112248 !important; }
+.register-flow.tenant-essurg .text-emerald-700 { color: #0a1730 !important; }
+.register-flow.tenant-essurg .text-emerald-800 { color: #0a1730 !important; }
+.register-flow.tenant-essurg .text-emerald-900 { color: #050d1c !important; }
+.register-flow.tenant-essurg .text-emerald-100 { color: rgba(17, 34, 72, 0.7) !important; }
+
+.register-flow.tenant-essurg .border-emerald-100 { border-color: rgba(17, 34, 72, 0.08) !important; }
+.register-flow.tenant-essurg .border-emerald-200 { border-color: rgba(17, 34, 72, 0.12) !important; }
+.register-flow.tenant-essurg .border-emerald-300 { border-color: rgba(17, 34, 72, 0.18) !important; }
+.register-flow.tenant-essurg .border-emerald-500 { border-color: #112248 !important; }
+.register-flow.tenant-essurg .border-emerald-600 { border-color: #112248 !important; }
+
+.register-flow.tenant-essurg .ring-emerald-500 { --tw-ring-color: #112248 !important; }
+.register-flow.tenant-essurg .shadow-emerald-500\/10 { --tw-shadow-color: rgba(17, 34, 72, 0.1) !important; }
+.register-flow.tenant-essurg .shadow-emerald-500\/20 { --tw-shadow-color: rgba(17, 34, 72, 0.2) !important; }
+.register-flow.tenant-essurg .shadow-emerald-500\/30 { --tw-shadow-color: rgba(17, 34, 72, 0.3) !important; }
+.register-flow.tenant-essurg .shadow-emerald-600\/30 { --tw-shadow-color: rgba(17, 34, 72, 0.3) !important; }
+
+.register-flow.tenant-essurg .hover\:border-emerald-200:hover { border-color: rgba(17, 34, 72, 0.15) !important; }
+.register-flow.tenant-essurg .hover\:border-emerald-300:hover { border-color: rgba(17, 34, 72, 0.2) !important; }
+.register-flow.tenant-essurg .hover\:bg-emerald-100:hover { background-color: rgba(17, 34, 72, 0.08) !important; }
+.register-flow.tenant-essurg .hover\:bg-emerald-700:hover { background-color: #0a1730 !important; }
+.register-flow.tenant-essurg .hover\:text-emerald-300:hover { color: #33a8d6 !important; }
+.register-flow.tenant-essurg .hover\:text-emerald-700:hover { color: #0a1730 !important; }
+
+.register-flow.tenant-essurg .focus\:ring-emerald-500\/20:focus { --tw-ring-color: rgba(17, 34, 72, 0.15) !important; }
+.register-flow.tenant-essurg .focus\:border-emerald-500:focus { border-color: #112248 !important; }
+.register-flow.tenant-essurg .focus\:ring-emerald-500:focus { --tw-ring-color: #112248 !important; }
+
+.register-flow.tenant-essurg .bg-emerald-500\/10 { background-color: rgba(17, 34, 72, 0.08) !important; }
+
+
+.register-flow.tenant-essurg .btn-gradient-animate {
+  background: linear-gradient(145deg, #0a1730 0%, #112248 50%, #163a6b 100%) !important;
+  background-size: 100% 100% !important;
+  animation: none !important;
+}
+
+.register-flow.tenant-essurg .btn-pulse-glow {
+  animation: regBtnGlowEssurg 2.5s ease-in-out infinite !important;
+}
+
+@keyframes regBtnGlowEssurg {
+  0%, 100% { box-shadow: 0 4px 14px rgba(17, 34, 72, 0.25); }
+  50% { box-shadow: 0 6px 24px rgba(17, 34, 72, 0.35); }
+}
+
+/* --- Gradient overrides --- */
+.register-flow.tenant-essurg .bg-gradient-primary {
+  background: linear-gradient(145deg, #0a1730 0%, #112248 40%, #33a8d6 100%) !important;
+}
+
+.register-flow.tenant-essurg .ring-2 {
+  --tw-ring-color: #112248;
+}
+
+/* --- Blue (email check) → deeper blue --- */
+.register-flow.tenant-essurg .bg-blue-50  { background-color: rgba(17, 34, 72, 0.04) !important; }
+.register-flow.tenant-essurg .bg-blue-600 { background-color: #112248 !important; }
+.register-flow.tenant-essurg .border-blue-100 { border-color: rgba(17, 34, 72, 0.06) !important; }
+.register-flow.tenant-essurg .border-blue-200 { border-color: rgba(17, 34, 72, 0.08) !important; }
+.register-flow.tenant-essurg .text-blue-900 { color: #0a1730 !important; }
+.register-flow.tenant-essurg .hover\:bg-blue-700:hover { background-color: #0a1730 !important; }
+.register-flow.tenant-essurg .focus\:ring-blue-500\/20:focus { --tw-ring-color: rgba(17, 34, 72, 0.12) !important; }
+.register-flow.tenant-essurg .focus\:border-blue-400:focus { border-color: rgba(17, 34, 72, 0.2) !important; }
+
+
