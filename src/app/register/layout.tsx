@@ -62,33 +62,44 @@ export default function RegisterLayout({
         >
           <div className="max-w-7xl mx-auto px-5 sm:px-8 py-4 flex items-center justify-between">
             <Link href="/register" className="flex items-center gap-3.5 group">
-              <div className="relative">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-sm transition-transform duration-300 group-hover:scale-105"
-                  style={{ background: `linear-gradient(145deg, ${REG_THEME.primaryDark} 0%, ${REG_THEME.primary} 50%, ${REG_THEME.primaryMid} 100%)` }}
-                >
-                  {COMPANY_CONFIG.name.charAt(0)}
-                </div>
-                {/* Subtle accent indicator dot */}
-                <div
-                  className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
-                  style={{ background: REG_THEME.accent, borderColor: '#FAFAF7' }}
+              {COMPANY_CONFIG.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={COMPANY_CONFIG.logoUrl}
+                  alt={COMPANY_CONFIG.name}
+                  className="h-9 w-auto transition-transform duration-300 group-hover:scale-105"
                 />
-              </div>
-              <div>
-                <h1
-                  className="reg-serif font-semibold tracking-tight leading-tight"
-                  style={{ color: '#1C1917', fontSize: '16px' }}
-                >
-                  {COMPANY_CONFIG.name}
-                </h1>
-                <p
-                  className="font-medium"
-                  style={{ color: '#A8A29E', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}
-                >
-                  Events & Registration
-                </p>
-              </div>
+              ) : (
+                <div className="relative">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-sm transition-transform duration-300 group-hover:scale-105"
+                    style={{ background: `linear-gradient(145deg, ${REG_THEME.primaryDark} 0%, ${REG_THEME.primary} 50%, ${REG_THEME.primaryMid} 100%)` }}
+                  >
+                    {COMPANY_CONFIG.name.charAt(0)}
+                  </div>
+                  {/* Subtle accent indicator dot */}
+                  <div
+                    className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
+                    style={{ background: REG_THEME.accent, borderColor: '#FAFAF7' }}
+                  />
+                </div>
+              )}
+              {!COMPANY_CONFIG.logoUrl && (
+                <div>
+                  <h1
+                    className="reg-serif font-semibold tracking-tight leading-tight"
+                    style={{ color: '#1C1917', fontSize: '16px' }}
+                  >
+                    {COMPANY_CONFIG.name}
+                  </h1>
+                  <p
+                    className="font-medium"
+                    style={{ color: '#A8A29E', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }}
+                  >
+                    Events & Registration
+                  </p>
+                </div>
+              )}
             </Link>
 
             {/* Minimal right-side nav hint */}

@@ -16,6 +16,10 @@ export const COMPANY_CONFIG = {
   // AMASI has a membership program ("members"); one-off conferences like
   // ESSURG register delegates, not members.
   audienceLabel: process.env.NEXT_PUBLIC_AUDIENCE_LABEL || "members",
+  // Optional real logo image for the public registration flow's header
+  // badge. Falls back to a generated navy monogram (COMPANY_CONFIG.name's
+  // first letter) when unset, which is AMASI/College's current look.
+  logoUrl: process.env.NEXT_PUBLIC_LOGO_URL || null,
 }
 
 // Feature flags for optional modules
