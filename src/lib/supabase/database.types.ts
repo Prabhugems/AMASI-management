@@ -3614,6 +3614,7 @@ export type Database = {
           event_id: string | null
           id: string
           is_active: boolean | null
+          list_purpose: string
           name: string
           sort_order: number | null
           starts_at: string | null
@@ -3631,6 +3632,7 @@ export type Database = {
           event_id?: string | null
           id?: string
           is_active?: boolean | null
+          list_purpose: string
           name: string
           sort_order?: number | null
           starts_at?: string | null
@@ -3648,6 +3650,7 @@ export type Database = {
           event_id?: string | null
           id?: string
           is_active?: boolean | null
+          list_purpose?: string
           name?: string
           sort_order?: number | null
           starts_at?: string | null
@@ -14494,6 +14497,7 @@ export type Database = {
           is_verified: boolean | null
           last_active_at: string | null
           last_login_at: string | null
+          logged_out_at: string | null
           login_count: number | null
           member_id: string | null
           name: string
@@ -14517,6 +14521,7 @@ export type Database = {
           is_verified?: boolean | null
           last_active_at?: string | null
           last_login_at?: string | null
+          logged_out_at?: string | null
           login_count?: number | null
           member_id?: string | null
           name: string
@@ -14540,6 +14545,7 @@ export type Database = {
           is_verified?: boolean | null
           last_active_at?: string | null
           last_login_at?: string | null
+          logged_out_at?: string | null
           login_count?: number | null
           member_id?: string | null
           name?: string
@@ -15392,6 +15398,9 @@ export type Database = {
         | "committee"
         | "faculty"
         | "delegate"
+        | "admin"
+        | "staff"
+        | "member"
       whatsapp_delivery_status:
         | "queued"
         | "sent"
@@ -15587,6 +15596,9 @@ export const Constants = {
         "committee",
         "faculty",
         "delegate",
+        "admin",
+        "staff",
+        "member",
       ],
       whatsapp_delivery_status: [
         "queued",
