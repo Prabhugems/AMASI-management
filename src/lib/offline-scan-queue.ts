@@ -21,6 +21,7 @@
 // doesn't leak into a different access link.
 
 import { openDB, type IDBPDatabase } from "idb"
+import { fetchWithTimeout } from "./fetch-with-timeout"
 
 const DB_NAME = "amasi-checkin-offline"
 const STORE = "pending_scans"
@@ -105,10 +106,13 @@ async function updateScan(scan: QueuedScan): Promise<void> {
  * Detect whether a fetch error indicates a network failure (vs a server
  * response we should treat as terminal). Browsers throw `TypeError` for
  * network-level failures including offline / DNS / TLS / aborted-by-network.
+ * A `fetchWithTimeout` abort (hung request on bad wifi — see
+ * fetch-with-timeout.ts) rejects with `DOMException("AbortError")` instead,
+ * which is just as much a network failure as a `TypeError` for our purposes.
  * Anything else (a real HTTP response we then mishandled) is terminal.
  */
-function isNetworkFailure(err: unknown): boolean {
-  return err instanceof TypeError
+export function isNetworkFailure(err: unknown): boolean {
+  return err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError")
 }
 
 export interface FlushResult {
@@ -142,7 +146,7 @@ export async function flushQueue(
 
   for (const scan of pending) {
     try {
-      const res = await fetch(`/api/verify/${scan.token}`, {
+      const res = await fetchWithTimeout(`/api/verify/${scan.token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
