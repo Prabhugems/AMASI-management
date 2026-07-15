@@ -3,42 +3,64 @@ import crypto from "crypto"
 import { sendEmail } from "@/lib/email"
 import { COMPANY_CONFIG } from "@/lib/config"
 
-// HMAC signing key for OTP tokens (no server-side storage needed)
-const SIGNING_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || "secret").trim()
+// HMAC signing key for OTP tokens (no server-side storage needed). No
+// fallback on purpose: every other route in this app already requires
+// SUPABASE_SERVICE_ROLE_KEY to function, so a misconfigured deployment
+// fails loudly here too rather than silently signing OTP tokens with a
+// hardcoded, publicly-known string.
+function getSigningKey(): string {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  if (!key) throw new Error("Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY")
+  return key
+}
 
 // Generate 6-digit OTP using cryptographically secure random
 function generateOTP(): string {
   return crypto.randomInt(100000, 999999).toString()
 }
 
-// Create a signed token containing { email, otp, exp, form_id }
+function hashOtp(otp: string, signingKey: string): string {
+  return crypto.createHmac("sha256", signingKey).update(otp).digest("hex")
+}
+
+// Create a signed token containing { email, otpHash, exp, form_id }.
+// The token round-trips through the client (returned from POST, submitted
+// back with PUT), so it must never contain the OTP itself — only base64
+// encoding stands between the payload and anyone who receives the
+// response, which isn't confidentiality at all. otpHash is an HMAC over
+// the OTP keyed with the same server-only signing key used for the outer
+// tamper-detection signature, so recovering the OTP from the hash requires
+// the secret key, not just the token.
 function createOtpToken(email: string, otp: string, formId: string): string {
+  const signingKey = getSigningKey()
   const payload = JSON.stringify({
     email,
-    otp,
+    otpHash: hashOtp(otp, signingKey),
     form_id: formId,
     exp: Date.now() + 10 * 60 * 1000, // 10 minutes
   })
   const encoded = Buffer.from(payload).toString("base64url")
   const signature = crypto
-    .createHmac("sha256", SIGNING_KEY)
+    .createHmac("sha256", signingKey)
     .update(encoded)
     .digest("base64url")
   return `${encoded}.${signature}`
 }
 
 // Verify and decode a signed OTP token
-function verifyOtpToken(token: string): { email: string; otp: string; form_id: string; exp: number } | null {
+function verifyOtpToken(token: string): { email: string; otpHash: string; form_id: string; exp: number } | null {
+  const signingKey = getSigningKey()
   const parts = token.split(".")
   if (parts.length !== 2) return null
 
   const [encoded, signature] = parts
   const expectedSig = crypto
-    .createHmac("sha256", SIGNING_KEY)
+    .createHmac("sha256", signingKey)
     .update(encoded)
     .digest("base64url")
 
-  if (signature !== expectedSig) return null
+  if (signature.length !== expectedSig.length) return null
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) return null
 
   try {
     return JSON.parse(Buffer.from(encoded, "base64url").toString())
@@ -234,8 +256,13 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Check OTP matches
-    if (tokenData.otp !== otp) {
+    // Check OTP matches — compare hashes, not the raw code (the token
+    // never carries the raw OTP; see createOtpToken).
+    const submittedHash = hashOtp(otp, getSigningKey())
+    const otpMatches =
+      submittedHash.length === tokenData.otpHash.length &&
+      crypto.timingSafeEqual(Buffer.from(submittedHash), Buffer.from(tokenData.otpHash))
+    if (!otpMatches) {
       return NextResponse.json(
         { error: "Invalid verification code. Please try again." },
         { status: 400 }
