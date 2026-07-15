@@ -548,6 +548,50 @@ export default function StaffCheckinPage() {
     if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current)
   }, [])
 
+  // Focus recovery for hardware-scanner lanes. A keyboard-wedge scanner
+  // types into whatever field currently has focus — if focus is ever lost,
+  // the next physical scan goes nowhere and nobody notices until badges stop
+  // moving. The known way to lose it: the "Check In" button only renders
+  // while `inputValue` is truthy (see the JSX below), so clicking it clears
+  // the value and the button unmounts out from under its own click — focus
+  // reverts to document.body with nothing to reclaim it. Any stray tap on a
+  // non-interactive part of the page (a feed card, the background) does the
+  // same. `focusout` (unlike `blur`) bubbles, so a document-level listener
+  // catches focus leaving ANY descendant, including one that's about to be
+  // removed from the DOM.
+  useEffect(() => {
+    if (scanMode !== "manual") return
+
+    const isInteractive = (el: Element | null) =>
+      !!el && (el === inputRef.current || /^(INPUT|BUTTON|A|SELECT|TEXTAREA)$/.test(el.tagName))
+
+    const reclaim = () => {
+      if (!isInteractive(document.activeElement)) {
+        inputRef.current?.focus()
+      }
+    }
+
+    const onFocusOut = () => {
+      // Run after the DOM settles (the vanishing button's removal, a click's
+      // default focus behavior) rather than mid-event.
+      requestAnimationFrame(reclaim)
+    }
+    const onDocClick = (e: MouseEvent) => {
+      if (!isInteractive(e.target as Element)) {
+        requestAnimationFrame(reclaim)
+      }
+    }
+
+    document.addEventListener("focusout", onFocusOut)
+    document.addEventListener("click", onDocClick)
+    reclaim()
+
+    return () => {
+      document.removeEventListener("focusout", onFocusOut)
+      document.removeEventListener("click", onDocClick)
+    }
+  }, [scanMode])
+
   // Fetch attendee roster for list view (debounced on search/filter)
   const fetchListAttendees = useCallback(async (signal?: AbortSignal) => {
     if (!checkinList) return
