@@ -23,8 +23,10 @@ import {
   enqueueScan,
   flushQueue,
   pendingCount,
+  isNetworkFailure,
   type FlushResult,
 } from "@/lib/offline-scan-queue"
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout"
 
 interface CheckinList {
   id: string
@@ -436,7 +438,11 @@ export default function StaffCheckinPage() {
     }
 
     try {
-      const res = await fetch(`/api/verify/${token}`, {
+      // Hard 3s timeout — a hung request on saturated venue wifi must never
+      // block the lane. navigator.onLine stays true and nothing throws on a
+      // TCP connection that just never responds; fetchWithTimeout turns that
+      // into a normal, catchable failure so it queues like any other outage.
+      const res = await fetchWithTimeout(`/api/verify/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -485,9 +491,10 @@ export default function StaffCheckinPage() {
       }
       return data
     } catch (err) {
-      // Network failure (fetch throws TypeError for offline / DNS / TLS /
-      // aborted-by-network). Queue the scan rather than losing it.
-      if (err instanceof TypeError) {
+      // Network failure — offline/DNS/TLS (TypeError) or a timed-out hang on
+      // bad wifi (AbortError, from fetchWithTimeout above). Either way, queue
+      // the scan rather than losing it.
+      if (isNetworkFailure(err)) {
         try {
           await enqueueScan(accessToken, token, performedBy, deviceInfo)
           await refreshQueueCount()
@@ -558,7 +565,10 @@ export default function StaffCheckinPage() {
       if (listSearch.trim()) url.searchParams.set("q", listSearch.trim())
       if (listStatusFilter !== "all") url.searchParams.set("status", listStatusFilter)
       url.searchParams.set("limit", "200")
-      const res = await fetch(url.toString(), { signal })
+      // Hard 3s timeout on top of the caller's own cancel-on-new-search
+      // signal — a hung roster fetch on bad wifi must not leave the List tab
+      // stuck on "Loading…" forever.
+      const res = await fetchWithTimeout(url.toString(), { signal })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || "Failed to load attendees")
@@ -566,9 +576,17 @@ export default function StaffCheckinPage() {
       const data = await res.json()
       setListAttendees(data.data || [])
     } catch (err: any) {
-      if (err?.name !== "AbortError") {
-        setListError(err.message || "Failed to load attendees")
+      if (signal?.aborted) {
+        // The caller's own signal fired — a newer search superseded this
+        // one. Intentional, not an error.
+        return
       }
+      if (err?.name === "AbortError") {
+        // Our own timeout fired, not the caller's cancel signal above.
+        setListError("Request timed out. Check your connection and try again.")
+        return
+      }
+      setListError(err.message || "Failed to load attendees")
     } finally {
       setListLoading(false)
     }
