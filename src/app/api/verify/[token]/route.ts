@@ -16,29 +16,25 @@ export async function GET(
   const rateLimit = checkRateLimit(`verify:${clientIp}`, "public")
   if (!rateLimit.success) return rateLimitExceededResponse(rateLimit)
 
-  if (!token || token.length < 3) {
+  // Public verification accepts ONLY the 32-char secure checkin_token.
+  // registration_number is an identifier, never a credential — no public lookup by it.
+  if (!token || token.length < 32) {
     return NextResponse.json(
-      { valid: false, error: "Invalid token format" },
+      { valid: false, error: "Invalid token" },
       { status: 400 }
     )
   }
 
   const supabase = await createAdminClient()
 
-  // Determine if this is a checkin_token (long) or registration_number (short)
-  const isSecureToken = token.length >= 20
-
-  // Look up registration by checkin_token or registration_number
-  let query = (supabase as any)
+  // Look up registration by secure checkin_token only. No PII columns are
+  // selected — the public response returns name + check-in status, not contact data.
+  const { data: registration, error } = await (supabase as any)
     .from("registrations")
     .select(`
       id,
       registration_number,
       attendee_name,
-      attendee_email,
-      attendee_phone,
-      attendee_designation,
-      attendee_institution,
       status,
       checked_in,
       checked_in_at,
@@ -55,15 +51,8 @@ export async function GET(
         end_date
       )
     `)
-
-  if (isSecureToken) {
-    query = query.eq("checkin_token", token)
-  } else {
-    // Look up by registration number (case insensitive)
-    query = query.ilike("registration_number", token)
-  }
-
-  const { data: registration, error } = await query.maybeSingle()
+    .eq("checkin_token", token)
+    .maybeSingle()
 
   if (error || !registration) {
     return NextResponse.json(
@@ -81,34 +70,43 @@ export async function GET(
     }, { status: 400 })
   }
 
-  // Check if certificate templates exist for this event
+  // Check if a certificate template exists for this registration. Match by
+  // ticket type so the verification page shows the right template name (e.g.
+  // a delegate isn't told they hold a "Faculty Certificate"); fall back to a
+  // catch-all template and then, only when a single active template exists, to
+  // that one. Mirrors the selection in /api/certificate/[regNumber]/download.
   let certificateTemplate: { id: string; name: string } | null = null
   try {
-    const { data: certTemplate } = await (supabase as any)
+    const { data: activeTemplatesRaw } = await (supabase as any)
       .from("certificate_templates")
-      .select("id, name")
+      .select("id, name, ticket_type_ids")
       .eq("event_id", registration.event_id)
       .eq("is_active", true)
-      .limit(1)
-      .single()
-    if (certTemplate) {
-      certificateTemplate = certTemplate
+
+    const activeTemplates = (activeTemplatesRaw || []) as any[]
+    const ticketTypeId = registration.ticket_type_id
+    const matchesTicket = (t: any) =>
+      Array.isArray(t.ticket_type_ids) && ticketTypeId && t.ticket_type_ids.includes(ticketTypeId)
+    const isCatchAll = (t: any) => !t.ticket_type_ids || t.ticket_type_ids.length === 0
+
+    const match =
+      activeTemplates.find(matchesTicket) ||
+      activeTemplates.find(isCatchAll) ||
+      (activeTemplates.length === 1 ? activeTemplates[0] : null)
+    if (match) {
+      certificateTemplate = { id: match.id, name: match.name }
     }
   } catch {
     // No certificate template found - that's fine
   }
 
-  // Return attendee info (without sensitive data like token)
+  // Public response: name + check-in status only. No email/phone/designation/institution.
   return NextResponse.json({
     valid: true,
     registration: {
       id: registration.id,
       registration_number: registration.registration_number,
       attendee_name: registration.attendee_name,
-      attendee_email: registration.attendee_email,
-      attendee_phone: registration.attendee_phone,
-      attendee_designation: registration.attendee_designation,
-      attendee_institution: registration.attendee_institution,
       checked_in: registration.checked_in,
       checked_in_at: registration.checked_in_at,
       ticket_type: registration.ticket_types,
@@ -162,8 +160,9 @@ export async function POST(
     )
   }
 
-  // Verify staff access token and extract the authorized checkin_list_id
+  // Verify staff access token and extract the authorized checkin_list_id + event
   let verified_checkin_list_id: string
+  let verified_event_id: string
   {
     const { data: checkinList, error: listError } = await (supabase as any)
       .from("checkin_lists")
@@ -189,10 +188,15 @@ export async function POST(
 
     // Use the checkin_list_id from the validated token, not the user-supplied one
     verified_checkin_list_id = checkinList.id
+    verified_event_id = checkinList.event_id
   }
 
-  // Determine if this is a checkin_token (long) or registration_number (short)
-  const isSecureToken = token.length >= 20
+  // Determine if this is a checkin_token (long) or registration_number (short).
+  // Use >= 32 because reg numbers run up to 20 chars (e.g. "REG-20260605-Q7ILBX2")
+  // and the shortest checkin_token is 32. A 20-char threshold misclassifies the
+  // older REG-YYYYMMDD-XXXXXXX reg numbers as secure tokens and looks them up in
+  // the wrong column, surfacing as "Invalid or expired QR code".
+  const isSecureToken = token.length >= 32
 
   // Look up registration by checkin_token or registration_number
   let query2 = (supabase as any)
@@ -209,14 +213,20 @@ export async function POST(
       ticket_types (
         id,
         name
+      ),
+      events (
+        id,
+        name
       )
     `)
 
   if (isSecureToken) {
     query2 = query2.eq("checkin_token", token)
   } else {
-    // Look up by registration number (case insensitive)
-    query2 = query2.ilike("registration_number", token)
+    // Reg-number lookup is permitted here ONLY because the staff access_token
+    // authorizes it, and it is scoped to that token's event so a number can't
+    // resolve to a registration in a different event.
+    query2 = query2.ilike("registration_number", token).eq("event_id", verified_event_id)
   }
 
   const { data: registration, error: regError } = await query2.maybeSingle()
@@ -240,6 +250,36 @@ export async function POST(
     )
   }
 
+  // A secure checkin_token is globally unique across all events, so without an
+  // explicit event check here a badge from Event A could check in against
+  // Event B's checkin list (the registration-number branch above already
+  // scopes by event_id in the query itself).
+  if (isSecureToken && registration.event_id !== verified_event_id) {
+    await logAudit(supabase, {
+      event_id: registration.event_id,
+      checkin_list_id: verified_checkin_list_id,
+      registration_id: registration.id,
+      action,
+      performed_by,
+      performed_via: "qr_scan",
+      device_info,
+      token_used: token,
+      success: false,
+      error_message: "Wrong event"
+    })
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "This badge is not registered for this event",
+        error_code: "wrong_event",
+        registration_number: registration.registration_number,
+        badge_event_name: registration.events?.name || null,
+      },
+      { status: 400 }
+    )
+  }
+
   // Check if registration is confirmed
   if (registration.status !== "confirmed") {
     await logAudit(supabase, {
@@ -255,10 +295,24 @@ export async function POST(
       error_message: `Registration is ${registration.status}`
     })
 
+    const friendlyError = registration.status === "pending"
+      ? `PAYMENT NOT CONFIRMED — ${registration.attendee_name || registration.registration_number}. Please escalate to registration desk; do NOT mark as invalid.`
+      : registration.status === "cancelled"
+        ? `REGISTRATION CANCELLED — ${registration.attendee_name || registration.registration_number}. Cannot check in.`
+        : `Registration is ${registration.status}. Cannot check in.`
+
     return NextResponse.json({
       success: false,
-      error: `Registration is ${registration.status}. Cannot check in.`,
+      error: friendlyError,
+      error_code: `registration_${registration.status}`,
       registration_number: registration.registration_number,
+      registration: {
+        id: registration.id,
+        attendee_name: registration.attendee_name,
+        attendee_email: registration.attendee_email,
+        registration_number: registration.registration_number,
+        status: registration.status,
+      },
     }, { status: 400 })
   }
 
@@ -267,13 +321,6 @@ export async function POST(
 
   // Check if already checked in for this specific list (prevent duplicate food/meals)
   if (isCheckIn) {
-    // Get checkin list settings
-    const { data: listSettings } = await (supabase as any)
-      .from("checkin_lists")
-      .select("allow_multiple_checkins, name")
-      .eq("id", verified_checkin_list_id)
-      .single()
-
     // Check for existing check-in record
     const { data: existingRecord } = await (supabase as any)
       .from("checkin_records")
@@ -283,7 +330,19 @@ export async function POST(
       .is("checked_out_at", null)
       .maybeSingle()
 
-    if (existingRecord && listSettings?.allow_multiple_checkins !== true) {
+    // allow_multiple_checkins is intentionally ignored here — it was a no-op
+    // on this endpoint anyway (a genuine repeat never inserted a new row or
+    // updated the timestamp, since UNIQUE(checkin_list_id, registration_id)
+    // means there can only ever be one row per list+registration). Recurring
+    // access (hall re-entry, sessions) belongs to a separate checkin_list per
+    // occurrence, not a repeat check-in on the same one. See CLAUDE.md.
+    if (existingRecord) {
+      // A repeat scan of an already-checked-in delegate is expected (re-entry,
+      // a volunteer confirming status) — not an error. success:true / HTTP 200
+      // so the scanner plays its confirmation sound, not the error buzzer, and
+      // the audit trail doesn't record a legitimate re-entry as a failure.
+      // action:"already_checked_in" / alreadyCheckedIn:true still distinguish
+      // it from a fresh check-in so the UI can show the right card.
       const checkedInTime = new Date(existingRecord.checked_in_at).toLocaleTimeString("en-IN", {
         hour: "2-digit",
         minute: "2-digit"
@@ -298,59 +357,89 @@ export async function POST(
         performed_via: "qr_scan",
         device_info,
         token_used: token,
-        success: false,
+        success: true,
         error_message: "Already checked in"
       })
 
       return NextResponse.json({
-        success: false,
-        error: `Already checked in at ${checkedInTime}`,
+        success: true,
+        action: "already_checked_in",
         alreadyCheckedIn: true,
+        message: `Already checked in at ${checkedInTime}`,
         registration: {
           id: registration.id,
           registration_number: registration.registration_number,
           attendee_name: registration.attendee_name,
+          checked_in: true,
+          checked_in_at: existingRecord.checked_in_at,
           ticket_type: registration.ticket_types,
         }
-      }, { status: 400 })
+      })
     }
   }
 
-  // Update registration's general checked_in status
-  const { error: updateError } = await (supabase as any)
-    .from("registrations")
-    .update({
-      checked_in: isCheckIn,
-      checked_in_at: isCheckIn ? new Date().toISOString() : null,
-    })
-    .eq("id", registration.id)
+  // On check-in, mark the registration checked in. Check-out does NOT clear the
+  // flag here — it's cleared later in the check-out branch, and only if no
+  // active check-in records remain on any OTHER list (multi-list drift fix).
+  if (isCheckIn) {
+    const { error: updateError } = await (supabase as any)
+      .from("registrations")
+      .update({
+        checked_in: true,
+        checked_in_at: new Date().toISOString(),
+      })
+      .eq("id", registration.id)
 
-  if (updateError) {
-    return NextResponse.json(
-      { success: false, error: "Failed to update check-in status" },
-      { status: 500 }
-    )
+    if (updateError) {
+      return NextResponse.json(
+        { success: false, error: "Failed to update check-in status" },
+        { status: 500 }
+      )
+    }
   }
 
   // Create check-in record
   if (isCheckIn) {
-    // Race condition guard: re-check for existing record right before insert
-    // to prevent duplicates from concurrent scans
-    const { data: existingBeforeInsert } = await (supabase as any)
+    // Use upsert to prevent race condition with concurrent scans.
+    // UNIQUE(checkin_list_id, registration_id) guarantees at most one row;
+    // upsert atomically inserts or updates, eliminating the SELECT-then-INSERT
+    // window where two concurrent requests could both see "no row" and both try
+    // to insert (one hitting a 23505 unique violation).
+    const { data: _record, error: upsertError } = await (supabase as any)
       .from("checkin_records")
-      .select("id, checked_in_at")
-      .eq("checkin_list_id", verified_checkin_list_id)
-      .eq("registration_id", registration.id)
-      .is("checked_out_at", null)
-      .maybeSingle()
-
-    if (!existingBeforeInsert) {
-      await (supabase as any).from("checkin_records").insert({
+      .upsert({
         checkin_list_id: verified_checkin_list_id,
         registration_id: registration.id,
         checked_in_at: new Date().toISOString(),
-        checked_in_by: performed_by,
+        checked_in_by: performed_by || null,
+        checked_out_at: null,
+        performed_via: "qr_scan",
+        device_info: device_info || null,
+      }, {
+        onConflict: "checkin_list_id,registration_id",
+        ignoreDuplicates: false
       })
+      .select()
+      .single()
+
+    if (upsertError) {
+      console.error("[verify] check-in upsert failed:", upsertError)
+      await logAudit(supabase, {
+        event_id: registration.event_id,
+        checkin_list_id: verified_checkin_list_id,
+        registration_id: registration.id,
+        action,
+        performed_by,
+        performed_via: "qr_scan",
+        device_info,
+        token_used: token,
+        success: false,
+        error_message: "Failed to record check-in",
+      })
+      return NextResponse.json(
+        { success: false, error: "Failed to record check-in. Please try again." },
+        { status: 500 }
+      )
     }
   } else {
     // Check-out: update the record with checkout time
@@ -360,6 +449,23 @@ export async function POST(
       .eq("checkin_list_id", verified_checkin_list_id)
       .eq("registration_id", registration.id)
       .is("checked_out_at", null)
+
+    // Only clear the global registrations.checked_in flag if NO active check-in
+    // records remain across ANY list. On a multi-list event the delegate may
+    // still be checked in elsewhere, in which case the flag must stay true.
+    const { data: remainingRecords } = await (supabase as any)
+      .from("checkin_records")
+      .select("id")
+      .eq("registration_id", registration.id)
+      .is("checked_out_at", null)
+      .limit(1)
+
+    if (!remainingRecords || remainingRecords.length === 0) {
+      await (supabase as any)
+        .from("registrations")
+        .update({ checked_in: false, checked_in_at: null })
+        .eq("id", registration.id)
+    }
   }
 
   // Log successful action

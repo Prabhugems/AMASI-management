@@ -285,6 +285,25 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Check if check-in list is within its time window (only for check-in, not check-out)
+    if (action !== "check_out") {
+      const now = new Date()
+      if (checkinList.starts_at && new Date(checkinList.starts_at) > now) {
+        const startsAt = new Date(checkinList.starts_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+        return NextResponse.json({
+          error: `"${checkinList.name}" hasn't started yet. Opens at ${startsAt}.`,
+          registration
+        }, { status: 400 })
+      }
+      if (checkinList.ends_at && new Date(checkinList.ends_at) < now) {
+        const endedAt = new Date(checkinList.ends_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+        return NextResponse.json({
+          error: `"${checkinList.name}" has ended (closed at ${endedAt}).`,
+          registration
+        }, { status: 400 })
+      }
+    }
+
     // Check if registration has required addons for this list
     if (checkinList.addon_ids?.length > 0) {
       const { data: regAddons } = await (supabase as any)
@@ -373,6 +392,26 @@ export async function POST(request: NextRequest) {
           .maybeSingle()
 
         if (insertError) {
+          // 23505 = unique_violation on (checkin_list_id, registration_id):
+          // a concurrent scan won the race. The check-in IS recorded, so
+          // report idempotent success in the same shape as the
+          // already-checked-in branch above. Same pattern as
+          // /api/verify/[token]/route.ts:374-378.
+          if (insertError.code === "23505") {
+            const { data: raced } = await (supabase as any)
+              .from("checkin_records")
+              .select("*")
+              .eq("checkin_list_id", checkin_list_id)
+              .eq("registration_id", registration.id)
+              .is("checked_out_at", null)
+              .maybeSingle()
+            return NextResponse.json({
+              success: true,
+              action: "already_checked_in",
+              message: `${registration.attendee_name} is already checked in to ${checkinList.name}`,
+              registration: { ...registration, checked_in: true, checked_in_at: raced?.checked_in_at }
+            })
+          }
           return NextResponse.json({ error: "Failed to check in attendee" }, { status: 500 })
         }
         newRecord = inserted
