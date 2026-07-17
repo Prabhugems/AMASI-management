@@ -41,3 +41,4 @@ next-env.d.ts
 *.amasi-backup
 technosurg-vercel-env.txt
 .playwright-mcp/
+.claude/worktrees/
