@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState, useRef, useCallback } from "react"
+import { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { useParams, useSearchParams } from "next/navigation"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   CheckCircle,
   XCircle,
@@ -108,7 +109,6 @@ export default function StaffCheckinPage() {
   const [error, setError] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState("")
   const [soundEnabled, setSoundEnabled] = useState(true)
-  const [stats, setStats] = useState({ total: 0, checkedIn: 0 })
   const [scanMode, setScanMode] = useState<ScanMode>("camera")
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [scannerReady, setScannerReady] = useState(false)
@@ -155,6 +155,9 @@ export default function StaffCheckinPage() {
   const burstStartRef = useRef<number>(0)
   const lastKeyTimeRef = useRef<number>(0)
 
+  const queryClient = useQueryClient()
+  const statsQueryKey = useMemo(() => ["checkin-access-stats", accessToken], [accessToken])
+
   // Validate access token and get checkin list info
   useEffect(() => {
     async function validateAccess() {
@@ -166,7 +169,9 @@ export default function StaffCheckinPage() {
         }
         const data = await res.json()
         setCheckinList(data.checkinList)
-        setStats(data.stats || { total: 0, checkedIn: 0 })
+        // Seed the stats query cache from this one-time validation call so the
+        // poll below doesn't need a redundant extra fetch on load.
+        queryClient.setQueryData(statsQueryKey, { stats: data.stats || { total: 0, checkedIn: 0 } })
       } catch (err: any) {
         setError(err.message)
       } finally {
@@ -177,7 +182,24 @@ export default function StaffCheckinPage() {
     if (accessToken) {
       validateAccess()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken])
+
+  // Poll a lightweight, higher-rate-limit stats endpoint so this device's
+  // counter reflects other volunteers' concurrent check-ins too, not just its
+  // own scans. `enabled` waits for the access token to be confirmed valid so
+  // polling never starts against a bad/expired link.
+  const { data: statsData } = useQuery({
+    queryKey: statsQueryKey,
+    queryFn: async () => {
+      const res = await fetch(`/api/checkin/access/${accessToken}/stats`)
+      if (!res.ok) throw new Error("Failed to load stats")
+      return res.json() as Promise<{ stats: { total: number; checkedIn: number } }>
+    },
+    enabled: !!accessToken && !!checkinList,
+    refetchInterval: 15000,
+  })
+  const stats = statsData?.stats ?? { total: 0, checkedIn: 0 }
 
   // Load (or prompt for) volunteer identity once the access token is known.
   useEffect(() => {
@@ -329,7 +351,9 @@ export default function StaffCheckinPage() {
           const reg = (result.response as { registration?: { id?: string; attendee_name?: string; registration_number?: string; ticket_type?: { name?: string }; checked_in_at?: string } } | undefined)?.registration
           const isAlready = (result.response as { alreadyCheckedIn?: boolean } | undefined)?.alreadyCheckedIn
           if (!isAlready) {
-            setStats((prev) => ({ ...prev, checkedIn: prev.checkedIn + 1 }))
+            queryClient.setQueryData(statsQueryKey, (old: { stats: { total: number; checkedIn: number } } | undefined) =>
+              old ? { stats: { ...old.stats, checkedIn: old.stats.checkedIn + 1 } } : old
+            )
           }
           const entry: FeedEntry = {
             id: newFeedId(),
@@ -357,7 +381,7 @@ export default function StaffCheckinPage() {
       flushInFlightRef.current = false
       await refreshQueueCount()
     }
-  }, [accessToken, refreshQueueCount])
+  }, [accessToken, refreshQueueCount, queryClient, statsQueryKey])
 
   // Wire online/offline detection + initial queue load.
   useEffect(() => {
@@ -472,7 +496,9 @@ export default function StaffCheckinPage() {
         })
       } else if (data.success) {
         playSound("success")
-        setStats((prev) => ({ ...prev, checkedIn: prev.checkedIn + 1 }))
+        queryClient.setQueryData(statsQueryKey, (old: { stats: { total: number; checkedIn: number } } | undefined) =>
+          old ? { stats: { ...old.stats, checkedIn: old.stats.checkedIn + 1 } } : old
+        )
         updateEntry({
           status: "checked_in",
           attendeeName: data.registration?.attendee_name,
@@ -510,7 +536,7 @@ export default function StaffCheckinPage() {
       updateEntry({ status: "error", message: "Network error. Please try again." })
       return null
     }
-  }, [checkinList, accessToken, identity, refreshQueueCount, debugMode, soundEnabled])
+  }, [checkinList, accessToken, identity, refreshQueueCount, debugMode, soundEnabled, queryClient, statsQueryKey])
 
   // Tunables for scanner-burst detection.
   const MANUAL_MIN_LEN = 3            // ignore stray 1-2 char input

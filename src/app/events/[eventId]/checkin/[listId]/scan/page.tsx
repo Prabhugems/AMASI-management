@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { QrImage } from "@/components/QrImage"
 import { useQuery, useMutation } from "@tanstack/react-query"
+import { useQrCameraScanner } from "@/hooks/use-qr-camera-scanner"
 import {
   ArrowLeft,
   QrCode,
@@ -30,7 +31,10 @@ import {
   Share2,
   ChevronDown,
   ChevronUp,
-  Smartphone
+  Smartphone,
+  Camera,
+  CameraOff,
+  Loader2
 } from "lucide-react"
 
 interface ScanResult {
@@ -47,7 +51,13 @@ interface ScanResult {
 }
 
 interface Stats {
-  list: { id: string; name: string; description: string | null }
+  list: {
+    id: string
+    name: string
+    description: string | null
+    access_token?: string | null
+    access_token_expires_at?: string | null
+  }
   total: number
   checkedIn: number
   notCheckedIn: number
@@ -83,6 +93,11 @@ export default function CheckinScanPage() {
   const [showMobileRecent, setShowMobileRecent] = useState(false)
   const [countdown, setCountdown] = useState<number | null>(null)
   const [lastCheckedInId, setLastCheckedInId] = useState<string | null>(null)
+  // Camera scanning is opt-in and off by default: this page is mostly used on
+  // desktop admin machines with a USB/Bluetooth hardware scanner, where an
+  // unsolicited getUserMedia permission prompt would be unwelcome. Toggling it
+  // on lets the same page double as a phone camera scanner when needed.
+  const [cameraEnabled, setCameraEnabled] = useState(false)
 
   const searchInputRef = useRef<HTMLInputElement>(null)
   const successAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -355,6 +370,17 @@ export default function CheckinScanPage() {
     setManualSearch("")
   }
 
+  // Camera scanning reuses submitManualValue directly — it already has the
+  // in-flight guard and the 5s same-value/same-mode dedupe needed for a
+  // camera that re-decodes the same QR 5-10x/sec while it's in view, so no
+  // separate dedupe logic is needed here.
+  const { cameraError, scannerReady, retry: retryCamera } = useQrCameraScanner({
+    enabled: cameraEnabled,
+    elementId: "admin-qr-reader",
+    onDecode: submitManualValue,
+    facingMode: "environment"
+  })
+
   const handleManualSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (autoSubmitTimerRef.current) {
@@ -493,15 +519,17 @@ export default function CheckinScanPage() {
     }
   }
 
-  // Get scan URL for sharing
-  const getScanUrl = () => {
-    if (typeof window === "undefined") return ""
-    return window.location.href
+  // Staff access URL (no login required) - the correct link to share with
+  // volunteers. Never share window.location.href here; that's this admin
+  // page's own URL, which requires a dashboard login.
+  const getStaffAccessUrl = () => {
+    if (typeof window === "undefined" || !stats?.list.access_token) return ""
+    return `${window.location.origin}/checkin/access/${stats.list.access_token}`
   }
 
   // Copy link to clipboard
   const copyLink = async () => {
-    await navigator.clipboard.writeText(getScanUrl())
+    await navigator.clipboard.writeText(getStaffAccessUrl())
   }
 
   return (
@@ -569,6 +597,14 @@ export default function CheckinScanPage() {
                 title="Share Scanner Link"
               >
                 <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+
+              <button
+                onClick={() => setCameraEnabled(!cameraEnabled)}
+                className={`p-2 rounded-lg ${cameraEnabled ? "bg-blue-600 text-white" : "hover:bg-gray-700"}`}
+                title={cameraEnabled ? "Disable Camera Scanner" : "Enable Camera Scanner"}
+              >
+                {cameraEnabled ? <CameraOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Camera className="w-4 h-4 sm:w-5 sm:h-5" />}
               </button>
 
               <button
@@ -661,31 +697,46 @@ export default function CheckinScanPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-gray-400 text-sm mb-4">Share this link with staff to let them scan attendees on their mobile devices.</p>
-            <div className="bg-gray-900 p-3 rounded-lg mb-4 flex items-center gap-2">
-              <Smartphone className="w-5 h-5 text-gray-500 flex-shrink-0" />
-              <code className="text-sm text-blue-400 truncate flex-1">{getScanUrl()}</code>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  copyLink()
-                  setShowShareModal(false)
-                }}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium"
-              >
-                Copy Link
-              </button>
-              <button
-                onClick={() => setShowShareModal(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
-              >
-                Close
-              </button>
-            </div>
-            <div className="mt-4 flex justify-center">
-              <QrImage value={getScanUrl()} size={192} className="w-48 h-48 rounded-lg" light="#1f2937" dark="#ffffff" />
-            </div>
+            {stats?.list.access_token ? (
+              <>
+                <p className="text-gray-400 text-sm mb-4">Share this link with volunteers. They can open it on their phone and start checking people in immediately. No login required.</p>
+                <div className="bg-gray-900 p-3 rounded-lg mb-4 flex items-center gap-2">
+                  <Smartphone className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                  <code className="text-sm text-blue-400 truncate flex-1">{getStaffAccessUrl()}</code>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      copyLink()
+                      setShowShareModal(false)
+                    }}
+                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium"
+                  >
+                    Copy Link
+                  </button>
+                  <button
+                    onClick={() => setShowShareModal(false)}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="mt-4 flex justify-center">
+                  <QrImage value={getStaffAccessUrl()} size={192} className="w-48 h-48 rounded-lg" light="#1f2937" dark="#ffffff" />
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-gray-400 text-sm mb-4">No staff link has been generated for this list yet. Generate one from the Check-in Lists page.</p>
+                <Link
+                  href={`/events/${eventId}/checkin`}
+                  onClick={() => setShowShareModal(false)}
+                  className="block text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium"
+                >
+                  Go to Check-in Lists
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -765,6 +816,38 @@ export default function CheckinScanPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Camera Scanner (opt-in) */}
+          {cameraEnabled && (
+            <div className="max-w-xl mx-auto mb-4 sm:mb-6 bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
+              {cameraError ? (
+                <div className="p-6 text-center">
+                  <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <XCircle className="w-6 h-6 text-red-400" />
+                  </div>
+                  <p className="text-red-300 text-sm mb-3">{cameraError}</p>
+                  <button
+                    onClick={() => retryCamera()}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <div id="admin-qr-reader" className="w-full" style={{ minHeight: 250 }} />
+                  {!scannerReady && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                      <div className="text-center">
+                        <Loader2 className="w-8 h-8 text-blue-400 animate-spin mx-auto" />
+                        <p className="text-gray-400 text-sm mt-2">Starting camera...</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
