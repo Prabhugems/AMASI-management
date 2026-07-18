@@ -38,9 +38,13 @@ import {
 } from "lucide-react"
 
 interface ScanResult {
-  type: "success" | "error" | "warning" | "already"
+  type: "success" | "error" | "warning" | "already" | "not_checked_in"
   message: string
   registrationId?: string
+  // Non-blocking note attached to an otherwise-successful check-in (e.g.
+  // outside a list's configured time window) — informational, never changes
+  // the success/error classification above.
+  warning?: string
   attendee?: {
     name: string
     email: string
@@ -216,12 +220,15 @@ export default function CheckinScanPage() {
               institution: data.registration?.attendee_institution
             }
           })
-          playSound("error")
+          // A repeat scan is always a success, never an error — see the Tito
+          // model note in CLAUDE.md. The card stays visually distinct
+          // (yellow "already" tone) but the harsh error buzzer is wrong here.
+          playSound("success")
           vibrate(200)
           addRecentScan(data.registration?.attendee_name, data.registration?.registration_number, data.registration?.id, "already")
         } else if (data.action === "already_checked_out") {
           setScanResult({
-            type: "warning",
+            type: "not_checked_in",
             message: data.message || "Not checked in",
             attendee: {
               name: data.registration?.attendee_name,
@@ -239,6 +246,7 @@ export default function CheckinScanPage() {
             type: "success",
             message: isCheckout ? `Checked out from ${data.list_name}` : `Checked in to ${data.list_name}`,
             registrationId: data.registration?.id,
+            warning: data.warning,
             attendee: {
               name: data.registration?.attendee_name,
               email: data.registration?.attendee_email,
@@ -568,6 +576,7 @@ export default function CheckinScanPage() {
                 onClick={() => setCheckoutMode(!checkoutMode)}
                 className={`p-2 rounded-lg ${checkoutMode ? "bg-red-600 text-white" : "hover:bg-gray-700"}`}
                 title={checkoutMode ? "Switch to Check-in Mode (C)" : "Switch to Check-out Mode (C)"}
+                aria-label={checkoutMode ? "Switch to Check-in Mode" : "Switch to Check-out Mode"}
               >
                 {checkoutMode ? <LogOut className="w-4 h-4 sm:w-5 sm:h-5" /> : <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />}
               </button>
@@ -578,6 +587,7 @@ export default function CheckinScanPage() {
                   onClick={handleUndo}
                   className="p-2 hover:bg-gray-700 rounded-lg text-yellow-400"
                   title="Undo Last Check-in (U)"
+                  aria-label="Undo Last Check-in"
                 >
                   <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
@@ -587,6 +597,7 @@ export default function CheckinScanPage() {
                 onClick={() => router.push(`/events/${eventId}/checkin/${listId}`)}
                 className="p-2 hover:bg-gray-700 rounded-lg hidden sm:block"
                 title="View List"
+                aria-label="View List"
               >
                 <List className="w-5 h-5" />
               </button>
@@ -595,6 +606,7 @@ export default function CheckinScanPage() {
                 onClick={() => setShowShareModal(true)}
                 className="p-2 hover:bg-gray-700 rounded-lg"
                 title="Share Scanner Link"
+                aria-label="Share Scanner Link"
               >
                 <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
@@ -603,6 +615,7 @@ export default function CheckinScanPage() {
                 onClick={() => setCameraEnabled(!cameraEnabled)}
                 className={`p-2 rounded-lg ${cameraEnabled ? "bg-blue-600 text-white" : "hover:bg-gray-700"}`}
                 title={cameraEnabled ? "Disable Camera Scanner" : "Enable Camera Scanner"}
+                aria-label={cameraEnabled ? "Disable Camera Scanner" : "Enable Camera Scanner"}
               >
                 {cameraEnabled ? <CameraOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Camera className="w-4 h-4 sm:w-5 sm:h-5" />}
               </button>
@@ -611,6 +624,7 @@ export default function CheckinScanPage() {
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 className={`p-2 rounded-lg ${soundEnabled ? "hover:bg-gray-700" : "text-red-400 hover:bg-gray-700"}`}
                 title={soundEnabled ? "Mute (M)" : "Unmute (M)"}
+                aria-label={soundEnabled ? "Mute" : "Unmute"}
               >
                 {soundEnabled ? <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" /> : <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" />}
               </button>
@@ -619,6 +633,7 @@ export default function CheckinScanPage() {
                 onClick={() => setShowKeyboardHints(!showKeyboardHints)}
                 className="p-2 hover:bg-gray-700 rounded-lg hidden sm:block"
                 title="Keyboard Shortcuts (?)"
+                aria-label="Keyboard Shortcuts"
               >
                 <Keyboard className="w-5 h-5" />
               </button>
@@ -627,6 +642,7 @@ export default function CheckinScanPage() {
                 onClick={toggleFullscreen}
                 className="p-2 hover:bg-gray-700 rounded-lg"
                 title={isFullscreen ? "Exit Fullscreen (F)" : "Fullscreen (F)"}
+                aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
               >
                 {isFullscreen ? <Minimize className="w-4 h-4 sm:w-5 sm:h-5" /> : <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />}
               </button>
@@ -641,7 +657,7 @@ export default function CheckinScanPage() {
           <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold">Keyboard Shortcuts</h3>
-              <button onClick={() => setShowKeyboardHints(false)} className="p-1 hover:bg-gray-700 rounded">
+              <button onClick={() => setShowKeyboardHints(false)} className="p-1 hover:bg-gray-700 rounded" aria-label="Close">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -693,7 +709,7 @@ export default function CheckinScanPage() {
           <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold">Share Scanner</h3>
-              <button onClick={() => setShowShareModal(false)} className="p-1 hover:bg-gray-700 rounded">
+              <button onClick={() => setShowShareModal(false)} className="p-1 hover:bg-gray-700 rounded" aria-label="Close">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -894,6 +910,8 @@ export default function CheckinScanPage() {
                   ? "bg-gradient-to-br from-yellow-900/80 to-amber-900/80 border-2 border-yellow-500"
                   : scanResult.type === "warning"
                   ? "bg-gradient-to-br from-orange-900/80 to-amber-900/80 border-2 border-orange-500"
+                  : scanResult.type === "not_checked_in"
+                  ? "bg-gradient-to-br from-slate-800/80 to-slate-700/80 border-2 border-slate-500"
                   : "bg-gradient-to-br from-red-900/80 to-rose-900/80 border-2 border-red-500"
               }`}
             >
@@ -914,6 +932,8 @@ export default function CheckinScanPage() {
                       ? "bg-yellow-500 shadow-lg shadow-yellow-500/50"
                       : scanResult.type === "warning"
                       ? "bg-orange-500 shadow-lg shadow-orange-500/50"
+                      : scanResult.type === "not_checked_in"
+                      ? "bg-slate-500 shadow-lg shadow-slate-500/50"
                       : "bg-red-500 shadow-lg shadow-red-500/50"
                   }`}
                 >
@@ -923,6 +943,8 @@ export default function CheckinScanPage() {
                     <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
                   ) : scanResult.type === "warning" ? (
                     <RotateCcw className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
+                  ) : scanResult.type === "not_checked_in" ? (
+                    <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
                   ) : (
                     <XCircle className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
                   )}
@@ -936,6 +958,8 @@ export default function CheckinScanPage() {
                         ? "text-yellow-400"
                         : scanResult.type === "warning"
                         ? "text-orange-400"
+                        : scanResult.type === "not_checked_in"
+                        ? "text-slate-300"
                         : "text-red-400"
                     }`}
                   >
@@ -945,6 +969,8 @@ export default function CheckinScanPage() {
                       ? "Already Checked In"
                       : scanResult.type === "warning"
                       ? "Undo Successful"
+                      : scanResult.type === "not_checked_in"
+                      ? "Not Checked In"
                       : "Check-in Failed"}
                   </div>
                   {scanResult.attendee && (
@@ -963,10 +989,19 @@ export default function CheckinScanPage() {
                           #{scanResult.attendee.registration_number}
                         </span>
                       </div>
+                      {scanResult.message && (
+                        <div className="mt-2 text-gray-300 text-sm">{scanResult.message}</div>
+                      )}
                     </div>
                   )}
                   {!scanResult.attendee && (
                     <div className="mt-2 text-gray-300">{scanResult.message}</div>
+                  )}
+                  {scanResult.warning && (
+                    <div className="mt-3 flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-300 text-sm">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>{scanResult.warning}</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1021,6 +1056,7 @@ export default function CheckinScanPage() {
         <button
           onClick={() => setShowMobileRecent(!showMobileRecent)}
           className="lg:hidden fixed bottom-4 right-4 p-4 bg-gray-800 rounded-full shadow-lg border border-gray-700 z-40"
+          aria-label="View recent scans"
         >
           <Clock className="w-6 h-6" />
           {recentScans.length > 0 && (
@@ -1050,6 +1086,7 @@ export default function CheckinScanPage() {
               <button
                 onClick={() => setShowMobileRecent(false)}
                 className="lg:hidden p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
+                aria-label="Close recent scans"
               >
                 <X className="w-5 h-5" />
               </button>

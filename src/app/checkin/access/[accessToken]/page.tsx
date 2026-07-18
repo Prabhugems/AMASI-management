@@ -428,7 +428,13 @@ export default function StaffCheckinPage() {
 
     const now = Date.now()
     const lastSeen = recentScanMapRef.current.get(token)
-    const isRecentDup = lastSeen !== undefined && now - lastSeen < RECENT_SCAN_DEDUP_MS
+    // The dedup window exists to filter a camera re-decoding the same badge
+    // several times a second while it's in view, or a hardware scanner
+    // double-firing — not a deliberate tap on a specific row in the List
+    // tab. Suppressing that too used to leave the row's "Check In" button
+    // enabled with no server call made, even though the attendee genuinely
+    // was checked in moments earlier — silently inviting a confused re-tap.
+    const isRecentDup = source !== "list" && lastSeen !== undefined && now - lastSeen < RECENT_SCAN_DEDUP_MS
     if (debugMode) {
       // eslint-disable-next-line no-console
       console.log("[SCAN_TELEMETRY]", JSON.stringify({
@@ -504,6 +510,9 @@ export default function StaffCheckinPage() {
           attendeeName: data.registration?.attendee_name,
           regNumber: data.registration?.registration_number,
           ticketType: data.registration?.ticket_type?.name,
+          // Non-blocking note (e.g. outside the list's configured time
+          // window) — never affects the "checked_in" success status above.
+          message: data.warning,
         })
       } else {
         playSound("error")
@@ -942,6 +951,8 @@ export default function StaffCheckinPage() {
                   ? "text-white/60 hover:text-white hover:bg-white/10"
                   : "text-white/30"
               }`}
+              title={soundEnabled ? "Mute sounds" : "Unmute sounds"}
+              aria-label={soundEnabled ? "Mute sounds" : "Unmute sounds"}
             >
               {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
@@ -1146,6 +1157,9 @@ export default function StaffCheckinPage() {
                             {entry.ticketType ? ` · ${entry.ticketType}` : ""}
                             {entry.badgeEventName ? ` · for ${entry.badgeEventName}` : ""}
                           </p>
+                          {entry.message && (
+                            <p className="text-white/40 text-xs truncate mt-0.5">{entry.message}</p>
+                          )}
                         </div>
                         <span className="text-white/40 text-xs flex-shrink-0">{formatTime(entry.time)}</span>
                       </div>

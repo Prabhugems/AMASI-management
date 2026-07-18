@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useMutation } from "@tanstack/react-query"
+import { toast } from "sonner"
 import {
   ArrowLeft,
   Search,
@@ -152,6 +153,9 @@ export default function CheckinListAttendeesPage() {
     onSuccess: () => {
       refetch()
       refetchStats()
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Check-in failed")
     }
   })
 
@@ -172,10 +176,18 @@ export default function CheckinListAttendeesPage() {
       if (!res.ok) throw new Error(data.error || "Bulk check-in failed")
       return data
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setSelectedIds(new Set())
       refetch()
       refetchStats()
+      // Non-blocking note (e.g. outside the list's configured time window) —
+      // the bulk action already went through, this is informational only.
+      if (data?.warning) {
+        toast.warning(data.warning)
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Bulk check-in failed")
     }
   })
 

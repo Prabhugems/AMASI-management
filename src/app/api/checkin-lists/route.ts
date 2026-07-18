@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getApiUser, requireEventAndPermission } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // GET /api/checkin-lists - Get all check-in lists for an event
 export async function GET(request: NextRequest) {
-  const { error: authError } = await getApiUser()
-  if (authError) return authError
-
   try {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
@@ -15,6 +12,13 @@ export async function GET(request: NextRequest) {
     if (!eventId) {
       return NextResponse.json({ error: "event_id is required" }, { status: 400 })
     }
+
+    // Response includes each list's staff access_token (the credential that
+    // authorizes check-in actions), so this must be scoped to the caller's
+    // actual permission on THIS event, not just "any logged-in user" —
+    // matches the POST/PUT/DELETE handlers below.
+    const { error: authError } = await requireEventAndPermission(eventId, "checkin")
+    if (authError) return authError
 
     const supabase = await createAdminClient()
 
