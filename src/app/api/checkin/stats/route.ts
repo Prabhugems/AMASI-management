@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { isValidUUID } from "@/lib/validation"
-import { getApiUser } from "@/lib/auth/api-auth"
+import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 // Fetch all rows from a paginated PostgREST query, working around the default
 // 1000-row cap so 2000+ delegate events count correctly. The factory rebuilds
@@ -26,9 +26,6 @@ async function fetchAllRows<T>(
 
 // GET /api/checkin/stats - Get check-in statistics for a specific list
 export async function GET(request: NextRequest) {
-  const { error: authError } = await getApiUser()
-  if (authError) return authError
-
   try {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get("event_id")
@@ -37,6 +34,11 @@ export async function GET(request: NextRequest) {
     if (!eventId || !isValidUUID(eventId)) {
       return NextResponse.json({ error: "Valid event_id is required" }, { status: 400 })
     }
+
+    // Response includes the list's staff access_token — scope to the
+    // caller's actual permission on THIS event, not just any logged-in user.
+    const { error: authError } = await requireEventAndPermission(eventId, "checkin")
+    if (authError) return authError
 
     if (!checkinListId || !isValidUUID(checkinListId)) {
       return NextResponse.json({ error: "Valid checkin_list_id is required" }, { status: 400 })

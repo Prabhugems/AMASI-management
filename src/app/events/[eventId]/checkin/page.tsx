@@ -218,10 +218,15 @@ export default function CheckinHubPage() {
       const res = await fetch(`/api/checkin-lists?id=${id}`, {
         method: "DELETE"
       })
-      return res.json()
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to delete list")
+      return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["checkin-lists-active", eventId] })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete list")
     }
   })
 

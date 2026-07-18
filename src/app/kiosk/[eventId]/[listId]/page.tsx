@@ -19,7 +19,6 @@ import {
   Ticket,
   AlertCircle,
   Keyboard,
-  Camera,
   Briefcase,
   Building2,
 } from "lucide-react"
@@ -28,6 +27,9 @@ import { toast } from "sonner"
 type CheckinResult = {
   success: boolean
   message: string
+  // Non-blocking note on an otherwise-successful check-in (e.g. outside the
+  // list's configured time window) — informational only.
+  warning?: string
   registration?: {
     id: string
     registration_number: string
@@ -166,6 +168,7 @@ export default function KioskPage() {
         message:
           data.message ||
           (data.success ? "Check-in successful!" : "Failed to check in. Please try again."),
+        warning: data.warning,
         registration: data.registration,
         alreadyCheckedIn: data.alreadyCheckedIn,
       })
@@ -319,9 +322,13 @@ export default function KioskPage() {
                 <h1 className="text-3xl sm:text-5xl font-bold text-white mb-3">
                   Welcome, {result.registration?.attendee_name?.split(" ")[0]}!
                 </h1>
-                <p className="text-base sm:text-xl text-emerald-300 mb-8">
+                <p className="text-base sm:text-xl text-emerald-300 mb-2">
                   {result.alreadyCheckedIn ? "You're already checked in" : "Check-in successful"}
                 </p>
+                {result.warning && (
+                  <p className="text-sm text-amber-300 mb-6 max-w-md mx-auto">{result.warning}</p>
+                )}
+                {!result.warning && <div className="mb-8" />}
 
                 {/* Details — stacked-list pattern */}
                 <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg overflow-hidden mb-8 text-left">
@@ -572,12 +579,12 @@ export default function KioskPage() {
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-4 flex items-start gap-3">
               <div className="size-10 flex-none rounded-full bg-blue-500/15 outline outline-1 -outline-offset-1 outline-blue-500/30 flex items-center justify-center text-blue-300">
-                <Camera className="h-5 w-5" />
+                <QrCode className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-white">QR code</p>
+                <p className="text-sm font-semibold text-white">Badge scanner</p>
                 <p className="mt-0.5 text-xs text-gray-400">
-                  Position your badge QR code in front of the scanner
+                  Scan your badge with the scanner at this kiosk
                 </p>
               </div>
             </div>

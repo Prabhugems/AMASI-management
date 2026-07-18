@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { isValidUUID } from "@/lib/validation"
 import { checkTimeWindow } from "@/lib/checkin-time-window"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 // POST /api/kiosk/checkin — public self check-in for the /kiosk/[eventId]/[listId]
 // page. The kiosk runs as the anon browser client, but checkin_records has RLS
@@ -9,6 +10,13 @@ import { checkTimeWindow } from "@/lib/checkin-time-window"
 // route performs the lookup + insert server-side with the admin client (which
 // bypasses RLS), mirroring every other check-in path in the app.
 export async function POST(request: NextRequest) {
+  // Public, unauthenticated, and returns full attendee PII (name, email,
+  // phone, institution) on a fuzzy match — rate-limit by IP to blunt
+  // enumeration while staying generous enough for a real kiosk queue.
+  const clientIp = getClientIp(request)
+  const rateLimit = checkRateLimit(`kiosk-checkin:${clientIp}`, "public")
+  if (!rateLimit.success) return rateLimitExceededResponse(rateLimit)
+
   try {
     const body = await request.json().catch(() => ({}))
     const eventId = body.event_id as string | undefined

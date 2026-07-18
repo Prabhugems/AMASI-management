@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
         .from("checkin_lists")
         .select("ticket_type_ids, addon_ids")
         .eq("id", checkinListId)
+        .eq("event_id", eventId)
         .maybeSingle()
 
       if (listData?.ticket_type_ids?.length > 0) {
