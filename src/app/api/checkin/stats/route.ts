@@ -72,7 +72,9 @@ export async function GET(request: NextRequest) {
         list: {
           id: checkinList.id,
           name: checkinList.name,
-          description: checkinList.description
+          description: checkinList.description,
+          access_token: checkinList.access_token,
+          access_token_expires_at: checkinList.access_token_expires_at
         },
         total: 0,
         checkedIn: 0,
@@ -222,7 +224,9 @@ export async function GET(request: NextRequest) {
       list: {
         id: checkinList.id,
         name: checkinList.name,
-        description: checkinList.description
+        description: checkinList.description,
+        access_token: checkinList.access_token,
+        access_token_expires_at: checkinList.access_token_expires_at
       },
       total: totalCount || 0,
       checkedIn: checkedInCount || 0,

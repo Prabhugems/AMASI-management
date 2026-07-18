@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { validatePagination, sanitizeSearchInput, isValidUUID } from "@/lib/validation"
 import { getApiUser } from "@/lib/auth/api-auth"
+import { checkTimeWindow } from "@/lib/checkin-time-window"
 
 // GET /api/checkin - Search for attendees (with check-in status for a specific list)
 export async function GET(request: NextRequest) {
@@ -277,6 +278,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Check-in list not found" }, { status: 404 })
     }
 
+    const { warning: timeWindowWarning } = checkTimeWindow(checkinList)
+
     // Check if ticket type is allowed for this list
     if (checkinList.ticket_type_ids?.length > 0 && !checkinList.ticket_type_ids.includes(registration.ticket_type_id)) {
       return NextResponse.json({
@@ -404,11 +407,16 @@ export async function POST(request: NextRequest) {
         .update({ checked_in: true, checked_in_at: checkedInAt })
         .eq("id", registration.id)
 
+      const warnings = [
+        isOnlineParticipant && "This participant is registered as online-only",
+        timeWindowWarning
+      ].filter(Boolean) as string[]
+
       return NextResponse.json({
         success: true,
         action: "checked_in",
         list_name: checkinList.name,
-        ...(isOnlineParticipant && { warning: "This participant is registered as online-only" }),
+        ...(warnings.length > 0 && { warning: warnings.join(" ") }),
         registration: {
           ...registration,
           checked_in: true,
@@ -482,6 +490,15 @@ export async function PATCH(request: NextRequest) {
     const shouldCheckIn = action === "check_in"
 
     if (shouldCheckIn) {
+      // Time-window check applies to the whole list, not per-registration —
+      // compute it once from the list, not per bulk item.
+      const { data: checkinList } = await (supabase as any)
+        .from("checkin_lists")
+        .select("starts_at, ends_at")
+        .eq("id", checkin_list_id)
+        .maybeSingle()
+      const { warning: timeWindowWarning } = checkTimeWindow(checkinList || {})
+
       // Get existing check-in records
       const { data: existingRecords } = await (supabase as any)
         .from("checkin_records")
@@ -549,7 +566,8 @@ export async function PATCH(request: NextRequest) {
         success: true,
         action: "checked_in",
         count: toCheckIn.length,
-        skipped: alreadyCheckedIn.size
+        skipped: alreadyCheckedIn.size,
+        ...(timeWindowWarning && { warning: timeWindowWarning })
       })
     } else {
       // Bulk check-out

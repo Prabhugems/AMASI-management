@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { checkTimeWindow } from "@/lib/checkin-time-window"
 
 // GET /api/verify/[token] - Verify a registration token and return attendee info
 // This is what gets called when a QR code is scanned
@@ -163,10 +164,11 @@ export async function POST(
   // Verify staff access token and extract the authorized checkin_list_id + event
   let verified_checkin_list_id: string
   let verified_event_id: string
+  let timeWindowWarning: string | null = null
   {
     const { data: checkinList, error: listError } = await (supabase as any)
       .from("checkin_lists")
-      .select("id, event_id, name, access_token_expires_at")
+      .select("id, event_id, name, access_token_expires_at, starts_at, ends_at")
       .eq("access_token", access_token)
       .single()
 
@@ -189,6 +191,7 @@ export async function POST(
     // Use the checkin_list_id from the validated token, not the user-supplied one
     verified_checkin_list_id = checkinList.id
     verified_event_id = checkinList.event_id
+    timeWindowWarning = checkTimeWindow(checkinList).warning
   }
 
   // Determine if this is a checkin_token (long) or registration_number (short).
@@ -469,7 +472,9 @@ export async function POST(
     }
   }
 
-  // Log successful action
+  // Log successful action. A repeat-check-in-timing warning is only
+  // meaningful on a fresh check-in, not a check-out.
+  const activeTimeWindowWarning = isCheckIn ? timeWindowWarning : null
   await logAudit(supabase, {
     event_id: registration.event_id,
     checkin_list_id: verified_checkin_list_id,
@@ -477,7 +482,9 @@ export async function POST(
     action,
     performed_by,
     performed_via: "qr_scan",
-    device_info,
+    device_info: activeTimeWindowWarning
+      ? { ...device_info, time_window_warning: activeTimeWindowWarning }
+      : device_info,
     token_used: token,
     success: true,
   })
@@ -485,6 +492,7 @@ export async function POST(
   return NextResponse.json({
     success: true,
     action,
+    ...(activeTimeWindowWarning && { warning: activeTimeWindowWarning }),
     registration: {
       id: registration.id,
       registration_number: registration.registration_number,

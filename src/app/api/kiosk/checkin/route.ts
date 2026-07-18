@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { isValidUUID } from "@/lib/validation"
+import { checkTimeWindow } from "@/lib/checkin-time-window"
 
 // POST /api/kiosk/checkin — public self check-in for the /kiosk/[eventId]/[listId]
 // page. The kiosk runs as the anon browser client, but checkin_records has RLS
@@ -32,13 +33,15 @@ export async function POST(request: NextRequest) {
     // Validate the list and confirm it belongs to the event in the URL.
     const { data: list } = await (supabase as any)
       .from("checkin_lists")
-      .select("id, event_id, list_purpose")
+      .select("id, event_id, list_purpose, starts_at, ends_at")
       .eq("id", checkinListId)
       .maybeSingle()
 
     if (!list || list.event_id !== eventId) {
       return NextResponse.json({ success: false, message: "Check-in list not found." }, { status: 404 })
     }
+
+    const { warning: timeWindowWarning } = checkTimeWindow(list)
 
     // The kiosk is unattended — nobody is standing there to stop a delegate
     // self-serving a second kit/paper/badge. Collection lists (repeat scan
@@ -139,7 +142,12 @@ export async function POST(request: NextRequest) {
       .update({ checked_in: true, checked_in_at: now })
       .eq("id", registration.id)
 
-    return NextResponse.json({ success: true, message: "Check-in successful!", registration })
+    return NextResponse.json({
+      success: true,
+      message: "Check-in successful!",
+      registration,
+      ...(timeWindowWarning && { warning: timeWindowWarning })
+    })
   } catch (error: any) {
     console.error("Kiosk check-in error:", error)
     return NextResponse.json(
