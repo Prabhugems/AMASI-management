@@ -1,11 +1,18 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { QrImage } from "@/components/QrImage"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import { useQrCameraScanner } from "@/hooks/use-qr-camera-scanner"
+import {
+  enqueueRequest,
+  flushRequestQueue,
+  pendingRequestCount,
+  isNetworkFailure,
+  type RequestFlushResult,
+} from "@/lib/offline-scan-queue"
 import {
   ArrowLeft,
   QrCode,
@@ -38,7 +45,7 @@ import {
 } from "lucide-react"
 
 interface ScanResult {
-  type: "success" | "error" | "warning" | "already" | "not_checked_in"
+  type: "success" | "error" | "warning" | "already" | "not_checked_in" | "queued"
   message: string
   registrationId?: string
   // Non-blocking note attached to an otherwise-successful check-in (e.g.
@@ -83,6 +90,9 @@ export default function CheckinScanPage() {
   const router = useRouter()
   const eventId = params.eventId as string
   const listId = params.listId as string
+  // Namespaced distinctly from staff-scanner access tokens so the two
+  // offline queues can never collide even by coincidence.
+  const queuePartitionKey = `admin:${eventId}:${listId}`
 
   const [manualSearch, setManualSearch] = useState("")
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
@@ -102,6 +112,13 @@ export default function CheckinScanPage() {
   // unsolicited getUserMedia permission prompt would be unwelcome. Toggling it
   // on lets the same page double as a phone camera scanner when needed.
   const [cameraEnabled, setCameraEnabled] = useState(false)
+  // Offline queue: a scan that fails on the network path (rather than a real
+  // server rejection) is persisted to IndexedDB and flushed when connectivity
+  // returns, mirroring the staff scanner's offline queue — this page + the
+  // kiosk were the two check-in surfaces that previously lost scans silently
+  // on a wifi drop.
+  const [queueCount, setQueueCount] = useState(0)
+  const flushInFlightRef = useRef(false)
 
   const searchInputRef = useRef<HTMLInputElement>(null)
   const successAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -126,19 +143,6 @@ export default function CheckinScanPage() {
   useEffect(() => {
     successAudioRef.current = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2NgI17cF1qfIGKhX9zam15f4eFg3htYnOBhoaAfHBrcX+ChYR/eXNwdX5/gYCAf3x5eHp8foCBgYGAf358e3t9foCAgoOCgYB+fHt7fH1+f4GCgoKBgH59fHx8fX5/gIGBgYGAf359fHx8fX5/gIGBgYGAgH59fHx8fX5/gICBgYGAgH59fHx9fX5/gICBgYGAf359fX19fn9/gICBgYCAf359fX19fn9/gICAgICAgH59fX19fn5/f4CAgICAgH9+fX19fX5+f3+AgICAgIB/fn19fX1+fn9/gICAgICAf359fX19fn5/f4CAgICAgH9+fX19fX5+f3+AgICAf4B/fn19fX1+fn9/gICAgH+Af359fX19fn5/f4CAgIB/gH9+fX19fX5+f3+AgICAf4B/fn19fX5+fn9/gICAgH+Af359fX1+fn5/f4CAgIB/gH9+fX19fn5+f3+AgICAf4B/fn59fX5+fn9/gICAgH+Af359fX1+fn5/f4CAgIB/gH9+fn19fn5+f3+AgICAf4B/fn59fX5+fn9/gICAgH+Af35+fX1+fn5/f4CAgIB/gH9+fn59fn5+f3+AgICAf4B/fn59fX5+fn9/gICAgH+Af359fX5+fn5/f4CAgIB/gH9+fn19fn5+f4CAgICAf4B/fn59fX5+fn9/gICAgH+Af35+fX1+fn5/f4CAgIB/gH9+fn59fn5+f3+AgICAf39/fn59fX5+fn9/gICAgH9/f35+fX1+fn5/f4CAgIB/f39+fn59fn5+f3+AgICAf39/fn59fX5+fn9/gICAgH9/f35+fn1+fn5/f4CAgIB/f39+fn59fn5+f3+AgIB/f39/fn59fX5+fn9/gICAgH9/f35+fn1+fn5/f4CAgH9/f39+fn59fn5+f3+AgIB/f39/fn5+fX5+fn9/gICAf39/f35+fn1+fn5/f4CAgH9/f39+fn59fn5+f3+AgIB/f39/fn5+fX5+fn9/gICAf39/f35+fn5+fn5/f4CAgH9/f39+fn59fn5+f3+AgIB/f39/fn5+fX5+fn9/gICAf39/f35+fn5+fn5/f4CAf39/f39+fn59fn5+f3+AgIB/f39/fn5+fX5+fn9/gIB/f39/f35+fn1+fn5/f4CAf39/f39+fn59fn5+f39/gH9/f39/fn5+fX5+fn9/f4B/f39/f35+fn5+fn5/f3+Af39/f39+fn59fn5+f39/gH9/f39/fn5+fn5+fn9/f4B/f39/f35+fn1+fn5/f3+Af39/f39+fn5+fn5+f39/gH9/f39/fn5+fn5+fn9/f4B/f39/f35+fn5+fn5/f3+Af39/f39+fn5+fn5+f39/gH9/f39/fn5+fn5+fn9/f4B/f39/f35+fn5+fn5/f3+Af39/f39+fn5+fn5+f39/gH9/f39/fn5+fn5+fn9/f4B/f39/f35+fn5+fn5/f3+A")
     errorAudioRef.current = new Audio("data:audio/wav;base64,UklGRjIEAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQ4EAABpZnmBgYCAdnJxcHJ2fIOGhoWCfXl4eHl8gIWIiYmHhIF9e3p6e36ChoeHhoSBfnt5eXp9gIOGhoaDgH17eXh5fH+ChYWFg4F+e3l4eXx/goWFhYOAf3x6eXl7foGEhYWDgYB9e3l5enx/goSEhIOAf3x6eXl7fX+Cg4SDgYB9e3p5eXt+gIKDg4KBf3x7enl6fH6Ag4ODgoB/fXt6eXp8foGCg4OCgH59e3p5ent9gIGCg4KBf317enp6e31/gYKCgoGAf317enp6e31/gYKCgoGAf317enp6fH1/gIGCgYGAf317enp6e31/gIGBgYGAf317e3p6e31/gIGBgYGAf3x7e3p7fH1/gIGBgYCAf3x7e3p7fH1/gIGBgYCAf3x7e3p7fH1/gIGBgYCAf3x7e3t7fH1/gIGBgYB/f3x7e3t7fH5/gIGBgYB/f3x7e3t7fH5/gIGBgIB/f3x7e3t7fH5/gICBgIB/f3x7e3t7fH5/gICBgIB/f3x7e3t8fH5/gICAgIB/f3x8e3t8fH5/gICAgIB/f3x8e3t8fH5/gICAgIB/f3x8e3x8fH5/gICAgH9/f3x8e3x8fH5/gICAgH9/f3x8fHx8fH5/gICAgH9/f3x8fHx8fH5/gICAgH9/f3x8fHx8fX5/gICAgH9/f3x8fHx8fX5/gICAf39/f3x8fHx8fX5/f4CAf39/f3x8fHx9fX5/f4CAf39/f3x8fHx9fX5/f4CAf39/f3x8fHx9fX5/f4CAf39/f318fHx9fX5/f4B/f39/f318fHx9fX5/f4B/f39/f318fH19fX5/f4B/f39/f318fH19fX5/f4B/f39/f318fH19fX5/f4B/f39/f319fH19fX5/f4B/f39/f319fX19fX5/f4B/f39/f319fX19fX5/f39/f39/f319fX19fX5/f39/f39/f319fX19fX5/f39/f39/f319fX19fX5/f39/f39/f319fX19fn5/f39/f39/f319fX19fn5/f39/f39/f319fX1+fn5/f39/f39/f319fX1+fn5/f39/f39/f319fX1+fn5/f39/f39/f31+fX1+fn5/f39/f39/f31+fX1+fn5/f39/f39/f31+fn1+fn5/f39/f39/f31+fn1+fn5/f39/f39/f31+fn5+fn5/f39/f39/f31+fn5+fn5/f39/f39/f35+fn5+fn5/f39/f39/f35+fn5+fn5/f39/f39/f35+fn5+fn5/f39/f39/f35+fn5+fn5/f39/f3+Af35+fn5+fn5/f39/f3+Af35+fn5+fn5/f39/f3+Af35+fn5+fn5/f39/f3+Af35+fn5+fn9/f39/f3+Af35+fn5+fn9/f39/f3+Af35+fn5+fn9/f39/f3+Af35+fn5+f39/f39/f3+Af35+fn5+f39/f39/")
-  }, [])
-
-  // Online/offline detection
-  useEffect(() => {
-    setIsOnline(navigator.onLine)
-    const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
-    window.addEventListener("online", handleOnline)
-    window.addEventListener("offline", handleOffline)
-    return () => {
-      window.removeEventListener("online", handleOnline)
-      window.removeEventListener("offline", handleOffline)
-    }
   }, [])
 
   // Fullscreen change detection
@@ -191,19 +195,42 @@ export default function CheckinScanPage() {
   // Check-in/checkout mutation
   const checkinMutation = useMutation({
     mutationFn: async (registrationNumber: string) => {
-      const res = await fetch("/api/checkin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event_id: eventId,
-          checkin_list_id: listId,
-          registration_number: registrationNumber,
-          action: checkoutMode ? "check_out" : "check_in"
+      const body = {
+        event_id: eventId,
+        checkin_list_id: listId,
+        registration_number: registrationNumber,
+        action: checkoutMode ? "check_out" : "check_in"
+      }
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await enqueueRequest(queuePartitionKey, { url: "/api/checkin", body })
+        await refreshQueueCount()
+        return { queued: true }
+      }
+
+      try {
+        const res = await fetch("/api/checkin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
         })
-      })
-      return res.json()
+        return await res.json()
+      } catch (err) {
+        if (isNetworkFailure(err)) {
+          await enqueueRequest(queuePartitionKey, { url: "/api/checkin", body })
+          await refreshQueueCount()
+          return { queued: true }
+        }
+        throw err
+      }
     },
     onSuccess: (data) => {
+      if (data.queued) {
+        setScanResult({ type: "queued", message: "Queued offline — will sync when online" })
+        vibrate(200)
+        setCountdown(5)
+        return
+      }
       if (data.success) {
         const isCheckout = checkoutMode || data.action === "checked_out"
 
@@ -346,6 +373,71 @@ export default function CheckinScanPage() {
   const clearRecentScans = () => {
     setRecentScans([])
   }
+
+  // Refresh the queue-count badge from IndexedDB. Cheap (single IDB store
+  // scan filtered by partition key); called after every enqueue/flush.
+  const refreshQueueCount = useCallback(async () => {
+    try {
+      const n = await pendingRequestCount(queuePartitionKey)
+      setQueueCount(n)
+    } catch {
+      // IDB unavailable (e.g. private browsing) — fall back to "no queue"
+      // rather than blocking the scanner UI.
+    }
+  }, [queuePartitionKey])
+
+  // Drain the offline queue. Idempotent + concurrency-guarded so the
+  // `online` event firing while already flushing doesn't start a parallel
+  // drain. Each synced scan is folded into recentScans + stats the same way
+  // a live scan is, so the volunteer sees what just landed.
+  const flushAllPending = useCallback(async () => {
+    if (flushInFlightRef.current) return
+    flushInFlightRef.current = true
+    try {
+      await flushRequestQueue(queuePartitionKey, (result: RequestFlushResult) => {
+        const data = result.response as {
+          success?: boolean
+          action?: string
+          registration?: { id?: string; attendee_name?: string; registration_number?: string; ticket_types?: { name?: string } }
+        } | undefined
+        if (result.success && data?.success) {
+          const isAlready = data.action === "already_checked_in" || data.action === "already_checked_out"
+          addRecentScan(
+            data.registration?.attendee_name || "Unknown",
+            data.registration?.registration_number || "",
+            data.registration?.id,
+            isAlready ? "already" : "success"
+          )
+        } else {
+          addRecentScan("Unknown", "", undefined, "error")
+        }
+      })
+    } finally {
+      flushInFlightRef.current = false
+      await refreshQueueCount()
+      refetchStats()
+    }
+  }, [queuePartitionKey, refreshQueueCount, refetchStats])
+
+  // Online/offline detection + initial queue load + flush-on-reconnect.
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true)
+      flushAllPending()
+    }
+    const handleOffline = () => setIsOnline(false)
+
+    setIsOnline(navigator.onLine)
+    refreshQueueCount()
+    if (navigator.onLine) flushAllPending()
+
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [refreshQueueCount, flushAllPending])
 
   // Shared finalize logic for the manual-entry box, used by both the form's
   // Enter/submit-button path and the scanner-burst auto-submit path below, so
@@ -567,8 +659,16 @@ export default function CheckinScanPage() {
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
               {/* Connection Status */}
-              <div className={`p-2 rounded-lg ${isOnline ? "text-green-400" : "text-red-400"}`} title={isOnline ? "Online" : "Offline"}>
+              <div
+                className={`relative p-2 rounded-lg ${isOnline ? "text-green-400" : "text-red-400"}`}
+                title={queueCount > 0 ? `${isOnline ? "Online" : "Offline"} — ${queueCount} scan(s) queued` : isOnline ? "Online" : "Offline"}
+              >
                 {isOnline ? <Wifi className="w-4 h-4 sm:w-5 sm:h-5" /> : <WifiOff className="w-4 h-4 sm:w-5 sm:h-5" />}
+                {queueCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-sky-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {queueCount}
+                  </span>
+                )}
               </div>
 
               {/* Check-out Mode Toggle */}
@@ -912,6 +1012,8 @@ export default function CheckinScanPage() {
                   ? "bg-gradient-to-br from-orange-900/80 to-amber-900/80 border-2 border-orange-500"
                   : scanResult.type === "not_checked_in"
                   ? "bg-gradient-to-br from-slate-800/80 to-slate-700/80 border-2 border-slate-500"
+                  : scanResult.type === "queued"
+                  ? "bg-gradient-to-br from-sky-900/80 to-blue-900/80 border-2 border-sky-500"
                   : "bg-gradient-to-br from-red-900/80 to-rose-900/80 border-2 border-red-500"
               }`}
             >
@@ -934,6 +1036,8 @@ export default function CheckinScanPage() {
                       ? "bg-orange-500 shadow-lg shadow-orange-500/50"
                       : scanResult.type === "not_checked_in"
                       ? "bg-slate-500 shadow-lg shadow-slate-500/50"
+                      : scanResult.type === "queued"
+                      ? "bg-sky-500 shadow-lg shadow-sky-500/50"
                       : "bg-red-500 shadow-lg shadow-red-500/50"
                   }`}
                 >
@@ -945,6 +1049,8 @@ export default function CheckinScanPage() {
                     <RotateCcw className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
                   ) : scanResult.type === "not_checked_in" ? (
                     <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
+                  ) : scanResult.type === "queued" ? (
+                    <Clock className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
                   ) : (
                     <XCircle className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
                   )}
@@ -960,6 +1066,8 @@ export default function CheckinScanPage() {
                         ? "text-orange-400"
                         : scanResult.type === "not_checked_in"
                         ? "text-slate-300"
+                        : scanResult.type === "queued"
+                        ? "text-sky-300"
                         : "text-red-400"
                     }`}
                   >
@@ -971,6 +1079,8 @@ export default function CheckinScanPage() {
                       ? "Undo Successful"
                       : scanResult.type === "not_checked_in"
                       ? "Not Checked In"
+                      : scanResult.type === "queued"
+                      ? "Queued Offline"
                       : "Check-in Failed"}
                   </div>
                   {scanResult.attendee && (

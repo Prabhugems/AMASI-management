@@ -23,6 +23,7 @@ import {
   Building2,
 } from "lucide-react"
 import { toast } from "sonner"
+import { enqueueRequest, flushRequestQueue, isNetworkFailure } from "@/lib/offline-scan-queue"
 
 type CheckinResult = {
   success: boolean
@@ -55,6 +56,9 @@ export default function KioskPage() {
   const eventId = params.eventId as string
   const listId = params.listId as string
   const supabase = createClient()
+  // Namespaced distinctly from the admin scanner's and staff scanner's
+  // offline queues so the three can never collide.
+  const queuePartitionKey = `kiosk:${eventId}:${listId}`
 
   const [registrationNumber, setRegistrationNumber] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
@@ -133,6 +137,18 @@ export default function KioskPage() {
     if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current)
   }, [])
 
+  // Offline handling here is deliberately NOT a transplant of the staff
+  // scanner's "show success immediately, reconcile later" pattern — that
+  // design relies on a human volunteer noticing a later sync problem. A
+  // kiosk is unattended: an optimistic "Check-in successful!" for a
+  // queued-but-unconfirmed scan would manufacture false confidence at a
+  // public terminal with nobody there to catch a later failure. So:
+  //   1. Pre-flight offline check — honest "please wait" state, no lies.
+  //   2. Inline retry (2 attempts, ~1.5s apart) on a network blip, before
+  //      showing any result — covers brief drops without ever queuing.
+  //   3. Only once retries are exhausted, queue as a last-resort safety net
+  //      so the scan self-heals in the background — but the attendee still
+  //      sees an honest failure, never the success/countdown screen.
   const handleCheckin = async (override?: string) => {
     // `override` lets the scanner-burst auto-submit and the Enter handler pass
     // the live DOM value, which a fast scanner can fill before React flushes
@@ -148,40 +164,72 @@ export default function KioskPage() {
     submittingRef.current = true
     setIsProcessing(true)
 
-    try {
-      // The check-in runs server-side via the admin client. The kiosk is a
-      // public (anon) page and checkin_records has RLS with no policy, so a
-      // direct browser insert is always denied — see /api/kiosk/checkin.
-      const res = await fetch("/api/kiosk/checkin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event_id: eventId,
-          checkin_list_id: listId,
-          search: searchTerm,
-        }),
-      })
-      const data = (await res.json().catch(() => ({}))) as CheckinResult
+    const body = { event_id: eventId, checkin_list_id: listId, search: searchTerm }
 
-      setResult({
-        success: !!data.success,
-        message:
-          data.message ||
-          (data.success ? "Check-in successful!" : "Failed to check in. Please try again."),
-        warning: data.warning,
-        registration: data.registration,
-        alreadyCheckedIn: data.alreadyCheckedIn,
-      })
-    } catch (_error) {
+    try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setResult({
+          success: false,
+          message: "You appear to be offline. Please wait a moment and try again.",
+        })
+        return
+      }
+
+      let lastErr: unknown = null
+      for (let attempt = 0; attempt <= 2; attempt++) {
+        try {
+          // The check-in runs server-side via the admin client. The kiosk is
+          // a public (anon) page and checkin_records has RLS with no policy,
+          // so a direct browser insert is always denied — see
+          // /api/kiosk/checkin.
+          const res = await fetch("/api/kiosk/checkin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+          const data = (await res.json().catch(() => ({}))) as CheckinResult
+          setResult({
+            success: !!data.success,
+            message:
+              data.message ||
+              (data.success ? "Check-in successful!" : "Failed to check in. Please try again."),
+            warning: data.warning,
+            registration: data.registration,
+            alreadyCheckedIn: data.alreadyCheckedIn,
+          })
+          return
+        } catch (err) {
+          lastErr = err
+          if (!isNetworkFailure(err) || attempt === 2) break
+          await new Promise((resolve) => setTimeout(resolve, 1500))
+        }
+      }
+
+      if (isNetworkFailure(lastErr)) {
+        await enqueueRequest(queuePartitionKey, { url: "/api/kiosk/checkin", body })
+      }
       setResult({
         success: false,
-        message: "Something went wrong. Please try again.",
+        message: "We couldn't check you in — please see a staff member.",
       })
     } finally {
       setIsProcessing(false)
       submittingRef.current = false
     }
   }
+
+  // Silent background self-heal for anything queued above — no "queue" or
+  // "pending" language anywhere in the attendee-facing UI; this just retries
+  // once connectivity returns, the same way it would have worked the first
+  // time if the network hadn't blipped.
+  useEffect(() => {
+    const flush = () => {
+      flushRequestQueue(queuePartitionKey, () => {}).catch(() => {})
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine) flush()
+    window.addEventListener("online", flush)
+    return () => window.removeEventListener("online", flush)
+  }, [queuePartitionKey])
 
   const handleEmailBadge = async () => {
     if (!result?.registration) return

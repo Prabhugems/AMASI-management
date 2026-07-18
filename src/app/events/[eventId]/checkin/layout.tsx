@@ -20,6 +20,7 @@ import {
   Calendar,
   MapPin,
   CheckCircle,
+  AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
@@ -30,6 +31,7 @@ const sidebarItems = [
   { title: "Track Attendee", href: "/track", icon: Search },
   { title: "All Attendees", href: "/attendees", icon: Users },
   { title: "Reports", href: "/reports", icon: BarChart3 },
+  { title: "Failed Scans", href: "/audit", icon: AlertTriangle },
 ]
 
 export default function CheckinLayout({ children }: { children: React.ReactNode }) {
@@ -167,7 +169,7 @@ export default function CheckinLayout({ children }: { children: React.ReactNode 
         <div className="text-center">
           <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-          <p className="text-muted-foreground mb-4">You don't have permission to access Check-in.</p>
+          <p className="text-muted-foreground mb-4">You don&apos;t have permission to access Check-in.</p>
           <Link href={`/events/${eventId}`} className="text-primary hover:underline">← Back to Dashboard</Link>
         </div>
       </div>
