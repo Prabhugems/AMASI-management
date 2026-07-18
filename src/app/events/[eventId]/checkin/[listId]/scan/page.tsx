@@ -186,14 +186,27 @@ export default function CheckinScanPage() {
 
   // Check-in/checkout mutation
   const checkinMutation = useMutation({
-    mutationFn: async (registrationNumber: string) => {
+    mutationFn: async (rawValue: string) => {
+      // A scanned badge QR encodes the verification URL (…/v/<checkin_token>),
+      // not the registration number. Extract the token so a camera / hardware
+      // QR scan resolves to a registration instead of sending the whole URL as
+      // a reg number (which matches nothing). A bare secure token (>=32 chars)
+      // is looked up as a checkin_token; anything shorter is treated as a
+      // typed/scanned registration number. Mirrors the staff scanner.
+      let value = rawValue
+      const urlMatch = value.match(/\/v\/([A-Za-z0-9_-]+)/)
+      if (urlMatch) value = urlMatch[1]
+      const isSecureToken = value.length >= 32
+
       const res = await fetch("/api/checkin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           event_id: eventId,
           checkin_list_id: listId,
-          registration_number: registrationNumber,
+          ...(isSecureToken
+            ? { checkin_token: value }
+            : { registration_number: value }),
           action: checkoutMode ? "check_out" : "check_in"
         })
       })

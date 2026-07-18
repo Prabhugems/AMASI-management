@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { registration_id, registration_number, event_id, checkin_list_id, action, user_id } = body
+    const { registration_id, registration_number, checkin_token, event_id, checkin_list_id, action, user_id } = body
 
     if (!event_id || !isValidUUID(event_id)) {
       return NextResponse.json({ error: "Valid event_id is required" }, { status: 400 })
@@ -222,8 +222,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Valid checkin_list_id is required" }, { status: 400 })
     }
 
-    if (!registration_id && !registration_number) {
-      return NextResponse.json({ error: "registration_id or registration_number is required" }, { status: 400 })
+    if (!registration_id && !registration_number && !checkin_token) {
+      return NextResponse.json({ error: "registration_id, registration_number or checkin_token is required" }, { status: 400 })
     }
 
     const supabase = await createAdminClient()
@@ -248,6 +248,13 @@ export async function POST(request: NextRequest) {
 
     if (registration_id) {
       query = query.eq("id", registration_id)
+    } else if (checkin_token) {
+      // Badge QR codes encode the secure checkin_token (via a /v/<token> URL),
+      // never the registration_number. Camera/hardware QR scans on the admin
+      // scanner resolve to this branch. Still scoped to event_id, so a badge
+      // from another event can't check in here even though checkin_token is
+      // globally unique.
+      query = query.eq("checkin_token", checkin_token)
     } else {
       query = query.eq("registration_number", registration_number)
     }
