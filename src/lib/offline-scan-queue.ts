@@ -209,3 +209,133 @@ export async function clearAll(listAccessToken: string): Promise<number> {
   await Promise.all(toDelete.map((s) => db.delete(STORE, s.id)))
   return toDelete.length
 }
+
+// ---------------------------------------------------------------------------
+// Generic offline queue — for the admin scan page and kiosk page, which don't
+// share the staff flow's fixed /api/verify/[token] shape (session-cookie auth
+// posting to /api/checkin, or a public POST to /api/kiosk/checkin). Added
+// alongside the QueuedScan functions above rather than generalizing them:
+// those are a shipped, working production path, and every function above is
+// left completely untouched so nothing here can regress it. Same IndexedDB
+// database/store/VERSION — a queued item is discriminated by the presence of
+// `kind: "generic"`, so existing QueuedScan records (no `kind` field) are
+// never matched by the functions below, and vice versa.
+
+export interface QueuedRequest {
+  id: string
+  kind: "generic"
+  partition_key: string
+  url: string
+  method: string
+  body: unknown
+  queued_at: number
+  attempts: number
+  last_error?: string
+}
+
+export async function enqueueRequest(
+  partitionKey: string,
+  req: { url: string; body: unknown; method?: string }
+): Promise<QueuedRequest> {
+  const db = await getDb()
+  const item: QueuedRequest = {
+    id: newId(),
+    kind: "generic",
+    partition_key: partitionKey,
+    url: req.url,
+    method: req.method ?? "POST",
+    body: req.body,
+    queued_at: Date.now(),
+    attempts: 0,
+  }
+  await db.put(STORE, item)
+  return item
+}
+
+export async function listPendingRequests(partitionKey: string): Promise<QueuedRequest[]> {
+  const db = await getDb()
+  const all = (await db.getAll(STORE)) as (QueuedScan | QueuedRequest)[]
+  return all
+    .filter((item): item is QueuedRequest => "kind" in item && item.kind === "generic" && item.partition_key === partitionKey)
+    .sort((a, b) => a.queued_at - b.queued_at)
+}
+
+export async function pendingRequestCount(partitionKey: string): Promise<number> {
+  return (await listPendingRequests(partitionKey)).length
+}
+
+async function updateRequestItem(item: QueuedRequest): Promise<void> {
+  const db = await getDb()
+  await db.put(STORE, item)
+}
+
+export interface RequestFlushResult {
+  request: QueuedRequest
+  response?: unknown
+  success: boolean
+  terminalError?: string
+}
+
+/**
+ * Drain the generic queue for `partitionKey`. Same terminal-vs-network-retry
+ * semantics as flushQueue above: any HTTP response (2xx or not) is terminal
+ * and removed from the queue; a network failure leaves the item queued with
+ * attempts++ and stops the pass so we don't churn while still offline.
+ */
+export async function flushRequestQueue(
+  partitionKey: string,
+  onResult: (result: RequestFlushResult) => void
+): Promise<{ flushed: number; remaining: number }> {
+  const pending = await listPendingRequests(partitionKey)
+  let flushed = 0
+
+  for (const item of pending) {
+    try {
+      const res = await fetchWithTimeout(item.url, {
+        method: item.method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(item.body),
+      })
+      const data = await res.json().catch(() => ({}))
+      const success = res.ok && (data as { success?: boolean }).success === true
+      await deleteScan(item.id)
+      flushed++
+      onResult({
+        request: item,
+        response: data,
+        success,
+        terminalError: success ? undefined : (data as { error?: string }).error || `HTTP ${res.status}`,
+      })
+    } catch (err) {
+      if (isNetworkFailure(err)) {
+        await updateRequestItem({
+          ...item,
+          attempts: item.attempts + 1,
+          last_error: err instanceof Error ? err.message : String(err),
+        })
+        break
+      }
+      await deleteScan(item.id)
+      flushed++
+      onResult({
+        request: item,
+        success: false,
+        terminalError: err instanceof Error ? err.message : "Unknown error during sync",
+      })
+    }
+  }
+
+  const remaining = (await listPendingRequests(partitionKey)).length
+  return { flushed, remaining }
+}
+
+/** Wipes every queued generic request for this partition. */
+export async function clearAllRequests(partitionKey: string): Promise<number> {
+  const db = await getDb()
+  const all = (await db.getAll(STORE)) as (QueuedScan | QueuedRequest)[]
+  const toDelete = all.filter(
+    (item): item is QueuedRequest => "kind" in item && item.kind === "generic" && item.partition_key === partitionKey
+  )
+  await Promise.all(toDelete.map((item) => db.delete(STORE, item.id)))
+  return toDelete.length
+}
