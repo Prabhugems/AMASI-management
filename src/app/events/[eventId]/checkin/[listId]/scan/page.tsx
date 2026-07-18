@@ -40,6 +40,7 @@ import {
 interface ScanResult {
   type: "success" | "error" | "warning" | "already"
   message: string
+  warning?: string
   registrationId?: string
   attendee?: {
     name: string
@@ -251,6 +252,7 @@ export default function CheckinScanPage() {
           setScanResult({
             type: "success",
             message: isCheckout ? `Checked out from ${data.list_name}` : `Checked in to ${data.list_name}`,
+            warning: data.warning,
             registrationId: data.registration?.id,
             attendee: {
               name: data.registration?.attendee_name,
@@ -980,6 +982,12 @@ export default function CheckinScanPage() {
                   )}
                   {!scanResult.attendee && (
                     <div className="mt-2 text-gray-300">{scanResult.message}</div>
+                  )}
+                  {scanResult.warning && (
+                    <div className="mt-3 flex items-start gap-1.5 px-3 py-2 bg-amber-500/15 border border-amber-500/40 rounded-lg text-amber-300 text-sm">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>{scanResult.warning}</span>
+                    </div>
                   )}
                 </div>
               </div>

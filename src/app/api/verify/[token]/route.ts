@@ -165,10 +165,11 @@ export async function POST(
   let verified_checkin_list_id: string
   let verified_event_id: string
   let timeWindowWarning: string | null = null
+  let listTicketTypeIds: string[] | null = null
   {
     const { data: checkinList, error: listError } = await (supabase as any)
       .from("checkin_lists")
-      .select("id, event_id, name, access_token_expires_at, starts_at, ends_at")
+      .select("id, event_id, name, access_token_expires_at, starts_at, ends_at, ticket_type_ids")
       .eq("access_token", access_token)
       .single()
 
@@ -192,6 +193,9 @@ export async function POST(
     verified_checkin_list_id = checkinList.id
     verified_event_id = checkinList.event_id
     timeWindowWarning = checkTimeWindow(checkinList).warning
+    listTicketTypeIds = Array.isArray(checkinList.ticket_type_ids) && checkinList.ticket_type_ids.length > 0
+      ? checkinList.ticket_type_ids
+      : null
   }
 
   // Determine if this is a checkin_token (long) or registration_number (short).
@@ -472,9 +476,29 @@ export async function POST(
     }
   }
 
-  // Log successful action. A repeat-check-in-timing warning is only
-  // meaningful on a fresh check-in, not a check-out.
-  const activeTimeWindowWarning = isCheckIn ? timeWindowWarning : null
+  // Non-blocking ticket-type check. Restricted lists (e.g. a "Faculty Lunch"
+  // list scoped to faculty tickets) are enforced as a hard block on the admin
+  // manual path (/api/checkin), but the scanner stays fail-safe: a wrong-ticket
+  // badge still checks in, with a warning attached, so a volunteer scanning by
+  // ear/eye is told "this badge isn't on this list" without ever stranding a
+  // paid attendee at a live desk. Mirrors the time-window handling.
+  let ticketTypeWarning: string | null = null
+  if (isCheckIn && listTicketTypeIds &&
+      registration.ticket_type_id &&
+      !listTicketTypeIds.includes(registration.ticket_type_id)) {
+    const tname = registration.ticket_types?.name
+    ticketTypeWarning = tname
+      ? `Ticket type "${tname}" isn't on this list`
+      : "This ticket type isn't on this list"
+  }
+
+  // Combine the non-blocking warnings (never a rejection). Only meaningful on a
+  // fresh check-in, not a check-out.
+  const warnings = isCheckIn
+    ? ([timeWindowWarning, ticketTypeWarning].filter(Boolean) as string[])
+    : []
+  const combinedWarning = warnings.length > 0 ? warnings.join(" · ") : null
+
   await logAudit(supabase, {
     event_id: registration.event_id,
     checkin_list_id: verified_checkin_list_id,
@@ -482,8 +506,8 @@ export async function POST(
     action,
     performed_by,
     performed_via: "qr_scan",
-    device_info: activeTimeWindowWarning
-      ? { ...device_info, time_window_warning: activeTimeWindowWarning }
+    device_info: combinedWarning
+      ? { ...device_info, warning: combinedWarning }
       : device_info,
     token_used: token,
     success: true,
@@ -492,7 +516,7 @@ export async function POST(
   return NextResponse.json({
     success: true,
     action,
-    ...(activeTimeWindowWarning && { warning: activeTimeWindowWarning }),
+    ...(combinedWarning && { warning: combinedWarning }),
     registration: {
       id: registration.id,
       registration_number: registration.registration_number,

@@ -495,7 +495,11 @@ export default function StaffCheckinPage() {
           message: data.message,
         })
       } else if (data.success) {
-        playSound("success")
+        // A check-in can succeed *with* a non-blocking warning (wrong ticket
+        // type for a restricted list, or scanned outside the list's time
+        // window). Fail-safe by design — they're in — but the volunteer still
+        // needs to see it, so carry data.warning into the feed row.
+        playSound(data.warning ? "warning" : "success")
         queryClient.setQueryData(statsQueryKey, (old: { stats: { total: number; checkedIn: number } } | undefined) =>
           old ? { stats: { ...old.stats, checkedIn: old.stats.checkedIn + 1 } } : old
         )
@@ -504,6 +508,7 @@ export default function StaffCheckinPage() {
           attendeeName: data.registration?.attendee_name,
           regNumber: data.registration?.registration_number,
           ticketType: data.registration?.ticket_type?.name,
+          message: data.warning,
         })
       } else {
         playSound("error")
@@ -1146,6 +1151,9 @@ export default function StaffCheckinPage() {
                             {entry.ticketType ? ` · ${entry.ticketType}` : ""}
                             {entry.badgeEventName ? ` · for ${entry.badgeEventName}` : ""}
                           </p>
+                          {entry.status === "checked_in" && entry.message && (
+                            <p className="text-amber-300/90 text-xs truncate">⚠ {entry.message}</p>
+                          )}
                         </div>
                         <span className="text-white/40 text-xs flex-shrink-0">{formatTime(entry.time)}</span>
                       </div>
@@ -1226,6 +1234,9 @@ export default function StaffCheckinPage() {
                           {entry.attendeeName || entry.regNumber || entry.code}
                         </p>
                         <p className="text-white/50 text-xs truncate">{display.label}</p>
+                        {entry.status === "checked_in" && entry.message && (
+                          <p className="text-amber-300/90 text-xs truncate">⚠ {entry.message}</p>
+                        )}
                       </div>
                       <span className="text-white/40 text-xs flex-shrink-0">{formatTime(entry.time)}</span>
                     </div>

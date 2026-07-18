@@ -50,11 +50,25 @@ export async function GET(
 
   const { count: totalCount } = await totalQuery
 
-  const { count: checkedInCount } = await (supabase as any)
+  // Count only check-in records whose registration is still eligible — same
+  // basis as `total` above (confirmed + this list's ticket-type filter) — so
+  // the two numbers can't diverge. The scanner (/api/verify) checks in a
+  // wrong-ticket badge with a warning rather than blocking it, so an
+  // unfiltered record count could otherwise report checkedIn > total. The
+  // `registrations!inner(...)` embed makes this an inner join, kept as a single
+  // head+count query so the 15s poll stays cheap.
+  let checkedInQuery = (supabase as any)
     .from("checkin_records")
-    .select("*", { count: "exact", head: true })
+    .select("registration_id, registrations!inner(status, ticket_type_id)", { count: "exact", head: true })
     .eq("checkin_list_id", checkinList.id)
     .is("checked_out_at", null)
+    .eq("registrations.status", "confirmed")
+
+  if (checkinList.ticket_type_ids?.length > 0) {
+    checkedInQuery = checkedInQuery.in("registrations.ticket_type_id", checkinList.ticket_type_ids)
+  }
+
+  const { count: checkedInCount } = await checkedInQuery
 
   return NextResponse.json({
     stats: {
