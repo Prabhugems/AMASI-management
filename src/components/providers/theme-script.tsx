@@ -3,14 +3,27 @@ export function ThemeScript() {
   const themeScript = `
     (function() {
       try {
-        // Force dark mode — add class early to prevent flash
-        document.documentElement.classList.add('dark');
-        document.documentElement.style.colorScheme = 'dark';
-
-        // Migrate any existing light-mode preference to dark
+        // Resolve the stored theme preference early to prevent a flash.
+        // Defaults to dark (Pocket theme) only when nothing is stored yet —
+        // an explicit light/system choice must survive reloads.
         var storedTheme = localStorage.getItem('theme');
-        if (!storedTheme || storedTheme === 'light' || storedTheme === 'system') {
-          localStorage.setItem('theme', 'dark');
+        var isDark;
+        if (storedTheme === 'light') {
+          isDark = false;
+        } else if (storedTheme === 'dark') {
+          isDark = true;
+        } else if (storedTheme === 'system') {
+          isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        } else {
+          isDark = true;
+        }
+
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = 'dark';
+        } else {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.style.colorScheme = 'light';
         }
 
         // Apply theme color
