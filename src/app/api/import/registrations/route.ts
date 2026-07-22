@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     // Get all ticket types for this event (for matching by name)
     const { data: allTickets } = await (supabase as any)
       .from("ticket_types")
-      .select("id, name, price")
+      .select("id, name, price, quantity_total, quantity_sold")
       .eq("event_id", event_id)
 
     // Get all member emails and phone numbers for auto-lookup (case-insensitive)
@@ -86,14 +86,18 @@ export async function POST(request: NextRequest) {
     }
 
     const ticketsByName: Record<string, { id: string; price: number; name: string }> = {}
-    const ticketsList: { id: string; price: number; name: string; nameLower: string }[] = []
+    const ticketsList: { id: string; price: number; name: string; nameLower: string; quantity_total: number | null; quantity_sold: number | null }[] = []
     if (allTickets) {
       allTickets.forEach((t: any) => {
         const nameLower = t.name.toLowerCase().trim()
         ticketsByName[nameLower] = { id: t.id, price: t.price, name: t.name }
-        ticketsList.push({ id: t.id, price: t.price, name: t.name, nameLower })
+        ticketsList.push({ id: t.id, price: t.price, name: t.name, nameLower, quantity_total: t.quantity_total, quantity_sold: t.quantity_sold })
       })
     }
+
+    // Track ticket quantities allocated within this batch (a single CSV upload
+    // can have multiple rows targeting the same sold-out ticket type)
+    const ticketQuantityUpdates = new Map<string, number>()
 
     // Fuzzy match function for ticket names
     const findTicketByName = (csvTicketName: string): string | null => {
@@ -302,6 +306,20 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Check ticket availability (accounting for rows already processed in this batch)
+        if (ticketId) {
+          const matchedTicket = ticketsList.find(t => t.id === ticketId)
+          if (matchedTicket && matchedTicket.quantity_total) {
+            const pendingUpdates = ticketQuantityUpdates.get(ticketId) || 0
+            const currentSold = (matchedTicket.quantity_sold || 0) + pendingUpdates
+            if (currentSold >= matchedTicket.quantity_total) {
+              results.failed++
+              results.errors.push({ row: rowNum, error: `Ticket "${matchedTicket.name}" is sold out` })
+              continue
+            }
+          }
+        }
+
         // Create registration with only existing columns
         const registrationData: any = {
           event_id,
@@ -330,6 +348,9 @@ export async function POST(request: NextRequest) {
           results.errors.push({ row: rowNum, error: insertError.message })
         } else {
           results.success++
+          if (ticketId) {
+            ticketQuantityUpdates.set(ticketId, (ticketQuantityUpdates.get(ticketId) || 0) + 1)
+          }
         }
       } catch (err: any) {
         results.failed++

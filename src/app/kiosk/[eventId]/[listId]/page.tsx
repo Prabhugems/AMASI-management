@@ -221,14 +221,24 @@ export default function KioskPage() {
   // Silent background self-heal for anything queued above — no "queue" or
   // "pending" language anywhere in the attendee-facing UI; this just retries
   // once connectivity returns, the same way it would have worked the first
-  // time if the network hadn't blipped.
+  // time if the network hadn't blipped. Also polls every 20s: navigator.onLine
+  // only reflects the OS network interface, not request health, so a
+  // timed-out request (see fetch-with-timeout.ts) can queue silently with
+  // onLine still true and no `online` event ever firing to drain it — this
+  // matters most here since the kiosk is unattended and can't be nudged.
   useEffect(() => {
     const flush = () => {
       flushRequestQueue(queuePartitionKey, () => {}).catch(() => {})
     }
     if (typeof navigator !== "undefined" && navigator.onLine) flush()
     window.addEventListener("online", flush)
-    return () => window.removeEventListener("online", flush)
+    const pollId = setInterval(() => {
+      if (navigator.onLine) flush()
+    }, 20000)
+    return () => {
+      window.removeEventListener("online", flush)
+      clearInterval(pollId)
+    }
   }, [queuePartitionKey])
 
   const handleEmailBadge = async () => {

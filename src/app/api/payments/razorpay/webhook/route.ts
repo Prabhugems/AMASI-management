@@ -217,13 +217,17 @@ async function handlePaymentCaptured(supabase: any, razorpayPayment: any) {
 
     if (!existingReg) {
       // Also check by email + event (frontend might have created registration
-      // but linked it differently, or registration creation is in progress)
+      // but linked it differently, or registration creation is in progress).
+      // Only adopt a reg whose payment_id is null or matches this payment —
+      // otherwise a re-registration under the same email would wrongly steal
+      // the prior confirmed row's payment link, orphaning the real new payment.
       const { data: emailReg } = await supabase
         .from("registrations")
         .select("id")
         .eq("attendee_email", paymentData.payer_email)
         .eq("event_id", paymentData.event_id)
         .in("status", ["confirmed", "pending"])
+        .or(`payment_id.is.null,payment_id.eq.${paymentData.id}`)
         .maybeSingle()
 
       if (!emailReg) {
@@ -274,6 +278,29 @@ async function handlePaymentCaptured(supabase: any, razorpayPayment: any) {
   // ============================================================
   if (existingMetadata.order_id) {
     await handleGroupRegistrationWebhook(supabase, paymentData, existingMetadata)
+    return
+  }
+
+  // ============================================================
+  // Handle ADDON-ONLY purchases (existing registration, not a new one).
+  // Without this check, the generic "no registration found" fallback below
+  // would create a brand-new bogus registration (wrong ticket type, wrong
+  // total_amount) instead of attaching the addon to the attendee's real
+  // registration — see verify/route.ts STEP 7.5 for the equivalent client path.
+  // ============================================================
+  if (paymentData.payment_type === "addon_purchase" && existingMetadata.registration_id) {
+    console.log(`[WEBHOOK] Processing addon-only purchase for registration: ${existingMetadata.registration_id}`)
+
+    if (existingMetadata.addons_selection?.length > 0) {
+      await createRegistrationAddons(supabase, existingMetadata.registration_id, existingMetadata.addons_selection)
+    }
+
+    await supabase
+      .from("registrations")
+      .update({ payment_id: paymentData.id })
+      .eq("id", existingMetadata.registration_id)
+      .is("payment_id", null)
+
     return
   }
 

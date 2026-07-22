@@ -147,8 +147,7 @@ export async function PATCH(request: NextRequest) {
     // For exam_marks: use atomic Postgres JSONB merge (||) to avoid read-modify-write race
     // This ensures concurrent updates to different keys don't clobber each other
     if (updates.exam_marks && typeof updates.exam_marks === "object") {
-      const marksJson = JSON.stringify(updates.exam_marks)
-      await db.rpc("merge_exam_marks", { reg_id: id, new_marks: marksJson }).maybeSingle()
+      await db.rpc("merge_exam_marks", { reg_id: id, new_marks: updates.exam_marks }).maybeSingle()
       delete updates.exam_marks
     }
 

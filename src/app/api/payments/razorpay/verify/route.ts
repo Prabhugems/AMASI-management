@@ -46,7 +46,35 @@ export async function POST(request: NextRequest) {
       console.warn(`[VERIFY] Payment not found for order: ${razorpay_order_id}. Attempting recovery...`)
 
       try {
-        const rpPayment = await fetchPayment(razorpay_payment_id)
+        // Chicken-and-egg: we need event_id (only known via rpPayment.notes)
+        // to pick credentials, but need credentials to fetch the payment.
+        // Try the default account first; if the payment belongs to an event
+        // with its own Razorpay keys, retry against each event that has them.
+        let rpPayment: any
+        try {
+          rpPayment = await fetchPayment(razorpay_payment_id)
+        } catch {
+          const { data: eventsWithCreds } = await supabase
+            .from("events")
+            .select("id, razorpay_key_id, razorpay_key_secret")
+            .not("razorpay_key_id", "is", null)
+            .not("razorpay_key_secret", "is", null)
+
+          for (const evt of (eventsWithCreds || []) as any[]) {
+            try {
+              rpPayment = await fetchPayment(razorpay_payment_id, {
+                key_id: evt.razorpay_key_id,
+                key_secret: evt.razorpay_key_secret,
+              })
+              break
+            } catch {
+              continue
+            }
+          }
+
+          if (!rpPayment) throw new Error("Payment not found in default or any event-specific Razorpay account")
+        }
+
         const eventId = rpPayment?.notes?.event_id || null
         const payerEmail = rpPayment?.email || rpPayment?.notes?.payer_email || body.payer_email || "unknown@unknown.com"
         const payerName = rpPayment?.notes?.payer_name || body.payer_name || "Unknown"

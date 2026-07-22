@@ -394,11 +394,9 @@ export default function TicketsPage() {
 
   const deleteTicket = useMutation({
     mutationFn: async (ticketId: string) => {
-      const { error } = await (supabase as any)
-        .from("ticket_types")
-        .delete()
-        .eq("id", ticketId)
-      if (error) throw error
+      const res = await fetch(`/api/tickets/${ticketId}`, { method: "DELETE" })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Failed to delete ticket")
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["event-tickets", eventId] })

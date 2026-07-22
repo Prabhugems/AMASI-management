@@ -38,6 +38,7 @@ import {
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
+import { getTenant } from "@/lib/tenant"
 
 interface FormRendererProps {
   form: Form
@@ -216,6 +217,8 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
   }
 
   const lookupMember = async (email: string, emailFieldId: string) => {
+    // `members` table only exists in the shared AMASI/College Supabase project.
+    if (!["amasi", "college"].includes(getTenant())) return
     // Mark lookup in-flight so strict-membership forms can't be submitted
     // during the race window between email-verified and member-lookup-complete.
     setEmailVerificationState(prev => ({

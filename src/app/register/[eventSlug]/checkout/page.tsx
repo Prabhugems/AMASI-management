@@ -34,6 +34,7 @@ import { Form, FormField } from "@/lib/types"
 import { usePageTracking } from "@/hooks/usePageTracking"
 import { toast } from "sonner"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
+import { getTenant } from "@/lib/tenant"
 
 // Map form-builder field responses (keyed by field UUID) to dedicated
 // registration columns by matching field labels. Without this, a field
@@ -491,6 +492,8 @@ export default function CheckoutPage() {
   const lookupMember = async (email: string) => {
     if (!FEATURES.membership) return
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
+    // `members` table only exists in the shared AMASI/College Supabase project.
+    if (!["amasi", "college"].includes(getTenant())) return
 
     setIsLookingUpMember(true)
     try {

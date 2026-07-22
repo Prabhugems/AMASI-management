@@ -245,6 +245,8 @@ export default function GroupRegistrationPage() {
   // Lookup AMASI member by email for buyer auto-fill
   const lookupBuyerMember = async (email: string) => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
+    // `members` table only exists in the shared AMASI/College Supabase project.
+    if (!["amasi", "college"].includes(getTenant())) return
 
     setIsLookingUpBuyer(true)
     try {
@@ -272,6 +274,8 @@ export default function GroupRegistrationPage() {
   // Lookup AMASI member by email for attendee auto-fill
   const lookupAttendeeMember = async (email: string) => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
+    // `members` table only exists in the shared AMASI/College Supabase project.
+    if (!["amasi", "college"].includes(getTenant())) return
 
     setIsLookingUpAttendee(true)
     try {
