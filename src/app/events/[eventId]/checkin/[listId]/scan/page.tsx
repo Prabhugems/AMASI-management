@@ -118,6 +118,7 @@ export default function CheckinScanPage() {
   // kiosk were the two check-in surfaces that previously lost scans silently
   // on a wifi drop.
   const [queueCount, setQueueCount] = useState(0)
+  const [isManualFlushing, setIsManualFlushing] = useState(false)
   const flushInFlightRef = useRef(false)
 
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -419,7 +420,25 @@ export default function CheckinScanPage() {
     }
   }, [queuePartitionKey, refreshQueueCount, refetchStats])
 
+  // Manual "sync now" tap on the queue badge below. Separate from the ref
+  // guard inside flushAllPending — that one just no-ops a re-entrant call,
+  // this one drives the button's disabled/spinner state so a double-tap
+  // reads as "already syncing" instead of firing twice.
+  const handleManualFlush = useCallback(async () => {
+    if (isManualFlushing) return
+    setIsManualFlushing(true)
+    try {
+      await flushAllPending()
+    } finally {
+      setIsManualFlushing(false)
+    }
+  }, [isManualFlushing, flushAllPending])
+
   // Online/offline detection + initial queue load + flush-on-reconnect.
+  // Also polls every 20s: navigator.onLine only reflects the OS network
+  // interface, not request health, so a timed-out scan (see
+  // fetch-with-timeout.ts) can sit queued with onLine still true and no
+  // `online` event ever firing to drain it.
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true)
@@ -433,9 +452,13 @@ export default function CheckinScanPage() {
 
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
+    const pollId = setInterval(() => {
+      if (navigator.onLine) flushAllPending()
+    }, 20000)
     return () => {
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("offline", handleOffline)
+      clearInterval(pollId)
     }
   }, [refreshQueueCount, flushAllPending])
 
@@ -658,18 +681,33 @@ export default function CheckinScanPage() {
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              {/* Connection Status */}
-              <div
-                className={`relative p-2 rounded-lg ${isOnline ? "text-green-400" : "text-red-400"}`}
-                title={queueCount > 0 ? `${isOnline ? "Online" : "Offline"} — ${queueCount} scan(s) queued` : isOnline ? "Online" : "Offline"}
+              {/* Connection Status — clickable to force a sync attempt when queued */}
+              <button
+                type="button"
+                disabled={!queueCount || isManualFlushing}
+                onClick={handleManualFlush}
+                className={`relative p-2 rounded-lg ${isOnline ? "text-green-400" : "text-red-400"} ${queueCount > 0 && !isManualFlushing ? "cursor-pointer hover:bg-gray-700" : "cursor-default"}`}
+                title={
+                  queueCount > 0
+                    ? isManualFlushing
+                      ? "Syncing…"
+                      : `${isOnline ? "Online" : "Offline"} — ${queueCount} scan(s) queued. Tap to sync now.`
+                    : isOnline ? "Online" : "Offline"
+                }
               >
-                {isOnline ? <Wifi className="w-4 h-4 sm:w-5 sm:h-5" /> : <WifiOff className="w-4 h-4 sm:w-5 sm:h-5" />}
-                {queueCount > 0 && (
+                {isManualFlushing ? (
+                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                ) : isOnline ? (
+                  <Wifi className="w-4 h-4 sm:w-5 sm:h-5" />
+                ) : (
+                  <WifiOff className="w-4 h-4 sm:w-5 sm:h-5" />
+                )}
+                {queueCount > 0 && !isManualFlushing && (
                   <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-sky-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                     {queueCount}
                   </span>
                 )}
-              </div>
+              </button>
 
               {/* Check-out Mode Toggle */}
               <button
