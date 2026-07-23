@@ -133,6 +133,8 @@ export default function RegisterLayout({
                 {[
                   { label: 'Terms', href: policyLink('/terms') },
                   { label: 'Privacy', href: policyLink('/privacy') },
+                  { label: 'Refund', href: policyLink('/refund-policy') },
+                  { label: 'Shipping', href: policyLink('/shipping-policy') },
                   { label: 'Contact', href: policyLink('/contact') },
                 ].map((link) => (
                   <a
