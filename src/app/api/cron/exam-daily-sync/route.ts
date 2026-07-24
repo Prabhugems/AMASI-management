@@ -3,7 +3,12 @@ import { syncAddressesFromFillout, syncAddressesFromAirtable } from "@/lib/servi
 import { syncRegistrationToAirtable } from "@/lib/services/airtable-sync"
 import { logCronRun } from "@/lib/services/cron-logger"
 import { lookupAmasiMember } from "@/lib/services/amasi-member-lookup"
+import { sendWithheldNotifications, sendPassNotifications } from "@/lib/services/exam-emails"
+import { isEmailEnabled } from "@/lib/email"
 import { NextResponse } from "next/server"
+
+// Days between automated withheld-membership reminder emails to the same candidate.
+const WITHHELD_REMINDER_INTERVAL_DAYS = 5
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
 
@@ -31,8 +36,11 @@ export async function GET(request: Request) {
       membershipFound: 0,
       addressesSynced: 0,
       airtableCreated: 0,
+      withheldEmailsSent: 0,
+      passEmailsSent: 0,
       errors: [] as string[],
     }
+    const emailEnabled = isEmailEnabled()
 
     // Get all active FMAS events (with examination enabled)
     const { data: eventSettings } = await db
@@ -66,6 +74,27 @@ export async function GET(request: Request) {
           results.membershipFound++
         }
         results.membershipChecked++
+      }
+
+      // ===== 1b. EMAIL WHOEVER IS STILL WITHHELD =====
+      // Sends the "membership required" notice to any newly-withheld candidate,
+      // and re-sends it as a reminder to anyone still withheld after
+      // WITHHELD_REMINDER_INTERVAL_DAYS since their last send — repeats every
+      // interval until they resolve (membership found above) or someone
+      // intervenes manually.
+      if (emailEnabled) {
+        try {
+          const withheldEmailResult = await sendWithheldNotifications(db, eventId, {
+            includeReminders: true,
+            reminderIntervalDays: WITHHELD_REMINDER_INTERVAL_DAYS,
+          })
+          results.withheldEmailsSent += withheldEmailResult.sent
+          if (withheldEmailResult.errors.length) {
+            results.errors.push(...withheldEmailResult.errors.map(e => `Withheld email (event ${eventId}): ${e}`))
+          }
+        } catch (e) {
+          results.errors.push(`Withheld email error (event ${eventId}): ${e}`)
+        }
       }
 
       // ===== 2. SYNC ADDRESSES (uses event-level config) =====
@@ -124,6 +153,22 @@ export async function GET(request: Request) {
         }
       } catch (e) {
         results.errors.push(`Airtable sync error: ${e}`)
+      }
+
+      // ===== 4. EMAIL WHOEVER IS NOW READY FOR THEIR PASS RESULT =====
+      // Only sends once a convocation_number is assigned (separate manual step)
+      // and a fillout_link exists (just-created above, or from a prior run) —
+      // sendPassNotifications silently skips anyone missing either.
+      if (emailEnabled) {
+        try {
+          const passEmailResult = await sendPassNotifications(db, eventId)
+          results.passEmailsSent += passEmailResult.sent
+          if (passEmailResult.errors.length) {
+            results.errors.push(...passEmailResult.errors.map(e => `Pass email (event ${eventId}): ${e}`))
+          }
+        } catch (e) {
+          results.errors.push(`Pass email error (event ${eventId}): ${e}`)
+        }
       }
     }
 
