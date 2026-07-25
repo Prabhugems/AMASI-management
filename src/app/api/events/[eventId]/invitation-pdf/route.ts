@@ -190,6 +190,10 @@ export async function GET(
 
     // === HEADER BAND ===
     const essurgHeaderY = shouldUseEssurgLetterhead(event.id) ? drawEssurgHeaderJsPdf(doc, margin) : null
+    // Wider margin when the taller ESSURG footer image is in play, so
+    // content never runs into it before the next page-break check catches
+    // it — same fix as faculty-letter-pdf/route.ts's renderLetterPdf.
+    const pageBreakBottomMargin = essurgHeaderY !== null ? 75 : 50
 
     if (essurgHeaderY !== null) {
       y = essurgHeaderY
@@ -422,7 +426,7 @@ export async function GET(
       doc.setFont("helvetica", "normal")
       doc.setFontSize(8)
       for (const session of speakerSessions) {
-        if (y > pageHeight - 50) { doc.addPage(); y = 25 }
+        if (y > pageHeight - pageBreakBottomMargin) { doc.addPage(); y = 25 }
 
         doc.setDrawColor(240, 240, 240)
         doc.line(margin, y - 3, margin + contentWidth, y - 3)

@@ -201,6 +201,7 @@ async function renderLetterPdf(
   const margin = 20
   const contentWidth = pageWidth - 2 * margin
   let y = 0
+  const pageBreakBottomMargin = useEssurgLetterhead ? 85 : 60
 
   const primary: [number, number, number] = [37, 99, 235]
   const primaryDark: [number, number, number] = [29, 78, 216]
@@ -296,7 +297,7 @@ async function renderLetterPdf(
   doc.setTextColor(...body)
   for (const para of content.paragraphs) {
     const lines = doc.splitTextToSize(para, contentWidth)
-    if (y + lines.length * 5 > pageHeight - 60) { doc.addPage(); y = 25 }
+    if (y + lines.length * 5 > pageHeight - pageBreakBottomMargin) { doc.addPage(); y = 25 }
     doc.text(lines, margin, y, { lineHeightFactor: 1.4 })
     y += lines.length * 5 + 6
   }
@@ -314,7 +315,7 @@ async function renderLetterPdf(
     const totalRowUnits = detailLines.reduce((sum, r) => sum + Math.max(1, r.lines.length), 0)
     const boxHeight = boxPadding * 2 + totalRowUnits * rowHeight
 
-    if (y + boxHeight > pageHeight - 60) { doc.addPage(); y = 25 }
+    if (y + boxHeight > pageHeight - pageBreakBottomMargin) { doc.addPage(); y = 25 }
 
     doc.setFillColor(248, 250, 252)
     doc.setDrawColor(226, 232, 240)
@@ -342,13 +343,13 @@ async function renderLetterPdf(
   doc.setTextColor(...body)
   for (const para of content.closingParagraphs) {
     const lines = doc.splitTextToSize(para, contentWidth)
-    if (y + lines.length * 5 > pageHeight - 60) { doc.addPage(); y = 25 }
+    if (y + lines.length * 5 > pageHeight - pageBreakBottomMargin) { doc.addPage(); y = 25 }
     doc.text(lines, margin, y, { lineHeightFactor: 1.4 })
     y += lines.length * 5 + 6
   }
 
   // === SIGNATURES (one or two, side by side) ===
-  if (y > pageHeight - 60) { doc.addPage(); y = 25 }
+  if (y > pageHeight - pageBreakBottomMargin) { doc.addPage(); y = 25 }
   doc.setTextColor(...body)
   doc.setFontSize(9.5)
   doc.text("With warm regards,", margin, y)

@@ -208,7 +208,34 @@ export async function GET(
     })
   }
 
-  const headerBottomY = essurgHeaderY ?? height - 130
+  let headerBottomY = essurgHeaderY ?? height - 130
+
+  if (essurgHeaderY !== null) {
+    page.drawText("REGISTRATION RECEIPT — Final Consolidated Receipt", {
+      x: 50,
+      y: headerBottomY,
+      size: 12,
+      font: helveticaBold,
+      color: primaryColor,
+    })
+    page.drawText(`Reg #: ${registration.registration_number}`, {
+      x: width - 180,
+      y: headerBottomY,
+      size: 10,
+      font: helveticaBold,
+      color: primaryColor,
+    })
+    const receiptDate = registration.confirmed_at || registration.created_at
+    page.drawText(`Date: ${new Date(receiptDate).toLocaleDateString("en-IN")}`, {
+      x: width - 180,
+      y: headerBottomY - 14,
+      size: 9,
+      font: helvetica,
+      color: grayColor,
+    })
+    headerBottomY -= 26
+  }
+
   y = headerBottomY
 
   // Attendee Info

@@ -200,6 +200,8 @@ export async function GET(
 
   let y = height - 50
 
+  const receiptTitle = isAddonPurchase ? "ADD-ON PURCHASE RECEIPT" : "PAYMENT RECEIPT"
+
   // Header
   const essurgHeaderY = shouldUseEssurgLetterhead(event?.id) ? await drawEssurgHeaderPdfLib(pdfDoc, page, 50) : null
 
@@ -240,7 +242,6 @@ export async function GET(
       }
     }
 
-    const receiptTitle = isAddonPurchase ? "ADD-ON PURCHASE RECEIPT" : "PAYMENT RECEIPT"
     page.drawText(receiptTitle, {
       x: headerTextX,
       y: height - 55,
@@ -286,7 +287,34 @@ export async function GET(
     })
   }
 
-  const headerBottomY = essurgHeaderY ?? height - 130
+  let headerBottomY = essurgHeaderY ?? height - 130
+
+  if (essurgHeaderY !== null) {
+    page.drawText(receiptTitle, {
+      x: 50,
+      y: headerBottomY,
+      size: 12,
+      font: helveticaBold,
+      color: isAddonPurchase ? infoColor : primaryColor,
+    })
+    page.drawText(`Order #: ${payment.payment_number}`, {
+      x: width - 180,
+      y: headerBottomY,
+      size: 10,
+      font: helveticaBold,
+      color: isAddonPurchase ? infoColor : primaryColor,
+    })
+    const receiptDate = payment.completed_at || payment.created_at
+    page.drawText(`Date: ${new Date(receiptDate).toLocaleDateString("en-IN")}`, {
+      x: width - 180,
+      y: headerBottomY - 14,
+      size: 9,
+      font: helvetica,
+      color: grayColor,
+    })
+    headerBottomY -= 26
+  }
+
   y = headerBottomY
 
   // Bill To Section
