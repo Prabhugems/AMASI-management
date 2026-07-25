@@ -6,7 +6,7 @@ import {
   getClientIp,
   rateLimitExceededResponse,
 } from "@/lib/rate-limit"
-import { shouldUseEssurgLetterhead, drawEssurgHeaderJsPdf, drawEssurgFooterJsPdf } from "@/lib/pdf/essurg-letterhead"
+import { getLetterheadBackgroundUrl, drawLetterheadBackgroundJsPdf } from "@/lib/pdf/essurg-letterhead"
 
 // Registration data has occasionally been imported/backfilled with the literal
 // string "None"/"N/A" instead of a real null, which then renders verbatim on
@@ -189,14 +189,15 @@ export async function GET(
     const light: [number, number, number] = [148, 163, 184]       // Slate-400
 
     // === HEADER BAND ===
-    const essurgHeaderY = shouldUseEssurgLetterhead(event.id) ? drawEssurgHeaderJsPdf(doc, margin) : null
-    // Wider margin when the taller ESSURG footer image is in play, so
-    // content never runs into it before the next page-break check catches
-    // it — same fix as faculty-letter-pdf/route.ts's renderLetterPdf.
-    const pageBreakBottomMargin = essurgHeaderY !== null ? 75 : 50
+    const backgroundUrl = getLetterheadBackgroundUrl(event.settings)
+    const hasBackground = backgroundUrl ? await drawLetterheadBackgroundJsPdf(doc, backgroundUrl, pageWidth, pageHeight) : false
+    // The background image is a full letterhead page (logo/title band up top,
+    // footer bar + QR code at the bottom) — content must clear both, so the
+    // usable band is narrower than the plain generic header/footer.
+    const pageBreakBottomMargin = hasBackground ? 60 : 50
 
-    if (essurgHeaderY !== null) {
-      y = essurgHeaderY
+    if (hasBackground) {
+      y = 80
     } else {
       // Measure everything first so the band can grow to fit (and the edition
       // badge sits below the tagline instead of at a fixed offset that used to
@@ -426,7 +427,13 @@ export async function GET(
       doc.setFont("helvetica", "normal")
       doc.setFontSize(8)
       for (const session of speakerSessions) {
-        if (y > pageHeight - pageBreakBottomMargin) { doc.addPage(); y = 25 }
+        if (y > pageHeight - pageBreakBottomMargin) {
+          doc.addPage()
+          if (hasBackground && backgroundUrl) {
+            await drawLetterheadBackgroundJsPdf(doc, backgroundUrl, pageWidth, pageHeight)
+          }
+          y = hasBackground ? 80 : 25
+        }
 
         doc.setDrawColor(240, 240, 240)
         doc.line(margin, y - 3, margin + contentWidth, y - 3)
@@ -538,8 +545,9 @@ export async function GET(
     }
 
     // === FOOTER ===
-    const essurgFooterDrawn = shouldUseEssurgLetterhead(event.id) && drawEssurgFooterJsPdf(doc, pageHeight, margin)
-    if (!essurgFooterDrawn) {
+    // When a full-page background is in play, it already includes the
+    // footer bar — no separate footer to draw.
+    if (!hasBackground) {
       const footerY = pageHeight - 10
       doc.setDrawColor(226, 232, 240)
       doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5)

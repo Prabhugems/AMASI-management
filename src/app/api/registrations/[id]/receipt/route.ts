@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import { COMPANY_CONFIG } from "@/lib/config"
-import { shouldUseEssurgLetterhead, drawEssurgHeaderPdfLib, drawEssurgFooterPdfLib } from "@/lib/pdf/essurg-letterhead"
+import { getLetterheadBackgroundUrl, drawLetterheadBackgroundPdfLib } from "@/lib/pdf/essurg-letterhead"
 
 // Mirrors the helper already used in src/app/api/badges/generate/route.ts and
 // src/app/api/badge/[token]/download/route.ts — kept inline (not extracted)
@@ -40,7 +40,8 @@ export async function GET(
           city,
           state,
           contact_email,
-          logo_url
+          logo_url,
+          settings
         )
       `)
       .eq("id", id)
@@ -100,10 +101,12 @@ export async function GET(
 
     // Header - Event Logo + Organization Name
     const event = registration.events as any
-    const essurgHeaderY = shouldUseEssurgLetterhead(event?.id) ? await drawEssurgHeaderPdfLib(pdfDoc, page, 50) : null
+    const backgroundUrl = getLetterheadBackgroundUrl(event?.settings)
+    const hasBackground = backgroundUrl ? await drawLetterheadBackgroundPdfLib(pdfDoc, page, backgroundUrl) : false
 
-    if (essurgHeaderY !== null) {
-      y = essurgHeaderY
+    if (hasBackground) {
+      // Background art occupies roughly the top 80mm (≈227pt) of the page.
+      y = height - 227
     } else {
       let logoXOffset = 50
       if (event?.logo_url) {
@@ -386,9 +389,8 @@ export async function GET(
       y -= 15
     }
 
-    // Footer
-    const essurgFooterDrawn = shouldUseEssurgLetterhead(event?.id) && await drawEssurgFooterPdfLib(pdfDoc, page, 50)
-    if (!essurgFooterDrawn) {
+    // Footer — already part of the background image when one is in use.
+    if (!hasBackground) {
       page.drawText(`Generated on ${new Date().toLocaleDateString("en-IN", {
         day: "numeric",
         month: "long",

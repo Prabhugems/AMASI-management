@@ -409,6 +409,31 @@ export function GeneralSection({ eventId, formData, updateField, setFormData }: 
               aspectRatio="banner"
             />
           </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground">Letterhead Background</label>
+            <p className="text-xs text-muted-foreground mt-1 mb-2">
+              Upload a full-page letterhead image (PNG/JPG, portrait A4). When set, it&apos;s used as the background
+              on every page of invitations, faculty letters, and receipts generated for this event, replacing the
+              default header. Leave empty to use the default.
+            </p>
+            <ImageUpload
+              value={formData.settings?.letterhead_background_url || ""}
+              onChange={(url) => {
+                const current = formData.settings || {}
+                setFormData((prev) => ({
+                  ...prev,
+                  settings: {
+                    ...current,
+                    letterhead_background_url: url,
+                  },
+                }))
+              }}
+              eventId={eventId}
+              folder={`events/${eventId}/letterhead-background`}
+              aspectRatio="auto"
+            />
+          </div>
         </div>
       </div>
 
