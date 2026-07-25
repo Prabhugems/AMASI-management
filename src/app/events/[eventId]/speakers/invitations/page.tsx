@@ -45,9 +45,11 @@ import {
   Phone,
   MessageCircle,
   Download,
+  FileDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { LetterComposerSheet } from "./letter-composer-sheet"
 
 type Speaker = {
   id: string
@@ -130,6 +132,7 @@ export default function SpeakerInvitationsPage() {
   const [selectedSpeaker, setSelectedSpeaker] = useState<Speaker | null>(null)
   const [resending, setResending] = useState(false)
   const [resendingWhatsApp, setResendingWhatsApp] = useState(false)
+  const [showLetterComposer, setShowLetterComposer] = useState(false)
 
   // Fetch event details
   const { data: eventData } = useQuery({
@@ -918,6 +921,14 @@ export default function SpeakerInvitationsPage() {
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Quick Actions</h3>
                 <div className="flex flex-col gap-2">
                   <Button
+                    variant="outline"
+                    onClick={() => setShowLetterComposer(true)}
+                    className="w-full"
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Generate Letter
+                  </Button>
+                  <Button
                     onClick={() => resendInvitation(selectedSpeaker)}
                     disabled={resending || !selectedSpeaker.attendee_email}
                     className="w-full"
@@ -996,6 +1007,14 @@ export default function SpeakerInvitationsPage() {
           )}
         </ResizableSheetContent>
       </Sheet>
+
+      <LetterComposerSheet
+        eventId={eventId}
+        speaker={selectedSpeaker}
+        assignments={speakerAssignments || []}
+        open={showLetterComposer}
+        onOpenChange={setShowLetterComposer}
+      />
     </div>
   )
 }

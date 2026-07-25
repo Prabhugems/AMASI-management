@@ -43,6 +43,10 @@ export interface EventSettings {
       signer_title: string
       signature_url: string
     }
+    letter_signers?: {
+      scientific?: { title: string; signature_url: string }
+      organizing?: { title: string; signature_url: string }
+    }
     [key: string]: any
   } | null
 }
