@@ -44,101 +44,109 @@ export async function POST(
   if (authError) return authError
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const body = await request.json()
-  const { template_key, registration_id, fields: rawFields } = body as {
-    template_key?: string
-    registration_id?: string
-    fields?: Record<string, string>
-  }
-
-  const template = template_key ? LETTER_TEMPLATES[template_key] : undefined
-  if (!template) {
-    return NextResponse.json({ error: "Unknown template_key" }, { status: 400 })
-  }
-  if (!registration_id) {
-    return NextResponse.json({ error: "registration_id is required" }, { status: 400 })
-  }
-
-  for (const f of template.fields) {
-    if (!rawFields?.[f.key]) {
-      return NextResponse.json({ error: `Missing required field: ${f.label}` }, { status: 400 })
+  try {
+    const body = await request.json()
+    const { template_key, registration_id, fields: rawFields } = body as {
+      template_key?: string
+      registration_id?: string
+      fields?: Record<string, string>
     }
+
+    const template = template_key ? LETTER_TEMPLATES[template_key] : undefined
+    if (!template) {
+      return NextResponse.json({ error: "Unknown template_key" }, { status: 400 })
+    }
+    if (!registration_id) {
+      return NextResponse.json({ error: "registration_id is required" }, { status: 400 })
+    }
+
+    for (const f of template.fields) {
+      if (!rawFields?.[f.key]) {
+        return NextResponse.json({ error: `Missing required field: ${f.label}` }, { status: 400 })
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createAdminClient()) as any
+
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("id, name, short_name, start_date, end_date, venue_name, city, state, contact_email, scientific_chairman, organizing_chairman, edition, settings")
+      .eq("id", eventId)
+      .single()
+    if (eventError || !event) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 })
+    }
+
+    const { data: registration, error: regError } = await supabase
+      .from("registrations")
+      .select("attendee_name, attendee_designation, attendee_institution, registration_number")
+      .eq("id", registration_id)
+      .eq("event_id", eventId)
+      .single()
+    if (regError || !registration) {
+      return NextResponse.json({ error: "Registration not found" }, { status: 404 })
+    }
+
+    const recipient = {
+      name: registration.attendee_name as string,
+      designation: cleanField(registration.attendee_designation),
+      institution: cleanField(registration.attendee_institution),
+    }
+
+    const fields = renderFields(template, rawFields || {})
+
+    const eventInfo: LetterEventInfo = {
+      name: event.name,
+      edition: event.edition,
+      dateRange: formatDateRange(event.start_date, event.end_date),
+      venue: event.venue_name || "To be announced",
+      city: event.city || "",
+      contactEmail: event.contact_email,
+    }
+
+    const content: LetterContent = template.build(fields, eventInfo)
+    // Only visa_support uses "consular" mode; its field schema is the one
+    // place that guarantees embassyName/embassyCity keys exist.
+    const embassyName = content.addresseeMode === "consular" ? fields.embassyName : undefined
+    const embassyCity = content.addresseeMode === "consular" ? fields.embassyCity : undefined
+
+    const letterSigners = event.settings?.letter_signers as
+      | { scientific?: { title?: string; signature_url?: string }; organizing?: { title?: string; signature_url?: string } }
+      | undefined
+
+    const signers: { name: string; title: string; signature_url?: string }[] = []
+    if (event.scientific_chairman && letterSigners?.scientific?.title) {
+      signers.push({ name: event.scientific_chairman, title: letterSigners.scientific.title, signature_url: letterSigners.scientific.signature_url })
+    }
+    if (event.organizing_chairman && letterSigners?.organizing?.title) {
+      signers.push({ name: event.organizing_chairman, title: letterSigners.organizing.title, signature_url: letterSigners.organizing.signature_url })
+    }
+
+    const pdfBuffer = await renderLetterPdf(
+      content,
+      recipient,
+      eventInfo,
+      signers,
+      buildRef(event.short_name, registration.registration_number),
+      embassyName,
+      embassyCity
+    )
+
+    const filename = `${template.label.replace(/[^a-zA-Z0-9]/g, "_")}-${recipient.name.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`
+    return new NextResponse(pdfBuffer, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    })
+  } catch (error) {
+    console.error("Faculty letter PDF generation error:", error)
+    return NextResponse.json(
+      { error: "Failed to generate letter PDF" },
+      { status: 500 }
+    )
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createAdminClient()) as any
-
-  const { data: event, error: eventError } = await supabase
-    .from("events")
-    .select("id, name, short_name, start_date, end_date, venue_name, city, state, contact_email, scientific_chairman, organizing_chairman, edition, settings")
-    .eq("id", eventId)
-    .single()
-  if (eventError || !event) {
-    return NextResponse.json({ error: "Event not found" }, { status: 404 })
-  }
-
-  const { data: registration, error: regError } = await supabase
-    .from("registrations")
-    .select("attendee_name, attendee_designation, attendee_institution, registration_number")
-    .eq("id", registration_id)
-    .eq("event_id", eventId)
-    .single()
-  if (regError || !registration) {
-    return NextResponse.json({ error: "Registration not found" }, { status: 404 })
-  }
-
-  const recipient = {
-    name: registration.attendee_name as string,
-    designation: cleanField(registration.attendee_designation),
-    institution: cleanField(registration.attendee_institution),
-  }
-
-  const fields = renderFields(template, rawFields || {})
-
-  const eventInfo: LetterEventInfo = {
-    name: event.name,
-    edition: event.edition,
-    dateRange: formatDateRange(event.start_date, event.end_date),
-    venue: event.venue_name || "To be announced",
-    city: event.city || "",
-    contactEmail: event.contact_email,
-  }
-
-  const content: LetterContent = template.build(fields, eventInfo)
-  // Only visa_support uses "consular" mode; its field schema is the one
-  // place that guarantees embassyName/embassyCity keys exist.
-  const embassyName = content.addresseeMode === "consular" ? fields.embassyName : undefined
-  const embassyCity = content.addresseeMode === "consular" ? fields.embassyCity : undefined
-
-  const letterSigners = event.settings?.letter_signers as
-    | { scientific?: { title?: string; signature_url?: string }; organizing?: { title?: string; signature_url?: string } }
-    | undefined
-
-  const signers: { name: string; title: string; signature_url?: string }[] = []
-  if (event.scientific_chairman && letterSigners?.scientific?.title) {
-    signers.push({ name: event.scientific_chairman, title: letterSigners.scientific.title, signature_url: letterSigners.scientific.signature_url })
-  }
-  if (event.organizing_chairman && letterSigners?.organizing?.title) {
-    signers.push({ name: event.organizing_chairman, title: letterSigners.organizing.title, signature_url: letterSigners.organizing.signature_url })
-  }
-
-  const pdfBuffer = await renderLetterPdf(
-    content,
-    recipient,
-    eventInfo,
-    signers,
-    buildRef(event.short_name, registration.registration_number),
-    embassyName,
-    embassyCity
-  )
-
-  const filename = `${template.label.replace(/[^a-zA-Z0-9]/g, "_")}-${recipient.name.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`
-  return new NextResponse(pdfBuffer, {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-    },
-  })
 }
 
 async function renderLetterPdf(
