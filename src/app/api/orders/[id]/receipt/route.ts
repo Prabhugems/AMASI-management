@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
+import { shouldUseEssurgLetterhead, drawEssurgHeaderPdfLib, drawEssurgFooterPdfLib } from "@/lib/pdf/essurg-letterhead"
 
 // GET /api/orders/[id]/receipt - Generate receipt PDF for a specific order/payment
 export async function GET(
@@ -37,7 +38,7 @@ export async function GET(
       created_at,
       event_id,
       metadata,
-      events (name, short_name, start_date, end_date, venue_name, city, logo_url)
+      events (id, name, short_name, start_date, end_date, venue_name, city, logo_url)
     `)
     .eq("id", id)
     .single()
@@ -200,88 +201,93 @@ export async function GET(
   let y = height - 50
 
   // Header
-  page.drawRectangle({
-    x: 0,
-    y: height - 100,
-    width: width,
-    height: 100,
-    color: isAddonPurchase ? infoColor : primaryColor,
-  })
+  const essurgHeaderY = shouldUseEssurgLetterhead(event?.id) ? await drawEssurgHeaderPdfLib(pdfDoc, page, 50) : null
 
-  // Embed event logo in header
-  const headerTextX = 50
-  if (event?.logo_url) {
-    try {
-      const logoResponse = await fetch(event.logo_url)
-      if (logoResponse.ok) {
-        const logoBytes = await logoResponse.arrayBuffer()
-        const uint8 = new Uint8Array(logoBytes)
-        const isPNG = uint8[0] === 0x89 && uint8[1] === 0x50
-        const isJPG = uint8[0] === 0xFF && uint8[1] === 0xD8
-        let logoImage
-        if (isPNG) logoImage = await pdfDoc.embedPng(logoBytes)
-        else if (isJPG) logoImage = await pdfDoc.embedJpg(logoBytes)
-        if (logoImage) {
-          const logoSize = 50
-          page.drawImage(logoImage, {
-            x: width - 50 - logoSize,
-            y: height - 85,
-            width: logoSize,
-            height: logoSize,
-          })
+  if (essurgHeaderY === null) {
+    page.drawRectangle({
+      x: 0,
+      y: height - 100,
+      width: width,
+      height: 100,
+      color: isAddonPurchase ? infoColor : primaryColor,
+    })
+
+    // Embed event logo in header
+    const headerTextX = 50
+    if (event?.logo_url) {
+      try {
+        const logoResponse = await fetch(event.logo_url)
+        if (logoResponse.ok) {
+          const logoBytes = await logoResponse.arrayBuffer()
+          const uint8 = new Uint8Array(logoBytes)
+          const isPNG = uint8[0] === 0x89 && uint8[1] === 0x50
+          const isJPG = uint8[0] === 0xFF && uint8[1] === 0xD8
+          let logoImage
+          if (isPNG) logoImage = await pdfDoc.embedPng(logoBytes)
+          else if (isJPG) logoImage = await pdfDoc.embedJpg(logoBytes)
+          if (logoImage) {
+            const logoSize = 50
+            page.drawImage(logoImage, {
+              x: width - 50 - logoSize,
+              y: height - 85,
+              width: logoSize,
+              height: logoSize,
+            })
+          }
         }
+      } catch (e) {
+        console.error("Failed to embed logo in order receipt:", e)
       }
-    } catch (e) {
-      console.error("Failed to embed logo in order receipt:", e)
     }
-  }
 
-  const receiptTitle = isAddonPurchase ? "ADD-ON PURCHASE RECEIPT" : "PAYMENT RECEIPT"
-  page.drawText(receiptTitle, {
-    x: headerTextX,
-    y: height - 55,
-    size: 20,
-    font: helveticaBold,
-    color: rgb(1, 1, 1),
-  })
+    const receiptTitle = isAddonPurchase ? "ADD-ON PURCHASE RECEIPT" : "PAYMENT RECEIPT"
+    page.drawText(receiptTitle, {
+      x: headerTextX,
+      y: height - 55,
+      size: 20,
+      font: helveticaBold,
+      color: rgb(1, 1, 1),
+    })
 
-  page.drawText(event?.short_name || event?.name || "Event", {
-    x: headerTextX,
-    y: height - 78,
-    size: 11,
-    font: helvetica,
-    color: rgb(0.9, 0.9, 0.9),
-  })
-
-  if (isAddonPurchase) {
-    page.drawText("Additional Purchase", {
-      x: 50,
-      y: height - 92,
-      size: 9,
+    page.drawText(event?.short_name || event?.name || "Event", {
+      x: headerTextX,
+      y: height - 78,
+      size: 11,
       font: helvetica,
-      color: rgb(0.8, 0.8, 0.8),
+      color: rgb(0.9, 0.9, 0.9),
+    })
+
+    if (isAddonPurchase) {
+      page.drawText("Additional Purchase", {
+        x: 50,
+        y: height - 92,
+        size: 9,
+        font: helvetica,
+        color: rgb(0.8, 0.8, 0.8),
+      })
+    }
+
+    // Receipt Number (right side)
+    page.drawText(`Order #: ${payment.payment_number}`, {
+      x: width - 180,
+      y: height - 55,
+      size: 11,
+      font: helveticaBold,
+      color: rgb(1, 1, 1),
+    })
+
+    const receiptDate = payment.completed_at || payment.created_at
+    page.drawText(`Date: ${new Date(receiptDate).toLocaleDateString("en-IN")}`, {
+      x: width - 180,
+      y: height - 72,
+      size: 10,
+      font: helvetica,
+      color: rgb(1, 1, 1),
     })
   }
 
-  // Receipt Number (right side)
-  page.drawText(`Order #: ${payment.payment_number}`, {
-    x: width - 180,
-    y: height - 55,
-    size: 11,
-    font: helveticaBold,
-    color: rgb(1, 1, 1),
-  })
-
-  const receiptDate = payment.completed_at || payment.created_at
-  page.drawText(`Date: ${new Date(receiptDate).toLocaleDateString("en-IN")}`, {
-    x: width - 180,
-    y: height - 72,
-    size: 10,
-    font: helvetica,
-    color: rgb(1, 1, 1),
-  })
-
-  y = height - 130
+  const headerBottomY = essurgHeaderY ?? height - 130
+  y = headerBottomY
 
   // Bill To Section
   page.drawText("BILL TO", {
@@ -363,7 +369,7 @@ export async function GET(
   }
 
   // Event Info (right side)
-  const eventY = height - 130
+  const eventY = headerBottomY
   page.drawText("EVENT", {
     x: 350,
     y: eventY,
@@ -530,21 +536,24 @@ export async function GET(
   })
 
   // Footer
-  page.drawText("This is a computer-generated receipt and does not require a signature.", {
-    x: 50,
-    y: 50,
-    size: 8,
-    font: helvetica,
-    color: grayColor,
-  })
+  const essurgFooterDrawn = shouldUseEssurgLetterhead(event?.id) && await drawEssurgFooterPdfLib(pdfDoc, page, 50)
+  if (!essurgFooterDrawn) {
+    page.drawText("This is a computer-generated receipt and does not require a signature.", {
+      x: 50,
+      y: 50,
+      size: 8,
+      font: helvetica,
+      color: grayColor,
+    })
 
-  page.drawText(`Generated on ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`, {
-    x: 50,
-    y: 35,
-    size: 8,
-    font: helvetica,
-    color: grayColor,
-  })
+    page.drawText(`Generated on ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`, {
+      x: 50,
+      y: 35,
+      size: 8,
+      font: helvetica,
+      color: grayColor,
+    })
+  }
 
   const pdfBytes = await pdfDoc.save()
 
