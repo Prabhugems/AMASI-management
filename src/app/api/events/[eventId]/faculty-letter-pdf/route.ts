@@ -4,6 +4,32 @@ import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { jsPDF } from "jspdf"
 import { LETTER_TEMPLATES, renderFields, type LetterEventInfo, type LetterContent } from "@/lib/services/faculty-letter-templates"
 
+// Allowed URL domains for signature images (prevent SSRF) — same list as
+// src/app/api/abstracts/certificates/route.ts
+const ALLOWED_IMAGE_DOMAINS = [
+  "supabase.co",
+  "supabase.com",
+  "collegeofmas.org.in",
+  "vercel-storage.com",
+  "amazonaws.com",
+]
+
+// Validate signature image URL to prevent SSRF
+function isAllowedImageUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString)
+    // Only allow HTTPS
+    if (url.protocol !== "https:") return false
+    // Check against allowed domains
+    const hostname = url.hostname.toLowerCase()
+    return ALLOWED_IMAGE_DOMAINS.some(domain =>
+      hostname === domain || hostname.endsWith(`.${domain}`)
+    )
+  } catch {
+    return false
+  }
+}
+
 // Same sentinel-string guard as invitation-pdf/route.ts — registration data
 // has occasionally been imported/backfilled with the literal string "None"
 // instead of a real null.
@@ -71,7 +97,7 @@ export async function POST(
 
     const { data: event, error: eventError } = await supabase
       .from("events")
-      .select("id, name, short_name, start_date, end_date, venue_name, city, state, contact_email, scientific_chairman, organizing_chairman, edition, settings")
+      .select("id, name, short_name, start_date, end_date, venue_name, city, state, contact_email, scientific_chairman, organizing_chairman, signatory_title, edition, settings")
       .eq("id", eventId)
       .single()
     if (eventError || !event) {
@@ -116,11 +142,19 @@ export async function POST(
       | undefined
 
     const signers: { name: string; title: string; signature_url?: string }[] = []
-    if (event.scientific_chairman && letterSigners?.scientific?.title) {
-      signers.push({ name: event.scientific_chairman, title: letterSigners.scientific.title, signature_url: letterSigners.scientific.signature_url })
+    if (event.scientific_chairman) {
+      signers.push({
+        name: event.scientific_chairman,
+        title: letterSigners?.scientific?.title || event.signatory_title || "Course Convenor",
+        signature_url: letterSigners?.scientific?.signature_url,
+      })
     }
-    if (event.organizing_chairman && letterSigners?.organizing?.title) {
-      signers.push({ name: event.organizing_chairman, title: letterSigners.organizing.title, signature_url: letterSigners.organizing.signature_url })
+    if (event.organizing_chairman) {
+      signers.push({
+        name: event.organizing_chairman,
+        title: letterSigners?.organizing?.title || event.signatory_title || "Course Convenor",
+        signature_url: letterSigners?.organizing?.signature_url,
+      })
     }
 
     const pdfBuffer = await renderLetterPdf(
@@ -194,7 +228,7 @@ async function renderLetterPdf(
   if (event.edition) {
     doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
-    doc.setTextColor(255, 255, 255, 160)
+    doc.setTextColor(226, 232, 240)
     doc.text(`${event.edition} Edition`, pageWidth / 2, editionY, { align: "center" })
   }
 
@@ -320,9 +354,9 @@ async function renderLetterPdf(
     const colX = margin + i * columnWidth
     let colY = signatureRowStartY
 
-    if (signer.signature_url) {
+    if (signer.signature_url && isAllowedImageUrl(signer.signature_url)) {
       try {
-        const sigRes = await fetch(signer.signature_url)
+        const sigRes = await fetch(signer.signature_url, { signal: AbortSignal.timeout(5000) })
         if (sigRes.ok) {
           const sigBuffer = await sigRes.arrayBuffer()
           const sigBase64 = Buffer.from(sigBuffer).toString("base64")

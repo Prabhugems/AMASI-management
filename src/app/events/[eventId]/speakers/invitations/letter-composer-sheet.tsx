@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Sheet,
   ResizableSheetContent,
@@ -79,9 +79,21 @@ export function LetterComposerSheet({
 
   // Reset the form each time the sheet opens for a (possibly new) speaker,
   // prefilling from their first assignment where the template has a
-  // matching field.
+  // matching field. Guarded by a ref so this only fires once per
+  // (open, templateKey) combination — `assignments` is an array that the
+  // caller can re-mint on every render (e.g. `speakerAssignments || []`),
+  // and without the guard that reference churn would reset the form and
+  // discard in-progress edits while the sheet stays open.
+  const prefilledKeyRef = useRef<string | null>(null)
+
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      prefilledKeyRef.current = null
+      return
+    }
+    const prefillKey = `${templateKey}`
+    if (prefilledKeyRef.current === prefillKey) return
+    prefilledKeyRef.current = prefillKey
     const prefill = prefillFromAssignment(assignments[0])
     const next: Record<string, string> = {}
     for (const f of template.fields) {
