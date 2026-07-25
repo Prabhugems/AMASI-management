@@ -4,8 +4,19 @@ import { COMPANY_CONFIG } from "@/lib/config"
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-export function generatePassEmail(name: string, convocationNumber: string, formLink: string) {
+export function generatePassEmail(
+  name: string,
+  convocationNumber: string,
+  formLink: string,
+  convocationDetails?: string
+) {
   const cleanName = name.replace(/^(dr\.?\s*)/i, "").trim()
+  // Falls back to generic wording rather than a hardcoded date/venue — a
+  // fixed string here previously got sent to candidates from every exam
+  // event, not just the one it was actually written for.
+  const ceremonyLine = convocationDetails
+    ? `on <strong>${convocationDetails}</strong>`
+    : "— details will follow in a separate formal invitation"
 
   const html = `
 <div style="font-family: 'Georgia', serif; max-width: 650px; margin: 0 auto; padding: 40px 30px; color: #1a1a1a; line-height: 1.8;">
@@ -20,7 +31,7 @@ export function generatePassEmail(name: string, convocationNumber: string, formL
 
   <p>I am writing to inform you that you have <strong>successfully passed</strong> your FMAS examination. On behalf of the ${COMPANY_CONFIG.fullName} (${COMPANY_CONFIG.name}), I extend my heartfelt congratulations to you on this impressive accomplishment.</p>
 
-  <p>As a mark of your hard work, dedication, and academic excellence, we would like to invite you to attend the upcoming convocation ceremony on <strong>27th August 2026 at Biswa Bangla Convention Centre, Kolkata, India.</strong></p>
+  <p>As a mark of your hard work, dedication, and academic excellence, we would like to invite you to attend the upcoming convocation ceremony ${ceremonyLine}.</p>
 
   <p>The convocation ceremony is a momentous occasion where we celebrate the achievements of our graduates and formally confer your degree.</p>
 
@@ -203,6 +214,9 @@ export async function sendPassNotifications(
   const { data: regs, error } = await query
   if (error) throw new Error(error.message)
 
+  const { data: eventRow } = await db.from("events").select("settings").eq("id", eventId).maybeSingle()
+  const convocationDetails: string | undefined = eventRow?.settings?.examination?.convocation_details || undefined
+
   // Retry Airtable sync for registrations missing fillout_link
   const missingLink = (regs || []).filter(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -248,7 +262,7 @@ export async function sendPassNotifications(
     marks.email_sent_pass = new Date().toISOString()
     await db.from("registrations").update({ exam_marks: marks }).eq("id", r.id)
 
-    const html = generatePassEmail(r.attendee_name, r.convocation_number, r.exam_marks.fillout_link)
+    const html = generatePassEmail(r.attendee_name, r.convocation_number, r.exam_marks.fillout_link, convocationDetails)
     const result = await sendEmail({
       to: r.attendee_email,
       subject: "Congratulations! You have passed your FMAS Examination",
