@@ -37,6 +37,11 @@ export type ExamSettings = {
   mark_columns: MarkColumn[]
   convocation_prefix: string
   convocation_start?: number
+  // Free-text ceremony date + venue, e.g. "27th August 2026 at Biswa Bangla
+  // Convention Centre, Kolkata, India" — dropped straight into the pass
+  // result email/WhatsApp. Left blank, that message uses generic wording
+  // instead of guessing; never assume another event's date/venue applies.
+  convocation_details?: string
   without_exam_prefix?: string
   without_exam_start?: number
   exam_ticket_types?: string[]
@@ -274,6 +279,19 @@ export default function ExamSettingsPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Convocation Ceremony Details */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Convocation Ceremony Details</label>
+          <Input
+            value={formData.convocation_details || ""}
+            onChange={(e) => setFormData(prev => ({ ...prev, convocation_details: e.target.value }))}
+            placeholder="e.g. 27th August 2026 at Biswa Bangla Convention Centre, Kolkata, India"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Appears in the pass-result email/WhatsApp as "...convocation ceremony on [this text]". Leave blank to use generic wording instead of guessing — never copy another event's date/venue here.
+          </p>
         </div>
 
         <div>
