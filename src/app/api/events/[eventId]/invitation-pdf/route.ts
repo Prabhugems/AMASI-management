@@ -7,6 +7,16 @@ import {
   rateLimitExceededResponse,
 } from "@/lib/rate-limit"
 
+// Registration data has occasionally been imported/backfilled with the literal
+// string "None"/"N/A" instead of a real null, which then renders verbatim on
+// generated letters. Treat those sentinels as empty everywhere they're displayed.
+function cleanField(value: string | null | undefined): string | undefined {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed || ["none", "n/a", "null", "na"].includes(trimmed.toLowerCase())) return undefined
+  return trimmed
+}
+
 function formatDateRange(
   startDate: string | null | undefined,
   endDate: string | null | undefined
@@ -88,8 +98,8 @@ export async function GET(
       if (reg) {
         attendee = {
           name: reg.attendee_name,
-          designation: reg.attendee_designation,
-          institution: reg.attendee_institution,
+          designation: cleanField(reg.attendee_designation),
+          institution: cleanField(reg.attendee_institution),
           registration_number: reg.registration_number,
         }
       }
@@ -104,8 +114,8 @@ export async function GET(
       if (reg) {
         attendee = {
           name: reg.attendee_name,
-          designation: reg.attendee_designation || "Speaker",
-          institution: reg.attendee_institution,
+          designation: cleanField(reg.attendee_designation) || "Speaker",
+          institution: cleanField(reg.attendee_institution),
           registration_number: reg.registration_number,
         }
       } else if (speakerName) {
@@ -178,7 +188,29 @@ export async function GET(
     const light: [number, number, number] = [148, 163, 184]       // Slate-400
 
     // === HEADER BAND ===
-    const headerHeight = 35
+    // Measure everything first so the band can grow to fit (and the edition
+    // badge sits below the tagline instead of at a fixed offset that used to
+    // collide with it whenever the title wrapped to two lines).
+    doc.setFontSize(16)
+    doc.setFont("helvetica", "bold")
+    const eventTitle = event.name || "Event"
+    const titleLines = doc.splitTextToSize(eventTitle, contentWidth - 10)
+    const titleStartY = titleLines.length > 1 ? 12 : 15
+    const afterTitleY = titleStartY + titleLines.length * 7.5
+
+    let taglineLines: string[] = []
+    let taglineY = afterTitleY
+    if (event.tagline) {
+      doc.setFontSize(10)
+      doc.setFont("helvetica", "italic")
+      taglineLines = doc.splitTextToSize(event.tagline, contentWidth - 10)
+      taglineY = afterTitleY + 2
+    }
+    const afterTaglineY = taglineLines.length > 0 ? taglineY + (taglineLines.length - 1) * 4.5 : afterTitleY
+
+    const editionY = afterTaglineY + 6
+    const headerHeight = Math.max(35, editionY + 4)
+
     // Gradient effect with two rectangles
     doc.setFillColor(...primaryDark)
     doc.rect(0, 0, pageWidth, headerHeight, "F")
@@ -189,20 +221,14 @@ export async function GET(
     doc.setTextColor(255, 255, 255)
     doc.setFontSize(16)
     doc.setFont("helvetica", "bold")
-    const eventTitle = event.name || "Event"
-    const titleLines = doc.splitTextToSize(eventTitle, contentWidth - 10)
-    const titleStartY = titleLines.length > 1 ? 12 : 15
     doc.text(titleLines, pageWidth / 2, titleStartY, { align: "center", lineHeightFactor: 1.3 })
 
-    y = titleStartY + titleLines.length * 7.5
-
     // Tagline
-    if (event.tagline) {
+    if (taglineLines.length > 0) {
       doc.setFontSize(10)
       doc.setFont("helvetica", "italic")
       doc.setTextColor(255, 255, 255, 180)
-      const taglineLines = doc.splitTextToSize(event.tagline, contentWidth - 10)
-      doc.text(taglineLines, pageWidth / 2, y + 2, { align: "center" })
+      doc.text(taglineLines, pageWidth / 2, taglineY, { align: "center" })
     }
 
     // Edition badge
@@ -210,7 +236,7 @@ export async function GET(
       doc.setFontSize(9)
       doc.setFont("helvetica", "normal")
       doc.setTextColor(255, 255, 255, 160)
-      doc.text(`${event.edition} Edition`, pageWidth / 2, headerHeight - 6, {
+      doc.text(`${event.edition} Edition`, pageWidth / 2, editionY, {
         align: "center",
       })
     }

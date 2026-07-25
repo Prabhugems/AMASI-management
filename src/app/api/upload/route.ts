@@ -13,7 +13,7 @@ async function ensureBucketExists(adminClient: any) {
     console.log(`Bucket "${BUCKET_NAME}" not found, creating...`)
     const { error } = await adminClient.storage.createBucket(BUCKET_NAME, {
       public: true,
-      fileSizeLimit: 500 * 1024 * 1024, // 500MB (videos can be large)
+      fileSizeLimit: 50 * 1024 * 1024, // 50MB — matches the request-level size guard below
     })
     if (error && !error.message?.includes("already exists")) {
       console.error("Bucket creation error:", error)
