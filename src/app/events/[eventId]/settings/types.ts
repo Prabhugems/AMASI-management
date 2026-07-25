@@ -47,6 +47,7 @@ export interface EventSettings {
       scientific?: { title: string; signature_url: string }
       organizing?: { title: string; signature_url: string }
     }
+    letterhead_background_url?: string
     [key: string]: any
   } | null
 }

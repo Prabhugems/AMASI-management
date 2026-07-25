@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { jsPDF } from "jspdf"
 import { LETTER_TEMPLATES, renderFields, type LetterEventInfo, type LetterContent } from "@/lib/services/faculty-letter-templates"
-import { shouldUseEssurgLetterhead, drawEssurgHeaderJsPdf, drawEssurgFooterJsPdf } from "@/lib/pdf/essurg-letterhead"
+import { getLetterheadBackgroundUrl, drawLetterheadBackgroundJsPdf } from "@/lib/pdf/essurg-letterhead"
 
 // Allowed URL domains for signature images (prevent SSRF) — same list as
 // src/app/api/abstracts/certificates/route.ts
@@ -164,7 +164,7 @@ export async function POST(
       eventInfo,
       signers,
       buildRef(event.short_name, registration.registration_number),
-      shouldUseEssurgLetterhead(event.id),
+      getLetterheadBackgroundUrl(event.settings),
       embassyName,
       embassyCity
     )
@@ -191,7 +191,7 @@ async function renderLetterPdf(
   event: LetterEventInfo,
   signers: { name: string; title: string; signature_url?: string }[],
   ref: string,
-  useEssurgLetterhead: boolean,
+  backgroundUrl: string | undefined,
   embassyName?: string,
   embassyCity?: string
 ) {
@@ -201,7 +201,6 @@ async function renderLetterPdf(
   const margin = 20
   const contentWidth = pageWidth - 2 * margin
   let y = 0
-  const pageBreakBottomMargin = useEssurgLetterhead ? 85 : 60
 
   const primary: [number, number, number] = [37, 99, 235]
   const primaryDark: [number, number, number] = [29, 78, 216]
@@ -210,11 +209,22 @@ async function renderLetterPdf(
   const muted: [number, number, number] = [100, 116, 139]
   const light: [number, number, number] = [148, 163, 184]
 
-  // === HEADER BAND — measure before draw, same fix as invitation-pdf/route.ts ===
-  const essurgHeaderY = useEssurgLetterhead ? drawEssurgHeaderJsPdf(doc, margin) : null
+  // === HEADER BAND ===
+  const hasBackground = backgroundUrl ? await drawLetterheadBackgroundJsPdf(doc, backgroundUrl, pageWidth, pageHeight) : false
+  const pageBreakBottomMargin = 60
 
-  if (essurgHeaderY !== null) {
-    y = essurgHeaderY
+  // Adds a new page, redrawing the letterhead background on it if in use,
+  // and returns the Y where body content should resume.
+  async function addPageContinuation(): Promise<number> {
+    doc.addPage()
+    if (hasBackground && backgroundUrl) {
+      await drawLetterheadBackgroundJsPdf(doc, backgroundUrl, pageWidth, pageHeight)
+    }
+    return hasBackground ? 80 : 25
+  }
+
+  if (hasBackground) {
+    y = 80
   } else {
     doc.setFontSize(16)
     doc.setFont("helvetica", "bold")
@@ -297,7 +307,7 @@ async function renderLetterPdf(
   doc.setTextColor(...body)
   for (const para of content.paragraphs) {
     const lines = doc.splitTextToSize(para, contentWidth)
-    if (y + lines.length * 5 > pageHeight - pageBreakBottomMargin) { doc.addPage(); y = 25 }
+    if (y + lines.length * 5 > pageHeight - pageBreakBottomMargin) { y = await addPageContinuation() }
     doc.text(lines, margin, y, { lineHeightFactor: 1.4 })
     y += lines.length * 5 + 6
   }
@@ -315,7 +325,7 @@ async function renderLetterPdf(
     const totalRowUnits = detailLines.reduce((sum, r) => sum + Math.max(1, r.lines.length), 0)
     const boxHeight = boxPadding * 2 + totalRowUnits * rowHeight
 
-    if (y + boxHeight > pageHeight - pageBreakBottomMargin) { doc.addPage(); y = 25 }
+    if (y + boxHeight > pageHeight - pageBreakBottomMargin) { y = await addPageContinuation() }
 
     doc.setFillColor(248, 250, 252)
     doc.setDrawColor(226, 232, 240)
@@ -343,13 +353,13 @@ async function renderLetterPdf(
   doc.setTextColor(...body)
   for (const para of content.closingParagraphs) {
     const lines = doc.splitTextToSize(para, contentWidth)
-    if (y + lines.length * 5 > pageHeight - pageBreakBottomMargin) { doc.addPage(); y = 25 }
+    if (y + lines.length * 5 > pageHeight - pageBreakBottomMargin) { y = await addPageContinuation() }
     doc.text(lines, margin, y, { lineHeightFactor: 1.4 })
     y += lines.length * 5 + 6
   }
 
   // === SIGNATURES (one or two, side by side) ===
-  if (y > pageHeight - pageBreakBottomMargin) { doc.addPage(); y = 25 }
+  if (y > pageHeight - pageBreakBottomMargin) { y = await addPageContinuation() }
   doc.setTextColor(...body)
   doc.setFontSize(9.5)
   doc.text("With warm regards,", margin, y)
@@ -399,8 +409,8 @@ async function renderLetterPdf(
   y = maxSignatureY
 
   // === FOOTER ===
-  const essurgFooterDrawn = useEssurgLetterhead && drawEssurgFooterJsPdf(doc, pageHeight, margin)
-  if (!essurgFooterDrawn) {
+  // When a full-page background is in play, it already includes the footer bar.
+  if (!hasBackground) {
     const footerY = pageHeight - 10
     doc.setDrawColor(226, 232, 240)
     doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5)

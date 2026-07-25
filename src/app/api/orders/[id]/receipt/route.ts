@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
-import { shouldUseEssurgLetterhead, drawEssurgHeaderPdfLib, drawEssurgFooterPdfLib } from "@/lib/pdf/essurg-letterhead"
+import { getLetterheadBackgroundUrl, drawLetterheadBackgroundPdfLib } from "@/lib/pdf/essurg-letterhead"
 
 // GET /api/orders/[id]/receipt - Generate receipt PDF for a specific order/payment
 export async function GET(
@@ -38,7 +38,7 @@ export async function GET(
       created_at,
       event_id,
       metadata,
-      events (id, name, short_name, start_date, end_date, venue_name, city, logo_url)
+      events (id, name, short_name, start_date, end_date, venue_name, city, logo_url, settings)
     `)
     .eq("id", id)
     .single()
@@ -203,9 +203,10 @@ export async function GET(
   const receiptTitle = isAddonPurchase ? "ADD-ON PURCHASE RECEIPT" : "PAYMENT RECEIPT"
 
   // Header
-  const essurgHeaderY = shouldUseEssurgLetterhead(event?.id) ? await drawEssurgHeaderPdfLib(pdfDoc, page, 50) : null
+  const backgroundUrl = getLetterheadBackgroundUrl((event as any)?.settings)
+  const hasBackground = backgroundUrl ? await drawLetterheadBackgroundPdfLib(pdfDoc, page, backgroundUrl) : false
 
-  if (essurgHeaderY === null) {
+  if (!hasBackground) {
     page.drawRectangle({
       x: 0,
       y: height - 100,
@@ -287,9 +288,10 @@ export async function GET(
     })
   }
 
-  let headerBottomY = essurgHeaderY ?? height - 130
+  // Background art occupies roughly the top 80mm (≈227pt) of the page.
+  let headerBottomY = hasBackground ? height - 227 : height - 130
 
-  if (essurgHeaderY !== null) {
+  if (hasBackground) {
     page.drawText(receiptTitle, {
       x: 50,
       y: headerBottomY,
@@ -563,9 +565,8 @@ export async function GET(
     color: rgb(1, 1, 1),
   })
 
-  // Footer
-  const essurgFooterDrawn = shouldUseEssurgLetterhead(event?.id) && await drawEssurgFooterPdfLib(pdfDoc, page, 50)
-  if (!essurgFooterDrawn) {
+  // Footer — already part of the background image when one is in use.
+  if (!hasBackground) {
     page.drawText("This is a computer-generated receipt and does not require a signature.", {
       x: 50,
       y: 50,
