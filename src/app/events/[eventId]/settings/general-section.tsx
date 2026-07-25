@@ -268,25 +268,121 @@ export function GeneralSection({ eventId, formData, updateField, setFormData }: 
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-foreground">Scientific Chairman</label>
-              <Input
-                value={formData.scientific_chairman || ""}
-                onChange={(e) => updateField("scientific_chairman", e.target.value)}
-                placeholder="Dr. John Doe"
-                maxLength={100}
-                className="mt-1.5"
-              />
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-foreground">Scientific Chairman</label>
+                <Input
+                  value={formData.scientific_chairman || ""}
+                  onChange={(e) => updateField("scientific_chairman", e.target.value)}
+                  placeholder="Dr. John Doe"
+                  maxLength={100}
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">Title</label>
+                <Input
+                  value={formData.settings?.letter_signers?.scientific?.title || ""}
+                  onChange={(e) => {
+                    const current = formData.settings || {}
+                    const signers = current.letter_signers || {}
+                    setFormData((prev) => ({
+                      ...prev,
+                      settings: {
+                        ...current,
+                        letter_signers: {
+                          ...signers,
+                          scientific: { ...(signers.scientific || { title: "", signature_url: "" }), title: e.target.value },
+                        },
+                      },
+                    }))
+                  }}
+                  placeholder="Chairman, Scientific Committee"
+                  maxLength={80}
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">Signature Image</label>
+                <ImageUpload
+                  value={formData.settings?.letter_signers?.scientific?.signature_url || ""}
+                  onChange={(url) => {
+                    const current = formData.settings || {}
+                    const signers = current.letter_signers || {}
+                    setFormData((prev) => ({
+                      ...prev,
+                      settings: {
+                        ...current,
+                        letter_signers: {
+                          ...signers,
+                          scientific: { ...(signers.scientific || { title: "", signature_url: "" }), signature_url: url },
+                        },
+                      },
+                    }))
+                  }}
+                  eventId={eventId}
+                  folder={`events/${eventId}/scientific-chairman-signature`}
+                  aspectRatio="banner"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">Organizing Chairman</label>
-              <Input
-                value={formData.organizing_chairman || ""}
-                onChange={(e) => updateField("organizing_chairman", e.target.value)}
-                placeholder="Dr. Jane Smith"
-                maxLength={100}
-                className="mt-1.5"
-              />
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-foreground">Organizing Chairman</label>
+                <Input
+                  value={formData.organizing_chairman || ""}
+                  onChange={(e) => updateField("organizing_chairman", e.target.value)}
+                  placeholder="Dr. Jane Smith"
+                  maxLength={100}
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">Title</label>
+                <Input
+                  value={formData.settings?.letter_signers?.organizing?.title || ""}
+                  onChange={(e) => {
+                    const current = formData.settings || {}
+                    const signers = current.letter_signers || {}
+                    setFormData((prev) => ({
+                      ...prev,
+                      settings: {
+                        ...current,
+                        letter_signers: {
+                          ...signers,
+                          organizing: { ...(signers.organizing || { title: "", signature_url: "" }), title: e.target.value },
+                        },
+                      },
+                    }))
+                  }}
+                  placeholder="Chairman, Organising Committee"
+                  maxLength={80}
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">Signature Image</label>
+                <ImageUpload
+                  value={formData.settings?.letter_signers?.organizing?.signature_url || ""}
+                  onChange={(url) => {
+                    const current = formData.settings || {}
+                    const signers = current.letter_signers || {}
+                    setFormData((prev) => ({
+                      ...prev,
+                      settings: {
+                        ...current,
+                        letter_signers: {
+                          ...signers,
+                          organizing: { ...(signers.organizing || { title: "", signature_url: "" }), signature_url: url },
+                        },
+                      },
+                    }))
+                  }}
+                  eventId={eventId}
+                  folder={`events/${eventId}/organizing-chairman-signature`}
+                  aspectRatio="banner"
+                />
+              </div>
             </div>
           </div>
 
