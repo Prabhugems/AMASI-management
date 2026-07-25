@@ -64,7 +64,7 @@ export function drawEssurgHeaderJsPdf(doc: jsPDF, marginMm: number): number | nu
   const bytes = loadHeaderBytes()
   if (!bytes) return null
   const base64 = bytes.toString("base64")
-  doc.addImage(`data:image/png;base64,${base64}`, "PNG", marginMm, 10, ESSURG_HEADER_WIDTH_MM, ESSURG_HEADER_HEIGHT_MM)
+  doc.addImage(`data:image/png;base64,${base64}`, "PNG", marginMm, 10, ESSURG_HEADER_WIDTH_MM, ESSURG_HEADER_HEIGHT_MM, undefined, "SLOW")
   return 10 + ESSURG_HEADER_HEIGHT_MM + 8
 }
 
@@ -74,7 +74,7 @@ export function drawEssurgFooterJsPdf(doc: jsPDF, pageHeightMm: number, marginMm
   if (!bytes) return false
   const base64 = bytes.toString("base64")
   const y = pageHeightMm - ESSURG_FOOTER_HEIGHT_MM - 10
-  doc.addImage(`data:image/png;base64,${base64}`, "PNG", marginMm, y, ESSURG_FOOTER_WIDTH_MM, ESSURG_FOOTER_HEIGHT_MM)
+  doc.addImage(`data:image/png;base64,${base64}`, "PNG", marginMm, y, ESSURG_FOOTER_WIDTH_MM, ESSURG_FOOTER_HEIGHT_MM, undefined, "SLOW")
   return true
 }
 
