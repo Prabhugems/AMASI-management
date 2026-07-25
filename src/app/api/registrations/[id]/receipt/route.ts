@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { shouldUseEssurgLetterhead, drawEssurgHeaderPdfLib, drawEssurgFooterPdfLib } from "@/lib/pdf/essurg-letterhead"
 
 // Mirrors the helper already used in src/app/api/badges/generate/route.ts and
 // src/app/api/badge/[token]/download/route.ts — kept inline (not extracted)
@@ -30,6 +31,7 @@ export async function GET(
         *,
         ticket_types (name, price, tax_percentage, gst_inclusive_rate),
         events (
+          id,
           name,
           short_name,
           start_date,
@@ -61,6 +63,7 @@ export async function GET(
       total_amount: number
       payment_status: string
       events: {
+        id: string
         name: string
         short_name: string | null
         start_date: string
@@ -96,45 +99,51 @@ export async function GET(
     let y = height - 50
 
     // Header - Event Logo + Organization Name
-    let logoXOffset = 50
     const event = registration.events as any
-    if (event?.logo_url) {
-      try {
-        const logoResponse = await fetch(event.logo_url)
-        if (logoResponse.ok) {
-          const logoBytes = await logoResponse.arrayBuffer()
-          const uint8 = new Uint8Array(logoBytes)
-          const isPNG = uint8[0] === 0x89 && uint8[1] === 0x50
-          const isJPG = uint8[0] === 0xFF && uint8[1] === 0xD8
-          let logoImage
-          if (isPNG) logoImage = await pdfDoc.embedPng(logoBytes)
-          else if (isJPG) logoImage = await pdfDoc.embedJpg(logoBytes)
-          if (logoImage) {
-            const logoSize = 40
-            page.drawImage(logoImage, { x: 50, y: y - 15, width: logoSize, height: logoSize })
-            logoXOffset = 50 + logoSize + 10
+    const essurgHeaderY = shouldUseEssurgLetterhead(event?.id) ? await drawEssurgHeaderPdfLib(pdfDoc, page, 50) : null
+
+    if (essurgHeaderY !== null) {
+      y = essurgHeaderY
+    } else {
+      let logoXOffset = 50
+      if (event?.logo_url) {
+        try {
+          const logoResponse = await fetch(event.logo_url)
+          if (logoResponse.ok) {
+            const logoBytes = await logoResponse.arrayBuffer()
+            const uint8 = new Uint8Array(logoBytes)
+            const isPNG = uint8[0] === 0x89 && uint8[1] === 0x50
+            const isJPG = uint8[0] === 0xFF && uint8[1] === 0xD8
+            let logoImage
+            if (isPNG) logoImage = await pdfDoc.embedPng(logoBytes)
+            else if (isJPG) logoImage = await pdfDoc.embedJpg(logoBytes)
+            if (logoImage) {
+              const logoSize = 40
+              page.drawImage(logoImage, { x: 50, y: y - 15, width: logoSize, height: logoSize })
+              logoXOffset = 50 + logoSize + 10
+            }
           }
+        } catch (e) {
+          console.error("Failed to embed logo in receipt:", e)
         }
-      } catch (e) {
-        console.error("Failed to embed logo in receipt:", e)
       }
+
+      page.drawText(COMPANY_CONFIG.name, {
+        x: logoXOffset,
+        y,
+        size: 24,
+        font: fontBold,
+        color: primaryColor,
+      })
+
+      page.drawText(COMPANY_CONFIG.fullName, {
+        x: logoXOffset,
+        y: y - 20,
+        size: 10,
+        font: fontRegular,
+        color: mutedColor,
+      })
     }
-
-    page.drawText(COMPANY_CONFIG.name, {
-      x: logoXOffset,
-      y,
-      size: 24,
-      font: fontBold,
-      color: primaryColor,
-    })
-
-    page.drawText(COMPANY_CONFIG.fullName, {
-      x: logoXOffset,
-      y: y - 20,
-      size: 10,
-      font: fontRegular,
-      color: mutedColor,
-    })
 
     // Receipt Title
     y -= 60
@@ -378,27 +387,30 @@ export async function GET(
     }
 
     // Footer
-    page.drawText(`Generated on ${new Date().toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })}`, {
-      x: 50,
-      y: 50,
-      size: 8,
-      font: fontRegular,
-      color: mutedColor,
-    })
+    const essurgFooterDrawn = shouldUseEssurgLetterhead(event?.id) && await drawEssurgFooterPdfLib(pdfDoc, page, 50)
+    if (!essurgFooterDrawn) {
+      page.drawText(`Generated on ${new Date().toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`, {
+        x: 50,
+        y: 50,
+        size: 8,
+        font: fontRegular,
+        color: mutedColor,
+      })
 
-    page.drawText(`Manage your registration at: ${COMPANY_CONFIG.website.replace(/^https?:\/\//, "")}/my`, {
-      x: 50,
-      y: 35,
-      size: 8,
-      font: fontRegular,
-      color: primaryColor,
-    })
+      page.drawText(`Manage your registration at: ${COMPANY_CONFIG.website.replace(/^https?:\/\//, "")}/my`, {
+        x: 50,
+        y: 35,
+        size: 8,
+        font: fontRegular,
+        color: primaryColor,
+      })
+    }
 
     // Serialize the PDF
     const pdfBytes = await pdfDoc.save()
