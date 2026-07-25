@@ -6,6 +6,7 @@ import {
   getClientIp,
   rateLimitExceededResponse,
 } from "@/lib/rate-limit"
+import { shouldUseEssurgLetterhead, drawEssurgHeaderJsPdf, drawEssurgFooterJsPdf } from "@/lib/pdf/essurg-letterhead"
 
 // Registration data has occasionally been imported/backfilled with the literal
 // string "None"/"N/A" instead of a real null, which then renders verbatim on
@@ -188,60 +189,66 @@ export async function GET(
     const light: [number, number, number] = [148, 163, 184]       // Slate-400
 
     // === HEADER BAND ===
-    // Measure everything first so the band can grow to fit (and the edition
-    // badge sits below the tagline instead of at a fixed offset that used to
-    // collide with it whenever the title wrapped to two lines).
-    doc.setFontSize(16)
-    doc.setFont("helvetica", "bold")
-    const eventTitle = event.name || "Event"
-    const titleLines = doc.splitTextToSize(eventTitle, contentWidth - 10)
-    const titleStartY = titleLines.length > 1 ? 12 : 15
-    const afterTitleY = titleStartY + titleLines.length * 7.5
+    const essurgHeaderY = shouldUseEssurgLetterhead(event.id) ? drawEssurgHeaderJsPdf(doc, margin) : null
 
-    let taglineLines: string[] = []
-    let taglineY = afterTitleY
-    if (event.tagline) {
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "italic")
-      taglineLines = doc.splitTextToSize(event.tagline, contentWidth - 10)
-      taglineY = afterTitleY + 2
+    if (essurgHeaderY !== null) {
+      y = essurgHeaderY
+    } else {
+      // Measure everything first so the band can grow to fit (and the edition
+      // badge sits below the tagline instead of at a fixed offset that used to
+      // collide with it whenever the title wrapped to two lines).
+      doc.setFontSize(16)
+      doc.setFont("helvetica", "bold")
+      const eventTitle = event.name || "Event"
+      const titleLines = doc.splitTextToSize(eventTitle, contentWidth - 10)
+      const titleStartY = titleLines.length > 1 ? 12 : 15
+      const afterTitleY = titleStartY + titleLines.length * 7.5
+
+      let taglineLines: string[] = []
+      let taglineY = afterTitleY
+      if (event.tagline) {
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "italic")
+        taglineLines = doc.splitTextToSize(event.tagline, contentWidth - 10)
+        taglineY = afterTitleY + 2
+      }
+      const afterTaglineY = taglineLines.length > 0 ? taglineY + (taglineLines.length - 1) * 4.5 : afterTitleY
+
+      const editionY = afterTaglineY + 6
+      const headerHeight = Math.max(35, editionY + 4)
+
+      // Gradient effect with two rectangles
+      doc.setFillColor(...primaryDark)
+      doc.rect(0, 0, pageWidth, headerHeight, "F")
+      doc.setFillColor(...primary)
+      doc.rect(0, 0, pageWidth, headerHeight - 3, "F")
+
+      // Event title
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(16)
+      doc.setFont("helvetica", "bold")
+      doc.text(titleLines, pageWidth / 2, titleStartY, { align: "center", lineHeightFactor: 1.3 })
+
+      // Tagline
+      if (taglineLines.length > 0) {
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "italic")
+        doc.setTextColor(255, 255, 255, 180)
+        doc.text(taglineLines, pageWidth / 2, taglineY, { align: "center" })
+      }
+
+      // Edition badge
+      if (event.edition) {
+        doc.setFontSize(9)
+        doc.setFont("helvetica", "normal")
+        doc.setTextColor(255, 255, 255, 160)
+        doc.text(`${event.edition} Edition`, pageWidth / 2, editionY, {
+          align: "center",
+        })
+      }
+
+      y = headerHeight + 8
     }
-    const afterTaglineY = taglineLines.length > 0 ? taglineY + (taglineLines.length - 1) * 4.5 : afterTitleY
-
-    const editionY = afterTaglineY + 6
-    const headerHeight = Math.max(35, editionY + 4)
-
-    // Gradient effect with two rectangles
-    doc.setFillColor(...primaryDark)
-    doc.rect(0, 0, pageWidth, headerHeight, "F")
-    doc.setFillColor(...primary)
-    doc.rect(0, 0, pageWidth, headerHeight - 3, "F")
-
-    // Event title
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(16)
-    doc.setFont("helvetica", "bold")
-    doc.text(titleLines, pageWidth / 2, titleStartY, { align: "center", lineHeightFactor: 1.3 })
-
-    // Tagline
-    if (taglineLines.length > 0) {
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "italic")
-      doc.setTextColor(255, 255, 255, 180)
-      doc.text(taglineLines, pageWidth / 2, taglineY, { align: "center" })
-    }
-
-    // Edition badge
-    if (event.edition) {
-      doc.setFontSize(9)
-      doc.setFont("helvetica", "normal")
-      doc.setTextColor(255, 255, 255, 160)
-      doc.text(`${event.edition} Edition`, pageWidth / 2, editionY, {
-        align: "center",
-      })
-    }
-
-    y = headerHeight + 8
 
     // === DATE LINE ===
     doc.setTextColor(...muted)
@@ -527,19 +534,22 @@ export async function GET(
     }
 
     // === FOOTER ===
-    const footerY = pageHeight - 10
-    doc.setDrawColor(226, 232, 240)
-    doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5)
+    const essurgFooterDrawn = shouldUseEssurgLetterhead(event.id) && drawEssurgFooterJsPdf(doc, pageHeight, margin)
+    if (!essurgFooterDrawn) {
+      const footerY = pageHeight - 10
+      doc.setDrawColor(226, 232, 240)
+      doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5)
 
-    doc.setTextColor(...light)
-    doc.setFontSize(7.5)
-    doc.setFont("helvetica", "normal")
-    doc.text(
-      `This is a computer-generated invitation.  |  Generated on ${today}`,
-      pageWidth / 2,
-      footerY,
-      { align: "center" }
-    )
+      doc.setTextColor(...light)
+      doc.setFontSize(7.5)
+      doc.setFont("helvetica", "normal")
+      doc.text(
+        `This is a computer-generated invitation.  |  Generated on ${today}`,
+        pageWidth / 2,
+        footerY,
+        { align: "center" }
+      )
+    }
 
     // Generate PDF buffer
     const pdfBuffer = Buffer.from(doc.output("arraybuffer"))
