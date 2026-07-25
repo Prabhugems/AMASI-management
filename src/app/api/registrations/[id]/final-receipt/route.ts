@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
+import { shouldUseEssurgLetterhead, drawEssurgHeaderPdfLib, drawEssurgFooterPdfLib } from "@/lib/pdf/essurg-letterhead"
 
 // GET /api/registrations/[id]/final-receipt - Generate consolidated registration receipt
 export async function GET(
@@ -39,7 +40,7 @@ export async function GET(
       event_id,
       ticket_type_id,
       ticket_types (name, price, gst_inclusive_rate),
-      events (name, short_name, start_date, end_date, venue_name, city)
+      events (id, name, short_name, start_date, end_date, venue_name, city)
     `)
     .eq("id", id)
     .single()
@@ -154,57 +155,61 @@ export async function GET(
   let y = height - 50
 
   // Header
-  page.drawRectangle({
-    x: 0,
-    y: height - 100,
-    width: width,
-    height: 100,
-    color: primaryColor,
-  })
+  const essurgHeaderY = shouldUseEssurgLetterhead(event?.id) ? await drawEssurgHeaderPdfLib(pdfDoc, page, 50) : null
 
-  page.drawText("REGISTRATION RECEIPT", {
-    x: 50,
-    y: height - 55,
-    size: 22,
-    font: helveticaBold,
-    color: rgb(1, 1, 1),
-  })
+  if (essurgHeaderY === null) {
+    page.drawRectangle({
+      x: 0,
+      y: height - 100,
+      width: width,
+      height: 100,
+      color: primaryColor,
+    })
 
-  page.drawText("Final Consolidated Receipt", {
-    x: 50,
-    y: height - 75,
-    size: 10,
-    font: helvetica,
-    color: rgb(0.8, 0.8, 0.8),
-  })
+    page.drawText("REGISTRATION RECEIPT", {
+      x: 50,
+      y: height - 55,
+      size: 22,
+      font: helveticaBold,
+      color: rgb(1, 1, 1),
+    })
 
-  page.drawText(event?.short_name || event?.name || "Event", {
-    x: 50,
-    y: height - 90,
-    size: 11,
-    font: helvetica,
-    color: rgb(0.8, 0.8, 0.8),
-  })
+    page.drawText("Final Consolidated Receipt", {
+      x: 50,
+      y: height - 75,
+      size: 10,
+      font: helvetica,
+      color: rgb(0.8, 0.8, 0.8),
+    })
 
-  // Registration Number (right side)
-  page.drawText(`Reg #: ${registration.registration_number}`, {
-    x: width - 180,
-    y: height - 55,
-    size: 12,
-    font: helveticaBold,
-    color: rgb(1, 1, 1),
-  })
+    page.drawText(event?.short_name || event?.name || "Event", {
+      x: 50,
+      y: height - 90,
+      size: 11,
+      font: helvetica,
+      color: rgb(0.8, 0.8, 0.8),
+    })
 
-  const receiptDate = registration.confirmed_at || registration.created_at
-  page.drawText(`Date: ${new Date(receiptDate).toLocaleDateString("en-IN")}`, {
-    x: width - 180,
-    y: height - 72,
-    size: 10,
-    font: helvetica,
-    color: rgb(1, 1, 1),
-  })
+    page.drawText(`Reg #: ${registration.registration_number}`, {
+      x: width - 180,
+      y: height - 55,
+      size: 12,
+      font: helveticaBold,
+      color: rgb(1, 1, 1),
+    })
 
-  y = height - 130
+    const receiptDate = registration.confirmed_at || registration.created_at
+    page.drawText(`Date: ${new Date(receiptDate).toLocaleDateString("en-IN")}`, {
+      x: width - 180,
+      y: height - 72,
+      size: 10,
+      font: helvetica,
+      color: rgb(1, 1, 1),
+    })
+  }
+
+  const headerBottomY = essurgHeaderY ?? height - 130
+  y = headerBottomY
 
   // Attendee Info
   page.drawText("BILL TO", {
@@ -259,7 +264,7 @@ export async function GET(
   }
 
   // Event Info (right side)
-  const eventY = height - 130
+  const eventY = headerBottomY
   page.drawText("EVENT", {
     x: 350,
     y: eventY,
@@ -443,21 +448,24 @@ export async function GET(
   })
 
   // Footer
-  page.drawText("This is a computer-generated receipt and does not require a signature.", {
-    x: 50,
-    y: 50,
-    size: 8,
-    font: helvetica,
-    color: grayColor,
-  })
+  const essurgFooterDrawn = shouldUseEssurgLetterhead(event?.id) && await drawEssurgFooterPdfLib(pdfDoc, page, 50)
+  if (!essurgFooterDrawn) {
+    page.drawText("This is a computer-generated receipt and does not require a signature.", {
+      x: 50,
+      y: 50,
+      size: 8,
+      font: helvetica,
+      color: grayColor,
+    })
 
-  page.drawText(`Generated on ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`, {
-    x: 50,
-    y: 35,
-    size: 8,
-    font: helvetica,
-    color: grayColor,
-  })
+    page.drawText(`Generated on ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`, {
+      x: 50,
+      y: 35,
+      size: 8,
+      font: helvetica,
+      color: grayColor,
+    })
+  }
 
   const pdfBytes = await pdfDoc.save()
 
