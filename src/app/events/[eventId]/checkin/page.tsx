@@ -80,8 +80,10 @@ export default function CheckinHubPage() {
   const [editingList, setEditingList] = useState<CheckinList | null>(null)
   const [showQRModal, setShowQRModal] = useState<string | null>(null)
   const [showStaffShareModal, setShowStaffShareModal] = useState<CheckinList | null>(null)
+  const [showKioskLauncherModal, setShowKioskLauncherModal] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [copiedStaffLink, setCopiedStaffLink] = useState(false)
+  const [copiedKioskLauncherLink, setCopiedKioskLauncherLink] = useState(false)
   const [selectedList, setSelectedList] = useState<string | null>(null)
   const [showSaved, setShowSaved] = useState(false)
 
@@ -148,11 +150,12 @@ export default function CheckinHubPage() {
 
   // Escape closes any open modal
   useEffect(() => {
-    if (!showQRModal && !showStaffShareModal && !showCreateModal && !editingList) return
+    if (!showQRModal && !showStaffShareModal && !showKioskLauncherModal && !showCreateModal && !editingList) return
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (showQRModal) setShowQRModal(null)
         if (showStaffShareModal) setShowStaffShareModal(null)
+        if (showKioskLauncherModal) setShowKioskLauncherModal(false)
         if (showCreateModal || editingList) {
           setShowCreateModal(false)
           setEditingList(null)
@@ -306,6 +309,20 @@ export default function CheckinHubPage() {
     setTimeout(() => setCopiedStaffLink(false), 2000)
   }
 
+  // Single menu covering every active check-in list + print station for
+  // this event (no login) — hands out one link instead of a separate
+  // "Share with Staff" link per list. See /kiosk-launcher/[eventId].
+  const getKioskLauncherUrl = () => {
+    if (typeof window === "undefined") return ""
+    return `${window.location.origin}/kiosk-launcher/${eventId}`
+  }
+
+  const copyKioskLauncherLink = async () => {
+    await navigator.clipboard.writeText(getKioskLauncherUrl())
+    setCopiedKioskLauncherLink(true)
+    setTimeout(() => setCopiedKioskLauncherLink(false), 2000)
+  }
+
   const openInNewWindow = (listId: string) => {
     window.open(getScanUrl(listId), "_blank", "width=500,height=800")
   }
@@ -400,6 +417,14 @@ export default function CheckinHubPage() {
             <p className="text-muted-foreground text-sm">{event?.name || "Loading..."}</p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowKioskLauncherModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 border border-blue-500/30 rounded-full text-sm font-medium transition-colors"
+              title="One link covering every check-in list and print station for this event"
+            >
+              <Smartphone className="w-4 h-4" />
+              Kiosk Launcher
+            </button>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -974,6 +999,103 @@ export default function CheckinHubPage() {
                   </a>
                   <a
                     href={`mailto:?subject=Check-in Access - ${showStaffShareModal.name}&body=${encodeURIComponent(`Here's your check-in access link:\n\n${getStaffAccessUrl(showStaffShareModal.access_token)}\n\nOpen this link on your phone to start checking people in. No login required!`)}`}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-muted rounded-lg hover:bg-muted/80 text-sm font-medium transition-colors border border-border"
+                  >
+                    Email
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kiosk Launcher Modal — one link covering every active check-in list
+          and print station for this event (no login), vs. the per-list
+          Share with Staff modal above which covers just one list. */}
+      {showKioskLauncherModal && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowKioskLauncherModal(false)}
+        >
+          <div
+            className="bg-card rounded-3xl w-full max-w-md shadow-2xl border-2 border-border max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">Kiosk Launcher</h2>
+                <p className="text-sm text-muted-foreground mt-1">{event?.name}</p>
+              </div>
+              <button
+                onClick={() => setShowKioskLauncherModal(false)}
+                className="p-2 hover:bg-muted rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
+                <div className="flex gap-3">
+                  <Smartphone className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-700">No login required!</p>
+                    <p className="text-xs text-blue-600/80 mt-1">
+                      One link for this whole event. A volunteer opens it on a tablet, picks
+                      Check-in or Print Badge, then picks which list or station — instead of
+                      sharing a separate link per list. Add it to the tablet&apos;s home screen
+                      (Chrome &rarr; Add to Home Screen) so it opens like an installed app.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center mb-6">
+                <div className="bg-white p-4 rounded-2xl shadow-lg">
+                  <QrImage value={getKioskLauncherUrl()} size={192} className="w-48 h-48" />
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground text-center">
+                  Scan to open the kiosk launcher
+                </p>
+              </div>
+
+              <div className="bg-muted rounded-xl p-3 mb-4">
+                <p className="text-xs text-muted-foreground mb-1">Kiosk Launcher Link</p>
+                <p className="text-sm font-mono break-all text-foreground/80">
+                  {getKioskLauncherUrl()}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={copyKioskLauncherLink}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 font-medium transition-colors"
+                >
+                  {copiedKioskLauncherLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copiedKioskLauncherLink ? "Copied!" : "Copy Link"}
+                </button>
+                <button
+                  onClick={() => window.open(getKioskLauncherUrl(), "_blank", "width=500,height=800")}
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-muted rounded-xl hover:bg-muted/80 font-medium transition-colors border border-border"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open
+                </button>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-border">
+                <p className="text-xs text-muted-foreground mb-2">Quick Share</p>
+                <div className="flex gap-2">
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`Kiosk launcher for ${event?.name}: ${getKioskLauncherUrl()}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm font-medium transition-colors"
+                  >
+                    WhatsApp
+                  </a>
+                  <a
+                    href={`mailto:?subject=Kiosk Launcher - ${event?.name}&body=${encodeURIComponent(`Open this on the tablet to check people in or print badges:\n\n${getKioskLauncherUrl()}\n\nNo login required.`)}`}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-muted rounded-lg hover:bg-muted/80 text-sm font-medium transition-colors border border-border"
                   >
                     Email
