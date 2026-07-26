@@ -20,6 +20,7 @@ import {
   Pencil,
 } from "lucide-react"
 import { Html5Qrcode } from "html5-qrcode"
+import * as Sentry from "@sentry/nextjs"
 import {
   enqueueScan,
   flushQueue,
@@ -55,7 +56,18 @@ interface ListAttendee {
 // A running feed of the last ~10 scans, newest first. Replaces the old
 // single "lastResult" card entirely — there is nothing to show/dismiss,
 // just a log that keeps growing while the camera keeps running.
-type FeedStatus = "pending" | "checked_in" | "already_in" | "wrong_event" | "not_found" | "queued_offline" | "error"
+type FeedStatus = "pending" | "checked_in" | "already_in" | "recovered_retry" | "wrong_event" | "not_found" | "queued_offline" | "error"
+
+// A lost response (abort on bad wifi, screen-wake) looks identical to a
+// genuine duplicate scan from the server's point of view — both come back
+// as "already checked in". If the existing check-in happened within this
+// window, treat it as this exact scan's own result finally arriving rather
+// than a real collision: distinct tone + message so an aborted request is
+// never silent, without needing server-side idempotency plumbing. Long
+// enough to cover a volunteer noticing nothing happened and rescanning;
+// short enough to keep the (rare) false-positive — two different people
+// genuinely double-scanning the same badge within the window — negligible.
+const RETRY_RECOVERY_WINDOW_MS = 20_000
 
 interface FeedEntry {
   id: string
@@ -244,84 +256,141 @@ export default function StaffCheckinPage() {
     }
   }, [])
 
-  const playSound = (type: "tick" | "success" | "error" | "warning") => {
+  const playSound = (type: "tick" | "success" | "error" | "warning" | "recovered_retry") => {
     if (!soundEnabled || !audioContextRef.current) return
-    try {
-      const ctx = audioContextRef.current
-      if (ctx.state === "suspended") {
-        ctx.resume()
-      }
+    const ctx = audioContextRef.current
 
-      if (type === "tick") {
-        // Q4 — fires the instant a code is accepted by the dedup Map, before
-        // we know the server's verdict. In a burst nobody is watching the
-        // screen; this is the "yes, the camera saw that one" confirmation.
-        // Deliberately quiet/short/neutral so it doesn't compete with the
-        // real success/warning/error tone that follows once the response
-        // resolves (a few hundred ms later, typically).
+    // Schedules the actual tone. Split out so the suspended-context branch
+    // below can wait for resume() to truly finish before scheduling —
+    // otherwise the oscillator gets scheduled against a context that isn't
+    // running yet and produces no audible sound at all.
+    const scheduleTone = () => {
+      try {
+        playToneForType(ctx, type)
+      } catch (e) {
+        // Don't swallow this silently — this exact class of error (unhandled
+        // AbortError, mechanism onunhandledrejection) is Sentry
+        // AMASI-MANAGEMENT-Y. Tagging the origin here means the next
+        // occurrence is self-diagnosing instead of requiring replay/trace
+        // archaeology (which had already expired by the time this was
+        // investigated).
+        Sentry.captureMessage("check-in sound failed: tone scheduling", {
+          level: "warning",
+          tags: { origin: "checkin_tone_scheduling", scan_sound_type: type },
+          extra: { error: e instanceof Error ? e.message : String(e), audioContextState: ctx.state },
+        })
+      }
+    }
+
+    if (ctx.state === "suspended") {
+      // resume() can reject with AbortError on WebKit-based browsers
+      // (Safari, Chrome-on-iOS), especially right after the context
+      // auto-suspends from the screen locking/backgrounding — this is the
+      // suspected origin of Sentry AMASI-MANAGEMENT-Y. Must be caught (an
+      // uncaught rejection here is an unhandled promise rejection) and the
+      // tone must wait for resume to actually settle before scheduling.
+      ctx.resume().then(scheduleTone).catch((e) => {
+        Sentry.captureMessage("check-in sound failed: AudioContext.resume() rejected", {
+          level: "warning",
+          tags: { origin: "checkin_audio_context_resume", scan_sound_type: type },
+          extra: { error: e instanceof Error ? e.message : String(e), errorName: e?.name },
+        })
+      })
+    } else {
+      scheduleTone()
+    }
+  }
+
+  const playToneForType = (ctx: AudioContext, type: "tick" | "success" | "error" | "warning" | "recovered_retry") => {
+    if (type === "tick") {
+      // Q4 — fires the instant a code is accepted by the dedup Map, before
+      // we know the server's verdict. In a burst nobody is watching the
+      // screen; this is the "yes, the camera saw that one" confirmation.
+      // Deliberately quiet/short/neutral so it doesn't compete with the
+      // real success/warning/error tone that follows once the response
+      // resolves (a few hundred ms later, typically).
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.frequency.setValueAtTime(1200, ctx.currentTime)
+      gain.gain.setValueAtTime(0.12, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.05)
+      return
+    }
+
+    if (type === "warning") {
+      // Distinct double-tone for "already collected — do not issue again".
+      // Deliberately NOT the success chime (ascending, one sweep) and NOT
+      // the error buzzer (harsh square wave) — two identical flat beeps,
+      // audibly its own thing, so a volunteer working by ear alone can
+      // tell it apart from both other outcomes.
+      for (const startOffset of [0, 0.18]) {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
         osc.connect(gain)
         gain.connect(ctx.destination)
-        osc.frequency.setValueAtTime(1200, ctx.currentTime)
-        gain.gain.setValueAtTime(0.12, ctx.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05)
-        osc.start(ctx.currentTime)
-        osc.stop(ctx.currentTime + 0.05)
-        return
+        osc.frequency.setValueAtTime(660, ctx.currentTime + startOffset)
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + startOffset)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startOffset + 0.15)
+        osc.start(ctx.currentTime + startOffset)
+        osc.stop(ctx.currentTime + startOffset + 0.15)
       }
+      if (navigator.vibrate) navigator.vibrate([120, 80, 120])
+      return
+    }
 
-      if (type === "warning") {
-        // Distinct double-tone for "already collected — do not issue again".
-        // Deliberately NOT the success chime (ascending, one sweep) and NOT
-        // the error buzzer (harsh square wave) — two identical flat beeps,
-        // audibly its own thing, so a volunteer working by ear alone can
-        // tell it apart from both other outcomes.
-        for (const startOffset of [0, 0.18]) {
-          const osc = ctx.createOscillator()
-          const gain = ctx.createGain()
-          osc.connect(gain)
-          gain.connect(ctx.destination)
-          osc.frequency.setValueAtTime(660, ctx.currentTime + startOffset)
-          gain.gain.setValueAtTime(0.3, ctx.currentTime + startOffset)
-          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startOffset + 0.15)
-          osc.start(ctx.currentTime + startOffset)
-          osc.stop(ctx.currentTime + startOffset + 0.15)
-        }
-        if (navigator.vibrate) navigator.vibrate([120, 80, 120])
-        return
+    if (type === "recovered_retry") {
+      // A lost response finally landing, not a fresh check-in and not a
+      // real duplicate — deliberately distinct from all three other tones:
+      // not "success" (ascending sweep), not "warning" (two flat beeps at
+      // one pitch), not "error" (buzzer). A gentle descending two-note so a
+      // volunteer working by ear knows "that retry went through" rather
+      // than wondering if they just double-processed someone.
+      for (const [freq, startOffset] of [[990, 0], [660, 0.15]] as const) {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + startOffset)
+        gain.gain.setValueAtTime(0.25, ctx.currentTime + startOffset)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startOffset + 0.15)
+        osc.start(ctx.currentTime + startOffset)
+        osc.stop(ctx.currentTime + startOffset + 0.15)
       }
+      if (navigator.vibrate) navigator.vibrate([80, 60, 80])
+      return
+    }
 
-      const oscillator = ctx.createOscillator()
-      const gainNode = ctx.createGain()
+    const oscillator = ctx.createOscillator()
+    const gainNode = ctx.createGain()
 
-      oscillator.connect(gainNode)
-      gainNode.connect(ctx.destination)
+    oscillator.connect(gainNode)
+    gainNode.connect(ctx.destination)
 
-      if (type === "success") {
-        // Pleasant success beep (two ascending tones)
-        oscillator.frequency.setValueAtTime(880, ctx.currentTime)
-        oscillator.frequency.setValueAtTime(1108, ctx.currentTime + 0.1)
-        gainNode.gain.setValueAtTime(0.3, ctx.currentTime)
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
-        oscillator.start(ctx.currentTime)
-        oscillator.stop(ctx.currentTime + 0.3)
-      } else {
-        // Error buzzer
-        oscillator.frequency.setValueAtTime(220, ctx.currentTime)
-        oscillator.type = "square"
-        gainNode.gain.setValueAtTime(0.2, ctx.currentTime)
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4)
-        oscillator.start(ctx.currentTime)
-        oscillator.stop(ctx.currentTime + 0.4)
-      }
+    if (type === "success") {
+      // Pleasant success beep (two ascending tones)
+      oscillator.frequency.setValueAtTime(880, ctx.currentTime)
+      oscillator.frequency.setValueAtTime(1108, ctx.currentTime + 0.1)
+      gainNode.gain.setValueAtTime(0.3, ctx.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
+      oscillator.start(ctx.currentTime)
+      oscillator.stop(ctx.currentTime + 0.3)
+    } else {
+      // Error buzzer
+      oscillator.frequency.setValueAtTime(220, ctx.currentTime)
+      oscillator.type = "square"
+      gainNode.gain.setValueAtTime(0.2, ctx.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4)
+      oscillator.start(ctx.currentTime)
+      oscillator.stop(ctx.currentTime + 0.4)
+    }
 
-      // Vibrate on mobile
-      if (navigator.vibrate) {
-        navigator.vibrate(type === "success" ? [100, 50, 100] : [200, 100, 200])
-      }
-    } catch (e) {
-      // Ignore sound errors
+    // Vibrate on mobile
+    if (navigator.vibrate) {
+      navigator.vibrate(type === "success" ? [100, 50, 100] : [200, 100, 200])
     }
   }
 
@@ -487,19 +556,44 @@ export default function StaffCheckinPage() {
       const data = await res.json()
 
       if (data.alreadyCheckedIn) {
-        // Legitimate repeat scan — never the error buzzer. Which chime
-        // depends on list_purpose: entry means "let them in" (soft chime);
-        // collection means "already collected, do not issue again" (distinct
-        // double-tone).
-        playSound(checkinList.list_purpose === "collection" ? "warning" : "success")
-        updateEntry({
-          status: "already_in",
-          attendeeName: data.registration?.attendee_name,
-          regNumber: data.registration?.registration_number,
-          ticketType: data.registration?.ticket_type?.name,
-          checkedInAt: data.registration?.checked_in_at,
-          message: data.message,
-        })
+        // A lost response (abort, weak signal, screen-wake) looks identical
+        // to a genuine duplicate from the server's point of view — both
+        // come back "already checked in". If the existing check-in happened
+        // within RETRY_RECOVERY_WINDOW_MS, treat it as THIS scan's own
+        // result finally arriving rather than a real collision: it's never
+        // silent, and it doesn't read as an ambiguous "already checked in"
+        // for something the volunteer just did themselves.
+        const checkedInAtMs = data.registration?.checked_in_at
+          ? new Date(data.registration.checked_in_at).getTime()
+          : NaN
+        const isLikelyOwnRetry =
+          !Number.isNaN(checkedInAtMs) && Date.now() - checkedInAtMs < RETRY_RECOVERY_WINDOW_MS
+
+        if (isLikelyOwnRetry) {
+          playSound("recovered_retry")
+          updateEntry({
+            status: "recovered_retry",
+            attendeeName: data.registration?.attendee_name,
+            regNumber: data.registration?.registration_number,
+            ticketType: data.registration?.ticket_type?.name,
+            checkedInAt: data.registration?.checked_in_at,
+            message: "Confirmed — your check-in went through",
+          })
+        } else {
+          // Legitimate repeat scan — never the error buzzer. Which chime
+          // depends on list_purpose: entry means "let them in" (soft chime);
+          // collection means "already collected, do not issue again"
+          // (distinct double-tone).
+          playSound(checkinList.list_purpose === "collection" ? "warning" : "success")
+          updateEntry({
+            status: "already_in",
+            attendeeName: data.registration?.attendee_name,
+            regNumber: data.registration?.registration_number,
+            ticketType: data.registration?.ticket_type?.name,
+            checkedInAt: data.registration?.checked_in_at,
+            message: data.message,
+          })
+        }
       } else if (data.success) {
         playSound("success")
         queryClient.setQueryData(statsQueryKey, (old: { stats: { total: number; checkedIn: number } } | undefined) =>
@@ -836,6 +930,8 @@ export default function StaffCheckinPage() {
         return checkinList?.list_purpose === "collection"
           ? { color: "border-amber-500/20 bg-amber-500/10", dot: "bg-amber-400", label: "⚠ Already collected" }
           : { color: "border-amber-500/20 bg-amber-500/10", dot: "bg-amber-400", label: "✓ Already checked in" }
+      case "recovered_retry":
+        return { color: "border-emerald-500/20 bg-emerald-500/10", dot: "bg-emerald-400", label: "✓ Confirmed (retry)" }
       case "wrong_event":
         return { color: "border-red-500/20 bg-red-500/10", dot: "bg-red-400", label: "✗ Wrong event" }
       case "not_found":
