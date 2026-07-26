@@ -1,4 +1,15 @@
-# Kiosk / Print-Station Admin Sidebar
+# Kiosk Launcher (superseded sidebar design)
+
+> **Status: superseded.** This spec originally proposed a PIN-gated sidebar
+> embedded inside `/print/[token]` and `/kiosk/[eventId]/[listId]`. After
+> further discussion the actual requirement turned out to be simpler: a
+> single standalone page a volunteer opens directly on a tablet, not a menu
+> layered onto an already-open page. That shipped as `/kiosk-launcher/[eventId]`
+> (implemented in `feat/kiosk-launcher`, commit `d0831b4`). The original
+> sidebar design is kept below for the reasoning trail (in particular the
+> `events` RLS finding, which is still true and still relevant elsewhere),
+> but nothing in "Design" past this point was built. Skip to
+> [What shipped instead](#what-shipped-instead) for the real thing.
 
 ## Problem
 
@@ -17,6 +28,77 @@ live stats, and neither has any way for an admin to switch which check-in
 list or print station the tablet is pointed at without re-entering a new
 URL/token by hand. There is currently no navigational or admin surface on
 either screen at all.
+
+Separately: an admin picking which check-in list or print station to hand
+to a volunteer had to go into a specific event's own dashboard pages
+(`/events/{eventId}/checkin/lists` or `/events/{eventId}/print-stations`)
+and copy that one list/station's own "Share with Staff" link individually —
+no single place to see all of an event's check-in/print entry points at
+once, and no login-free way to get straight to one from the tablet itself.
+
+## What shipped instead
+
+**`/kiosk-launcher/[eventId]`** — public, no login, same trust model as
+`/checkin/access/[accessToken]`, `/print/[token]`, and
+`/kiosk/[eventId]/[listId]` already use in this app: the event ID in the
+URL is the access boundary. No PIN, no session token, no new table, no
+migration.
+
+A volunteer opens this URL directly on a tablet (installable via "Add to
+Home Screen" using the app's existing `public/manifest.json` — no new
+packages) and sees one menu:
+
+- **Check-in** → list of that event's active check-in lists → tap one →
+  opens the existing `/checkin/access/{accessToken}` scanner page.
+- **Print Badge** → list of that event's active print stations → tap one →
+  opens the existing `/print/{accessToken}` page.
+
+Both destinations are pages that already existed and already worked; this
+is a discovery/navigation layer in front of them, not a new security
+surface. It hands back the same `access_token` values the existing "Share
+with Staff" modal already displays to anyone with dashboard access — no
+new exposure.
+
+### Implementation
+
+- `src/app/api/kiosk-launcher/[eventId]/route.ts` — `GET`, rate-limited
+  (`public` tier, keyed by IP), validates `eventId` is a UUID, 404s if the
+  event doesn't exist. Returns the event's `name`/`short_name`, plus:
+  - `checkin_lists` where `event_id = X and is_active = true`, additionally
+    excluding any list whose `access_token_expires_at` has already passed
+    (`.or("access_token_expires_at.is.null,access_token_expires_at.gt.<now>")`)
+    — no point surfacing a dead link on the menu.
+  - `print_stations` where `event_id = X and is_active = true`.
+- `src/app/kiosk-launcher/[eventId]/page.tsx` — client component, three
+  local view states (`menu` / `checkin` / `print`), each list item is a
+  plain `<a href="/checkin/access/{token}">` or `<a href="/print/{token}">`.
+  No layout.tsx needed — the root layout carries no dashboard chrome, same
+  as `/checkin/access/[accessToken]` today.
+- No middleware change needed: `src/middleware.ts` protects an explicit
+  allowlist of routes (`protectedRoutes`), and `/kiosk-launcher` isn't on
+  it — same as `/kiosk` and `/checkin/access` today, protection here is
+  opt-in, not opt-out.
+
+Verified directly against production data (event `cb26bbb1-...`, 125th
+AMASI Skill Course): its one active print station ("Testing") resolves
+correctly; its three check-in lists correctly resolve to an empty menu,
+since the event concluded 2026-07-12 and all three lists' tokens expired
+2026-07-14 — confirmed via direct SQL, not a bug in the filter.
+
+### Explicitly not built (from the original design below)
+
+- No PIN, no `event_kiosk_pins` table, no hashing, no signed session token.
+- No "switch list without leaving the page" sidebar embedded in `/print`
+  or `/kiosk` — switching means going back to the launcher page instead.
+- No live-stats view, no printer-settings relocation. `/print/[token]`
+  keeps its existing inline Settings modal untouched.
+- No offline-queue-aware switch guard — there is no in-place switch to
+  guard; navigating away from `/checkin/access/[accessToken]` to the
+  launcher and back doesn't touch that page's own offline queue logic.
+
+---
+
+## Original sidebar design (superseded, kept for the reasoning trail)
 
 ## Goal
 
@@ -59,7 +141,9 @@ casually reach admin actions.
 ## Security notes (why the design looks the way it does)
 
 Two facts, checked directly against prod (`jmdwxymbgxwdsmcwbahp`) while
-revising this spec, drove the data-model and session design below:
+revising this spec, drove the data-model and session design below — **the
+first of these is a real, still-current finding about this database**,
+independent of whether this sidebar ever gets built:
 
 1. **`events` RLS is fully open.** `pg_policy` on `public.events` shows
    `"Allow anon to read events"` (role `anon`, `USING (true)`) and
