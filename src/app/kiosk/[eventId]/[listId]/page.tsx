@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -23,7 +23,16 @@ import {
   Building2,
 } from "lucide-react"
 import { toast } from "sonner"
-import { enqueueRequest, flushRequestQueue, isNetworkFailure } from "@/lib/offline-scan-queue"
+import * as Sentry from "@sentry/nextjs"
+import { matchDelegate, type CachedDelegate } from "@/lib/kiosk-delegate-match"
+import {
+  getOrCreateDeviceId,
+  replaceDelegateCache,
+  getDelegateCache,
+  enqueueScan,
+} from "@/lib/kiosk-offline-store"
+import { drainScanQueue } from "@/lib/kiosk-sync-worker"
+import { isNetworkFailure } from "@/lib/offline-scan-queue"
 
 type CheckinResult = {
   success: boolean
@@ -56,9 +65,9 @@ export default function KioskPage() {
   const eventId = params.eventId as string
   const listId = params.listId as string
   const supabase = createClient()
-  // Namespaced distinctly from the admin scanner's and staff scanner's
-  // offline queues so the three can never collide.
-  const queuePartitionKey = `kiosk:${eventId}:${listId}`
+
+  const searchParams = useSearchParams()
+  const token = searchParams.get("token") ?? ""
 
   const [registrationNumber, setRegistrationNumber] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
@@ -68,12 +77,119 @@ export default function KioskPage() {
   const [emailSent, setEmailSent] = useState(false)
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false)
   const [whatsappSent, setWhatsappSent] = useState(false)
+  const [cacheReady, setCacheReady] = useState(false)
+  const [cacheError, setCacheError] = useState<string | null>(null)
+  const [listBlockedReason, setListBlockedReason] = useState<string | null>(null)
+  const [pendingSyncCount, setPendingSyncCount] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   // Scanner-burst auto-submit + double-submit guard (see handleRegChange).
   const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null)
   const burstStartRef = useRef<number>(0)
   const lastKeyTimeRef = useRef<number>(0)
   const submittingRef = useRef<boolean>(false)
+  const delegatesRef = useRef<CachedDelegate[]>([])
+  const deviceIdRef = useRef<string>("")
+
+  // Local-first bootstrap: load whatever's already cached from a previous
+  // session immediately (works offline from a cold reload), then refresh
+  // from the server if online. Refreshes again every 5 minutes while
+  // online. ~2,000 records for a full event roster -- load the whole list,
+  // no pagination (see the Stage 1 plan's architecture notes).
+  useEffect(() => {
+    let cancelled = false
+
+    // cacheReady only ever becomes true when there is a genuinely usable
+    // local cache: either the local IndexedDB read already had entries from
+    // a prior session (safe to accept scans immediately, even offline), or
+    // a server refresh has completed in some terminal way (success, 401,
+    // non-ok response, network-failure) -- never simply "the local read
+    // finished, even if it returned zero rows". A brand-new device with an
+    // empty cache and a refresh still in flight must keep showing
+    // "Loading…", not silently accept scans against an empty roster.
+    async function refreshFromServer() {
+      if (!token) return
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
+        return
+      }
+      try {
+        const res = await fetch(
+          `/api/kiosk/delegates?event_id=${encodeURIComponent(eventId)}&token=${encodeURIComponent(token)}`
+        )
+        if (res.status === 401) {
+          if (!cancelled) {
+            setCacheError("This kiosk link has expired or is invalid. Ask an admin to reshare it.")
+            if (delegatesRef.current.length > 0) setCacheReady(true)
+          }
+          return
+        }
+        if (!res.ok) {
+          if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
+          return
+        }
+        const data = (await res.json()) as { delegates: CachedDelegate[]; list_purpose?: string }
+        if (cancelled) return
+
+        if (data.list_purpose === "collection") {
+          // Self check-in never accepts scans against a collection-purpose
+          // list (see /api/kiosk/checkin/route.ts:58-63) -- there's nothing
+          // worth caching, and every scan must be rejected with a specific,
+          // distinct message rather than looking like a match failure.
+          delegatesRef.current = []
+          await replaceDelegateCache(listId, [])
+          setListBlockedReason("Self check-in isn't available for this list. Please see a staff member.")
+          setCacheReady(true)
+          return
+        }
+
+        setListBlockedReason(null)
+        await replaceDelegateCache(listId, data.delegates)
+        delegatesRef.current = data.delegates
+        setCacheError(null)
+        setCacheReady(true)
+      } catch (err) {
+        // A network failure here is a routine, expected condition (this
+        // runs on an interval regardless of connectivity) -- the
+        // on-device cache stays valid and in use, nothing to report.
+        // Anything else is unexpected and must not be swallowed silently.
+        if (!isNetworkFailure(err)) {
+          Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId, listId } })
+        }
+        if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
+      }
+    }
+
+    async function bootstrap() {
+      if (!token) {
+        if (!cancelled) setCacheError("This kiosk link is missing its access token. Ask an admin to reshare it.")
+        return
+      }
+      try {
+        deviceIdRef.current = await getOrCreateDeviceId()
+        delegatesRef.current = await getDelegateCache(listId)
+        // Only safe to accept scans immediately if the local cache already
+        // has entries from a prior session -- an empty read must not flip
+        // cacheReady here, or a brand-new device would accept scans against
+        // a roster it hasn't actually fetched yet.
+        if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
+        await refreshFromServer()
+      } catch (err) {
+        // getOrCreateDeviceId/getDelegateCache throwing (e.g. IndexedDB
+        // unavailable) must not leave the kiosk showing "Loading…" forever
+        // with zero diagnostic signal -- indistinguishable from a hung page
+        // on an unattended device.
+        Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId, listId } })
+        if (!cancelled) setCacheError("This kiosk couldn't start. Please see a staff member.")
+      }
+    }
+
+    bootstrap()
+    const refreshInterval = setInterval(refreshFromServer, 5 * 60 * 1000)
+    return () => {
+      cancelled = true
+      clearInterval(refreshInterval)
+    }
+  }, [eventId, listId, token])
 
   // Fetch event and list details
   const { data: event } = useQuery({
@@ -137,80 +253,99 @@ export default function KioskPage() {
     if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current)
   }, [])
 
-  // Offline handling here is deliberately NOT a transplant of the staff
-  // scanner's "show success immediately, reconcile later" pattern — that
-  // design relies on a human volunteer noticing a later sync problem. A
-  // kiosk is unattended: an optimistic "Check-in successful!" for a
-  // queued-but-unconfirmed scan would manufacture false confidence at a
-  // public terminal with nobody there to catch a later failure. So:
-  //   1. Pre-flight offline check — honest "please wait" state, no lies.
-  //   2. Inline retry (2 attempts, ~1.5s apart) on a network blip, before
-  //      showing any result — covers brief drops without ever queuing.
-  //   3. Only once retries are exhausted, queue as a last-resort safety net
-  //      so the scan self-heals in the background — but the attendee still
-  //      sees an honest failure, never the success/countdown screen.
+  const syncNow = useCallback(async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return
+    try {
+      const { remaining } = await drainScanQueue(
+        listId,
+        eventId,
+        () => {},
+        () => {}
+      )
+      setPendingSyncCount(remaining)
+    } catch (err) {
+      // drainScanQueue can reject (e.g. IndexedDB unavailable -- Safari
+      // private browsing, quota exceeded), and the underlying idb module
+      // caches a rejected connection promise -- left uncaught, this would
+      // reject on every subsequent call for the rest of the session, as an
+      // unhandled rejection each time (handleCheckin's `void syncNow()`,
+      // the `online` listener, and the setInterval poll all call this).
+      Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId, listId } })
+    }
+  }, [eventId, listId])
+
+  // Local-first: resolve from the on-device delegate cache and render
+  // immediately -- zero network calls on this path. The scan is durably
+  // queued (IndexedDB survives a reload) and synced in the background by
+  // the sync worker. See the Stage 1 plan for why this replaces the old
+  // "await the network, retry twice, then queue" behavior.
   const handleCheckin = async (override?: string) => {
-    // `override` lets the scanner-burst auto-submit and the Enter handler pass
-    // the live DOM value, which a fast scanner can fill before React flushes
-    // `registrationNumber` state.
     const searchTerm = (override ?? registrationNumber).trim()
     if (!searchTerm) {
       toast.error("Please enter a registration number")
       return
     }
-
-    // Guard against a double submit (burst timer racing the Enter key / a tap).
+    // This guard must live inside handleCheckin itself, not only on the
+    // submit button's `disabled` attribute -- the barcode-scanner-burst
+    // path (handleRegChange's auto-submit) and the Enter-key handler both
+    // call handleCheckin directly, bypassing the button entirely.
+    if (listBlockedReason) {
+      setResult({ success: false, message: listBlockedReason })
+      return
+    }
     if (submittingRef.current) return
     submittingRef.current = true
     setIsProcessing(true)
 
-    const body = { event_id: eventId, checkin_list_id: listId, search: searchTerm }
-
     try {
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
+      const delegate = matchDelegate(delegatesRef.current, searchTerm)
+
+      if (!delegate) {
         setResult({
           success: false,
-          message: "You appear to be offline. Please wait a moment and try again.",
+          message: "Registration not found. Please check your registration number.",
         })
         return
       }
 
-      let lastErr: unknown = null
-      for (let attempt = 0; attempt <= 2; attempt++) {
-        try {
-          // The check-in runs server-side via the admin client. The kiosk is
-          // a public (anon) page and checkin_records has RLS with no policy,
-          // so a direct browser insert is always denied — see
-          // /api/kiosk/checkin.
-          const res = await fetch("/api/kiosk/checkin", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          })
-          const data = (await res.json().catch(() => ({}))) as CheckinResult
-          setResult({
-            success: !!data.success,
-            message:
-              data.message ||
-              (data.success ? "Check-in successful!" : "Failed to check in. Please try again."),
-            warning: data.warning,
-            registration: data.registration,
-            alreadyCheckedIn: data.alreadyCheckedIn,
-          })
-          return
-        } catch (err) {
-          lastErr = err
-          if (!isNetworkFailure(err) || attempt === 2) break
-          await new Promise((resolve) => setTimeout(resolve, 1500))
-        }
-      }
+      const scanId =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-      if (isNetworkFailure(lastErr)) {
-        await enqueueRequest(queuePartitionKey, { url: "/api/kiosk/checkin", body })
-      }
+      await enqueueScan({
+        scan_id: scanId,
+        station_id: deviceIdRef.current,
+        list_id: listId,
+        delegate_code: searchTerm,
+        scanned_at: Date.now(),
+        registration_id: delegate.id,
+        registration_snapshot: delegate,
+      })
+
+      setResult({
+        success: true,
+        message: "Check-in successful!",
+        registration: {
+          id: delegate.id,
+          registration_number: delegate.registration_number,
+          attendee_name: delegate.attendee_name,
+          attendee_email: delegate.attendee_email,
+          attendee_designation: delegate.attendee_designation ?? undefined,
+          attendee_institution: delegate.attendee_institution ?? undefined,
+        },
+      })
+
+      void syncNow()
+    } catch (error) {
+      // The most safety-critical write in the local-first redesign
+      // (durable IndexedDB enqueue) must never fail silently -- e.g. quota
+      // exceeded, Safari private-browsing storage restrictions. Surface an
+      // honest failure rather than leaving the attendee on a stuck screen.
+      Sentry.captureException(error, { tags: { module: "kiosk-page" }, extra: { eventId, listId, searchTerm } })
       setResult({
         success: false,
-        message: "We couldn't check you in — please see a staff member.",
+        message: "Something went wrong recording this check-in. Please try again.",
       })
     } finally {
       setIsProcessing(false)
@@ -218,28 +353,19 @@ export default function KioskPage() {
     }
   }
 
-  // Silent background self-heal for anything queued above — no "queue" or
-  // "pending" language anywhere in the attendee-facing UI; this just retries
-  // once connectivity returns, the same way it would have worked the first
-  // time if the network hadn't blipped. Also polls every 20s: navigator.onLine
-  // only reflects the OS network interface, not request health, so a
-  // timed-out request (see fetch-with-timeout.ts) can queue silently with
-  // onLine still true and no `online` event ever firing to drain it — this
-  // matters most here since the kiosk is unattended and can't be nudged.
+  // Silent background self-heal, same rationale as the old flush effect it
+  // replaces: no "queue"/"pending" language in the attendee-facing UI, and
+  // a 20s poll because navigator.onLine only reflects the OS network
+  // interface, not request health.
   useEffect(() => {
-    const flush = () => {
-      flushRequestQueue(queuePartitionKey, () => {}).catch(() => {})
-    }
-    if (typeof navigator !== "undefined" && navigator.onLine) flush()
-    window.addEventListener("online", flush)
-    const pollId = setInterval(() => {
-      if (navigator.onLine) flush()
-    }, 20000)
+    if (typeof navigator !== "undefined" && navigator.onLine) void syncNow()
+    window.addEventListener("online", syncNow)
+    const pollId = setInterval(syncNow, 20000)
     return () => {
-      window.removeEventListener("online", flush)
+      window.removeEventListener("online", syncNow)
       clearInterval(pollId)
     }
-  }, [queuePartitionKey])
+  }, [syncNow])
 
   const handleEmailBadge = async () => {
     if (!result?.registration) return
@@ -617,9 +743,16 @@ export default function KioskPage() {
               size="lg"
               className="w-full h-14 sm:h-16 mt-4 text-base sm:text-xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl"
               onClick={() => handleCheckin()}
-              disabled={isProcessing || !registrationNumber.trim()}
+              disabled={isProcessing || !cacheReady || !registrationNumber.trim()}
             >
-              {isProcessing ? (
+              {!cacheReady && cacheError ? (
+                "Unavailable"
+              ) : !cacheReady ? (
+                <>
+                  <Loader2 className="h-6 w-6 mr-2 animate-spin" />
+                  Loading…
+                </>
+              ) : isProcessing ? (
                 <>
                   <Loader2 className="h-6 w-6 mr-2 animate-spin" />
                   Checking in…
@@ -666,6 +799,12 @@ export default function KioskPage() {
         <p className="text-xs sm:text-sm text-gray-400">
           Need help? Please contact the registration desk
         </p>
+        {cacheError && (
+          <p className="text-xs text-red-400 mt-1">{cacheError}</p>
+        )}
+        {pendingSyncCount > 0 && (
+          <p className="text-xs text-gray-500 mt-1">Syncing {pendingSyncCount} check-in{pendingSyncCount === 1 ? "" : "s"}…</p>
+        )}
       </div>
     </div>
   )
