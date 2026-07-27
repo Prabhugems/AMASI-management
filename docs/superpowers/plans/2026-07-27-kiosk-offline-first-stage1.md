@@ -521,7 +521,13 @@ function getDb(): Promise<IDBPDatabase> {
           db.createObjectStore(META_STORE, { keyPath: "key" })
         }
         if (!db.objectStoreNames.contains(DELEGATE_STORE)) {
-          const store = db.createObjectStore(DELEGATE_STORE, { keyPath: "id" })
+          // Compound key, not just "id": the same registrant legitimately
+          // appears on multiple lists (CLAUDE.md's check-in model -- "Day 2
+          // = a new list"), and a tablet plausibly gets repointed to a new
+          // list without clearing IndexedDB. A plain "id" key would let
+          // caching list B silently overwrite (not add to) list A's row for
+          // any registrant on both lists.
+          const store = db.createObjectStore(DELEGATE_STORE, { keyPath: ["list_id", "id"] })
           store.createIndex("by_list", "list_id")
         }
         if (!db.objectStoreNames.contains(SCAN_STORE)) {
@@ -666,7 +672,7 @@ hide. Before approving, verify explicitly:
 
 **Interfaces:**
 - Consumes: `getPendingScans`, `recordScanAttempt`, `markScanSynced`, `markScanConflict`, `ScanLogEntry` from `src/lib/kiosk-offline-store.ts` (Task 3); `isNetworkFailure` from `src/lib/offline-scan-queue.ts` (existing, unchanged); `fetchWithTimeout` from `src/lib/fetch-with-timeout.ts` (existing, unchanged).
-- Produces: `export function computeBackoffMs(attempts: number): number` and `export async function drainScanQueue(listId: string, onSynced: (entry: ScanLogEntry, response: unknown) => void, onConflict: (entry: ScanLogEntry, response: unknown) => void): Promise<{ synced: number; conflicted: number; remaining: number }>`. Task 5 calls `drainScanQueue`.
+- Produces: `export function computeBackoffMs(attempts: number): number` and `export async function drainScanQueue(listId: string, eventId: string, onSynced: (entry: ScanLogEntry, response: unknown) => void, onConflict: (entry: ScanLogEntry, response: unknown) => void): Promise<{ synced: number; conflicted: number; remaining: number }>` — `eventId` is required because the POST body to `/api/kiosk/checkin` needs it. Task 5 calls `drainScanQueue`.
 
 - [ ] **Step 1: Write the failing test for the backoff calculation**
 
@@ -712,12 +718,16 @@ Expected: FAIL — `Cannot find module './kiosk-sync-worker'`.
 //
 // "Conflict" here means the server's answer disagreed with what the
 // attendee already saw on the tablet (e.g. alreadyCheckedIn=true when the
-// tablet resolved this as a fresh check-in from its cache, most likely
-// because they were also checked in at a different station moments
-// earlier). Per the redesign brief: never retroactively change what the
-// volunteer/attendee already saw -- the badge notification already went
-// out. This just flags it for the admin view (a later stage's job to
-// surface); Stage 1 only needs to *record* the conflict correctly.
+// tablet resolved this as a fresh check-in from its cache). Per the
+// redesign brief: never retroactively change what the volunteer/attendee
+// already saw -- the badge notification already went out. This just flags
+// it for the admin view (a later stage's job to surface); Stage 1 only
+// needs to *record* the conflict correctly. In practice the dominant cause
+// of an alreadyCheckedIn conflict is this station's OWN retry of a scan
+// whose first attempt actually succeeded server-side before the response
+// was lost (see the network-failure branch below) -- not a cross-station
+// race. No check-in is lost either way; this is a labelling nuance for
+// whoever reads the conflict list, not a correctness concern.
 
 import * as Sentry from "@sentry/nextjs"
 import { fetchWithTimeout } from "./fetch-with-timeout"
@@ -749,11 +759,28 @@ interface CheckinApiResponse {
   message?: string
 }
 
+type EntryOutcome =
+  | { kind: "synced"; response: unknown }
+  | { kind: "conflict"; response: unknown }
+  | { kind: "retry-break" }
+  | { kind: "retry-continue" }
+
 /**
- * One drain pass over the pending queue for `listId`. Stops at the first
- * network failure (we're likely still offline) so repeated calls (on an
- * interval, on the browser's `online` event) don't churn the queue --
- * matches the existing convention in offline-scan-queue.ts's flushQueue.
+ * One drain pass over the pending queue for `listId`. `onSynced`/
+ * `onConflict` run AFTER the store transition and outside any try/catch --
+ * if a callback throws (e.g. a UI sound-effect failure), it must not
+ * rewrite or double-count an outcome that's already been committed to
+ * IndexedDB.
+ *
+ * `retry-break` (429, a genuine network failure, or an unparseable
+ * response body) stops the whole pass -- these indicate the connection or
+ * the server as a whole is currently unable to help, so trying the rest of
+ * the queue right now would just churn. `retry-continue` (a 5xx on this
+ * one entry) does NOT stop the pass -- a 5xx is a plausible per-entry,
+ * deterministic failure (e.g. a DB constraint violation on that specific
+ * registration), and treating it as queue-wide would let one poison entry
+ * block every other queued scan indefinitely, since it's retried first on
+ * every future pass (oldest-first ordering).
  */
 export async function drainScanQueue(
   listId: string,
@@ -768,6 +795,8 @@ export async function drainScanQueue(
   for (const entry of pending) {
     if (!isEligibleForRetry(entry)) continue
 
+    let outcome: EntryOutcome
+
     try {
       const res = await fetchWithTimeout("/api/kiosk/checkin", {
         method: "POST",
@@ -779,56 +808,101 @@ export async function drainScanQueue(
           scan_id: entry.scan_id,
         }),
       })
-      const data = (await res.json().catch(() => ({}))) as CheckinApiResponse
+      // No .catch(() => ({})) here -- an unparseable body (e.g. a captive
+      // WiFi portal serving an HTML login page over what looked like a
+      // successful connection) must not be silently treated as `{}` and
+      // fall through to a permanent, unreported "conflict". Let it throw
+      // into the catch block below, where it's retried and reported.
+      const data = (await res.json()) as CheckinApiResponse
 
       if (res.ok && data.success) {
-        const conflictsWithLocalView =
-          data.alreadyCheckedIn === true || (data.registration && data.registration.id !== entry.registration_id)
+        const registrationMismatch = !!data.registration && data.registration.id !== entry.registration_id
+        const conflictsWithLocalView = data.alreadyCheckedIn === true || registrationMismatch
+
+        if (registrationMismatch) {
+          // The server's .or() match (see kiosk-delegate-match.ts's header
+          // comment on its non-deterministic tie-break) resolved this scan
+          // to a different registration than the local cache did. Rare,
+          // but means the wrong person may have been checked in -- surface
+          // it rather than filing it silently alongside routine
+          // alreadyCheckedIn conflicts. Full fix (passing registration_id
+          // through so the server can't disagree) is Stage 2's job,
+          // alongside scan_id enforcement.
+          Sentry.captureMessage("kiosk sync: server matched a different registration than the local cache", {
+            tags: { module: "kiosk-sync-worker" },
+            extra: {
+              scanId: entry.scan_id,
+              listId,
+              localRegistrationId: entry.registration_id,
+              serverRegistrationId: data.registration!.id,
+            },
+          })
+        }
+
         if (conflictsWithLocalView) {
           await markScanConflict(entry.scan_id, data)
-          conflicted++
-          onConflict(entry, data)
+          outcome = { kind: "conflict", response: data }
         } else {
           await markScanSynced(entry.scan_id, data)
-          synced++
-          onSynced(entry, data)
+          outcome = { kind: "synced", response: data }
         }
-      } else if (res.status === 429 || res.status >= 500) {
-        // Transient: our own rate limit (a burst of queued scans syncing
-        // on reconnect can plausibly exceed /api/kiosk/checkin's 30/min
-        // "public" tier) or a temporary server error. Retry with backoff
-        // like a network failure -- marking this "conflict" would be a
-        // dead end, since conflicts are never retried, and would silently
-        // and permanently fail to sync a perfectly legitimate check-in.
+      } else if (res.status === 429) {
+        // Our own rate limit -- a burst of queued scans syncing on
+        // reconnect can plausibly exceed /api/kiosk/checkin's 30/min
+        // "public" tier. Queue-wide: stop this pass.
         await recordScanAttempt(entry.scan_id, entry.attempts + 1, data.message || `HTTP ${res.status}`)
-        break
+        outcome = { kind: "retry-break" }
+      } else if (res.status >= 500) {
+        // Per-entry, not queue-wide -- see the function-level comment.
+        await recordScanAttempt(entry.scan_id, entry.attempts + 1, data.message || `HTTP ${res.status}`)
+        outcome = { kind: "retry-continue" }
       } else {
         // A genuine terminal business-logic rejection (e.g. 403
         // collection-list block, 404 for a registration that existed when
         // cached but was since removed) -- retrying won't change the
         // outcome, so surface it for admin review instead.
         await markScanConflict(entry.scan_id, data)
-        conflicted++
-        onConflict(entry, data)
+        outcome = { kind: "conflict", response: data }
       }
     } catch (err) {
       if (isNetworkFailure(err)) {
+        // Routine, expected for an offline-first kiosk -- no Sentry report.
         await recordScanAttempt(entry.scan_id, entry.attempts + 1, err instanceof Error ? err.message : String(err))
-        break
+        outcome = { kind: "retry-break" }
+      } else if (err instanceof SyntaxError) {
+        // res.json() couldn't parse the body -- see the comment above the
+        // call. Retryable (whatever intercepted this response may not
+        // intercept the next attempt), but worth knowing about.
+        Sentry.captureException(err, { tags: { module: "kiosk-sync-worker" }, extra: { scanId: entry.scan_id, listId } })
+        await recordScanAttempt(entry.scan_id, entry.attempts + 1, err.message)
+        outcome = { kind: "retry-break" }
+      } else {
+        // Not a network failure -- something unexpected. Never leave this
+        // pending forever on a repeat identical error (a "poison row"
+        // retried infinitely on every drain pass) -- same reasoning as
+        // offline-scan-queue.ts's flushQueue treating a non-network throw
+        // as terminal. Unlike that queue, nothing here is ever deleted:
+        // route it to "conflict" for admin review instead of losing it.
+        const message = err instanceof Error ? err.message : String(err)
+        Sentry.captureException(err, { tags: { module: "kiosk-sync-worker" }, extra: { scanId: entry.scan_id, listId } })
+        await markScanConflict(entry.scan_id, { error: message })
+        outcome = { kind: "conflict", response: { error: message } }
       }
-      // Not a network failure -- something unexpected (e.g. a JSON parse
-      // throw). Never leave this pending forever on a repeat identical
-      // error (a "poison row" retried infinitely on every drain pass) --
-      // same reasoning as offline-scan-queue.ts's flushQueue treating a
-      // non-network throw as terminal. Unlike that queue, nothing here is
-      // ever deleted: route it to "conflict" for admin review instead of
-      // losing it.
-      const message = err instanceof Error ? err.message : String(err)
-      Sentry.captureException(err, { tags: { module: "kiosk-sync-worker" }, extra: { scanId: entry.scan_id, listId } })
-      await markScanConflict(entry.scan_id, { error: message })
-      conflicted++
-      onConflict(entry, { error: message })
     }
+
+    // Callbacks run after the store transition is already committed, and
+    // outside any try/catch -- a throwing callback must not rewrite or
+    // double-count an outcome that IndexedDB already has on record.
+    if (outcome.kind === "synced") {
+      synced++
+      onSynced(entry, outcome.response)
+    } else if (outcome.kind === "conflict") {
+      conflicted++
+      onConflict(entry, outcome.response)
+    }
+
+    if (outcome.kind === "retry-break") break
+    // "retry-continue" falls through to the next entry in this same pass.
   }
 
   const remaining = (await getPendingScans(listId)).length
@@ -884,6 +958,7 @@ import { enqueueRequest, flushRequestQueue, isNetworkFailure } from "@/lib/offli
 with:
 
 ```typescript
+import * as Sentry from "@sentry/nextjs"
 import { matchDelegate, type CachedDelegate } from "@/lib/kiosk-delegate-match"
 import {
   getOrCreateDeviceId,
@@ -892,7 +967,10 @@ import {
   enqueueScan,
 } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
+import { isNetworkFailure } from "@/lib/offline-scan-queue"
 ```
+
+`isNetworkFailure` is the one utility still imported from the old module — it's a pure, exported function (not tied to the old queue's storage), reused here and by Task 4's sync worker to distinguish routine offline conditions from unexpected errors.
 
 - [ ] **Step 2: Add cache/device state and the bootstrap + periodic-refresh effect**
 
@@ -945,9 +1023,14 @@ Replace the `queuePartitionKey` line (line 61: `const queuePartitionKey = ...`) 
         if (cancelled) return
         await replaceDelegateCache(listId, data.delegates)
         delegatesRef.current = data.delegates
-      } catch {
-        // Offline or the request failed -- the on-device cache (already
-        // loaded below) is still valid and stays in use.
+      } catch (err) {
+        // A network failure here is a routine, expected condition (this
+        // runs on an interval regardless of connectivity) -- the
+        // on-device cache stays valid and in use, nothing to report.
+        // Anything else is unexpected and must not be swallowed silently.
+        if (!isNetworkFailure(err)) {
+          Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId, listId } })
+        }
       }
     }
 
@@ -1125,7 +1208,7 @@ In the footer of the scan/entry screen (originally lines 664-669), surface the b
 - [ ] **Step 6: Typecheck and lint**
 
 Run: `npx tsc --noEmit -p tsconfig.json && npx next lint`
-Expected: no new errors. (If `isNetworkFailure` shows as an unused import anywhere else in this file, it isn't — it was only ever used inside the old `handleCheckin`, which Step 3 fully replaced; confirm with a grep: `grep -n "isNetworkFailure" src/app/kiosk/\[eventId\]/\[listId\]/page.tsx` should return nothing.)
+Expected: no new errors. `isNetworkFailure` is now used once, in Step 2's `refreshFromServer` catch block — confirm it isn't flagged unused: `grep -n "isNetworkFailure" src/app/kiosk/\[eventId\]/\[listId\]/page.tsx` should show both the import and its one usage.
 
 - [ ] **Step 7: Commit**
 
@@ -1271,3 +1354,5 @@ Note the outcome of steps 3-6 (pass/fail, any anomalies) in the PR description w
 - **IndexedDB test coverage is a stated decision, not an oversight:** called out in Global Constraints, and again inline in Task 3 Step 1 and Task 4's test file — this repo's Vitest config has no DOM/IndexedDB shim, and adding `fake-indexeddb` would be a new package (out of scope per the brief). Matches this exact codebase's existing precedent (`offline-scan-queue.ts` ships with zero automated tests today, verified manually/on hardware instead) — Task 7 is that manual verification for this stage's IndexedDB-touching code.
 - **Deferred to later stages, intentionally not in this plan:** `scan_id` server-side idempotency enforcement (Stage 2 — the column exists but nothing checks it yet; this plan's sync worker already sends `scan_id` so no client change will be needed when Stage 2 lands), tones/full-screen UI (Stage 4), `kiosk_stations`-based station identity replacing `getOrCreateDeviceId()` (Stage 3).
 - **Type consistency check:** `CachedDelegate` is defined once in `kiosk-delegate-match.ts` (Task 2, now without `ticket_type_name` — matches Task 1's response shape exactly) and re-exported (not redefined) from `kiosk-offline-store.ts` (Task 3) — every later task imports one canonical shape. `ScanLogEntry` is defined once in `kiosk-offline-store.ts` and imported by `kiosk-sync-worker.ts` and (via inference) by the page — no duplicate/divergent definitions.
+- **Accepted trade-off — success-screen fields the new local-first `handleCheckin` never sets:** `alreadyCheckedIn`/`warning` on `CheckinResult` are never populated by the local-first path. A repeat scan now shows the same "Check-in successful!" as a fresh one, and the time-window warning banner (previously driven by the server's `checkTimeWindow`) no longer appears. This is intentional, not an oversight: the local cache can't know server-side check-in history or time-window config without a network round-trip, which would defeat the point of local-first resolution. If this is ever prioritized, Stage 2/3 could restore the time-window case by having the roster response (`GET /api/kiosk/delegates`) carry each delegate's list `starts_at`/`ends_at` so the client can check it locally; the repeat-scan case has no local-first equivalent without server round-trip and would need a deliberate design call, not just a fix.
+- **Accepted operational precondition — the kiosk's `access_token` is now visible in the URL bar:** Task 6 puts `checkin_lists.access_token` into `/kiosk/[eventId]/[listId]`'s URL as a `?token=` query param, on a page meant to run unattended on a public tablet. That token is a bulk-PII-export credential (Task 1) now visible on-screen at a registration desk. This is an accepted Stage 1 operational precondition, not a gap to code around here: tablets running this kiosk must be locked into kiosk/guided-access mode (iOS Guided Access, Android kiosk mode, or equivalent) so the address bar isn't visible or editable by the public. Full URL/token hiding is deferred to Stage 4 (full-screen kiosk lockdown), which the plan already scopes for.
