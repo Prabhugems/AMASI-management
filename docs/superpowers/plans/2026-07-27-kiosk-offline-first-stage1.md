@@ -1328,9 +1328,15 @@ On first load, the "Loading…" button state should clear within a couple second
 
 Turn on airplane mode (or disable WiFi). Perform 50 distinct check-ins (real registration numbers/names from the cache). For every one: confirm the success screen renders instantly (no spinner delay), and confirm a new row appears in DevTools → IndexedDB → `scan_log` with `status: "pending"` for each.
 
-- [ ] **Step 4: Reload mid-queue**
+- [ ] **Step 4: Reload mid-queue — soft reload, hard reload, and tab-eviction recovery**
 
-With scans still queued (airplane mode still on), reload the page. Confirm the `scan_log` rows are still present in IndexedDB after reload (data survives — this is the point of using IndexedDB over in-memory state).
+With scans still queued (airplane mode still on), exercise all three reload paths — not just one. A live test on 2026-07-27 found that "data survives in IndexedDB" is necessary but not sufficient: before Task 8 below, a plain reload while offline never got as far as reading IndexedDB at all — it hit the site-wide service worker's generic offline fallback page instead, screen-blocking the kiosk even though the data underneath was fine. Confirm all three now land on the actual kiosk UI, not a fallback page:
+
+1. **Soft reload** (in-app `location.reload()`/browser reload button).
+2. **Hard reload** (bypass HTTP cache — DevTools "Empty Cache and Hard Reload," or the browser's shift-reload).
+3. **Tab-eviction recovery** — close the tab entirely and open a fresh tab to the same URL while still offline (approximates the OS evicting a backgrounded tab and restoring it on refocus, or a browser crash-recovery reopen).
+
+For each: confirm the kiosk's own UI renders (not a generic "you're offline" page) and the `scan_log` rows are still present in IndexedDB afterward.
 
 - [ ] **Step 5: Reconnect and confirm sync**
 
@@ -1346,6 +1352,236 @@ Note the outcome of steps 3-6 (pass/fail, any anomalies) in the PR description w
 
 ---
 
+### Task 8: Service worker offline-shell fix for the kiosk (and print) routes
+
+**Why this exists:** Task 7's live verification (2026-07-27, via genuine CDP-level offline emulation, not a `navigator.onLine` fake) found that reloading `/kiosk/[eventId]/[listId]` while offline never reaches Task 5's React code at all. `public/app-sw.js` — a pre-existing, site-wide service worker registered on every route except `/print` (`src/components/pwa-register.tsx:49-81`), built for an unrelated reason (chunk-load resilience and deploy-safety after a past stale-chunk incident, see the file's own header comment) — intercepts every same-origin navigation with network-first-falling-back-to-a-generic-`/offline`-page, with no exception for `/kiosk/*`. `delegate_cache` and `scan_log` were both fully intact in IndexedDB the whole time; the app just never got a chance to mount and read them. This is not a regression in Tasks 1-6's code — it's a pre-existing site-wide layer that sits *below* every review this plan's tasks went through, none of which were scoped to look at service workers.
+
+**The fix must be narrow.** The service worker is protecting every other route from a real, previously-fixed class of bug (stale HTML referencing removed JS chunks after a deploy — see both `public/sw.js:4-10` and `public/app-sw.js:4-9`'s own header comments). Do not disable it and do not change its behavior for any route outside `/kiosk/*` and `/print/*`.
+
+**The principle:** the kiosk/print React app is the offline handler (Tasks 1-6 already built it to resolve everything itself once mounted, per this plan). The service worker's only job for these two route prefixes is to deliver the document shell fast enough — from cache, instantly, no network wait — so the app can mount and take over. Everywhere else, behavior is unchanged.
+
+**Files:**
+- Modify: `public/app-sw.js` (governs `/kiosk/*` today; add the shell exception)
+- Modify: `public/sw.js` (governs `/print/*` today via its own separate registration in `src/app/print/[token]/page.tsx:738-743`; upgrade its existing network-first-with-cache-fallback to the same stale-while-revalidate-with-chunks discipline, for the same reason — `/print/[token]` is an unattended kiosk with an identical requirement, not just `/kiosk`)
+
+**Interfaces:** neither file exports anything consumed by other tasks — both are browser-loaded service worker scripts, not ES modules.
+
+- [ ] **Step 1: Implement the shell-caching strategy in `app-sw.js`**
+
+Replace the whole file's cache-name/version section and fetch handler with:
+
+```javascript
+// AMASI Command Center - Service Worker
+// Network-first navigations + offline fallback, EXCEPT the kiosk shell
+// (/kiosk/*), which is stale-while-revalidate so it mounts instantly offline
+// and self-heals whenever a connection exists. See
+// docs/superpowers/plans/2026-07-27-kiosk-offline-first-stage1.md Task 8 for
+// why: the kiosk page is the offline handler (it resolves everything itself
+// from IndexedDB once mounted) -- this SW's only job for that one route
+// prefix is to deliver the document (and the JS it needs to run) fast enough
+// to get out of the way, not to reimplement any offline logic itself.
+//
+// IMPORTANT: This SW deliberately does NOT cache /_next/static/ JS/CSS chunks
+// for any OTHER route. Those filenames are content-hashed and served by
+// Vercel with immutable cache headers, so the browser's HTTP cache already
+// handles them correctly. Caching them here under a fixed cache name caused
+// stale chunks to be served after a deploy (new HTML referencing chunks the
+// SW had pinned to an old build), blanking the page. Leaving them to the
+// browser eliminates that class of bug -- EXCEPT for the kiosk shell cache
+// below, which deliberately DOES cache the chunks a cached kiosk document
+// references, because relying on the browser's own HTTP cache for those is
+// not enough for an unattended device that may not reconnect for a long
+// time (disk-cache eviction is a real risk over days/weeks, unlike the
+// browser-session timescale the rest of this file's comment above assumes).
+//
+// Bump CACHE_VERSION on any change so `activate` purges every older cache.
+
+const CACHE_VERSION = "v4"
+const CACHE_NAME = `amasi-${CACHE_VERSION}`
+const SHELL_CACHE_NAME = `amasi-shell-${CACHE_VERSION}`
+const KEEP_CACHES = new Set([CACHE_NAME, SHELL_CACHE_NAME])
+
+// Only an offline shell is precached. No app HTML, no JS chunks.
+const PRECACHE_URLS = ["/offline"]
+
+// Route prefixes that get the stale-while-revalidate shell strategy instead
+// of network-first. Kept as a prefix list (not a single string) so Stage 3
+// can extend this to a home-screen-launched PWA entry point without
+// touching the fetch handler itself -- see this plan's Self-Review Notes.
+const SHELL_ROUTE_PREFIXES = ["/kiosk/"]
+
+function isShellRoute(pathname) {
+  return SHELL_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+}
+
+// Extract this document's own same-origin /_next/static/*.js|css references
+// so we can cache them ALONGSIDE the document -- never the document without
+// its chunks, which would produce a worse failure (blank page) than today's
+// generic offline fallback.
+function extractChunkUrls(html, origin) {
+  const urls = new Set()
+  const re = /(?:src|href)="(\/_next\/static\/[^"]+\.(?:js|css))"/g
+  let match
+  while ((match = re.exec(html))) urls.add(origin + match[1])
+  return [...urls]
+}
+
+async function cacheShellAndChunks(request, response) {
+  const html = await response.clone().text()
+  const cache = await caches.open(SHELL_CACHE_NAME)
+  // Re-wrap as a fresh Response -- the original body stream was already
+  // consumed by .text() above.
+  await cache.put(request, new Response(html, { headers: response.headers, status: response.status, statusText: response.statusText }))
+  const chunkUrls = extractChunkUrls(html, self.location.origin)
+  await Promise.all(
+    chunkUrls.map(async (chunkUrl) => {
+      try {
+        const chunkResponse = await fetch(chunkUrl)
+        if (chunkResponse.ok) await cache.put(chunkUrl, chunkResponse)
+      } catch {
+        // A chunk fetch failing during a background refresh is not fatal --
+        // the previously cached shell/chunks (if any) are untouched, and
+        // this same refresh retries on the next successful navigation.
+      }
+    })
+  )
+}
+
+// Install: precache the offline shell and take over immediately.
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)).catch(() => {})
+  )
+  self.skipWaiting()
+})
+
+// Activate: delete every previous amasi-* cache EXCEPT the current main and
+// shell caches (purges old stale chunks/HTML/shell versions).
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith("amasi-") && !KEEP_CACHES.has(key))
+            .map((key) => caches.delete(key))
+        )
+      )
+      .then(() => self.clients.claim())
+  )
+})
+
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url)
+
+  // Only handle same-origin GETs. Never touch APIs, Supabase, or cross-origin.
+  if (
+    event.request.method !== "GET" ||
+    url.hostname !== self.location.hostname ||
+    url.pathname.startsWith("/api/") ||
+    url.hostname.includes("supabase")
+  ) {
+    return
+  }
+
+  // Build assets: do NOT intercept for the general case -- see header
+  // comment. The kiosk shell path below caches its OWN chunks separately
+  // and does not rely on this early return (those chunk fetches happen
+  // inside cacheShellAndChunks, not via this fetch handler matching them).
+  if (url.pathname.startsWith("/_next/")) {
+    return
+  }
+
+  // Images / icons / fonts: cache-first is safe (content is static, and a stale
+  // image never breaks the app the way a stale JS chunk does).
+  if (
+    url.pathname.startsWith("/icons/") ||
+    url.pathname.match(/\.(png|jpg|jpeg|svg|ico|webp|gif|woff2?)$/)
+  ) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached
+        return fetch(event.request).then((response) => {
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+          }
+          return response
+        })
+      })
+    )
+    return
+  }
+
+  if (event.request.mode === "navigate") {
+    if (isShellRoute(url.pathname)) {
+      // Stale-while-revalidate: serve the cached shell instantly if present
+      // (no network wait -- this is the whole point, an offline device must
+      // mount immediately), while ALWAYS kicking off a background refresh so
+      // a deployed fix reaches this device the moment it has a connection,
+      // even if nobody ever reloads by hand. First-ever visit (nothing
+      // cached yet) has no choice but to wait on that same fetch.
+      event.respondWith(
+        (async () => {
+          const cache = await caches.open(SHELL_CACHE_NAME)
+          const cached = await cache.match(event.request)
+          const refresh = fetch(event.request)
+            .then((response) => {
+              if (response.ok) cacheShellAndChunks(event.request, response.clone())
+              return response
+            })
+            .catch(() => null)
+          if (cached) return cached
+          const fresh = await refresh
+          if (fresh) return fresh
+          return (await caches.match("/offline")) || new Response("Offline", { status: 503 })
+        })()
+      )
+      return
+    }
+
+    // Everywhere else, unchanged: network-first, fall back to the offline
+    // page only. We do NOT cache live HTML here -- a cached shell can
+    // reference chunks a later deploy has removed, which is exactly what
+    // produced the blank-page bug this file's header describes.
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches.match("/offline").then((cached) => cached || new Response("Offline", { status: 503 }))
+      )
+    )
+    return
+  }
+
+  // Everything else: pass through to the network.
+})
+```
+
+- [ ] **Step 2: Apply the same discipline to `public/sw.js` for `/print/*`**
+
+`/print/[token]` is registered separately (`src/app/print/[token]/page.tsx:738-743`, `navigator.serviceWorker.register("/sw.js")`) and today uses network-first-with-cache-fallback (waits on the network, only serves cache if that fetch fails) rather than instant-from-cache. It is exactly the same kind of unattended kiosk `/kiosk/*` is, so it gets the same stale-while-revalidate-plus-chunks treatment, applied to its own file (do not merge the two service workers into one in this task — that is a larger architectural change than what's needed here, and is not requested). Replace `public/sw.js`'s cache-version constants and fetch handler with the equivalent SWR-plus-chunk-caching logic used in Step 1 above, scoped to `url.pathname.startsWith("/print")`, keeping its existing `APP_SHELL = ["/print"]` install-time precache untouched, and bump `CACHE_NAME` to `"printo-v3"` (add a `SHELL_CACHE_NAME = "printo-shell-v3"`, and fix the `activate` handler's purge filter the same way — keep both current cache names, delete anything else prefixed `printo-`).
+
+- [ ] **Step 3: Note the multi-service-worker registration risk (do not fix in this task)**
+
+`src/components/pwa-register.tsx:52-61` unregisters a stale `sw.js` when NOT on `/print`, but there is no equivalent unregistration of `app-sw.js` when a device visits `/print` — and both are registered at the same effective scope (`/`, the default when `register()` is called without an explicit `scope` option). Under Service Worker semantics, a scope can only have one active registration at a time, so a device that visits both `/kiosk/*` and `/print/*` over its lifetime will have its *entire* origin's fetch handling governed by whichever service worker it registered most recently — including routes that worker's own logic wasn't written to handle specially. Confirm this in your self-review (read both registration call sites, confirm the scope each resolves to, and confirm neither explicitly unregisters the other), but do not attempt to fix the underlying multi-registration architecture here — it's a separate, pre-existing concern broader than this task's brief, worth its own dedicated task if a device is ever expected to run both roles. Note it in your report so it's visible, not silently discovered and dropped.
+
+- [ ] **Step 4: Typecheck / lint**
+
+These are plain browser-loaded scripts, not part of the TypeScript build (`tsconfig.json` excludes `public/`) — `npx tsc --noEmit` should show no new errors referencing either file (confirm it doesn't pick them up at all). Run `npx eslint public/app-sw.js public/sw.js` if the repo's ESLint config covers `public/` (check `.eslintrc.json`'s `ignorePatterns` first); if it's excluded, note that in your report rather than fighting the linter into covering new ground.
+
+- [ ] **Step 5: Manual verification (no automated test — service workers can't run under this repo's Vitest `environment: "node"` config, same reasoning as Task 3/4's IndexedDB exclusion)**
+
+This is verified live, not by the implementer — the controller will run the exact three scenarios Task 7 Step 4 now requires (soft reload offline, hard reload offline, tab-eviction-recovery offline) via genuine CDP-level network emulation, for both `/kiosk/*` and `/print/*`, confirming in each case: the actual app UI renders (not the generic `/offline` fallback), and a deploy of a documentent-only change is picked up on the next successful background refresh once online (confirming the stale-while-revalidate self-heal property, not just the offline-instant-load property).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add public/app-sw.js public/sw.js
+git commit -m "fix(pwa): stale-while-revalidate shell for kiosk and print routes, offline-first"
+```
+
+---
+
 ## Self-Review Notes
 
 - **Spec coverage:** §3.1 steps 1-3 (scan_id generation, IndexedDB write, local delegate resolution) → Task 5 Step 3. §3.1 step 6 (hand off to sync worker) → Task 5 Step 3/4. §3.2 (delegate cache: load once, IndexedDB, keyed by list, background refresh, full fields, no pagination) → Task 3 + Task 5 Step 2. §3.3 (sync worker: oldest-first, exponential backoff, survives reload, exposes queue depth, conflict recording without retroactive UI changes) → Task 4 + Task 3. Stage 1's own "done when" (50 scans in airplane mode, all land exactly once) → Task 7. §3.1 step 4's "print the badge" does not apply to this page — confirmed in pre-flight that `/kiosk/[eventId]/[listId]` only ever sends a digital badge (email/WhatsApp), never a physical print; that's the `/print/[token]` flow, addressed in Stage 3.
@@ -1356,3 +1592,5 @@ Note the outcome of steps 3-6 (pass/fail, any anomalies) in the PR description w
 - **Type consistency check:** `CachedDelegate` is defined once in `kiosk-delegate-match.ts` (Task 2, now without `ticket_type_name` — matches Task 1's response shape exactly) and re-exported (not redefined) from `kiosk-offline-store.ts` (Task 3) — every later task imports one canonical shape. `ScanLogEntry` is defined once in `kiosk-offline-store.ts` and imported by `kiosk-sync-worker.ts` and (via inference) by the page — no duplicate/divergent definitions.
 - **Accepted trade-off — success-screen fields the new local-first `handleCheckin` never sets:** `alreadyCheckedIn`/`warning` on `CheckinResult` are never populated by the local-first path. A repeat scan now shows the same "Check-in successful!" as a fresh one, and the time-window warning banner (previously driven by the server's `checkTimeWindow`) no longer appears. This is intentional, not an oversight: the local cache can't know server-side check-in history or time-window config without a network round-trip, which would defeat the point of local-first resolution. If this is ever prioritized, Stage 2/3 could restore the time-window case by having the roster response (`GET /api/kiosk/delegates`) carry each delegate's list `starts_at`/`ends_at` so the client can check it locally; the repeat-scan case has no local-first equivalent without server round-trip and would need a deliberate design call, not just a fix.
 - **Accepted operational precondition — the kiosk's `access_token` is now visible in the URL bar:** Task 6 puts `checkin_lists.access_token` into `/kiosk/[eventId]/[listId]`'s URL as a `?token=` query param, on a page meant to run unattended on a public tablet. That token is a bulk-PII-export credential (Task 1) now visible on-screen at a registration desk. This is an accepted Stage 1 operational precondition, not a gap to code around here: tablets running this kiosk must be locked into kiosk/guided-access mode (iOS Guided Access, Android kiosk mode, or equivalent) so the address bar isn't visible or editable by the public. Full URL/token hiding is deferred to Stage 4 (full-screen kiosk lockdown), which the plan already scopes for.
+- **Task 8's service worker fix is load-bearing for Stage 3, not incidental early work:** Stage 3 introduces `kiosk_stations`-based station identity and (per this plan's forward references) a home-screen-launched kiosk mode. A PWA launched from a home-screen icon is itself a navigation request through the exact same service worker this task fixes — if Stage 3's home-screen entry point isn't covered by `SHELL_ROUTE_PREFIXES` (or whatever routes it actually launches into), it inherits the same silent-offline-fallback failure Task 7 found here. Whoever plans Stage 3 needs to explicitly re-check this list against the real launch URL, not assume Task 8 already covers it.
+- **`checkin_records.scan_id` is expected to be `null` after Stage 1 sync, not a regression:** confirmed via live test (2026-07-27) — two scans synced successfully through the full offline→reconnect flow, and both landed with `scan_id: null` server-side. This matches the Global Constraints section above exactly (`/api/kiosk/checkin` doesn't read or store `scan_id` yet; Stage 1 only needs to *send* it so Stage 2 can turn on enforcement later without a client change). Anyone auditing `checkin_records` before Stage 2 ships should expect every Stage-1-sourced row to have a null `scan_id` — that's correct, not a sign the client-side plumbing is broken.
