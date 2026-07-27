@@ -127,12 +127,22 @@ export async function POST(request: NextRequest) {
       }
     }
     if (Array.isArray(list.addon_ids) && list.addon_ids.length > 0) {
-      const { data: addonRegs } = await (supabase as any)
+      // Scoped to this ONE registration -- this route only ever needs a
+      // single boolean, unlike the roster-building use of this same
+      // eligibility pattern in /api/kiosk/delegates and
+      // /api/checkin/access/[accessToken]/attendees, which genuinely need
+      // the full eligible-ID set. An unscoped `.in("addon_id", ...)` here
+      // would fetch every registration_addons row for the addon across the
+      // WHOLE event -- past Supabase's ~1000-row cap that silently 404s
+      // eligible delegates once an addon has enough registrants.
+      const { data: addonRow } = await (supabase as any)
         .from("registration_addons")
         .select("registration_id")
+        .eq("registration_id", registration.id)
         .in("addon_id", list.addon_ids)
-      const eligibleIds = new Set((addonRegs || []).map((r: any) => r.registration_id))
-      if (!eligibleIds.has(registration.id)) {
+        .limit(1)
+        .maybeSingle()
+      if (!addonRow) {
         return NextResponse.json({ success: false, message: "Registration not found." }, { status: 404 })
       }
     }
