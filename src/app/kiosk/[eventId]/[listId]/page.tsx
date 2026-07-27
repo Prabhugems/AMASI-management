@@ -271,6 +271,16 @@ export default function KioskPage() {
       })
 
       void syncNow()
+    } catch (error) {
+      // The most safety-critical write in the local-first redesign
+      // (durable IndexedDB enqueue) must never fail silently -- e.g. quota
+      // exceeded, Safari private-browsing storage restrictions. Surface an
+      // honest failure rather than leaving the attendee on a stuck screen.
+      Sentry.captureException(error, { tags: { module: "kiosk-page" }, extra: { eventId, listId, searchTerm } })
+      setResult({
+        success: false,
+        message: "Something went wrong recording this check-in. Please try again.",
+      })
     } finally {
       setIsProcessing(false)
       submittingRef.current = false
