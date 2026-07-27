@@ -1,12 +1,15 @@
-import { PolicyPage, requireEssurgTenant } from "@/components/policies/policy-page"
+import { PolicyPage, requireTenantIn } from "@/components/policies/policy-page"
 
-export const metadata = { title: "Privacy Policy | ESSURG 2026" }
+export const metadata = { title: "Privacy Policy" }
 
 export default function PrivacyPolicyPage() {
-  requireEssurgTenant()
+  const tenant = requireTenantIn(["essurg", "cos"])
+  return tenant === "cos" ? <CosPrivacy /> : <EssurgPrivacy />
+}
 
+function EssurgPrivacy() {
   return (
-    <PolicyPage title="Privacy Policy" updated="15 July 2026">
+    <PolicyPage title="Privacy Policy" updated="15 July 2026" brand="essurg">
       <p>
         This Privacy Policy explains how the ESSURG 2026 Secretariat and Chiktsa Foundation (&ldquo;we&rdquo;,
         &ldquo;us&rdquo;) collect, use, and store your information when you register for or participate in ESSURG
@@ -66,6 +69,69 @@ export default function PrivacyPolicyPage() {
       <p>
         For privacy-related questions, see our <a href="/contact">Contact Us</a> page or email{" "}
         <a href="mailto:registrations@essurg2026.org">registrations@essurg2026.org</a>.
+      </p>
+    </PolicyPage>
+  )
+}
+
+function CosPrivacy() {
+  return (
+    <PolicyPage title="Privacy Policy" updated="27 July 2026" brand="cos">
+      <p>
+        This Privacy Policy explains how the TAMILCON 2026 Organising Committee and Coimbatore Orthopaedic
+        Society (&ldquo;we&rdquo;, &ldquo;us&rdquo;) collect, use, and store your information when you register
+        for or participate in TAMILCON 2026.
+      </p>
+
+      <h2>1. Information We Collect</h2>
+      <ul>
+        <li><strong>Contact information:</strong> name, email address, mobile/WhatsApp number, institution, designation.</li>
+        <li><strong>Professional registration proof:</strong> TNOA/local orthopaedic society membership number, or postgraduate institutional ID, submitted to verify your registration category.</li>
+        <li><strong>Payment and invoice data:</strong> payment reference/transaction ID, billing name, amount paid, and payment method. Card and bank credentials are processed directly by our payment gateway and are not stored by us.</li>
+        <li><strong>Other:</strong> free paper/e-poster submissions, workshop preferences, and any documents you voluntarily upload during registration.</li>
+      </ul>
+
+      <h2>2. How We Use Your Information</h2>
+      <ul>
+        <li>To process your registration, verify eligibility, and confirm payment.</li>
+        <li>To issue badges, certificates, receipts, and workshop allotments.</li>
+        <li>To communicate with you about the Conference by email, SMS, or WhatsApp (registration confirmations, schedule updates, reminders).</li>
+        <li>To administer free paper/e-poster sessions and check-in at the venue.</li>
+        <li>To comply with applicable tax and regulatory requirements.</li>
+      </ul>
+
+      <h2>3. How We Store and Protect Your Information</h2>
+      <p>
+        Your data is stored on secure, access-controlled cloud infrastructure and is accessible only to authorised
+        Organising Committee members. We retain registration records for as long as needed for Conference
+        administration and statutory compliance, after which they are securely deleted or anonymised.
+      </p>
+
+      <h2>4. Sharing of Information</h2>
+      <p>
+        We do not sell your personal information. We share data only with: (a) our payment gateway, to process
+        payments and refunds; (b) our email/WhatsApp/SMS service providers, to send Conference communications;
+        (c) the venue, for badge/check-in purposes; and (d) regulatory or tax authorities where legally required.
+      </p>
+
+      <h2>5. Photography and Recording</h2>
+      <p>
+        Conference photography and videography may take place for documentation, academic, archival, and
+        promotional purposes. If you do not wish to be photographed, please notify the Organising Committee at
+        registration.
+      </p>
+
+      <h2>6. Your Rights</h2>
+      <p>
+        You may request access to, correction of, or deletion of your personal information (subject to our
+        statutory retention obligations for payment records) by contacting{" "}
+        <a href="mailto:cbetamilcon2026@gmail.com">cbetamilcon2026@gmail.com</a>.
+      </p>
+
+      <h2>7. Contact</h2>
+      <p>
+        For privacy-related questions, see our <a href="/contact">Contact Us</a> page or email{" "}
+        <a href="mailto:cbetamilcon2026@gmail.com">cbetamilcon2026@gmail.com</a>.
       </p>
     </PolicyPage>
   )

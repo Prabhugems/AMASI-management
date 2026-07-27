@@ -1,12 +1,15 @@
-import { PolicyPage, requireEssurgTenant } from "@/components/policies/policy-page"
+import { PolicyPage, requireTenantIn } from "@/components/policies/policy-page"
 
-export const metadata = { title: "Cancellation & Refund Policy | ESSURG 2026" }
+export const metadata = { title: "Cancellation & Refund Policy" }
 
 export default function RefundPolicyPage() {
-  requireEssurgTenant()
+  const tenant = requireTenantIn(["essurg", "cos"])
+  return tenant === "cos" ? <CosRefundPolicy /> : <EssurgRefundPolicy />
+}
 
+function EssurgRefundPolicy() {
   return (
-    <PolicyPage title="Cancellation & Refund Policy" updated="15 July 2026">
+    <PolicyPage title="Cancellation & Refund Policy" updated="15 July 2026" brand="essurg">
       <h2>1. Cancellation Deadlines and Deductions</h2>
       <p>Refunds are calculated based on the date your written cancellation request is received:</p>
       <table>
@@ -96,6 +99,89 @@ export default function RefundPolicyPage() {
         Email <a href="mailto:registrations@essurg2026.org">registrations@essurg2026.org</a> with your
         registration ID, payment proof, and reason for cancellation. See our <a href="/contact">Contact Us</a>
         page for additional contact options.
+      </p>
+    </PolicyPage>
+  )
+}
+
+function CosRefundPolicy() {
+  return (
+    <PolicyPage title="Cancellation & Refund Policy" updated="27 July 2026" brand="cos">
+      <h2>1. Cancellation Deadlines and Deductions</h2>
+      <p>Refunds are calculated based on the date your written cancellation request is received:</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Request received</th>
+            <th>Refund</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>On or before 31 July 2026 (Early Bird deadline)</td>
+            <td>Refund after 10% administrative deduction</td>
+          </tr>
+          <tr>
+            <td>1 August &ndash; 15 September 2026</td>
+            <td>50% refund</td>
+          </tr>
+          <tr>
+            <td>On or after 16 September 2026</td>
+            <td>No refund</td>
+          </tr>
+          <tr>
+            <td>No-show / partial attendance</td>
+            <td>No refund</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>2. Transfers and Name Changes</h2>
+      <p>
+        Registration is non-transferable except with prior written approval of the TAMILCON 2026 Organising
+        Committee. Where approved, name substitutions must be completed before 30 September 2026 and may be
+        subject to administrative charges.
+      </p>
+
+      <h2>3. Refund Processing Time</h2>
+      <p>
+        Approved refunds are processed within 15&ndash;30 business days of approval, to the original payment
+        method, after deduction of applicable administrative, banking, gateway, or statutory charges. All refund
+        requests must be submitted in writing to <a href="mailto:cbetamilcon2026@gmail.com">cbetamilcon2026@gmail.com</a>{" "}
+        with your registration ID and payment proof.
+      </p>
+
+      <h2>4. Category Eligibility</h2>
+      <p>
+        Registration category (TNOA/Local Society Member, Non-Member, Postgraduate) is verified by the Organising
+        Committee based on the proof submitted at registration. If a submitted registration&rsquo;s eligibility
+        cannot be verified and no alternative eligible category applies, the difference in fee is either adjusted
+        to the correct category or refunded, at the Committee&rsquo;s discretion.
+      </p>
+
+      <h2>5. Event Postponement, Cancellation and Force Majeure</h2>
+      <p>
+        In the event of circumstances beyond reasonable control &mdash; including government restrictions, public
+        health advisories, natural disaster, civil disturbance, or venue disruption &mdash; the Organising
+        Committee may reschedule, modify, or cancel sessions. If the Conference itself is postponed, registrations
+        are automatically carried over to the rescheduled date; if cancelled outright, registration fees are
+        refunded in full, less any payment gateway charges actually incurred. Our liability is limited to the
+        registration fee actually received.
+      </p>
+
+      <h2>6. How to Request a Refund or Cancellation</h2>
+      <p>
+        Email <a href="mailto:cbetamilcon2026@gmail.com">cbetamilcon2026@gmail.com</a> or call{" "}
+        94426 33111 / 97902 10633 with your registration ID, payment proof, and reason for cancellation. See our{" "}
+        <a href="/contact">Contact Us</a> page for additional contact options.
+      </p>
+
+      <p>
+        <em>
+          Note: this cancellation schedule follows standard conference practice and is pending final confirmation
+          by the TAMILCON 2026 Organising Committee &mdash; please verify exact deadlines and deduction
+          percentages with the Secretariat before relying on it.
+        </em>
       </p>
     </PolicyPage>
   )

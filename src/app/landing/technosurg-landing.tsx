@@ -1,0 +1,1179 @@
+"use client"
+
+import { useState, useEffect, useRef, useCallback, type ReactNode } from "react"
+import { motion, useScroll, useTransform, useMotionValue, useSpring, AnimatePresence } from "framer-motion"
+
+const REGISTER_URL = "/register/technosurg2026-mmvs3874"
+
+/* ─────────────────────────────────────
+   ANIMATED CANVAS PARTICLE BACKGROUND
+   ───────────────────────────────────── */
+function ParticleField() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const mouse = useRef({ x: 0, y: 0 })
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    // Disable on mobile or when user prefers reduced motion
+    if (window.innerWidth < 768 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setIsMobile(true)
+      return
+    }
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    let w = (canvas.width = window.innerWidth)
+    let h = (canvas.height = window.innerHeight)
+    let animId: number
+
+    const particles: { x: number; y: number; vx: number; vy: number; size: number; opacity: number; pulse: number }[] = []
+    const count = window.innerWidth > 1024 ? 60 : 25
+
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        size: Math.random() * 2 + 0.5,
+        opacity: Math.random() * 0.5 + 0.1,
+        pulse: Math.random() * Math.PI * 2,
+      })
+    }
+
+    const onResize = () => {
+      w = canvas.width = window.innerWidth
+      h = canvas.height = window.innerHeight
+    }
+    let lastMouseUpdate = 0
+    const onMouse = (e: MouseEvent) => {
+      const now = performance.now()
+      if (now - lastMouseUpdate < 50) return
+      lastMouseUpdate = now
+      mouse.current = { x: e.clientX, y: e.clientY }
+    }
+    window.addEventListener("resize", onResize)
+    window.addEventListener("mousemove", onMouse)
+
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h)
+
+      for (const p of particles) {
+        p.x += p.vx
+        p.y += p.vy
+        p.pulse += 0.02
+
+        if (p.x < 0) p.x = w
+        if (p.x > w) p.x = 0
+        if (p.y < 0) p.y = h
+        if (p.y > h) p.y = 0
+
+        // Mouse repulsion
+        const dx = p.x - mouse.current.x
+        const dy = p.y - mouse.current.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < 150) {
+          const force = (150 - dist) / 150
+          p.vx += (dx / dist) * force * 0.05
+          p.vy += (dy / dist) * force * 0.05
+        }
+
+        // Damping
+        p.vx *= 0.99
+        p.vy *= 0.99
+
+        const glow = Math.sin(p.pulse) * 0.3 + 0.7
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.size * glow, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(6, 182, 212, ${p.opacity * glow})`
+        ctx.fill()
+      }
+
+      // Draw connections
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x
+          const dy = particles[i].y - particles[j].y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 80) {
+            ctx.beginPath()
+            ctx.moveTo(particles[i].x, particles[i].y)
+            ctx.lineTo(particles[j].x, particles[j].y)
+            ctx.strokeStyle = `rgba(6, 182, 212, ${0.06 * (1 - dist / 80)})`
+            ctx.lineWidth = 0.5
+            ctx.stroke()
+          }
+        }
+      }
+
+      animId = requestAnimationFrame(draw)
+    }
+    draw()
+
+    return () => {
+      cancelAnimationFrame(animId)
+      window.removeEventListener("resize", onResize)
+      window.removeEventListener("mousemove", onMouse)
+    }
+  }, [])
+
+  if (isMobile) return null
+  return <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none" />
+}
+
+/* ─────────────────────────────────────
+   LAZY-LOADED VIDEO (plays on viewport entry)
+   ───────────────────────────────────── */
+function LazyVideo({ src, className = "" }: { src: string; className?: string }) {
+  const ref = useRef<HTMLVideoElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          obs.disconnect()
+        }
+      },
+      { threshold: 0.1 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (visible && ref.current) {
+      ref.current.play().catch(() => {})
+    }
+  }, [visible])
+
+  return (
+    <video
+      ref={ref}
+      muted
+      loop
+      playsInline
+      preload={visible ? "auto" : "none"}
+      className={className}
+    >
+      {visible && <source src={src} type="video/mp4" />}
+    </video>
+  )
+}
+
+/* ─────────────────────────────────────
+   TEXT SCRAMBLE EFFECT
+   ───────────────────────────────────── */
+function ScrambleText({ text, className = "", delay = 0 }: { text: string; className?: string; delay?: number }) {
+  const [display, setDisplay] = useState("")
+  const [started, setStarted] = useState(false)
+  const ref = useRef<HTMLSpanElement>(null)
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&"
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { setTimeout(() => setStarted(true), delay); obs.disconnect() }
+    }, { threshold: 0.5 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [delay])
+
+  useEffect(() => {
+    if (!started) return
+    let frame = 0
+    const totalFrames = text.length * 3
+    const id = setInterval(() => {
+      const progress = frame / totalFrames
+      const resolved = Math.floor(progress * text.length)
+      let result = ""
+      for (let i = 0; i < text.length; i++) {
+        if (text[i] === " ") {
+          result += " "
+        } else if (i < resolved) {
+          result += text[i]
+        } else {
+          result += chars[Math.floor(Math.random() * chars.length)]
+        }
+      }
+      setDisplay(result)
+      frame++
+      if (frame > totalFrames) {
+        setDisplay(text)
+        clearInterval(id)
+      }
+    }, 30)
+    return () => clearInterval(id)
+  }, [started, text])
+
+  return <span ref={ref} className={className}>{display || "\u00A0"}</span>
+}
+
+/* ─────────────────────────────────────
+   MAGNETIC BUTTON
+   ───────────────────────────────────── */
+function MagneticButton({ children, href, className = "" }: { children: ReactNode; href: string; className?: string }) {
+  const ref = useRef<HTMLAnchorElement>(null)
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const springX = useSpring(x, { stiffness: 150, damping: 15 })
+  const springY = useSpring(y, { stiffness: 150, damping: 15 })
+
+  const handleMouse = useCallback((e: React.MouseEvent) => {
+    const el = ref.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    x.set((e.clientX - cx) * 0.3)
+    y.set((e.clientY - cy) * 0.3)
+  }, [x, y])
+
+  const handleLeave = useCallback(() => {
+    x.set(0)
+    y.set(0)
+  }, [x, y])
+
+  return (
+    <motion.a
+      ref={ref}
+      href={href}
+      className={className}
+      style={{ x: springX, y: springY }}
+      onMouseMove={handleMouse}
+      onMouseLeave={handleLeave}
+      whileTap={{ scale: 0.95 }}
+    >
+      {children}
+    </motion.a>
+  )
+}
+
+/* ─────────────────────────────────────
+   GLOWING BORDER CARD
+   ───────────────────────────────────── */
+function GlowCard({ children, className = "" }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const [hovering, setHovering] = useState(false)
+
+  const handleMouse = useCallback((e: React.MouseEvent) => {
+    const el = ref.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+  }, [])
+
+  return (
+    <div
+      ref={ref}
+      className={`relative overflow-hidden ${className}`}
+      onMouseMove={handleMouse}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
+      {/* Glow effect following cursor */}
+      <div
+        className="absolute w-64 h-64 rounded-full transition-opacity duration-500 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%)",
+          left: pos.x - 128,
+          top: pos.y - 128,
+          opacity: hovering ? 1 : 0,
+        }}
+      />
+      <div className="relative z-10">{children}</div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────
+   REVEAL ON SCROLL
+   ───────────────────────────────────── */
+function Reveal({ children, className = "", delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [vis, setVis] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVis(true); obs.disconnect() } }, { threshold: 0.1 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${vis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-16"} ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────
+   ANIMATED COUNTER
+   ───────────────────────────────────── */
+function Counter({ value, suffix = "", go }: { value: number; suffix?: string; go: boolean }) {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    if (!go) return
+    let start: number
+    const step = (ts: number) => {
+      if (!start) start = ts
+      const p = Math.min((ts - start) / 2000, 1)
+      const eased = 1 - Math.pow(1 - p, 4) // easeOutQuart
+      setN(Math.floor(eased * value))
+      if (p < 1) requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  }, [value, go])
+  return <>{n}{suffix}</>
+}
+
+/* ─────────────────────────────────────
+   COUNTDOWN
+   ───────────────────────────────────── */
+function Countdown() {
+  const [t, setT] = useState({ d: 0, h: 0, m: 0, s: 0 })
+  useEffect(() => {
+    const target = new Date("2026-06-19T09:00:00+05:30").getTime()
+    const tick = () => {
+      const diff = Math.max(0, target - Date.now())
+      setT({
+        d: Math.floor(diff / 864e5),
+        h: Math.floor((diff % 864e5) / 36e5),
+        m: Math.floor((diff % 36e5) / 6e4),
+        s: Math.floor((diff % 6e4) / 1e3),
+      })
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div className="flex gap-5 sm:gap-6 tabular-nums">
+      {(["d", "h", "m", "s"] as const).map((k) => (
+        <div key={k} className="text-center sm:text-left min-w-[2.25rem]">
+          <motion.span
+            key={t[k]}
+            initial={{ y: -10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="block text-xl sm:text-3xl font-light text-white/90 leading-none"
+          >
+            {String(t[k]).padStart(2, "0")}
+          </motion.span>
+          <span className="text-[9px] uppercase tracking-[0.25em] text-white/30 block mt-1.5">
+            {k === "d" ? "days" : k === "h" ? "hrs" : k === "m" ? "min" : "sec"}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────
+   ANTIGRAVITY FLOATING ELEMENTS
+   ───────────────────────────────────── */
+function FloatingElements() {
+  const [enabled, setEnabled] = useState(false)
+  useEffect(() => {
+    // Disable on mobile and when user prefers reduced motion
+    if (window.innerWidth >= 768 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setEnabled(true)
+    }
+  }, [])
+
+  const shapes = [
+    { size: 60, x: "10%", delay: 0, duration: 18, type: "ring" },
+    { size: 40, x: "25%", delay: 2, duration: 22, type: "cross" },
+    { size: 80, x: "45%", delay: 5, duration: 25, type: "circle" },
+    { size: 35, x: "65%", delay: 1, duration: 20, type: "diamond" },
+    { size: 50, x: "80%", delay: 3, duration: 23, type: "ring" },
+    { size: 28, x: "90%", delay: 7, duration: 19, type: "dot" },
+    { size: 45, x: "15%", delay: 4, duration: 21, type: "diamond" },
+    { size: 55, x: "55%", delay: 6, duration: 24, type: "cross" },
+  ]
+
+  if (!enabled) return null
+
+  return (
+    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+      {shapes.map((s, i) => (
+        <motion.div
+          key={i}
+          className="absolute"
+          style={{ left: s.x, bottom: "-10%" }}
+          animate={{
+            y: [0, -(typeof window !== "undefined" ? window.innerHeight + 200 : 1200)],
+            rotate: [0, s.type === "diamond" ? 360 : s.type === "cross" ? 180 : 0],
+            opacity: [0, 0.12, 0.12, 0],
+          }}
+          transition={{
+            duration: s.duration,
+            repeat: Infinity,
+            delay: s.delay,
+            ease: "linear",
+          }}
+        >
+          {s.type === "ring" && (
+            <div style={{ width: s.size, height: s.size }} className="rounded-full border border-cyan-500/20" />
+          )}
+          {s.type === "circle" && (
+            <div style={{ width: s.size, height: s.size }} className="rounded-full bg-cyan-500/5 backdrop-blur-sm" />
+          )}
+          {s.type === "cross" && (
+            <svg width={s.size} height={s.size} viewBox="0 0 40 40" fill="none" stroke="rgba(6,182,212,0.15)" strokeWidth="1">
+              <line x1="20" y1="0" x2="20" y2="40" />
+              <line x1="0" y1="20" x2="40" y2="20" />
+            </svg>
+          )}
+          {s.type === "diamond" && (
+            <div style={{ width: s.size * 0.7, height: s.size * 0.7 }} className="border border-cyan-500/15 rotate-45" />
+          )}
+          {s.type === "dot" && (
+            <div style={{ width: s.size * 0.4, height: s.size * 0.4 }} className="rounded-full bg-cyan-400/20" />
+          )}
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────
+   FLOATING STAT ORBS (antigravity feel)
+   ───────────────────────────────────── */
+function FloatingOrb({ children, className = "", delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
+  return (
+    <motion.div
+      className={className}
+      animate={{
+        y: [-8, 8, -8],
+        rotate: [-1, 1, -1],
+      }}
+      transition={{
+        duration: 6,
+        repeat: Infinity,
+        ease: "easeInOut",
+        delay,
+      }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+/* ─────────────────────────────────────
+   HORIZONTAL SCROLL MARQUEE
+   ───────────────────────────────────── */
+function Marquee({ items }: { items: string[] }) {
+  const getItemStyle = (item: string) => {
+    if (item === "Fluorescence Imaging" || item === "ICG Navigation") return "text-green-400/40 drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]"
+    if (item === "AI Surgery") return "text-cyan-400/30"
+    if (item === "da Vinci") return "text-white/25"
+    return "text-white/20"
+  }
+  return (
+    <div className="overflow-hidden whitespace-nowrap py-6 border-y border-white/5">
+      <motion.div
+        className="inline-flex gap-12"
+        animate={{ x: ["0%", "-50%"] }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+      >
+        {[...items, ...items].map((item, i) => (
+          <span key={i} className={`text-sm uppercase tracking-[0.3em] ${getItemStyle(item)}`}>
+            {item}
+            <span className="mx-6 text-cyan-500/30">&middot;</span>
+          </span>
+        ))}
+      </motion.div>
+    </div>
+  )
+}
+
+
+function PromoVideoSection() {
+  const sectionRef = useRef<HTMLElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [visible, setVisible] = useState(false)
+  const [muted, setMuted] = useState(true)
+
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          obs.disconnect()
+        }
+      },
+      { rootMargin: "200px", threshold: 0.01 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!visible) return
+    const v = videoRef.current
+    if (!v) return
+    const tryPlay = v.play()
+    if (tryPlay !== undefined) {
+      tryPlay.catch(() => {
+        const onFirstClick = () => {
+          v.play().catch(() => {})
+          document.removeEventListener("click", onFirstClick)
+        }
+        document.addEventListener("click", onFirstClick, { once: true })
+      })
+    }
+  }, [visible])
+
+  const toggleMute = () => {
+    const v = videoRef.current
+    if (!v) return
+    v.muted = !v.muted
+    setMuted(v.muted)
+  }
+
+  return (
+    <section ref={sectionRef} id="promo-video" className="relative bg-[#05050a] py-14 sm:py-22 overflow-hidden px-5 sm:px-6">
+      <div className="hidden sm:block absolute left-1/2 -top-44 -translate-x-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(ellipse at center, rgba(34,211,238,0.07) 0%, transparent 70%)" }} />
+      <div className="relative z-10 max-w-[900px] mx-auto text-center">
+        <Reveal>
+          <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400 mb-3">Watch Our Story</p>
+        </Reveal>
+        <Reveal delay={100}>
+          <h2 className="font-light tracking-tighter leading-[1.2] mb-4" style={{ fontSize: "clamp(1.9rem, 3.8vw, 3rem)" }}>
+            Experience <span className="text-cyan-400">GEM TechnoSurg 2026</span>
+          </h2>
+        </Reveal>
+        <Reveal delay={200}>
+          <p className="text-[0.95rem] leading-[1.75] text-white/50 max-w-[560px] mx-auto mb-10">
+            A glimpse into the future of surgery — AI, Robotics, and Fluorescence-guided innovation.
+          </p>
+        </Reveal>
+        <Reveal delay={300}>
+          <div className="relative rounded-[18px] overflow-hidden border border-cyan-400/20 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_32px_80px_rgba(0,0,0,0.55)]">
+            <div className="absolute inset-0 rounded-[18px] pointer-events-none z-0"
+              style={{ boxShadow: "inset 0 0 60px rgba(34,211,238,0.08)" }} />
+            <div className="relative w-full pb-[56.25%] h-0 bg-[#0a0a12]">
+              <video
+                ref={videoRef}
+                muted
+                loop
+                playsInline
+                preload={visible ? "auto" : "none"}
+                className="absolute inset-0 w-full h-full object-cover rounded-[18px]"
+              >
+                {visible && <source src="/landing/promo-video.mp4" type="video/mp4" />}
+              </video>
+              <button
+                onClick={toggleMute}
+                className="absolute bottom-5 right-5 z-10 inline-flex items-center gap-1.5 bg-[#05050a]/75 backdrop-blur-md border border-cyan-400/35 text-white text-[0.75rem] font-semibold tracking-[0.04em] px-4 py-1.5 rounded-full cursor-pointer hover:bg-cyan-400/15 hover:border-cyan-400/70 transition-colors"
+                aria-label={muted ? "Unmute video" : "Mute video"}
+              >
+                {muted ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <line x1="23" y1="9" x2="17" y2="15"/>
+                    <line x1="17" y1="9" x2="23" y2="15"/>
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                  </svg>
+                )}
+                <span>{muted ? "Tap to Unmute" : "Mute"}</span>
+              </button>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+
+/* ─────────────────────────────────────
+   MAIN PAGE
+   ───────────────────────────────────── */
+export function TechnoSurgLandingPage() {
+  const heroRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] })
+  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 1.15])
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0])
+
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 60)
+    window.addEventListener("scroll", fn, { passive: true })
+    return () => window.removeEventListener("scroll", fn)
+  }, [])
+
+  const [statsGo, setStatsGo] = useState(false)
+  const statsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = statsRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setStatsGo(true) }, { threshold: 0.3 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const navLinks = ["About", "Schedule", "Register"] as const
+
+  return (
+    <div className="bg-[#050a14] text-white antialiased selection:bg-cyan-500/30 overflow-x-hidden">
+
+      {/* ── NAV ── */}
+      <motion.nav
+        className={`fixed inset-x-0 top-0 z-50 transition-all duration-700 ${scrolled ? "bg-[#050a14]/80 backdrop-blur-2xl backdrop-saturate-150" : ""}`}
+        initial={{ y: -80 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
+          <img src="/landing/technosurg-logo.png" alt="GEM TechnoSurg" className="h-8 w-auto" />
+          <div className="hidden md:flex items-center gap-8 text-[13px] text-white/40">
+            {navLinks.map((l) => (
+              <a key={l} href={`#${l.toLowerCase()}`} className="hover:text-white transition-colors duration-300 relative group">
+                {l}
+                <span className="absolute -bottom-1 left-0 w-0 h-px bg-cyan-400 group-hover:w-full transition-all duration-300" />
+              </a>
+            ))}
+          </div>
+          {/* Mobile hamburger button */}
+          <button
+            className="md:hidden relative z-50 w-8 h-8 flex flex-col items-center justify-center gap-1.5"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+          >
+            <motion.span
+              className="block w-5 h-px bg-white/80 origin-center"
+              animate={mobileMenuOpen ? { rotate: 45, y: 4 } : { rotate: 0, y: 0 }}
+              transition={{ duration: 0.3 }}
+            />
+            <motion.span
+              className="block w-5 h-px bg-white/80 origin-center"
+              animate={mobileMenuOpen ? { opacity: 0 } : { opacity: 1 }}
+              transition={{ duration: 0.2 }}
+            />
+            <motion.span
+              className="block w-5 h-px bg-white/80 origin-center"
+              animate={mobileMenuOpen ? { rotate: -45, y: -4 } : { rotate: 0, y: 0 }}
+              transition={{ duration: 0.3 }}
+            />
+          </button>
+          <div className="hidden md:flex items-center gap-2.5">
+            <a
+              href="https://forms.gle/Ur1MPJKKfKv3xfx57"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-cyan-400 border border-cyan-400/45 rounded-md px-3 py-1.5 hover:bg-cyan-400/10 hover:border-cyan-400 transition-colors"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
+              Submit Abstract
+            </a>
+            <a
+              href="/technosurg-brochure.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-white/80 bg-white/[0.06] border border-white/10 rounded-md px-3 py-1.5 hover:bg-white/[0.12] hover:border-white/25 hover:text-white transition-colors"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Brochure
+            </a>
+            <MagneticButton
+              href={REGISTER_URL}
+              className="inline-flex text-[13px] text-cyan-400 hover:text-cyan-300 transition-colors font-medium ml-1"
+            >
+              Register &rarr;
+            </MagneticButton>
+          </div>
+        </div>
+      </motion.nav>
+
+      {/* ── MOBILE MENU ── */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            className="fixed inset-0 z-40 md:hidden bg-[#050a14]/95 backdrop-blur-2xl flex flex-col items-center justify-center gap-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {navLinks.map((l, i) => (
+              <motion.a
+                key={l}
+                href={`#${l.toLowerCase()}`}
+                className="text-2xl font-light text-white/70 hover:text-white transition-colors duration-300"
+                onClick={() => setMobileMenuOpen(false)}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ delay: i * 0.06, duration: 0.3 }}
+              >
+                {l}
+              </motion.a>
+            ))}
+            <motion.a
+              href={REGISTER_URL}
+              className="mt-4 text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors border border-cyan-400/30 rounded-full px-6 py-2"
+              onClick={() => setMobileMenuOpen(false)}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ delay: navLinks.length * 0.06, duration: 0.3 }}
+            >
+              Register &rarr;
+            </motion.a>
+            <motion.div
+              className="flex gap-3 mt-2 px-6"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ delay: (navLinks.length + 1) * 0.06, duration: 0.3 }}
+            >
+              <a
+                href="https://forms.gle/Ur1MPJKKfKv3xfx57"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 flex-1 text-sm font-semibold text-cyan-400 border border-cyan-400/40 bg-cyan-400/[0.06] rounded-lg px-4 py-2.5 hover:bg-cyan-400/15 hover:border-cyan-400 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+                Submit Abstract
+              </a>
+              <a
+                href="/technosurg-brochure.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 flex-1 text-sm font-semibold text-white/75 border border-white/12 bg-white/[0.05] rounded-lg px-4 py-2.5 hover:bg-white/10 hover:text-white transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Brochure
+              </a>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── HERO ── */}
+      <section ref={heroRef} className="relative min-h-[100dvh] flex items-end overflow-hidden">
+        {/* Video background */}
+        <motion.div className="absolute inset-0 z-[1]" style={{ scale: heroScale }}>
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover"
+            poster="/landing/hero-poster.jpg"
+          >
+            <source src="/landing/hero-video.mp4" type="video/mp4" />
+          </video>
+          {/* Dark overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050a14] via-[#050a14]/80 to-[#050a14]/40" />
+          <div className="absolute inset-0 bg-[#050a14]/30" />
+          {/* Mobile-only text backdrop (bottom 65%) */}
+          <div className="absolute inset-x-0 bottom-0 top-[35%] bg-gradient-to-t from-[#050a14] via-[#050a14]/85 to-transparent sm:hidden" />
+        </motion.div>
+
+        {/* Particle overlay */}
+        <div className="absolute inset-0 z-[2]">
+          <ParticleField />
+        </div>
+
+        {/* Hero content */}
+        <motion.div className="relative z-10 w-full" style={{ opacity: heroOpacity }}>
+          <div className="max-w-[1200px] mx-auto px-6 pb-20 sm:pb-28">
+
+            <motion.p
+              className="text-[11px] uppercase tracking-[0.4em] text-cyan-400/80 mb-8"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 1, delay: 0.3 }}
+            >
+              June 19–20, 2026 &middot; ITC Grand Chola, Chennai
+            </motion.p>
+
+            <div className="mb-6 sm:mb-8">
+              <h1 className="text-[2.5rem] sm:text-6xl lg:text-[6.5rem] font-light leading-[0.95] sm:leading-[0.9] tracking-tighter">
+                <motion.span
+                  className="block text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  AI. Robotics.
+                </motion.span>
+                <motion.span
+                  className="block text-cyan-400 drop-shadow-[0_0_40px_rgba(6,182,212,0.5)]"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  Fluorescence
+                </motion.span>
+                <motion.span
+                  className="block text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 1.1, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  in Surgery.
+                </motion.span>
+              </h1>
+            </div>
+
+            <motion.div
+              className="mt-10 sm:mt-12"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 1.5 }}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-3 sm:gap-5">
+                <MagneticButton
+                  href={REGISTER_URL}
+                  className="group relative inline-flex items-center justify-center w-full sm:w-auto h-12 sm:h-14 px-8 sm:px-10 rounded-full bg-white text-[#050a14] text-[15px] font-medium overflow-hidden"
+                >
+                  <span className="relative z-10">Register Now</span>
+                  <motion.div
+                    className="absolute inset-0 bg-cyan-400"
+                    initial={{ x: "-100%" }}
+                    whileHover={{ x: "0%" }}
+                    transition={{ duration: 0.4 }}
+                  />
+                </MagneticButton>
+                <a
+                  href="https://forms.gle/Ur1MPJKKfKv3xfx57"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-7 rounded-full bg-transparent text-white border border-white/45 text-[14px] sm:text-[15px] font-medium hover:bg-white/[0.08] hover:border-white/80 hover:shadow-[0_8px_28px_rgba(255,255,255,0.08)] transition-all"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <line x1="9" y1="15" x2="15" y2="15"/>
+                  </svg>
+                  Submit Abstract
+                </a>
+                <a
+                  href="/technosurg-brochure.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-7 rounded-full bg-white/[0.08] text-white/85 border border-white/15 backdrop-blur-md text-[14px] sm:text-[15px] font-medium hover:bg-white/[0.14] hover:text-white hover:shadow-[0_8px_28px_rgba(255,255,255,0.06)] transition-all"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Brochure
+                </a>
+              </div>
+              <div className="mt-8 sm:mt-6 pt-6 sm:pt-0 sm:border-t-0 border-t border-white/10 sm:inline-block">
+                <Countdown />
+              </div>
+            </motion.div>
+
+          </div>
+        </motion.div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10"
+          animate={{ y: [0, 8, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <div className="w-5 h-8 rounded-full border border-white/20 flex justify-center pt-1.5">
+            <div className="w-0.5 h-2 rounded-full bg-white/40" />
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ── MARQUEE ── */}
+      <Marquee items={["AI Surgery", "Robotic Systems", "Fluorescence Imaging", "Live Procedures", "Hands-On Training", "Innovation", "da Vinci", "ICG Navigation"]} />
+
+      {/* ── ABOUT ── */}
+      <section id="about" className="relative text-white overflow-hidden">
+        {/* About background video */}
+        <div className="absolute inset-0 z-0">
+          <LazyVideo src="/landing/about-video.mp4" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/50" />
+        </div>
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-16 sm:py-40">
+          <Reveal>
+            <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400 mb-6">About the Conference</p>
+          </Reveal>
+          <Reveal delay={100}>
+            <h2 className="text-3xl sm:text-5xl lg:text-[3.5rem] font-light tracking-tighter leading-[1.1] sm:leading-[1.05] max-w-3xl text-white">
+              Where surgical technology meets{" "}
+              <span className="text-cyan-400">clinical excellence.</span>
+            </h2>
+          </Reveal>
+          <Reveal delay={200}>
+            <p className="mt-6 sm:mt-8 text-base sm:text-lg font-light text-white/70 leading-relaxed max-w-[58ch]">
+              India&apos;s most anticipated surgical technology summit bringing together 500+ surgeons,
+              AI researchers, and medtech innovators for two transformative days of live robotic procedures,
+              fluorescence-guided surgery, and hands-on workshops at the iconic ITC Grand Chola, Chennai.
+            </p>
+          </Reveal>
+
+          <div ref={statsRef} className="mt-12 sm:mt-24 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
+            {[
+              { v: 500, s: "+", l: "Delegates" },
+              { v: 50, s: "+", l: "Expert Faculty" },
+              { v: 30, s: "+", l: "Live Surgeries" },
+              { v: 2, s: "", l: "Intensive Days" },
+            ].map((stat, i) => (
+              <Reveal key={stat.l} delay={i * 100}>
+                <FloatingOrb delay={i * 0.8}>
+                  <div className="relative bg-white/10 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-white/10 text-center group hover:bg-white/15 hover:border-cyan-400/30 transition-all duration-700">
+                    {/* Subtle glow */}
+                    <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-gradient-to-b from-cyan-500/0 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                    <span className="relative text-4xl sm:text-6xl font-light text-white tabular-nums block leading-none">
+                      <Counter value={stat.v} suffix={stat.s} go={statsGo} />
+                    </span>
+                    <span className="relative block text-[10px] sm:text-xs uppercase tracking-[0.2em] text-white/40 mt-3 sm:mt-4">{stat.l}</span>
+                  </div>
+                </FloatingOrb>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── LEARN FROM THE PIONEERS ── */}
+      <section className="bg-[#050a14] relative overflow-hidden">
+        {/* Background video */}
+        <div className="absolute inset-0 z-0">
+          <LazyVideo src="/landing/Section-video.mp4" className="w-full h-full object-cover opacity-[0.08]" />
+        </div>
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-16 sm:py-40">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 items-center">
+            {/* Left side - Content */}
+            <div>
+              <Reveal>
+                <h2 className="text-3xl sm:text-5xl font-light tracking-tighter mb-6 sm:mb-8 leading-[1.1] sm:leading-tight text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]">
+                  Learn from the pioneers.
+                </h2>
+              </Reveal>
+              <Reveal delay={100}>
+                <p className="text-[15px] sm:text-lg text-white/70 font-light leading-relaxed mb-5 sm:mb-6">
+                  TECHNOSURG 2026 represents our continued commitment to advancing surgical excellence through innovation. Over the years, our academic platforms have brought together some of the finest minds in minimally invasive surgery.
+                </p>
+              </Reveal>
+              <Reveal delay={200}>
+                <p className="text-[15px] sm:text-lg text-white/70 font-light leading-relaxed mb-5 sm:mb-6">
+                  With the rapid evolution of AI, robotics, and fluorescence-guided surgery, the way we operate is being redefined. This conference will serve as a platform to explore these advancements through live surgeries, interactive sessions, and global collaboration.
+                </p>
+              </Reveal>
+              <Reveal delay={300}>
+                <p className="text-[15px] sm:text-lg text-white/70 font-light leading-relaxed mb-6 sm:mb-8">
+                  We invite you to be part of this transformative journey and help shape the future of surgery.
+                </p>
+              </Reveal>
+              <Reveal delay={400}>
+                <div className="border-l-2 border-cyan-500/40 pl-6">
+                  <p className="text-lg sm:text-xl font-light text-white">Prof. C. Palanivelu</p>
+                  <p className="text-sm text-white/50 mt-1">Founder &amp; Chairman, GEM Hospitals</p>
+                </div>
+              </Reveal>
+            </div>
+            {/* Right side - Image */}
+            <Reveal delay={200}>
+              <div className="relative order-first lg:order-last">
+                <div className="aspect-[3/4] sm:aspect-[4/5] rounded-2xl overflow-hidden bg-white/5 max-w-sm mx-auto lg:max-w-none">
+                  <img
+                    src="/landing/dr-palanivelu.jpg"
+                    alt="Prof. C. Palanivelu"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                {/* Decorative glow */}
+                <div className="absolute -inset-4 bg-cyan-500/10 rounded-3xl blur-2xl -z-10" />
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PROMO VIDEO ── */}
+      <PromoVideoSection />
+
+      {/* ── SCHEDULE ── */}
+      <section id="schedule" className="bg-[#fafafa] text-zinc-900">
+        <div className="max-w-[1200px] mx-auto px-6 py-16 sm:py-40">
+          <div className="text-center">
+            <Reveal>
+              <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-600 mb-6">Programme</p>
+            </Reveal>
+            <Reveal delay={100}>
+              <h2 className="text-3xl sm:text-5xl font-light tracking-tighter mb-6 sm:mb-8 leading-[1.1]">
+                Two days. Boundless learning.
+              </h2>
+            </Reveal>
+            <Reveal delay={200}>
+              <p className="text-base sm:text-xl text-zinc-500 font-light">
+                Will be updated soon.
+              </p>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ── REGISTER CTA ── */}
+      <section id="register" className="relative bg-[#050a14] overflow-hidden">
+        {/* CTA background video */}
+        <div className="absolute inset-0 z-0">
+          <LazyVideo src="/landing/cta-video.mp4" className="w-full h-full object-cover opacity-[0.08]" />
+          <div className="absolute inset-0 bg-[#050a14]/80" />
+        </div>
+        {/* Pulsing rings */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1]">
+          <motion.div
+            className="absolute -inset-32 rounded-full border border-cyan-500/[0.06]"
+            animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0, 0.1] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute -inset-56 rounded-full border border-cyan-500/[0.04]"
+            animate={{ scale: [1, 1.2, 1], opacity: [0.08, 0, 0.08] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          />
+          <motion.div
+            className="absolute -inset-80 rounded-full border border-cyan-500/[0.03]"
+            animate={{ scale: [1, 1.15, 1], opacity: [0.05, 0, 0.05] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          />
+        </div>
+        {/* Subtle radial glow */}
+        <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-cyan-500/[0.04] blur-[100px] pointer-events-none" />
+
+        <div className="relative max-w-[1200px] mx-auto px-6 py-20 sm:py-44 text-center">
+          <Reveal>
+            <h2 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tighter leading-[0.95] text-white drop-shadow-[0_2px_30px_rgba(255,255,255,0.3)]">
+              Secure your seat.
+            </h2>
+          </Reveal>
+          <Reveal delay={150}>
+            <p className="mt-6 sm:mt-8 text-sm sm:text-lg text-white/60 font-light px-2">
+              Delegate ₹7,000 &ensp;&middot;&ensp; PG ₹5,000 &ensp;&middot;&ensp; (incl. GST)
+            </p>
+          </Reveal>
+          <Reveal delay={300}>
+            <div className="mt-10 sm:mt-14 px-4 sm:px-0">
+              <MagneticButton
+                href={REGISTER_URL}
+                className="group relative inline-flex items-center justify-center h-14 sm:h-16 w-full sm:w-auto px-10 sm:px-14 rounded-full border border-white/20 text-white text-[15px] font-medium overflow-hidden hover:border-cyan-500/40 transition-colors duration-500"
+              >
+                <span className="relative z-10 group-hover:text-[#050a14] transition-colors duration-500">Register Now</span>
+                <motion.div
+                  className="absolute inset-0 bg-white rounded-full"
+                  initial={{ scale: 0 }}
+                  whileHover={{ scale: 1 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                />
+              </MagneticButton>
+            </div>
+          </Reveal>
+          <Reveal delay={400}>
+            <p className="mt-6 sm:mt-8 text-xs sm:text-sm text-white/40 px-4">Special early bird price still available until April 30th.</p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── VENUE ── */}
+      <section className="relative bg-[#050a14] text-white overflow-hidden">
+        {/* Venue background video */}
+        <div className="absolute inset-0 z-0">
+          <LazyVideo src="/landing/venue-video.mp4" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/50" />
+        </div>
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-16 sm:py-40">
+          <Reveal>
+            <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400/60 mb-6">Venue</p>
+          </Reveal>
+          <Reveal delay={100}>
+            <h2 className="text-3xl sm:text-5xl font-light tracking-tighter leading-[1.1] text-white">
+              ITC Grand Chola
+            </h2>
+          </Reveal>
+          <Reveal delay={150}>
+            <p className="text-lg text-white/50 font-light mt-2">Chennai, Tamil Nadu</p>
+          </Reveal>
+          <Reveal delay={200}>
+            <p className="text-sm text-white/30 mt-4 max-w-md leading-relaxed">
+              63, Anna Salai, Guindy, Chennai 600032<br />
+              15 minutes from Chennai International Airport
+            </p>
+          </Reveal>
+          <Reveal delay={250}>
+            <div className="mt-8 pt-8 border-t border-white/10">
+              <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-400/60 mb-3">Contact</p>
+              <a
+                href="mailto:technosurg@geminstitute.in"
+                className="text-white/70 hover:text-cyan-400 transition-colors text-lg font-light"
+              >
+                technosurg@geminstitute.in
+              </a>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer className="bg-[#050a14] border-t border-white/[0.04]">
+        <div className="max-w-[1200px] mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-5 sm:gap-4 text-[13px] text-white/20 text-center sm:text-left">
+          <img src="/landing/technosurg-logo.png" alt="GEM TechnoSurg 2026" className="h-6 w-auto" />
+          <a href="mailto:technosurg@geminstitute.in" className="hover:text-cyan-400 transition-colors">
+            technosurg@geminstitute.in
+          </a>
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+            <span>&copy; {new Date().getFullYear()} GEM Hospital &amp; Research Centre</span>
+            <span className="hidden sm:inline text-white/10">·</span>
+            <a href="/login" className="text-white/50 hover:text-cyan-400 transition-colors">
+              Admin Login
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
