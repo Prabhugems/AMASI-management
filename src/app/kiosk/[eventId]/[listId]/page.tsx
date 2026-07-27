@@ -30,6 +30,7 @@ import {
   replaceDelegateCache,
   getDelegateCache,
   enqueueScan,
+  newId,
 } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { isNetworkFailure } from "@/lib/offline-scan-queue"
@@ -308,10 +309,7 @@ export default function KioskPage() {
         return
       }
 
-      const scanId =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const scanId = newId()
 
       await enqueueScan({
         scan_id: scanId,
