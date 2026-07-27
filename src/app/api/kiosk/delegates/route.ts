@@ -39,11 +39,22 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createAdminClient()
 
-    const { data: list } = await (supabase as any)
+    const { data: list, error: listLookupError } = await (supabase as any)
       .from("checkin_lists")
       .select("id, event_id, list_purpose, access_token, access_token_expires_at")
       .eq("access_token", token)
       .maybeSingle()
+
+    if (listLookupError) {
+      // A transient Supabase error looks identical to "no list matched this
+      // token" if left undistinguished -- destructure and report it rather
+      // than falling into the 401 credential-rejection branch below, which
+      // is meant for a genuinely wrong/missing token, not an infra hiccup.
+      // 503 lets the page's stale-cache path treat this as transient and
+      // retryable, rather than a credential rejection.
+      Sentry.captureException(listLookupError, { tags: { route: "kiosk/delegates" }, extra: { eventId } })
+      return NextResponse.json({ error: "Something went wrong looking up this list." }, { status: 503 })
+    }
 
     if (!list) {
       return NextResponse.json({ error: "Invalid access token." }, { status: 401 })
