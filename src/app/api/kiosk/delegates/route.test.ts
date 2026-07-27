@@ -5,6 +5,7 @@ import { makeRequest } from "@/test/helpers/request"
 const EVENT_ID = "11111111-1111-1111-1111-111111111111"
 const LIST_ID = "22222222-2222-2222-2222-222222222222"
 const TOKEN = "test-access-token-abc123"
+const ADDON_ID = "88888888-8888-8888-8888-888888888888"
 
 let mock: ReturnType<typeof createSupabaseMock>
 
@@ -123,8 +124,11 @@ describe("GET /api/kiosk/delegates", () => {
       },
     ])
     expect(body.list_purpose).toBe("entry")
-    // event-wide, no ticket_type_ids/addon_ids filter -- must match
-    // /api/kiosk/checkin's existing scope exactly.
+    // Unrestricted list (baseList() sets no ticket_type_ids/addon_ids), so
+    // no .in() filter should be applied to the registrations query -- a
+    // restricted list DOES get one now (see the addon-eligibility tests
+    // below), but an unrestricted list's scope must stay event-wide, matching
+    // /api/kiosk/checkin's server-side gate exactly.
     expect(mock.calls.some((c) => c.table === "registrations" && c.method === "in")).toBe(false)
     // Pins the security property, not just the mocked behavior: a route
     // that dropped either filter would still pass without these.
@@ -181,5 +185,81 @@ describe("GET /api/kiosk/delegates", () => {
     const { GET } = await import("./route")
     const res = await GET(makeRequest(url({ event_id: EVENT_ID, token: TOKEN })))
     expect(res.status).toBe(500)
+  })
+
+  it("includes a registration that holds the list's restricted addon", async () => {
+    const ELIGIBLE_REG_ID = "reg-addon-yes"
+    mock.queueResponse("checkin_lists", { data: baseList({ addon_ids: [ADDON_ID] }), error: null })
+    mock.queueResponse("registration_addons", { data: [{ registration_id: ELIGIBLE_REG_ID }], error: null })
+    mock.queueResponse("registrations", {
+      data: [
+        {
+          id: ELIGIBLE_REG_ID,
+          registration_number: "REG-002",
+          attendee_name: "Addon Holder",
+          attendee_email: "addon@example.com",
+          attendee_phone: "8888888888",
+          attendee_designation: null,
+          attendee_institution: null,
+        },
+      ],
+      error: null,
+    })
+
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, token: TOKEN })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.delegates.map((d: any) => d.id)).toEqual([ELIGIBLE_REG_ID])
+    expect(
+      mock.calls.some(
+        (c) => c.table === "registration_addons" && c.method === "in" && c.args[0] === "addon_id" && (c.args[1] as string[]).includes(ADDON_ID)
+      )
+    ).toBe(true)
+    expect(
+      mock.calls.some(
+        (c) => c.table === "registrations" && c.method === "in" && c.args[0] === "id" && (c.args[1] as string[]).includes(ELIGIBLE_REG_ID)
+      )
+    ).toBe(true)
+  })
+
+  it("excludes a registration that lacks the list's restricted addon from the eligible roster", async () => {
+    const ELIGIBLE_REG_ID = "reg-addon-yes"
+    const INELIGIBLE_REG_ID = "reg-addon-no"
+    mock.queueResponse("checkin_lists", { data: baseList({ addon_ids: [ADDON_ID] }), error: null })
+    // Only the eligible registration holds the addon -- registration_addons
+    // never returns a row for INELIGIBLE_REG_ID, so it must never make it
+    // into the eligible-ID set passed to the roster query.
+    mock.queueResponse("registration_addons", { data: [{ registration_id: ELIGIBLE_REG_ID }], error: null })
+    mock.queueResponse("registrations", {
+      data: [
+        {
+          id: ELIGIBLE_REG_ID,
+          registration_number: "REG-002",
+          attendee_name: "Addon Holder",
+          attendee_email: "addon@example.com",
+          attendee_phone: "8888888888",
+          attendee_designation: null,
+          attendee_institution: null,
+        },
+      ],
+      error: null,
+    })
+
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, token: TOKEN })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.delegates.some((d: any) => d.id === INELIGIBLE_REG_ID)).toBe(false)
+    // Pins that the roster is actually narrowed by the eligible-ID set, not
+    // just unfiltered-and-coincidentally-missing-the-ineligible-row: assert
+    // the .in("id", ...) filter passed to the registrations query excludes
+    // the ineligible registration and includes the eligible one.
+    const inCall = mock.calls.find((c) => c.table === "registrations" && c.method === "in" && c.args[0] === "id")
+    expect(inCall).toBeDefined()
+    expect(inCall!.args[1] as string[]).not.toContain(INELIGIBLE_REG_ID)
+    expect(inCall!.args[1] as string[]).toContain(ELIGIBLE_REG_ID)
   })
 })
