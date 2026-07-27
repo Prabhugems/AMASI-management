@@ -213,7 +213,7 @@ function ScrambleText({ text, className = "", delay = 0 }: { text: string; class
     return () => clearInterval(id)
   }, [started, text])
 
-  return <span ref={ref} className={className}>{display || " "}</span>
+  return <span ref={ref} className={className}>{display || "\u00A0"}</span>
 }
 
 /* ─────────────────────────────────────
@@ -949,7 +949,7 @@ export function TechnoSurgLandingPage() {
           </Reveal>
           <Reveal delay={200}>
             <p className="mt-6 sm:mt-8 text-base sm:text-lg font-light text-white/70 leading-relaxed max-w-[58ch]">
-              India's most anticipated surgical technology summit bringing together 500+ surgeons,
+              India&apos;s most anticipated surgical technology summit bringing together 500+ surgeons,
               AI researchers, and medtech innovators for two transformative days of live robotic procedures,
               fluorescence-guided surgery, and hands-on workshops at the iconic ITC Grand Chola, Chennai.
             </p>
