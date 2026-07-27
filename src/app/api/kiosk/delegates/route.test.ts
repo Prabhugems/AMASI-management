@@ -50,6 +50,12 @@ describe("GET /api/kiosk/delegates", () => {
     const { GET } = await import("./route")
     const res = await GET(makeRequest(url({ event_id: EVENT_ID, token: TOKEN })))
     expect(res.status).toBe(401)
+    // Pins the security property, not just the mocked behavior: a route
+    // that dropped the token filter (and so never actually scoped the
+    // lookup by it) would still pass a mock-driven "return null" test.
+    expect(
+      mock.calls.some((c) => c.table === "checkin_lists" && c.method === "eq" && c.args[0] === "access_token" && c.args[1] === TOKEN)
+    ).toBe(true)
   })
 
   it("401s when the matched list's token has expired", async () => {
@@ -120,6 +126,14 @@ describe("GET /api/kiosk/delegates", () => {
     // event-wide, no ticket_type_ids/addon_ids filter -- must match
     // /api/kiosk/checkin's existing scope exactly.
     expect(mock.calls.some((c) => c.table === "registrations" && c.method === "in")).toBe(false)
+    // Pins the security property, not just the mocked behavior: a route
+    // that dropped either filter would still pass without these.
+    expect(
+      mock.calls.some((c) => c.table === "checkin_lists" && c.method === "eq" && c.args[0] === "access_token" && c.args[1] === TOKEN)
+    ).toBe(true)
+    expect(
+      mock.calls.some((c) => c.table === "registrations" && c.method === "eq" && c.args[0] === "event_id" && c.args[1] === EVENT_ID)
+    ).toBe(true)
   })
 
   it("500s if the registrations query errors", async () => {
