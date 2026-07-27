@@ -86,17 +86,37 @@ export async function GET(request: NextRequest) {
     // the right shape, not a per-registration `.eq`).
     let addonFilteredRegIds: string[] | null = null
     if (Array.isArray(list.addon_ids) && list.addon_ids.length > 0) {
-      const { data: addonRegs, error: addonError } = await (supabase as any)
-        .from("registration_addons")
-        .select("registration_id")
-        .in("addon_id", list.addon_ids)
+      // Fetch in batches -- Supabase caps a single query at ~1000 rows, and
+      // an addon-restricted list's eligible-registration count can exceed
+      // that for a large event. Same pattern as
+      // src/app/api/reviewers-pool/route.ts:101-116.
+      let allAddonRegs: { registration_id: string }[] = []
+      let offset = 0
+      const batchSize = 1000
+      let hasMore = true
 
-      if (addonError) {
-        Sentry.captureException(addonError, { tags: { route: "kiosk/delegates" }, extra: { eventId, listId: list.id } })
-        return NextResponse.json({ error: "Failed to load delegate roster." }, { status: 500 })
+      while (hasMore) {
+        const { data: batch, error: addonError } = await (supabase as any)
+          .from("registration_addons")
+          .select("registration_id")
+          .in("addon_id", list.addon_ids)
+          .range(offset, offset + batchSize - 1)
+
+        if (addonError) {
+          Sentry.captureException(addonError, { tags: { route: "kiosk/delegates" }, extra: { eventId, listId: list.id } })
+          return NextResponse.json({ error: "Failed to load delegate roster." }, { status: 500 })
+        }
+
+        if (batch && batch.length > 0) {
+          allAddonRegs = allAddonRegs.concat(batch)
+          offset += batchSize
+          hasMore = batch.length === batchSize
+        } else {
+          hasMore = false
+        }
       }
 
-      addonFilteredRegIds = [...new Set((addonRegs || []).map((r: any) => r.registration_id))] as string[]
+      addonFilteredRegIds = [...new Set(allAddonRegs.map((r) => r.registration_id))]
       if (addonFilteredRegIds.length === 0) {
         return NextResponse.json({ delegates: [], list_purpose: list.list_purpose })
       }
