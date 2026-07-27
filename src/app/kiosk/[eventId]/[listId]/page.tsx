@@ -164,14 +164,23 @@ export default function KioskPage() {
         if (!cancelled) setCacheError("This kiosk link is missing its access token. Ask an admin to reshare it.")
         return
       }
-      deviceIdRef.current = await getOrCreateDeviceId()
-      delegatesRef.current = await getDelegateCache(listId)
-      // Only safe to accept scans immediately if the local cache already
-      // has entries from a prior session -- an empty read must not flip
-      // cacheReady here, or a brand-new device would accept scans against
-      // a roster it hasn't actually fetched yet.
-      if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
-      await refreshFromServer()
+      try {
+        deviceIdRef.current = await getOrCreateDeviceId()
+        delegatesRef.current = await getDelegateCache(listId)
+        // Only safe to accept scans immediately if the local cache already
+        // has entries from a prior session -- an empty read must not flip
+        // cacheReady here, or a brand-new device would accept scans against
+        // a roster it hasn't actually fetched yet.
+        if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
+        await refreshFromServer()
+      } catch (err) {
+        // getOrCreateDeviceId/getDelegateCache throwing (e.g. IndexedDB
+        // unavailable) must not leave the kiosk showing "Loading…" forever
+        // with zero diagnostic signal -- indistinguishable from a hung page
+        // on an unattended device.
+        Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId, listId } })
+        if (!cancelled) setCacheError("This kiosk couldn't start. Please see a staff member.")
+      }
     }
 
     bootstrap()
@@ -246,13 +255,23 @@ export default function KioskPage() {
 
   const syncNow = useCallback(async () => {
     if (typeof navigator !== "undefined" && !navigator.onLine) return
-    const { remaining } = await drainScanQueue(
-      listId,
-      eventId,
-      () => {},
-      () => {}
-    )
-    setPendingSyncCount(remaining)
+    try {
+      const { remaining } = await drainScanQueue(
+        listId,
+        eventId,
+        () => {},
+        () => {}
+      )
+      setPendingSyncCount(remaining)
+    } catch (err) {
+      // drainScanQueue can reject (e.g. IndexedDB unavailable -- Safari
+      // private browsing, quota exceeded), and the underlying idb module
+      // caches a rejected connection promise -- left uncaught, this would
+      // reject on every subsequent call for the rest of the session, as an
+      // unhandled rejection each time (handleCheckin's `void syncNow()`,
+      // the `online` listener, and the setInterval poll all call this).
+      Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId, listId } })
+    }
   }, [eventId, listId])
 
   // Local-first: resolve from the on-device delegate cache and render
