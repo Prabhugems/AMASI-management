@@ -79,6 +79,7 @@ export default function KioskPage() {
   const [whatsappSent, setWhatsappSent] = useState(false)
   const [cacheReady, setCacheReady] = useState(false)
   const [cacheError, setCacheError] = useState<string | null>(null)
+  const [listBlockedReason, setListBlockedReason] = useState<string | null>(null)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   // Scanner-burst auto-submit + double-submit guard (see handleRegChange).
@@ -97,22 +98,55 @@ export default function KioskPage() {
   useEffect(() => {
     let cancelled = false
 
+    // cacheReady only ever becomes true when there is a genuinely usable
+    // local cache: either the local IndexedDB read already had entries from
+    // a prior session (safe to accept scans immediately, even offline), or
+    // a server refresh has completed in some terminal way (success, 401,
+    // non-ok response, network-failure) -- never simply "the local read
+    // finished, even if it returned zero rows". A brand-new device with an
+    // empty cache and a refresh still in flight must keep showing
+    // "Loading…", not silently accept scans against an empty roster.
     async function refreshFromServer() {
       if (!token) return
-      if (typeof navigator !== "undefined" && !navigator.onLine) return
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
+        return
+      }
       try {
         const res = await fetch(
           `/api/kiosk/delegates?event_id=${encodeURIComponent(eventId)}&token=${encodeURIComponent(token)}`
         )
         if (res.status === 401) {
-          if (!cancelled) setCacheError("This kiosk link has expired or is invalid. Ask an admin to reshare it.")
+          if (!cancelled) {
+            setCacheError("This kiosk link has expired or is invalid. Ask an admin to reshare it.")
+            if (delegatesRef.current.length > 0) setCacheReady(true)
+          }
           return
         }
-        if (!res.ok) return
-        const data = (await res.json()) as { delegates: CachedDelegate[] }
+        if (!res.ok) {
+          if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
+          return
+        }
+        const data = (await res.json()) as { delegates: CachedDelegate[]; list_purpose?: string }
         if (cancelled) return
+
+        if (data.list_purpose === "collection") {
+          // Self check-in never accepts scans against a collection-purpose
+          // list (see /api/kiosk/checkin/route.ts:58-63) -- there's nothing
+          // worth caching, and every scan must be rejected with a specific,
+          // distinct message rather than looking like a match failure.
+          delegatesRef.current = []
+          await replaceDelegateCache(listId, [])
+          setListBlockedReason("Self check-in isn't available for this list. Please see a staff member.")
+          setCacheReady(true)
+          return
+        }
+
+        setListBlockedReason(null)
         await replaceDelegateCache(listId, data.delegates)
         delegatesRef.current = data.delegates
+        setCacheError(null)
+        setCacheReady(true)
       } catch (err) {
         // A network failure here is a routine, expected condition (this
         // runs on an interval regardless of connectivity) -- the
@@ -121,6 +155,7 @@ export default function KioskPage() {
         if (!isNetworkFailure(err)) {
           Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId, listId } })
         }
+        if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
       }
     }
 
@@ -131,7 +166,11 @@ export default function KioskPage() {
       }
       deviceIdRef.current = await getOrCreateDeviceId()
       delegatesRef.current = await getDelegateCache(listId)
-      if (!cancelled) setCacheReady(true)
+      // Only safe to accept scans immediately if the local cache already
+      // has entries from a prior session -- an empty read must not flip
+      // cacheReady here, or a brand-new device would accept scans against
+      // a roster it hasn't actually fetched yet.
+      if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
       await refreshFromServer()
     }
 
@@ -225,6 +264,14 @@ export default function KioskPage() {
     const searchTerm = (override ?? registrationNumber).trim()
     if (!searchTerm) {
       toast.error("Please enter a registration number")
+      return
+    }
+    // This guard must live inside handleCheckin itself, not only on the
+    // submit button's `disabled` attribute -- the barcode-scanner-burst
+    // path (handleRegChange's auto-submit) and the Enter-key handler both
+    // call handleCheckin directly, bypassing the button entirely.
+    if (listBlockedReason) {
+      setResult({ success: false, message: listBlockedReason })
       return
     }
     if (submittingRef.current) return
@@ -733,7 +780,7 @@ export default function KioskPage() {
         <p className="text-xs sm:text-sm text-gray-400">
           Need help? Please contact the registration desk
         </p>
-        {cacheError && !cacheReady && (
+        {cacheError && (
           <p className="text-xs text-red-400 mt-1">{cacheError}</p>
         )}
         {pendingSyncCount > 0 && (

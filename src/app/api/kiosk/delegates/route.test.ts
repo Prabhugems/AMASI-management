@@ -80,6 +80,7 @@ describe("GET /api/kiosk/delegates", () => {
 
     expect(res.status).toBe(200)
     expect(body.delegates).toEqual([])
+    expect(body.list_purpose).toBe("collection")
     expect(mock.calls.some((c) => c.table === "registrations")).toBe(false)
   })
 
@@ -115,6 +116,7 @@ describe("GET /api/kiosk/delegates", () => {
         attendee_institution: "AMASI",
       },
     ])
+    expect(body.list_purpose).toBe("entry")
     // event-wide, no ticket_type_ids/addon_ids filter -- must match
     // /api/kiosk/checkin's existing scope exactly.
     expect(mock.calls.some((c) => c.table === "registrations" && c.method === "in")).toBe(false)

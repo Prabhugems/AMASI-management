@@ -57,9 +57,10 @@ export async function GET(request: NextRequest) {
 
     // Self check-in is entry-only, permanently (see /api/kiosk/checkin) --
     // nothing worth caching for a list the kiosk will never accept a scan
-    // against.
+    // against. list_purpose is included in the response so the page can
+    // distinguish "legitimately nothing to cache" from "haven't fetched yet".
     if (list.list_purpose === "collection") {
-      return NextResponse.json({ delegates: [] })
+      return NextResponse.json({ delegates: [], list_purpose: list.list_purpose })
     }
 
     const { data: registrations, error } = await (supabase as any)
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
       attendee_institution: r.attendee_institution,
     }))
 
-    return NextResponse.json({ delegates })
+    return NextResponse.json({ delegates, list_purpose: list.list_purpose })
   } catch (error) {
     Sentry.captureException(error, { tags: { route: "kiosk/delegates" }, extra: { eventId } })
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 })
