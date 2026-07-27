@@ -649,7 +649,7 @@ export default function CheckinHubPage() {
                           {copiedId === list.id ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                         </button>
                         <Link
-                          href={`/kiosk/${eventId}/${list.id}`}
+                          href={`/kiosk/${eventId}/${list.id}${list.access_token ? `?token=${list.access_token}` : ""}`}
                           target="_blank"
                           onClick={(e) => e.stopPropagation()}
                           className="p-3 bg-muted hover:bg-muted/80 rounded-xl transition-colors border border-border"
