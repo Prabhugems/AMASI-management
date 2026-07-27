@@ -74,25 +74,47 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ delegates: [], list_purpose: list.list_purpose })
     }
 
-    const { data: registrations, error } = await (supabase as any)
-      .from("registrations")
-      .select(`
-        id,
-        registration_number,
-        attendee_name,
-        attendee_email,
-        attendee_phone,
-        attendee_designation,
-        attendee_institution
-      `)
-      .eq("event_id", eventId)
+    // Supabase caps a single query at ~1,000 rows -- with ~2,000 delegates
+    // expected for AMASICON's main event, a bare unpaginated query would
+    // silently truncate the cache past row 1,000 (no error, no admin
+    // visibility -- see the module comment above). Batch across pages until
+    // one comes back short, mirroring the precedent in
+    // /api/reviewers-pool/route.ts.
+    let registrations: unknown[] = []
+    let offset = 0
+    const batchSize = 1000
+    let hasMore = true
 
-    if (error) {
-      Sentry.captureException(error, { tags: { route: "kiosk/delegates" }, extra: { eventId, listId: list.id } })
-      return NextResponse.json({ error: "Failed to load delegate roster." }, { status: 500 })
+    while (hasMore) {
+      const { data: batch, error } = await (supabase as any)
+        .from("registrations")
+        .select(`
+          id,
+          registration_number,
+          attendee_name,
+          attendee_email,
+          attendee_phone,
+          attendee_designation,
+          attendee_institution
+        `)
+        .eq("event_id", eventId)
+        .range(offset, offset + batchSize - 1)
+
+      if (error) {
+        Sentry.captureException(error, { tags: { route: "kiosk/delegates" }, extra: { eventId, listId: list.id, offset } })
+        return NextResponse.json({ error: "Failed to load delegate roster." }, { status: 500 })
+      }
+
+      if (batch && batch.length > 0) {
+        registrations = registrations.concat(batch)
+        offset += batchSize
+        hasMore = batch.length === batchSize
+      } else {
+        hasMore = false
+      }
     }
 
-    const delegates = (registrations || []).map((r: any) => ({
+    const delegates = registrations.map((r: any) => ({
       id: r.id,
       registration_number: r.registration_number,
       attendee_name: r.attendee_name,
