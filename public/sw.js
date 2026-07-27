@@ -42,11 +42,9 @@ function extractChunkUrls(html, origin) {
 }
 
 async function cacheShellAndChunks(request, response) {
-  const html = await response.clone().text()
   const cache = await caches.open(SHELL_CACHE_NAME)
-  // Re-wrap as a fresh Response -- the original body stream was already
-  // consumed by .text() above.
-  await cache.put(request, new Response(html, { headers: response.headers, status: response.status, statusText: response.statusText }))
+  const html = await response.clone().text()
+  await cache.put(request, response)
   const chunkUrls = extractChunkUrls(html, self.location.origin)
   await Promise.all(
     chunkUrls.map(async (chunkUrl) => {
@@ -87,13 +85,43 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url)
 
-  // Only same-origin GETs. Never touch APIs, build assets, or cross-origin.
+  // Only same-origin GETs. Never touch APIs or cross-origin.
   if (
     event.request.method !== "GET" ||
     url.hostname !== self.location.hostname ||
-    url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/_next/")
+    url.pathname.startsWith("/api/")
   ) {
+    return
+  }
+
+  // Build assets: normally passed straight through untouched -- see header
+  // comment. EXCEPTION: a chunk requested by a page under /print gets
+  // served from SHELL_CACHE_NAME (populated by cacheShellAndChunks) with a
+  // network-fallback-that-also-caches, so it survives the browser's own
+  // HTTP cache evicting it over a long disconnection -- the entire reason
+  // those chunks get cached at all. Every other route's chunk requests are
+  // untouched, preserving this file's deploy-safety guarantee.
+  if (url.pathname.startsWith("/_next/")) {
+    let referrerPath = ""
+    try {
+      referrerPath = event.request.referrer ? new URL(event.request.referrer).pathname : ""
+    } catch {
+      referrerPath = ""
+    }
+    if (referrerPath.startsWith("/print")) {
+      event.respondWith(
+        caches.open(SHELL_CACHE_NAME).then((cache) =>
+          cache.match(event.request, { ignoreVary: true }).then((cached) => {
+            if (cached) return cached
+            return fetch(event.request).then((response) => {
+              if (response.ok) cache.put(event.request, response.clone())
+              return response
+            })
+          })
+        )
+      )
+      return
+    }
     return
   }
 
