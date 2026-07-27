@@ -6,17 +6,19 @@
 // used to cap out after 2 attempts.
 //
 // "Conflict" here means the server's answer disagreed with what the
-// attendee already saw on the tablet (e.g. alreadyCheckedIn=true when the
-// tablet resolved this as a fresh check-in from its cache). Per the
-// redesign brief: never retroactively change what the volunteer/attendee
-// already saw -- the badge notification already went out. This just flags
-// it for the admin view (a later stage's job to surface); Stage 1 only
-// needs to *record* the conflict correctly. In practice the dominant cause
-// of an alreadyCheckedIn conflict is this station's OWN retry of a scan
-// whose first attempt actually succeeded server-side before the response
-// was lost (see the network-failure branch below) -- not a cross-station
-// race. No check-in is lost either way; this is a labelling nuance for
-// whoever reads the conflict list, not a correctness concern.
+// attendee already saw on the tablet (alreadyCheckedIn=true when the
+// tablet resolved this as a fresh check-in from its cache -- most likely
+// this station's own retry of a scan whose first attempt actually
+// succeeded server-side before the response was lost). Per the redesign
+// brief: never retroactively change what the volunteer/attendee already
+// saw -- the badge notification already went out. This just flags it for
+// the admin view (a later stage's job to surface); this module only needs
+// to *record* the conflict correctly. No check-in is lost either way.
+//
+// Stage 2 (docs/superpowers/specs/2026-07-27-kiosk-stage2-checkin-authority-design.md)
+// made the server trust this worker's own registration_id resolution
+// directly instead of independently re-deriving one via fuzzy search --
+// there is no longer a registrationMismatch case to detect here.
 
 import * as Sentry from "@sentry/nextjs"
 import { fetchWithTimeout } from "./fetch-with-timeout"
@@ -93,6 +95,7 @@ export async function drainScanQueue(
         body: JSON.stringify({
           event_id: eventId,
           checkin_list_id: listId,
+          registration_id: entry.registration_id,
           search: entry.delegate_code,
           scan_id: entry.scan_id,
         }),
@@ -105,30 +108,11 @@ export async function drainScanQueue(
       const data = (await res.json()) as CheckinApiResponse
 
       if (res.ok && data.success) {
-        const registrationMismatch = !!data.registration && data.registration.id !== entry.registration_id
-        const conflictsWithLocalView = data.alreadyCheckedIn === true || registrationMismatch
-
-        if (registrationMismatch) {
-          // The server's .or() match (see kiosk-delegate-match.ts's header
-          // comment on its non-deterministic tie-break) resolved this scan
-          // to a different registration than the local cache did. Rare,
-          // but means the wrong person may have been checked in -- surface
-          // it rather than filing it silently alongside routine
-          // alreadyCheckedIn conflicts. Full fix (passing registration_id
-          // through so the server can't disagree) is Stage 2's job,
-          // alongside scan_id enforcement.
-          Sentry.captureMessage("kiosk sync: server matched a different registration than the local cache", {
-            tags: { module: "kiosk-sync-worker" },
-            extra: {
-              scanId: entry.scan_id,
-              listId,
-              localRegistrationId: entry.registration_id,
-              serverRegistrationId: data.registration!.id,
-            },
-          })
-        }
-
-        if (conflictsWithLocalView) {
+        // The server now trusts the registration_id this worker sends
+        // directly (Stage 2) instead of independently re-resolving via
+        // fuzzy search -- there's no longer a way for the two to disagree,
+        // so the mismatch detection this block used to do is gone.
+        if (data.alreadyCheckedIn === true) {
           await markScanConflict(entry.scan_id, data)
           outcome = { kind: "conflict", response: data }
         } else {
