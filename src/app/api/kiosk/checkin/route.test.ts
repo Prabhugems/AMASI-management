@@ -9,6 +9,7 @@ const OTHER_REG_ID = "44444444-4444-4444-4444-444444444444"
 const SCAN_ID = "55555555-5555-5555-5555-555555555555"
 const TICKET_TYPE_ID = "66666666-6666-6666-6666-666666666666"
 const OTHER_TICKET_TYPE_ID = "77777777-7777-7777-7777-777777777777"
+const ADDON_ID = "88888888-8888-8888-8888-888888888888"
 
 let mock: ReturnType<typeof createSupabaseMock>
 
@@ -66,7 +67,7 @@ function baseRegistration(overrides: Record<string, unknown> = {}) {
 describe("POST /api/kiosk/checkin", () => {
   it("replays a scan_id that already has a checkin_records row, without touching registrations/checkin_lists", async () => {
     mock.queueResponse("checkin_records", {
-      data: { id: "cr-1", registration_id: REG_ID, checked_in_at: "2026-07-27T00:00:00Z" },
+      data: { id: "cr-1", registration_id: REG_ID, checkin_list_id: LIST_ID, checked_in_at: "2026-07-27T00:00:00Z" },
       error: null,
     })
     mock.queueResponse("registrations", { data: baseRegistration(), error: null })
@@ -84,12 +85,12 @@ describe("POST /api/kiosk/checkin", () => {
 
   it("replays the same scan_id identically on a second call (deterministic)", async () => {
     mock.queueResponse("checkin_records", {
-      data: { id: "cr-1", registration_id: REG_ID, checked_in_at: "2026-07-27T00:00:00Z" },
+      data: { id: "cr-1", registration_id: REG_ID, checkin_list_id: LIST_ID, checked_in_at: "2026-07-27T00:00:00Z" },
       error: null,
     })
     mock.queueResponse("registrations", { data: baseRegistration(), error: null })
     mock.queueResponse("checkin_records", {
-      data: { id: "cr-1", registration_id: REG_ID, checked_in_at: "2026-07-27T00:00:00Z" },
+      data: { id: "cr-1", registration_id: REG_ID, checkin_list_id: LIST_ID, checked_in_at: "2026-07-27T00:00:00Z" },
       error: null,
     })
     mock.queueResponse("registrations", { data: baseRegistration(), error: null })
@@ -104,7 +105,7 @@ describe("POST /api/kiosk/checkin", () => {
 
   it("ignores a mismatched registration_id on a scan_id replay and returns the original registration", async () => {
     mock.queueResponse("checkin_records", {
-      data: { id: "cr-1", registration_id: REG_ID, checked_in_at: "2026-07-27T00:00:00Z" },
+      data: { id: "cr-1", registration_id: REG_ID, checkin_list_id: LIST_ID, checked_in_at: "2026-07-27T00:00:00Z" },
       error: null,
     })
     mock.queueResponse("registrations", { data: baseRegistration(), error: null })
@@ -114,6 +115,19 @@ describe("POST /api/kiosk/checkin", () => {
     const body = await res.json()
 
     expect(body.registration.id).toBe(REG_ID)
+  })
+
+  it("404s a scan_id replay whose recorded checkin_list_id doesn't match the request's list", async () => {
+    mock.queueResponse("checkin_records", {
+      data: { id: "cr-1", registration_id: REG_ID, checkin_list_id: "99999999-9999-9999-9999-999999999999", checked_in_at: "2026-07-27T00:00:00Z" },
+      error: null,
+    })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+
+    expect(res.status).toBe(404)
+    expect(mock.calls.some((c) => c.table === "registrations")).toBe(false)
   })
 
   it("404s when registration_id doesn't resolve at all", async () => {
@@ -205,9 +219,9 @@ describe("POST /api/kiosk/checkin", () => {
     expect(body.alreadyCheckedIn).toBe(true)
   })
 
-  it("400s on a missing registration_id", async () => {
+  it("400s on a present-but-malformed registration_id", async () => {
     const { POST } = await import("./route")
-    const res = await POST(checkinRequest(baseBody({ registration_id: undefined })))
+    const res = await POST(checkinRequest(baseBody({ registration_id: "not-a-uuid" })))
     expect(res.status).toBe(400)
   })
 
@@ -215,5 +229,134 @@ describe("POST /api/kiosk/checkin", () => {
     const { POST } = await import("./route")
     const res = await POST(checkinRequest(baseBody({ scan_id: undefined })))
     expect(res.status).toBe(400)
+  })
+
+  it("400s when both registration_id and search are missing (nothing to fall back to)", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("checkin_lists", { data: baseList(), error: null })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ registration_id: undefined, search: "" })))
+
+    expect(res.status).toBe(400)
+  })
+
+  it("persists scan_id on the insert payload", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check
+    mock.queueResponse("checkin_records", { data: null, error: null }) // insert
+    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    expect(res.status).toBe(200)
+
+    const insertCall = mock.calls.find((c) => c.table === "checkin_records" && c.method === "insert")
+    expect(insertCall).toBeDefined()
+    expect((insertCall!.args[0] as any).scan_id).toBe(SCAN_ID)
+  })
+
+  it("allows check-in when addon_ids is restricted and the registration has the addon", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [], addon_ids: [ADDON_ID] }), error: null })
+    mock.queueResponse("registration_addons", { data: { registration_id: REG_ID }, error: null }) // addon eligibility hit
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check
+    mock.queueResponse("checkin_records", { data: null, error: null }) // insert
+    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(body.alreadyCheckedIn).toBe(false)
+  })
+
+  it("404s when addon_ids is restricted and the registration lacks the addon", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [], addon_ids: [ADDON_ID] }), error: null })
+    mock.queueResponse("registration_addons", { data: null, error: null }) // no matching addon row
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+
+    expect(res.status).toBe(404)
+  })
+
+  it("ANDs ticket_type_ids and addon_ids -- satisfying only one isn't enough", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration({ ticket_type_id: TICKET_TYPE_ID }), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [TICKET_TYPE_ID], addon_ids: [ADDON_ID] }), error: null })
+    mock.queueResponse("registration_addons", { data: null, error: null }) // ticket_type_id matches, addon doesn't
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+
+    expect(res.status).toBe(404)
+  })
+
+  it("404s when registration.ticket_type_id is null against a ticket_type_ids-restricted list", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration({ ticket_type_id: null }), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [TICKET_TYPE_ID] }), error: null })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+
+    expect(res.status).toBe(404)
+  })
+
+  it("falls back to the old fuzzy search when registration_id is absent (pre-Stage-2 kiosk bundle)", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("checkin_lists", { data: baseList(), error: null })
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null }) // fuzzy match hit
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check
+    mock.queueResponse("checkin_records", { data: null, error: null }) // insert
+    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ registration_id: undefined })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(body.registration.id).toBe(REG_ID)
+  })
+
+  it("returns the OLD bare-200 not-found shape when the fallback fuzzy search misses", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("checkin_lists", { data: baseList(), error: null })
+    mock.queueResponse("registrations", { data: null, error: null }) // fuzzy match miss
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ registration_id: undefined })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(false)
+    expect(body.message).toBe("Registration not found. Please check your registration number.")
+  })
+
+  it("classifies a scan_id-constraint race as our own twin succeeding, not a prior check-in", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup (no replay yet)
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check (not found)
+    mock.queueResponse("checkin_records", { data: null, error: { code: "23505" } }) // insert races and loses
+    mock.queueResponse("checkin_records", { data: { id: "cr-twin" }, error: null }) // scan_id re-check: our OWN twin won
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(body.alreadyCheckedIn).toBe(false)
+    expect(body.message).toBe("Check-in successful!")
   })
 })
