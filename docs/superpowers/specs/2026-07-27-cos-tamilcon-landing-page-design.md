@@ -39,19 +39,57 @@ the route convention TechnoSurg already established.
 
 ### Routing and gating
 
-New files `src/app/landing/page.tsx` and `src/app/landing/layout.tsx`
-(metadata only, mirrors TechnoSurg's `layout.tsx` shape).
+**Correction from initial draft:** `src/app/landing/page.tsx` and
+`layout.tsx` already exist — they are TechnoSurg's landing page (1180 lines,
+fully hardcoded, exported as `LandingPage`/default, with static `metadata` in
+`layout.tsx`). `/landing` is a single shared route, so this is a *modify*,
+not a *new file*, following the exact same tenant-branch pattern already used
+for the policy pages (`terms/page.tsx` etc. branching on `getTenant()` between
+an `Essurg...` and `Cos...` component).
 
-`page.tsx` calls `requireTenantIn(["cos"])` (the helper already added to
-`src/components/policies/policy-page.tsx` for the policy pages) at the top —
-404s on every tenant except `cos`. This is stricter than TechnoSurg's
-`/landing`, which renders unconditionally; the gate is deliberately applied
-here rather than carrying that gap forward.
+**File split (required by the `"use client"` boundary):** today's
+`page.tsx` starts with `"use client"`, which is a whole-file directive — it
+can't apply to only part of a file. `TamilconLandingPage` needs to be a
+Server Component (to do a plain server-side Supabase fetch for the fee
+table), so it cannot live in a `"use client"` file alongside TechnoSurg's
+hooks/`framer-motion`/canvas code. The fix is to move TechnoSurg's existing
+component, unchanged, into its own file that keeps `"use client"`, and make
+`page.tsx` itself a lean Server Component dispatcher:
 
-Server Component (no `"use client"` at the page level) — the page needs one
-server-side data fetch (ticket fees) and otherwise has no client interactivity
-beyond CSS-driven scroll reveals, so there's no need for client state at the
-top level.
+- `src/app/landing/technosurg-landing.tsx` *(new)* — `"use client"` at the
+  top (unchanged from today), containing the entire existing 1180-line
+  component body verbatim, exported as `TechnoSurgLandingPage`.
+- `src/app/landing/tamilcon-landing.tsx` *(new)* — no `"use client"`
+  (Server Component), the new TAMILCON page content, taking the fetched
+  ticket rows as a prop.
+- `src/app/landing/page.tsx` *(modified, no `"use client"`)* — becomes:
+
+  ```tsx
+  export default async function LandingPage() {
+    const tenant = getTenant()
+    if (tenant === "cos") {
+      const tickets = await fetchTamilconTicketTypes()
+      return <TamilconLandingPage tickets={tickets} />
+    }
+    return <TechnoSurgLandingPage />
+  }
+  ```
+
+  This preserves TechnoSurg's behavior exactly — same component, same props
+  (none), rendered for every tenant except `cos`, matching today's
+  unconditional fallback. Only `cos` gets new, gated content; no other
+  tenant's rendering path changes.
+- Any scroll-reveal animation `TamilconLandingPage` wants is a small,
+  separate `"use client"` leaf component (e.g. `src/components/reveal.tsx`,
+  a minimal intersection-observer fade-up wrapper) imported into the
+  Server Component — Next.js allows a Server Component to render Client
+  Component children; only that leaf file needs `"use client"`.
+
+`layout.tsx` currently exports a static `metadata` object (TechnoSurg's
+title/OG tags). Static `metadata` can't vary by tenant, so this becomes a
+`generateMetadata()` async function that reads `getTenant()` and returns
+TechnoSurg's existing metadata object unchanged for every tenant except
+`cos`, and TAMILCON's own title/description/OG tags for `cos`.
 
 ### Data flow
 
