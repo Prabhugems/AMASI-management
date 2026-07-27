@@ -37,11 +37,20 @@ const tamilconMetadata: Metadata = {
     description: "State-level Tamil Orthopaedic Conference, hosted by Coimbatore Orthopaedic Society. 3-4 October 2026 at Hotel Merlis, Coimbatore.",
     type: "website",
     siteName: "TAMILCON 2026",
+    images: [
+      {
+        url: "/landing/tamilcon-audience.jpg",
+        width: 800,
+        height: 565,
+        alt: "TAMILCON 2026 - 4th TNOA Tamil Orthopaedic Conference",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "TAMILCON 2026 | 4th TNOA Tamil Orthopaedic Conference",
     description: "3-4 October 2026 at Hotel Merlis, Coimbatore.",
+    images: ["/landing/tamilcon-audience.jpg"],
   },
 }
 
