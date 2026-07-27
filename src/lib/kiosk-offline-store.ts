@@ -56,7 +56,10 @@ function getDb(): Promise<IDBPDatabase> {
           db.createObjectStore(META_STORE, { keyPath: "key" })
         }
         if (!db.objectStoreNames.contains(DELEGATE_STORE)) {
-          const store = db.createObjectStore(DELEGATE_STORE, { keyPath: "id" })
+          // Compound key (list_id, id) ensures each delegate per list is a distinct row.
+          // Same registration can appear on multiple checkin_lists (per AMASI model);
+          // single "id" key would cause overwrites if same delegate cached on two lists.
+          const store = db.createObjectStore(DELEGATE_STORE, { keyPath: ["list_id", "id"] })
           store.createIndex("by_list", "list_id")
         }
         if (!db.objectStoreNames.contains(SCAN_STORE)) {
