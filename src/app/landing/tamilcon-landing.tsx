@@ -5,7 +5,7 @@ const BROCHURE_URL = "/tamilcon-2026-brochure.pdf"
 
 const HIGHLIGHTS = [
   "Scientific sessions on Trauma, Joint Replacement, Arthroscopy, Spine, Paediatrics, and Sports Medicine",
-  "reLive surgical demonstrations",
+  "Live surgical demonstrations",
   "Keynote addresses by national and international faculty",
   "Free paper presentations, e-posters, and award sessions",
   "Industry exhibition showcasing the latest implants, instruments, and technologies",
