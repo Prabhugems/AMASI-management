@@ -16,10 +16,13 @@ import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/ra
 // use, auto-generated on every list by a DB trigger (never null). An
 // admin session does not substitute for it.
 //
-// Matching scope deliberately mirrors /api/kiosk/checkin's existing
-// per-scan search exactly: event_id only, no ticket_type_ids/addon_ids
-// filtering. The local cache and the server's live search must never
-// disagree about who is eligible to self-check-in.
+// Matching scope must mirror /api/kiosk/checkin's server-side eligibility
+// gate exactly (Stage 2, docs/superpowers/specs/2026-07-27-kiosk-stage2-checkin-authority-design.md):
+// event_id, AND ticket_type_ids/addon_ids restriction when the list has one.
+// The local cache and the server's live check must never disagree about who
+// is eligible to self-check-in -- a mismatch here means the kiosk shows a
+// false "Check-in successful!" from the stale local cache while the server
+// silently 404s the sync.
 export async function GET(request: NextRequest) {
   const clientIp = getClientIp(request)
   const rateLimit = checkRateLimit(`kiosk-delegates:${clientIp}`, "public")
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     const { data: list, error: listLookupError } = await (supabase as any)
       .from("checkin_lists")
-      .select("id, event_id, list_purpose, access_token, access_token_expires_at")
+      .select("id, event_id, list_purpose, access_token, access_token_expires_at, ticket_type_ids, addon_ids")
       .eq("access_token", token)
       .maybeSingle()
 
@@ -74,19 +77,65 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ delegates: [], list_purpose: list.list_purpose })
     }
 
+    // List eligibility: mirrors src/app/api/checkin/access/[accessToken]/attendees/route.ts:49-84
+    // exactly -- same computation /api/kiosk/checkin's server-side gate uses.
+    // If the list restricts by addons, fetch eligible registration IDs first
+    // and collapse to an ID set (this route genuinely needs the full
+    // eligible-ID set to build a roster, unlike /api/kiosk/checkin's
+    // single-registration boolean check, so `.in("addon_id", ...)` here is
+    // the right shape, not a per-registration `.eq`).
+    let addonFilteredRegIds: string[] | null = null
+    if (Array.isArray(list.addon_ids) && list.addon_ids.length > 0) {
+      // Fetch in batches -- Supabase caps a single query at ~1000 rows, and
+      // an addon-restricted list's eligible-registration count can exceed
+      // that for a large event. Same pattern as
+      // src/app/api/reviewers-pool/route.ts:101-116.
+      let allAddonRegs: { registration_id: string }[] = []
+      let offset = 0
+      const batchSize = 1000
+      let hasMore = true
+
+      while (hasMore) {
+        const { data: batch, error: addonError } = await (supabase as any)
+          .from("registration_addons")
+          .select("registration_id")
+          .in("addon_id", list.addon_ids)
+          .range(offset, offset + batchSize - 1)
+
+        if (addonError) {
+          Sentry.captureException(addonError, { tags: { route: "kiosk/delegates" }, extra: { eventId, listId: list.id } })
+          return NextResponse.json({ error: "Failed to load delegate roster." }, { status: 500 })
+        }
+
+        if (batch && batch.length > 0) {
+          allAddonRegs = allAddonRegs.concat(batch)
+          offset += batchSize
+          hasMore = batch.length === batchSize
+        } else {
+          hasMore = false
+        }
+      }
+
+      addonFilteredRegIds = [...new Set(allAddonRegs.map((r) => r.registration_id))]
+      if (addonFilteredRegIds.length === 0) {
+        return NextResponse.json({ delegates: [], list_purpose: list.list_purpose })
+      }
+    }
+
     // Supabase caps a single query at ~1,000 rows -- with ~2,000 delegates
     // expected for AMASICON's main event, a bare unpaginated query would
     // silently truncate the cache past row 1,000 (no error, no admin
     // visibility -- see the module comment above). Batch across pages until
     // one comes back short, mirroring the precedent in
-    // /api/reviewers-pool/route.ts.
+    // /api/reviewers-pool/route.ts. The eligibility filters below apply to
+    // every page, not just the first.
     let registrations: unknown[] = []
     let offset = 0
     const batchSize = 1000
     let hasMore = true
 
     while (hasMore) {
-      const { data: batch, error } = await (supabase as any)
+      let registrationsQuery = (supabase as any)
         .from("registrations")
         .select(`
           id,
@@ -98,7 +147,15 @@ export async function GET(request: NextRequest) {
           attendee_institution
         `)
         .eq("event_id", eventId)
-        .range(offset, offset + batchSize - 1)
+
+      if (Array.isArray(list.ticket_type_ids) && list.ticket_type_ids.length > 0) {
+        registrationsQuery = registrationsQuery.in("ticket_type_id", list.ticket_type_ids)
+      }
+      if (addonFilteredRegIds !== null) {
+        registrationsQuery = registrationsQuery.in("id", addonFilteredRegIds)
+      }
+
+      const { data: batch, error } = await registrationsQuery.range(offset, offset + batchSize - 1)
 
       if (error) {
         Sentry.captureException(error, { tags: { route: "kiosk/delegates" }, extra: { eventId, listId: list.id, offset } })

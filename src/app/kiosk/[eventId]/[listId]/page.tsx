@@ -30,6 +30,7 @@ import {
   replaceDelegateCache,
   getDelegateCache,
   enqueueScan,
+  newId,
 } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { isNetworkFailure } from "@/lib/offline-scan-queue"
@@ -89,6 +90,11 @@ export default function KioskPage() {
   const submittingRef = useRef<boolean>(false)
   const delegatesRef = useRef<CachedDelegate[]>([])
   const deviceIdRef = useRef<string>("")
+  // In-flight guard for syncNow -- the click handler (`void syncNow()` in
+  // handleCheckin), the `online` listener, and the 20s interval poll can all
+  // fire close together, and drainScanQueue has no guard of its own against
+  // two overlapping passes over the same pending queue.
+  const syncInFlightRef = useRef<boolean>(false)
 
   // Local-first bootstrap: load whatever's already cached from a previous
   // session immediately (works offline from a cold reload), then refresh
@@ -255,6 +261,12 @@ export default function KioskPage() {
 
   const syncNow = useCallback(async () => {
     if (typeof navigator !== "undefined" && !navigator.onLine) return
+    // The click handler, the `online` listener, and the 20s interval poll
+    // can all fire close together -- without this guard, two overlapping
+    // drains would both read the same "pending" rows and could double-POST
+    // a scan before either pass marks it synced/conflict.
+    if (syncInFlightRef.current) return
+    syncInFlightRef.current = true
     try {
       const { remaining } = await drainScanQueue(
         listId,
@@ -271,6 +283,8 @@ export default function KioskPage() {
       // unhandled rejection each time (handleCheckin's `void syncNow()`,
       // the `online` listener, and the setInterval poll all call this).
       Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId, listId } })
+    } finally {
+      syncInFlightRef.current = false
     }
   }, [eventId, listId])
 
@@ -308,10 +322,7 @@ export default function KioskPage() {
         return
       }
 
-      const scanId =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const scanId = newId()
 
       await enqueueScan({
         scan_id: scanId,

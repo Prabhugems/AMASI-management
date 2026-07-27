@@ -72,11 +72,21 @@ function getDb(): Promise<IDBPDatabase> {
   return dbPromise
 }
 
-function newId(): string {
+// Shared UUID generator for both `station_id` (below) and the kiosk page's
+// `scan_id` -- a single implementation, not two duplicated ones, exported so
+// src/app/kiosk/[eventId]/[listId]/page.tsx can use the exact same fallback.
+export function newId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID()
   }
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  // Fallback for browsers without crypto.randomUUID -- must still be
+  // UUID-shaped: scan_id is validated server-side (Stage 2) and a
+  // malformed fallback here would 400 every scan on this device.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === "x" ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
 }
 
 // --- Device identity ---------------------------------------------------
