@@ -136,6 +136,45 @@ describe("GET /api/kiosk/delegates", () => {
     ).toBe(true)
   })
 
+  it("paginates past Supabase's 1,000-row cap, accumulating all pages", async () => {
+    mock.queueResponse("checkin_lists", { data: baseList(), error: null })
+    const fullPage = Array.from({ length: 1000 }, (_, i) => ({
+      id: `reg-${i}`,
+      registration_number: `REG-${i}`,
+      attendee_name: `Delegate ${i}`,
+      attendee_email: `delegate${i}@example.com`,
+      attendee_phone: "9999999999",
+      attendee_designation: "Consultant",
+      attendee_institution: "AMASI",
+    }))
+    mock.queueResponse("registrations", { data: fullPage, error: null })
+    mock.queueResponse("registrations", {
+      data: [
+        {
+          id: "reg-1000",
+          registration_number: "REG-1000",
+          attendee_name: "Last Delegate",
+          attendee_email: "last@example.com",
+          attendee_phone: "9999999999",
+          attendee_designation: "Consultant",
+          attendee_institution: "AMASI",
+        },
+      ],
+      error: null,
+    })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, token: TOKEN })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.delegates).toHaveLength(1001)
+
+    const rangeCalls = mock.calls.filter((c) => c.table === "registrations" && c.method === "range")
+    expect(rangeCalls).toHaveLength(2)
+    expect(rangeCalls[0].args).toEqual([0, 999])
+    expect(rangeCalls[1].args).toEqual([1000, 1999])
+  })
+
   it("500s if the registrations query errors", async () => {
     mock.queueResponse("checkin_lists", { data: baseList(), error: null })
     mock.queueResponse("registrations", { data: null, error: { message: "boom" } })
