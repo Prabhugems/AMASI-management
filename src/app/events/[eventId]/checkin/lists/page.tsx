@@ -42,6 +42,7 @@ type CheckinList = {
   starts_at?: string
   ends_at?: string
   created_at: string
+  access_token?: string
 }
 
 type TicketType = {
@@ -416,7 +417,10 @@ export default function CheckinListsPage() {
                       </Link>
                     </Button>
                     <Button asChild variant="outline" size="sm">
-                      <Link href={`/kiosk/${eventId}/${selectedListId}`} target="_blank">
+                      <Link
+                        href={`/kiosk/${eventId}/${selectedListId}${selectedList?.access_token ? `?token=${selectedList.access_token}` : ""}`}
+                        target="_blank"
+                      >
                         <Monitor className="h-4 w-4 mr-2" />
                         Kiosk
                       </Link>
