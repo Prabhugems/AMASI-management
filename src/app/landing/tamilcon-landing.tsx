@@ -133,6 +133,124 @@ export function TamilconLandingPage({ tickets }: { tickets: { id: string; name: 
           </div>
         </div>
       </section>
+
+      {/* ── PROGRAMME ── */}
+      <section className="max-w-5xl mx-auto px-6 py-16 sm:py-24">
+        <Reveal>
+          <p className="text-xs uppercase tracking-[0.3em] text-[#3B0764]/70 mb-4 text-center">Programme at a Glance</p>
+        </Reveal>
+        <div className="grid sm:grid-cols-2 gap-6 mt-8">
+          <Reveal delay={100}>
+            <div className="border border-black/5 rounded-2xl p-6 h-full">
+              <p className="font-bold mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>3 October &middot; 6&ndash;8pm</p>
+              <p className="text-[#57534E]">Cultural programme</p>
+              <p className="text-[#57534E] mt-2">8pm onwards: Fellowship and dinner</p>
+            </div>
+          </Reveal>
+          <Reveal delay={200}>
+            <div className="border border-black/5 rounded-2xl p-6 h-full">
+              <p className="font-bold mb-1" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>4 October &middot; 8am&ndash;6pm</p>
+              <p className="text-[#57534E]">PG free paper sessions, keynote lectures, debates, workshop</p>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── FEES ── */}
+      <section className="bg-[#3B0764]/[0.04] py-16 sm:py-24">
+        <div className="max-w-3xl mx-auto px-6">
+          <Reveal>
+            <p className="text-xs uppercase tracking-[0.3em] text-[#3B0764]/70 mb-4 text-center">Registration & Fees</p>
+          </Reveal>
+          <Reveal delay={100}>
+            {tickets.length > 0 ? (
+              <div className="bg-white rounded-2xl border border-black/5 overflow-hidden mt-8">
+                {tickets.map((ticket, i) => (
+                  <div
+                    key={ticket.id}
+                    className={`flex items-center justify-between px-6 py-4 ${i > 0 ? "border-t border-black/5" : ""}`}
+                  >
+                    <span className="text-[#1C1917]">{ticket.name}</span>
+                    <span className="font-bold text-[#3B0764]">&#8377;{Number(ticket.price).toLocaleString("en-IN")}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-[#57534E] mt-8">
+                Registration opens soon &mdash; contact us at{" "}
+                <a href="mailto:cbetamilcon2026@gmail.com" className="text-[#3B0764] underline">cbetamilcon2026@gmail.com</a>.
+              </p>
+            )}
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── COMMITTEE ── */}
+      <section className="max-w-5xl mx-auto px-6 py-16 sm:py-24">
+        <Reveal>
+          <p className="text-xs uppercase tracking-[0.3em] text-[#3B0764]/70 mb-8 text-center">Organizing Committee</p>
+        </Reveal>
+        <div className="grid sm:grid-cols-2 gap-x-12 gap-y-4 max-w-2xl mx-auto">
+          {[
+            ["Organizing Chairman", "Dr. B.R.J. Satish Kumar"],
+            ["Organizing Secretary", "Dr. M. Karthik Selvaraj"],
+            ["COS President", "Dr. R. Jayakumar"],
+            ["COS Secretary", "Dr. A.S. Thennavan"],
+            ["COS Treasurer", "Dr. Arun Raja"],
+            ["TNOA President", "Dr. S.R. Sundararajan"],
+            ["TNOA President Elect", "Dr. C. Rex"],
+            ["TNOA Secretary", "Dr. S. Marimuthu"],
+          ].map(([role, name]) => (
+            <Reveal key={role}>
+              <div className="flex justify-between border-b border-black/5 pb-2">
+                <span className="text-[#57534E] text-sm">{role}</span>
+                <span className="font-semibold text-[#1C1917] text-sm">{name}</span>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ── VENUE ── */}
+      <section className="bg-[#3B0764]/[0.04] py-16 sm:py-24">
+        <div className="max-w-3xl mx-auto px-6 text-center">
+          <Reveal>
+            <p className="text-xs uppercase tracking-[0.3em] text-[#3B0764]/70 mb-4">Venue</p>
+          </Reveal>
+          <Reveal delay={100}>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+              Hotel Merlis, Coimbatore
+            </h2>
+          </Reveal>
+          <Reveal delay={200}>
+            <p className="text-[#44403C] leading-relaxed max-w-xl mx-auto">
+              Coimbatore &mdash; the Manchester of South India and a hub of medical excellence. Known for its
+              textile industry, pleasant climate, and world-class healthcare facilities, with scenic spots like
+              Ooty a short drive away and excellent connectivity by air, rail, and road.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer className="border-t border-black/5">
+        <div className="max-w-5xl mx-auto px-6 py-10">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm justify-center">
+            <a href="/register/tamilcon-2026" className="text-[#57534E] hover:text-[#3B0764] transition-colors">Registration & Fees</a>
+            <a href="/terms" className="text-[#57534E] hover:text-[#3B0764] transition-colors">Terms & Conditions</a>
+            <a href="/privacy" className="text-[#57534E] hover:text-[#3B0764] transition-colors">Privacy Policy</a>
+            <a href="/refund-policy" className="text-[#57534E] hover:text-[#3B0764] transition-colors">Cancellation & Refund</a>
+            <a href="/shipping-policy" className="text-[#57534E] hover:text-[#3B0764] transition-colors">Shipping Policy</a>
+            <a href="/contact" className="text-[#57534E] hover:text-[#3B0764] transition-colors">Contact Us</a>
+          </div>
+          <p className="text-center text-xs text-[#A8A29E] mt-6">
+            cbetamilcon2026@gmail.com &middot; 94426 33111, 97902 10633
+          </p>
+          <p className="text-center text-xs mt-3">
+            <a href="/login" className="text-[#A8A29E] hover:text-[#3B0764] transition-colors">Admin Login</a>
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }
