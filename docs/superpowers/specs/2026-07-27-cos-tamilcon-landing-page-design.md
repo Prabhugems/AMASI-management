@@ -93,14 +93,26 @@ TechnoSurg's existing metadata object unchanged for every tenant except
 
 ### Data flow
 
-Two reads at request time, using the server Supabase client (public read,
-RLS-safe — no admin client needed since event/ticket info is public):
+**Correction from initial draft:** `ticket_types` RLS only grants `ALL` to
+the `authenticated` role (`select policyname, cmd, roles from pg_policies
+where tablename='ticket_types'` on the `cos-2026` project confirms this) —
+an anonymous visitor gets zero rows through the plain RLS-respecting server
+client, silently defeating the fee table. The existing public ticket read
+path (`src/app/api/events/[eventId]/tickets/route.ts`, used by the public
+`/register/[eventSlug]` flow) already solves this the same way every other
+public-read endpoint in this codebase does: `createAdminClient()`
+(service role, bypasses RLS) — see CLAUDE.md's "RLS bypass required"
+gotcha. The landing page follows that same established pattern rather than
+the plain client:
 
 1. Resolve the `cos` tenant's event via the existing `selectEventsForTenant`
-   helper (`src/lib/tenant.ts`) — this tenant has exactly one event, so
-   `.limit(1).single()` is sufficient, no slug or ID hardcoded in the page.
-2. `select id, name, price, currency, status from ticket_types where
-   event_id = <event.id from step 1> and status = 'active' order by price`.
+   helper (`src/lib/tenant.ts`), using an admin client — this tenant has
+   exactly one event, so `.limit(1).single()` is sufficient, no slug or ID
+   hardcoded in the page.
+2. `select id, name, price from ticket_types where event_id = <event.id
+   from step 1> and status = 'active' order by price` — same shape as the
+   existing `/api/events/[eventId]/tickets` route, via the same
+   `createAdminClient()`.
 
 Rendered into a simple table (tier name, price). If either query returns no
 rows, the section falls back to a static "Registration opens soon — contact
