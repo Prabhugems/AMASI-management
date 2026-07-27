@@ -65,18 +65,28 @@ export async function POST(request: NextRequest) {
 
     // --- scan_id replay check, first, before anything else -------------
     // A row found here was, by construction, inserted BY this exact scan_id
-    // (the "already checked in via a different scan" path below never
-    // attaches a scan_id to the pre-existing row it reports on) -- so a hit
-    // here always represents an original FRESH insert, and alreadyCheckedIn
-    // is always false. The registration_id in this request is not consulted
-    // at all on this path -- the original recorded registration always wins.
+    // -- scan_id is only ever attached to a row at insert time (see
+    // completeCheckin below), never backfilled onto a pre-existing
+    // "already checked in" row -- so a hit here always represents an
+    // original FRESH insert, and alreadyCheckedIn is always false. The
+    // registration_id in this request is not consulted at all on this path
+    // -- the original recorded registration always wins.
     const { data: existingByScan } = await (supabase as any)
       .from("checkin_records")
-      .select("id, registration_id, checked_in_at")
+      .select("id, registration_id, checkin_list_id, checked_in_at")
       .eq("scan_id", scanId)
       .maybeSingle()
 
     if (existingByScan) {
+      // Defense-in-depth: scan_id is an unguessable UUID, so in practice a
+      // row can only ever be found here if it was created for this same
+      // checkin_list_id. But this is a public, unauthenticated endpoint --
+      // never treat a row belonging to a DIFFERENT list as a replay for the
+      // list this request specifies.
+      if (existingByScan.checkin_list_id !== checkinListId) {
+        return NextResponse.json({ success: false, message: "Check-in list not found." }, { status: 404 })
+      }
+
       const { data: originalRegistration } = await (supabase as any)
         .from("registrations")
         .select(`
@@ -260,7 +270,8 @@ export async function POST(request: NextRequest) {
 // and the TEMPORARY registration_id-absent fallback above: existing-active-
 // record check, insert (with scan_id), 23505 race handling, registrations
 // flag update, and the success response. Kept as one function so this logic
-// isn't duplicated between the two callers.
+// -- especially the scan_id-race disambiguation below -- isn't duplicated
+// between the two callers.
 async function completeCheckin(
   supabase: any,
   registrationForResponse: any,
@@ -305,15 +316,29 @@ async function completeCheckin(
     })
 
   if (insertError) {
-    // 23505 = unique_violation on (checkin_list_id, registration_id): a
-    // concurrent self-checkin from the same kiosk won the race. That's a
-    // successful idempotent check-in, not a failure -- same pattern as
-    // /api/verify/[token] and /api/checkin. This request's OWN scan_id is
-    // never attached to the winning row (a different request's insert
-    // created it) -- accepted, rare gap: that scan can never afterwards
-    // be distinguished from a genuine cross-station duplicate by scan_id
-    // alone. The check-in itself is correct either way.
     if (insertError.code === "23505") {
+      // Two different constraints can produce a 23505 here: (checkin_list_id,
+      // registration_id) -- a genuine prior check-in (via another path) raced
+      // us -- or checkin_records_scan_id_key -- our OWN concurrent retry
+      // (syncNow previously had no in-flight guard) raced itself and the
+      // other copy of this exact request won. Distinguish by re-checking
+      // scan_id: a row now existing for THIS scan_id means our own twin
+      // succeeded, not a pre-existing check-in.
+      const { data: wonByTwin } = await (supabase as any)
+        .from("checkin_records")
+        .select("id")
+        .eq("scan_id", scanId)
+        .maybeSingle()
+
+      if (wonByTwin) {
+        return NextResponse.json({
+          success: true,
+          message: "Check-in successful!",
+          registration: registrationForResponse,
+          alreadyCheckedIn: false,
+        })
+      }
+
       return NextResponse.json({
         success: true,
         message: "You're already checked in!",
