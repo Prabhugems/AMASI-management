@@ -24,6 +24,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: `${COMPANY_CONFIG.name} Command Center`,
   description: `Event Management Platform for ${COMPANY_CONFIG.fullName}`,
+  // Via the Metadata API (not a raw <link> tag) so a route can override it --
+  // a nested route's own `manifest` field replaces this one for that page,
+  // rather than emitting a second, conflicting <link rel="manifest">. Kiosk
+  // station pages use this to scope their own installed-PWA start_url to
+  // their own URL instead of this site-wide manifest's "/".
+  manifest: "/manifest.json",
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && {
     verification: {
       google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
@@ -46,7 +52,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${inter.variable}`}>
       <head>
         <ThemeScript />
-        <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content={COMPANY_CONFIG.name} />
