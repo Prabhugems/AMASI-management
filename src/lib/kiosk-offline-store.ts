@@ -58,6 +58,17 @@ export interface CachedPrintTemplate {
   // pre-fetched and inlined as a data: URL in this map (imageUrl -> data URL)
   // before caching, so rendering at print time has zero network dependency.
   imageDataUrls: Record<string, string>
+  // print_stations.print_mode ("label" | "overlay" | "full_badge") --
+  // cached alongside the template so printBadge's generatePrintContent call
+  // can render overlay mode correctly (transparent background, design
+  // elements stripped) without a live lookup at print time. Optional since
+  // some callers may not have this available yet.
+  printMode?: string
+  // events.name at cache time -- the live event query has no offline
+  // persistence, so printing while offline needs this cached copy for
+  // {{event_name}} placeholders rather than relying on a query that will be
+  // undefined offline.
+  eventName?: string
   cachedAt: number
 }
 
