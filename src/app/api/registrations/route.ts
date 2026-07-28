@@ -441,6 +441,7 @@ export async function POST(request: NextRequest) {
         confirmed_at: initialStatus === "confirmed" ? new Date().toISOString() : null,
         participation_mode,
         custom_fields,
+        checkin_token: crypto.randomUUID(),
       })
       .select()
       .single()

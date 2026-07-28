@@ -600,6 +600,7 @@ async function createOrphanPaymentRecord(supabase: any, razorpayPayment: any) {
           status: "confirmed",
           payment_status: "completed",
           payment_id: (payment as any).id,
+          checkin_token: crypto.randomUUID(),
         } as any).select("id").single()
 
         // Increment ticket sold (atomic + idempotent)
