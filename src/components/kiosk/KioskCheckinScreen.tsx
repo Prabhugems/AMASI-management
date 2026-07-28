@@ -31,6 +31,9 @@ import {
   enqueueScan,
   newId,
   cachePrintTemplate,
+  getPrintTemplate,
+  recordPrintOutcome,
+  getLastPrintForRegistration,
 } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { isNetworkFailure } from "@/lib/offline-scan-queue"
@@ -108,6 +111,11 @@ export function KioskCheckinScreen({
   const [cacheError, setCacheError] = useState<string | null>(null)
   const [listBlockedReason, setListBlockedReason] = useState<string | null>(null)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
+  const [usbSupported, setUsbSupported] = useState(false)
+  const [printerConnected, setPrinterConnected] = useState(false)
+  const [printerName, setPrinterName] = useState<string | null>(null)
+  const [printing, setPrinting] = useState(false)
+  const [printStatus, setPrintStatus] = useState<{ success: boolean; message: string } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   // Scanner-burst auto-submit + double-submit guard (see handleRegChange).
   const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -290,6 +298,30 @@ export function KioskCheckinScreen({
     }
   }, [mode, printStationId, badgeTemplate, printSettings, eventId, listId])
 
+  // Stage 4: feature-detect WebUSB and silently try to reconnect to a
+  // previously-paired printer (browser remembers the grant; no picker shown).
+  // Gated on mode so this never touches navigator.usb for any existing
+  // mode: "checkin" caller.
+  useEffect(() => {
+    if (mode !== "checkin_and_print") return
+    let cancelled = false
+    ;(async () => {
+      const { isWebUSBSupported, reconnectUsbPrinter, getUsbPrinterName } = await import("@/lib/usb-printer")
+      if (!isWebUSBSupported()) return
+      if (cancelled) return
+      setUsbSupported(true)
+      const result = await reconnectUsbPrinter()
+      if (cancelled) return
+      if (result.success) {
+        setPrinterConnected(true)
+        setPrinterName(result.name || getUsbPrinterName())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [mode])
+
   // Fetch event and list details
   const { data: event } = useQuery({
     queryKey: ["event-kiosk", eventId],
@@ -314,6 +346,127 @@ export function KioskCheckinScreen({
       return data
     },
   })
+
+  // Stage 4: local-first badge print. Renders the already-cached template
+  // (Task 6) to a canvas and sends it over an already-paired WebUSB
+  // connection -- no network call anywhere in this function. Only ever
+  // invoked from mode === "checkin_and_print" code paths (auto-print effect
+  // below, handlePrintButtonClick).
+  const printBadge = useCallback(async (registration: NonNullable<CheckinResult["registration"]>) => {
+    setPrinting(true)
+    setPrintStatus(null)
+    try {
+      const template = await getPrintTemplate(listId)
+      if (!template) {
+        setPrintStatus({ success: false, message: "Badge template not ready yet. Try again in a moment." })
+        return
+      }
+
+      const badgeTemplate = template.badgeTemplate
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const elements = badgeTemplate?.template_data?.elements || []
+      // Substitute cached data URLs for remote imageUrls, and pre-generate
+      // QR codes -- both must happen before rendering, since neither can
+      // hit the network at this point (matches the existing /print/[token]
+      // pattern for QR pre-generation).
+      const resolvedElements = await Promise.all(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        elements.map(async (el: any) => {
+          if ((el.type === "image" || el.type === "photo") && el.imageUrl && template.imageDataUrls[el.imageUrl]) {
+            return { ...el, imageUrl: template.imageDataUrls[el.imageUrl] }
+          }
+          if (el.type === "qr_code") {
+            const { replacePlaceholders } = await import("@/lib/badge-render")
+            const qrValue = replacePlaceholders(el.content || "", registration, event?.name || "")
+            if (qrValue) {
+              try {
+                const QRCode = (await import("qrcode")).default
+                const dataUrl = await QRCode.toDataURL(qrValue, {
+                  width: Math.min(el.width, el.height) * 2,
+                  margin: 1,
+                  errorCorrectionLevel: "M",
+                })
+                return { ...el, _qrDataUrl: dataUrl }
+              } catch {
+                return el
+              }
+            }
+          }
+          return el
+        })
+      )
+
+      const { generatePrintContent, getPaperDimensions } = await import("@/lib/badge-render")
+      const printContent = generatePrintContent({
+        registration,
+        printSettings: template.printSettings,
+        printMode: "full",
+        badgeTemplate: { ...badgeTemplate, template_data: { ...badgeTemplate.template_data, elements: resolvedElements } },
+        eventName: event?.name || "",
+      })
+
+      const dim = getPaperDimensions(template.printSettings?.paper_size || "4x6", template.printSettings?.orientation || "portrait")
+      const container = document.createElement("div")
+      container.id = `print-render-kiosk-${Date.now()}`
+      container.style.position = "absolute"
+      container.style.left = "-9999px"
+      container.style.top = "0"
+      container.style.width = dim.width
+      container.style.height = dim.height
+      const bodyMatch = printContent.match(/<body[^>]*>([\s\S]*)<\/body>/)
+      container.innerHTML = bodyMatch ? bodyMatch[1] : printContent
+      document.body.appendChild(container)
+      await new Promise((resolve) => setTimeout(resolve, 400))
+
+      const html2canvas = (await import("html2canvas")).default
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false })
+      document.body.removeChild(container)
+
+      const { printBadgeViaUsb } = await import("@/lib/usb-printer")
+      const result = await printBadgeViaUsb(canvas, template.printSettings?.paper_size || "4x6")
+
+      await recordPrintOutcome(
+        { print_id: newId(), list_id: listId, registration_id: registration.id, printed_at: Date.now() },
+        result.success ? "success" : "failed"
+      )
+
+      setPrintStatus(
+        result.success
+          ? { success: true, message: "Badge printed!" }
+          : { success: false, message: result.error || "Print failed" }
+      )
+    } catch (err) {
+      Sentry.captureException(err, { tags: { module: "kiosk-print" }, extra: { eventId, listId } })
+      setPrintStatus({ success: false, message: "Something went wrong printing this badge." })
+    } finally {
+      setPrinting(false)
+    }
+  }, [listId, eventId, event?.name])
+
+  // Auto-print fires exactly once per successful check-in result when this
+  // station is configured for it. Deliberately keyed only on `result` --
+  // must not re-fire if printBadge's own identity changes (e.g. event name
+  // resolving after the query settles) for the same result.
+  useEffect(() => {
+    if (mode !== "checkin_and_print" || !autoPrintBadge || !result?.success || !result.registration) return
+    void printBadge(result.registration)
+    // Intentionally does not depend on printBadge's identity changing --
+    // this must fire exactly once per successful check-in result, not
+    // re-fire if printBadge's useCallback deps happen to change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result])
+
+  // Manual "Print Badge" button handler -- warns before a reprint (local
+  // IndexedDB lookup only, no network).
+  const handlePrintButtonClick = async () => {
+    if (!result?.registration) return
+    const last = await getLastPrintForRegistration(listId, result.registration.id)
+    if (last && last.status === "success") {
+      const when = new Date(last.printed_at).toLocaleTimeString()
+      if (!confirm(`Already printed at ${when} — print again?`)) return
+    }
+    void printBadge(result.registration)
+  }
 
   const resetKiosk = useCallback(() => {
     setResult(null)
@@ -732,6 +885,37 @@ export function KioskCheckinScreen({
                       Sent on WhatsApp
                     </Button>
                   )}
+                  {mode === "checkin_and_print" && usbSupported && (
+                    !printerConnected ? (
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                        onClick={async () => {
+                          const { connectUsbPrinter } = await import("@/lib/usb-printer")
+                          const res = await connectUsbPrinter()
+                          if (res.success) {
+                            setPrinterConnected(true)
+                            setPrinterName(res.name || null)
+                          } else {
+                            setPrintStatus({ success: false, message: res.error || "Connection failed" })
+                          }
+                        }}
+                      >
+                        Connect Printer
+                      </Button>
+                    ) : (
+                      <Button
+                        size="lg"
+                        className="h-14 sm:h-16 px-6 sm:px-8 text-base"
+                        onClick={handlePrintButtonClick}
+                        disabled={printing}
+                      >
+                        {printing ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : null}
+                        Print Badge
+                      </Button>
+                    )
+                  )}
                 </div>
               </>
             ) : (
@@ -769,6 +953,11 @@ export function KioskCheckinScreen({
           <p className="text-xs sm:text-sm text-gray-400">
             Touch anywhere or wait {countdown} seconds to check in another person
           </p>
+          {printStatus && (
+            <p className={printStatus.success ? "text-xs text-emerald-400 mt-1" : "text-xs text-red-400 mt-1"}>
+              {printStatus.message}
+            </p>
+          )}
         </div>
       </div>
     )
