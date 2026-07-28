@@ -44,6 +44,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
+import { replacePlaceholders, renderElementToHtml, generatePrintContent, getPaperDimensions } from "@/lib/badge-render"
 
 interface PrintStation {
   id: string
@@ -950,7 +951,7 @@ function PrintStationKioskPage() {
       const elements = badgeTemplate.template_data.elements
       for (const el of elements) {
         if (el.type === "qr_code") {
-          const qrValue = replacePlaceholders(el.content || "", data.registration)
+          const qrValue = replacePlaceholders(el.content || "", data.registration, station?.events?.name || "")
           if (qrValue) {
             try {
               el._qrDataUrl = await QRCode.toDataURL(qrValue, {
@@ -967,7 +968,13 @@ function PrintStationKioskPage() {
     }
 
     // Create printable content based on print mode and template
-    const printContent = generatePrintContent(data)
+    const printContent = generatePrintContent({
+      registration: data.registration,
+      printSettings: (data.station || station)?.print_settings,
+      printMode: (data.station || station)?.print_mode,
+      badgeTemplate: data.badge_template || station?.badge_templates,
+      eventName: station?.events?.name || data?.station?.events?.name || "",
+    })
 
     // If local print proxy is running, prefer it for any USB/thermal/browser
     // station type. The proxy prints via CUPS lp, which works on macOS where
@@ -1077,7 +1084,7 @@ function PrintStationKioskPage() {
       if (badgeTemplate?.template_data?.elements) {
         for (const el of badgeTemplate.template_data.elements) {
           if (el.type === "qr_code") {
-            const qrValue = replacePlaceholders(el.content || "", data.registration)
+            const qrValue = replacePlaceholders(el.content || "", data.registration, station?.events?.name || "")
             if (qrValue) {
               try {
                 el._qrDataUrl = await QRCode.toDataURL(qrValue, {
@@ -1092,7 +1099,13 @@ function PrintStationKioskPage() {
       }
 
       // Generate the badge HTML
-      const printContent = generatePrintContent(data)
+      const printContent = generatePrintContent({
+        registration: data.registration,
+        printSettings: (data.station || station)?.print_settings,
+        printMode: (data.station || station)?.print_mode,
+        badgeTemplate: data.badge_template || station?.badge_templates,
+        eventName: station?.events?.name || data?.station?.events?.name || "",
+      })
       const settings = station?.print_settings
       const dim = getPaperDimensions(settings?.paper_size || "4x6", settings?.orientation || "portrait")
 
@@ -1176,7 +1189,13 @@ function PrintStationKioskPage() {
     // station config then works on an Android tablet via WebUSB too.
     if (proxyOnline) {
       try {
-        const printContent = generatePrintContent(data)
+        const printContent = generatePrintContent({
+          registration: data.registration,
+          printSettings: (data.station || station)?.print_settings,
+          printMode: (data.station || station)?.print_mode,
+          badgeTemplate: data.badge_template || station?.badge_templates,
+          eventName: station?.events?.name || data?.station?.events?.name || "",
+        })
         await printViaProxy(printContent)
         setUsbStatus({ success: true, message: "Printed via proxy!" })
         if (soundEnabled) playSuccessSound()
@@ -1206,7 +1225,7 @@ function PrintStationKioskPage() {
       if (badgeTemplate?.template_data?.elements) {
         for (const el of badgeTemplate.template_data.elements) {
           if (el.type === "qr_code") {
-            const qrValue = replacePlaceholders(el.content || "", data.registration)
+            const qrValue = replacePlaceholders(el.content || "", data.registration, station?.events?.name || "")
             if (qrValue) {
               try {
                 el._qrDataUrl = await QRCode.toDataURL(qrValue, {
@@ -1221,7 +1240,13 @@ function PrintStationKioskPage() {
       }
 
       // Generate the badge HTML
-      const printContent = generatePrintContent(data)
+      const printContent = generatePrintContent({
+        registration: data.registration,
+        printSettings: (data.station || station)?.print_settings,
+        printMode: (data.station || station)?.print_mode,
+        badgeTemplate: data.badge_template || station?.badge_templates,
+        eventName: station?.events?.name || data?.station?.events?.name || "",
+      })
       const settings = station?.print_settings
       const dim = getPaperDimensions(settings?.paper_size || "4x6", settings?.orientation || "portrait")
 
@@ -1289,324 +1314,6 @@ function PrintStationKioskPage() {
   const hasZplPrinter = !!station?.print_settings?.printer_ip && station?.print_settings?.printer_type !== "thermal" && station?.print_settings?.printer_type !== "usb"
   const hasThermalPrinter = station?.print_settings?.printer_type === "thermal" && !!station?.print_settings?.printer_ip
   const hasUsbPrinter = station?.print_settings?.printer_type === "usb"
-
-  // Replace placeholders in text with registration data
-  const replacePlaceholders = (text: string, reg: any) => {
-    if (!text) return ""
-    let result = text
-    result = result.replace(/\{\{name\}\}/g, reg?.attendee_name || "")
-    result = result.replace(/\{\{registration_number\}\}/g, reg?.registration_number || "")
-    result = result.replace(/\{\{ticket_type\}\}/g, reg?.ticket_type || reg?.ticket_types?.name || "")
-    result = result.replace(/\{\{email\}\}/g, reg?.attendee_email || "")
-    result = result.replace(/\{\{phone\}\}/g, reg?.attendee_phone || "")
-    result = result.replace(/\{\{institution\}\}/g, reg?.attendee_institution || "")
-    result = result.replace(/\{\{designation\}\}/g, reg?.attendee_designation || "")
-    result = result.replace(/\{\{event_name\}\}/g, station?.events?.name || "")
-    result = result.replace(/\{\{event_date\}\}/g, "")
-    return result
-  }
-
-  // Render a single badge element to HTML
-  const renderElementToHtml = (element: any, registration: any): string => {
-    const content = replacePlaceholders(element.content || "", registration)
-    const rotation = element.rotation || 0
-    const opacity = (element.opacity ?? 100) / 100
-
-    const baseStyle = `
-      position: absolute;
-      left: ${element.x}px;
-      top: ${element.y}px;
-      width: ${element.width}px;
-      height: ${element.height}px;
-      z-index: ${element.zIndex || 0};
-      opacity: ${opacity};
-      ${rotation ? `transform: rotate(${rotation}deg); transform-origin: center center;` : ""}
-    `
-
-    if (element.type === "shape") {
-      const gradientBg = element.gradient?.enabled && element.gradient.colors.length >= 2
-        ? element.gradient.type === "radial"
-          ? `radial-gradient(circle, ${element.gradient.colors.join(", ")})`
-          : `linear-gradient(${element.gradient.angle || 0}deg, ${element.gradient.colors.join(", ")})`
-        : null
-
-      const bgStyle = gradientBg ? `background-image: ${gradientBg};` : `background-color: ${element.backgroundColor || "#e5e7eb"};`
-      const borderStyle = element.borderWidth ? `border: ${element.borderWidth}px solid ${element.borderColor || "transparent"};` : ""
-      const radiusStyle = element.shapeType === "circle" ? "border-radius: 50%;" : `border-radius: ${element.borderRadius || 0}px;`
-
-      if (element.shapeType === "triangle") {
-        return `<div style="${baseStyle}">
-          <svg viewBox="0 0 100 100" width="100%" height="100%" preserveAspectRatio="none">
-            <polygon points="50,0 100,100 0,100" fill="${element.backgroundColor || "#e5e7eb"}" />
-          </svg>
-        </div>`
-      }
-
-      return `<div style="${baseStyle} ${bgStyle} ${borderStyle} ${radiusStyle}"></div>`
-    }
-
-    if (element.type === "image") {
-      if (element.imageUrl) {
-        return `<div style="${baseStyle}">
-          <img src="${element.imageUrl}" style="width: 100%; height: 100%; object-fit: contain;" />
-        </div>`
-      }
-      return ""
-    }
-
-    if (element.type === "photo") {
-      if (element.imageUrl) {
-        return `<div style="${baseStyle}">
-          <img src="${element.imageUrl}" style="width: 100%; height: 100%; object-fit: cover; border-radius: ${element.borderRadius || 0}px; border: ${element.borderWidth || 0}px solid ${element.borderColor || "transparent"};" />
-        </div>`
-      }
-      return ""
-    }
-
-    if (element.type === "line") {
-      return `<div style="${baseStyle} display: flex; align-items: center;">
-        <div style="width: 100%; height: ${Math.max(1, element.height)}px; background-color: ${element.color || "#000000"};"></div>
-      </div>`
-    }
-
-    if (element.type === "qr_code") {
-      const qrValue = replacePlaceholders(element.content || "", registration)
-      const qrSize = Math.min(element.width, element.height)
-      // Use pre-generated data URL if available, fallback to external API
-      // _qrDataUrl is generated locally in triggerPrint() before this runs.
-      // No external fallback — never ship the verify URL / token to a third-party
-      // QR service. If generation somehow failed, show a placeholder (rescan).
-      const qrDataUrl = element._qrDataUrl
-      const inner = qrDataUrl
-        ? `<img src="${qrDataUrl}" style="width: ${qrSize}px; height: ${qrSize}px;" />`
-        : `<div style="width: ${qrSize}px; height: ${qrSize}px; display: flex; align-items: center; justify-content: center; border: 1px dashed #999; font-size: 10px; color: #999; text-align: center;">QR unavailable&mdash;rescan</div>`
-      return `<div style="${baseStyle} display: flex; align-items: center; justify-content: center;">
-        ${inner}
-      </div>`
-    }
-
-    if (element.type === "barcode") {
-      // For barcodes, we'll show a placeholder - actual barcode rendering would need jsbarcode
-      return `<div style="${baseStyle} display: flex; align-items: center; justify-content: center; font-family: monospace; font-size: 12px;">
-        ${content}
-      </div>`
-    }
-
-    // Text element
-    const shadowStyle = element.shadowEnabled
-      ? `text-shadow: ${element.shadowOffsetX || 2}px ${element.shadowOffsetY || 2}px ${element.shadowBlur || 4}px ${element.shadowColor || "rgba(0,0,0,0.3)"};`
-      : ""
-
-    // Shared text styling used by every layout mode below (singleLine, lineClamp, default).
-    const textStyle = `
-      font-size: ${element.fontSize || 14}px;
-      font-family: ${element.fontFamily || "Arial, sans-serif"};
-      font-weight: ${element.fontWeight || "normal"};
-      font-style: ${element.fontStyle || "normal"};
-      color: ${element.color || "#000000"};
-      text-align: ${element.align || "left"};
-      background-color: ${element.backgroundColor || "transparent"};
-      letter-spacing: ${element.letterSpacing ? `${element.letterSpacing}px` : "normal"};
-      ${shadowStyle}
-      border: ${element.borderWidth || 0}px solid ${element.borderColor || "transparent"};
-      border-radius: ${element.borderRadius || 0}px;
-    `
-
-    // singleLine: truncate to one line with an ellipsis instead of wrapping.
-    // Used by narrow labels (e.g. Brother QL 62mm badges) where a long value
-    // must not push other elements off the printable area.
-    if (element.singleLine) {
-      return `<div style="
-        ${baseStyle}
-        display: block;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        line-height: ${element.height}px;
-        ${textStyle}
-      ">${content}</div>`
-    }
-
-    // lineClamp: wrap normally but cut off after N lines with an ellipsis.
-    const lineClampStyle = element.lineClamp
-      ? `display: -webkit-box; -webkit-line-clamp: ${element.lineClamp}; -webkit-box-orient: vertical;`
-      : "display: flex; align-items: center;"
-
-    return `<div style="
-      ${baseStyle}
-      ${lineClampStyle}
-      overflow: hidden;
-      white-space: ${element.lineClamp ? "normal" : "pre-wrap"};
-      justify-content: ${element.align === "center" ? "center" : element.align === "right" ? "flex-end" : "flex-start"};
-      line-height: ${element.lineHeight || 1.3};
-      ${textStyle}
-    ">${content}</div>`
-  }
-
-  const generatePrintContent = (data: any) => {
-    const { registration, station: stationInfo, badge_template } = data
-    const settings = stationInfo.print_settings || {}
-    const dimensions = getPaperDimensions(settings.paper_size, settings.orientation)
-    const isOverlayMode = stationInfo.print_mode === "overlay"
-    // Overlay mode: NO rotation (pre-printed stock orientation is fixed)
-    // Full badge/label: 180° rotation for thermal printers (labels feed bottom-first)
-    const rotation = settings.rotation ?? (isOverlayMode ? 0 : 180)
-
-    // If we have a badge template, render it
-    if (badge_template?.template_data) {
-      const templateData = badge_template.template_data
-      let elements = templateData.elements || []
-      // For overlay mode: transparent background, skip background images (keep only variable data)
-      const bgColor = isOverlayMode ? "transparent" : (templateData.backgroundColor || "#ffffff")
-
-      if (isOverlayMode) {
-        // Overlay mode: Only print variable data on pre-printed stock
-        // Skip images, shapes, lines - all design elements are pre-printed
-        // Keep ONLY: text, QR codes, barcodes (variable content)
-        elements = elements.filter((el: any) => {
-          // Keep only variable content elements
-          if (el.type === "text" || el.type === "qr_code" || el.type === "barcode") {
-            return true
-          }
-          // Skip everything else: image, photo, shape, line
-          return false
-        })
-      }
-
-      // Get Google Fonts used in the template
-      const googleFonts = new Set<string>()
-      elements.forEach((el: any) => {
-        if (el.fontFamily && el.fontFamily.includes("'")) {
-          const fontName = el.fontFamily.match(/'([^']+)'/)?.[1]
-          if (fontName) googleFonts.add(fontName.replace(/ /g, "+"))
-        }
-      })
-      const googleFontsLink = googleFonts.size > 0
-        ? `<link href="https://fonts.googleapis.com/css2?${Array.from(googleFonts).map(f => `family=${f}:wght@400;500;600;700`).join("&")}&display=swap" rel="stylesheet" />`
-        : ""
-
-      // Sort elements by zIndex
-      const sortedElements = [...elements].sort((a: any, b: any) => (a.zIndex || 0) - (b.zIndex || 0))
-      const elementsHtml = sortedElements.map((el: any) => renderElementToHtml(el, registration)).join("\n")
-
-      return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Print Badge - ${registration.attendee_name}</title>
-          ${googleFontsLink}
-          <style>
-            @page {
-              size: ${dimensions.width} ${dimensions.height};
-              margin: 0;
-            }
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            html, body {
-              width: ${dimensions.width};
-              height: ${dimensions.height};
-              overflow: hidden;
-            }
-            .badge-wrapper {
-              width: ${dimensions.width};
-              height: ${dimensions.height};
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
-            .badge-container {
-              position: relative;
-              width: ${dimensions.width};
-              height: ${dimensions.height};
-              background-color: ${bgColor};
-              overflow: hidden;
-              ${rotation ? `transform: rotate(${rotation}deg); transform-origin: center center;` : ""}
-            }
-            @media print {
-              html, body {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color-adjust: exact !important;
-              }
-              * {
-                -webkit-font-smoothing: none !important;
-                text-rendering: geometricPrecision !important;
-              }
-              .badge-wrapper {
-                page-break-after: always;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="badge-wrapper">
-            <div class="badge-container">
-              ${elementsHtml}
-            </div>
-          </div>
-        </body>
-        </html>
-      `
-    }
-
-    // Fallback: Simple default layout if no template
-    const isLabel = stationInfo.print_mode === "label"
-    const ticketTypeName = registration.ticket_type || registration.ticket_types?.name || "Attendee"
-    const eventName = station?.events?.name || stationInfo?.events?.name || "Event"
-
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Print Badge - ${registration.attendee_name}</title>
-        <style>
-          @page { size: ${dimensions.width} ${dimensions.height}; margin: 0; }
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          html, body { width: ${dimensions.width}; height: ${dimensions.height}; font-family: Arial, sans-serif; background: white; overflow: hidden; }
-          .badge-wrapper { width: ${dimensions.width}; height: ${dimensions.height}; display: flex; align-items: center; justify-content: center; }
-          .badge { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: ${isLabel ? "5mm" : "10mm"}; text-align: center; background: white; ${rotation ? `transform: rotate(${rotation}deg); transform-origin: center center;` : ""} }
-          .event-name { font-size: ${isLabel ? "10pt" : "14pt"}; font-weight: bold; color: #333; margin-bottom: ${isLabel ? "3mm" : "8mm"}; text-transform: uppercase; }
-          .attendee-name { font-size: ${isLabel ? "16pt" : "28pt"}; font-weight: bold; color: #000; margin-bottom: ${isLabel ? "2mm" : "5mm"}; }
-          .designation { font-size: ${isLabel ? "11pt" : "16pt"}; color: #444; margin-bottom: 2mm; }
-          .institution { font-size: ${isLabel ? "10pt" : "14pt"}; color: #666; margin-bottom: ${isLabel ? "3mm" : "6mm"}; }
-          .ticket-type { font-size: ${isLabel ? "11pt" : "16pt"}; font-weight: bold; color: white; background: #333; padding: 2mm 6mm; border-radius: 2mm; margin-bottom: 3mm; }
-          .reg-number { font-size: ${isLabel ? "9pt" : "11pt"}; color: #888; font-family: monospace; }
-          @media print { html, body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } .badge-wrapper { page-break-after: always; } }
-        </style>
-      </head>
-      <body>
-        <div class="badge-wrapper">
-          <div class="badge">
-            <div class="event-name">${eventName}</div>
-            <div class="attendee-name">${registration.attendee_name}</div>
-            ${registration.attendee_designation ? `<div class="designation">${registration.attendee_designation}</div>` : ""}
-            ${registration.attendee_institution ? `<div class="institution">${registration.attendee_institution}</div>` : ""}
-            <div class="ticket-type">${ticketTypeName}</div>
-            <div class="reg-number">${registration.registration_number}</div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  }
-
-  const getPaperDimensions = (paperSize: string, orientation: string) => {
-    const sizes: Record<string, { width: string; height: string }> = {
-      "4x2": { width: "4in", height: "2in" },
-      "4x3": { width: "4in", height: "3in" },
-      "4x6": { width: "4in", height: "6in" },
-      "62x86": { width: "62mm", height: "86mm" },
-      "a6": { width: "105mm", height: "148mm" },
-      "a5": { width: "148mm", height: "210mm" }
-    }
-
-    const size = sizes[paperSize] || sizes["4x6"]
-
-    if (orientation === "landscape") {
-      return { width: size.height, height: size.width }
-    }
-
-    return size
-  }
 
   const _renderBadgeTemplate = (templateData: any, registration: Registration) => {
     // Basic template rendering - this would be more sophisticated in production
