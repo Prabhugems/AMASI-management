@@ -59,12 +59,20 @@ export function TamilconLandingPage({ tickets }: { tickets: { id: string; name: 
           <span className="font-bold tracking-tight text-[#3B0764]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
             TAMILCON 2026
           </span>
-          <a
-            href={REGISTER_URL}
-            className="inline-flex items-center h-10 px-5 rounded-full bg-[#3B0764] text-white text-sm font-semibold hover:bg-[#2A0548] transition-colors"
-          >
-            Register
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href="/my"
+              className="inline-flex items-center h-10 px-5 rounded-full border border-[#3B0764]/20 text-[#3B0764] text-sm font-semibold hover:bg-[#3B0764]/5 transition-colors"
+            >
+              Delegate Portal
+            </a>
+            <a
+              href={REGISTER_URL}
+              className="inline-flex items-center h-10 px-5 rounded-full bg-[#3B0764] text-white text-sm font-semibold hover:bg-[#2A0548] transition-colors"
+            >
+              Register
+            </a>
+          </div>
         </div>
       </header>
 
