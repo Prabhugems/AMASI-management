@@ -22,12 +22,15 @@ import { toast } from "sonner"
 import { Plus, Copy, RefreshCw, Ban, Trash2, Monitor } from "lucide-react"
 
 type CheckinList = { id: string; name: string; is_active?: boolean; list_purpose?: string }
+type PrintStation = { id: string; name: string; print_settings?: { printer_type?: string } }
 type KioskStation = {
   id: string
   event_id: string
   name: string
-  mode: "checkin" | "print"
+  mode: "checkin" | "print" | "checkin_and_print"
   list_id: string | null
+  print_station_id: string | null
+  auto_print_badge: boolean
   last_seen_at: string | null
   revoked_at: string | null
   created_at: string
@@ -54,11 +57,15 @@ export default function KioskStationsPage() {
 
   const [stations, setStations] = useState<KioskStation[]>([])
   const [lists, setLists] = useState<CheckinList[]>([])
+  const [printStations, setPrintStations] = useState<PrintStation[]>([])
   const [loading, setLoading] = useState(true)
 
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState("")
   const [newListId, setNewListId] = useState("")
+  const [newMode, setNewMode] = useState<"checkin" | "checkin_and_print">("checkin")
+  const [newPrintStationId, setNewPrintStationId] = useState("")
+  const [newAutoPrint, setNewAutoPrint] = useState(false)
   const [creating, setCreating] = useState(false)
 
   // Hand-off modal: shows a freshly-minted plaintext token exactly once
@@ -72,6 +79,11 @@ export default function KioskStationsPage() {
   // unfiltered so name lookups (e.g. a station's currently-assigned list)
   // keep working even if that list has since gone inactive.
   const activeLists = lists.filter((l) => l.is_active === true && l.list_purpose !== "collection")
+
+  // Only USB-type Print Stations can drive kiosk auto-print (see
+  // /api/kiosk-stations validation) -- network/other printer types aren't
+  // reachable from the kiosk device itself, so they're not offered here.
+  const usbPrintStations = printStations.filter((p) => p?.print_settings?.printer_type === "usb")
 
   const loadStations = async () => {
     const res = await fetch(`/api/kiosk-stations?event_id=${eventId}`)
@@ -87,6 +99,9 @@ export default function KioskStationsPage() {
         fetch(`/api/checkin-lists?event_id=${eventId}`)
           .then((r) => r.json())
           .then((d) => setLists(d.lists || d || [])),
+        fetch(`/api/print-stations?event_id=${eventId}`)
+          .then((r) => r.json())
+          .then((d) => setPrintStations(Array.isArray(d) ? d : [])),
       ])
       setLoading(false)
     }
@@ -96,12 +111,19 @@ export default function KioskStationsPage() {
 
   const handleCreate = async () => {
     if (!newName.trim() || !newListId) return
+    if (newMode === "checkin_and_print" && !newPrintStationId) return
     setCreating(true)
     try {
       const res = await fetch("/api/kiosk-stations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event_id: eventId, name: newName.trim(), list_id: newListId }),
+        body: JSON.stringify({
+          event_id: eventId,
+          name: newName.trim(),
+          list_id: newListId,
+          mode: newMode,
+          ...(newMode === "checkin_and_print" && { print_station_id: newPrintStationId, auto_print_badge: newAutoPrint }),
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -111,6 +133,9 @@ export default function KioskStationsPage() {
       setShowCreate(false)
       setNewName("")
       setNewListId("")
+      setNewMode("checkin")
+      setNewPrintStationId("")
+      setNewAutoPrint(false)
       setHandoff({ name: data.name, token: data.access_token })
       await loadStations()
     } finally {
@@ -142,6 +167,21 @@ export default function KioskStationsPage() {
       return
     }
     toast.success(`${station.name} reassigned to ${lists.find((l) => l.id === listId)?.name || "the new list"}`)
+    await loadStations()
+  }
+
+  const handleReassignPrintStation = async (station: KioskStation, printStationId: string) => {
+    const res = await fetch(`/api/kiosk-stations/${station.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ print_station_id: printStationId }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error || "Failed to change print station")
+      return
+    }
+    toast.success(`${station.name} reassigned to ${printStations.find((p) => p.id === printStationId)?.name || "the new print station"}`)
     await loadStations()
   }
 
@@ -199,12 +239,24 @@ export default function KioskStationsPage() {
           {stations.map((station) => (
             <div key={station.id} className="border rounded-2xl p-4 flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="font-medium">{station.name}</p>
+                <p className="font-medium flex items-center gap-2">
+                  {station.name}
+                  <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full border text-muted-foreground">
+                    {station.mode === "checkin_and_print" ? "Check-in + Print" : "Check-in"}
+                  </span>
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {lists.find((l) => l.id === station.list_id)?.name || "No list assigned"}
                   {" · "}
                   {station.revoked_at ? "Revoked" : relativeLastSeen(station.last_seen_at)}
                 </p>
+                {station.mode === "checkin_and_print" && (
+                  <p className="text-xs text-muted-foreground">
+                    {printStations.find((p) => p.id === station.print_station_id)?.name || "No print station assigned"}
+                    {" · "}
+                    Auto-print {station.auto_print_badge ? "on" : "off"}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Select
@@ -222,6 +274,23 @@ export default function KioskStationsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {station.mode === "checkin_and_print" && (
+                  <Select
+                    value={station.print_station_id ?? undefined}
+                    onValueChange={(value) => handleReassignPrintStation(station, value)}
+                  >
+                    <SelectTrigger className="w-40 h-9 text-xs">
+                      <SelectValue placeholder="Change print station" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {usbPrintStations.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 <Button variant="outline" size="sm" onClick={() => handleRegenerate(station)}>
                   <RefreshCw className="h-4 w-4 mr-1" />
                   New Token
@@ -267,7 +336,56 @@ export default function KioskStationsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleCreate} disabled={creating || !newName.trim() || !newListId} className="w-full">
+            <div>
+              <label className="text-sm font-medium">Mode</label>
+              <div className="flex gap-4 mt-1">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="radio" checked={newMode === "checkin"} onChange={() => setNewMode("checkin")} />
+                  Check-in only
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="radio" checked={newMode === "checkin_and_print"} onChange={() => setNewMode("checkin_and_print")} />
+                  Check-in + Print Badge
+                </label>
+              </div>
+            </div>
+            {newMode === "checkin_and_print" && (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">Print Station</label>
+                  {usbPrintStations.length === 0 ? (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      No USB-type Print Station found for this event. Create one on the Print Station page first.
+                    </p>
+                  ) : (
+                    <Select value={newPrintStationId} onValueChange={setNewPrintStationId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a print station" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {usbPrintStations.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={newAutoPrint} onChange={(e) => setNewAutoPrint(e.target.checked)} />
+                  Auto-print badge on check-in
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Requires an Android device with a directly-connected USB printer. Other devices will show check-in only, even if this station is configured for printing.
+                </p>
+              </div>
+            )}
+            <Button
+              onClick={handleCreate}
+              disabled={creating || !newName.trim() || !newListId || (newMode === "checkin_and_print" && !newPrintStationId)}
+              className="w-full"
+            >
               Create Station
             </Button>
           </div>
