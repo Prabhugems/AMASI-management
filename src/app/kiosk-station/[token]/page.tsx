@@ -1,7 +1,21 @@
+import type { Metadata } from "next"
 import * as Sentry from "@sentry/nextjs"
 import { createAdminClient } from "@/lib/supabase/server"
 import { hashStationToken } from "@/lib/kiosk-station-auth"
 import { KioskCheckinScreen } from "@/components/kiosk/KioskCheckinScreen"
+
+// Overrides the root layout's site-wide manifest (start_url "/", behind auth
+// middleware) with this station's own per-station manifest -- otherwise an
+// installed home-screen icon launches at "/" and an unattended, session-less
+// kiosk device bounces straight to /login.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ token: string }>
+}): Promise<Metadata> {
+  const { token } = await params
+  return { manifest: `/kiosk-station/${token}/manifest` }
+}
 
 // Server component: resolves a kiosk_stations row from its token, entirely
 // server-side, and renders the same KioskCheckinScreen every other kiosk
