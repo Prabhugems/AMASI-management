@@ -12,8 +12,14 @@ export default function RegisterLayout({
 }: {
   children: React.ReactNode
 }) {
-  const isEssurg = getTenant() === "essurg"
-  const policyLink = (path: string) => (isEssurg ? path : "#")
+  const tenant = getTenant()
+  const isEssurg = tenant === "essurg"
+  // Keep in sync with the tenant list PolicyPage's pages gate on
+  // (requireTenantIn(["essurg", "cos"]) in each of terms/privacy/refund-policy/
+  // shipping-policy/contact) — a tenant not in that list 404s on these routes,
+  // so linking to them here would be worse than the "#" fallback.
+  const hasPolicyPages = tenant === "essurg" || tenant === "cos"
+  const policyLink = (path: string) => (hasPolicyPages ? path : "#")
   // Force light mode for public registration pages. The app defaults to
   // dark (src/app/layout.tsx, by design for the admin dashboard), and
   // every register-flow component reads the theme via its own useTheme()

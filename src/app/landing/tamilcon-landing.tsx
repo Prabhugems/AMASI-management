@@ -19,6 +19,30 @@ const WHY_ATTEND = [
   "Explore emerging trends in robotic surgery, biologics, and AI in orthopaedics",
 ]
 
+// Brochure order — matches the printed "Registration Fees for delegates" table.
+const FEE_CATEGORY_ORDER = ["TNOA / Local Society Members", "Non-Members", "Post Graduates"]
+
+// ticket_types rows are seeded as separate "<Category> - Early Bird" / "<Category> - Regular"
+// tickets; this pivots them back into the brochure's two-column-per-category table shape.
+function groupFeeRows(tickets: { id: string; name: string; price: string }[]) {
+  const byCategory = new Map<string, { earlyBird?: string; regular?: string }>()
+  for (const ticket of tickets) {
+    const earlyBirdMatch = ticket.name.match(/^(.*) - Early Bird$/)
+    const regularMatch = ticket.name.match(/^(.*) - Regular$/)
+    if (earlyBirdMatch) {
+      const category = earlyBirdMatch[1]
+      byCategory.set(category, { ...byCategory.get(category), earlyBird: ticket.price })
+    } else if (regularMatch) {
+      const category = regularMatch[1]
+      byCategory.set(category, { ...byCategory.get(category), regular: ticket.price })
+    }
+  }
+  return FEE_CATEGORY_ORDER.filter((category) => byCategory.has(category)).map((category) => ({
+    category,
+    ...byCategory.get(category)!,
+  }))
+}
+
 export function TamilconLandingPage({ tickets }: { tickets: { id: string; name: string; price: string }[] }) {
   return (
     <div className="bg-[#FAFAF7] text-[#1C1917]" style={{ fontFamily: "'DM Sans', system-ui, -apple-system, sans-serif" }}>
@@ -160,27 +184,67 @@ export function TamilconLandingPage({ tickets }: { tickets: { id: string; name: 
       <section className="bg-[#3B0764]/[0.04] py-16 sm:py-24">
         <div className="max-w-3xl mx-auto px-6">
           <Reveal>
-            <p className="text-xs uppercase tracking-[0.3em] text-[#3B0764]/70 mb-4 text-center">Registration & Fees</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[#3B0764]/70 mb-4 text-center">Registration Fees for Delegates</p>
           </Reveal>
           <Reveal delay={100}>
-            {tickets.length > 0 ? (
-              <div className="bg-white rounded-2xl border border-black/5 overflow-hidden mt-8">
-                {tickets.map((ticket, i) => (
-                  <div
-                    key={ticket.id}
-                    className={`flex items-center justify-between px-6 py-4 ${i > 0 ? "border-t border-black/5" : ""}`}
-                  >
-                    <span className="text-[#1C1917]">{ticket.name}</span>
-                    <span className="font-bold text-[#3B0764]">&#8377;{Number(ticket.price).toLocaleString("en-IN")}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-[#57534E] mt-8">
-                Registration opens soon &mdash; contact us at{" "}
-                <a href="mailto:cbetamilcon2026@gmail.com" className="text-[#3B0764] underline">cbetamilcon2026@gmail.com</a>.
-              </p>
-            )}
+            {(() => {
+              const rows = groupFeeRows(tickets)
+              if (rows.length === 0) {
+                return (
+                  <p className="text-center text-[#57534E] mt-8">
+                    Registration opens soon &mdash; contact us at{" "}
+                    <a href="mailto:cbetamilcon2026@gmail.com" className="text-[#3B0764] underline">cbetamilcon2026@gmail.com</a>.
+                  </p>
+                )
+              }
+              return (
+                <div className="mt-8 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(59,7,100,0.15)]">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr>
+                        <th className="bg-gradient-to-b from-[#E8CD8A] to-[#C9A24B] w-2/5" />
+                        <th className="bg-gradient-to-b from-[#E8CD8A] to-[#C9A24B] py-4 px-3 text-center font-bold text-[#3B0764]">
+                          Early Bird
+                          <span className="block text-[11px] font-medium text-[#3B0764]/70 mt-0.5">Upto 31 July 2026</span>
+                        </th>
+                        <th className="bg-gradient-to-b from-[#E8CD8A] to-[#C9A24B] py-4 px-3 text-center font-bold text-[#3B0764]">
+                          Regular
+                          <span className="block text-[11px] font-medium text-[#3B0764]/70 mt-0.5">1 Aug &ndash; 15 Oct 2026</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, i) => (
+                        <tr key={row.category} className={i > 0 ? "border-t border-white/15" : ""}>
+                          <td className="bg-[#3B0764] py-4 pl-6 pr-3 text-white font-semibold uppercase text-[13px] tracking-wide">
+                            {row.category}
+                          </td>
+                          <td className="bg-[#3B0764] py-4 px-3 text-center text-white font-bold text-lg tabular-nums">
+                            {row.earlyBird ? `₹${Number(row.earlyBird).toLocaleString("en-IN")}` : "—"}
+                          </td>
+                          <td className="bg-[#3B0764] py-4 px-3 text-center text-white font-bold text-lg tabular-nums">
+                            {row.regular ? `₹${Number(row.regular).toLocaleString("en-IN")}` : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="border-t border-white/15">
+                        <td className="bg-[#2A0548] py-4 pl-6 pr-3 text-white font-semibold uppercase text-[13px] tracking-wide">
+                          Spot Registration
+                        </td>
+                        <td className="bg-[#2A0548] py-4 px-3 text-center text-white font-bold text-lg tabular-nums" colSpan={2}>
+                          &#8377;5,000
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })()}
+          </Reveal>
+          <Reveal delay={150}>
+            <p className="text-center text-[13px] text-[#57534E] mt-5">
+              Includes scientific sessions, workshop kit, lunch, and conference dinner.
+            </p>
           </Reveal>
         </div>
       </section>
