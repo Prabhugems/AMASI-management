@@ -1,8 +1,9 @@
 "use client"
 
 import { useMemo } from "react"
-import { Package, Plus, Minus, GraduationCap, Award } from "lucide-react"
+import { Package, Plus, Minus, GraduationCap, Award, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { REG_THEME } from "@/lib/register-theme"
 
 export interface Addon {
   id: string
@@ -47,6 +48,18 @@ interface AddonsSelectorProps {
   taxPercentage?: number // GST percentage to display
   maxCourseAddons?: number | null // Cap on distinct is_course addons selected (null = unlimited)
 }
+
+// Brand-tinted surface tokens, matching the palette already used elsewhere
+// on this registration flow (event picker, ticket selection, checkout) —
+// keeps Add-ons visually consistent with the rest of the page instead of a
+// hardcoded green regardless of tenant.
+const T = {
+  primary: REG_THEME.primary,
+  primaryBg: `rgba(${REG_THEME.primaryRgb}, 0.05)`,
+  primaryBgStrong: `rgba(${REG_THEME.primaryRgb}, 0.08)`,
+  primaryBorder: `rgba(${REG_THEME.primaryRgb}, 0.2)`,
+  accent: REG_THEME.accent,
+} as const
 
 export function AddonsSelector({
   addons,
@@ -141,7 +154,7 @@ export function AddonsSelector({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
-        <Package className="w-5 h-5 text-emerald-600" />
+        <Package className="w-5 h-5" style={{ color: T.primary }} />
         <h3 className="text-lg font-semibold text-gray-900">Add-ons</h3>
       </div>
       <p className="text-sm text-gray-600 mb-4">
@@ -152,22 +165,34 @@ export function AddonsSelector({
         {availableAddons.map((addon) => (
           <div
             key={addon.id}
-            className="border border-gray-200 rounded-xl p-4 bg-white hover:border-emerald-200 transition-colors"
+            className="border rounded-2xl p-5 bg-white transition-all duration-200"
+            style={{ borderColor: "rgba(28, 25, 23, 0.08)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = T.primaryBorder
+              e.currentTarget.style.boxShadow = `0 4px 16px rgba(${REG_THEME.primaryRgb}, 0.08)`
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(28, 25, 23, 0.08)"
+              e.currentTarget.style.boxShadow = "none"
+            }}
           >
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-3.5">
               {/* Addon Image or Icon */}
               {addon.image_url ? (
                 <img
                   src={addon.image_url}
                   alt={addon.name}
-                  className="w-16 h-16 rounded-lg object-cover"
+                  className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: T.primaryBg }}
+                >
                   {addon.is_course ? (
-                    <GraduationCap className="w-8 h-8 text-emerald-600" />
+                    <GraduationCap className="w-5 h-5" style={{ color: T.primary }} />
                   ) : (
-                    <Package className="w-8 h-8 text-emerald-600" />
+                    <Package className="w-5 h-5" style={{ color: T.primary }} />
                   )}
                 </div>
               )}
@@ -181,7 +206,7 @@ export function AddonsSelector({
                       {/* Mobile: Price next to title */}
                       {!addon.has_variants && (
                         <div className="text-right sm:hidden">
-                          <p className="font-bold text-emerald-600">
+                          <p className="font-bold" style={{ color: T.accent }}>
                             {addon.price > 0 ? `₹${addon.price.toLocaleString()}` : "Free"}
                           </p>
                           {addon.price > 0 && taxPercentage > 0 && (
@@ -191,7 +216,7 @@ export function AddonsSelector({
                       )}
                     </div>
                     {addon.description && (
-                      <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">
+                      <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">
                         {addon.description}
                       </p>
                     )}
@@ -217,7 +242,7 @@ export function AddonsSelector({
                     <div className="flex items-center justify-between sm:justify-end gap-4">
                       {/* Desktop: Price on left of controls */}
                       <div className="hidden sm:block text-right">
-                        <p className="font-bold text-emerald-600">
+                        <p className="font-bold" style={{ color: T.accent }}>
                           {addon.price > 0 ? `₹${addon.price.toLocaleString()}` : "Free"}
                         </p>
                         {addon.price > 0 && taxPercentage > 0 && (
@@ -246,12 +271,12 @@ export function AddonsSelector({
                           onClick={() => handleQuantityChange(addon, 1)}
                           disabled={getSelectedQuantity(addon.id) >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, addon.id)}
                           title={isCourseAddonCapped(addon, addon.id) ? `You can select up to ${maxCourseAddons} workshops` : undefined}
-                          className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                            (getSelectedQuantity(addon.id) >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, addon.id))
-                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                              : "bg-emerald-600 text-white hover:bg-emerald-700"
-                          )}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors text-white disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                          style={
+                            getSelectedQuantity(addon.id) >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, addon.id)
+                              ? undefined
+                              : { background: T.primary }
+                          }
                         >
                           <Plus className="w-4 h-4" />
                         </button>
@@ -266,55 +291,78 @@ export function AddonsSelector({
                   </p>
                 )}
 
-                {/* Variants */}
-                {addon.has_variants && addon.variants && addon.variants.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <p className="text-xs text-gray-500 mb-2">
-                      Select {addon.variant_type || "variant"}:
+                {/* Variants — if has_variants is true but the variants array hasn't
+                    loaded/come back yet, show a visible placeholder instead of
+                    silently rendering nothing (this section previously vanished
+                    with no indication anything was missing). */}
+                {addon.has_variants && (!addon.variants || addon.variants.length === 0) && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-sm text-gray-400 italic">
+                      Room type options are loading — refresh if this doesn&apos;t appear.
                     </p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  </div>
+                )}
+                {addon.has_variants && addon.variants && addon.variants.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2.5">
+                      Select {addon.variant_type || "variant"}
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                       {addon.variants
                         .filter(v => v.is_active)
                         .sort((a, b) => a.sort_order - b.sort_order)
                         .map((variant) => {
                           const selected = getSelectedQuantity(addon.id, variant.id)
                           const variantPrice = variant.price
+                          const isSelected = selected > 0
                           return (
                             <div
                               key={variant.id}
-                              className={cn(
-                                "border rounded-lg p-2 transition-all",
-                                selected > 0
-                                  ? "border-emerald-500 bg-emerald-50"
-                                  : "border-gray-200 hover:border-emerald-200"
-                              )}
+                              className="relative border rounded-xl p-3 transition-all duration-200"
+                              style={
+                                isSelected
+                                  ? {
+                                      borderColor: T.primary,
+                                      background: T.primaryBg,
+                                      boxShadow: `0 2px 10px rgba(${REG_THEME.primaryRgb}, 0.12)`,
+                                    }
+                                  : { borderColor: "rgba(28, 25, 23, 0.1)" }
+                              }
                             >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-sm font-medium text-gray-900">
+                              {isSelected && (
+                                <div
+                                  className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center"
+                                  style={{ background: T.primary }}
+                                >
+                                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                                </div>
+                              )}
+                              <div className="mb-2">
+                                <span className="text-sm font-medium text-gray-900 block">
                                   {variant.name}
                                 </span>
-                                <div className="text-right">
-                                  <span className="text-xs text-emerald-600 font-semibold">
-                                    {variantPrice > 0 ? `₹${variantPrice}` : "Free"}
+                                <span className="text-sm font-bold" style={{ color: T.accent }}>
+                                  {variantPrice > 0 ? `₹${variantPrice.toLocaleString()}` : "Free"}
+                                </span>
+                                {variantPrice > 0 && taxPercentage > 0 && (
+                                  <span className="text-[10px] text-gray-400 ml-1">
+                                    +{taxPercentage}% GST
                                   </span>
-                                  {variantPrice > 0 && taxPercentage > 0 && (
-                                    <p className="text-[8px] text-gray-400">+GST</p>
-                                  )}
-                                </div>
+                                )}
                               </div>
-                              <div className="flex items-center justify-center gap-1">
+                              <div className="flex items-center justify-center gap-2">
                                 <button
                                   type="button"
                                   onClick={() => handleQuantityChange(addon, -1, variant.id)}
                                   disabled={selected === 0}
                                   className={cn(
-                                    "w-6 h-6 rounded flex items-center justify-center text-xs",
+                                    "w-7 h-7 rounded-lg flex items-center justify-center transition-colors",
                                     selected === 0
                                       ? "bg-gray-100 text-gray-400"
                                       : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                                   )}
                                 >
-                                  <Minus className="w-3 h-3" />
+                                  <Minus className="w-3.5 h-3.5" />
                                 </button>
                                 <span className="w-6 text-center text-sm font-semibold">
                                   {selected}
@@ -324,14 +372,14 @@ export function AddonsSelector({
                                   onClick={() => handleQuantityChange(addon, 1, variant.id)}
                                   disabled={selected >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, `${addon.id}-${variant.id}`)}
                                   title={isCourseAddonCapped(addon, `${addon.id}-${variant.id}`) ? `You can select up to ${maxCourseAddons} workshops` : undefined}
-                                  className={cn(
-                                    "w-6 h-6 rounded flex items-center justify-center text-xs",
-                                    (selected >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, `${addon.id}-${variant.id}`))
-                                      ? "bg-gray-100 text-gray-400"
-                                      : "bg-emerald-600 text-white hover:bg-emerald-700"
-                                  )}
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-white disabled:bg-gray-100 disabled:text-gray-400"
+                                  style={
+                                    selected >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, `${addon.id}-${variant.id}`)
+                                      ? undefined
+                                      : { background: T.primary }
+                                  }
                                 >
-                                  <Plus className="w-3 h-3" />
+                                  <Plus className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             </div>
