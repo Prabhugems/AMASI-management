@@ -34,6 +34,8 @@ import {
   getPrintTemplate,
   recordPrintOutcome,
   getLastPrintForRegistration,
+  getPendingPrintSyncs,
+  markPrintSynced,
 } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { isNetworkFailure } from "@/lib/offline-scan-queue"
@@ -134,6 +136,10 @@ export function KioskCheckinScreen({
   // fire close together, and drainScanQueue has no guard of its own against
   // two overlapping passes over the same pending queue.
   const syncInFlightRef = useRef<boolean>(false)
+  // Same in-flight guard as syncInFlightRef above, but for syncPrintLog --
+  // print-log sync and scan sync are independent pending queues, so this is
+  // a separate ref rather than reusing syncInFlightRef.
+  const printSyncInFlightRef = useRef<boolean>(false)
 
   // Local-first bootstrap: load whatever's already cached from a previous
   // session immediately (works offline from a cold reload), then refresh
@@ -711,6 +717,60 @@ export function KioskCheckinScreen({
       clearInterval(pollId)
     }
   }, [syncNow])
+
+  // Stage 4: opportunistic sync of local print-log entries (Task 5's
+  // recordPrintOutcome, written by printBadge above) into print_jobs, so the
+  // standalone Print Station admin view's audit trail includes
+  // kiosk-triggered prints. This never gates or blocks printing itself --
+  // printing already happened locally, possibly minutes or hours earlier --
+  // it's purely a best-effort mirror, same tolerance as syncNow above.
+  const syncPrintLog = useCallback(async () => {
+    if (mode !== "checkin_and_print") return
+    if (typeof navigator !== "undefined" && !navigator.onLine) return
+    // The online listener and the 20s interval poll can fire close together
+    // -- without this guard, two overlapping passes could both read the same
+    // "pending" rows and double-POST a print-log entry before either pass
+    // marks it synced.
+    if (printSyncInFlightRef.current) return
+    printSyncInFlightRef.current = true
+    try {
+      const pending = await getPendingPrintSyncs(listId)
+      for (const entry of pending) {
+        try {
+          const res = await fetch("/api/kiosk/print-sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              print_station_id: printStationId,
+              registration_id: entry.registration_id,
+              printed_at: entry.printed_at,
+              status: entry.status,
+            }),
+          })
+          if (res.ok) await markPrintSynced(entry.print_id)
+        } catch {
+          // Routine offline/transient failure -- this entry stays pending
+          // and is retried on the next poll, same tolerance as syncNow.
+          break
+        }
+      }
+    } catch (err) {
+      Sentry.captureException(err, { tags: { module: "kiosk-print-sync" }, extra: { eventId, listId } })
+    } finally {
+      printSyncInFlightRef.current = false
+    }
+  }, [mode, listId, printStationId, eventId])
+
+  useEffect(() => {
+    if (mode !== "checkin_and_print") return
+    if (typeof navigator !== "undefined" && navigator.onLine) void syncPrintLog()
+    window.addEventListener("online", syncPrintLog)
+    const pollId = setInterval(syncPrintLog, 20000)
+    return () => {
+      window.removeEventListener("online", syncPrintLog)
+      clearInterval(pollId)
+    }
+  }, [syncPrintLog, mode])
 
   const handleEmailBadge = async () => {
     if (!result?.registration) return
