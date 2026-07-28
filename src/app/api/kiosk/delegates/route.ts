@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs"
 import { createAdminClient } from "@/lib/supabase/server"
 import { isValidUUID } from "@/lib/validation"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { hashStationToken } from "@/lib/kiosk-station-auth"
 
 // GET /api/kiosk/delegates?event_id=&token= -- bulk delegate roster for
 // the self-check-in kiosk's local delegate cache (Stage 1 of the
@@ -31,22 +32,65 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const eventId = searchParams.get("event_id")
   const token = searchParams.get("token")
+  const stationToken = searchParams.get("station_token")
 
   if (!eventId || !isValidUUID(eventId)) {
     return NextResponse.json({ error: "Invalid event." }, { status: 400 })
   }
-  if (!token) {
+  if (!token && !stationToken) {
     return NextResponse.json({ error: "Missing access token." }, { status: 401 })
   }
 
   try {
     const supabase = await createAdminClient()
 
-    const { data: list, error: listLookupError } = await (supabase as any)
-      .from("checkin_lists")
-      .select("id, event_id, list_purpose, access_token, access_token_expires_at, ticket_type_ids, addon_ids")
-      .eq("access_token", token)
-      .maybeSingle()
+    let list: any = null
+    let listLookupError: any = null
+
+    if (stationToken) {
+      // Stage 3: station_token resolves a kiosk_stations row -> list_id,
+      // then looks the list up BY ID -- never by its own access_token, which
+      // this request never carries and this route never needs to see.
+      const { data: station, error: stationLookupError } = await (supabase as any)
+        .from("kiosk_stations")
+        .select("id, event_id, mode, list_id, revoked_at")
+        .eq("access_token_hash", hashStationToken(stationToken))
+        .maybeSingle()
+
+      if (stationLookupError) {
+        Sentry.captureException(stationLookupError, { tags: { route: "kiosk/delegates" }, extra: { eventId } })
+        return NextResponse.json({ error: "Something went wrong looking up this station." }, { status: 503 })
+      }
+      if (!station || station.revoked_at || station.mode !== "checkin" || !station.list_id) {
+        return NextResponse.json({ error: "Invalid access token." }, { status: 401 })
+      }
+      if (station.event_id !== eventId) {
+        return NextResponse.json({ error: "Check-in list not found." }, { status: 404 })
+      }
+
+      const result = await (supabase as any)
+        .from("checkin_lists")
+        .select("id, event_id, list_purpose, ticket_type_ids, addon_ids")
+        .eq("id", station.list_id)
+        .maybeSingle()
+      list = result.data
+      listLookupError = result.error
+
+      // touch last_seen_at -- best-effort, never blocks the roster response
+      // on a failure here.
+      await (supabase as any)
+        .from("kiosk_stations")
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq("id", station.id)
+    } else {
+      const result = await (supabase as any)
+        .from("checkin_lists")
+        .select("id, event_id, list_purpose, access_token_expires_at, ticket_type_ids, addon_ids")
+        .eq("access_token", token)
+        .maybeSingle()
+      list = result.data
+      listLookupError = result.error
+    }
 
     if (listLookupError) {
       // A transient Supabase error looks identical to "no list matched this
@@ -60,9 +104,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (!list) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 })
+      return NextResponse.json(
+        { error: stationToken ? "Check-in list not found." : "Invalid access token." },
+        { status: stationToken ? 404 : 401 }
+      )
     }
-    if (list.access_token_expires_at && new Date(list.access_token_expires_at) < new Date()) {
+    if (!stationToken && list.access_token_expires_at && new Date(list.access_token_expires_at) < new Date()) {
       return NextResponse.json({ error: "This link has expired." }, { status: 401 })
     }
     if (list.event_id !== eventId) {
