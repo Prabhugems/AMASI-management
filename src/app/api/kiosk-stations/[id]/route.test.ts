@@ -56,3 +56,38 @@ describe("DELETE /api/kiosk-stations/[id]", () => {
     expect(res.status).toBe(200)
   })
 })
+
+const PRINT_STATION_ID = "44444444-4444-4444-4444-444444444444"
+
+describe("PATCH /api/kiosk-stations/[id] -- print_station_id / auto_print_badge", () => {
+  it("updates print_station_id when it resolves to a usb-type Print Station in the station's event", async () => {
+    mock.queueResponse("kiosk_stations", { data: { id: STATION_ID, event_id: EVENT_ID }, error: null })
+    mock.queueResponse("print_stations", {
+      data: { id: PRINT_STATION_ID, event_id: EVENT_ID, print_settings: { printer_type: "usb" } },
+      error: null,
+    })
+    mock.queueResponse("kiosk_stations", { data: { id: STATION_ID, print_station_id: PRINT_STATION_ID }, error: null })
+    const { PATCH } = await import("./route")
+    const res = await PATCH(makeRequest(`http://localhost/api/kiosk-stations/${STATION_ID}`, { method: "PATCH", body: { print_station_id: PRINT_STATION_ID } }), params())
+    expect(res.status).toBe(200)
+  })
+
+  it("400s when the new print_station_id isn't printer_type usb", async () => {
+    mock.queueResponse("kiosk_stations", { data: { id: STATION_ID, event_id: EVENT_ID }, error: null })
+    mock.queueResponse("print_stations", {
+      data: { id: PRINT_STATION_ID, event_id: EVENT_ID, print_settings: { printer_type: "thermal" } },
+      error: null,
+    })
+    const { PATCH } = await import("./route")
+    const res = await PATCH(makeRequest(`http://localhost/api/kiosk-stations/${STATION_ID}`, { method: "PATCH", body: { print_station_id: PRINT_STATION_ID } }), params())
+    expect(res.status).toBe(400)
+  })
+
+  it("updates auto_print_badge", async () => {
+    mock.queueResponse("kiosk_stations", { data: { id: STATION_ID, event_id: EVENT_ID }, error: null })
+    mock.queueResponse("kiosk_stations", { data: { id: STATION_ID, auto_print_badge: true }, error: null })
+    const { PATCH } = await import("./route")
+    const res = await PATCH(makeRequest(`http://localhost/api/kiosk-stations/${STATION_ID}`, { method: "PATCH", body: { auto_print_badge: true } }), params())
+    expect(res.status).toBe(200)
+  })
+})
