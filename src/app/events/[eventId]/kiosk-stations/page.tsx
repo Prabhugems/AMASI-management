@@ -122,6 +122,7 @@ export default function KioskStationsPage() {
   }
 
   const handleRevoke = async (station: KioskStation) => {
+    if (!confirm(`Revoke "${station.name}"'s access? The device will stop working until you generate a new token.`)) return
     const res = await fetch(`/api/kiosk-stations/${station.id}/access-token`, { method: "DELETE" })
     if (!res.ok) {
       toast.error("Failed to revoke station")
@@ -132,6 +133,7 @@ export default function KioskStationsPage() {
   }
 
   const handleDelete = async (station: KioskStation) => {
+    if (!confirm(`Delete "${station.name}"? This cannot be undone and will immediately stop this device from working.`)) return
     const res = await fetch(`/api/kiosk-stations/${station.id}`, { method: "DELETE" })
     if (!res.ok) {
       toast.error("Failed to delete station")
