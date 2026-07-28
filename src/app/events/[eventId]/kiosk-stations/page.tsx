@@ -21,7 +21,7 @@ import { QrImage } from "@/components/QrImage"
 import { toast } from "sonner"
 import { Plus, Copy, RefreshCw, Ban, Trash2, Monitor } from "lucide-react"
 
-type CheckinList = { id: string; name: string }
+type CheckinList = { id: string; name: string; is_active?: boolean; list_purpose?: string }
 type KioskStation = {
   id: string
   event_id: string
@@ -64,6 +64,14 @@ export default function KioskStationsPage() {
   // Hand-off modal: shows a freshly-minted plaintext token exactly once
   // (on create or regenerate) -- never re-fetchable afterward.
   const [handoff, setHandoff] = useState<{ name: string; token: string } | null>(null)
+
+  // A collection-purpose list rejects every kiosk self-check-in scan (a
+  // deliberate, permanent restriction -- see /api/kiosk/checkin), and an
+  // inactive list shouldn't be a target for a brand-new device either. Only
+  // offer lists a station could actually work against. `lists` itself stays
+  // unfiltered so name lookups (e.g. a station's currently-assigned list)
+  // keep working even if that list has since gone inactive.
+  const activeLists = lists.filter((l) => l.is_active === true && l.list_purpose !== "collection")
 
   const loadStations = async () => {
     const res = await fetch(`/api/kiosk-stations?event_id=${eventId}`)
@@ -111,6 +119,7 @@ export default function KioskStationsPage() {
   }
 
   const handleRegenerate = async (station: KioskStation) => {
+    if (!confirm(`Generate a new token for "${station.name}"? The current token will stop working immediately, bricking the device until it's re-provisioned with the new one.`)) return
     const res = await fetch(`/api/kiosk-stations/${station.id}/access-token`, { method: "POST" })
     const data = await res.json()
     if (!res.ok) {
@@ -118,6 +127,21 @@ export default function KioskStationsPage() {
       return
     }
     setHandoff({ name: station.name, token: data.access_token })
+    await loadStations()
+  }
+
+  const handleReassignList = async (station: KioskStation, listId: string) => {
+    const res = await fetch(`/api/kiosk-stations/${station.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ list_id: listId }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error || "Failed to change list")
+      return
+    }
+    toast.success(`${station.name} reassigned to ${lists.find((l) => l.id === listId)?.name || "the new list"}`)
     await loadStations()
   }
 
@@ -183,6 +207,21 @@ export default function KioskStationsPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                <Select
+                  value={station.list_id ?? undefined}
+                  onValueChange={(value) => handleReassignList(station, value)}
+                >
+                  <SelectTrigger className="w-40 h-9 text-xs">
+                    <SelectValue placeholder="Change list" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeLists.map((list) => (
+                      <SelectItem key={list.id} value={list.id}>
+                        {list.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button variant="outline" size="sm" onClick={() => handleRegenerate(station)}>
                   <RefreshCw className="h-4 w-4 mr-1" />
                   New Token
@@ -220,7 +259,7 @@ export default function KioskStationsPage() {
                   <SelectValue placeholder="Select a list" />
                 </SelectTrigger>
                 <SelectContent>
-                  {lists.map((list) => (
+                  {activeLists.map((list) => (
                     <SelectItem key={list.id} value={list.id}>
                       {list.name}
                     </SelectItem>

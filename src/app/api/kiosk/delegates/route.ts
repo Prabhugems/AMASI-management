@@ -5,17 +5,28 @@ import { isValidUUID } from "@/lib/validation"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { hashStationToken } from "@/lib/kiosk-station-auth"
 
-// GET /api/kiosk/delegates?event_id=&token= -- bulk delegate roster for
-// the self-check-in kiosk's local delegate cache (Stage 1 of the
+// GET /api/kiosk/delegates?event_id=&token=|&station_token= -- bulk delegate
+// roster for the self-check-in kiosk's local delegate cache (Stage 1 of the
 // offline-first kiosk redesign, see
 // docs/superpowers/plans/2026-07-27-kiosk-offline-first-stage1.md).
 //
 // This is the largest single PII export in the app (~2,000 full records
 // in one response), so unlike /api/kiosk/checkin's bare "unguessable UUID
-// pair" trust model, this route requires the list's own access_token --
-// the same credential /checkin/access/[token] and /print/[token] already
-// use, auto-generated on every list by a DB trigger (never null). An
-// admin session does not substitute for it.
+// pair" trust model, this route requires ONE of two credentials -- either
+// is an equally strict authorization gate; an admin session does not
+// substitute for either of them:
+//   - `token`: the target checkin_lists row's own access_token -- the same
+//     credential /checkin/access/[token] and /print/[token] already use,
+//     auto-generated on every list by a DB trigger (never null). The
+//     original, direct-URL kiosk path.
+//   - `station_token` (Stage 3, docs/superpowers/specs/2026-07-27-kiosk-stage3-station-identity-design.md):
+//     a kiosk_stations row's own token, resolved to its bound list_id
+//     server-side instead of trusting a token straight off checkin_lists.
+//     The list's own access_token is never fetched, read, or transmitted to
+//     the browser on this path -- that's the whole point of station
+//     identity. Just as strict: any failure to resolve (missing, malformed,
+//     revoked, wrong mode, wrong event) rejects the request exactly like a
+//     bad `token` would, never falls back to open access.
 //
 // Matching scope must mirror /api/kiosk/checkin's server-side eligibility
 // gate exactly (Stage 2, docs/superpowers/specs/2026-07-27-kiosk-stage2-checkin-authority-design.md):

@@ -340,7 +340,14 @@ async function completeCheckin(
       checked_in_at: now,
       checked_in_by: "Self check-in (kiosk)",
       scan_id: scanId,
-      station_id: stationId,
+      // Defense-in-depth: omit the key entirely when there's no station to
+      // attribute to, rather than sending `station_id: null`. Production does
+      // not yet have this column (migration committed, intentionally
+      // unapplied -- see CLAUDE.md's migration-pipeline section); every
+      // check-in via the pre-existing direct-URL kiosk flow has stationId ===
+      // null, so this keeps that already-live flow structurally immune to a
+      // PostgREST "unknown column" rejection regardless of migration timing.
+      ...(stationId && { station_id: stationId }),
     })
 
   if (insertError) {
