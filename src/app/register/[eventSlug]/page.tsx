@@ -971,7 +971,7 @@ function EventDetailsPage() {
                 selectedAddons={selectedAddons}
                 onSelectionChange={setSelectedAddons}
                 selectedTicketIds={Array.from(selectedTickets.keys())}
-                taxPercentage={event.ticket_types?.find(t => selectedTickets.has(t.id))?.tax_percentage || 18}
+                taxPercentage={event.ticket_types?.find(t => selectedTickets.has(t.id))?.tax_percentage ?? 18}
                 maxCourseAddons={eventSettings?.max_course_addons ?? null}
               />
             </div>

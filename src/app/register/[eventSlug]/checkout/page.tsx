@@ -436,8 +436,9 @@ export default function CheckoutPage() {
     const discount = discountApplied?.amount || 0
     const addonsTotal = checkoutData?.addonsSelection?.reduce((acc, a) => acc + a.totalPrice, 0) || 0
 
-    // Get tax percentage from first ticket (default 18%)
-    const taxPercentage = selectedTicketsDetails[0]?.tax_percentage || 18
+    // Get tax percentage from first ticket (default 18% only when truly unset —
+    // `||` would wrongly override a legitimate 0% ticket with 18%, since 0 is falsy)
+    const taxPercentage = selectedTicketsDetails[0]?.tax_percentage ?? 18
     const addonsTax = (addonsTotal * taxPercentage) / 100
 
     return {
