@@ -21,6 +21,7 @@ export interface Addon {
   course_instructor: string | null
   variants?: AddonVariant[]
   linked_ticket_ids?: string[] // Ticket IDs this addon is linked to
+  exclusive_group?: string | null // Addons sharing this value are mutually exclusive (e.g. separate "Single Occupancy" / "Twin Sharing" addons, not variants of one addon)
 }
 
 export interface AddonVariant {
@@ -128,6 +129,23 @@ export function AddonsSelector({
           }
         }
       }
+
+      // Separate addons (not variants of one addon) can also be marked
+      // mutually exclusive via a shared exclusive_group — e.g. "Single
+      // Occupancy" and "Twin Sharing" modeled as two distinct addons rather
+      // than two variants of one "Accommodation" addon. Clear any other
+      // selected addon sharing this group.
+      if (addon.exclusive_group) {
+        const groupAddonIds = new Set(
+          addons.filter(a => a.exclusive_group === addon.exclusive_group).map(a => a.id)
+        )
+        for (const [k, sel] of Array.from(newSelection.entries())) {
+          if (sel.addonId !== addon.id && groupAddonIds.has(sel.addonId)) {
+            newSelection.delete(k)
+          }
+        }
+      }
+
       const variant = addon.variants?.find(v => v.id === variantId)
       const unitPrice = variant ? variant.price : addon.price
       newSelection.set(key, {

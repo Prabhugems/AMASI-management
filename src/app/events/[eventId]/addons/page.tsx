@@ -89,6 +89,7 @@ interface Addon {
   image_url: string | null
   has_variants: boolean
   variant_type: string | null
+  exclusive_group: string | null
   // Course fields
   is_course: boolean
   certificate_template_id: string | null
@@ -123,6 +124,7 @@ const initialFormData = {
   image_url: null as string | null,
   has_variants: false,
   variant_type: "",
+  exclusive_group: "",
   is_free: true,
   // Course fields
   is_course: false,
@@ -302,6 +304,7 @@ export default function AddonsPage() {
         image_url: data.image_url,
         has_variants: data.has_variants,
         variant_type: data.has_variants ? data.variant_type : null,
+        exclusive_group: data.exclusive_group?.trim() || null,
         // Course fields
         is_course: data.is_course,
         certificate_template_id: data.is_course ? data.certificate_template_id : null,
@@ -441,6 +444,7 @@ export default function AddonsPage() {
       image_url: addon.image_url,
       has_variants: addon.has_variants,
       variant_type: addon.variant_type || "",
+      exclusive_group: addon.exclusive_group || "",
       is_free: addon.price === 0,
       // Course fields
       is_course: addon.is_course || false,
@@ -928,6 +932,23 @@ export default function AddonsPage() {
                     className="mt-1.5"
                     min={1}
                   />
+                </div>
+
+                {/* Exclusive group */}
+                <div>
+                  <Label>Exclusive Group (optional)</Label>
+                  <Input
+                    value={formData.exclusive_group}
+                    onChange={(e) => setFormData({ ...formData, exclusive_group: e.target.value })}
+                    placeholder="e.g., accommodation"
+                    className="mt-1.5"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Give two or more separate addons the same group name to make them mutually
+                    exclusive — selecting one clears the others (e.g. "Single Occupancy" and
+                    "Twin Sharing" as two addons instead of variants of one). Leave blank if this
+                    addon can be combined with any other.
+                  </p>
                 </div>
 
                 {/* Active toggle */}
