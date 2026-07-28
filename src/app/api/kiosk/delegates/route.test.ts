@@ -262,4 +262,50 @@ describe("GET /api/kiosk/delegates", () => {
     expect(inCall!.args[1] as string[]).not.toContain(INELIGIBLE_REG_ID)
     expect(inCall!.args[1] as string[]).toContain(ELIGIBLE_REG_ID)
   })
+
+  it("401s when station_token doesn't resolve to any station", async () => {
+    mock.queueResponse("kiosk_stations", { data: null, error: null })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "bad-token" })))
+    expect(res.status).toBe(401)
+  })
+
+  it("401s when the station is revoked", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", list_id: LIST_ID, revoked_at: "2026-01-01T00:00:00Z" },
+      error: null,
+    })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "some-token" })))
+    expect(res.status).toBe(401)
+  })
+
+  it("404s when the station's event doesn't match", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: "99999999-9999-9999-9999-999999999999", mode: "checkin", list_id: LIST_ID, revoked_at: null },
+      error: null,
+    })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "some-token" })))
+    expect(res.status).toBe(404)
+  })
+
+  it("resolves the roster via a valid station_token without ever querying checkin_lists.access_token", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", list_id: LIST_ID, revoked_at: null },
+      error: null,
+    })
+    mock.queueResponse("checkin_lists", { data: baseList(), error: null })
+    mock.queueResponse("registrations", { data: [], error: null })
+
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "some-token" })))
+
+    expect(res.status).toBe(200)
+    // Pins the security property: the checkin_lists lookup on this path must
+    // never filter by access_token -- the list's own token is not part of
+    // this request at all.
+    expect(mock.calls.some((c) => c.table === "checkin_lists" && c.method === "eq" && c.args[0] === "access_token")).toBe(false)
+    expect(mock.calls.some((c) => c.table === "checkin_lists" && c.method === "eq" && c.args[0] === "id" && c.args[1] === LIST_ID)).toBe(true)
+  })
 })

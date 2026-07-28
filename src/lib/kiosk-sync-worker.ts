@@ -76,6 +76,12 @@ type EntryOutcome =
 export async function drainScanQueue(
   listId: string,
   eventId: string,
+  // Stage 3: when this device was provisioned via /kiosk-station/[token],
+  // this is that station's own token -- forwarded so the server can attribute
+  // each synced check-in to a real kiosk_stations row (see checkin/route.ts).
+  // undefined for the original direct-URL (checkin_lists.access_token) path,
+  // where there is no station to attribute to.
+  stationToken: string | undefined,
   onSynced: (entry: ScanLogEntry, response: unknown) => void,
   onConflict: (entry: ScanLogEntry, response: unknown) => void
 ): Promise<{ synced: number; conflicted: number; remaining: number }> {
@@ -98,6 +104,7 @@ export async function drainScanQueue(
           registration_id: entry.registration_id,
           search: entry.delegate_code,
           scan_id: entry.scan_id,
+          ...(stationToken && { station_token: stationToken }),
         }),
       })
       // No .catch(() => ({})) here -- an unparseable body (e.g. a captive

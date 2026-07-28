@@ -35,7 +35,7 @@ const PRECACHE_URLS = ["/offline"]
 // of network-first. Kept as a prefix list (not a single string) so Stage 3
 // can extend this to a home-screen-launched PWA entry point without
 // touching the fetch handler itself -- see this plan's Self-Review Notes.
-const SHELL_ROUTE_PREFIXES = ["/kiosk/"]
+const SHELL_ROUTE_PREFIXES = ["/kiosk/", "/kiosk-station/"]
 
 function isShellRoute(pathname) {
   return SHELL_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))

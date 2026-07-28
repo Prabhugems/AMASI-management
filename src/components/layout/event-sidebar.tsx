@@ -45,6 +45,7 @@ import {
   HelpCircle,
   LogOut,
   ChevronDown,
+  Monitor,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -122,6 +123,7 @@ const navItems: NavItem[] = [
   { label: "Program", href: "/program", icon: Calendar, moduleKey: "enable_program" },
   { label: "Checkin Hub", href: "/checkin", icon: QrCode, moduleKey: "enable_checkin", sectionStart: "On-site" },
   { label: "Print Station", href: "/print-stations", icon: Printer, moduleKey: "enable_print_station" },
+  { label: "Kiosk Stations", href: "/kiosk-stations", icon: Monitor, moduleKey: "enable_checkin" },
   { label: "Badges", href: "/badges", icon: BadgeCheck, statusKey: "badges", moduleKey: "enable_badges" },
   { label: "Certificates", href: "/certificates", icon: Award, statusKey: "certificates", moduleKey: "enable_certificates" },
   { label: "Delegate Portal", href: "/delegate-portal", icon: BarChart3, moduleKey: "enable_delegate_portal" },

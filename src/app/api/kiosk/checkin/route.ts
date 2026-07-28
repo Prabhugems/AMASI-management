@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { isValidUUID } from "@/lib/validation"
 import { checkTimeWindow } from "@/lib/checkin-time-window"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
+import { hashStationToken } from "@/lib/kiosk-station-auth"
 
 // POST /api/kiosk/checkin -- public self check-in for the /kiosk/[eventId]/[listId]
 // page. The kiosk runs as the anon browser client, but checkin_records has RLS
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
     const checkinListId = body.checkin_list_id as string | undefined
     const registrationId = body.registration_id as string | undefined
     const scanId = body.scan_id as string | undefined
+    const stationToken = body.station_token as string | undefined
     // Strip characters that have meaning in PostgREST's .or() filter so user
     // input can't break out of the ilike clauses -- only matters on the
     // registration_id-absent fallback path below, where this is used for
@@ -62,6 +64,30 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createAdminClient()
+
+    // Stage 3: resolve station_id for attribution only -- this route was
+    // never token-gated (see the header comment above), so a station_token
+    // that's absent, malformed, revoked, or simply doesn't resolve must
+    // NEVER block a check-in from completing. It only fails to attribute it
+    // to a station.
+    let stationId: string | null = null
+    if (stationToken) {
+      const { data: station } = await (supabase as any)
+        .from("kiosk_stations")
+        .select("id, event_id, mode, list_id, revoked_at")
+        .eq("access_token_hash", hashStationToken(stationToken))
+        .maybeSingle()
+
+      if (
+        station &&
+        !station.revoked_at &&
+        station.mode === "checkin" &&
+        station.event_id === eventId &&
+        station.list_id === checkinListId
+      ) {
+        stationId = station.id
+      }
+    }
 
     // --- scan_id replay check, first, before anything else -------------
     // A row found here was, by construction, inserted BY this exact scan_id
@@ -192,7 +218,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      return completeCheckin(supabase, publicRegistration, registration.id, checkinListId, scanId, timeWindowWarning)
+      return completeCheckin(supabase, publicRegistration, registration.id, checkinListId, scanId, stationId, timeWindowWarning)
     }
 
     // --- TEMPORARY fallback: registration_id absent (pre-Stage-2 kiosk bundle) ---
@@ -256,7 +282,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return completeCheckin(supabase, fuzzyRegistration, fuzzyRegistration.id, checkinListId, scanId, timeWindowWarning)
+    return completeCheckin(supabase, fuzzyRegistration, fuzzyRegistration.id, checkinListId, scanId, stationId, timeWindowWarning)
   } catch (error: any) {
     console.error("Kiosk check-in error:", error)
     return NextResponse.json(
@@ -278,6 +304,7 @@ async function completeCheckin(
   registrationId: string,
   checkinListId: string,
   scanId: string,
+  stationId: string | null,
   timeWindowWarning: string | null
 ): Promise<NextResponse> {
   // Already checked in on this list via some other path (e.g. staff
@@ -313,6 +340,14 @@ async function completeCheckin(
       checked_in_at: now,
       checked_in_by: "Self check-in (kiosk)",
       scan_id: scanId,
+      // Defense-in-depth: omit the key entirely when there's no station to
+      // attribute to, rather than sending `station_id: null`. Production does
+      // not yet have this column (migration committed, intentionally
+      // unapplied -- see CLAUDE.md's migration-pipeline section); every
+      // check-in via the pre-existing direct-URL kiosk flow has stationId ===
+      // null, so this keeps that already-live flow structurally immune to a
+      // PostgREST "unknown column" rejection regardless of migration timing.
+      ...(stationId && { station_id: stationId }),
     })
 
   if (insertError) {
