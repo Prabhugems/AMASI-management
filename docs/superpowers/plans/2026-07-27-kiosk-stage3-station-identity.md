@@ -969,7 +969,7 @@ export default function KioskStationsPage() {
 }
 ```
 
-Note: confirm `src/components/ui/dialog.tsx` and `src/components/ui/select.tsx` exist with these exact export names before writing this file (they are standard shadcn components already used elsewhere in this codebase, e.g. `print-stations/page.tsx`) — if either differs, adapt the import to match what's actually there rather than guessing. Confirm `GET /api/checkin-lists?event_id=` returns either `{ lists: [...] }` or a bare array by reading that route directly; the `d.lists || d || []` fallback above is a guess at whichever shape it actually returns and must be corrected to match reality, not left as a defensive guess.
+Confirmed: `src/components/ui/dialog.tsx` and `src/components/ui/select.tsx` both exist in this codebase with the exact export names used above (standard shadcn components, already used in `print-stations/page.tsx`). Also confirmed: `GET /api/checkin-lists?event_id=` returns a bare array (`NextResponse.json(listsWithStats)`, `src/app/api/checkin-lists/route.ts:104`), not `{ lists: [...] }` — the `d.lists || d || []` fallback above already handles this correctly (`d.lists` is `undefined` on an array, so it falls through to `d`), so no change is needed there, but do not "simplify" it to `d.lists || []` — that would break on the real bare-array response.
 
 - [ ] **Step 2: Typecheck and lint**
 
