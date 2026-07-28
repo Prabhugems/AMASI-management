@@ -30,6 +30,7 @@ import {
   getDelegateCache,
   enqueueScan,
   newId,
+  cachePrintTemplate,
 } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { isNetworkFailure } from "@/lib/offline-scan-queue"
@@ -70,9 +71,29 @@ interface KioskCheckinScreenProps {
   // token to this component at all).
   token?: string
   stationToken?: string
+  // Stage 4 (check-in + print badge). mode is "checkin" for every existing
+  // caller (Stage 1-3 direct-URL and station flows) -- print-related props
+  // are only ever populated when mode === "checkin_and_print".
+  mode?: "checkin" | "checkin_and_print"
+  autoPrintBadge?: boolean
+  printStationId?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  badgeTemplate?: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  printSettings?: any
 }
 
-export function KioskCheckinScreen({ eventId, listId, token = "", stationToken }: KioskCheckinScreenProps) {
+export function KioskCheckinScreen({
+  eventId,
+  listId,
+  token = "",
+  stationToken,
+  mode = "checkin",
+  autoPrintBadge = false,
+  printStationId,
+  badgeTemplate,
+  printSettings,
+}: KioskCheckinScreenProps) {
   const supabase = createClient()
 
   const [registrationNumber, setRegistrationNumber] = useState("")
@@ -204,6 +225,70 @@ export function KioskCheckinScreen({ eventId, listId, token = "", stationToken }
       clearInterval(refreshInterval)
     }
   }, [eventId, listId, token, stationToken])
+
+  // Stage 4: cache the badge template (and every element's remote image as
+  // a local data URL) once, while online, so printing later has zero
+  // network dependency. Runs once per mount when this station is in
+  // checkin_and_print mode; re-fetches are not needed within a session --
+  // an admin changing the linked Print Station's template mid-event is rare
+  // enough that a reload (which remounts this component) is an acceptable
+  // way to pick up a change, matching this codebase's existing tolerance
+  // for similar edge cases elsewhere in the kiosk.
+  useEffect(() => {
+    if (mode !== "checkin_and_print" || !printStationId || !badgeTemplate) return
+    if (typeof navigator !== "undefined" && !navigator.onLine) return
+
+    // Narrowed to a local const: TS can't carry the `!printStationId` guard's
+    // narrowing across the nested async closure below (printStationId is an
+    // optional prop, not a const), so capture the checked value here.
+    const stationId = printStationId
+    let cancelled = false
+
+    async function cacheTemplate() {
+      try {
+        const elements = badgeTemplate?.template_data?.elements || []
+        const imageDataUrls: Record<string, string> = {}
+
+        for (const el of elements) {
+          if ((el.type === "image" || el.type === "photo") && el.imageUrl && !imageDataUrls[el.imageUrl]) {
+            try {
+              const res = await fetch(el.imageUrl)
+              const blob = await res.blob()
+              const dataUrl: string = await new Promise((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onloadend = () => resolve(reader.result as string)
+                reader.onerror = reject
+                reader.readAsDataURL(blob)
+              })
+              imageDataUrls[el.imageUrl] = dataUrl
+            } catch (err) {
+              // One unreachable image asset must not prevent caching the
+              // rest of the template -- that element just won't render at
+              // print time (matching this file's existing "missing QR"
+              // placeholder pattern), not block check-in/print entirely.
+              Sentry.captureException(err, { tags: { module: "kiosk-print-cache" }, extra: { eventId, listId, imageUrl: el.imageUrl } })
+            }
+          }
+        }
+
+        if (cancelled) return
+        await cachePrintTemplate(listId, {
+          badgeTemplate,
+          printSettings,
+          printStationId: stationId,
+          imageDataUrls,
+          cachedAt: Date.now(),
+        })
+      } catch (err) {
+        Sentry.captureException(err, { tags: { module: "kiosk-print-cache" }, extra: { eventId, listId } })
+      }
+    }
+
+    cacheTemplate()
+    return () => {
+      cancelled = true
+    }
+  }, [mode, printStationId, badgeTemplate, printSettings, eventId, listId])
 
   // Fetch event and list details
   const { data: event } = useQuery({
