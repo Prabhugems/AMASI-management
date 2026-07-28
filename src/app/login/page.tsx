@@ -29,7 +29,7 @@ function LoginForm() {
   const [loading, setLoading] = React.useState(false)
   const [sent, setSent] = React.useState(false)
   const [error, setError] = React.useState("")
-  const [loginMode] = React.useState<"password" | "magic-link">("magic-link")
+  const [loginMode, setLoginMode] = React.useState<"password" | "magic-link">("magic-link")
   // Email-scanner-resistant fallback: 6-digit code the user can type in case
   // the magic link gets pre-fetched (and burned) by their email provider.
   const [code, setCode] = React.useState("")
@@ -326,7 +326,9 @@ function LoginForm() {
                 Sign in to your account
               </h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                We&apos;ll email you a secure magic link — no password needed.
+                {loginMode === "password"
+                  ? "Sign in with your email and password."
+                  : "We'll email you a secure magic link — no password needed."}
               </p>
 
               <form onSubmit={handleSubmit} className="mt-10 space-y-6">
@@ -351,6 +353,29 @@ function LoginForm() {
                   </div>
                 </div>
 
+                {loginMode === "password" && (
+                  <div>
+                    <label
+                      htmlFor="password"
+                      className="block text-sm font-medium leading-6 text-foreground"
+                    >
+                      Password
+                    </label>
+                    <div className="mt-2">
+                      <Input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        autoComplete="current-password"
+                        aria-invalid={!!error}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {error && (
                   <p className="text-sm text-destructive">{error}</p>
                 )}
@@ -358,12 +383,17 @@ function LoginForm() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={loading || !email}
+                  disabled={loading || !email || (loginMode === "password" && !password)}
                 >
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Sending login link...
+                      {loginMode === "password" ? "Signing in..." : "Sending login link..."}
+                    </>
+                  ) : loginMode === "password" ? (
+                    <>
+                      <KeyRound className="h-4 w-4 mr-2" />
+                      Sign in
                     </>
                   ) : (
                     <>
@@ -373,6 +403,18 @@ function LoginForm() {
                   )}
                 </Button>
               </form>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setError("")
+                  setPassword("")
+                  setLoginMode((m) => (m === "password" ? "magic-link" : "password"))
+                }}
+                className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {loginMode === "password" ? "Use magic link instead" : "Sign in with password instead"}
+              </button>
             </>
           )}
 
