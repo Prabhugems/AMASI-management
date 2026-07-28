@@ -105,6 +105,16 @@ export function AddonsSelector({
     } else if (delta > 0 && currentQty === 0 && isCourseAddonCapped(addon, key)) {
       // Selecting a new distinct course/workshop addon would exceed the cap
     } else if (newQty <= maxQty) {
+      // Variants of the same addon are mutually exclusive for a single
+      // registration (e.g. a delegate can't book Single Occupancy AND Twin
+      // Sharing at once) — clear any other variant of this addon first.
+      if (addon.has_variants && variantId) {
+        for (const k of Array.from(newSelection.keys())) {
+          if (k !== key && k.startsWith(`${addon.id}-`)) {
+            newSelection.delete(k)
+          }
+        }
+      }
       const variant = addon.variants?.find(v => v.id === variantId)
       const unitPrice = variant ? variant.price : addon.price
       newSelection.set(key, {
