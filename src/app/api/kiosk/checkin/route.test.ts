@@ -359,4 +359,45 @@ describe("POST /api/kiosk/checkin", () => {
     expect(body.alreadyCheckedIn).toBe(false)
     expect(body.message).toBe("Check-in successful!")
   })
+
+  it("persists station_id on the insert when a valid station_token resolves", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", list_id: LIST_ID, revoked_at: null },
+      error: null,
+    })
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check
+    mock.queueResponse("checkin_records", { data: null, error: null }) // insert
+    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ station_token: "some-station-token" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(true)
+    const insertCall = mock.calls.find((c) => c.table === "checkin_records" && c.method === "insert")
+    expect((insertCall!.args[0] as any).station_id).toBe("st-1")
+  })
+
+  it("never blocks a check-in when station_token is present but doesn't resolve", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("kiosk_stations", { data: null, error: null }) // station_token doesn't resolve
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check
+    mock.queueResponse("checkin_records", { data: null, error: null }) // insert
+    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ station_token: "bad-token" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(true)
+    const insertCall = mock.calls.find((c) => c.table === "checkin_records" && c.method === "insert")
+    expect((insertCall!.args[0] as any).station_id).toBeNull()
+  })
 })
