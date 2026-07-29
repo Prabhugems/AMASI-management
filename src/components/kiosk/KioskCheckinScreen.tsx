@@ -213,7 +213,7 @@ export function KioskCheckinScreen({
       try {
         const authParam = token
           ? `token=${encodeURIComponent(token)}`
-          : `station_token=${encodeURIComponent(stationToken!)}`
+          : `station_token=${encodeURIComponent(stationToken!)}&list_id=${encodeURIComponent(listId)}`
         const res = await fetch(
           `/api/kiosk/delegates?event_id=${encodeURIComponent(eventId)}&${authParam}`
         )
