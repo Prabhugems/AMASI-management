@@ -34,7 +34,7 @@ export default async function KioskStationPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error } = await (supabase as any)
     .from("kiosk_stations")
-    .select("id, event_id, mode, list_id, revoked_at")
+    .select("id, event_id, mode, list_id, print_station_id, auto_print_badge, revoked_at")
     .eq("access_token_hash", hashStationToken(token))
     .maybeSingle()
 
@@ -49,11 +49,29 @@ export default async function KioskStationPage({
     return <StationLookupError />
   }
 
-  if (!station || station.revoked_at || station.mode !== "checkin") {
+  if (!station || station.revoked_at || (station.mode !== "checkin" && station.mode !== "checkin_and_print")) {
     return <StationNotFound />
   }
   if (!station.list_id) {
     return <StationListRemoved />
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let printSettings: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let badgeTemplate: any = null
+  let printMode: string | undefined
+
+  if (station.mode === "checkin_and_print" && station.print_station_id) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: printStation } = await (supabase as any)
+      .from("print_stations")
+      .select("print_settings, print_mode, badge_templates (id, name, template_data)")
+      .eq("id", station.print_station_id)
+      .maybeSingle()
+    printSettings = printStation?.print_settings || null
+    badgeTemplate = printStation?.badge_templates || null
+    printMode = printStation?.print_mode || undefined
   }
 
   // Best-effort presence touch -- never blocks rendering on failure.
@@ -63,7 +81,19 @@ export default async function KioskStationPage({
     .update({ last_seen_at: new Date().toISOString() })
     .eq("id", station.id)
 
-  return <KioskCheckinScreen eventId={station.event_id} listId={station.list_id} stationToken={token} />
+  return (
+    <KioskCheckinScreen
+      eventId={station.event_id}
+      listId={station.list_id}
+      stationToken={token}
+      mode={station.mode}
+      autoPrintBadge={station.auto_print_badge}
+      printStationId={station.print_station_id || undefined}
+      badgeTemplate={badgeTemplate || undefined}
+      printSettings={printSettings || undefined}
+      printMode={printMode}
+    />
+  )
 }
 
 function StationLookupError() {
