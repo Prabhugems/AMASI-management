@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 import { getTenant } from "@/lib/tenant"
+import { getDialCodeForCountry } from "@/lib/countries"
 
 interface FormRendererProps {
   form: Form
@@ -766,26 +767,19 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
           />
         )
 
-      case "phone":
-        const showCountry = field.settings?.show_country
-        const countryCode = field.settings?.default_country || "IN"
-        const countryCodes: Record<string, { flag: string; code: string }> = {
-          IN: { flag: "🇮🇳", code: "+91" },
-          US: { flag: "🇺🇸", code: "+1" },
-          GB: { flag: "🇬🇧", code: "+44" },
-          AE: { flag: "🇦🇪", code: "+971" },
-          SG: { flag: "🇸🇬", code: "+65" },
-          AU: { flag: "🇦🇺", code: "+61" },
-          CA: { flag: "🇨🇦", code: "+1" },
-        }
-        const selectedCountry = countryCodes[countryCode] || countryCodes.IN
+      case "phone": {
+        // Derive the dial code from whatever the person already picked in a
+        // "Country" field on this same form, instead of asking again via a
+        // separate phone-country selector — one country selection drives both.
+        const countryField = fields.find((f) => f.label.trim().toLowerCase() === "country")
+        const selectedCountryName = countryField ? String(responses[countryField.id] || "") : ""
+        const dialCode = getDialCodeForCountry(selectedCountryName)
 
         return (
           <div className="relative">
-            {showCountry && (
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-gray-600 text-sm font-medium">
-                <span>{selectedCountry.flag}</span>
-                <span>{selectedCountry.code}</span>
+            {dialCode && (
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 text-sm font-medium">
+                {dialCode}
               </div>
             )}
             <Input
@@ -793,11 +787,12 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
               placeholder={field.placeholder || "Phone number"}
               value={String(value || "")}
               onChange={(e) => updateResponse(field.id, e.target.value)}
-              className={cn(inputClasses, showCountry && "pl-20")}
+              className={cn(inputClasses, dialCode && "pl-14")}
               style={inputStyle}
             />
           </div>
         )
+      }
 
       case "email":
         const emailValue = String(value || "")
