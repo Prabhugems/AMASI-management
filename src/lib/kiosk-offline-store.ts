@@ -98,6 +98,11 @@ export interface StationManifest {
   lists: StationManifestList[]
 }
 
+export interface CachedStationName {
+  id: string
+  name: string
+}
+
 let dbPromise: Promise<IDBPDatabase> | null = null
 
 function getDb(): Promise<IDBPDatabase> {
@@ -230,6 +235,26 @@ export async function getStationManifest(stationToken: string): Promise<StationM
   const row = (await db.get(META_STORE, `station_manifest:${stationToken}`)) as MetaRow | undefined
   if (!row) return null
   return JSON.parse(row.value as string) as StationManifest
+}
+
+// --- Station names cache (all stations for an event) ----------------------
+// One new META_STORE key per event, no VERSION bump -- same JSON-blob-in-meta
+// approach as the station manifest above. Keyed by eventId (not stationToken)
+// because this is deliberately the full roster of every station on the
+// event, not just the caller's own -- so a tablet can resolve "which station
+// attributed a prior check-in" for any station id it encounters, purely from
+// this local cache.
+
+export async function cacheStationNames(eventId: string, stations: CachedStationName[]): Promise<void> {
+  const db = await getDb()
+  await db.put(META_STORE, { key: `station_names:${eventId}`, value: JSON.stringify(stations) } satisfies MetaRow)
+}
+
+export async function getStationNames(eventId: string): Promise<CachedStationName[]> {
+  const db = await getDb()
+  const row = (await db.get(META_STORE, `station_names:${eventId}`)) as MetaRow | undefined
+  if (!row) return []
+  return JSON.parse(row.value as string) as CachedStationName[]
 }
 
 // --- Scan log --------------------------------------------------------------
