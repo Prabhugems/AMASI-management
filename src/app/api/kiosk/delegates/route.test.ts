@@ -340,4 +340,15 @@ describe("GET /api/kiosk/delegates -- station_token multi-list", () => {
     const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "st-tok", list_id: LIST_ID })))
     expect(res.status).toBe(200)
   })
+
+  it("503s (not 404) when the station-membership lookup errors, distinguishing a transient failure from a genuine miss", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: null },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: null, error: { message: "boom" } })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "st-tok", list_id: LIST_ID })))
+    expect(res.status).toBe(503)
+  })
 })

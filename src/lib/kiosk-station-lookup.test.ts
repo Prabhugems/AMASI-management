@@ -44,18 +44,25 @@ describe("resolveStationByToken", () => {
 })
 
 describe("stationServesList", () => {
-  it("returns true when a kiosk_station_lists row exists for this pair", async () => {
+  it("returns isMember true and no error when a kiosk_station_lists row exists for this pair", async () => {
     mock.queueResponse("kiosk_station_lists", { data: { station_id: "st-1" }, error: null })
     const { stationServesList } = await import("./kiosk-station-lookup")
     const result = await stationServesList(mock.client, "st-1", "list-1")
-    expect(result).toBe(true)
+    expect(result).toEqual({ isMember: true, error: null })
     expect(mock.calls.some((c) => c.table === "kiosk_station_lists" && c.method === "eq" && c.args[0] === "checkin_list_id" && c.args[1] === "list-1")).toBe(true)
   })
 
-  it("returns false when no membership row exists", async () => {
+  it("returns isMember false and no error when no membership row exists", async () => {
     mock.queueResponse("kiosk_station_lists", { data: null, error: null })
     const { stationServesList } = await import("./kiosk-station-lookup")
     const result = await stationServesList(mock.client, "st-1", "list-1")
-    expect(result).toBe(false)
+    expect(result).toEqual({ isMember: false, error: null })
+  })
+
+  it("returns isMember false and passes through a query error without throwing, so a transient failure is distinguishable from a genuine miss", async () => {
+    mock.queueResponse("kiosk_station_lists", { data: null, error: { message: "boom" } })
+    const { stationServesList } = await import("./kiosk-station-lookup")
+    const result = await stationServesList(mock.client, "st-1", "list-1")
+    expect(result).toEqual({ isMember: false, error: { message: "boom" } })
   })
 })

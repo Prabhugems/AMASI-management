@@ -470,4 +470,27 @@ describe("POST /api/kiosk/checkin -- set-membership station attribution", () => 
     const insertCall = mock.calls.find((c) => c.table === "checkin_records" && c.method === "insert")
     expect((insertCall!.args[0] as any).station_id).toBeUndefined()
   })
+
+  it("still succeeds and never blocks the check-in when stationServesList itself errors -- falls through to unattributed", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: null },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: null, error: { message: "boom" } }) // membership query errors
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check
+    mock.queueResponse("checkin_records", { data: null, error: null }) // insert
+    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ station_token: "st-tok" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(true)
+    const insertCall = mock.calls.find((c) => c.table === "checkin_records" && c.method === "insert")
+    expect("station_id" in (insertCall!.args[0] as any)).toBe(false)
+  })
 })

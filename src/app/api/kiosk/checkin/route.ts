@@ -79,7 +79,13 @@ export async function POST(request: NextRequest) {
         !station.revoked_at &&
         (station.mode === "checkin" || station.mode === "checkin_and_print") &&
         station.event_id === eventId &&
-        (await stationServesList(supabase, station.id, checkinListId))
+        // This route's policy is already "any miss, for any reason,
+        // including a query error -> unattributed, never blocks" -- so the
+        // new `error` field from stationServesList is deliberately ignored
+        // here (Finding 5's own note: /api/kiosk/delegates is the one that
+        // needs to distinguish a transient error from a genuine miss, not
+        // this route).
+        (await stationServesList(supabase, station.id, checkinListId)).isMember
       ) {
         stationId = station.id
       }

@@ -20,13 +20,16 @@ import { resolveStationByToken, stationServesList } from "@/lib/kiosk-station-lo
 //     auto-generated on every list by a DB trigger (never null). The
 //     original, direct-URL kiosk path.
 //   - `station_token` (Stage 3, docs/superpowers/specs/2026-07-27-kiosk-stage3-station-identity-design.md):
-//     a kiosk_stations row's own token, resolved to its bound list_id
-//     server-side instead of trusting a token straight off checkin_lists.
-//     The list's own access_token is never fetched, read, or transmitted to
-//     the browser on this path -- that's the whole point of station
-//     identity. Just as strict: any failure to resolve (missing, malformed,
-//     revoked, wrong mode, wrong event) rejects the request exactly like a
-//     bad `token` would, never falls back to open access.
+//     a kiosk_stations row's own token. A station now serves a SET of lists
+//     (kiosk_station_lists), not a single bound list, so the caller must
+//     also supply `list_id` to say which of the station's assigned lists it
+//     wants a roster for -- the server verifies station membership for that
+//     specific list before returning anything. The list's own access_token
+//     is never fetched, read, or transmitted to the browser on this path --
+//     that's the whole point of station identity. Just as strict: any
+//     failure to resolve (missing, malformed, revoked, wrong mode, wrong
+//     event, not a member of the requested list) rejects the request
+//     exactly like a bad `token` would, never falls back to open access.
 //
 // Matching scope must mirror /api/kiosk/checkin's server-side eligibility
 // gate exactly (Stage 2, docs/superpowers/specs/2026-07-27-kiosk-stage2-checkin-authority-design.md):
@@ -80,7 +83,16 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Check-in list not found." }, { status: 404 })
       }
 
-      const isMember = await stationServesList(supabase, station.id, requestedListId as string)
+      const { isMember, error: membershipError } = await stationServesList(supabase, station.id, requestedListId as string)
+      if (membershipError) {
+        // Same rationale as the listLookupError/stationLookupError handling
+        // above: a transient Supabase error here must not look identical to
+        // "this station genuinely doesn't serve this list" (both would
+        // otherwise produce a hard 404, indistinguishable from a permanent
+        // credential rejection).
+        Sentry.captureException(membershipError, { tags: { route: "kiosk/delegates" }, extra: { eventId } })
+        return NextResponse.json({ error: "Something went wrong looking up this station's lists." }, { status: 503 })
+      }
       if (!isMember) {
         return NextResponse.json({ error: "Check-in list not found." }, { status: 404 })
       }

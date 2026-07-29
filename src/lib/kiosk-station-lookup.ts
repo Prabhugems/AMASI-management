@@ -34,12 +34,12 @@ export async function stationServesList(
   supabase: any,
   stationId: string,
   checkinListId: string
-): Promise<boolean> {
-  const { data } = await supabase
+): Promise<{ isMember: boolean; error: unknown }> {
+  const { data, error } = await supabase
     .from("kiosk_station_lists")
     .select("station_id")
     .eq("station_id", stationId)
     .eq("checkin_list_id", checkinListId)
     .maybeSingle()
-  return !!data
+  return { isMember: !!data, error }
 }
