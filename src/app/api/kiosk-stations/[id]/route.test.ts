@@ -4,6 +4,7 @@ import { makeRequest } from "@/test/helpers/request"
 
 const STATION_ID = "33333333-3333-3333-3333-333333333333"
 const EVENT_ID = "11111111-1111-1111-1111-111111111111"
+const LIST_ID = "22222222-2222-2222-2222-222222222222"
 
 let mock: ReturnType<typeof createSupabaseMock>
 
@@ -37,6 +38,22 @@ describe("PATCH /api/kiosk-stations/[id]", () => {
     const { PATCH } = await import("./route")
     const res = await PATCH(makeRequest(`http://localhost/api/kiosk-stations/${STATION_ID}`, { method: "PATCH", body: { name: "New Name" } }), params())
     expect(res.status).toBe(200)
+  })
+
+  it("replaces the station's assigned lists on PATCH with list_ids", async () => {
+    mock.queueResponse("kiosk_stations", { data: { id: "st-1", event_id: EVENT_ID }, error: null })
+    mock.queueResponse("checkin_lists", { data: [{ id: LIST_ID, event_id: EVENT_ID }], error: null })
+    mock.queueResponse("kiosk_station_lists", { data: null, error: null }) // delete
+    mock.queueResponse("kiosk_station_lists", { data: null, error: null }) // insert
+    mock.queueResponse("kiosk_stations", { data: { id: "st-1", event_id: EVENT_ID, name: "Front Desk" }, error: null })
+    const { PATCH } = await import("./route")
+    const res = await PATCH(
+      makeRequest("http://localhost/api/kiosk-stations/st-1", { method: "PATCH", body: { list_ids: [LIST_ID] } }),
+      { params: Promise.resolve({ id: "st-1" }) }
+    )
+    expect(res.status).toBe(200)
+    expect(mock.calls.some((c) => c.table === "kiosk_station_lists" && c.method === "delete")).toBe(true)
+    expect(mock.calls.some((c) => c.table === "kiosk_station_lists" && c.method === "insert")).toBe(true)
   })
 })
 

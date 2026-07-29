@@ -32,21 +32,6 @@ export async function PATCH(
   if (typeof body.name === "string" && body.name.trim()) {
     updates.name = body.name.trim()
   }
-  if (typeof body.list_id === "string") {
-    if (!isValidUUID(body.list_id)) {
-      return NextResponse.json({ error: "Invalid list." }, { status: 400 })
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: list } = await (supabase as any)
-      .from("checkin_lists")
-      .select("id, event_id")
-      .eq("id", body.list_id)
-      .maybeSingle()
-    if (!list || list.event_id !== station.event_id) {
-      return NextResponse.json({ error: "Check-in list not found for this event." }, { status: 404 })
-    }
-    updates.list_id = body.list_id
-  }
   if (typeof body.print_station_id === "string") {
     if (!isValidUUID(body.print_station_id)) {
       return NextResponse.json({ error: "Invalid print station." }, { status: 400 })
@@ -74,13 +59,39 @@ export async function PATCH(
     .from("kiosk_stations")
     .update(updates)
     .eq("id", id)
-    .select("id, event_id, name, mode, list_id, print_station_id, auto_print_badge")
+    .select("id, event_id, name, mode, print_station_id, auto_print_badge")
     .single()
 
   if (error) {
     return NextResponse.json({ error: "Failed to update kiosk station." }, { status: 500 })
   }
-  return NextResponse.json(data)
+
+  let listIds: string[] | undefined
+  if (Array.isArray(body.list_ids)) {
+    const requested = body.list_ids as string[]
+    if (requested.length === 0 || !requested.every(isValidUUID)) {
+      return NextResponse.json({ error: "At least one check-in list must be selected." }, { status: 400 })
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: lists } = await (supabase as any).from("checkin_lists").select("id, event_id").in("id", requested)
+    const foundIds = new Set((lists || []).map((l: any) => l.id))
+    if (requested.some((rid) => !foundIds.has(rid)) || (lists || []).some((l: any) => l.event_id !== station.event_id)) {
+      return NextResponse.json({ error: "Check-in list not found for this event." }, { status: 404 })
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("kiosk_station_lists").delete().eq("station_id", id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: joinError } = await (supabase as any)
+      .from("kiosk_station_lists")
+      .insert(requested.map((checkin_list_id) => ({ station_id: id, checkin_list_id })))
+    if (joinError) {
+      return NextResponse.json({ error: "Station updated but failed to reassign lists." }, { status: 500 })
+    }
+    listIds = requested
+  }
+
+  return NextResponse.json({ ...data, ...(listIds && { list_ids: listIds }) })
 }
 
 // DELETE /api/kiosk-stations/[id] -- remove the station entirely. Distinct
