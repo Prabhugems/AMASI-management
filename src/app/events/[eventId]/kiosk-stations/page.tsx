@@ -33,6 +33,7 @@ type KioskStation = {
   list_ids: string[]
   print_station_id: string | null
   auto_print_badge: boolean
+  attended: boolean
   last_seen_at: string | null
   revoked_at: string | null
   created_at: string
@@ -74,6 +75,7 @@ export default function KioskStationsPage() {
   const [newMode, setNewMode] = useState<"checkin" | "checkin_and_print">("checkin")
   const [newPrintStationId, setNewPrintStationId] = useState("")
   const [newAutoPrint, setNewAutoPrint] = useState(false)
+  const [newAttended, setNewAttended] = useState(false)
   const [creating, setCreating] = useState(false)
 
   // Hand-off modal: shows a freshly-minted plaintext token exactly once
@@ -130,6 +132,7 @@ export default function KioskStationsPage() {
           name: newName.trim(),
           list_ids: newListIds,
           mode: newMode,
+          attended: newAttended,
           ...(newMode === "checkin_and_print" && { print_station_id: newPrintStationId, auto_print_badge: newAutoPrint }),
         }),
       })
@@ -144,6 +147,7 @@ export default function KioskStationsPage() {
       setNewMode("checkin")
       setNewPrintStationId("")
       setNewAutoPrint(false)
+      setNewAttended(false)
       setHandoff({ name: data.name, token: data.access_token })
       await loadStations()
     } finally {
@@ -214,6 +218,22 @@ export default function KioskStationsPage() {
     await loadStations()
   }
 
+  const handleToggleAttended = async (station: KioskStation) => {
+    const next = !station.attended
+    const res = await fetch(`/api/kiosk-stations/${station.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attended: next }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error || "Failed to change attended")
+      return
+    }
+    toast.success(`${station.name}: attended ${next ? "on" : "off"}`)
+    await loadStations()
+  }
+
   const handleRevoke = async (station: KioskStation) => {
     if (!confirm(`Revoke "${station.name}"'s access? The device will stop working until you generate a new token.`)) return
     const res = await fetch(`/api/kiosk-stations/${station.id}/access-token`, { method: "DELETE" })
@@ -273,6 +293,11 @@ export default function KioskStationsPage() {
                   <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full border text-muted-foreground">
                     {station.mode === "checkin_and_print" ? "Check-in + Print" : "Check-in"}
                   </span>
+                  {station.attended && (
+                    <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full border text-muted-foreground">
+                      Attended
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {station.list_ids.map((id) => lists.find((l) => l.id === id)?.name).filter(Boolean).join(", ") || "No list assigned"}
@@ -341,6 +366,9 @@ export default function KioskStationsPage() {
                     </Button>
                   </>
                 )}
+                <Button variant="outline" size="sm" onClick={() => handleToggleAttended(station)}>
+                  Attended {station.attended ? "on" : "off"}
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => handleRegenerate(station)}>
                   <RefreshCw className="h-4 w-4 mr-1" />
                   New Token
@@ -399,6 +427,15 @@ export default function KioskStationsPage() {
                   Check-in + Print Badge
                 </label>
               </div>
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={newAttended} onChange={(e) => setNewAttended(e.target.checked)} />
+                Attended
+              </label>
+              <p className="text-xs text-muted-foreground mt-1">
+                A volunteer always operates this tablet — lets it serve collection-purpose lists (kits, meals) too, not just entry lists.
+              </p>
             </div>
             {newMode === "checkin_and_print" && (
               <div className="space-y-3">

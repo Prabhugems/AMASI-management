@@ -155,4 +155,17 @@ describe("PATCH /api/kiosk-stations/[id] -- print_station_id / auto_print_badge"
     const res = await PATCH(makeRequest(`http://localhost/api/kiosk-stations/${STATION_ID}`, { method: "PATCH", body: { auto_print_badge: true } }), params())
     expect(res.status).toBe(200)
   })
+
+  it("updates attended", async () => {
+    mock.queueResponse("kiosk_stations", { data: { id: STATION_ID, event_id: EVENT_ID }, error: null })
+    mock.queueResponse("kiosk_stations", { data: { id: STATION_ID, attended: true }, error: null })
+    const { PATCH } = await import("./route")
+    const res = await PATCH(makeRequest(`http://localhost/api/kiosk-stations/${STATION_ID}`, { method: "PATCH", body: { attended: true } }), params())
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.attended).toBe(true)
+    const updateCall = mock.calls.find((c) => c.table === "kiosk_stations" && c.method === "update")
+    expect((updateCall!.args[0] as any).attended).toBe(true)
+  })
 })

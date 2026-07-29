@@ -14,6 +14,7 @@ export interface KioskStationRow {
   name: string
   print_station_id: string | null
   auto_print_badge: boolean
+  attended: boolean
 }
 
 export async function resolveStationByToken(
@@ -23,7 +24,7 @@ export async function resolveStationByToken(
 ): Promise<{ station: KioskStationRow | null; error: unknown }> {
   const { data, error } = await supabase
     .from("kiosk_stations")
-    .select("id, event_id, mode, revoked_at, name, print_station_id, auto_print_badge")
+    .select("id, event_id, mode, revoked_at, name, print_station_id, auto_print_badge, attended")
     .eq("access_token_hash", hashStationToken(stationToken))
     .maybeSingle()
   return { station: (data as KioskStationRow | null) ?? null, error }

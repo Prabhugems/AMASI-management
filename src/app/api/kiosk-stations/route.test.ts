@@ -40,6 +40,22 @@ describe("GET /api/kiosk-stations", () => {
     expect(body.stations[0].list_ids).toEqual([LIST_ID])
     expect(body.stations[0].access_token_hash).toBeUndefined()
   })
+
+  it("returns attended per station, and includes it in the select", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: [{ id: "st-1", event_id: EVENT_ID, name: "Front Desk", mode: "checkin", attended: true, last_seen_at: null, revoked_at: null, created_at: "2026-07-27T00:00:00Z" }],
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: [], error: null })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(`http://localhost/api/kiosk-stations?event_id=${EVENT_ID}`))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.stations[0].attended).toBe(true)
+    const selectCall = mock.calls.find((c) => c.table === "kiosk_stations" && c.method === "select")
+    expect((selectCall!.args[0] as string)).toContain("attended")
+  })
 })
 
 describe("POST /api/kiosk-stations", () => {
@@ -107,6 +123,46 @@ describe("POST /api/kiosk-stations", () => {
     const joinInsert = mock.calls.find((c) => c.table === "kiosk_station_lists" && c.method === "insert")
     expect(joinInsert).toBeTruthy()
     expect((mock.calls.find((c) => c.table === "kiosk_stations" && c.method === "insert")!.args[0] as any).list_id).toBeUndefined()
+  })
+
+  it("creates a station with attended: true when passed", async () => {
+    mock.queueResponse("checkin_lists", { data: [{ id: LIST_ID, event_id: EVENT_ID }], error: null })
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, name: "Front Desk", mode: "checkin", attended: true, created_at: "2026-07-27T00:00:00Z" },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: null, error: null })
+    const { POST } = await import("./route")
+    const res = await POST(makeRequest("http://localhost/api/kiosk-stations", {
+      method: "POST",
+      body: { event_id: EVENT_ID, list_ids: [LIST_ID], name: "Front Desk", attended: true },
+    }))
+    const body = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(body.attended).toBe(true)
+    const insertCall = mock.calls.find((c) => c.table === "kiosk_stations" && c.method === "insert")
+    expect((insertCall!.args[0] as any).attended).toBe(true)
+  })
+
+  it("defaults attended to false when omitted", async () => {
+    mock.queueResponse("checkin_lists", { data: [{ id: LIST_ID, event_id: EVENT_ID }], error: null })
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, name: "Front Desk", mode: "checkin", attended: false, created_at: "2026-07-27T00:00:00Z" },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: null, error: null })
+    const { POST } = await import("./route")
+    const res = await POST(makeRequest("http://localhost/api/kiosk-stations", {
+      method: "POST",
+      body: { event_id: EVENT_ID, list_ids: [LIST_ID], name: "Front Desk" },
+    }))
+    const body = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(body.attended).toBe(false)
+    const insertCall = mock.calls.find((c) => c.table === "kiosk_stations" && c.method === "insert")
+    expect((insertCall!.args[0] as any).attended).toBe(false)
   })
 })
 

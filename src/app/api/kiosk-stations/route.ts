@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("kiosk_stations")
-    .select("id, event_id, name, mode, print_station_id, auto_print_badge, last_seen_at, revoked_at, created_at")
+    .select("id, event_id, name, mode, print_station_id, auto_print_badge, attended, last_seen_at, revoked_at, created_at")
     .eq("event_id", eventId)
     .order("created_at", { ascending: false })
 
@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
   const mode = (body.mode as string | undefined) === "checkin_and_print" ? "checkin_and_print" : "checkin"
   const printStationId = body.print_station_id as string | undefined
   const autoPrintBadge = body.auto_print_badge === true
+  const attended = body.attended === true
 
   if (mode === "checkin_and_print" && (!printStationId || !isValidUUID(printStationId))) {
     return NextResponse.json({ error: "A Print Station must be selected for check-in + print mode." }, { status: 400 })
@@ -125,9 +126,10 @@ export async function POST(request: NextRequest) {
       // stays on the table only for stations created before this change.
       print_station_id: mode === "checkin_and_print" ? printStationId : null,
       auto_print_badge: mode === "checkin_and_print" ? autoPrintBadge : false,
+      attended,
       access_token_hash: hashStationToken(access_token),
     })
-    .select("id, event_id, name, mode, print_station_id, auto_print_badge, created_at")
+    .select("id, event_id, name, mode, print_station_id, auto_print_badge, attended, created_at")
     .single()
 
   if (error) {

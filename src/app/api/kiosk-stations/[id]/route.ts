@@ -53,6 +53,9 @@ export async function PATCH(
   if (typeof body.auto_print_badge === "boolean") {
     updates.auto_print_badge = body.auto_print_badge
   }
+  if (typeof body.attended === "boolean") {
+    updates.attended = body.attended
+  }
 
   // --- Validate list_ids BEFORE any mutation happens ----------------------
   // Moved ahead of the station's own `.update()` below on purpose: this used
@@ -82,7 +85,7 @@ export async function PATCH(
     .from("kiosk_stations")
     .update(updates)
     .eq("id", id)
-    .select("id, event_id, name, mode, print_station_id, auto_print_badge")
+    .select("id, event_id, name, mode, print_station_id, auto_print_badge, attended")
     .single()
 
   if (error) {
