@@ -61,6 +61,12 @@ export default function KioskStationsPage() {
   const [lists, setLists] = useState<CheckinList[]>([])
   const [printStations, setPrintStations] = useState<PrintStation[]>([])
   const [loading, setLoading] = useState(true)
+  // Guards against a lost-update race: a second checkbox click for the same
+  // station, fired before the first PATCH+reload round-trip resolves, would
+  // compute nextIds from a stale `station.list_ids` closure and silently
+  // discard the in-flight change. Disabling that station's checkboxes while
+  // a reassignment is in flight prevents the stale computation from firing.
+  const [reassigningStationId, setReassigningStationId] = useState<string | null>(null)
 
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState("")
@@ -158,18 +164,23 @@ export default function KioskStationsPage() {
   }
 
   const handleReassignLists = async (station: KioskStation, listIds: string[]) => {
-    const res = await fetch(`/api/kiosk-stations/${station.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ list_ids: listIds }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      toast.error(data.error || "Failed to change lists")
-      return
+    setReassigningStationId(station.id)
+    try {
+      const res = await fetch(`/api/kiosk-stations/${station.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ list_ids: listIds }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || "Failed to change lists")
+        return
+      }
+      toast.success(`${station.name} reassigned`)
+      await loadStations()
+    } finally {
+      setReassigningStationId(null)
     }
-    toast.success(`${station.name} reassigned`)
-    await loadStations()
   }
 
   const handleReassignPrintStation = async (station: KioskStation, printStationId: string) => {
@@ -290,6 +301,7 @@ export default function KioskStationsPage() {
                         <label key={list.id} className="flex items-center gap-2 text-sm">
                           <Checkbox
                             checked={checked}
+                            disabled={reassigningStationId === station.id}
                             onCheckedChange={(next) => {
                               const nextIds = next
                                 ? [...station.list_ids, list.id]
