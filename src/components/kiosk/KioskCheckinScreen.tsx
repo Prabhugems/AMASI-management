@@ -228,14 +228,18 @@ export function KioskCheckinScreen({
           if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
           return
         }
-        const data = (await res.json()) as { delegates: CachedDelegate[]; list_purpose?: string }
+        const data = (await res.json()) as { delegates: CachedDelegate[]; list_purpose?: string; blocked?: boolean }
         if (cancelled) return
 
-        if (data.list_purpose === "collection") {
-          // Self check-in never accepts scans against a collection-purpose
-          // list (see /api/kiosk/checkin/route.ts:58-63) -- there's nothing
-          // worth caching, and every scan must be rejected with a specific,
-          // distinct message rather than looking like a match failure.
+        if (data.blocked) {
+          // The server is the single authority on whether self check-in is
+          // allowed against this list -- an unattended collection-purpose
+          // list is blocked (see /api/kiosk/checkin/route.ts), while an
+          // attended station serving a collection-purpose list gets the
+          // real roster (blocked: false) even though list_purpose is still
+          // "collection". Trust `blocked` directly rather than re-deriving
+          // this policy from list_purpose alone, which can no longer
+          // distinguish the two cases on its own.
           delegatesRef.current = []
           await replaceDelegateCache(listId, [])
           setListBlockedReason("Self check-in isn't available for this list. Please see a staff member.")

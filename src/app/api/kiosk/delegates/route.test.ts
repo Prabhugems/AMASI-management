@@ -88,6 +88,7 @@ describe("GET /api/kiosk/delegates", () => {
     expect(res.status).toBe(200)
     expect(body.delegates).toEqual([])
     expect(body.list_purpose).toBe("collection")
+    expect(body.blocked).toBe(true)
     expect(mock.calls.some((c) => c.table === "registrations")).toBe(false)
   })
 
@@ -124,6 +125,7 @@ describe("GET /api/kiosk/delegates", () => {
       },
     ])
     expect(body.list_purpose).toBe("entry")
+    expect(body.blocked).toBe(false)
     // Unrestricted list (baseList() sets no ticket_type_ids/addon_ids), so
     // no .in() filter should be applied to the registrations query -- a
     // restricted list DOES get one now (see the addon-eligibility tests
@@ -382,6 +384,7 @@ describe("GET /api/kiosk/delegates -- attended-station collection-list exception
 
     expect(res.status).toBe(200)
     expect(body.list_purpose).toBe("collection")
+    expect(body.blocked).toBe(false)
     expect(body.delegates).toEqual([
       {
         id: "reg-1",
@@ -410,6 +413,7 @@ describe("GET /api/kiosk/delegates -- attended-station collection-list exception
     expect(res.status).toBe(200)
     expect(body.delegates).toEqual([])
     expect(body.list_purpose).toBe("collection")
+    expect(body.blocked).toBe(true)
     expect(mock.calls.some((c) => c.table === "registrations")).toBe(false)
   })
 
@@ -428,6 +432,7 @@ describe("GET /api/kiosk/delegates -- attended-station collection-list exception
     expect(res.status).toBe(200)
     expect(body.delegates).toEqual([])
     expect(body.list_purpose).toBe("collection")
+    expect(body.blocked).toBe(true)
   })
 
   it("fails closed: a revoked (would-be-attended) station still gets the empty-roster short-circuit on a collection list, never the real roster", async () => {

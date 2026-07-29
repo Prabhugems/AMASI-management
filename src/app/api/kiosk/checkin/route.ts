@@ -28,6 +28,25 @@ import { resolveStationByToken, stationServesList } from "@/lib/kiosk-station-lo
 // running the OLD pre-Stage-2 fuzzy `.or()` search against `search`,
 // matching that route's exact prior behavior end to end -- including its
 // "not found" response being a bare 200/success:false, not a 404.
+
+// Shared response builder for the fresh-resolution path's collection-list
+// gate ONLY (see the two call sites below). Deliberately NOT reused for the
+// pre-Stage-2 fallback path -- that path's gate is unconditional (it has no
+// ticket_type_ids/addon_ids eligibility check at all, unlike this one, so it
+// must never honor isAttendedStation; see the comment at that call site).
+function collectionListBlockedResponse(
+  list: { list_purpose: string },
+  isAttendedStation: boolean
+): NextResponse | null {
+  if (list.list_purpose === "collection" && !isAttendedStation) {
+    return NextResponse.json(
+      { success: false, message: "Self check-in isn't available for this list. Please see a staff member." },
+      { status: 403 }
+    )
+  }
+  return null
+}
+
 export async function POST(request: NextRequest) {
   // Public, unauthenticated -- rate-limit by IP to blunt enumeration while
   // staying generous enough for a real kiosk queue.
@@ -235,12 +254,8 @@ export async function POST(request: NextRequest) {
       // unambiguously succeeded AND the station is staff-attended -- any
       // other case (no station_token, unattended station, or ANY resolution
       // failure/ambiguity) leaves it false and this still blocks.
-      if (list.list_purpose === "collection" && !isAttendedStation) {
-        return NextResponse.json(
-          { success: false, message: "Self check-in isn't available for this list. Please see a staff member." },
-          { status: 403 }
-        )
-      }
+      const blockedResponse = collectionListBlockedResponse(list, isAttendedStation)
+      if (blockedResponse) return blockedResponse
 
       return completeCheckin(supabase, publicRegistration, registration.id, checkinListId, scanId, stationId, timeWindowWarning)
     }
@@ -265,10 +280,18 @@ export async function POST(request: NextRequest) {
 
     const { warning: timeWindowWarning } = checkTimeWindow(list)
 
-    // Same fail-closed attended-station exception as the fresh-resolution
-    // path above -- see the comment there and at isAttendedStation's
-    // computation.
-    if (list.list_purpose === "collection" && !isAttendedStation) {
+    // Unconditional block, UNLIKE the fresh-resolution path above -- this
+    // fallback path is a fuzzy `.or()` search with NO ticket_type_ids/
+    // addon_ids eligibility check at all (see the header comment), so it
+    // must never be the one that lets a collection list through. Extending
+    // the attended-station exception here would let an attended station
+    // check a delegate into a collection list (e.g. an addon-restricted
+    // meal) with zero verification they're actually eligible for it.
+    // Deliberately NOT using collectionListBlockedResponse's isAttendedStation
+    // parameter here -- this path's semantics genuinely differ from the
+    // fresh-resolution path's, so it gets its own always-false check rather
+    // than being made attended-aware while deduplicating.
+    if (list.list_purpose === "collection") {
       return NextResponse.json(
         { success: false, message: "Self check-in isn't available for this list. Please see a staff member." },
         { status: 403 }
@@ -375,12 +398,13 @@ async function completeCheckin(
       checked_in_by: "Self check-in (kiosk)",
       scan_id: scanId,
       // Defense-in-depth: omit the key entirely when there's no station to
-      // attribute to, rather than sending `station_id: null`. Production does
-      // not yet have this column (migration committed, intentionally
-      // unapplied -- see CLAUDE.md's migration-pipeline section); every
-      // check-in via the pre-existing direct-URL kiosk flow has stationId ===
-      // null, so this keeps that already-live flow structurally immune to a
-      // PostgREST "unknown column" rejection regardless of migration timing.
+      // attribute to, rather than sending `station_id: null`. The column
+      // (checkin_records.station_id) was applied to production on
+      // 2026-07-28 -- see CLAUDE.md's migration-pipeline section -- so this
+      // is no longer about the column potentially not existing; it's just
+      // correct behavior regardless: every check-in via the pre-existing
+      // direct-URL kiosk flow has stationId === null, and there's simply
+      // nothing to attribute in that case.
       ...(stationId && { station_id: stationId }),
     })
 

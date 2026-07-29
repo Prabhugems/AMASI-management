@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
     // written as "proceed only if attended", never as "skip unless
     // unresolved", so it can't accidentally invert under a future edit.
     if (list.list_purpose === "collection" && !stationIsAttended) {
-      return NextResponse.json({ delegates: [], list_purpose: list.list_purpose })
+      return NextResponse.json({ delegates: [], list_purpose: list.list_purpose, blocked: true })
     }
 
     // List eligibility: mirrors src/app/api/checkin/access/[accessToken]/attendees/route.ts:49-84
@@ -219,7 +219,11 @@ export async function GET(request: NextRequest) {
 
       addonFilteredRegIds = [...new Set(allAddonRegs.map((r) => r.registration_id))]
       if (addonFilteredRegIds.length === 0) {
-        return NextResponse.json({ delegates: [], list_purpose: list.list_purpose })
+        // Legitimately empty (no registration holds the restricted addon),
+        // not a collection-list policy block -- blocked: false so the
+        // client caches this as a real (if empty) roster rather than
+        // treating it as the "see a staff member" case.
+        return NextResponse.json({ delegates: [], list_purpose: list.list_purpose, blocked: false })
       }
     }
 
@@ -282,7 +286,7 @@ export async function GET(request: NextRequest) {
       attendee_institution: r.attendee_institution,
     }))
 
-    return NextResponse.json({ delegates, list_purpose: list.list_purpose })
+    return NextResponse.json({ delegates, list_purpose: list.list_purpose, blocked: false })
   } catch (error) {
     Sentry.captureException(error, { tags: { route: "kiosk/delegates" }, extra: { eventId } })
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 })

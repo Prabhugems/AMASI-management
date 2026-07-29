@@ -400,7 +400,8 @@ describe("POST /api/kiosk/checkin", () => {
     expect(body.success).toBe(true)
     const insertCall = mock.calls.find((c) => c.table === "checkin_records" && c.method === "insert")
     // Defense-in-depth (Fix 1): the key must be entirely absent, not present
-    // with a null value -- production doesn't have this column yet.
+    // with a null value -- there's simply nothing to attribute when station
+    // resolution didn't succeed.
     expect("station_id" in (insertCall!.args[0] as any)).toBe(false)
   })
 
@@ -518,7 +519,7 @@ describe("POST /api/kiosk/checkin -- attended-station collection-list exception"
     expect(body.alreadyCheckedIn).toBe(false)
   })
 
-  it("allows an attended station to check in against a collection-purpose list (pre-Stage-2 fallback path)", async () => {
+  it("still 403s an attended station on a collection-purpose list via the pre-Stage-2 fallback path (no eligibility check exists on this path, so it must never honor the attended exception)", async () => {
     mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
     mock.queueResponse("kiosk_stations", {
       data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: null, attended: true },
@@ -526,10 +527,6 @@ describe("POST /api/kiosk/checkin -- attended-station collection-list exception"
     })
     mock.queueResponse("kiosk_station_lists", { data: { station_id: "st-1" }, error: null })
     mock.queueResponse("checkin_lists", { data: baseList({ list_purpose: "collection" }), error: null })
-    mock.queueResponse("registrations", { data: baseRegistration(), error: null }) // fuzzy match hit
-    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check
-    mock.queueResponse("checkin_records", { data: null, error: null }) // insert
-    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
 
     const { POST } = await import("./route")
     const res = await POST(
@@ -537,9 +534,8 @@ describe("POST /api/kiosk/checkin -- attended-station collection-list exception"
     )
     const body = await res.json()
 
-    expect(res.status).toBe(200)
-    expect(body.success).toBe(true)
-    expect(body.alreadyCheckedIn).toBe(false)
+    expect(res.status).toBe(403)
+    expect(body.success).toBe(false)
   })
 
   it("still 403s a collection-purpose list when the station resolves but is NOT attended", async () => {
