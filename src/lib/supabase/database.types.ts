@@ -7122,6 +7122,7 @@ export type Database = {
       kiosk_stations: {
         Row: {
           access_token_hash: string | null
+          attended: boolean
           auto_print_badge: boolean
           created_at: string
           event_id: string
@@ -7139,6 +7140,7 @@ export type Database = {
         }
         Insert: {
           access_token_hash?: string | null
+          attended?: boolean
           auto_print_badge?: boolean
           created_at?: string
           event_id: string
@@ -7156,6 +7158,7 @@ export type Database = {
         }
         Update: {
           access_token_hash?: string | null
+          attended?: boolean
           auto_print_badge?: boolean
           created_at?: string
           event_id?: string
