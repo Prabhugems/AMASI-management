@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { isValidUUID } from "@/lib/validation"
 import { checkTimeWindow } from "@/lib/checkin-time-window"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
-import { hashStationToken } from "@/lib/kiosk-station-auth"
+import { resolveStationByToken, stationServesList } from "@/lib/kiosk-station-lookup"
 
 // POST /api/kiosk/checkin -- public self check-in for the /kiosk/[eventId]/[listId]
 // page. The kiosk runs as the anon browser client, but checkin_records has RLS
@@ -67,23 +67,19 @@ export async function POST(request: NextRequest) {
 
     // Stage 3: resolve station_id for attribution only -- this route was
     // never token-gated (see the header comment above), so a station_token
-    // that's absent, malformed, revoked, or simply doesn't resolve must
-    // NEVER block a check-in from completing. It only fails to attribute it
-    // to a station.
+    // that's absent, malformed, revoked, doesn't resolve, or doesn't serve
+    // this list must NEVER block a check-in from completing. It only fails
+    // to attribute it to a station.
     let stationId: string | null = null
     if (stationToken) {
-      const { data: station } = await (supabase as any)
-        .from("kiosk_stations")
-        .select("id, event_id, mode, list_id, revoked_at")
-        .eq("access_token_hash", hashStationToken(stationToken))
-        .maybeSingle()
+      const { station } = await resolveStationByToken(supabase, stationToken)
 
       if (
         station &&
         !station.revoked_at &&
-        station.mode === "checkin" &&
+        (station.mode === "checkin" || station.mode === "checkin_and_print") &&
         station.event_id === eventId &&
-        station.list_id === checkinListId
+        (await stationServesList(supabase, station.id, checkinListId))
       ) {
         stationId = station.id
       }
