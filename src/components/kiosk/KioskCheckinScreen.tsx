@@ -747,7 +747,19 @@ export function KioskCheckinScreen({
               status: entry.status,
             }),
           })
-          if (res.ok) await markPrintSynced(entry.print_id)
+          if (res.ok) {
+            await markPrintSynced(entry.print_id)
+          } else if (res.status === 429) {
+            // Our own rate limit -- a backlog of queued print-log entries
+            // syncing on reconnect can plausibly exceed
+            // /api/kiosk/print-sync's 30/min "public" tier. Queue-wide: stop
+            // this pass rather than hammering the rest of the backlog into
+            // the same limit immediately. Mirrors drainScanQueue's
+            // "retry-break" handling of a 429 in kiosk-sync-worker.ts.
+            break
+          }
+          // Any other non-ok status (4xx/5xx) is left pending and retried
+          // per-entry on the next poll, same as a network-level failure.
         } catch {
           // Routine offline/transient failure -- this entry stays pending
           // and is retried on the next poll, same tolerance as syncNow.
