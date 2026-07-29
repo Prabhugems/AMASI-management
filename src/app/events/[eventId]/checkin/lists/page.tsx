@@ -109,16 +109,18 @@ export default function CheckinListsPage() {
     kiosk_force_state: null as "open" | "closed" | null,
   })
 
-  // Fetch lists
+  // Fetch lists — goes through the API route (admin client) rather than a
+  // direct browser-session Supabase query: checkin_lists' RLS has no SELECT
+  // policy for browser sessions either (not just INSERT, despite the
+  // narrower framing in the mutation comment below), so a direct client
+  // query here always silently returned zero rows regardless of the actual
+  // data -- this page showed "No lists yet" for every event, always.
   const { data: lists, isLoading } = useQuery({
     queryKey: ["checkin-lists-manage", eventId],
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("checkin_lists")
-        .select("*")
-        .eq("event_id", eventId)
-        .order("sort_order")
-
+      const res = await fetch(`/api/checkin-lists?event_id=${encodeURIComponent(eventId)}`)
+      if (!res.ok) return []
+      const data = await res.json()
       return (data || []) as CheckinList[]
     },
   })
