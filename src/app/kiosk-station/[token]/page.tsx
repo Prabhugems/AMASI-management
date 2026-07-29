@@ -34,7 +34,7 @@ export default async function KioskStationPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error } = await (supabase as any)
     .from("kiosk_stations")
-    .select("id, event_id, mode, list_id, print_station_id, auto_print_badge, revoked_at")
+    .select("id, name, event_id, mode, list_id, print_station_id, auto_print_badge, revoked_at")
     .eq("access_token_hash", hashStationToken(token))
     .maybeSingle()
 
@@ -86,6 +86,7 @@ export default async function KioskStationPage({
       eventId={station.event_id}
       listId={station.list_id}
       stationToken={token}
+      stationName={station.name}
       mode={station.mode}
       autoPrintBadge={station.auto_print_badge}
       printStationId={station.print_station_id || undefined}

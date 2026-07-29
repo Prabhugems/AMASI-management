@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { Html5Qrcode } from "html5-qrcode"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,6 +21,9 @@ import {
   Keyboard,
   Briefcase,
   Building2,
+  Camera,
+  SwitchCamera,
+  XCircle,
 } from "lucide-react"
 import { toast } from "sonner"
 import * as Sentry from "@sentry/nextjs"
@@ -76,6 +80,11 @@ interface KioskCheckinScreenProps {
   // token to this component at all).
   token?: string
   stationToken?: string
+  // The kiosk_stations row's own admin-facing name (e.g. "Front Desk 1") --
+  // display-only, so staff on-site can confirm which physical station a
+  // device is provisioned as. Only ever set on the /kiosk-station/[token]
+  // path; the original direct-URL path has no station record to name.
+  stationName?: string
   // Stage 4 (check-in + print badge). mode is "checkin" for every existing
   // caller (Stage 1-3 direct-URL and station flows) -- print-related props
   // are only ever populated when mode === "checkin_and_print".
@@ -97,6 +106,7 @@ export function KioskCheckinScreen({
   listId,
   token = "",
   stationToken,
+  stationName,
   mode = "checkin",
   autoPrintBadge = false,
   printStationId,
@@ -123,6 +133,18 @@ export function KioskCheckinScreen({
   const [printerName, setPrinterName] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
   const [printStatus, setPrintStatus] = useState<{ success: boolean; message: string } | null>(null)
+  // Camera QR scan mode -- an alternative to the manual/external-scanner text
+  // input below, using the same html5-qrcode integration already proven in
+  // the standalone Print Station page (src/app/print/[token]/page.tsx).
+  // Defaults to "camera" (unlike that page's "manual" default) since a
+  // self-service kiosk's primary interaction is walk-up-and-scan.
+  const [scanMode, setScanMode] = useState<"camera" | "manual">("camera")
+  const [cameraActive, setCameraActive] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [cameras, setCameras] = useState<{ id: string; label: string }[]>([])
+  const [selectedCameraId, setSelectedCameraId] = useState<string>("")
+  const scannerRef = useRef<Html5Qrcode | null>(null)
+  const scannerContainerId = "kiosk-qr-scanner-container"
   const inputRef = useRef<HTMLInputElement>(null)
   // Scanner-burst auto-submit + double-submit guard (see handleRegChange).
   const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -746,6 +768,126 @@ export function KioskCheckinScreen({
     }
   }
 
+  // ============================================================
+  // CAMERA QR SCANNER — ported from src/app/print/[token]/page.tsx's
+  // proven html5-qrcode integration, not reinvented. A scanned code feeds
+  // into the exact same local-first handleCheckin(override) path the
+  // manual input and external hardware scanner already use -- this is
+  // purely an additional input method, not a new check-in code path.
+  // ============================================================
+
+  const getCameras = useCallback(async () => {
+    try {
+      const devices = await Html5Qrcode.getCameras()
+      if (devices && devices.length > 0) {
+        setCameras(devices)
+        const backCamera = devices.find((d) =>
+          d.label.toLowerCase().includes("back") ||
+          d.label.toLowerCase().includes("rear") ||
+          d.label.toLowerCase().includes("environment")
+        )
+        setSelectedCameraId(backCamera?.id || devices[0].id)
+      }
+    } catch (err) {
+      Sentry.captureException(err, { tags: { module: "kiosk-camera" }, extra: { eventId, listId } })
+      setCameraError("Unable to access camera. Please grant camera permission.")
+    }
+  }, [eventId, listId])
+
+  const stopScanner = useCallback(async () => {
+    if (scannerRef.current && cameraActive) {
+      try {
+        const scanner = scannerRef.current
+        if (scanner.isScanning) {
+          await scanner.stop()
+        }
+        scannerRef.current = null
+      } catch {
+        // Ignore stop errors -- scanner might already be stopped.
+      }
+    }
+    setCameraActive(false)
+  }, [cameraActive])
+
+  const handleQrCodeScanned = useCallback((decodedText: string) => {
+    stopScanner()
+    // Same URL-vs-raw-value handling as the print station's camera scanner,
+    // for consistency: a badge QR may encode a bare registration number or
+    // a verify-style URL ending in one.
+    let code = decodedText
+    if (code.includes("/")) {
+      const parts = code.split("/")
+      code = parts[parts.length - 1]
+    }
+    handleCheckin(code.trim())
+  }, [stopScanner]) // eslint-disable-line react-hooks/exhaustive-deps -- handleCheckin is stable across the lifetime of one mount (reads refs, not state, for its match logic)
+
+  const startScanner = useCallback(async () => {
+    if (!selectedCameraId) {
+      await getCameras()
+      return
+    }
+    setCameraError(null)
+    try {
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.stop()
+        } catch {
+          // Ignore stop errors on an already-stopped/never-started instance.
+        }
+      }
+      scannerRef.current = new Html5Qrcode(scannerContainerId)
+      await scannerRef.current.start(
+        selectedCameraId,
+        { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1 },
+        (decodedText) => handleQrCodeScanned(decodedText),
+        () => {
+          // Per-frame "no code found" callback -- expected continuously
+          // while scanning, not an error.
+        }
+      )
+      setCameraActive(true)
+    } catch (err) {
+      Sentry.captureException(err, { tags: { module: "kiosk-camera" }, extra: { eventId, listId } })
+      setCameraError(err instanceof Error ? err.message : "Failed to start camera")
+      setCameraActive(false)
+    }
+  }, [selectedCameraId, getCameras, handleQrCodeScanned, eventId, listId])
+
+  const switchCamera = useCallback(async () => {
+    if (cameras.length < 2) return
+    const currentIndex = cameras.findIndex((c) => c.id === selectedCameraId)
+    const nextIndex = (currentIndex + 1) % cameras.length
+    setSelectedCameraId(cameras[nextIndex].id)
+    if (cameraActive) {
+      await stopScanner()
+      setTimeout(() => startScanner(), 300)
+    }
+  }, [cameras, selectedCameraId, cameraActive, stopScanner, startScanner])
+
+  // Camera only runs on the entry screen (no active result) and only in
+  // "camera" scan mode -- mirrors the print station page's identical gate.
+  useEffect(() => {
+    if (scanMode === "camera" && !result) {
+      getCameras()
+    } else if (scanMode === "manual") {
+      stopScanner()
+    }
+    return () => {
+      if (scannerRef.current && scannerRef.current.isScanning) {
+        scannerRef.current.stop().catch(() => {})
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanMode, result])
+
+  useEffect(() => {
+    if (scanMode === "camera" && selectedCameraId && !result && !cameraActive) {
+      startScanner()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanMode, selectedCameraId, result, cameraActive])
+
   // Silent background self-heal, same rationale as the old flush effect it
   // replaces: no "queue"/"pending" language in the attendee-facing UI, and
   // a 20s poll because navigator.onLine only reflects the OS network
@@ -955,7 +1097,10 @@ export function KioskCheckinScreen({
               <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
                 {event?.short_name || event?.name}
               </h1>
-              <p className="text-xs sm:text-sm text-gray-400 truncate">{list?.name}</p>
+              <p className="text-xs sm:text-sm text-gray-400 truncate">
+                {list?.name}
+                {stationName && ` · ${stationName}`}
+              </p>
             </div>
             <div className="text-right shrink-0">
               <p className="text-xs sm:text-sm text-gray-400">Auto-reset in</p>
@@ -1216,6 +1361,9 @@ export function KioskCheckinScreen({
             <p className="text-base sm:text-xl font-semibold text-white truncate">
               {list?.name || "Loading…"}
             </p>
+            {stationName && (
+              <p className="text-xs text-gray-500 truncate">{stationName}</p>
+            )}
           </div>
         </div>
       </div>
@@ -1234,49 +1382,136 @@ export function KioskCheckinScreen({
             </p>
           </div>
 
-          {/* Input panel — action-panel surface */}
-          <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-5 sm:p-6">
-            <div className="relative">
-              <Input
-                ref={inputRef}
-                type="text"
-                placeholder="Registration #, name, phone, or email…"
-                value={registrationNumber}
-                onChange={handleRegChange}
-                onKeyDown={handleKeyDown}
-                className="h-14 sm:h-16 text-base sm:text-xl text-center bg-white text-slate-900 border-0 rounded-xl placeholder:text-slate-400 pr-14"
-                autoComplete="off"
-                autoFocus
-              />
-              <Keyboard className="absolute right-4 top-1/2 -translate-y-1/2 h-6 w-6 sm:h-7 sm:w-7 text-slate-400 pointer-events-none" />
-            </div>
-
-            <Button
-              size="lg"
-              className="w-full h-14 sm:h-16 mt-4 text-base sm:text-xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl"
-              onClick={() => handleCheckin()}
-              disabled={isProcessing || !cacheReady || !registrationNumber.trim()}
+          {/* Scan mode toggle */}
+          <div className="flex bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-xl p-1 mb-4">
+            <button
+              onClick={() => setScanMode("camera")}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+                scanMode === "camera" ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
+              }`}
             >
-              {!cacheReady && cacheError ? (
-                "Unavailable"
-              ) : !cacheReady ? (
-                <>
-                  <Loader2 className="h-6 w-6 mr-2 animate-spin" />
-                  Loading…
-                </>
-              ) : isProcessing ? (
-                <>
-                  <Loader2 className="h-6 w-6 mr-2 animate-spin" />
-                  Checking in…
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-6 w-6 mr-2" />
-                  Check in
-                </>
-              )}
-            </Button>
+              <Camera className="w-5 h-5" />
+              Camera Scan
+            </button>
+            <button
+              onClick={() => setScanMode("manual")}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+                scanMode === "manual" ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <Keyboard className="w-5 h-5" />
+              Manual / Scanner
+            </button>
           </div>
+
+          {scanMode === "camera" ? (
+            /* Camera viewport — action-panel surface */
+            <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-4 sm:p-5">
+              <div className="relative">
+                <div
+                  id={scannerContainerId}
+                  className="w-full aspect-square max-w-sm mx-auto rounded-xl overflow-hidden bg-black"
+                />
+                {cameraActive && (
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="w-56 h-56 sm:w-64 sm:h-64 border-2 border-white/50 rounded-lg relative">
+                      <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-emerald-500 rounded-tl-lg" />
+                      <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-emerald-500 rounded-tr-lg" />
+                      <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-emerald-500 rounded-bl-lg" />
+                      <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-emerald-500 rounded-br-lg" />
+                    </div>
+                  </div>
+                )}
+                {cameraActive && cameras.length > 1 && (
+                  <button
+                    onClick={switchCamera}
+                    className="absolute bottom-4 left-1/2 -translate-x-1/2 p-3 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/70 transition-colors"
+                    title="Switch camera"
+                  >
+                    <SwitchCamera className="w-5 h-5" />
+                  </button>
+                )}
+                {!cameraActive && !cameraError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-xl">
+                    <div className="text-center text-white">
+                      <Loader2 className="w-10 h-10 mx-auto animate-spin" />
+                      <p className="mt-3 text-sm">Starting camera…</p>
+                    </div>
+                  </div>
+                )}
+                {cameraError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/90 rounded-xl p-6">
+                    <div className="text-center">
+                      <XCircle className="w-12 h-12 mx-auto text-red-500" />
+                      <p className="mt-3 text-sm text-white">{cameraError}</p>
+                      <button
+                        onClick={() => {
+                          setCameraError(null)
+                          startScanner()
+                        }}
+                        className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-500"
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="mt-4 text-center text-sm text-gray-400">
+                Point camera at your badge QR code
+              </p>
+              {isProcessing && (
+                <div className="mt-3 flex items-center justify-center gap-2 text-emerald-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm font-medium">Checking in…</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Manual / external-scanner input panel — action-panel surface */
+            <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-5 sm:p-6">
+              <div className="relative">
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Registration #, name, phone, or email…"
+                  value={registrationNumber}
+                  onChange={handleRegChange}
+                  onKeyDown={handleKeyDown}
+                  className="h-14 sm:h-16 text-base sm:text-xl text-center bg-white text-slate-900 border-0 rounded-xl placeholder:text-slate-400 pr-14"
+                  autoComplete="off"
+                  autoFocus
+                />
+                <Keyboard className="absolute right-4 top-1/2 -translate-y-1/2 h-6 w-6 sm:h-7 sm:w-7 text-slate-400 pointer-events-none" />
+              </div>
+
+              <Button
+                size="lg"
+                className="w-full h-14 sm:h-16 mt-4 text-base sm:text-xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl"
+                onClick={() => handleCheckin()}
+                disabled={isProcessing || !cacheReady || !registrationNumber.trim()}
+              >
+                {!cacheReady && cacheError ? (
+                  "Unavailable"
+                ) : !cacheReady ? (
+                  <>
+                    <Loader2 className="h-6 w-6 mr-2 animate-spin" />
+                    Loading…
+                  </>
+                ) : isProcessing ? (
+                  <>
+                    <Loader2 className="h-6 w-6 mr-2 animate-spin" />
+                    Checking in…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-6 w-6 mr-2" />
+                    Check in
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
 
           {/* Instructions — action-panel cards */}
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
