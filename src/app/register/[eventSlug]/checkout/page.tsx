@@ -7,6 +7,7 @@ import { useTheme } from "next-themes"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import Script from "next/script"
+import { getCurrencySymbol } from "@/lib/utils"
 import {
   ArrowLeft,
   User,
@@ -448,6 +449,7 @@ export default function CheckoutPage() {
       addonsTotal,
       addonsTax,
       total: Math.max(0, subtotal + tax + addonsTotal + addonsTax - discount),
+      currency: selectedTicketsDetails[0]?.currency || "INR",
     }
   }, [selectedTicketsDetails, discountApplied, checkoutData?.addonsSelection])
 
@@ -847,7 +849,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: totals.total, // Server will recalculate and validate
-          currency: "INR",
+          currency: selectedTicketsDetails[0]?.currency || "INR", // Server resolves the authoritative currency from ticket/addon rows regardless
           payment_type: "registration",
           event_id: event.id,
           payer_name: `${formData.first_name} ${formData.last_name}`,
@@ -1437,11 +1439,11 @@ export default function CheckoutPage() {
                         {ticket.name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {"\u20B9"}{ticket.price.toLocaleString("en-IN", { maximumFractionDigits: 0 })} x {ticket.quantity}
+                        {getCurrencySymbol(ticket.currency)}{ticket.price.toLocaleString("en-IN", { maximumFractionDigits: 0 })} x {ticket.quantity}
                       </p>
                     </div>
                     <span className="font-medium text-gray-900">
-                      {"\u20B9"}{ticket.subtotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                      {getCurrencySymbol(ticket.currency)}{ticket.subtotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                 ))}
@@ -1463,11 +1465,11 @@ export default function CheckoutPage() {
                               {variant && ` (${variant.name})`}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {"\u20B9"}{addon.unitPrice.toLocaleString("en-IN", { maximumFractionDigits: 0 })} x {addon.quantity}
+                              {getCurrencySymbol(totals.currency)}{addon.unitPrice.toLocaleString("en-IN", { maximumFractionDigits: 0 })} x {addon.quantity}
                             </p>
                           </div>
                           <span className="font-medium text-gray-900">
-                            {"\u20B9"}{addon.totalPrice.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                            {getCurrencySymbol(totals.currency)}{addon.totalPrice.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                           </span>
                         </div>
                       )
@@ -1504,7 +1506,7 @@ export default function CheckoutPage() {
                     {discountApplied && (
                       <p className="text-sm text-green-600 mt-2 flex items-center gap-1 animate-slide-up-fade">
                         <CheckCircle className="w-4 h-4" />
-                        Discount applied: -{"\u20B9"}{discountApplied.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                        Discount applied: -{getCurrencySymbol(totals.currency)}{discountApplied.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                       </p>
                     )}
                     {discountError && (
@@ -1521,13 +1523,13 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Tickets Subtotal</span>
                     <span className="text-gray-900">
-                      {"\u20B9"}{totals.subtotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                      {getCurrencySymbol(totals.currency)}{totals.subtotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Tickets GST</span>
                     <span className="text-gray-900">
-                      {"\u20B9"}{totals.tax.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                      {getCurrencySymbol(totals.currency)}{totals.tax.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                   {totals.addonsTotal > 0 && (
@@ -1535,13 +1537,13 @@ export default function CheckoutPage() {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Add-ons Subtotal</span>
                         <span className="text-gray-900">
-                          {"\u20B9"}{totals.addonsTotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                          {getCurrencySymbol(totals.currency)}{totals.addonsTotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Add-ons GST</span>
                         <span className="text-gray-900">
-                          {"\u20B9"}{totals.addonsTax.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                          {getCurrencySymbol(totals.currency)}{totals.addonsTax.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                     </>
@@ -1549,12 +1551,12 @@ export default function CheckoutPage() {
                   {totals.discount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-green-600">Discount</span>
-                      <span className="text-green-600">-{"\u20B9"}{totals.discount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                      <span className="text-green-600">-{getCurrencySymbol(totals.currency)}{totals.discount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-bold pt-4 border-t border-gray-200">
                     <span className="text-gray-900">Total</span>
-                    <span className="text-emerald-600">{"\u20B9"}{totals.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                    <span className="text-emerald-600">{getCurrencySymbol(totals.currency)}{totals.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
                   </div>
                 </div>
               </div>
@@ -1703,7 +1705,7 @@ export default function CheckoutPage() {
                   ) : (
                     <>
                       <Shield className="w-5 h-5" />
-                      Pay {"\u20B9"}{totals.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                      Pay {getCurrencySymbol(totals.currency)}{totals.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                     </>
                   )}
                 </button>

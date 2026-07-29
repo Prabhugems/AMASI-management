@@ -7,6 +7,7 @@ import { useTheme } from "next-themes"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { format } from "date-fns"
+import { getCurrencySymbol } from "@/lib/utils"
 import {
   Calendar,
   MapPin,
@@ -478,6 +479,7 @@ function EventDetailsPage() {
     let addonsTotal = 0
     let addonsTax = 0
     let taxPercentage = 18
+    let currency = "INR"
 
     selectedTickets.forEach((quantity, ticketId) => {
       const ticket = event.ticket_types.find((t) => t.id === ticketId)
@@ -488,6 +490,7 @@ function EventDetailsPage() {
         tax += ticketTax
         count += quantity
         taxPercentage = ticket.tax_percentage
+        currency = ticket.currency || currency
       }
     })
 
@@ -496,7 +499,7 @@ function EventDetailsPage() {
     })
     addonsTax = (addonsTotal * taxPercentage) / 100
 
-    return { subtotal, tax, total: subtotal + tax + addonsTotal + addonsTax, count, addonsTotal, addonsTax }
+    return { subtotal, tax, total: subtotal + tax + addonsTotal + addonsTax, count, addonsTotal, addonsTax, currency }
   }, [selectedTickets, selectedAddons, event?.ticket_types])
 
   useEffect(() => {
@@ -1022,7 +1025,7 @@ function EventDetailsPage() {
                           {ticket.name} x {quantity}
                         </span>
                         <span className="font-medium" style={{ color: C.text }}>
-                          {"\u20B9"}{Math.round(ticket.price * (1 + ticket.tax_percentage / 100) * quantity).toLocaleString("en-IN")}
+                          {getCurrencySymbol(ticket.currency)}{Math.round(ticket.price * (1 + ticket.tax_percentage / 100) * quantity).toLocaleString("en-IN")}
                         </span>
                       </div>
                     )
@@ -1045,7 +1048,7 @@ function EventDetailsPage() {
                               {addon.quantity > 1 && ` x ${addon.quantity}`}
                             </span>
                             <span className="font-medium" style={{ color: C.text }}>
-                              {"\u20B9"}{addon.totalPrice.toLocaleString()}
+                              {getCurrencySymbol(totals.currency)}{addon.totalPrice.toLocaleString()}
                             </span>
                           </div>
                         )
@@ -1057,13 +1060,13 @@ function EventDetailsPage() {
                     <div className="flex justify-between text-sm mb-2">
                       <span style={{ color: C.textSecondary }}>Tickets Subtotal</span>
                       <span style={{ color: C.text }}>
-                        {"\u20B9"}{Math.round(totals.subtotal).toLocaleString("en-IN")}
+                        {getCurrencySymbol(totals.currency)}{Math.round(totals.subtotal).toLocaleString("en-IN")}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm mb-2">
                       <span style={{ color: C.textSecondary }}>Tickets GST</span>
                       <span style={{ color: C.text }}>
-                        {"\u20B9"}{Math.round(totals.tax).toLocaleString("en-IN")}
+                        {getCurrencySymbol(totals.currency)}{Math.round(totals.tax).toLocaleString("en-IN")}
                       </span>
                     </div>
                     {totals.addonsTotal > 0 && (
@@ -1071,13 +1074,13 @@ function EventDetailsPage() {
                         <div className="flex justify-between text-sm mb-2">
                           <span style={{ color: C.textSecondary }}>Add-ons Subtotal</span>
                           <span style={{ color: C.text }}>
-                            {"\u20B9"}{Math.round(totals.addonsTotal).toLocaleString("en-IN")}
+                            {getCurrencySymbol(totals.currency)}{Math.round(totals.addonsTotal).toLocaleString("en-IN")}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm mb-2">
                           <span style={{ color: C.textSecondary }}>Add-ons GST</span>
                           <span style={{ color: C.text }}>
-                            {"\u20B9"}{Math.round(totals.addonsTax).toLocaleString("en-IN")}
+                            {getCurrencySymbol(totals.currency)}{Math.round(totals.addonsTax).toLocaleString("en-IN")}
                           </span>
                         </div>
                       </>
@@ -1088,7 +1091,7 @@ function EventDetailsPage() {
                     >
                       <span style={{ color: C.text }}>Total</span>
                       <span key={priceAnimKey} style={{ color: C.green }}>
-                        {"\u20B9"}{Math.round(totals.total).toLocaleString("en-IN")}
+                        {getCurrencySymbol(totals.currency)}{Math.round(totals.total).toLocaleString("en-IN")}
                       </span>
                     </div>
                   </div>
@@ -1151,7 +1154,7 @@ function EventDetailsPage() {
                 {totals.count} ticket{totals.count > 1 ? "s" : ""}
               </p>
               <p className="text-lg font-bold" style={{ color: C.text }}>
-                {"\u20B9"}{totals.total.toLocaleString()}
+                {getCurrencySymbol(totals.currency)}{totals.total.toLocaleString()}
               </p>
             </div>
             <button

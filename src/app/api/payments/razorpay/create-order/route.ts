@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       amount: clientAmount, // Don't trust this - will validate
-      currency = "INR",
+      currency: clientCurrency = "INR", // Don't trust this either - resolved server-side from ticket/addon currency below
       payment_type,
       event_id,
       registration_data,
@@ -56,6 +56,18 @@ export async function POST(request: NextRequest) {
     const ticketDetails: any[] = []
     let taxPercentage = 18 // Default GST rate
 
+    // SECURITY: Resolve currency server-side too - a client-supplied "INR" for a
+    // USD-priced ticket type would charge the raw USD number in rupees (~83x
+    // undercharge). Set from the actual ticket_types/addons row(s) below; a cart
+    // mixing two currencies is rejected rather than silently picking one.
+    let resolvedCurrency: string | null = null
+    let currencyMismatch = false
+    const applyCurrency = (c: string | null | undefined) => {
+      if (!c) return
+      if (resolvedCurrency === null) resolvedCurrency = c
+      else if (resolvedCurrency !== c) currencyMismatch = true
+    }
+
     // For addon-only purchases, skip ticket requirement
     const isAddonPurchase = payment_type === "addon_purchase"
 
@@ -72,7 +84,7 @@ export async function POST(request: NextRequest) {
       const ticketIds = tickets.map((t: any) => t.id || t.ticket_type_id)
       const { data: ticketTypes, error: ticketError } = await supabase
         .from("ticket_types")
-        .select("id, price, tax_percentage, name, status, quantity_total, quantity_sold")
+        .select("id, price, currency, tax_percentage, name, status, quantity_total, quantity_sold")
         .in("id", ticketIds)
 
       if (ticketError || !ticketTypes) {
@@ -119,6 +131,7 @@ export async function POST(request: NextRequest) {
 
         subtotal += ticketSubtotal
         totalTax += ticketTax
+        applyCurrency(ticket.currency)
 
         ticketDetails.push({
           ticket_type_id: ticket.id,
@@ -143,7 +156,7 @@ export async function POST(request: NextRequest) {
         const addonIds = addons.map((a: any) => a.addonId)
         const { data: addonData } = await supabase
           .from("addons")
-          .select("id, price, name, is_active")
+          .select("id, price, currency, name, is_active")
           .in("id", addonIds)
 
         // Fetch variants if any addon selections have a variantId
@@ -171,6 +184,7 @@ export async function POST(request: NextRequest) {
               }
               const addonPrice = unitPrice * (addonSelection.quantity || 1)
               addonsSubtotal += addonPrice
+              applyCurrency(addon.currency)
             }
           }
           // Apply same tax rate to addons
@@ -229,7 +243,7 @@ export async function POST(request: NextRequest) {
       const addonIds = addons.map((a: any) => a.addonId)
       const { data: addonData } = await supabase
         .from("addons")
-        .select("id, price, name, is_active")
+        .select("id, price, currency, name, is_active")
         .in("id", addonIds)
 
       // Fetch variants if any addon selections have a variantId
@@ -258,6 +272,7 @@ export async function POST(request: NextRequest) {
             }
             const addonPrice = unitPrice * (addonSelection.quantity || 1)
             addonsSubtotal += addonPrice
+            applyCurrency(addon.currency)
           }
         }
         const addonsTax = Math.round((addonsSubtotal * taxPercentage) / 100)
@@ -273,8 +288,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use server-calculated amount
+    if (currencyMismatch) {
+      return NextResponse.json(
+        { error: "Cannot combine items priced in different currencies in one order" },
+        { status: 400 }
+      )
+    }
+
+    // Use server-calculated amount and currency - never the client-supplied ones
     const amount = calculatedAmount
+    const currency = resolvedCurrency || clientCurrency
 
     // DUPLICATE PAYMENT PREVENTION
     // Generate idempotency key from email + amount + tickets
@@ -286,9 +309,10 @@ export async function POST(request: NextRequest) {
 
     const duplicateQuery = supabase
       .from("payments")
-      .select("id, razorpay_order_id, payment_number, status, created_at, amount")
+      .select("id, razorpay_order_id, payment_number, status, created_at, amount, currency")
       .eq("payer_email", trimmedEmail)
       .eq("amount", amount)
+      .eq("currency", currency)
       .eq("status", "pending")
       .gte("created_at", duplicateWindowStart)
 
@@ -322,7 +346,7 @@ export async function POST(request: NextRequest) {
         success: true,
         order_id: existingPayment.razorpay_order_id,
         amount: existingPayment.amount * 100, // Razorpay expects paise
-        currency: "INR",
+        currency: existingPayment.currency,
         key: razorpayKeyId,
         payment_id: existingPayment.id,
         payment_number: existingPayment.payment_number,

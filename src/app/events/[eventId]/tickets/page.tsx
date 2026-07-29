@@ -56,7 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { cn } from "@/lib/utils"
+import { cn, getCurrencySymbol } from "@/lib/utils"
 import { format } from "date-fns"
 
 interface TicketType {
@@ -783,7 +783,7 @@ export default function TicketsPage() {
                           </div>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span className="font-medium text-foreground">
-                              {ticket.price === 0 ? "Free" : `₹${ticket.price.toLocaleString()}`}
+                              {ticket.price === 0 ? "Free" : `${getCurrencySymbol(ticket.currency)}${ticket.price.toLocaleString()}`}
                             </span>
                             <span>•</span>
                             <span>{ticket.quantity_sold} sold</span>
@@ -891,7 +891,7 @@ export default function TicketsPage() {
                     </div>
                     <div className="bg-secondary/50 rounded-lg p-4 text-center">
                       <p className="text-xl sm:text-2xl font-bold text-foreground">
-                        ₹{((selectedTicket as any).actual_revenue || 0).toLocaleString()}
+                        {getCurrencySymbol(selectedTicket.currency)}{((selectedTicket as any).actual_revenue || 0).toLocaleString()}
                       </p>
                       <p className="text-xs text-muted-foreground">Revenue</p>
                     </div>
@@ -904,7 +904,7 @@ export default function TicketsPage() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Base Price</span>
                       <span className="font-medium">
-                        {selectedTicket.price === 0 ? "Free" : `₹${Math.round(selectedTicket.price).toLocaleString("en-IN")}`}
+                        {selectedTicket.price === 0 ? "Free" : `${getCurrencySymbol(selectedTicket.currency)}${Math.round(selectedTicket.price).toLocaleString("en-IN")}`}
                       </span>
                     </div>
                     {selectedTicket.tax_percentage > 0 && selectedTicket.price > 0 && (
@@ -912,13 +912,13 @@ export default function TicketsPage() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">GST ({selectedTicket.tax_percentage}%)</span>
                           <span className="font-medium">
-                            ₹{Math.round(selectedTicket.price * selectedTicket.tax_percentage / 100).toLocaleString("en-IN")}
+                            {getCurrencySymbol(selectedTicket.currency)}{Math.round(selectedTicket.price * selectedTicket.tax_percentage / 100).toLocaleString("en-IN")}
                           </span>
                         </div>
                         <div className="flex justify-between pt-3 border-t border-border">
                           <span className="font-medium">Total Price</span>
                           <span className="font-bold text-primary">
-                            ₹{Math.round(selectedTicket.price * (1 + selectedTicket.tax_percentage / 100)).toLocaleString("en-IN")}
+                            {getCurrencySymbol(selectedTicket.currency)}{Math.round(selectedTicket.price * (1 + selectedTicket.tax_percentage / 100)).toLocaleString("en-IN")}
                           </span>
                         </div>
                       </>

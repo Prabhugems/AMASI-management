@@ -5,6 +5,7 @@ import { useTheme } from "next-themes"
 import { Minus, Plus, Clock, Users, Ticket, Check, AlertCircle, Bell, ChevronDown, Star, Flame, Zap } from "lucide-react"
 import { TicketType } from "@/lib/types"
 import { differenceInDays, differenceInHours, isPast } from "date-fns"
+import { getCurrencySymbol } from "@/lib/utils"
 import { WaitlistForm } from "./waitlist-form"
 import { REG_THEME } from "@/lib/register-theme"
 
@@ -281,7 +282,7 @@ function TicketCard({
                     : isDark ? '#F8FAFC' : '#1C1917',
                 }}
               >
-                {ticket.price === 0 ? "FREE" : `\u20B9${Math.round(totalPrice).toLocaleString("en-IN")}`}
+                {ticket.price === 0 ? "FREE" : `${getCurrencySymbol(ticket.currency)}${Math.round(totalPrice).toLocaleString("en-IN")}`}
               </p>
               {ticket.tax_percentage > 0 && ticket.price > 0 && (
                 <p className="text-xs mt-0.5" style={{ color: isDark ? '#475569' : '#A8A29E' }}>
@@ -382,7 +383,7 @@ function TicketCard({
               className="text-sm font-bold"
               style={{ color: isDark ? '#F8FAFC' : '#1C1917' }}
             >
-              Subtotal: {"\u20B9"}{Math.round(totalPrice * quantity).toLocaleString("en-IN")}
+              Subtotal: {getCurrencySymbol(ticket.currency)}{Math.round(totalPrice * quantity).toLocaleString("en-IN")}
             </span>
           </div>
         )}

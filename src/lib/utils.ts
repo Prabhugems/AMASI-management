@@ -94,3 +94,17 @@ export function getGreeting(): string {
   if (hour < 17) return "Good afternoon"
   return "Good evening"
 }
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  INR: "₹",
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+}
+
+// Ticket/addon prices are multi-currency (e.g. USD for international
+// categories) but most display code was written assuming INR-only and
+// hardcoded the rupee symbol, silently showing "₹100" for a $100 ticket.
+export function getCurrencySymbol(currency: string | null | undefined): string {
+  return CURRENCY_SYMBOLS[currency || "INR"] || (currency ? `${currency} ` : "₹")
+}

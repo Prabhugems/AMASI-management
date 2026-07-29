@@ -4,12 +4,14 @@ import { useMemo } from "react"
 import { Package, Plus, Minus, GraduationCap, Award, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { REG_THEME } from "@/lib/register-theme"
+import { getCurrencySymbol } from "@/lib/utils"
 
 export interface Addon {
   id: string
   name: string
   description: string | null
   price: number
+  currency?: string | null
   max_quantity: number | null
   image_url: string | null
   has_variants: boolean
@@ -236,7 +238,7 @@ export function AddonsSelector({
                       {!addon.has_variants && (
                         <div className="text-right sm:hidden">
                           <p className="font-bold" style={{ color: T.accent }}>
-                            {addon.price > 0 ? `₹${addon.price.toLocaleString()}` : "Free"}
+                            {addon.price > 0 ? `${getCurrencySymbol(addon.currency)}${addon.price.toLocaleString()}` : "Free"}
                           </p>
                           {addon.price > 0 && taxPercentage > 0 && (
                             <p className="text-[10px] text-gray-400">+{taxPercentage}% GST</p>
@@ -272,7 +274,7 @@ export function AddonsSelector({
                       {/* Desktop: Price on left of controls */}
                       <div className="hidden sm:block text-right">
                         <p className="font-bold" style={{ color: T.accent }}>
-                          {addon.price > 0 ? `₹${addon.price.toLocaleString()}` : "Free"}
+                          {addon.price > 0 ? `${getCurrencySymbol(addon.currency)}${addon.price.toLocaleString()}` : "Free"}
                         </p>
                         {addon.price > 0 && taxPercentage > 0 && (
                           <p className="text-[10px] text-gray-400">+{taxPercentage}% GST</p>
@@ -371,7 +373,7 @@ export function AddonsSelector({
                                   {variant.name}
                                 </span>
                                 <span className="text-sm font-bold" style={{ color: T.accent }}>
-                                  {variantPrice > 0 ? `₹${variantPrice.toLocaleString()}` : "Free"}
+                                  {variantPrice > 0 ? `${getCurrencySymbol(addon.currency)}${variantPrice.toLocaleString()}` : "Free"}
                                 </span>
                                 {variantPrice > 0 && taxPercentage > 0 && (
                                   <span className="text-[10px] text-gray-400 ml-1">
