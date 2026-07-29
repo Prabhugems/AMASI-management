@@ -55,6 +55,20 @@ describe("PATCH /api/kiosk-stations/[id]", () => {
     expect(mock.calls.some((c) => c.table === "kiosk_station_lists" && c.method === "delete")).toBe(true)
     expect(mock.calls.some((c) => c.table === "kiosk_station_lists" && c.method === "insert")).toBe(true)
   })
+
+  it("500s and does not attempt to reassign lists when the kiosk_station_lists delete fails", async () => {
+    mock.queueResponse("kiosk_stations", { data: { id: "st-1", event_id: EVENT_ID }, error: null })
+    mock.queueResponse("checkin_lists", { data: [{ id: LIST_ID, event_id: EVENT_ID }], error: null })
+    mock.queueResponse("kiosk_stations", { data: { id: "st-1", event_id: EVENT_ID, name: "Front Desk" }, error: null })
+    mock.queueResponse("kiosk_station_lists", { data: null, error: { message: "delete failed" } }) // delete
+    const { PATCH } = await import("./route")
+    const res = await PATCH(
+      makeRequest("http://localhost/api/kiosk-stations/st-1", { method: "PATCH", body: { list_ids: [LIST_ID] } }),
+      { params: Promise.resolve({ id: "st-1" }) }
+    )
+    expect(res.status).toBe(500)
+    expect(mock.calls.some((c) => c.table === "kiosk_station_lists" && c.method === "insert")).toBe(false)
+  })
 })
 
 describe("DELETE /api/kiosk-stations/[id]", () => {

@@ -80,7 +80,10 @@ export async function PATCH(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from("kiosk_station_lists").delete().eq("station_id", id)
+    const { error: deleteError } = await (supabase as any).from("kiosk_station_lists").delete().eq("station_id", id)
+    if (deleteError) {
+      return NextResponse.json({ error: "Station updated but failed to reassign lists." }, { status: 500 })
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: joinError } = await (supabase as any)
       .from("kiosk_station_lists")
