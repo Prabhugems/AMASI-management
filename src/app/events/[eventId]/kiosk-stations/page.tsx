@@ -82,13 +82,25 @@ export default function KioskStationsPage() {
   // (on create or regenerate) -- never re-fetchable afterward.
   const [handoff, setHandoff] = useState<{ name: string; token: string } | null>(null)
 
-  // A collection-purpose list rejects every kiosk self-check-in scan (a
-  // deliberate, permanent restriction -- see /api/kiosk/checkin), and an
-  // inactive list shouldn't be a target for a brand-new device either. Only
-  // offer lists a station could actually work against. `lists` itself stays
-  // unfiltered so name lookups (e.g. a station's currently-assigned list)
-  // keep working even if that list has since gone inactive.
-  const activeLists = lists.filter((l) => l.is_active === true && l.list_purpose !== "collection")
+  // A collection-purpose list rejects every kiosk self-check-in scan on an
+  // unattended device (see /api/kiosk/checkin) -- so it's only offered as an
+  // assignment target once the station is (or is being created as)
+  // attended, meaning a volunteer is always present to operate it. An
+  // inactive list shouldn't be a target for a brand-new device either way.
+  // `lists` itself stays unfiltered so name lookups (e.g. a station's
+  // currently-assigned list) keep working even if that list has since gone
+  // inactive.
+  // NOTE: this is intentionally coupled to `attended` defaulting to false
+  // for every existing station. Ticking "Attended" and assigning a
+  // collection list here makes the station accept those scans successfully,
+  // but does NOT yet give the volunteer any distinct on-device "already
+  // collected" duplicate-scan warning for collection lists -- that's a
+  // separate, not-yet-built screen, deliberately deferred pending an
+  // architecture decision elsewhere in this codebase. Don't assume flipping
+  // this toggle alone delivers the full feature.
+  function assignableLists(attended: boolean) {
+    return lists.filter((l) => l.is_active === true && (attended || l.list_purpose !== "collection"))
+  }
 
   // Only USB-type Print Stations can drive kiosk auto-print (see
   // /api/kiosk-stations validation) -- network/other printer types aren't
@@ -320,7 +332,7 @@ export default function KioskStationsPage() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-64 space-y-2">
-                    {activeLists.map((list) => {
+                    {assignableLists(station.attended).map((list) => {
                       const checked = station.list_ids.includes(list.id)
                       return (
                         <label key={list.id} className="flex items-center gap-2 text-sm">
@@ -402,7 +414,7 @@ export default function KioskStationsPage() {
             <div>
               <label className="text-sm font-medium">Check-in lists</label>
               <div className="mt-1.5 space-y-2 border rounded-lg p-3 max-h-48 overflow-y-auto">
-                {activeLists.map((list) => (
+                {assignableLists(newAttended).map((list) => (
                   <label key={list.id} className="flex items-center gap-2 text-sm">
                     <Checkbox
                       checked={newListIds.includes(list.id)}

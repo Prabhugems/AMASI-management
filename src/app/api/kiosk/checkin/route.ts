@@ -30,10 +30,12 @@ import { resolveStationByToken, stationServesList } from "@/lib/kiosk-station-lo
 // "not found" response being a bare 200/success:false, not a 404.
 
 // Shared response builder for the fresh-resolution path's collection-list
-// gate ONLY (see the two call sites below). Deliberately NOT reused for the
-// pre-Stage-2 fallback path -- that path's gate is unconditional (it has no
+// gate ONLY -- there is a single call site for this helper below.
+// Deliberately NOT reused for the pre-Stage-2 fallback path -- that path has
+// its own separate, unconditional inline check (it has no
 // ticket_type_ids/addon_ids eligibility check at all, unlike this one, so it
 // must never honor isAttendedStation; see the comment at that call site).
+// This split is a deliberate earlier decision, not an oversight.
 function collectionListBlockedResponse(
   list: { list_purpose: string },
   isAttendedStation: boolean
