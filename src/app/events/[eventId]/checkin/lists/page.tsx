@@ -58,6 +58,32 @@ type Addon = {
   name: string
 }
 
+// Local copies of the same conversion helpers used by
+// src/app/events/[eventId]/tickets/discounts/page.tsx for `valid_until` --
+// NOT exported from there, small per-page duplication is this codebase's
+// existing tolerance (see that file for the canonical implementation).
+// Only applied to kiosk_opens_at/kiosk_closes_at below -- the pre-existing
+// starts_at/ends_at fields deliberately keep their raw `.slice(0, 16)`
+// round-trip (a separate, already-live soft-warning-only system, out of
+// scope here). Without this conversion, a `datetime-local` value gets
+// interpreted as UTC on insert (this project's Postgres session timezone),
+// silently offsetting the schedule by the admin's own UTC offset -- and this
+// is the HARD-GATING kiosk schedule, not a soft warning.
+function toLocalDatetimeInput(iso: string | null): string {
+  if (!iso) return ""
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function fromLocalDatetimeInput(value: string): string | null {
+  if (!value) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString()
+}
+
 export default function CheckinListsPage() {
   const params = useParams()
   const eventId = params.eventId as string
@@ -138,8 +164,8 @@ export default function CheckinListsPage() {
           addon_ids: list.addon_ids || [],
           starts_at: list.starts_at ? list.starts_at.slice(0, 16) : "",
           ends_at: list.ends_at ? list.ends_at.slice(0, 16) : "",
-          kiosk_opens_at: list.kiosk_opens_at ? list.kiosk_opens_at.slice(0, 16) : "",
-          kiosk_closes_at: list.kiosk_closes_at ? list.kiosk_closes_at.slice(0, 16) : "",
+          kiosk_opens_at: toLocalDatetimeInput(list.kiosk_opens_at ?? null),
+          kiosk_closes_at: toLocalDatetimeInput(list.kiosk_closes_at ?? null),
           kiosk_force_state: list.kiosk_force_state ?? null,
         })
       }
@@ -158,8 +184,8 @@ export default function CheckinListsPage() {
         addon_ids: data.addon_ids.length > 0 ? data.addon_ids : null,
         starts_at: data.starts_at || null,
         ends_at: data.ends_at || null,
-        kiosk_opens_at: data.kiosk_opens_at || null,
-        kiosk_closes_at: data.kiosk_closes_at || null,
+        kiosk_opens_at: fromLocalDatetimeInput(data.kiosk_opens_at),
+        kiosk_closes_at: fromLocalDatetimeInput(data.kiosk_closes_at),
         kiosk_force_state: data.kiosk_force_state,
       }
       // Go through the API route — checkin_lists has an RLS policy that
