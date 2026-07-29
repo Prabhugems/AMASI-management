@@ -185,6 +185,22 @@ export default function KioskStationsPage() {
     await loadStations()
   }
 
+  const handleToggleAutoPrint = async (station: KioskStation) => {
+    const next = !station.auto_print_badge
+    const res = await fetch(`/api/kiosk-stations/${station.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ auto_print_badge: next }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error || "Failed to change auto-print")
+      return
+    }
+    toast.success(`${station.name}: auto-print ${next ? "on" : "off"}`)
+    await loadStations()
+  }
+
   const handleRevoke = async (station: KioskStation) => {
     if (!confirm(`Revoke "${station.name}"'s access? The device will stop working until you generate a new token.`)) return
     const res = await fetch(`/api/kiosk-stations/${station.id}/access-token`, { method: "DELETE" })
@@ -253,8 +269,6 @@ export default function KioskStationsPage() {
                 {station.mode === "checkin_and_print" && (
                   <p className="text-xs text-muted-foreground">
                     {printStations.find((p) => p.id === station.print_station_id)?.name || "No print station assigned"}
-                    {" · "}
-                    Auto-print {station.auto_print_badge ? "on" : "off"}
                   </p>
                 )}
               </div>
@@ -275,21 +289,26 @@ export default function KioskStationsPage() {
                   </SelectContent>
                 </Select>
                 {station.mode === "checkin_and_print" && (
-                  <Select
-                    value={station.print_station_id ?? undefined}
-                    onValueChange={(value) => handleReassignPrintStation(station, value)}
-                  >
-                    <SelectTrigger className="w-40 h-9 text-xs">
-                      <SelectValue placeholder="Change print station" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {usbPrintStations.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <>
+                    <Select
+                      value={station.print_station_id ?? undefined}
+                      onValueChange={(value) => handleReassignPrintStation(station, value)}
+                    >
+                      <SelectTrigger className="w-40 h-9 text-xs">
+                        <SelectValue placeholder="Change print station" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {usbPrintStations.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="sm" onClick={() => handleToggleAutoPrint(station)}>
+                      Auto-print {station.auto_print_badge ? "on" : "off"}
+                    </Button>
+                  </>
                 )}
                 <Button variant="outline" size="sm" onClick={() => handleRegenerate(station)}>
                   <RefreshCw className="h-4 w-4 mr-1" />

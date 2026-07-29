@@ -276,3 +276,64 @@ export async function markPrintSynced(printId: string): Promise<void> {
   if (!entry) return
   await db.put(PRINT_LOG_STORE, { ...entry, synced: true })
 }
+
+// --- Retention -------------------------------------------------------------
+//
+// A device reused across many events/lists over time never had anything
+// removing OLD data: replaceDelegateCache only clears rows for the list_id
+// it's currently refreshing, and scan_log/print_log entries are never
+// deleted once synced. Left unchecked, IndexedDB usage on a long-lived
+// kiosk device grows without bound. This is a best-effort prune, called
+// once per bootstrap -- never awaited by anything that would block
+// check-in, and a failure here must never surface as a check-in failure.
+const RETENTION_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
+
+export async function pruneStaleData(now: number = Date.now()): Promise<void> {
+  const db = await getDb()
+  const cutoff = now - RETENTION_MS
+
+  // Stale lists: any list_id whose cache_updated_at meta key is older than
+  // the retention window is a list this device hasn't served in a month --
+  // safe to drop that list's delegate cache and print template. The meta
+  // key itself is deleted too, so a list that genuinely comes back into use
+  // later just re-populates from scratch on its next refresh, same as a
+  // brand-new device would.
+  const allMeta = (await db.getAll(META_STORE)) as MetaRow[]
+  const staleListIds = allMeta
+    .filter((row) => row.key.startsWith("cache_updated_at:") && (row.value as number) < cutoff)
+    .map((row) => row.key.slice("cache_updated_at:".length))
+
+  for (const listId of staleListIds) {
+    const tx = db.transaction(DELEGATE_STORE, "readwrite")
+    const index = tx.store.index("by_list")
+    let cursor = await index.openCursor(IDBKeyRange.only(listId))
+    while (cursor) {
+      await cursor.delete()
+      cursor = await cursor.continue()
+    }
+    await tx.done
+    await db.delete(PRINT_TEMPLATE_STORE, listId)
+    await db.delete(META_STORE, `cache_updated_at:${listId}`)
+  }
+
+  // Synced scan_log entries are already durably recorded server-side --
+  // safe to drop locally once old. "pending"/"conflict" entries are never
+  // touched here regardless of age.
+  const scanTx = db.transaction(SCAN_STORE, "readwrite")
+  const scanIndex = scanTx.store.index("by_status")
+  let scanCursor = await scanIndex.openCursor(IDBKeyRange.only("synced"))
+  while (scanCursor) {
+    const entry = scanCursor.value as ScanLogEntry
+    if (entry.scanned_at < cutoff) await scanCursor.delete()
+    scanCursor = await scanCursor.continue()
+  }
+  await scanTx.done
+
+  // Synced print_log entries -- same reasoning as scan_log above.
+  const printRows = (await db.getAll(PRINT_LOG_STORE)) as PrintLogEntry[]
+  for (const row of printRows) {
+    if (row.synced && row.printed_at < cutoff) {
+      await db.delete(PRINT_LOG_STORE, row.print_id)
+    }
+  }
+}

@@ -24,6 +24,8 @@ import {
   Camera,
   SwitchCamera,
   XCircle,
+  Maximize,
+  Minimize2,
 } from "lucide-react"
 import { toast } from "sonner"
 import * as Sentry from "@sentry/nextjs"
@@ -40,6 +42,7 @@ import {
   getLastPrintForRegistration,
   getPendingPrintSyncs,
   markPrintSynced,
+  pruneStaleData,
 } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { isNetworkFailure } from "@/lib/offline-scan-queue"
@@ -145,6 +148,18 @@ export function KioskCheckinScreen({
   const [selectedCameraId, setSelectedCameraId] = useState<string>("")
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const scannerContainerId = "kiosk-qr-scanner-container"
+  // For the persistent status strip only -- not read by any check-in/sync
+  // logic, which already checks navigator.onLine directly at the point of
+  // use rather than trusting a possibly-stale piece of React state.
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine)
+  const [requestingHelp, setRequestingHelp] = useState(false)
+  const [helpRequestId, setHelpRequestId] = useState<string | null>(null)
+  // Fullscreen reduces (but, per browser/OS, cannot eliminate) the surface
+  // for someone to navigate away from the kiosk on a handed-over device --
+  // true lockdown needs the device's own OS-level kiosk/screen-pinning
+  // mode, which this cannot force. This is a lightweight, user-gesture-
+  // gated deterrent, not a security boundary.
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   // Scanner-burst auto-submit + double-submit guard (see handleRegChange).
   const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -373,6 +388,21 @@ export function KioskCheckinScreen({
       cancelled = true
     }
   }, [mode, printStationId, badgeTemplate, printSettings, printMode, event?.name, eventId, listId])
+
+  // Best-effort local storage cleanup (any mode) -- runs once per mount, not
+  // gated on print-mode, and never awaited by anything on the check-in
+  // path. A device reused across many events/lists never had anything
+  // removing old, already-synced data; left unchecked, IndexedDB usage
+  // grows without bound over the device's lifetime.
+  useEffect(() => {
+    pruneStaleData().catch((err) => {
+      Sentry.captureException(err, { tags: { module: "kiosk-offline-store" }, extra: { eventId, listId } })
+    })
+    // Intentionally runs once per mount only -- eventId/listId changing
+    // doesn't need a re-prune, and re-running on every render would be
+    // wasteful IndexedDB churn for no benefit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Stage 4: feature-detect WebUSB, silently try to reconnect to a
   // previously-paired printer (browser remembers the grant; no picker
@@ -776,11 +806,23 @@ export function KioskCheckinScreen({
   // purely an additional input method, not a new check-in code path.
   // ============================================================
 
+  // Persisted across reloads so a device only needs the front/back guess
+  // corrected once (via switchCamera below), not every time the tab
+  // restarts -- the label-matching heuristic in getCameras isn't reliable
+  // on every Android tablet's camera naming.
+  const CAMERA_PREF_KEY = "kiosk-camera-id"
+
   const getCameras = useCallback(async () => {
     try {
       const devices = await Html5Qrcode.getCameras()
       if (devices && devices.length > 0) {
         setCameras(devices)
+        const remembered = typeof window !== "undefined" ? window.localStorage.getItem(CAMERA_PREF_KEY) : null
+        const rememberedStillPresent = remembered && devices.some((d) => d.id === remembered)
+        if (rememberedStillPresent) {
+          setSelectedCameraId(remembered!)
+          return
+        }
         const backCamera = devices.find((d) =>
           d.label.toLowerCase().includes("back") ||
           d.label.toLowerCase().includes("rear") ||
@@ -858,7 +900,14 @@ export function KioskCheckinScreen({
     if (cameras.length < 2) return
     const currentIndex = cameras.findIndex((c) => c.id === selectedCameraId)
     const nextIndex = (currentIndex + 1) % cameras.length
-    setSelectedCameraId(cameras[nextIndex].id)
+    const nextId = cameras[nextIndex].id
+    setSelectedCameraId(nextId)
+    try {
+      window.localStorage.setItem(CAMERA_PREF_KEY, nextId)
+    } catch {
+      // Storage unavailable (private browsing, quota) -- the choice just
+      // won't survive a reload; not worth failing the switch over.
+    }
     if (cameraActive) {
       await stopScanner()
       setTimeout(() => startScanner(), 300)
@@ -888,6 +937,25 @@ export function KioskCheckinScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanMode, selectedCameraId, result, cameraActive])
 
+  // Mobile browsers commonly kill an active camera stream when a tab is
+  // backgrounded (screen sleep, switching apps) without necessarily
+  // reporting it as an error -- html5-qrcode's isScanning flag can stay
+  // true while frames have actually stopped flowing. Without this, an
+  // unattended kiosk that gets backgrounded once needs a manual reload to
+  // scan again. Force a clean stop+restart on every return to foreground.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return
+      if (scanMode !== "camera" || result) return
+      stopScanner().then(() => {
+        setTimeout(() => startScanner(), 300)
+      })
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanMode, result])
+
   // Silent background self-heal, same rationale as the old flush effect it
   // replaces: no "queue"/"pending" language in the attendee-facing UI, and
   // a 20s poll because navigator.onLine only reflects the OS network
@@ -901,6 +969,41 @@ export function KioskCheckinScreen({
       clearInterval(pollId)
     }
   }, [syncNow])
+
+  // Display-only online/offline tracking for the status strip (see
+  // "online"/"offline" listeners above for the actual sync-trigger logic,
+  // which is separate and unaffected by this).
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener("fullscreenchange", handleFullscreenChange)
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange)
+  }, [])
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen()
+      } else {
+        await document.documentElement.requestFullscreen()
+      }
+    } catch {
+      // Fullscreen can be denied/unsupported (e.g. iOS Safari has no
+      // Fullscreen API at all) -- fails silently, matches this device's
+      // existing "degrade, don't error" pattern for unsupported browser
+      // capabilities (see the WebUSB feature-detect above).
+    }
+  }
 
   // Stage 4: opportunistic sync of local print-log entries (Task 5's
   // recordPrintOutcome, written by printBadge above) into print_jobs, so the
@@ -1037,6 +1140,41 @@ export function KioskCheckinScreen({
       toast.error("Couldn't send WhatsApp")
     } finally {
       setSendingWhatsapp(false)
+    }
+  }
+
+  // Reuses the existing help-request system (src/app/api/help-request) --
+  // the same one delegate/faculty portals already use -- rather than
+  // building new admin-notification plumbing. The server resolves the
+  // actual recipient (event.contact_email or the event creator); the
+  // "email" field here just identifies the requester in the admin's
+  // dashboard, and this device has no real person's email to offer.
+  const handleRequestHelp = async () => {
+    setRequestingHelp(true)
+    try {
+      const response = await fetch("/api/help-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          name: stationName ? `Kiosk: ${stationName}` : "Kiosk Station",
+          email: "kiosk-alerts@internal.local",
+          category: "Kiosk",
+          message: `A kiosk station requested assistance.\nStation: ${stationName || "(unnamed)"}\nList: ${list?.name || listId}\nOnline: ${isOnline ? "yes" : "no"}`,
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (response.ok && data.success) {
+        setHelpRequestId(newId())
+        toast.success("An admin has been notified.")
+      } else {
+        toast.error(data.error || "Couldn't send the request. Please try again.")
+      }
+    } catch (err) {
+      Sentry.captureException(err, { tags: { module: "kiosk-help-request" }, extra: { eventId, listId } })
+      toast.error("Couldn't send the request. Please try again.")
+    } finally {
+      setRequestingHelp(false)
     }
   }
 
@@ -1335,7 +1473,14 @@ export function KioskCheckinScreen({
       onClick={() => inputRef.current?.focus()}
     >
       {/* Header */}
-      <div className="bg-gray-800/50 border-b border-white/10 px-4 sm:px-8 py-4 sm:py-6">
+      <div className="bg-gray-800/50 border-b border-white/10 px-4 sm:px-8 py-4 sm:py-6 relative">
+        <button
+          onClick={toggleFullscreen}
+          className="absolute top-2 right-2 sm:top-3 sm:right-3 p-2 rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+        </button>
         <div className="max-w-4xl mx-auto flex items-start sm:items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold text-white truncate">
@@ -1543,9 +1688,41 @@ export function KioskCheckinScreen({
 
       {/* Footer */}
       <div className="bg-gray-800/50 border-t border-white/10 px-4 sm:px-8 py-4 text-center">
+        {/* Persistent status strip -- so a silently-disconnected printer or
+            a dead camera doesn't look identical to "working fine" on an
+            unattended device. */}
+        <div className="flex items-center justify-center flex-wrap gap-x-3 gap-y-1 mb-2 text-[11px]">
+          <span className={`inline-flex items-center gap-1 ${isOnline ? "text-emerald-400" : "text-amber-400"}`}>
+            <span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-400" : "bg-amber-400"}`} />
+            {isOnline ? "Online" : "Offline"}
+          </span>
+          {scanMode === "camera" && (
+            <span className={`inline-flex items-center gap-1 ${cameraActive ? "text-emerald-400" : cameraError ? "text-red-400" : "text-gray-500"}`}>
+              <span className={`size-1.5 rounded-full ${cameraActive ? "bg-emerald-400" : cameraError ? "bg-red-400" : "bg-gray-500"}`} />
+              {cameraActive ? "Camera active" : cameraError ? "Camera error" : "Camera starting…"}
+            </span>
+          )}
+          {mode === "checkin_and_print" && usbSupported && (
+            <span className={`inline-flex items-center gap-1 ${printerConnected ? "text-emerald-400" : "text-gray-500"}`}>
+              <span className={`size-1.5 rounded-full ${printerConnected ? "bg-emerald-400" : "bg-gray-500"}`} />
+              {printerConnected ? "Printer connected" : "Printer not connected"}
+            </span>
+          )}
+        </div>
         <p className="text-xs sm:text-sm text-gray-400">
           Need help? Please contact the registration desk
         </p>
+        {helpRequestId ? (
+          <p className="text-xs text-emerald-400 mt-1">Help requested — an admin has been notified.</p>
+        ) : (
+          <button
+            onClick={handleRequestHelp}
+            disabled={requestingHelp}
+            className="text-xs text-indigo-300 underline hover:text-indigo-200 mt-1 disabled:opacity-50"
+          >
+            {requestingHelp ? "Sending…" : "Tap here to notify an admin"}
+          </button>
+        )}
         {cacheError && (
           <p className="text-xs text-red-400 mt-1">{cacheError}</p>
         )}
