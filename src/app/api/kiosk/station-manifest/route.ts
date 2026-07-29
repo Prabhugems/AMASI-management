@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import * as Sentry from "@sentry/nextjs"
 import { createAdminClient } from "@/lib/supabase/server"
 import { isValidUUID } from "@/lib/validation"
 import { resolveStationByToken } from "@/lib/kiosk-station-lookup"
@@ -32,20 +33,35 @@ export async function GET(request: NextRequest) {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: joinRows } = await (supabase as any)
+  const { data: joinRows, error: joinError } = await (supabase as any)
     .from("kiosk_station_lists")
     .select("checkin_list_id")
     .eq("station_id", station.id)
+
+  if (joinError) {
+    // A transient DB error here looks identical to "this station has zero
+    // assigned lists" unless distinguished -- and this response is cached
+    // client-side for offline use (KioskStationShell), so silently treating
+    // it as empty could overwrite a correct on-device menu with an empty
+    // one. Match /api/kiosk/delegates' convention: 503, not 200 + [].
+    Sentry.captureException(joinError, { tags: { route: "kiosk/station-manifest" }, extra: { eventId, stationId: station.id } })
+    return NextResponse.json({ error: "Something went wrong looking up this station's lists." }, { status: 503 })
+  }
 
   const listIds = (joinRows || []).map((r: any) => r.checkin_list_id)
 
   let lists: any[] = []
   if (listIds.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    const { data, error: listsError } = await (supabase as any)
       .from("checkin_lists")
       .select("id, name, kiosk_opens_at, kiosk_closes_at, kiosk_force_state")
       .in("id", listIds)
+
+    if (listsError) {
+      Sentry.captureException(listsError, { tags: { route: "kiosk/station-manifest" }, extra: { eventId, stationId: station.id } })
+      return NextResponse.json({ error: "Something went wrong looking up this list." }, { status: 503 })
+    }
     lists = data || []
   }
 

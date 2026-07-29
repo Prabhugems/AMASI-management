@@ -51,6 +51,35 @@ describe("GET /api/kiosk/station-manifest", () => {
     expect(res.status).toBe(404)
   })
 
+  it("503s when the kiosk_station_lists lookup errors, instead of returning an empty list menu", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, name: "Food Area", mode: "checkin", print_station_id: null, auto_print_badge: false, revoked_at: null },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: null, error: { message: "connection reset" } })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "tok" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(503)
+    expect(body.lists).toBeUndefined()
+  })
+
+  it("503s when the checkin_lists lookup errors, instead of returning an empty list menu", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, name: "Food Area", mode: "checkin", print_station_id: null, auto_print_badge: false, revoked_at: null },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: [{ checkin_list_id: "list-1" }], error: null })
+    mock.queueResponse("checkin_lists", { data: null, error: { message: "connection reset" } })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "tok" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(503)
+    expect(body.lists).toBeUndefined()
+  })
+
   it("returns the station's assigned lists joined with their schedule fields", async () => {
     mock.queueResponse("kiosk_stations", {
       data: { id: "st-1", event_id: EVENT_ID, name: "Food Area", mode: "checkin", print_station_id: null, auto_print_badge: false, revoked_at: null },
