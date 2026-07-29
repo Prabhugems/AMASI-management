@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { event_id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, list_purpose } = body
+    const { event_id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, list_purpose, kiosk_opens_at, kiosk_closes_at, kiosk_force_state } = body
 
     if (!event_id || !name) {
       return NextResponse.json({ error: "event_id and name are required" }, { status: 400 })
@@ -126,6 +126,10 @@ export async function POST(request: NextRequest) {
         { error: "list_purpose is required and must be 'entry' or 'collection'" },
         { status: 400 }
       )
+    }
+
+    if (kiosk_force_state !== undefined && kiosk_force_state !== null && kiosk_force_state !== "open" && kiosk_force_state !== "closed") {
+      return NextResponse.json({ error: "kiosk_force_state must be 'open', 'closed', or null" }, { status: 400 })
     }
 
     // Authorize against the target event — not just "any logged-in user".
@@ -163,6 +167,9 @@ export async function POST(request: NextRequest) {
         addon_ids: addon_ids || null,
         starts_at,
         ends_at,
+        kiosk_opens_at: kiosk_opens_at ?? null,
+        kiosk_closes_at: kiosk_closes_at ?? null,
+        kiosk_force_state: kiosk_force_state ?? null,
         // Always false — the Tito model (one check-in per list) is the only
         // supported mode. Recurring access is a separate list per occurrence,
         // not a repeat check-in on the same one. See CLAUDE.md.
@@ -189,7 +196,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, is_active, sort_order, list_purpose } = body
+    const { id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, is_active, sort_order, list_purpose, kiosk_opens_at, kiosk_closes_at, kiosk_force_state } = body
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
@@ -200,6 +207,10 @@ export async function PUT(request: NextRequest) {
         { error: "list_purpose must be 'entry' or 'collection'" },
         { status: 400 }
       )
+    }
+
+    if (kiosk_force_state !== undefined && kiosk_force_state !== null && kiosk_force_state !== "open" && kiosk_force_state !== "closed") {
+      return NextResponse.json({ error: "kiosk_force_state must be 'open', 'closed', or null" }, { status: 400 })
     }
 
     const supabase = await createAdminClient()
@@ -226,6 +237,9 @@ export async function PUT(request: NextRequest) {
     if (addon_ids !== undefined) updateData.addon_ids = addon_ids
     if (starts_at !== undefined) updateData.starts_at = starts_at
     if (ends_at !== undefined) updateData.ends_at = ends_at
+    if (kiosk_opens_at !== undefined) updateData.kiosk_opens_at = kiosk_opens_at
+    if (kiosk_closes_at !== undefined) updateData.kiosk_closes_at = kiosk_closes_at
+    if (kiosk_force_state !== undefined) updateData.kiosk_force_state = kiosk_force_state
     if (is_active !== undefined) updateData.is_active = is_active
     if (sort_order !== undefined) updateData.sort_order = sort_order
     if (list_purpose !== undefined) updateData.list_purpose = list_purpose

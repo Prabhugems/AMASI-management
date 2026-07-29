@@ -102,6 +102,13 @@ interface KioskCheckinScreenProps {
   // linked Print Station's configured mode, cached alongside the template
   // (see CachedPrintTemplate) so printBadge renders overlay mode correctly.
   printMode?: string
+  // Multi-list shared-station mode (KioskStationShell, see
+  // src/components/kiosk/KioskStationShell.tsx). All three are undefined/
+  // false for every existing caller -- the direct-URL kiosk and a
+  // single-list station both render this component directly, unchanged.
+  externallyDriven?: boolean
+  onSwitchList?: () => void
+  closingSoonMinutes?: number | null
 }
 
 export function KioskCheckinScreen({
@@ -116,6 +123,9 @@ export function KioskCheckinScreen({
   badgeTemplate,
   printSettings,
   printMode,
+  externallyDriven = false,
+  onSwitchList,
+  closingSoonMinutes,
 }: KioskCheckinScreenProps) {
   const supabase = createClient()
 
@@ -203,7 +213,7 @@ export function KioskCheckinScreen({
       try {
         const authParam = token
           ? `token=${encodeURIComponent(token)}`
-          : `station_token=${encodeURIComponent(stationToken!)}`
+          : `station_token=${encodeURIComponent(stationToken!)}&list_id=${encodeURIComponent(listId)}`
         const res = await fetch(
           `/api/kiosk/delegates?event_id=${encodeURIComponent(eventId)}&${authParam}`
         )
@@ -961,6 +971,10 @@ export function KioskCheckinScreen({
   // a 20s poll because navigator.onLine only reflects the OS network
   // interface, not request health.
   useEffect(() => {
+    // KioskStationShell owns draining every assigned list's queue when this
+    // screen is rendered under it -- a second timer here would double-POST
+    // whichever scan both timers raced to drain first.
+    if (externallyDriven) return
     if (typeof navigator !== "undefined" && navigator.onLine) void syncNow()
     window.addEventListener("online", syncNow)
     const pollId = setInterval(syncNow, 20000)
@@ -968,7 +982,7 @@ export function KioskCheckinScreen({
       window.removeEventListener("online", syncNow)
       clearInterval(pollId)
     }
-  }, [syncNow])
+  }, [syncNow, externallyDriven])
 
   // Display-only online/offline tracking for the status strip (see
   // "online"/"offline" listeners above for the actual sync-trigger logic,
@@ -1503,11 +1517,30 @@ export function KioskCheckinScreen({
           </div>
           <div className="text-right shrink-0">
             <p className="text-xs sm:text-sm text-gray-400">Checking in for</p>
-            <p className="text-base sm:text-xl font-semibold text-white truncate">
-              {list?.name || "Loading…"}
-            </p>
+            <div className="flex items-center gap-2 justify-end">
+              <p className="text-base sm:text-xl font-semibold text-white truncate">
+                {list?.name || "Loading…"}
+              </p>
+              {onSwitchList && (
+                <button
+                  onClick={() => {
+                    if (confirm(`Leave ${list?.name || "this list"} and return to the menu?`)) {
+                      onSwitchList()
+                    }
+                  }}
+                  className="text-xs text-indigo-300 underline hover:text-indigo-200 shrink-0"
+                >
+                  Switch list
+                </button>
+              )}
+            </div>
             {stationName && (
               <p className="text-xs text-gray-500 truncate">{stationName}</p>
+            )}
+            {typeof closingSoonMinutes === "number" && closingSoonMinutes >= 0 && closingSoonMinutes <= 5 && (
+              <p className="text-xs text-amber-400 mt-0.5">
+                {list?.name || "This list"} closes in {closingSoonMinutes} minute{closingSoonMinutes === 1 ? "" : "s"}
+              </p>
             )}
           </div>
         </div>

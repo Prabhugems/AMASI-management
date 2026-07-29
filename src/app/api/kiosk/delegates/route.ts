@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/nextjs"
 import { createAdminClient } from "@/lib/supabase/server"
 import { isValidUUID } from "@/lib/validation"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
-import { hashStationToken } from "@/lib/kiosk-station-auth"
+import { resolveStationByToken, stationServesList } from "@/lib/kiosk-station-lookup"
 
 // GET /api/kiosk/delegates?event_id=&token=|&station_token= -- bulk delegate
 // roster for the self-check-in kiosk's local delegate cache (Stage 1 of the
@@ -20,13 +20,16 @@ import { hashStationToken } from "@/lib/kiosk-station-auth"
 //     auto-generated on every list by a DB trigger (never null). The
 //     original, direct-URL kiosk path.
 //   - `station_token` (Stage 3, docs/superpowers/specs/2026-07-27-kiosk-stage3-station-identity-design.md):
-//     a kiosk_stations row's own token, resolved to its bound list_id
-//     server-side instead of trusting a token straight off checkin_lists.
-//     The list's own access_token is never fetched, read, or transmitted to
-//     the browser on this path -- that's the whole point of station
-//     identity. Just as strict: any failure to resolve (missing, malformed,
-//     revoked, wrong mode, wrong event) rejects the request exactly like a
-//     bad `token` would, never falls back to open access.
+//     a kiosk_stations row's own token. A station now serves a SET of lists
+//     (kiosk_station_lists), not a single bound list, so the caller must
+//     also supply `list_id` to say which of the station's assigned lists it
+//     wants a roster for -- the server verifies station membership for that
+//     specific list before returning anything. The list's own access_token
+//     is never fetched, read, or transmitted to the browser on this path --
+//     that's the whole point of station identity. Just as strict: any
+//     failure to resolve (missing, malformed, revoked, wrong mode, wrong
+//     event, not a member of the requested list) rejects the request
+//     exactly like a bad `token` would, never falls back to open access.
 //
 // Matching scope must mirror /api/kiosk/checkin's server-side eligibility
 // gate exactly (Stage 2, docs/superpowers/specs/2026-07-27-kiosk-stage2-checkin-authority-design.md):
@@ -44,12 +47,20 @@ export async function GET(request: NextRequest) {
   const eventId = searchParams.get("event_id")
   const token = searchParams.get("token")
   const stationToken = searchParams.get("station_token")
+  const requestedListId = searchParams.get("list_id")
 
   if (!eventId || !isValidUUID(eventId)) {
     return NextResponse.json({ error: "Invalid event." }, { status: 400 })
   }
   if (!token && !stationToken) {
     return NextResponse.json({ error: "Missing access token." }, { status: 401 })
+  }
+  // A station now serves a SET of lists (kiosk_station_lists), not one --
+  // the caller must say which of the station's assigned lists it wants a
+  // roster for. The direct token path needs no equivalent: checkin_lists'
+  // own access_token is already list-specific.
+  if (stationToken && (!requestedListId || !isValidUUID(requestedListId))) {
+    return NextResponse.json({ error: "list_id is required." }, { status: 400 })
   }
 
   try {
@@ -59,30 +70,37 @@ export async function GET(request: NextRequest) {
     let listLookupError: any = null
 
     if (stationToken) {
-      // Stage 3: station_token resolves a kiosk_stations row -> list_id,
-      // then looks the list up BY ID -- never by its own access_token, which
-      // this request never carries and this route never needs to see.
-      const { data: station, error: stationLookupError } = await (supabase as any)
-        .from("kiosk_stations")
-        .select("id, event_id, mode, list_id, revoked_at")
-        .eq("access_token_hash", hashStationToken(stationToken))
-        .maybeSingle()
+      const { station, error: stationLookupError } = await resolveStationByToken(supabase, stationToken)
 
       if (stationLookupError) {
         Sentry.captureException(stationLookupError, { tags: { route: "kiosk/delegates" }, extra: { eventId } })
         return NextResponse.json({ error: "Something went wrong looking up this station." }, { status: 503 })
       }
-      if (!station || station.revoked_at || station.mode !== "checkin" || !station.list_id) {
+      if (!station || station.revoked_at || (station.mode !== "checkin" && station.mode !== "checkin_and_print")) {
         return NextResponse.json({ error: "Invalid access token." }, { status: 401 })
       }
       if (station.event_id !== eventId) {
         return NextResponse.json({ error: "Check-in list not found." }, { status: 404 })
       }
 
+      const { isMember, error: membershipError } = await stationServesList(supabase, station.id, requestedListId as string)
+      if (membershipError) {
+        // Same rationale as the listLookupError/stationLookupError handling
+        // above: a transient Supabase error here must not look identical to
+        // "this station genuinely doesn't serve this list" (both would
+        // otherwise produce a hard 404, indistinguishable from a permanent
+        // credential rejection).
+        Sentry.captureException(membershipError, { tags: { route: "kiosk/delegates" }, extra: { eventId } })
+        return NextResponse.json({ error: "Something went wrong looking up this station's lists." }, { status: 503 })
+      }
+      if (!isMember) {
+        return NextResponse.json({ error: "Check-in list not found." }, { status: 404 })
+      }
+
       const result = await (supabase as any)
         .from("checkin_lists")
         .select("id, event_id, list_purpose, ticket_type_ids, addon_ids")
-        .eq("id", station.list_id)
+        .eq("id", requestedListId)
         .maybeSingle()
       list = result.data
       listLookupError = result.error

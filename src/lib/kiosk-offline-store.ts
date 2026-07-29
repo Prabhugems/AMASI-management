@@ -82,6 +82,22 @@ export interface PrintLogEntry {
   synced: boolean
 }
 
+export interface StationManifestList {
+  id: string
+  name: string
+  kiosk_opens_at: string | null
+  kiosk_closes_at: string | null
+  kiosk_force_state: "open" | "closed" | null
+}
+
+export interface StationManifest {
+  station_name: string
+  mode: "checkin" | "checkin_and_print"
+  print_station_id: string | null
+  auto_print_badge: boolean
+  lists: StationManifestList[]
+}
+
 let dbPromise: Promise<IDBPDatabase> | null = null
 
 function getDb(): Promise<IDBPDatabase> {
@@ -192,6 +208,28 @@ export async function getCacheUpdatedAt(listId: string): Promise<number | null> 
   const db = await getDb()
   const row = (await db.get(META_STORE, `cache_updated_at:${listId}`)) as MetaRow | undefined
   return row ? (row.value as number) : null
+}
+
+// --- Station manifest cache (multi-list shared stations) ------------------
+// One new META_STORE key per station, no VERSION bump -- see the module
+// header for why this store's value type (string | number) is fine for a
+// JSON blob. Keyed by stationToken (not a single fixed key) because a spare
+// tablet can be redeployed to a DIFFERENT physical station mid-event (a core
+// benefit of this feature) -- a global key would let a tablet that previously
+// cached Station A's manifest load Station A's stale list set after being
+// pointed at Station B's URL, permanently if offline, and scans made against
+// that stale menu get recorded against the wrong list.
+
+export async function cacheStationManifest(stationToken: string, manifest: StationManifest): Promise<void> {
+  const db = await getDb()
+  await db.put(META_STORE, { key: `station_manifest:${stationToken}`, value: JSON.stringify(manifest) } satisfies MetaRow)
+}
+
+export async function getStationManifest(stationToken: string): Promise<StationManifest | null> {
+  const db = await getDb()
+  const row = (await db.get(META_STORE, `station_manifest:${stationToken}`)) as MetaRow | undefined
+  if (!row) return null
+  return JSON.parse(row.value as string) as StationManifest
 }
 
 // --- Scan log --------------------------------------------------------------

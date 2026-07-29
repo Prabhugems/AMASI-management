@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Dialog,
   DialogContent,
@@ -28,7 +30,7 @@ type KioskStation = {
   event_id: string
   name: string
   mode: "checkin" | "print" | "checkin_and_print"
-  list_id: string | null
+  list_ids: string[]
   print_station_id: string | null
   auto_print_badge: boolean
   last_seen_at: string | null
@@ -59,10 +61,16 @@ export default function KioskStationsPage() {
   const [lists, setLists] = useState<CheckinList[]>([])
   const [printStations, setPrintStations] = useState<PrintStation[]>([])
   const [loading, setLoading] = useState(true)
+  // Guards against a lost-update race: a second checkbox click for the same
+  // station, fired before the first PATCH+reload round-trip resolves, would
+  // compute nextIds from a stale `station.list_ids` closure and silently
+  // discard the in-flight change. Disabling that station's checkboxes while
+  // a reassignment is in flight prevents the stale computation from firing.
+  const [reassigningStationId, setReassigningStationId] = useState<string | null>(null)
 
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState("")
-  const [newListId, setNewListId] = useState("")
+  const [newListIds, setNewListIds] = useState<string[]>([])
   const [newMode, setNewMode] = useState<"checkin" | "checkin_and_print">("checkin")
   const [newPrintStationId, setNewPrintStationId] = useState("")
   const [newAutoPrint, setNewAutoPrint] = useState(false)
@@ -110,7 +118,7 @@ export default function KioskStationsPage() {
   }, [eventId])
 
   const handleCreate = async () => {
-    if (!newName.trim() || !newListId) return
+    if (!newName.trim() || newListIds.length === 0) return
     if (newMode === "checkin_and_print" && !newPrintStationId) return
     setCreating(true)
     try {
@@ -120,7 +128,7 @@ export default function KioskStationsPage() {
         body: JSON.stringify({
           event_id: eventId,
           name: newName.trim(),
-          list_id: newListId,
+          list_ids: newListIds,
           mode: newMode,
           ...(newMode === "checkin_and_print" && { print_station_id: newPrintStationId, auto_print_badge: newAutoPrint }),
         }),
@@ -132,7 +140,7 @@ export default function KioskStationsPage() {
       }
       setShowCreate(false)
       setNewName("")
-      setNewListId("")
+      setNewListIds([])
       setNewMode("checkin")
       setNewPrintStationId("")
       setNewAutoPrint(false)
@@ -155,19 +163,24 @@ export default function KioskStationsPage() {
     await loadStations()
   }
 
-  const handleReassignList = async (station: KioskStation, listId: string) => {
-    const res = await fetch(`/api/kiosk-stations/${station.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ list_id: listId }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      toast.error(data.error || "Failed to change list")
-      return
+  const handleReassignLists = async (station: KioskStation, listIds: string[]) => {
+    setReassigningStationId(station.id)
+    try {
+      const res = await fetch(`/api/kiosk-stations/${station.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ list_ids: listIds }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || "Failed to change lists")
+        return
+      }
+      toast.success(`${station.name} reassigned`)
+      await loadStations()
+    } finally {
+      setReassigningStationId(null)
     }
-    toast.success(`${station.name} reassigned to ${lists.find((l) => l.id === listId)?.name || "the new list"}`)
-    await loadStations()
   }
 
   const handleReassignPrintStation = async (station: KioskStation, printStationId: string) => {
@@ -262,7 +275,7 @@ export default function KioskStationsPage() {
                   </span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {lists.find((l) => l.id === station.list_id)?.name || "No list assigned"}
+                  {station.list_ids.map((id) => lists.find((l) => l.id === id)?.name).filter(Boolean).join(", ") || "No list assigned"}
                   {" · "}
                   {station.revoked_at ? "Revoked" : relativeLastSeen(station.last_seen_at)}
                 </p>
@@ -273,21 +286,39 @@ export default function KioskStationsPage() {
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Select
-                  value={station.list_id ?? undefined}
-                  onValueChange={(value) => handleReassignList(station, value)}
-                >
-                  <SelectTrigger className="w-40 h-9 text-xs">
-                    <SelectValue placeholder="Change list" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeLists.map((list) => (
-                      <SelectItem key={list.id} value={list.id}>
-                        {list.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 text-xs max-w-52 justify-start truncate">
+                      {station.list_ids.length > 0
+                        ? station.list_ids.map((id) => lists.find((l) => l.id === id)?.name).filter(Boolean).join(", ")
+                        : "No lists assigned"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 space-y-2">
+                    {activeLists.map((list) => {
+                      const checked = station.list_ids.includes(list.id)
+                      return (
+                        <label key={list.id} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={checked}
+                            disabled={reassigningStationId === station.id}
+                            onCheckedChange={(next) => {
+                              const nextIds = next
+                                ? [...station.list_ids, list.id]
+                                : station.list_ids.filter((id) => id !== list.id)
+                              if (nextIds.length === 0) {
+                                toast.error("A station needs at least one assigned list")
+                                return
+                              }
+                              handleReassignLists(station, nextIds)
+                            }}
+                          />
+                          {list.name}
+                        </label>
+                      )
+                    })}
+                  </PopoverContent>
+                </Popover>
                 {station.mode === "checkin_and_print" && (
                   <>
                     <Select
@@ -341,19 +372,20 @@ export default function KioskStationsPage() {
               <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Front Desk Tablet" />
             </div>
             <div>
-              <label className="text-sm font-medium">Check-in list</label>
-              <Select value={newListId} onValueChange={setNewListId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a list" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeLists.map((list) => (
-                    <SelectItem key={list.id} value={list.id}>
-                      {list.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium">Check-in lists</label>
+              <div className="mt-1.5 space-y-2 border rounded-lg p-3 max-h-48 overflow-y-auto">
+                {activeLists.map((list) => (
+                  <label key={list.id} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={newListIds.includes(list.id)}
+                      onCheckedChange={(checked) =>
+                        setNewListIds(checked ? [...newListIds, list.id] : newListIds.filter((id) => id !== list.id))
+                      }
+                    />
+                    {list.name}
+                  </label>
+                ))}
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium">Mode</label>
@@ -402,7 +434,7 @@ export default function KioskStationsPage() {
             )}
             <Button
               onClick={handleCreate}
-              disabled={creating || !newName.trim() || !newListId || (newMode === "checkin_and_print" && !newPrintStationId)}
+              disabled={creating || !newName.trim() || newListIds.length === 0 || (newMode === "checkin_and_print" && !newPrintStationId)}
               className="w-full"
             >
               Create Station

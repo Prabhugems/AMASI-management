@@ -4,6 +4,7 @@ import { makeRequest } from "@/test/helpers/request"
 
 const STATION_ID = "33333333-3333-3333-3333-333333333333"
 const EVENT_ID = "11111111-1111-1111-1111-111111111111"
+const LIST_ID = "22222222-2222-2222-2222-222222222222"
 
 let mock: ReturnType<typeof createSupabaseMock>
 
@@ -37,6 +38,70 @@ describe("PATCH /api/kiosk-stations/[id]", () => {
     const { PATCH } = await import("./route")
     const res = await PATCH(makeRequest(`http://localhost/api/kiosk-stations/${STATION_ID}`, { method: "PATCH", body: { name: "New Name" } }), params())
     expect(res.status).toBe(200)
+  })
+
+  it("replaces the station's assigned lists on PATCH with list_ids -- inserting the new set and removing only what's dropped", async () => {
+    const OLD_LIST_ID = "55555555-5555-5555-5555-555555555555"
+    mock.queueResponse("kiosk_stations", { data: { id: "st-1", event_id: EVENT_ID }, error: null }) // find
+    mock.queueResponse("checkin_lists", { data: [{ id: LIST_ID, event_id: EVENT_ID }], error: null }) // list_ids validation
+    mock.queueResponse("kiosk_stations", { data: { id: "st-1", event_id: EVENT_ID, name: "Front Desk" }, error: null }) // station field update
+    mock.queueResponse("kiosk_station_lists", { data: [{ checkin_list_id: OLD_LIST_ID }], error: null }) // existing assignments
+    mock.queueResponse("kiosk_station_lists", { data: null, error: null }) // insert new
+    mock.queueResponse("kiosk_station_lists", { data: null, error: null }) // delete dropped
+    const { PATCH } = await import("./route")
+    const res = await PATCH(
+      makeRequest("http://localhost/api/kiosk-stations/st-1", { method: "PATCH", body: { list_ids: [LIST_ID] } }),
+      { params: Promise.resolve({ id: "st-1" }) }
+    )
+    expect(res.status).toBe(200)
+    expect(mock.calls.some((c) => c.table === "kiosk_station_lists" && c.method === "insert")).toBe(true)
+    expect(mock.calls.some((c) => c.table === "kiosk_station_lists" && c.method === "delete")).toBe(true)
+  })
+
+  it("500s when the kiosk_station_lists insert fails, and never deletes the original assignments (station is left non-listless)", async () => {
+    const OLD_LIST_ID = "55555555-5555-5555-5555-555555555555"
+    mock.queueResponse("kiosk_stations", { data: { id: "st-1", event_id: EVENT_ID }, error: null }) // find
+    mock.queueResponse("checkin_lists", { data: [{ id: LIST_ID, event_id: EVENT_ID }], error: null }) // list_ids validation
+    mock.queueResponse("kiosk_stations", { data: { id: "st-1", event_id: EVENT_ID, name: "Front Desk" }, error: null }) // station field update
+    mock.queueResponse("kiosk_station_lists", { data: [{ checkin_list_id: OLD_LIST_ID }], error: null }) // existing assignments
+    mock.queueResponse("kiosk_station_lists", { data: null, error: { message: "insert failed" } }) // insert fails
+    const { PATCH } = await import("./route")
+    const res = await PATCH(
+      makeRequest("http://localhost/api/kiosk-stations/st-1", { method: "PATCH", body: { list_ids: [LIST_ID] } }),
+      { params: Promise.resolve({ id: "st-1" }) }
+    )
+    expect(res.status).toBe(500)
+    // The old assignment must never be deleted when the insert of the new
+    // set failed -- otherwise the station would be left with zero lists.
+    expect(mock.calls.some((c) => c.table === "kiosk_station_lists" && c.method === "delete")).toBe(false)
+  })
+
+  it("does not touch the station's own fields at all when list_ids is invalid", async () => {
+    mock.queueResponse("kiosk_stations", { data: { id: "st-1", event_id: EVENT_ID }, error: null }) // find only
+    const { PATCH } = await import("./route")
+    const res = await PATCH(
+      makeRequest("http://localhost/api/kiosk-stations/st-1", { method: "PATCH", body: { name: "New Name", list_ids: [] } }),
+      { params: Promise.resolve({ id: "st-1" }) }
+    )
+    expect(res.status).toBe(400)
+    // Only the initial find should have hit kiosk_stations -- the station's
+    // own `.update()` must never run when list_ids fails validation, so the
+    // name change must never land either.
+    expect(mock.calls.filter((c) => c.table === "kiosk_stations" && c.method === "from").length).toBe(1)
+    expect(mock.calls.some((c) => c.table === "kiosk_stations" && c.method === "update")).toBe(false)
+  })
+
+  it("404s (list not found for event) without ever updating the station's own fields", async () => {
+    mock.queueResponse("kiosk_stations", { data: { id: "st-1", event_id: EVENT_ID }, error: null }) // find
+    mock.queueResponse("checkin_lists", { data: [], error: null }) // requested list doesn't exist
+    const { PATCH } = await import("./route")
+    const res = await PATCH(
+      makeRequest("http://localhost/api/kiosk-stations/st-1", { method: "PATCH", body: { name: "New Name", list_ids: [LIST_ID] } }),
+      { params: Promise.resolve({ id: "st-1" }) }
+    )
+    expect(res.status).toBe(404)
+    expect(mock.calls.filter((c) => c.table === "kiosk_stations" && c.method === "from").length).toBe(1)
+    expect(mock.calls.some((c) => c.table === "kiosk_stations" && c.method === "update")).toBe(false)
   })
 })
 

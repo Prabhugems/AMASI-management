@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import * as Sentry from "@sentry/nextjs"
 import { createAdminClient } from "@/lib/supabase/server"
 import { hashStationToken } from "@/lib/kiosk-station-auth"
-import { KioskCheckinScreen } from "@/components/kiosk/KioskCheckinScreen"
+import { KioskStationShell } from "@/components/kiosk/KioskStationShell"
 
 // Overrides the root layout's site-wide manifest (start_url "/", behind auth
 // middleware) with this station's own per-station manifest -- otherwise an
@@ -34,7 +34,7 @@ export default async function KioskStationPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error } = await (supabase as any)
     .from("kiosk_stations")
-    .select("id, name, event_id, mode, list_id, print_station_id, auto_print_badge, revoked_at")
+    .select("id, name, event_id, mode, print_station_id, auto_print_badge, revoked_at")
     .eq("access_token_hash", hashStationToken(token))
     .maybeSingle()
 
@@ -52,7 +52,24 @@ export default async function KioskStationPage({
   if (!station || station.revoked_at || (station.mode !== "checkin" && station.mode !== "checkin_and_print")) {
     return <StationNotFound />
   }
-  if (!station.list_id) {
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: joinRows } = await (supabase as any)
+    .from("kiosk_station_lists")
+    .select("checkin_list_id")
+    .eq("station_id", station.id)
+
+  const listIds = (joinRows || []).map((r: any) => r.checkin_list_id)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: lists } = listIds.length > 0
+    ? await (supabase as any)
+        .from("checkin_lists")
+        .select("id, name, kiosk_opens_at, kiosk_closes_at, kiosk_force_state")
+        .in("id", listIds)
+    : { data: [] }
+
+  if (!lists || lists.length === 0) {
     return <StationListRemoved />
   }
 
@@ -82,9 +99,8 @@ export default async function KioskStationPage({
     .eq("id", station.id)
 
   return (
-    <KioskCheckinScreen
+    <KioskStationShell
       eventId={station.event_id}
-      listId={station.list_id}
       stationToken={token}
       stationName={station.name}
       mode={station.mode}
@@ -93,6 +109,7 @@ export default async function KioskStationPage({
       badgeTemplate={badgeTemplate || undefined}
       printSettings={printSettings || undefined}
       printMode={printMode}
+      initialLists={lists}
     />
   )
 }
