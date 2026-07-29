@@ -1474,6 +1474,8 @@ export type Database = {
           is_active: boolean | null
           name: string
           price: number | null
+          sale_end_date: string | null
+          sale_start_date: string | null
           sort_order: number | null
           stock: number | null
           updated_at: string | null
@@ -1485,6 +1487,8 @@ export type Database = {
           is_active?: boolean | null
           name: string
           price?: number | null
+          sale_end_date?: string | null
+          sale_start_date?: string | null
           sort_order?: number | null
           stock?: number | null
           updated_at?: string | null
@@ -1496,6 +1500,8 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           price?: number | null
+          sale_end_date?: string | null
+          sale_start_date?: string | null
           sort_order?: number | null
           stock?: number | null
           updated_at?: string | null
@@ -3614,6 +3620,9 @@ export type Database = {
           event_id: string | null
           id: string
           is_active: boolean | null
+          kiosk_closes_at: string | null
+          kiosk_force_state: string | null
+          kiosk_opens_at: string | null
           list_purpose: string
           name: string
           sort_order: number | null
@@ -3632,6 +3641,9 @@ export type Database = {
           event_id?: string | null
           id?: string
           is_active?: boolean | null
+          kiosk_closes_at?: string | null
+          kiosk_force_state?: string | null
+          kiosk_opens_at?: string | null
           list_purpose: string
           name: string
           sort_order?: number | null
@@ -3650,6 +3662,9 @@ export type Database = {
           event_id?: string | null
           id?: string
           is_active?: boolean | null
+          kiosk_closes_at?: string | null
+          kiosk_force_state?: string | null
+          kiosk_opens_at?: string | null
           list_purpose?: string
           name?: string
           sort_order?: number | null
@@ -3676,6 +3691,8 @@ export type Database = {
           id: string
           notes: string | null
           registration_id: string | null
+          scan_id: string | null
+          station_id: string | null
         }
         Insert: {
           checked_in_at?: string | null
@@ -3685,6 +3702,8 @@ export type Database = {
           id?: string
           notes?: string | null
           registration_id?: string | null
+          scan_id?: string | null
+          station_id?: string | null
         }
         Update: {
           checked_in_at?: string | null
@@ -3694,6 +3713,8 @@ export type Database = {
           id?: string
           notes?: string | null
           registration_id?: string | null
+          scan_id?: string | null
+          station_id?: string | null
         }
         Relationships: [
           {
@@ -3708,6 +3729,13 @@ export type Database = {
             columns: ["registration_id"]
             isOneToOne: false
             referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkin_records_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_stations"
             referencedColumns: ["id"]
           },
         ]
@@ -7058,6 +7086,115 @@ export type Database = {
           },
         ]
       }
+      kiosk_station_lists: {
+        Row: {
+          checkin_list_id: string
+          created_at: string
+          station_id: string
+        }
+        Insert: {
+          checkin_list_id: string
+          created_at?: string
+          station_id: string
+        }
+        Update: {
+          checkin_list_id?: string
+          created_at?: string
+          station_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_station_lists_checkin_list_id_fkey"
+            columns: ["checkin_list_id"]
+            isOneToOne: false
+            referencedRelation: "checkin_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_station_lists_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kiosk_stations: {
+        Row: {
+          access_token_hash: string | null
+          auto_print_badge: boolean
+          created_at: string
+          event_id: string
+          exit_pin_hash: string | null
+          exit_pin_salt: string | null
+          id: string
+          last_seen_at: string | null
+          list_id: string | null
+          mode: string
+          name: string
+          print_station_id: string | null
+          printer_config: Json | null
+          revoked_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token_hash?: string | null
+          auto_print_badge?: boolean
+          created_at?: string
+          event_id: string
+          exit_pin_hash?: string | null
+          exit_pin_salt?: string | null
+          id?: string
+          last_seen_at?: string | null
+          list_id?: string | null
+          mode: string
+          name: string
+          print_station_id?: string | null
+          printer_config?: Json | null
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token_hash?: string | null
+          auto_print_badge?: boolean
+          created_at?: string
+          event_id?: string
+          exit_pin_hash?: string | null
+          exit_pin_salt?: string | null
+          id?: string
+          last_seen_at?: string | null
+          list_id?: string | null
+          mode?: string
+          name?: string
+          print_station_id?: string | null
+          printer_config?: Json | null
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_stations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_stations_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "checkin_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_stations_print_station_id_fkey"
+            columns: ["print_station_id"]
+            isOneToOne: false
+            referencedRelation: "print_stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lm_asi_deepdive_2026_06_24_snapshot: {
         Row: {
           active_license: string | null
@@ -10165,6 +10302,7 @@ export type Database = {
           printer_name: string | null
           registration_data: Json | null
           registration_id: string
+          scan_id: string | null
           status: string | null
           zpl_data: string | null
         }
@@ -10183,6 +10321,7 @@ export type Database = {
           printer_name?: string | null
           registration_data?: Json | null
           registration_id: string
+          scan_id?: string | null
           status?: string | null
           zpl_data?: string | null
         }
@@ -10201,6 +10340,7 @@ export type Database = {
           printer_name?: string | null
           registration_data?: Json | null
           registration_id?: string
+          scan_id?: string | null
           status?: string | null
           zpl_data?: string | null
         }
