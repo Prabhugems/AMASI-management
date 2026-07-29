@@ -352,3 +352,107 @@ describe("GET /api/kiosk/delegates -- station_token multi-list", () => {
     expect(res.status).toBe(503)
   })
 })
+
+describe("GET /api/kiosk/delegates -- attended-station collection-list exception", () => {
+  it("returns the real roster for a collection-purpose list when the station is fully resolved and attended", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: null, attended: true },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: { station_id: "st-1" }, error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ list_purpose: "collection" }), error: null })
+    mock.queueResponse("registrations", {
+      data: [
+        {
+          id: "reg-1",
+          registration_number: "REG-001",
+          attendee_name: "Jane Doe",
+          attendee_email: "jane@example.com",
+          attendee_phone: "9999999999",
+          attendee_designation: "Consultant",
+          attendee_institution: "AMASI",
+        },
+      ],
+      error: null,
+    })
+
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "st-tok", list_id: LIST_ID })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.list_purpose).toBe("collection")
+    expect(body.delegates).toEqual([
+      {
+        id: "reg-1",
+        registration_number: "REG-001",
+        attendee_name: "Jane Doe",
+        attendee_email: "jane@example.com",
+        attendee_phone: "9999999999",
+        attendee_designation: "Consultant",
+        attendee_institution: "AMASI",
+      },
+    ])
+  })
+
+  it("still returns the empty-roster short-circuit for a collection-purpose list when the station is NOT attended", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: null, attended: false },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: { station_id: "st-1" }, error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ list_purpose: "collection" }), error: null })
+
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "st-tok", list_id: LIST_ID })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.delegates).toEqual([])
+    expect(body.list_purpose).toBe("collection")
+    expect(mock.calls.some((c) => c.table === "registrations")).toBe(false)
+  })
+
+  it("still returns the empty-roster short-circuit for a collection-purpose list when `attended` is absent from the station row", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: null },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: { station_id: "st-1" }, error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ list_purpose: "collection" }), error: null })
+
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "st-tok", list_id: LIST_ID })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.delegates).toEqual([])
+    expect(body.list_purpose).toBe("collection")
+  })
+
+  it("fails closed: a revoked (would-be-attended) station still gets the empty-roster short-circuit on a collection list, never the real roster", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: "2026-01-01T00:00:00Z", attended: true },
+      error: null,
+    })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "st-tok", list_id: LIST_ID })))
+
+    // Station resolution itself fails (revoked) -- 401, never a 200 with a
+    // real roster.
+    expect(res.status).toBe(401)
+  })
+
+  it("fails closed: an attended station that errors on the stationServesList membership check still gets the empty-roster short-circuit, never the real roster", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: null, attended: true },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: null, error: { message: "boom" } })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "st-tok", list_id: LIST_ID })))
+
+    // Ambiguous/failed resolution -- 503, never a 200 with a real roster.
+    expect(res.status).toBe(503)
+  })
+})

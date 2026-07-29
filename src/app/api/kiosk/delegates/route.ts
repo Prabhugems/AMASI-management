@@ -68,6 +68,11 @@ export async function GET(request: NextRequest) {
 
     let list: any = null
     let listLookupError: any = null
+    // Hoisted like list/listLookupError above -- needed further down, past
+    // the `if (stationToken)` block where `station` itself goes out of
+    // scope. Defaults closed: only ever flipped to true once every station-
+    // resolution check below has positively succeeded.
+    let stationIsAttended = false
 
     if (stationToken) {
       const { station, error: stationLookupError } = await resolveStationByToken(supabase, stationToken)
@@ -96,6 +101,12 @@ export async function GET(request: NextRequest) {
       if (!isMember) {
         return NextResponse.json({ error: "Check-in list not found." }, { status: 404 })
       }
+
+      // Every check above has now positively succeeded (station exists, not
+      // revoked, correct mode, correct event, confirmed member of THIS
+      // list) -- only now is it safe to record whether this station is
+      // staff-attended, for the collection-list gate further down.
+      stationIsAttended = station.attended === true
 
       const result = await (supabase as any)
         .from("checkin_lists")
@@ -145,11 +156,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Check-in list not found." }, { status: 404 })
     }
 
-    // Self check-in is entry-only, permanently (see /api/kiosk/checkin) --
-    // nothing worth caching for a list the kiosk will never accept a scan
-    // against. list_purpose is included in the response so the page can
-    // distinguish "legitimately nothing to cache" from "haven't fetched yet".
-    if (list.list_purpose === "collection") {
+    // Self check-in is entry-only for an UNATTENDED kiosk (see
+    // /api/kiosk/checkin) -- nothing worth caching for a list the kiosk will
+    // never accept a scan against. list_purpose is included in the response
+    // so the page can distinguish "legitimately nothing to cache" from
+    // "haven't fetched yet".
+    //
+    // This is the one place in this route where station resolution GATES
+    // behavior rather than merely attributing it: a collection-purpose list
+    // still gets the real roster when (and only when) the request came via
+    // station_token AND that station resolved through every single check
+    // above with no ambiguity AND is staff-attended (stationIsAttended).
+    // stationIsAttended defaults to false and is only ever set true after
+    // every prior check has positively succeeded, so any resolution
+    // failure -- bad/missing/revoked token, wrong mode, wrong event, not a
+    // member of this list, or a transient lookup error -- leaves it false
+    // and this short-circuit still fires. Fail closed, always: the check is
+    // written as "proceed only if attended", never as "skip unless
+    // unresolved", so it can't accidentally invert under a future edit.
+    if (list.list_purpose === "collection" && !stationIsAttended) {
       return NextResponse.json({ delegates: [], list_purpose: list.list_purpose })
     }
 
