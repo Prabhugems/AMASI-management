@@ -71,6 +71,20 @@ export async function POST(request: NextRequest) {
     // this list must NEVER block a check-in from completing. It only fails
     // to attribute it to a station.
     let stationId: string | null = null
+    // Defaults closed. This is the ONE place in this route where station
+    // resolution stops being purely cosmetic attribution and starts gating
+    // real behavior -- whether a collection-purpose list's scan is allowed
+    // at all (see the two list_purpose === "collection" checks below). It
+    // is deliberately wired to fail closed: isAttendedStation is only ever
+    // set true inside the SAME `if` block that already gates `stationId`,
+    // after every one of its checks (station exists, not revoked, correct
+    // mode, correct event, confirmed member of this list) has positively
+    // succeeded -- so any resolution failure or ambiguity leaves it false,
+    // exactly like it already leaves `stationId` null, and a collection
+    // scan is denied. This is intentionally an AND-chain of successes, not
+    // a negated failure check, so a future edit to this condition can't
+    // silently flip a resolution failure into an "allow".
+    let isAttendedStation = false
     if (stationToken) {
       const { station } = await resolveStationByToken(supabase, stationToken)
 
@@ -88,6 +102,10 @@ export async function POST(request: NextRequest) {
         (await stationServesList(supabase, station.id, checkinListId)).isMember
       ) {
         stationId = station.id
+        // Only reachable once every check above has already passed --
+        // AND-ing station.attended onto an already-fully-resolved station,
+        // never evaluated independently of it.
+        isAttendedStation = station.attended === true
       }
     }
 
@@ -209,11 +227,15 @@ export async function POST(request: NextRequest) {
 
       const { warning: timeWindowWarning } = checkTimeWindow(list)
 
-      // The kiosk is unattended -- nobody is standing there to stop a
-      // delegate self-serving a second kit/paper/badge. Collection lists
-      // (repeat scan means "do not issue again") are staff-scanner-only; the
-      // kiosk is entry-only by design, permanently.
-      if (list.list_purpose === "collection") {
+      // The kiosk is unattended by default -- nobody is standing there to
+      // stop a delegate self-serving a second kit/paper/badge. Collection
+      // lists (repeat scan means "do not issue again") are normally
+      // staff-scanner-only. The one exception: isAttendedStation (see
+      // above), which can only be true when station resolution fully and
+      // unambiguously succeeded AND the station is staff-attended -- any
+      // other case (no station_token, unattended station, or ANY resolution
+      // failure/ambiguity) leaves it false and this still blocks.
+      if (list.list_purpose === "collection" && !isAttendedStation) {
         return NextResponse.json(
           { success: false, message: "Self check-in isn't available for this list. Please see a staff member." },
           { status: 403 }
@@ -243,7 +265,10 @@ export async function POST(request: NextRequest) {
 
     const { warning: timeWindowWarning } = checkTimeWindow(list)
 
-    if (list.list_purpose === "collection") {
+    // Same fail-closed attended-station exception as the fresh-resolution
+    // path above -- see the comment there and at isAttendedStation's
+    // computation.
+    if (list.list_purpose === "collection" && !isAttendedStation) {
       return NextResponse.json(
         { success: false, message: "Self check-in isn't available for this list. Please see a staff member." },
         { status: 403 }
@@ -316,7 +341,7 @@ async function completeCheckin(
   // backfilled -- it belongs to whatever originally created it.
   const { data: existing } = await (supabase as any)
     .from("checkin_records")
-    .select("id")
+    .select("id, checked_in_at, station_id")
     .eq("registration_id", registrationId)
     .eq("checkin_list_id", checkinListId)
     .is("checked_out_at", null)
@@ -329,6 +354,13 @@ async function completeCheckin(
       message: "You're already checked in!",
       registration: registrationForResponse,
       alreadyCheckedIn: true,
+      checked_in_at: existing.checked_in_at,
+      // Named distinctly from this function's own `stationId` parameter
+      // (the CURRENT request's station) -- this is the station attributed
+      // to the EXISTING prior check-in, which may be a different station or
+      // none at all. Raw id only: resolving it to a display name happens
+      // client-side from a locally-cached station list, not here.
+      attributed_station_id: existing.station_id,
     })
   }
 
