@@ -31,6 +31,17 @@ export interface AddonVariant {
   price: number
   is_active: boolean
   sort_order: number
+  sale_start_date?: string | null
+  sale_end_date?: string | null
+}
+
+// Mirrors ticket-selector.tsx's isWithinSaleWindow — a variant with no dates
+// set is always available (e.g. non-date-based variants like room type).
+function isVariantWithinSaleWindow(variant: AddonVariant): boolean {
+  const now = new Date()
+  if (variant.sale_start_date && now < new Date(variant.sale_start_date)) return false
+  if (variant.sale_end_date && now > new Date(variant.sale_end_date)) return false
+  return true
 }
 
 export interface SelectedAddon {
@@ -327,7 +338,7 @@ export function AddonsSelector({
                     </p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                       {addon.variants
-                        .filter(v => v.is_active)
+                        .filter(v => v.is_active && isVariantWithinSaleWindow(v))
                         .sort((a, b) => a.sort_order - b.sort_order)
                         .map((variant) => {
                           const selected = getSelectedQuantity(addon.id, variant.id)

@@ -37,7 +37,9 @@ export async function GET(request: NextRequest) {
           name,
           price,
           is_active,
-          sort_order
+          sort_order,
+          sale_start_date,
+          sale_end_date
         )
       `)
       .eq("event_id", eventId)
@@ -81,9 +83,15 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Active variants only, ordered by sort_order
+      // Active variants only, currently within their fee-slab sale window, ordered by sort_order
+      const now = new Date()
       const variants = (addon.variants || [])
-        .filter((v: any) => v.is_active)
+        .filter((v: any) => {
+          if (!v.is_active) return false
+          if (v.sale_start_date && now < new Date(v.sale_start_date)) return false
+          if (v.sale_end_date && now > new Date(v.sale_end_date)) return false
+          return true
+        })
         .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
 
       return {
