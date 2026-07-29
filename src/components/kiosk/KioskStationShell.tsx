@@ -66,7 +66,7 @@ export function KioskStationShell({
       if (!res.ok) return
       const manifest = (await res.json()) as StationManifest
       setAssignedLists(toAssignedLists(manifest))
-      await cacheStationManifest(manifest)
+      await cacheStationManifest(stationToken, manifest)
     } catch {
       // Offline/transient -- keep whatever's currently in state.
     }
@@ -80,7 +80,7 @@ export function KioskStationShell({
     let cancelled = false
     ;(async () => {
       try {
-        const cached = await getStationManifest()
+        const cached = await getStationManifest(stationToken)
         if (cached && !cancelled) setAssignedLists(toAssignedLists(cached))
       } catch (err) {
         Sentry.captureException(err, { tags: { module: "kiosk-station-shell" } })
