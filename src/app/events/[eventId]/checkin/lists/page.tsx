@@ -41,6 +41,9 @@ type CheckinList = {
   addon_ids?: string[]
   starts_at?: string
   ends_at?: string
+  kiosk_opens_at?: string
+  kiosk_closes_at?: string
+  kiosk_force_state?: "open" | "closed" | null
   created_at: string
   access_token?: string
 }
@@ -75,6 +78,9 @@ export default function CheckinListsPage() {
     addon_ids: [] as string[],
     starts_at: "",
     ends_at: "",
+    kiosk_opens_at: "",
+    kiosk_closes_at: "",
+    kiosk_force_state: null as "open" | "closed" | null,
   })
 
   // Fetch lists
@@ -132,6 +138,9 @@ export default function CheckinListsPage() {
           addon_ids: list.addon_ids || [],
           starts_at: list.starts_at ? list.starts_at.slice(0, 16) : "",
           ends_at: list.ends_at ? list.ends_at.slice(0, 16) : "",
+          kiosk_opens_at: list.kiosk_opens_at ? list.kiosk_opens_at.slice(0, 16) : "",
+          kiosk_closes_at: list.kiosk_closes_at ? list.kiosk_closes_at.slice(0, 16) : "",
+          kiosk_force_state: list.kiosk_force_state ?? null,
         })
       }
     }
@@ -149,6 +158,9 @@ export default function CheckinListsPage() {
         addon_ids: data.addon_ids.length > 0 ? data.addon_ids : null,
         starts_at: data.starts_at || null,
         ends_at: data.ends_at || null,
+        kiosk_opens_at: data.kiosk_opens_at || null,
+        kiosk_closes_at: data.kiosk_closes_at || null,
+        kiosk_force_state: data.kiosk_force_state,
       }
       // Go through the API route — checkin_lists has an RLS policy that
       // blocks browser-session inserts; the API uses the admin client.
@@ -223,6 +235,9 @@ export default function CheckinListsPage() {
       addon_ids: [],
       starts_at: "",
       ends_at: "",
+      kiosk_opens_at: "",
+      kiosk_closes_at: "",
+      kiosk_force_state: null,
     })
   }
 
@@ -568,6 +583,59 @@ export default function CheckinListsPage() {
                         className="mt-1.5"
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Kiosk schedule -- a completely separate system from the
+                    Schedule card above (starts_at/ends_at is a soft warning
+                    only, live today). This hard-gates whether the list is
+                    even tappable on a shared kiosk's on-device menu. */}
+                <div className="bg-card rounded-2xl border p-5 space-y-4">
+                  <h3 className="font-medium flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
+                    <Monitor className="h-4 w-4" />
+                    Kiosk Menu Schedule (Optional)
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Controls whether this list is tappable on a shared kiosk station's menu — separate from the Schedule above.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium">Opens At</Label>
+                      <Input
+                        type="datetime-local"
+                        value={formData.kiosk_opens_at}
+                        onChange={(e) => setFormData({ ...formData, kiosk_opens_at: e.target.value })}
+                        className="mt-1.5"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Closes At</Label>
+                      <Input
+                        type="datetime-local"
+                        value={formData.kiosk_closes_at}
+                        onChange={(e) => setFormData({ ...formData, kiosk_closes_at: e.target.value })}
+                        className="mt-1.5"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["follow", "open", "closed"] as const).map((option) => {
+                      const value = option === "follow" ? null : option
+                      const isSelected = formData.kiosk_force_state === value
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, kiosk_force_state: value })}
+                          className={cn(
+                            "rounded-lg border-2 py-2 text-xs font-medium transition-all",
+                            isSelected ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
+                          )}
+                        >
+                          {option === "follow" ? "Follow schedule" : option === "open" ? "Force open" : "Force closed"}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
