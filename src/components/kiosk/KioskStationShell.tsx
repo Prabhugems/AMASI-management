@@ -56,7 +56,7 @@ export function KioskStationShell({
   const [activeListId, setActiveListId] = useState<string | null>(
     initialLists.length === 1 ? initialLists[0].id : null
   )
-  const [, forceTick] = useState(0)
+  const [tick, forceTick] = useState(0)
 
   const refreshManifest = useCallback(async () => {
     try {
@@ -154,11 +154,30 @@ export function KioskStationShell({
   // Recompute open/closed and the closing-soon banner every 30s -- both are
   // pure functions of the device clock, not of any fetched data.
   useEffect(() => {
-    const tick = setInterval(() => forceTick((n) => n + 1), 30000)
-    return () => clearInterval(tick)
+    const intervalId = setInterval(() => forceTick((n) => n + 1), 30000)
+    return () => clearInterval(intervalId)
   }, [])
 
   const activeList = assignedLists.find((l) => l.id === activeListId) || null
+
+  // At close time, return to the menu automatically -- don't require the
+  // volunteer to notice and tap "Switch list". Driven by the same 30s tick
+  // that recomputes closingSoonMinutes below, so this fires within 30s of
+  // the schedule actually closing. This never interrupts a pending scan:
+  // KioskCheckinScreen's enqueue already durably wrote to IndexedDB before
+  // this effect can fire, and the shell's own drainScanQueue effect keeps
+  // syncing every assigned list's queue regardless of which screen (or
+  // none) is showing.
+  useEffect(() => {
+    if (activeList && computeListState(activeList) === "closed") {
+      setActiveListId(null)
+    }
+    // `tick` is the effect's real trigger (the 30s schedule-recompute
+    // heartbeat); `activeList` is included so a list switch or a fresh
+    // manifest refresh is also re-checked immediately rather than waiting
+    // for the next tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick, activeList])
 
   if (activeList) {
     return (
