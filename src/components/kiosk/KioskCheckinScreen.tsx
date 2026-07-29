@@ -329,6 +329,18 @@ export function KioskCheckinScreen({
           imageDataUrls,
           cachedAt: Date.now(),
         })
+
+        // Warm the JS chunks the print path needs while still online, so the
+        // FIRST print attempt after this device goes offline doesn't have to
+        // fetch them over the network -- printBadge below lazy-imports these
+        // same three modules, and the service worker's existing /_next/
+        // caching for /kiosk-station/ referrers picks them up as a side
+        // effect of these imports resolving now. Fire-and-forget: a failure
+        // here just means the first print retries the fetch as before, it
+        // must never block or fail check-in bootstrap.
+        void import("@/lib/badge-render")
+        void import("qrcode")
+        void import("html2canvas")
       } catch (err) {
         Sentry.captureException(err, { tags: { module: "kiosk-print-cache" }, extra: { eventId, listId } })
       }
@@ -395,7 +407,17 @@ export function KioskCheckinScreen({
 
       const template = await getPrintTemplate(listId)
       if (!template) {
-        setPrintStatus({ success: false, message: "Badge template not ready yet. Try again in a moment." })
+        // Two different failure modes look identical here but need different
+        // guidance: printStationId unset means an admin never linked this
+        // station to a Print Station at all (persistent -- retapping never
+        // helps, a volunteer would retap forever with no way to know that).
+        // printStationId set but nothing cached yet is the genuine transient
+        // case -- the online bootstrap cache (Task 6) just hasn't landed.
+        setPrintStatus(
+          printStationId
+            ? { success: false, message: "Badge template not ready yet. Try again in a moment." }
+            : { success: false, message: "This station isn't set up for printing yet — see an admin." }
+        )
         return
       }
 
@@ -510,7 +532,7 @@ export function KioskCheckinScreen({
     } finally {
       setPrinting(false)
     }
-  }, [listId, eventId])
+  }, [listId, eventId, printStationId])
 
   // Auto-print fires exactly once per successful check-in result when this
   // station is configured for it -- EXCEPT when this registration already
@@ -529,16 +551,28 @@ export function KioskCheckinScreen({
     const registration = result.registration
     let cancelled = false
     ;(async () => {
-      const last = await getLastPrintForRegistration(listId, registration.id)
-      if (cancelled) return
-      if (last && last.status === "success") {
-        setPrintStatus({
-          success: true,
-          message: `Badge already printed at ${new Date(last.printed_at).toLocaleTimeString()} — tap Print Badge to reprint.`,
-        })
-        return
+      try {
+        const last = await getLastPrintForRegistration(listId, registration.id)
+        if (cancelled) return
+        if (last && last.status === "success") {
+          setPrintStatus({
+            success: true,
+            message: `Badge already printed at ${new Date(last.printed_at).toLocaleTimeString()} — tap Print Badge to reprint.`,
+          })
+          return
+        }
+        void printBadge(registration)
+      } catch (err) {
+        // This path runs completely unattended (no human triggers it, no
+        // retry button) -- an unhandled rejection here (e.g. IndexedDB
+        // quota/unavailable) would otherwise vanish with zero telemetry.
+        // Fall through to NOT auto-printing on error: a human can still use
+        // the manual "Print Badge" button, which is the safer default over
+        // crashing or silently hanging.
+        if (!cancelled) {
+          Sentry.captureException(err, { tags: { module: "kiosk-print" }, extra: { eventId, listId } })
+        }
       }
-      void printBadge(registration)
     })()
     return () => {
       cancelled = true
@@ -567,6 +601,14 @@ export function KioskCheckinScreen({
     setCountdown(10)
     setEmailSent(false)
     setWhatsappSent(false)
+    // The scan/entry screen never renders printStatus, so without clearing
+    // it here it silently persists across resets -- the next delegate's
+    // success screen could otherwise show the PREVIOUS delegate's "Badge
+    // printed!" (or a stale reprint-warning message) before this delegate
+    // has done anything. setPrinting(false) is defensive, in case a reset
+    // happens mid-print.
+    setPrintStatus(null)
+    setPrinting(false)
     setTimeout(() => inputRef.current?.focus(), 100)
   }, [])
 
@@ -736,6 +778,17 @@ export function KioskCheckinScreen({
     try {
       const pending = await getPendingPrintSyncs(listId)
       for (const entry of pending) {
+        if (entry.status !== "success") {
+          // A locally-failed print never made it out of a printer -- syncing
+          // it to print_jobs would insert a row that inflates the linked
+          // print station's total_prints/unique_prints stats (the DB trigger
+          // fires unconditionally on every insert) and would be invisible to
+          // reprint-limit enforcement, which filters on status="completed".
+          // Nothing to sync; mark it synced so it doesn't get re-examined on
+          // every future poll forever.
+          await markPrintSynced(entry.print_id)
+          continue
+        }
         try {
           const res = await fetch("/api/kiosk/print-sync", {
             method: "POST",
@@ -744,7 +797,13 @@ export function KioskCheckinScreen({
               print_station_id: printStationId,
               registration_id: entry.registration_id,
               printed_at: entry.printed_at,
-              status: entry.status,
+              // The local log keeps its own "success"/"failed" vocabulary
+              // (an internal, already-shipped record) -- the server side
+              // only ever accepts "completed" (matching every other
+              // print_jobs writer in this codebase), and only successful
+              // local prints reach this fetch call at all (see the guard
+              // above).
+              status: "completed",
             }),
           })
           if (res.ok) {

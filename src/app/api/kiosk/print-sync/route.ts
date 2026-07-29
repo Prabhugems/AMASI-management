@@ -28,7 +28,17 @@ export async function POST(request: NextRequest) {
   if (!registrationId || !isValidUUID(registrationId)) {
     return NextResponse.json({ error: "Invalid registration." }, { status: 400 })
   }
-  if (!printedAt || (status !== "success" && status !== "failed")) {
+  // Only a successful local print is ever synced here -- the caller
+  // (KioskCheckinScreen's syncPrintLog) never sends a "failed" local print
+  // to this endpoint at all, so any other value (including "failed" or the
+  // pre-fix "success") is rejected outright rather than silently accepted.
+  // "completed" matches the vocabulary every other print_jobs writer in
+  // this codebase uses (see src/app/api/print-stations/print/route.ts) --
+  // a trigger_update_print_station_stats DB trigger fires on every INSERT
+  // regardless of status, and allow_reprint/max_reprints enforcement
+  // elsewhere filters on status = "completed", so any other value here
+  // would inflate stats and be invisible to reprint limits.
+  if (!printedAt || status !== "completed") {
     return NextResponse.json({ error: "Invalid print outcome." }, { status: 400 })
   }
 
@@ -37,8 +47,8 @@ export async function POST(request: NextRequest) {
   const { error } = await (supabase as any).from("print_jobs").insert({
     print_station_id: printStationId,
     registration_id: registrationId,
-    status,
-    printed_at: status === "success" ? new Date(printedAt).toISOString() : null,
+    status: "completed",
+    printed_at: new Date(printedAt).toISOString(),
     device_info: { source: "kiosk" },
   })
 

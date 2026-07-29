@@ -12,6 +12,7 @@
 // not the ScanLogEntry.station_id field itself.
 
 import { openDB, type IDBPDatabase } from "idb"
+import * as Sentry from "@sentry/nextjs"
 import type { CachedDelegate } from "./kiosk-delegate-match"
 
 export type { CachedDelegate }
@@ -109,6 +110,23 @@ function getDb(): Promise<IDBPDatabase> {
           store.createIndex("by_list", "list_id")
           store.createIndex("by_registration", ["list_id", "registration_id"])
         }
+      },
+      // Without these, a VERSION bump can hang the whole kiosk bootstrap
+      // forever: if another browser tab on this device still holds an open
+      // connection to the OLD database version (e.g. a kiosk tab left open
+      // from before this deploy), openDB at the new VERSION neither resolves
+      // nor rejects by default -- it just blocks -- so getOrCreateDeviceId()
+      // (called during bootstrap) never returns and the entire kiosk,
+      // including the base check-in flow, hangs on "Loading..." forever
+      // with no error and no Sentry event.
+      blocking() {
+        // This tab holds an old version open in another tab context --
+        // close it so the newer tab's upgrade can proceed instead of
+        // hanging forever.
+        void dbPromise?.then((db) => db.close())
+      },
+      blocked() {
+        Sentry.captureMessage("kiosk IndexedDB upgrade blocked by another open tab", { tags: { module: "kiosk-offline-store" } })
       },
     })
   }
