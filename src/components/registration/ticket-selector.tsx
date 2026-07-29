@@ -498,19 +498,41 @@ export function TicketSelector({
       </div>
 
       <div className="space-y-4">
-        {sortedTickets.map((ticket, index) => (
-          <TicketCard
-            key={ticket.id}
-            ticket={ticket}
-            quantity={selectedTickets.get(ticket.id) || 0}
-            onQuantityChange={(qty) => handleQuantityChange(ticket.id, qty)}
-            isDark={isDark}
-            index={index}
-            disabledByTicket={isDisabledByExclusivity(ticket.id)}
-            eventId={eventId}
-            waitlistEnabled={waitlistEnabled}
-          />
-        ))}
+        {sortedTickets.map((ticket, index) => {
+          // "Accompanying Person" tickets are a distinct add-a-companion flow,
+          // not another primary registration category — a header separates
+          // them from Delegate/Faculty/Resident so it doesn't read as just
+          // another option in the same list.
+          const isAccompanying = ticket.name.toLowerCase().startsWith("accompanying person")
+          const prevTicket = index > 0 ? sortedTickets[index - 1] : null
+          const isFirstAccompanying = isAccompanying && !prevTicket?.name.toLowerCase().startsWith("accompanying person")
+
+          return (
+            <div key={ticket.id}>
+              {isFirstAccompanying && (
+                <div className="flex items-center gap-2.5 mt-2 mb-3">
+                  <Users className="w-4 h-4" style={{ color: REG_THEME.primary }} />
+                  <h3
+                    className="text-sm font-bold uppercase tracking-wide"
+                    style={{ color: isDark ? '#94A3B8' : '#78716C' }}
+                  >
+                    Accompanying Person
+                  </h3>
+                </div>
+              )}
+              <TicketCard
+                ticket={ticket}
+                quantity={selectedTickets.get(ticket.id) || 0}
+                onQuantityChange={(qty) => handleQuantityChange(ticket.id, qty)}
+                isDark={isDark}
+                index={index}
+                disabledByTicket={isDisabledByExclusivity(ticket.id)}
+                eventId={eventId}
+                waitlistEnabled={waitlistEnabled}
+              />
+            </div>
+          )
+        })}
       </div>
     </div>
   )

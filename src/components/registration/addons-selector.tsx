@@ -193,7 +193,30 @@ export function AddonsSelector({
       </p>
 
       <div className="space-y-3">
-        {availableAddons.map((addon) => (
+        {availableAddons.map((addon) => {
+          // Workshop/course addons here are named "W01 - Title" or "C01 - Title" —
+          // the code isn't decoration, the source form explicitly requires
+          // "the exact W-code on payment proof and correspondence", so it's
+          // pulled out as its own badge rather than buried in the heading text.
+          const codeMatch = addon.name.match(/^([A-Z]\d{2})\s*-\s*(.+)$/)
+          const code = codeMatch?.[1]
+          const title = codeMatch?.[2] || addon.name
+
+          const visibleVariants = addon.has_variants
+            ? (addon.variants || [])
+                .filter(v => v.is_active && isVariantWithinSaleWindow(v))
+                .sort((a, b) => a.sort_order - b.sort_order)
+            : []
+          // Date-gating means only one fee slab is ever open at a time in the
+          // normal case — rendering a whole "select one of N" grid for a
+          // single option wastes space, so that case gets the same compact
+          // inline price treatment as a plain (non-variant) addon.
+          const singleVariant = visibleVariants.length === 1 ? visibleVariants[0] : undefined
+          const showInlinePrice = !addon.has_variants || singleVariant
+          const inlinePrice = singleVariant ? singleVariant.price : addon.price
+          const inlineVariantId = singleVariant?.id
+
+          return (
           <div
             key={addon.id}
             className="border rounded-2xl p-5 bg-white transition-all duration-200"
@@ -208,13 +231,25 @@ export function AddonsSelector({
             }}
           >
             <div className="flex items-start gap-3.5">
-              {/* Addon Image or Icon */}
+              {/* Addon Image, Code Badge, or Icon */}
               {addon.image_url ? (
                 <img
                   src={addon.image_url}
                   alt={addon.name}
                   className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
                 />
+              ) : code ? (
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: T.primary }}
+                >
+                  <span
+                    className="text-white font-bold text-[13px] leading-none"
+                    style={{ fontVariantNumeric: "tabular-nums", letterSpacing: "0.02em" }}
+                  >
+                    {code}
+                  </span>
+                </div>
               ) : (
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -233,14 +268,17 @@ export function AddonsSelector({
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                   <div className="flex-1">
                     <div className="flex items-start justify-between sm:block">
-                      <h4 className="font-semibold text-gray-900">{addon.name}</h4>
+                      <h4 className="font-semibold text-gray-900">{title}</h4>
                       {/* Mobile: Price next to title */}
-                      {!addon.has_variants && (
+                      {showInlinePrice && (
                         <div className="text-right sm:hidden">
                           <p className="font-bold" style={{ color: T.accent }}>
-                            {addon.price > 0 ? `${getCurrencySymbol(addon.currency)}${addon.price.toLocaleString()}` : "Free"}
+                            {inlinePrice > 0 ? `${getCurrencySymbol(addon.currency)}${inlinePrice.toLocaleString()}` : "Free"}
                           </p>
-                          {addon.price > 0 && taxPercentage > 0 && (
+                          {singleVariant && (
+                            <p className="text-[11px] font-medium" style={{ color: T.primary }}>{singleVariant.name}</p>
+                          )}
+                          {inlinePrice > 0 && taxPercentage > 0 && (
                             <p className="text-[10px] text-gray-400">+{taxPercentage}% GST</p>
                           )}
                         </div>
@@ -268,26 +306,29 @@ export function AddonsSelector({
                     )}
                   </div>
 
-                  {/* Price & Quantity (for non-variant addons) */}
-                  {!addon.has_variants && (
+                  {/* Price & Quantity (non-variant addons, or exactly one active fee slab) */}
+                  {showInlinePrice && (
                     <div className="flex items-center justify-between sm:justify-end gap-4">
                       {/* Desktop: Price on left of controls */}
                       <div className="hidden sm:block text-right">
                         <p className="font-bold" style={{ color: T.accent }}>
-                          {addon.price > 0 ? `${getCurrencySymbol(addon.currency)}${addon.price.toLocaleString()}` : "Free"}
+                          {inlinePrice > 0 ? `${getCurrencySymbol(addon.currency)}${inlinePrice.toLocaleString()}` : "Free"}
                         </p>
-                        {addon.price > 0 && taxPercentage > 0 && (
+                        {singleVariant && (
+                          <p className="text-[11px] font-medium" style={{ color: T.primary }}>{singleVariant.name}</p>
+                        )}
+                        {inlinePrice > 0 && taxPercentage > 0 && (
                           <p className="text-[10px] text-gray-400">+{taxPercentage}% GST</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => handleQuantityChange(addon, -1)}
-                          disabled={getSelectedQuantity(addon.id) === 0}
+                          onClick={() => handleQuantityChange(addon, -1, inlineVariantId)}
+                          disabled={getSelectedQuantity(addon.id, inlineVariantId) === 0}
                           className={cn(
                             "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                            getSelectedQuantity(addon.id) === 0
+                            getSelectedQuantity(addon.id, inlineVariantId) === 0
                               ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                           )}
@@ -295,16 +336,16 @@ export function AddonsSelector({
                           <Minus className="w-4 h-4" />
                         </button>
                         <span className="w-8 text-center font-semibold">
-                          {getSelectedQuantity(addon.id)}
+                          {getSelectedQuantity(addon.id, inlineVariantId)}
                         </span>
                         <button
                           type="button"
-                          onClick={() => handleQuantityChange(addon, 1)}
-                          disabled={getSelectedQuantity(addon.id) >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, addon.id)}
-                          title={isCourseAddonCapped(addon, addon.id) ? `You can select up to ${maxCourseAddons} workshops` : undefined}
+                          onClick={() => handleQuantityChange(addon, 1, inlineVariantId)}
+                          disabled={getSelectedQuantity(addon.id, inlineVariantId) >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, inlineVariantId ? `${addon.id}-${inlineVariantId}` : addon.id)}
+                          title={isCourseAddonCapped(addon, inlineVariantId ? `${addon.id}-${inlineVariantId}` : addon.id) ? `You can select up to ${maxCourseAddons} workshops` : undefined}
                           className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors text-white disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                           style={
-                            getSelectedQuantity(addon.id) >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, addon.id)
+                            getSelectedQuantity(addon.id, inlineVariantId) >= (addon.max_quantity || 10) || isCourseAddonCapped(addon, inlineVariantId ? `${addon.id}-${inlineVariantId}` : addon.id)
                               ? undefined
                               : { background: T.primary }
                           }
@@ -333,15 +374,16 @@ export function AddonsSelector({
                     </p>
                   </div>
                 )}
-                {addon.has_variants && addon.variants && addon.variants.length > 0 && (
+                {/* Full selection grid only when genuinely 2+ fee slabs/variants
+                    are active at once — the single-slab case is handled by the
+                    compact inline price above instead. */}
+                {addon.has_variants && visibleVariants.length > 1 && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2.5">
                       Select {addon.variant_type || "variant"}
                     </p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                      {addon.variants
-                        .filter(v => v.is_active && isVariantWithinSaleWindow(v))
-                        .sort((a, b) => a.sort_order - b.sort_order)
+                      {visibleVariants
                         .map((variant) => {
                           const selected = getSelectedQuantity(addon.id, variant.id)
                           const variantPrice = variant.price
@@ -422,7 +464,8 @@ export function AddonsSelector({
               </div>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
