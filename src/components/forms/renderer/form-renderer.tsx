@@ -40,6 +40,7 @@ import { toast } from "sonner"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 import { getTenant } from "@/lib/tenant"
 import { getDialCodeForCountry } from "@/lib/countries"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 
 interface FormRendererProps {
   form: Form
@@ -945,32 +946,47 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
           state => state.status === 'verified' && state.memberFound !== undefined
         )
         const isFieldLocked = isMemberQuestion && hasVerifiedEmail
+        // A plain dropdown works fine for a handful of options, but scrolling
+        // through 100+ (e.g. a country list) to find one is slow — those get
+        // a search box instead.
+        const hasManyOptions = (field.options?.length || 0) > 8
 
         return (
           <div className="space-y-2">
-            <Select
-              value={String(value || "")}
-              onValueChange={(v) => updateResponse(field.id, v)}
-              disabled={isFieldLocked}
-            >
-              <SelectTrigger
-                className={cn(inputClasses, "pr-10", isFieldLocked && "opacity-70 cursor-not-allowed")}
-                style={{ ...inputStyle, backgroundColor: isFieldLocked ? "#f0fdf4" : "#ffffff" }}
+            {hasManyOptions && !isFieldLocked ? (
+              <SearchableSelect
+                options={field.options || []}
+                value={String(value || "")}
+                onChange={(v) => updateResponse(field.id, v)}
+                placeholder={field.placeholder || "Select an option"}
+                className={inputClasses}
+                style={inputStyle}
+              />
+            ) : (
+              <Select
+                value={String(value || "")}
+                onValueChange={(v) => updateResponse(field.id, v)}
+                disabled={isFieldLocked}
               >
-                <SelectValue placeholder={field.placeholder || "Select an option"} />
-              </SelectTrigger>
-              <SelectContent className="rounded-lg border border-gray-200 shadow-lg">
-                {field.options?.map((opt) => (
-                  <SelectItem
-                    key={opt.value}
-                    value={opt.value}
-                    className="py-2.5 px-3 cursor-pointer hover:bg-gray-50"
-                  >
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectTrigger
+                  className={cn(inputClasses, "pr-10", isFieldLocked && "opacity-70 cursor-not-allowed")}
+                  style={{ ...inputStyle, backgroundColor: isFieldLocked ? "#f0fdf4" : "#ffffff" }}
+                >
+                  <SelectValue placeholder={field.placeholder || "Select an option"} />
+                </SelectTrigger>
+                <SelectContent className="rounded-lg border border-gray-200 shadow-lg">
+                  {field.options?.map((opt) => (
+                    <SelectItem
+                      key={opt.value}
+                      value={opt.value}
+                      className="py-2.5 pr-3 cursor-pointer hover:bg-gray-50"
+                    >
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {isFieldLocked && (
               <p className="text-xs text-emerald-600 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" />
