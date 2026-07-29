@@ -12,15 +12,18 @@
 // not the ScanLogEntry.station_id field itself.
 
 import { openDB, type IDBPDatabase } from "idb"
+import * as Sentry from "@sentry/nextjs"
 import type { CachedDelegate } from "./kiosk-delegate-match"
 
 export type { CachedDelegate }
 
 const DB_NAME = "amasi-kiosk-offline"
-const VERSION = 1
+const VERSION = 2
 const META_STORE = "meta"
 const DELEGATE_STORE = "delegate_cache"
 const SCAN_STORE = "scan_log"
+const PRINT_TEMPLATE_STORE = "print_template_cache"
+const PRINT_LOG_STORE = "print_log"
 
 interface StoredDelegate extends CachedDelegate {
   list_id: string
@@ -46,6 +49,39 @@ export interface ScanLogEntry {
   server_response?: unknown
 }
 
+export interface CachedPrintTemplate {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  badgeTemplate: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  printSettings: any
+  printStationId: string
+  // Every element with an imageUrl in badgeTemplate.elements has that URL
+  // pre-fetched and inlined as a data: URL in this map (imageUrl -> data URL)
+  // before caching, so rendering at print time has zero network dependency.
+  imageDataUrls: Record<string, string>
+  // print_stations.print_mode ("label" | "overlay" | "full_badge") --
+  // cached alongside the template so printBadge's generatePrintContent call
+  // can render overlay mode correctly (transparent background, design
+  // elements stripped) without a live lookup at print time. Optional since
+  // some callers may not have this available yet.
+  printMode?: string
+  // events.name at cache time -- the live event query has no offline
+  // persistence, so printing while offline needs this cached copy for
+  // {{event_name}} placeholders rather than relying on a query that will be
+  // undefined offline.
+  eventName?: string
+  cachedAt: number
+}
+
+export interface PrintLogEntry {
+  print_id: string
+  list_id: string
+  registration_id: string
+  printed_at: number
+  status: "success" | "failed"
+  synced: boolean
+}
+
 let dbPromise: Promise<IDBPDatabase> | null = null
 
 function getDb(): Promise<IDBPDatabase> {
@@ -66,6 +102,31 @@ function getDb(): Promise<IDBPDatabase> {
           const store = db.createObjectStore(SCAN_STORE, { keyPath: "scan_id" })
           store.createIndex("by_status", "status")
         }
+        if (!db.objectStoreNames.contains(PRINT_TEMPLATE_STORE)) {
+          db.createObjectStore(PRINT_TEMPLATE_STORE, { keyPath: "list_id" })
+        }
+        if (!db.objectStoreNames.contains(PRINT_LOG_STORE)) {
+          const store = db.createObjectStore(PRINT_LOG_STORE, { keyPath: "print_id" })
+          store.createIndex("by_list", "list_id")
+          store.createIndex("by_registration", ["list_id", "registration_id"])
+        }
+      },
+      // Without these, a VERSION bump can hang the whole kiosk bootstrap
+      // forever: if another browser tab on this device still holds an open
+      // connection to the OLD database version (e.g. a kiosk tab left open
+      // from before this deploy), openDB at the new VERSION neither resolves
+      // nor rejects by default -- it just blocks -- so getOrCreateDeviceId()
+      // (called during bootstrap) never returns and the entire kiosk,
+      // including the base check-in flow, hangs on "Loading..." forever
+      // with no error and no Sentry event.
+      blocking() {
+        // This tab holds an old version open in another tab context --
+        // close it so the newer tab's upgrade can proceed instead of
+        // hanging forever.
+        void dbPromise?.then((db) => db.close())
+      },
+      blocked() {
+        Sentry.captureMessage("kiosk IndexedDB upgrade blocked by another open tab", { tags: { module: "kiosk-offline-store" } })
       },
     })
   }
@@ -169,4 +230,49 @@ export async function markScanConflict(scanId: string, serverResponse: unknown):
   const entry = (await db.get(SCAN_STORE, scanId)) as ScanLogEntry | undefined
   if (!entry) return
   await db.put(SCAN_STORE, { ...entry, status: "conflict", server_response: serverResponse } satisfies ScanLogEntry)
+}
+
+// --- Print template cache -------------------------------------------------
+
+export async function cachePrintTemplate(listId: string, template: CachedPrintTemplate): Promise<void> {
+  const db = await getDb()
+  await db.put(PRINT_TEMPLATE_STORE, { list_id: listId, ...template })
+}
+
+export async function getPrintTemplate(listId: string): Promise<CachedPrintTemplate | null> {
+  const db = await getDb()
+  const row = await db.get(PRINT_TEMPLATE_STORE, listId)
+  if (!row) return null
+  const { list_id: _listId, ...template } = row
+  return template as CachedPrintTemplate
+}
+
+// --- Print log (local reprint-check + eventual print_jobs sync) ----------
+
+export async function recordPrintOutcome(
+  entry: Omit<PrintLogEntry, "status" | "synced">,
+  status: "success" | "failed"
+): Promise<void> {
+  const db = await getDb()
+  await db.put(PRINT_LOG_STORE, { ...entry, status, synced: false } satisfies PrintLogEntry)
+}
+
+export async function getLastPrintForRegistration(listId: string, registrationId: string): Promise<PrintLogEntry | null> {
+  const db = await getDb()
+  const rows = (await db.getAllFromIndex(PRINT_LOG_STORE, "by_registration", [listId, registrationId])) as PrintLogEntry[]
+  if (rows.length === 0) return null
+  return rows.reduce((latest, row) => (row.printed_at > latest.printed_at ? row : latest))
+}
+
+export async function getPendingPrintSyncs(listId: string): Promise<PrintLogEntry[]> {
+  const db = await getDb()
+  const rows = (await db.getAllFromIndex(PRINT_LOG_STORE, "by_list", listId)) as PrintLogEntry[]
+  return rows.filter((r) => !r.synced)
+}
+
+export async function markPrintSynced(printId: string): Promise<void> {
+  const db = await getDb()
+  const entry = (await db.get(PRINT_LOG_STORE, printId)) as PrintLogEntry | undefined
+  if (!entry) return
+  await db.put(PRINT_LOG_STORE, { ...entry, synced: true })
 }

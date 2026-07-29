@@ -30,6 +30,12 @@ import {
   getDelegateCache,
   enqueueScan,
   newId,
+  cachePrintTemplate,
+  getPrintTemplate,
+  recordPrintOutcome,
+  getLastPrintForRegistration,
+  getPendingPrintSyncs,
+  markPrintSynced,
 } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { isNetworkFailure } from "@/lib/offline-scan-queue"
@@ -70,9 +76,34 @@ interface KioskCheckinScreenProps {
   // token to this component at all).
   token?: string
   stationToken?: string
+  // Stage 4 (check-in + print badge). mode is "checkin" for every existing
+  // caller (Stage 1-3 direct-URL and station flows) -- print-related props
+  // are only ever populated when mode === "checkin_and_print".
+  mode?: "checkin" | "checkin_and_print"
+  autoPrintBadge?: boolean
+  printStationId?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  badgeTemplate?: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  printSettings?: any
+  // print_stations.print_mode ("label" | "overlay" | "full_badge") -- the
+  // linked Print Station's configured mode, cached alongside the template
+  // (see CachedPrintTemplate) so printBadge renders overlay mode correctly.
+  printMode?: string
 }
 
-export function KioskCheckinScreen({ eventId, listId, token = "", stationToken }: KioskCheckinScreenProps) {
+export function KioskCheckinScreen({
+  eventId,
+  listId,
+  token = "",
+  stationToken,
+  mode = "checkin",
+  autoPrintBadge = false,
+  printStationId,
+  badgeTemplate,
+  printSettings,
+  printMode,
+}: KioskCheckinScreenProps) {
   const supabase = createClient()
 
   const [registrationNumber, setRegistrationNumber] = useState("")
@@ -87,6 +118,11 @@ export function KioskCheckinScreen({ eventId, listId, token = "", stationToken }
   const [cacheError, setCacheError] = useState<string | null>(null)
   const [listBlockedReason, setListBlockedReason] = useState<string | null>(null)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
+  const [usbSupported, setUsbSupported] = useState(false)
+  const [printerConnected, setPrinterConnected] = useState(false)
+  const [printerName, setPrinterName] = useState<string | null>(null)
+  const [printing, setPrinting] = useState(false)
+  const [printStatus, setPrintStatus] = useState<{ success: boolean; message: string } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   // Scanner-burst auto-submit + double-submit guard (see handleRegChange).
   const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -100,6 +136,10 @@ export function KioskCheckinScreen({ eventId, listId, token = "", stationToken }
   // fire close together, and drainScanQueue has no guard of its own against
   // two overlapping passes over the same pending queue.
   const syncInFlightRef = useRef<boolean>(false)
+  // Same in-flight guard as syncInFlightRef above, but for syncPrintLog --
+  // print-log sync and scan sync are independent pending queues, so this is
+  // a separate ref rather than reusing syncInFlightRef.
+  const printSyncInFlightRef = useRef<boolean>(false)
 
   // Local-first bootstrap: load whatever's already cached from a previous
   // session immediately (works offline from a cold reload), then refresh
@@ -230,12 +270,345 @@ export function KioskCheckinScreen({ eventId, listId, token = "", stationToken }
     },
   })
 
+  // Stage 4: cache the badge template (and every element's remote image as
+  // a local data URL, plus the resolved print mode and event name) once,
+  // while online, so printing later has zero network dependency. Runs once
+  // per mount when this station is in checkin_and_print mode; re-fetches
+  // are not needed within a session -- an admin changing the linked Print
+  // Station's template mid-event is rare enough that a reload (which
+  // remounts this component) is an acceptable way to pick up a change,
+  // matching this codebase's existing tolerance for similar edge cases
+  // elsewhere in the kiosk. Placed after the event/list queries above (not
+  // before) and depends on event?.name so the cached copy picks up the
+  // event name once that query settles -- it's frequently still loading at
+  // the very first mount.
+  useEffect(() => {
+    if (mode !== "checkin_and_print" || !printStationId || !badgeTemplate) return
+    if (typeof navigator !== "undefined" && !navigator.onLine) return
+
+    // Narrowed to a local const: TS can't carry the `!printStationId` guard's
+    // narrowing across the nested async closure below (printStationId is an
+    // optional prop, not a const), so capture the checked value here.
+    const stationId = printStationId
+    let cancelled = false
+
+    async function cacheTemplate() {
+      try {
+        const elements = badgeTemplate?.template_data?.elements || []
+        const imageDataUrls: Record<string, string> = {}
+
+        for (const el of elements) {
+          if ((el.type === "image" || el.type === "photo") && el.imageUrl && !imageDataUrls[el.imageUrl]) {
+            try {
+              const res = await fetch(el.imageUrl)
+              const blob = await res.blob()
+              const dataUrl: string = await new Promise((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onloadend = () => resolve(reader.result as string)
+                reader.onerror = reject
+                reader.readAsDataURL(blob)
+              })
+              imageDataUrls[el.imageUrl] = dataUrl
+            } catch (err) {
+              // One unreachable image asset must not prevent caching the
+              // rest of the template -- that element just won't render at
+              // print time (matching this file's existing "missing QR"
+              // placeholder pattern), not block check-in/print entirely.
+              Sentry.captureException(err, { tags: { module: "kiosk-print-cache" }, extra: { eventId, listId, imageUrl: el.imageUrl } })
+            }
+          }
+        }
+
+        if (cancelled) return
+        await cachePrintTemplate(listId, {
+          badgeTemplate,
+          printSettings,
+          printStationId: stationId,
+          printMode,
+          eventName: event?.name || "",
+          imageDataUrls,
+          cachedAt: Date.now(),
+        })
+
+        // Warm the JS chunks the print path needs while still online, so the
+        // FIRST print attempt after this device goes offline doesn't have to
+        // fetch them over the network -- printBadge below lazy-imports these
+        // same three modules, and the service worker's existing /_next/
+        // caching for /kiosk-station/ referrers picks them up as a side
+        // effect of these imports resolving now. Fire-and-forget: a failure
+        // here just means the first print retries the fetch as before, it
+        // must never block or fail check-in bootstrap.
+        void import("@/lib/badge-render")
+        void import("qrcode")
+        void import("html2canvas")
+      } catch (err) {
+        Sentry.captureException(err, { tags: { module: "kiosk-print-cache" }, extra: { eventId, listId } })
+      }
+    }
+
+    cacheTemplate()
+    return () => {
+      cancelled = true
+    }
+  }, [mode, printStationId, badgeTemplate, printSettings, printMode, event?.name, eventId, listId])
+
+  // Stage 4: feature-detect WebUSB, silently try to reconnect to a
+  // previously-paired printer (browser remembers the grant; no picker
+  // shown), and listen for the printer being unplugged/reset mid-event so
+  // the UI falls back to "Connect Printer" instead of every subsequent
+  // print silently failing with no recovery short of a reload. Gated on
+  // mode so this never touches navigator.usb for any existing mode:
+  // "checkin" caller.
+  useEffect(() => {
+    if (mode !== "checkin_and_print") return
+    let cancelled = false
+    let cleanupDisconnect: (() => void) | undefined
+    ;(async () => {
+      const { isWebUSBSupported, reconnectUsbPrinter, getUsbPrinterName, onUsbDisconnect } = await import("@/lib/usb-printer")
+      if (!isWebUSBSupported()) return
+      if (cancelled) return
+      setUsbSupported(true)
+      const result = await reconnectUsbPrinter()
+      if (cancelled) return
+      if (result.success) {
+        setPrinterConnected(true)
+        setPrinterName(result.name || getUsbPrinterName())
+      }
+      cleanupDisconnect = onUsbDisconnect(() => {
+        setPrinterConnected(false)
+        setPrinterName(null)
+      })
+    })()
+    return () => {
+      cancelled = true
+      cleanupDisconnect?.()
+    }
+  }, [mode])
+
+  // Stage 4: local-first badge print. Renders the already-cached template
+  // (Task 6) to a canvas and sends it over an already-paired WebUSB
+  // connection -- no network call anywhere in this function. Only ever
+  // invoked from mode === "checkin_and_print" code paths (auto-print effect
+  // below, handlePrintButtonClick).
+  const printBadge = useCallback(async (registration: NonNullable<CheckinResult["registration"]>) => {
+    setPrinting(true)
+    setPrintStatus(null)
+    try {
+      // Cheapest possible check first, before any rendering work: if the
+      // printer isn't actually connected (unplugged, reset, or the reconnect
+      // on mount never found it), fail fast with a clear message instead of
+      // doing a full QR-gen + html2canvas render that's guaranteed to be
+      // thrown away.
+      const { isUsbPrinterConnected } = await import("@/lib/usb-printer")
+      if (!isUsbPrinterConnected()) {
+        setPrintStatus({ success: false, message: "Printer not connected — tap Connect Printer first." })
+        return
+      }
+
+      const template = await getPrintTemplate(listId)
+      if (!template) {
+        // Two different failure modes look identical here but need different
+        // guidance: printStationId unset means an admin never linked this
+        // station to a Print Station at all (persistent -- retapping never
+        // helps, a volunteer would retap forever with no way to know that).
+        // printStationId set but nothing cached yet is the genuine transient
+        // case -- the online bootstrap cache (Task 6) just hasn't landed.
+        setPrintStatus(
+          printStationId
+            ? { success: false, message: "Badge template not ready yet. Try again in a moment." }
+            : { success: false, message: "This station isn't set up for printing yet — see an admin." }
+        )
+        return
+      }
+
+      const badgeTemplate = template.badgeTemplate
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const elements = badgeTemplate?.template_data?.elements || []
+      // Substitute cached data URLs for remote imageUrls, and pre-generate
+      // QR codes -- both must happen before rendering, since neither can
+      // hit the network at this point (matches the existing /print/[token]
+      // pattern for QR pre-generation). A cache miss on an image (Task 6's
+      // pre-cache fetch failed for that one asset) must NOT leave the
+      // original remote URL in place -- renderElementToHtml would emit an
+      // <img src="https://..."> that the browser fetches immediately, and
+      // html2canvas's useCORS option would fetch it again -- both real
+      // network calls inside a function that must be zero-network at print
+      // time. Drop the image for that element instead; the rest of the
+      // badge still prints.
+      const resolvedElements = await Promise.all(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        elements.map(async (el: any) => {
+          if (el.type === "image" || el.type === "photo") {
+            if (el.imageUrl && template.imageDataUrls[el.imageUrl]) {
+              return { ...el, imageUrl: template.imageDataUrls[el.imageUrl] }
+            }
+            if (el.imageUrl) {
+              Sentry.captureMessage("Kiosk print: cached badge image missing at print time", {
+                level: "warning",
+                tags: { module: "kiosk-print" },
+                extra: { eventId, listId, imageUrl: el.imageUrl },
+              })
+              return { ...el, imageUrl: null }
+            }
+            return el
+          }
+          if (el.type === "qr_code") {
+            const { replacePlaceholders } = await import("@/lib/badge-render")
+            const qrValue = replacePlaceholders(el.content || "", registration, template.eventName || "")
+            if (qrValue) {
+              try {
+                const QRCode = (await import("qrcode")).default
+                const dataUrl = await QRCode.toDataURL(qrValue, {
+                  width: Math.min(el.width, el.height) * 2,
+                  margin: 1,
+                  errorCorrectionLevel: "M",
+                })
+                return { ...el, _qrDataUrl: dataUrl }
+              } catch {
+                return el
+              }
+            }
+          }
+          return el
+        })
+      )
+
+      const { generatePrintContent, getPaperDimensions } = await import("@/lib/badge-render")
+      const printContent = generatePrintContent({
+        registration,
+        printSettings: template.printSettings,
+        printMode: template.printMode || "full_badge",
+        badgeTemplate: { ...badgeTemplate, template_data: { ...badgeTemplate.template_data, elements: resolvedElements } },
+        eventName: template.eventName || "",
+      })
+
+      const dim = getPaperDimensions(template.printSettings?.paper_size || "4x6", template.printSettings?.orientation || "portrait")
+      const container = document.createElement("div")
+      container.id = `print-render-kiosk-${Date.now()}`
+      container.style.position = "absolute"
+      container.style.left = "-9999px"
+      container.style.top = "0"
+      container.style.width = dim.width
+      container.style.height = dim.height
+      const bodyMatch = printContent.match(/<body[^>]*>([\s\S]*)<\/body>/)
+      // Without re-applying these wrapper styles in scope, the badge's
+      // absolutely-positioned children collapse the container to 0×0 and
+      // html2canvas produces an empty canvas -- mirrors the exact pattern
+      // in src/app/print/[token]/page.tsx's USB print branch.
+      const scopedStyle = `<style>
+        #${container.id} .badge-wrapper, #${container.id} .badge-container {
+          width: ${dim.width}; height: ${dim.height};
+        }
+        #${container.id} .badge-container { position: relative; overflow: hidden; }
+      </style>`
+      container.innerHTML = scopedStyle + (bodyMatch ? bodyMatch[1] : printContent)
+      document.body.appendChild(container)
+      await new Promise((resolve) => setTimeout(resolve, 400))
+
+      const html2canvas = (await import("html2canvas")).default
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false })
+      document.body.removeChild(container)
+
+      if (!canvas.width || !canvas.height) {
+        throw new Error("Rendered badge canvas was empty — check that the template has elements within the paper bounds.")
+      }
+
+      const { printBadgeViaUsb } = await import("@/lib/usb-printer")
+      const result = await printBadgeViaUsb(canvas, template.printSettings?.paper_size || "4x6")
+
+      await recordPrintOutcome(
+        { print_id: newId(), list_id: listId, registration_id: registration.id, printed_at: Date.now() },
+        result.success ? "success" : "failed"
+      )
+
+      setPrintStatus(
+        result.success
+          ? { success: true, message: "Badge printed!" }
+          : { success: false, message: result.error || "Print failed" }
+      )
+    } catch (err) {
+      Sentry.captureException(err, { tags: { module: "kiosk-print" }, extra: { eventId, listId } })
+      setPrintStatus({ success: false, message: "Something went wrong printing this badge." })
+    } finally {
+      setPrinting(false)
+    }
+  }, [listId, eventId, printStationId])
+
+  // Auto-print fires exactly once per successful check-in result when this
+  // station is configured for it -- EXCEPT when this registration already
+  // has a successful local print on record. Per the Tito check-in model, a
+  // repeat scan of an already-checked-in delegate is always success: true
+  // too (never an error), so without this check a second scan at an
+  // auto-print station would silently print a second badge with zero
+  // warning. Reprinting must always go through the manual "Print Badge"
+  // button's existing warn-before-reprint confirm in handlePrintButtonClick
+  // -- auto-print only ever prints once per registration.
+  // Deliberately keyed only on `result` -- must not re-fire if printBadge's
+  // own identity changes (e.g. event name resolving after the query
+  // settles) for the same result.
+  useEffect(() => {
+    if (mode !== "checkin_and_print" || !autoPrintBadge || !result?.success || !result.registration) return
+    const registration = result.registration
+    let cancelled = false
+    ;(async () => {
+      try {
+        const last = await getLastPrintForRegistration(listId, registration.id)
+        if (cancelled) return
+        if (last && last.status === "success") {
+          setPrintStatus({
+            success: true,
+            message: `Badge already printed at ${new Date(last.printed_at).toLocaleTimeString()} — tap Print Badge to reprint.`,
+          })
+          return
+        }
+        void printBadge(registration)
+      } catch (err) {
+        // This path runs completely unattended (no human triggers it, no
+        // retry button) -- an unhandled rejection here (e.g. IndexedDB
+        // quota/unavailable) would otherwise vanish with zero telemetry.
+        // Fall through to NOT auto-printing on error: a human can still use
+        // the manual "Print Badge" button, which is the safer default over
+        // crashing or silently hanging.
+        if (!cancelled) {
+          Sentry.captureException(err, { tags: { module: "kiosk-print" }, extra: { eventId, listId } })
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // Intentionally does not depend on printBadge's identity changing --
+    // this must fire exactly once per successful check-in result, not
+    // re-fire if printBadge's useCallback deps happen to change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result])
+
+  // Manual "Print Badge" button handler -- warns before a reprint (local
+  // IndexedDB lookup only, no network).
+  const handlePrintButtonClick = async () => {
+    if (!result?.registration) return
+    const last = await getLastPrintForRegistration(listId, result.registration.id)
+    if (last && last.status === "success") {
+      const when = new Date(last.printed_at).toLocaleTimeString()
+      if (!confirm(`Already printed at ${when} — print again?`)) return
+    }
+    void printBadge(result.registration)
+  }
+
   const resetKiosk = useCallback(() => {
     setResult(null)
     setRegistrationNumber("")
     setCountdown(10)
     setEmailSent(false)
     setWhatsappSent(false)
+    // The scan/entry screen never renders printStatus, so without clearing
+    // it here it silently persists across resets -- the next delegate's
+    // success screen could otherwise show the PREVIOUS delegate's "Badge
+    // printed!" (or a stale reprint-warning message) before this delegate
+    // has done anything. setPrinting(false) is defensive, in case a reset
+    // happens mid-print.
+    setPrintStatus(null)
+    setPrinting(false)
     setTimeout(() => inputRef.current?.focus(), 100)
   }, [])
 
@@ -386,6 +759,89 @@ export function KioskCheckinScreen({ eventId, listId, token = "", stationToken }
       clearInterval(pollId)
     }
   }, [syncNow])
+
+  // Stage 4: opportunistic sync of local print-log entries (Task 5's
+  // recordPrintOutcome, written by printBadge above) into print_jobs, so the
+  // standalone Print Station admin view's audit trail includes
+  // kiosk-triggered prints. This never gates or blocks printing itself --
+  // printing already happened locally, possibly minutes or hours earlier --
+  // it's purely a best-effort mirror, same tolerance as syncNow above.
+  const syncPrintLog = useCallback(async () => {
+    if (mode !== "checkin_and_print") return
+    if (typeof navigator !== "undefined" && !navigator.onLine) return
+    // The online listener and the 20s interval poll can fire close together
+    // -- without this guard, two overlapping passes could both read the same
+    // "pending" rows and double-POST a print-log entry before either pass
+    // marks it synced.
+    if (printSyncInFlightRef.current) return
+    printSyncInFlightRef.current = true
+    try {
+      const pending = await getPendingPrintSyncs(listId)
+      for (const entry of pending) {
+        if (entry.status !== "success") {
+          // A locally-failed print never made it out of a printer -- syncing
+          // it to print_jobs would insert a row that inflates the linked
+          // print station's total_prints/unique_prints stats (the DB trigger
+          // fires unconditionally on every insert) and would be invisible to
+          // reprint-limit enforcement, which filters on status="completed".
+          // Nothing to sync; mark it synced so it doesn't get re-examined on
+          // every future poll forever.
+          await markPrintSynced(entry.print_id)
+          continue
+        }
+        try {
+          const res = await fetch("/api/kiosk/print-sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              print_station_id: printStationId,
+              registration_id: entry.registration_id,
+              printed_at: entry.printed_at,
+              // The local log keeps its own "success"/"failed" vocabulary
+              // (an internal, already-shipped record) -- the server side
+              // only ever accepts "completed" (matching every other
+              // print_jobs writer in this codebase), and only successful
+              // local prints reach this fetch call at all (see the guard
+              // above).
+              status: "completed",
+            }),
+          })
+          if (res.ok) {
+            await markPrintSynced(entry.print_id)
+          } else if (res.status === 429) {
+            // Our own rate limit -- a backlog of queued print-log entries
+            // syncing on reconnect can plausibly exceed
+            // /api/kiosk/print-sync's 30/min "public" tier. Queue-wide: stop
+            // this pass rather than hammering the rest of the backlog into
+            // the same limit immediately. Mirrors drainScanQueue's
+            // "retry-break" handling of a 429 in kiosk-sync-worker.ts.
+            break
+          }
+          // Any other non-ok status (4xx/5xx) is left pending and retried
+          // per-entry on the next poll, same as a network-level failure.
+        } catch {
+          // Routine offline/transient failure -- this entry stays pending
+          // and is retried on the next poll, same tolerance as syncNow.
+          break
+        }
+      }
+    } catch (err) {
+      Sentry.captureException(err, { tags: { module: "kiosk-print-sync" }, extra: { eventId, listId } })
+    } finally {
+      printSyncInFlightRef.current = false
+    }
+  }, [mode, listId, printStationId, eventId])
+
+  useEffect(() => {
+    if (mode !== "checkin_and_print") return
+    if (typeof navigator !== "undefined" && navigator.onLine) void syncPrintLog()
+    window.addEventListener("online", syncPrintLog)
+    const pollId = setInterval(syncPrintLog, 20000)
+    return () => {
+      window.removeEventListener("online", syncPrintLog)
+      clearInterval(pollId)
+    }
+  }, [syncPrintLog, mode])
 
   const handleEmailBadge = async () => {
     if (!result?.registration) return
@@ -647,6 +1103,37 @@ export function KioskCheckinScreen({ eventId, listId, token = "", stationToken }
                       Sent on WhatsApp
                     </Button>
                   )}
+                  {mode === "checkin_and_print" && usbSupported && (
+                    !printerConnected ? (
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                        onClick={async () => {
+                          const { connectUsbPrinter } = await import("@/lib/usb-printer")
+                          const res = await connectUsbPrinter()
+                          if (res.success) {
+                            setPrinterConnected(true)
+                            setPrinterName(res.name || null)
+                          } else {
+                            setPrintStatus({ success: false, message: res.error || "Connection failed" })
+                          }
+                        }}
+                      >
+                        Connect Printer
+                      </Button>
+                    ) : (
+                      <Button
+                        size="lg"
+                        className="h-14 sm:h-16 px-6 sm:px-8 text-base"
+                        onClick={handlePrintButtonClick}
+                        disabled={printing}
+                      >
+                        {printing ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : null}
+                        Print Badge
+                      </Button>
+                    )
+                  )}
                 </div>
               </>
             ) : (
@@ -684,6 +1171,11 @@ export function KioskCheckinScreen({ eventId, listId, token = "", stationToken }
           <p className="text-xs sm:text-sm text-gray-400">
             Touch anywhere or wait {countdown} seconds to check in another person
           </p>
+          {printStatus && (
+            <p className={printStatus.success ? "text-xs text-emerald-400 mt-1" : "text-xs text-red-400 mt-1"}>
+              {printStatus.message}
+            </p>
+          )}
         </div>
       </div>
     )

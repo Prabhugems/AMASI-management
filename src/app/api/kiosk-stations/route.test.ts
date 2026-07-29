@@ -76,3 +76,70 @@ describe("POST /api/kiosk-stations", () => {
     expect((insertCall!.args[0] as any).access_token).toBeUndefined()
   })
 })
+
+const USB_PRINT_STATION_ID = "99999999-9999-9999-9999-999999999999"
+
+describe("POST /api/kiosk-stations -- checkin_and_print mode", () => {
+  it("creates a checkin_and_print station when print_station_id resolves to a usb-type Print Station in the same event", async () => {
+    mock.queueResponse("checkin_lists", { data: { id: LIST_ID, event_id: EVENT_ID }, error: null })
+    mock.queueResponse("print_stations", {
+      data: { id: USB_PRINT_STATION_ID, event_id: EVENT_ID, print_settings: { printer_type: "usb" } },
+      error: null,
+    })
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, name: "Front Desk", mode: "checkin_and_print", list_id: LIST_ID, print_station_id: USB_PRINT_STATION_ID, auto_print_badge: true, created_at: "2026-07-28T00:00:00Z" },
+      error: null,
+    })
+    const { POST } = await import("./route")
+    const res = await POST(makeRequest("http://localhost/api/kiosk-stations", {
+      method: "POST",
+      body: { event_id: EVENT_ID, list_id: LIST_ID, name: "Front Desk", mode: "checkin_and_print", print_station_id: USB_PRINT_STATION_ID, auto_print_badge: true },
+    }))
+    const body = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(body.mode).toBe("checkin_and_print")
+    const insertCall = mock.calls.find((c) => c.table === "kiosk_stations" && c.method === "insert")
+    expect((insertCall!.args[0] as any).mode).toBe("checkin_and_print")
+    expect((insertCall!.args[0] as any).print_station_id).toBe(USB_PRINT_STATION_ID)
+    expect((insertCall!.args[0] as any).auto_print_badge).toBe(true)
+  })
+
+  it("400s when mode is checkin_and_print but print_station_id is missing", async () => {
+    mock.queueResponse("checkin_lists", { data: { id: LIST_ID, event_id: EVENT_ID }, error: null })
+    const { POST } = await import("./route")
+    const res = await POST(makeRequest("http://localhost/api/kiosk-stations", {
+      method: "POST",
+      body: { event_id: EVENT_ID, list_id: LIST_ID, name: "Front Desk", mode: "checkin_and_print" },
+    }))
+    expect(res.status).toBe(400)
+  })
+
+  it("404s when print_station_id belongs to a different event", async () => {
+    mock.queueResponse("checkin_lists", { data: { id: LIST_ID, event_id: EVENT_ID }, error: null })
+    mock.queueResponse("print_stations", {
+      data: { id: USB_PRINT_STATION_ID, event_id: "88888888-8888-8888-8888-888888888888", print_settings: { printer_type: "usb" } },
+      error: null,
+    })
+    const { POST } = await import("./route")
+    const res = await POST(makeRequest("http://localhost/api/kiosk-stations", {
+      method: "POST",
+      body: { event_id: EVENT_ID, list_id: LIST_ID, name: "Front Desk", mode: "checkin_and_print", print_station_id: USB_PRINT_STATION_ID },
+    }))
+    expect(res.status).toBe(404)
+  })
+
+  it("400s when the linked Print Station isn't printer_type usb", async () => {
+    mock.queueResponse("checkin_lists", { data: { id: LIST_ID, event_id: EVENT_ID }, error: null })
+    mock.queueResponse("print_stations", {
+      data: { id: USB_PRINT_STATION_ID, event_id: EVENT_ID, print_settings: { printer_type: "zebra" } },
+      error: null,
+    })
+    const { POST } = await import("./route")
+    const res = await POST(makeRequest("http://localhost/api/kiosk-stations", {
+      method: "POST",
+      body: { event_id: EVENT_ID, list_id: LIST_ID, name: "Front Desk", mode: "checkin_and_print", print_station_id: USB_PRINT_STATION_ID },
+    }))
+    expect(res.status).toBe(400)
+  })
+})

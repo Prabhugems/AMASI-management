@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("kiosk_stations")
-    .select("id, event_id, name, mode, list_id, last_seen_at, revoked_at, created_at")
+    .select("id, event_id, name, mode, list_id, print_station_id, auto_print_badge, last_seen_at, revoked_at, created_at")
     .eq("event_id", eventId)
     .order("created_at", { ascending: false })
 
@@ -33,8 +33,9 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/kiosk-stations -- create a station and mint its access token.
-// mode is hardcoded "checkin" -- this stage never creates a "print"-mode
-// station (see this plan's Global Constraints).
+// mode defaults to "checkin"; "checkin_and_print" is a validated option that
+// requires a usb-type Print Station in the same event. mode: "print"
+// (print-only, no check-in) remains unbuilt/unsupported by this route.
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}))
   const eventId = body.event_id as string | undefined
@@ -49,6 +50,14 @@ export async function POST(request: NextRequest) {
   }
   if (!listId || !isValidUUID(listId)) {
     return NextResponse.json({ error: "A check-in list must be selected." }, { status: 400 })
+  }
+
+  const mode = (body.mode as string | undefined) === "checkin_and_print" ? "checkin_and_print" : "checkin"
+  const printStationId = body.print_station_id as string | undefined
+  const autoPrintBadge = body.auto_print_badge === true
+
+  if (mode === "checkin_and_print" && (!printStationId || !isValidUUID(printStationId))) {
+    return NextResponse.json({ error: "A Print Station must be selected for check-in + print mode." }, { status: 400 })
   }
 
   const { error: authError } = await requireEventAndPermission(eventId, "checkin")
@@ -70,6 +79,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Check-in list not found for this event." }, { status: 404 })
   }
 
+  if (mode === "checkin_and_print") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: printStation } = await (supabase as any)
+      .from("print_stations")
+      .select("id, event_id, print_settings")
+      .eq("id", printStationId)
+      .maybeSingle()
+
+    if (!printStation || printStation.event_id !== eventId) {
+      return NextResponse.json({ error: "Print Station not found for this event." }, { status: 404 })
+    }
+    if (printStation.print_settings?.printer_type !== "usb") {
+      return NextResponse.json({ error: "Check-in + Print Badge stations require a USB-type Print Station." }, { status: 400 })
+    }
+  }
+
   const access_token = newStationToken()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,11 +103,13 @@ export async function POST(request: NextRequest) {
     .insert({
       event_id: eventId,
       name,
-      mode: "checkin",
+      mode,
       list_id: listId,
+      print_station_id: mode === "checkin_and_print" ? printStationId : null,
+      auto_print_badge: mode === "checkin_and_print" ? autoPrintBadge : false,
       access_token_hash: hashStationToken(access_token),
     })
-    .select("id, event_id, name, mode, list_id, created_at")
+    .select("id, event_id, name, mode, list_id, print_station_id, auto_print_badge, created_at")
     .single()
 
   if (error) {

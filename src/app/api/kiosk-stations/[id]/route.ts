@@ -47,13 +47,34 @@ export async function PATCH(
     }
     updates.list_id = body.list_id
   }
+  if (typeof body.print_station_id === "string") {
+    if (!isValidUUID(body.print_station_id)) {
+      return NextResponse.json({ error: "Invalid print station." }, { status: 400 })
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: printStation } = await (supabase as any)
+      .from("print_stations")
+      .select("id, event_id, print_settings")
+      .eq("id", body.print_station_id)
+      .maybeSingle()
+    if (!printStation || printStation.event_id !== station.event_id) {
+      return NextResponse.json({ error: "Print Station not found for this event." }, { status: 404 })
+    }
+    if (printStation.print_settings?.printer_type !== "usb") {
+      return NextResponse.json({ error: "Check-in + Print Badge stations require a USB-type Print Station." }, { status: 400 })
+    }
+    updates.print_station_id = body.print_station_id
+  }
+  if (typeof body.auto_print_badge === "boolean") {
+    updates.auto_print_badge = body.auto_print_badge
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("kiosk_stations")
     .update(updates)
     .eq("id", id)
-    .select("id, event_id, name, mode, list_id")
+    .select("id, event_id, name, mode, list_id, print_station_id, auto_print_badge")
     .single()
 
   if (error) {
