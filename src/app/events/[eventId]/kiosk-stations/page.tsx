@@ -6,7 +6,6 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Switch } from "@/components/ui/switch"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Dialog,
@@ -40,9 +39,6 @@ import { cn } from "@/lib/utils"
 import { computeStationStatus, STATION_STATUS_LABELS } from "@/lib/kiosk-station-status"
 import {
   STATUS_MEANINGS,
-  attendedHelpText,
-  autoPrintHelpText,
-  PRINTER_USB_HELP_TEXT,
   stationUrl,
   relativeLastSeen,
   STATUS_META,

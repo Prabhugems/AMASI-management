@@ -77,6 +77,9 @@ export function AddStationWizard({
 
   const hasCollectionLists = lists.some((l) => l.is_active === true && l.list_purpose === "collection")
   const assignableLists = lists.filter((l) => l.is_active === true && (attended || l.list_purpose !== "collection"))
+  // Derived, not stored: turning Attended back off on step 2 must not leave a
+  // collection list silently selected from an earlier pass through step 3.
+  const selectedListIds = listIds.filter((id) => assignableLists.some((l) => l.id === id))
   const totalSteps = mode === "checkin_and_print" ? 4 : 3
 
   const handleAttendedSwitch = (checked: boolean) => {
@@ -104,7 +107,7 @@ export function AddStationWizard({
         body: JSON.stringify({
           event_id: eventId,
           name: name.trim(),
-          list_ids: listIds,
+          list_ids: selectedListIds,
           mode,
           attended,
           ...(mode === "checkin_and_print" && { print_station_id: printStationId, auto_print_badge: autoPrint }),
@@ -192,7 +195,7 @@ export function AddStationWizard({
                 <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Check-in lists
                 </label>
-                <span className="text-xs text-muted-foreground">{listIds.length} selected</span>
+                <span className="text-xs text-muted-foreground">{selectedListIds.length} selected</span>
               </div>
               <div className="space-y-0.5 rounded-lg border p-1.5 max-h-64 overflow-y-auto">
                 {assignableLists.map((list) => (
@@ -285,12 +288,12 @@ export function AddStationWizard({
             )}
             {step === 2 && <Button onClick={() => setStep(3)}>Next</Button>}
             {step === 3 && mode === "checkin_and_print" && (
-              <Button disabled={listIds.length === 0} onClick={() => setStep(4)}>
+              <Button disabled={selectedListIds.length === 0} onClick={() => setStep(4)}>
                 Next
               </Button>
             )}
             {step === 3 && mode === "checkin" && (
-              <Button disabled={listIds.length === 0 || creating} onClick={handleCreate}>
+              <Button disabled={selectedListIds.length === 0 || creating} onClick={handleCreate}>
                 {creating ? "Creating…" : "Finish"}
               </Button>
             )}
