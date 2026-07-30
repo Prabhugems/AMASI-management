@@ -3,6 +3,54 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { isValidUUID } from "@/lib/validation"
 
+// GET /api/kiosk-stations/[id] -- single station, including its assigned
+// list_ids, for the per-station detail page. Same per-station shape the
+// list endpoint (GET /api/kiosk-stations) already returns per row.
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+
+  if (!isValidUUID(id)) {
+    return NextResponse.json({ error: "Invalid station id." }, { status: 400 })
+  }
+
+  const supabase = await createAdminClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: station, error: findErr } = await (supabase as any)
+    .from("kiosk_stations")
+    .select("id, event_id, name, mode, print_station_id, auto_print_badge, attended, last_seen_at, revoked_at, created_at")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (findErr) {
+    return NextResponse.json({ error: "Failed to load station." }, { status: 500 })
+  }
+  if (!station) {
+    return NextResponse.json({ error: "Kiosk station not found." }, { status: 404 })
+  }
+
+  const { error: authError } = await requireEventAndPermission(station.event_id, "checkin")
+  if (authError) return authError
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: listRows, error: listErr } = await (supabase as any)
+    .from("kiosk_station_lists")
+    .select("checkin_list_id")
+    .eq("station_id", id)
+
+  if (listErr) {
+    return NextResponse.json({ error: "Failed to load station's lists." }, { status: 500 })
+  }
+
+  return NextResponse.json({
+    ...station,
+    list_ids: (listRows || []).map((r: { checkin_list_id: string }) => r.checkin_list_id),
+  })
+}
+
 // PATCH /api/kiosk-stations/[id] -- rename and/or reassign the target list.
 // Does NOT touch the access token -- see Task 3 for that.
 export async function PATCH(

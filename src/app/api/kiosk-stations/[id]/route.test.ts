@@ -122,6 +122,67 @@ describe("DELETE /api/kiosk-stations/[id]", () => {
   })
 })
 
+describe("GET /api/kiosk-stations/[id]", () => {
+  it("400s on an invalid station id", async () => {
+    const { GET } = await import("./route")
+    const res = await GET(
+      makeRequest("http://localhost/api/kiosk-stations/not-a-uuid"),
+      { params: Promise.resolve({ id: "not-a-uuid" }) }
+    )
+    expect(res.status).toBe(400)
+  })
+
+  it("404s when the station doesn't exist", async () => {
+    mock.queueResponse("kiosk_stations", { data: null, error: null })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(`http://localhost/api/kiosk-stations/${STATION_ID}`), params())
+    expect(res.status).toBe(404)
+  })
+
+  it("500s when the station lookup errors", async () => {
+    mock.queueResponse("kiosk_stations", { data: null, error: { message: "boom" } })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(`http://localhost/api/kiosk-stations/${STATION_ID}`), params())
+    expect(res.status).toBe(500)
+  })
+
+  it("returns the station with its list_ids merged in", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: {
+        id: STATION_ID,
+        event_id: EVENT_ID,
+        name: "Tablet 1",
+        mode: "checkin",
+        print_station_id: null,
+        auto_print_badge: false,
+        attended: true,
+        last_seen_at: null,
+        revoked_at: null,
+        created_at: "2026-07-30T00:00:00Z",
+      },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: [{ checkin_list_id: LIST_ID }], error: null })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(`http://localhost/api/kiosk-stations/${STATION_ID}`), params())
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.id).toBe(STATION_ID)
+    expect(body.list_ids).toEqual([LIST_ID])
+  })
+
+  it("500s when the list-membership lookup errors", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: STATION_ID, event_id: EVENT_ID, name: "Tablet 1" },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: null, error: { message: "boom" } })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(`http://localhost/api/kiosk-stations/${STATION_ID}`), params())
+    expect(res.status).toBe(500)
+  })
+})
+
 const PRINT_STATION_ID = "44444444-4444-4444-4444-444444444444"
 
 describe("PATCH /api/kiosk-stations/[id] -- print_station_id / auto_print_badge", () => {
