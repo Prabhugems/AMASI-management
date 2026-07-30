@@ -91,10 +91,24 @@ export function KioskStationShell({
   const [autoSelected, setAutoSelected] = useState(
     initialLists.length === 1 && isListUsable(initialLists[0], attended)
   )
+  // True only between a volunteer tapping "Switch list"/"Wrong list?" and
+  // their NEXT deliberate tile pick. Exists solely so the re-derivation
+  // effect below can tell "the volunteer just asked to see the menu" apart
+  // from "nothing has been picked yet" -- without it, requesting the menu
+  // on a single-list station set activeListId back to null, which the
+  // effect's own single-list auto-select branch immediately overwrote
+  // before the menu ever rendered, making "Switch list" a no-op on any
+  // station with exactly one (usable) list.
+  const [menuRequested, setMenuRequested] = useState(false)
   const selectList = useCallback((id: string | null, auto: boolean) => {
     setActiveListIdRaw(id)
     setAutoSelected(auto)
+    if (id !== null) setMenuRequested(false)
   }, [])
+  const requestMenu = useCallback(() => {
+    setMenuRequested(true)
+    selectList(null, false)
+  }, [selectList])
   const [tick, forceTick] = useState(0)
 
   const refreshManifest = useCallback(async () => {
@@ -225,12 +239,12 @@ export function KioskStationShell({
       }
       return
     }
-    if (assignedLists.length === 1 && isListUsable(assignedLists[0], attended)) {
+    if (assignedLists.length === 1 && isListUsable(assignedLists[0], attended) && !menuRequested) {
       if (activeListId !== assignedLists[0].id) selectList(assignedLists[0].id, true)
     } else if (activeListId !== null) {
       selectList(null, false)
     }
-  }, [assignedLists, activeListId, autoSelected, attended, selectList])
+  }, [assignedLists, activeListId, autoSelected, attended, menuRequested, selectList])
 
   // At close time (schedule closed OR the station stopped being attended
   // while a collection list was active), return to the menu automatically --
@@ -270,7 +284,7 @@ export function KioskStationShell({
         printSettings={printSettings}
         printMode={printMode}
         externallyDriven
-        onSwitchList={() => selectList(null, false)}
+        onSwitchList={requestMenu}
         closingSoonMinutes={minutesUntilClose(activeList)}
         listClosesAt={activeList.kiosk_closes_at}
       />
