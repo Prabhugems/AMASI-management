@@ -73,6 +73,7 @@ export async function GET(
     .eq("event_id", station.event_id)
     .eq("action", "check_in")
     .eq("success", true)
+    .eq("performed_via", "kiosk")
     .order("created_at", { ascending: false })
     .limit(200)
 

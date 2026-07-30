@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,7 +44,7 @@ import {
   X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { computeStationStatus, STATION_STATUS_LABELS, type KioskStationStatus } from "@/lib/kiosk-station-status"
+import { computeStationStatus, STATION_STATUS_LABELS } from "@/lib/kiosk-station-status"
 import {
   STATUS_MEANINGS,
   attendedHelpText,
@@ -79,6 +79,7 @@ function nextDefaultStationName(stations: KioskStation[]): string {
 
 export default function KioskStationsPage() {
   const params = useParams()
+  const router = useRouter()
   const eventId = params.eventId as string
 
   const [stations, setStations] = useState<KioskStation[]>([])
@@ -1016,7 +1017,7 @@ export default function KioskStationsPage() {
                                 counts={listCounts}
                                 busy={reassigningStationId === station.id}
                                 onChange={(ids) => handleReassignLists(station, ids)}
-                                onFocusAttended={() => focusAttendedSwitch(station.id)}
+                                onFocusAttended={() => router.push(`/events/${eventId}/kiosk-stations/${station.id}`)}
                               />
                             </div>
 
