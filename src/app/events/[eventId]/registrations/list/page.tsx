@@ -699,22 +699,19 @@ function RegistrationsContent() {
   // delegate was scanned more than once for the same list (e.g. two kiosk
   // devices independently checked them in while both were offline) -- that
   // event previously left no trace anywhere once checkin_records settled on
-  // its one winning row.
+  // its one winning row. Routed through an admin-client API route, not a
+  // direct browser query: checkin_audit_log has RLS enabled with ZERO
+  // policies (confirmed via pg_policies), so a direct client-side select
+  // here always silently returns an empty array regardless of actual data
+  // -- the same RLS-gap class already hit and fixed for checkin_lists
+  // elsewhere in this codebase.
   const { data: checkinHistory } = useQuery({
     queryKey: ["registration-checkins", selectedRegistration?.id],
     queryFn: async () => {
       try {
-        const { data, error } = await (supabase as any)
-          .from("checkin_audit_log")
-          .select("id, created_at, action, performed_via, success, device_info, checkin_lists(name)")
-          .eq("registration_id", selectedRegistration!.id)
-          .order("created_at", { ascending: false })
-
-        if (error) {
-          // Silently handle if table doesn't exist
-          console.warn("checkin_audit_log query error:", error.message)
-          return []
-        }
+        const res = await fetch(`/api/registrations/${selectedRegistration!.id}/checkin-history`)
+        if (!res.ok) return []
+        const { data } = await res.json()
         return data || []
       } catch {
         return []
