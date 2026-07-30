@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react"
 import { useParams } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -60,6 +61,7 @@ import {
   StationListsPicker,
   StationNameEditor,
   StationBehaviourControls,
+  StationBehaviourSummary,
   StationActions,
   type CheckinList,
   type PrintStation,
@@ -73,6 +75,7 @@ export default function KioskStationsPage() {
   const [stations, setStations] = useState<KioskStation[]>([])
   const [lists, setLists] = useState<CheckinList[]>([])
   const [printStations, setPrintStations] = useState<PrintStation[]>([])
+  const [listCounts, setListCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   // Guards against a lost-update race: a second checkbox click for the same
   // station, fired before the first PATCH+reload round-trip resolves, would
@@ -233,6 +236,9 @@ export default function KioskStationsPage() {
         fetch(`/api/print-stations?event_id=${eventId}`)
           .then((r) => r.json())
           .then((d) => setPrintStations(Array.isArray(d) ? d : [])),
+        fetch(`/api/kiosk-stations/list-counts?event_id=${eventId}`)
+          .then((r) => r.json())
+          .then((d) => setListCounts(d.counts || {})),
       ])
       setLoading(false)
     }
@@ -945,16 +951,24 @@ export default function KioskStationsPage() {
 
                             {/* Station name + printer */}
                             <div className="min-w-0 flex flex-col gap-1">
-                              <StationNameEditor
-                                station={station}
-                                isRenaming={isRenaming}
-                                renameDraft={renameDraft}
-                                onDraftChange={setRenameDraft}
-                                renaming={renaming}
-                                onStart={() => startRename(station)}
-                                onCancel={cancelRename}
-                                onSave={() => saveRename(station)}
-                              />
+                              <div className="flex items-center gap-2">
+                                <StationNameEditor
+                                  station={station}
+                                  isRenaming={isRenaming}
+                                  renameDraft={renameDraft}
+                                  onDraftChange={setRenameDraft}
+                                  renaming={renaming}
+                                  onStart={() => startRename(station)}
+                                  onCancel={cancelRename}
+                                  onSave={() => saveRename(station)}
+                                />
+                                <Link
+                                  href={`/events/${eventId}/kiosk-stations/${station.id}`}
+                                  className="text-xs text-primary underline underline-offset-2 hover:text-primary/80"
+                                >
+                                  Manage
+                                </Link>
+                              </div>
                               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                                 <span
                                   className="rounded-full border px-1.5 py-0.5 text-[10px] font-normal"
@@ -974,29 +988,23 @@ export default function KioskStationsPage() {
                               </div>
                             </div>
 
-                            {/* Check-in lists */}
+                            {/* Check-in lists, with live counts */}
                             <div className="min-w-0">
                               <StationListsPicker
                                 station={station}
                                 lists={lists}
                                 options={assignableLists(station.attended)}
+                                counts={listCounts}
                                 busy={reassigningStationId === station.id}
                                 onChange={(ids) => handleReassignLists(station, ids)}
                                 onFocusAttended={() => focusAttendedSwitch(station.id)}
                               />
                             </div>
 
-                            {/* Behaviour: attended / print station / auto-print */}
-                            <StationBehaviourControls
+                            {/* Behaviour: one-line summary -- editing moved to the station's detail page */}
+                            <StationBehaviourSummary
                               station={station}
-                              revoked={revoked}
-                              usbPrintStations={usbPrintStations}
-                              attendedSwitchRef={(el) => {
-                                attendedSwitchRefs.current[station.id] = el
-                              }}
-                              onToggleAttended={() => handleAttendedSwitch(station)}
-                              onTogglePrint={() => handleToggleAutoPrint(station)}
-                              onReassignPrintStation={(id) => handleReassignPrintStation(station, id)}
+                              printStationName={printStations.find((p) => p.id === station.print_station_id)?.name ?? null}
                             />
 
                             {/* Actions */}

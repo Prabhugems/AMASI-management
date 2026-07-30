@@ -142,6 +142,7 @@ export function StationListsPicker({
   station,
   lists,
   options,
+  counts,
   busy,
   onChange,
   onFocusAttended,
@@ -149,12 +150,19 @@ export function StationListsPicker({
   station: KioskStation
   lists: CheckinList[]
   options: CheckinList[]
+  counts?: Record<string, number>
   busy: boolean
   onChange: (listIds: string[]) => void
   onFocusAttended: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const listNames = station.list_ids.map((id) => lists.find((l) => l.id === id)?.name).filter(Boolean) as string[]
+  const listNames = station.list_ids
+    .map((id) => {
+      const list = lists.find((l) => l.id === id)
+      if (!list) return null
+      return counts?.[id] !== undefined ? `${list.name} · ${counts[id]}` : list.name
+    })
+    .filter(Boolean) as string[]
   const visibleChips = listNames.slice(0, CHIP_LIMIT)
   const moreCount = listNames.length - visibleChips.length
   const hasCollectionLists = lists.some((l) => l.is_active === true && l.list_purpose === "collection")
@@ -412,6 +420,23 @@ export function StationBehaviourControls({
       )}
     </div>
   )
+}
+
+// One-line, read-only summary for the compact list-view row -- editing
+// happens on the station's own detail page now, not inline in the list.
+export function StationBehaviourSummary({
+  station,
+  printStationName,
+}: {
+  station: KioskStation
+  printStationName: string | null
+}) {
+  const parts = [station.attended ? "Attended" : "Unattended"]
+  if (station.mode === "checkin_and_print") {
+    parts.push(station.auto_print_badge ? "Auto-print" : "Manual print")
+    if (printStationName) parts.push(printStationName)
+  }
+  return <span className="truncate text-xs text-muted-foreground">{parts.join(" · ")}</span>
 }
 
 // Shared "New Token" + kebab menu -- identical set of actions in both views.
