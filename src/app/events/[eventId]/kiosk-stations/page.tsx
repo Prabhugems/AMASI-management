@@ -63,6 +63,7 @@ import {
   StationBehaviourControls,
   StationBehaviourSummary,
   StationActions,
+  AttendedOnConfirmDialog,
   type CheckinList,
   type PrintStation,
   type KioskStation,
@@ -1472,37 +1473,14 @@ export default function KioskStationsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Attended-ON confirmation -- turning OFF applies immediately (see
-          handleAttendedSwitch/handleCreateAttendedSwitch), only turning ON
-          routes through here. Shared by the per-row switch and the Add
-          Station dialog's own switch (attendedConfirmTarget.kind). */}
-      <AlertDialog
+      <AttendedOnConfirmDialog
         open={!!attendedConfirmTarget}
+        busy={attendedConfirmBusy}
         onOpenChange={(open) => {
           if (!open) setAttendedConfirmTarget(null)
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Turn on attended mode?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="block">
-                This lets the tablet serve collection lists — meals, kits, anything a delegate physically picks up.
-              </span>
-              <span className="mt-2 block">
-                Only turn this on if a volunteer is holding the tablet at all times. On an unattended tablet, a
-                delegate could scan twice and take two.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button disabled={attendedConfirmBusy} onClick={confirmAttendedOn}>
-              {attendedConfirmBusy ? "Turning on…" : "Turn on"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirm={confirmAttendedOn}
+      />
     </div>
   )
 }

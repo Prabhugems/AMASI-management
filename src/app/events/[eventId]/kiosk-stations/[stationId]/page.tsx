@@ -33,6 +33,7 @@ import {
   StationListsPicker,
   StationBehaviourControls,
   StationActions,
+  AttendedOnConfirmDialog,
   type CheckinList,
   type PrintStation,
   type KioskStation,
@@ -509,29 +510,12 @@ export default function KioskStationDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Attended-ON confirm -- same copy as page.tsx's attendedConfirmTarget dialog */}
-      <AlertDialog open={attendedConfirmOpen} onOpenChange={setAttendedConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Turn on attended mode?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="block">
-                This lets the tablet serve collection lists — meals, kits, anything a delegate physically picks up.
-              </span>
-              <span className="mt-2 block">
-                Only turn this on if a volunteer is holding the tablet at all times. On an unattended tablet, a
-                delegate could scan twice and take two.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button disabled={attendedConfirmBusy} onClick={confirmAttendedOn}>
-              {attendedConfirmBusy ? "Turning on…" : "Turn on"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <AttendedOnConfirmDialog
+        open={attendedConfirmOpen}
+        busy={attendedConfirmBusy}
+        onOpenChange={setAttendedConfirmOpen}
+        onConfirm={confirmAttendedOn}
+      />
 
       {/* Revoke / Delete confirm -- same copy as page.tsx's confirmState dialog,
           simplified to the always-single-station case (no bulk here). */}
