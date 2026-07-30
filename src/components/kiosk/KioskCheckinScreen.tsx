@@ -181,6 +181,16 @@ export function KioskCheckinScreen({
   // whether a scan is authorized. The server's own `blocked` flag already
   // gates that.
   const [isCollectionListActive, setIsCollectionListActive] = useState(false)
+  // The active list's display name, sourced from /api/kiosk/delegates'
+  // response (see refreshFromServer) and rehydrated from the same offline
+  // cache as isCollectionListActive -- NOT from a direct browser query
+  // against checkin_lists, which has no anon/authenticated-browser SELECT
+  // policy at all (RLS enabled, zero policies) and so always silently
+  // returns null. That was the actual, previously-invisible cause of every
+  // "Loading…"/"this list" fallback string this file has ever shown for a
+  // list name -- confirmed via `select policyname from pg_policies where
+  // tablename = 'checkin_lists'` returning zero rows.
+  const [listName, setListName] = useState<string | null>(null)
   // Timestamp of the most recent real check-in attempt (success or failure)
   // -- drives the collection-list ready screen's "last scan N seconds ago"
   // status chip. Not set for the empty-input early-return in handleCheckin,
@@ -289,7 +299,7 @@ export function KioskCheckinScreen({
           if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
           return
         }
-        const data = (await res.json()) as { delegates: CachedDelegate[]; list_purpose?: string; blocked?: boolean }
+        const data = (await res.json()) as { delegates: CachedDelegate[]; name?: string; list_purpose?: string; blocked?: boolean }
         if (cancelled) return
 
         // This state's only job is deciding whether handleCheckin runs a
@@ -300,17 +310,19 @@ export function KioskCheckinScreen({
         // entry lists, blocked collection lists, and any response shape
         // that doesn't say otherwise.
         setIsCollectionListActive(data.list_purpose === "collection" && data.blocked === false)
+        if (data.name) setListName(data.name)
 
         // Persist this server answer alongside the roster -- unlike the
-        // delegate cache, list_purpose/blocked previously had no offline
-        // persistence at all, so a cold-started/reloaded tablet had no way
-        // to recover isCollectionListActive without a fresh, successful,
-        // online round-trip. Written in BOTH branches below (blocked and
-        // success) since either one is a definitive server answer about this
-        // list's purpose/blocked state.
+        // delegate cache, list_purpose/blocked/name previously had no
+        // offline persistence at all, so a cold-started/reloaded tablet had
+        // no way to recover isCollectionListActive/listName without a
+        // fresh, successful, online round-trip. Written in BOTH branches
+        // below (blocked and success) since either one is a definitive
+        // server answer about this list's purpose/blocked/name.
         await cacheListPurpose(listId, {
           list_purpose: data.list_purpose ?? "",
           blocked: data.blocked ?? true,
+          name: data.name,
         })
 
         if (data.blocked) {
@@ -370,6 +382,7 @@ export function KioskCheckinScreen({
         const cachedPurpose = await getListPurpose(listId)
         if (cachedPurpose && !cancelled) {
           setIsCollectionListActive(cachedPurpose.list_purpose === "collection" && cachedPurpose.blocked === false)
+          if (cachedPurpose.name) setListName(cachedPurpose.name)
         }
         await refreshFromServer()
       } catch (err) {
@@ -520,18 +533,6 @@ export function KioskCheckinScreen({
         .from("events")
         .select("id, name, short_name, start_date, venue_name, city")
         .eq("id", eventId)
-        .maybeSingle()
-      return data
-    },
-  })
-
-  const { data: list } = useQuery({
-    queryKey: ["checkin-list-kiosk", listId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("checkin_lists")
-        .select("id, name, description, allow_multiple_checkins")
-        .eq("id", listId)
         .maybeSingle()
       return data
     },
@@ -1461,7 +1462,7 @@ export function KioskCheckinScreen({
           name: stationName ? `Kiosk: ${stationName}` : "Kiosk Station",
           email: "kiosk-alerts@internal.local",
           category: "Kiosk",
-          message: `A kiosk station requested assistance.\nStation: ${stationName || "(unnamed)"}\nList: ${list?.name || listId}\nOnline: ${isOnline ? "yes" : "no"}`,
+          message: `A kiosk station requested assistance.\nStation: ${stationName || "(unnamed)"}\nList: ${listName || listId}\nOnline: ${isOnline ? "yes" : "no"}`,
         }),
       })
       const data = await response.json().catch(() => ({}))
@@ -1550,7 +1551,7 @@ export function KioskCheckinScreen({
         <DuplicateWarningScreen
           attendeeName={result.registration?.attendee_name || ""}
           registrationNumber={result.registration?.registration_number || ""}
-          listName={list?.name || "this list"}
+          listName={listName || "this list"}
           duplicateCheckedInAt={result.duplicateCheckedInAt}
           duplicateStationName={result.duplicateStationName}
           countdown={countdown}
@@ -1573,7 +1574,7 @@ export function KioskCheckinScreen({
     if (isCollectionListActive && result.success && mode === "checkin") {
       return (
         <CollectionSuccessScreen
-          listName={list?.name || "this list"}
+          listName={listName || "this list"}
           attendeeName={result.registration?.attendee_name || ""}
           registrationNumber={result.registration?.registration_number || ""}
           attendeeInstitution={result.registration?.attendee_institution}
@@ -1594,7 +1595,7 @@ export function KioskCheckinScreen({
     if (isCollectionListActive && result.notOnList && mode === "checkin") {
       return (
         <NotOnListScreen
-          listName={list?.name || "this list"}
+          listName={listName || "this list"}
           scannedCode={result.scannedCode}
           countdown={countdown}
           stationName={stationName}
@@ -1613,7 +1614,7 @@ export function KioskCheckinScreen({
                 {event?.short_name || event?.name}
               </h1>
               <p className="text-xs sm:text-sm text-gray-400 truncate">
-                {list?.name}
+                {listName}
                 {stationName && ` · ${stationName}`}
               </p>
             </div>
@@ -1857,7 +1858,7 @@ export function KioskCheckinScreen({
       // tall enough to host the absolutely-positioned overlay banner.
       <div className="relative h-full w-full">
         <CollectionReadyScreen
-          listName={list?.name || "this list"}
+          listName={listName || "this list"}
           listClosesAt={listClosesAt}
           lastScanAt={lastScanAt}
           stationName={stationName}
@@ -1945,12 +1946,12 @@ export function KioskCheckinScreen({
             <p className="text-xs sm:text-sm text-gray-400">Checking in for</p>
             <div className="flex items-center gap-2 justify-end">
               <p className="text-base sm:text-xl font-semibold text-white truncate">
-                {list?.name || "Loading…"}
+                {listName || "Loading…"}
               </p>
               {onSwitchList && (
                 <button
                   onClick={() => {
-                    if (confirm(`Leave ${list?.name || "this list"} and return to the menu?`)) {
+                    if (confirm(`Leave ${listName || "this list"} and return to the menu?`)) {
                       onSwitchList()
                     }
                   }}
@@ -1965,7 +1966,7 @@ export function KioskCheckinScreen({
             )}
             {typeof closingSoonMinutes === "number" && closingSoonMinutes >= 0 && closingSoonMinutes <= 5 && (
               <p className="text-xs text-amber-400 mt-0.5">
-                {list?.name || "This list"} closes in {closingSoonMinutes} minute{closingSoonMinutes === 1 ? "" : "s"}
+                {listName || "This list"} closes in {closingSoonMinutes} minute{closingSoonMinutes === 1 ? "" : "s"}
               </p>
             )}
           </div>

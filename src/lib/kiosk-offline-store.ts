@@ -298,6 +298,7 @@ export async function getCollectedStatus(listId: string): Promise<CachedCollecte
 export interface CachedListPurpose {
   list_purpose: string
   blocked: boolean
+  name?: string
 }
 
 export async function cacheListPurpose(listId: string, info: CachedListPurpose): Promise<void> {

@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
 
       const result = await (supabase as any)
         .from("checkin_lists")
-        .select("id, event_id, list_purpose, ticket_type_ids, addon_ids")
+        .select("id, event_id, name, list_purpose, ticket_type_ids, addon_ids")
         .eq("id", requestedListId)
         .maybeSingle()
       list = result.data
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
     } else {
       const result = await (supabase as any)
         .from("checkin_lists")
-        .select("id, event_id, list_purpose, access_token_expires_at, ticket_type_ids, addon_ids")
+        .select("id, event_id, name, list_purpose, access_token_expires_at, ticket_type_ids, addon_ids")
         .eq("access_token", token)
         .maybeSingle()
       list = result.data
@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
     // written as "proceed only if attended", never as "skip unless
     // unresolved", so it can't accidentally invert under a future edit.
     if (list.list_purpose === "collection" && !stationIsAttended) {
-      return NextResponse.json({ delegates: [], list_purpose: list.list_purpose, blocked: true })
+      return NextResponse.json({ delegates: [], name: list.name, list_purpose: list.list_purpose, blocked: true })
     }
 
     // List eligibility: mirrors src/app/api/checkin/access/[accessToken]/attendees/route.ts:49-84
@@ -223,7 +223,7 @@ export async function GET(request: NextRequest) {
         // not a collection-list policy block -- blocked: false so the
         // client caches this as a real (if empty) roster rather than
         // treating it as the "see a staff member" case.
-        return NextResponse.json({ delegates: [], list_purpose: list.list_purpose, blocked: false })
+        return NextResponse.json({ delegates: [], name: list.name, list_purpose: list.list_purpose, blocked: false })
       }
     }
 
@@ -286,7 +286,7 @@ export async function GET(request: NextRequest) {
       attendee_institution: r.attendee_institution,
     }))
 
-    return NextResponse.json({ delegates, list_purpose: list.list_purpose, blocked: false })
+    return NextResponse.json({ delegates, name: list.name, list_purpose: list.list_purpose, blocked: false })
   } catch (error) {
     Sentry.captureException(error, { tags: { route: "kiosk/delegates" }, extra: { eventId } })
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 })
