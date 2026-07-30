@@ -1997,9 +1997,39 @@ export function KioskCheckinScreen({
             </div>
           </div>
           <div className="text-right shrink-0">
+            {/* Station identity leads, as a color-coded badge -- a volunteer
+                glancing at a shared, multi-job tablet needs to confirm WHICH
+                desk and WHICH kind of job they're on before anything else.
+                Previously this was tiny gray-500 text below the list name,
+                easy to miss entirely and visually identical regardless of
+                which list was active. Color mirrors isCollectionListActive:
+                amber matches this app's existing collection-list visual
+                language (menu tile "Needs a volunteer watching", the
+                duplicate-scan warning screen); indigo matches the entry-list
+                QR icon color already used on this same screen. */}
+            {stationName && (
+              <div className="flex items-center justify-end gap-1.5 mb-1.5">
+                <span
+                  className={`inline-flex items-center gap-1.5 max-w-[240px] truncate rounded-full border px-3 py-1 text-xs sm:text-sm font-bold uppercase tracking-wide ${
+                    isCollectionListActive
+                      ? "border-amber-500/30 bg-amber-500/15 text-amber-300"
+                      : "border-indigo-500/30 bg-indigo-500/15 text-indigo-300"
+                  }`}
+                >
+                  <span
+                    className={`size-1.5 shrink-0 rounded-full ${isCollectionListActive ? "bg-amber-400" : "bg-indigo-400"}`}
+                  />
+                  <span className="truncate">{stationName}</span>
+                </span>
+              </div>
+            )}
             <p className="text-xs sm:text-sm text-gray-400">Checking in for</p>
             <div className="flex items-center gap-2 justify-end">
-              <p className="text-base sm:text-xl font-semibold text-white truncate">
+              <p
+                className={`text-base sm:text-xl font-semibold truncate ${
+                  isCollectionListActive ? "text-amber-300" : "text-white"
+                }`}
+              >
                 {listName || "Loading…"}
               </p>
               {onSwitchList && (
@@ -2015,9 +2045,6 @@ export function KioskCheckinScreen({
                 </button>
               )}
             </div>
-            {stationName && (
-              <p className="text-xs text-gray-500 truncate">{stationName}</p>
-            )}
             {typeof closingSoonMinutes === "number" && closingSoonMinutes >= 0 && closingSoonMinutes <= 5 && (
               <p className="text-xs text-amber-400 mt-0.5">
                 {listName || "This list"} closes in {closingSoonMinutes} minute{closingSoonMinutes === 1 ? "" : "s"}
