@@ -14,6 +14,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Pencil, RefreshCw, MoreVertical } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -487,5 +496,48 @@ export function StationActions({
         </DropdownMenuContent>
       </DropdownMenu>
     </>
+  )
+}
+
+// Shared "turn on attended mode" confirmation -- turning OFF applies
+// immediately everywhere in this app; only turning ON ever asks for
+// confirmation, since it unlocks self-service scanning of collection-purpose
+// lists (meals, kits) on a tablet nobody may actually be watching. Used by
+// the list page's per-row switch, the detail page's switch, and the Add
+// Station wizard's own switch -- identical copy in all three places.
+export function AttendedOnConfirmDialog({
+  open,
+  busy,
+  onOpenChange,
+  onConfirm,
+}: {
+  open: boolean
+  busy: boolean
+  onOpenChange: (open: boolean) => void
+  onConfirm: () => void
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Turn on attended mode?</AlertDialogTitle>
+          <AlertDialogDescription>
+            <span className="block">
+              This lets the tablet serve collection lists — meals, kits, anything a delegate physically picks up.
+            </span>
+            <span className="mt-2 block">
+              Only turn this on if a volunteer is holding the tablet at all times. On an unattended tablet, a
+              delegate could scan twice and take two.
+            </span>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button disabled={busy} onClick={onConfirm}>
+            {busy ? "Turning on…" : "Turn on"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

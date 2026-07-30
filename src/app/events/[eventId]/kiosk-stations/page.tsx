@@ -6,7 +6,6 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Switch } from "@/components/ui/switch"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Dialog,
@@ -23,13 +22,6 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { QrImage } from "@/components/QrImage"
 import { toast } from "sonner"
 import {
@@ -47,9 +39,6 @@ import { cn } from "@/lib/utils"
 import { computeStationStatus, STATION_STATUS_LABELS } from "@/lib/kiosk-station-status"
 import {
   STATUS_MEANINGS,
-  attendedHelpText,
-  autoPrintHelpText,
-  PRINTER_USB_HELP_TEXT,
   stationUrl,
   relativeLastSeen,
   STATUS_META,
@@ -63,19 +52,12 @@ import {
   StationBehaviourControls,
   StationBehaviourSummary,
   StationActions,
+  AttendedOnConfirmDialog,
   type CheckinList,
   type PrintStation,
   type KioskStation,
 } from "@/components/kiosk-admin/station-controls"
-
-function nextDefaultStationName(stations: KioskStation[]): string {
-  let highest = 0
-  for (const s of stations) {
-    const match = /^Tablet (\d+)$/.exec(s.name.trim())
-    if (match) highest = Math.max(highest, parseInt(match[1], 10))
-  }
-  return `Tablet ${highest + 1}`
-}
+import { AddStationWizard } from "@/components/kiosk-admin/add-station-wizard"
 
 export default function KioskStationsPage() {
   const params = useParams()
@@ -94,14 +76,7 @@ export default function KioskStationsPage() {
   // a reassignment is in flight prevents the stale computation from firing.
   const [reassigningStationId, setReassigningStationId] = useState<string | null>(null)
 
-  const [showCreate, setShowCreate] = useState(false)
-  const [newName, setNewName] = useState("")
-  const [newListIds, setNewListIds] = useState<string[]>([])
-  const [newMode, setNewMode] = useState<"checkin" | "checkin_and_print">("checkin")
-  const [newPrintStationId, setNewPrintStationId] = useState("")
-  const [newAutoPrint, setNewAutoPrint] = useState(false)
-  const [newAttended, setNewAttended] = useState(false)
-  const [creating, setCreating] = useState(false)
+  const [addWizardOpen, setAddWizardOpen] = useState(false)
 
   // Hand-off modal: shows a freshly-minted plaintext token exactly once
   // (on create or regenerate) -- never re-fetchable afterward.
@@ -151,13 +126,11 @@ export default function KioskStationsPage() {
   const [regenerateBusy, setRegenerateBusy] = useState(false)
 
   // Attended-ON confirmation -- turning OFF still applies immediately (see
-  // handleAttendedSwitch/handleCreateAttendedSwitch below), only turning ON
-  // gates through this dialog. One shared dialog/state serves both the
-  // per-row switch (kind: "station") and the Add Station dialog's own switch
-  // (kind: "create"), since the confirmation copy is identical either way.
-  const [attendedConfirmTarget, setAttendedConfirmTarget] = useState<
-    { kind: "station"; station: KioskStation } | { kind: "create" } | null
-  >(null)
+  // handleAttendedSwitch below), only turning ON gates through this dialog.
+  // Always represents an existing station now: the Add Station wizard has
+  // its own separate, purely-local confirm state (see add-station-wizard.tsx)
+  // since there's no station yet to PATCH during creation.
+  const [attendedConfirmTarget, setAttendedConfirmTarget] = useState<KioskStation | null>(null)
   const [attendedConfirmBusy, setAttendedConfirmBusy] = useState(false)
 
   // DOM refs to each row's Attended switch, keyed by station id -- lets the
@@ -166,7 +139,6 @@ export default function KioskStationsPage() {
   // Only one of list-view/grid-view is ever mounted at a time, so a single
   // ref per station id is enough regardless of which view is active.
   const attendedSwitchRefs = useRef<Record<string, HTMLButtonElement | null>>({})
-  const newAttendedSwitchRef = useRef<HTMLButtonElement | null>(null)
   const focusAttendedSwitch = (stationId: string) => {
     // Deferred a frame so the popover this was clicked from has finished
     // closing (and released focus/pointer-events) before we move focus --
@@ -175,12 +147,6 @@ export default function KioskStationsPage() {
       const el = attendedSwitchRefs.current[stationId]
       el?.scrollIntoView({ behavior: "smooth", block: "center" })
       el?.focus()
-    })
-  }
-  const focusCreateAttendedSwitch = () => {
-    requestAnimationFrame(() => {
-      newAttendedSwitchRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
-      newAttendedSwitchRef.current?.focus()
     })
   }
 
@@ -255,42 +221,6 @@ export default function KioskStationsPage() {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId])
-
-  const handleCreate = async () => {
-    if (!newName.trim() || newListIds.length === 0) return
-    if (newMode === "checkin_and_print" && !newPrintStationId) return
-    setCreating(true)
-    try {
-      const res = await fetch("/api/kiosk-stations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event_id: eventId,
-          name: newName.trim(),
-          list_ids: newListIds,
-          mode: newMode,
-          attended: newAttended,
-          ...(newMode === "checkin_and_print" && { print_station_id: newPrintStationId, auto_print_badge: newAutoPrint }),
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error || "Failed to create station")
-        return
-      }
-      setShowCreate(false)
-      setNewName("")
-      setNewListIds([])
-      setNewMode("checkin")
-      setNewPrintStationId("")
-      setNewAutoPrint(false)
-      setNewAttended(false)
-      setHandoff({ name: data.name, token: data.access_token })
-      await loadStations()
-    } finally {
-      setCreating(false)
-    }
-  }
 
   // "New Token" now opens a proper AlertDialog (regenerateConfirmStation)
   // instead of a blocking native confirm() -- the actual API call only runs
@@ -447,31 +377,15 @@ export default function KioskStationsPage() {
     if (station.attended) {
       performToggleAttended(station, false)
     } else {
-      setAttendedConfirmTarget({ kind: "station", station })
+      setAttendedConfirmTarget(station)
     }
-  }
-
-  // Same asymmetric gating for the Add Station dialog's own Attended switch
-  // -- turning it off is just local state, turning it on goes through the
-  // same confirm dialog before newAttended actually flips.
-  const handleCreateAttendedSwitch = (checked: boolean) => {
-    if (!checked) {
-      setNewAttended(false)
-      return
-    }
-    setAttendedConfirmTarget({ kind: "create" })
   }
 
   const confirmAttendedOn = async () => {
     if (!attendedConfirmTarget) return
-    if (attendedConfirmTarget.kind === "create") {
-      setNewAttended(true)
-      setAttendedConfirmTarget(null)
-      return
-    }
     setAttendedConfirmBusy(true)
     try {
-      await performToggleAttended(attendedConfirmTarget.station, true)
+      await performToggleAttended(attendedConfirmTarget, true)
     } finally {
       setAttendedConfirmBusy(false)
       setAttendedConfirmTarget(null)
@@ -663,7 +577,6 @@ export default function KioskStationsPage() {
   const confirmNames = confirmStations.map((s) => `"${s.name}"`).join(", ")
 
   const activeLists = lists.filter((l) => l.is_active === true)
-  const hasCollectionLists = lists.some((l) => l.is_active === true && l.list_purpose === "collection")
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -678,12 +591,7 @@ export default function KioskStationsPage() {
             stays signed in on its own and never needs a password again.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setNewName(nextDefaultStationName(stations))
-            setShowCreate(true)
-          }}
-        >
+        <Button onClick={() => setAddWizardOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Station
         </Button>
@@ -698,12 +606,7 @@ export default function KioskStationsPage() {
             Add one station for each tablet you&apos;ll hand to a volunteer. Give it the desk&apos;s name, tick the
             lists that desk handles, and connect a printer if badges are printed there.
           </p>
-          <Button
-            onClick={() => {
-              setNewName(nextDefaultStationName(stations))
-              setShowCreate(true)
-            }}
-          >
+          <Button onClick={() => setAddWizardOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Station
           </Button>
@@ -1191,131 +1094,18 @@ export default function KioskStationsPage() {
         </div>
       )}
 
-      {/* Create dialog */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Add Kiosk Station</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-5">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Station name</label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Front Desk 3" />
-              <p className="text-xs text-muted-foreground">Shown on the tablet so the volunteer knows which desk they&apos;re on.</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Check-in lists</label>
-                <span className="text-xs text-muted-foreground">{newListIds.length} selected</span>
-              </div>
-              <div className="space-y-0.5 rounded-lg border p-1.5 max-h-48 overflow-y-auto">
-                {assignableLists(newAttended).map((list) => (
-                  <label key={list.id} className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm hover:bg-muted cursor-pointer">
-                    <Checkbox
-                      checked={newListIds.includes(list.id)}
-                      onCheckedChange={(checked) =>
-                        setNewListIds(checked ? [...newListIds, list.id] : newListIds.filter((id) => id !== list.id))
-                      }
-                    />
-                    <span className="flex-1">{list.name}</span>
-                  </label>
-                ))}
-              </div>
-              {!newAttended && hasCollectionLists && (
-                <p className="text-[11px] leading-snug text-muted-foreground">
-                  Collection lists (meals, kits) are hidden because this station is not attended. Turn on{" "}
-                  <button
-                    type="button"
-                    className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
-                    onClick={focusCreateAttendedSwitch}
-                  >
-                    &quot;Attended by a volunteer&quot;
-                  </button>{" "}
-                  below to use them.
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mode</label>
-              <div className="flex gap-4 mt-1">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" checked={newMode === "checkin"} onChange={() => setNewMode("checkin")} />
-                  Check-in only
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" checked={newMode === "checkin_and_print"} onChange={() => setNewMode("checkin_and_print")} />
-                  Check-in + Print Badge
-                </label>
-              </div>
-            </div>
-
-            {newMode === "checkin_and_print" && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Print Station</label>
-                {usbPrintStations.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    No USB-type Print Station found for this event. Create one on the Print Station page first.
-                  </p>
-                ) : (
-                  <>
-                    <Select value={newPrintStationId} onValueChange={setNewPrintStationId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a print station" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {usbPrintStations.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">{PRINTER_USB_HELP_TEXT}</p>
-                  </>
-                )}
-              </div>
-            )}
-
-            <div className="divide-y rounded-lg border">
-              <label className="flex items-center gap-3 p-3 cursor-pointer">
-                <Switch ref={newAttendedSwitchRef} checked={newAttended} onCheckedChange={handleCreateAttendedSwitch} />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium">Attended by a volunteer</span>
-                  <span className="block text-xs text-muted-foreground">{attendedHelpText(newAttended)}</span>
-                </span>
-              </label>
-              {newMode === "checkin_and_print" && (
-                <label
-                  className={cn(
-                    "flex items-center gap-3 p-3",
-                    usbPrintStations.length === 0 || !newPrintStationId ? "opacity-60" : "cursor-pointer"
-                  )}
-                >
-                  <Switch
-                    checked={newAutoPrint}
-                    disabled={!newPrintStationId}
-                    onCheckedChange={setNewAutoPrint}
-                  />
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium">Print automatically</span>
-                    <span className="block text-xs text-muted-foreground">{autoPrintHelpText(newAutoPrint)}</span>
-                  </span>
-                </label>
-              )}
-            </div>
-
-            <Button
-              onClick={handleCreate}
-              disabled={creating || !newName.trim() || newListIds.length === 0 || (newMode === "checkin_and_print" && !newPrintStationId)}
-              className="w-full"
-            >
-              {creating ? "Creating…" : "Create Station"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AddStationWizard
+        open={addWizardOpen}
+        onOpenChange={setAddWizardOpen}
+        eventId={eventId}
+        stations={stations}
+        lists={lists}
+        usbPrintStations={usbPrintStations}
+        onCreated={(station) => {
+          setHandoff({ name: station.name, token: station.access_token })
+          loadStations()
+        }}
+      />
 
       {/* Hand-off modal -- the ONLY place the plaintext token is ever shown */}
       <Dialog open={!!handoff} onOpenChange={() => setHandoff(null)}>
@@ -1472,37 +1262,14 @@ export default function KioskStationsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Attended-ON confirmation -- turning OFF applies immediately (see
-          handleAttendedSwitch/handleCreateAttendedSwitch), only turning ON
-          routes through here. Shared by the per-row switch and the Add
-          Station dialog's own switch (attendedConfirmTarget.kind). */}
-      <AlertDialog
+      <AttendedOnConfirmDialog
         open={!!attendedConfirmTarget}
+        busy={attendedConfirmBusy}
         onOpenChange={(open) => {
           if (!open) setAttendedConfirmTarget(null)
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Turn on attended mode?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="block">
-                This lets the tablet serve collection lists — meals, kits, anything a delegate physically picks up.
-              </span>
-              <span className="mt-2 block">
-                Only turn this on if a volunteer is holding the tablet at all times. On an unattended tablet, a
-                delegate could scan twice and take two.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button disabled={attendedConfirmBusy} onClick={confirmAttendedOn}>
-              {attendedConfirmBusy ? "Turning on…" : "Turn on"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirm={confirmAttendedOn}
+      />
     </div>
   )
 }
