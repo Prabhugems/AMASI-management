@@ -100,6 +100,10 @@ export function KioskStationShell({
   // before the menu ever rendered, making "Switch list" a no-op on any
   // station with exactly one (usable) list.
   const [menuRequested, setMenuRequested] = useState(false)
+  // Event-wide "N checked in" per assigned list, shown as a menu-tile
+  // subline. Purely informational -- never gates anything, so a stale or
+  // missing entry just means that tile shows no count yet.
+  const [listCounts, setListCounts] = useState<Record<string, number>>({})
   const selectList = useCallback((id: string | null, auto: boolean) => {
     setActiveListIdRaw(id)
     setAutoSelected(auto)
@@ -211,6 +215,37 @@ export function KioskStationShell({
     return () => clearInterval(intervalId)
   }, [])
 
+  // Poll each assigned list's event-wide checked-in count on the same 30s
+  // cadence, but only while the menu itself is showing -- a volunteer
+  // mid-scan on a different screen doesn't need this, and it saves a request
+  // during the far more common "actively checking people in" state. A fetch
+  // failure here keeps whatever counts are already on screen rather than
+  // clearing them -- see /api/kiosk/list-counts' own header comment.
+  useEffect(() => {
+    if (activeListId !== null || assignedLists.length === 0) return
+    let cancelled = false
+    const fetchCounts = async () => {
+      try {
+        const listIds = assignedLists.map((l) => l.id).join(",")
+        const res = await fetch(
+          `/api/kiosk/list-counts?event_id=${encodeURIComponent(eventId)}&station_token=${encodeURIComponent(stationToken)}&list_ids=${encodeURIComponent(listIds)}`
+        )
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as { counts: Record<string, number> }
+        if (!cancelled) setListCounts(data.counts)
+      } catch {
+        // Offline/transient -- keep whatever counts are already displayed.
+      }
+    }
+    void fetchCounts()
+    const intervalId = setInterval(fetchCounts, 30000)
+    return () => {
+      cancelled = true
+      clearInterval(intervalId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, stationToken, activeListId, assignedLists.map((l) => l.id).join(",")])
+
   const activeList = assignedLists.find((l) => l.id === activeListId) || null
 
   // Re-derive the "skip the menu" decision every time the manifest OR the
@@ -296,6 +331,7 @@ export function KioskStationShell({
       stationName={stationName}
       lists={assignedLists}
       attended={attended}
+      listCounts={listCounts}
       onSelect={(list) => {
         if (!isListUsable(list, attended)) return
         selectList(list.id, false)
@@ -304,27 +340,28 @@ export function KioskStationShell({
   )
 }
 
-function listSubline(list: AssignedList, attended: boolean, now: Date): string {
+function listSubline(list: AssignedList, attended: boolean, now: Date, count?: number): string {
   // Checked first: a collection-purpose list on an unattended station is
   // never usable regardless of its schedule -- this takes priority over the
   // open/closed schedule copy below so the tile always explains the REAL
   // reason it can't be tapped, not a misleading "Open" while still disabled.
   if (list.list_purpose === "collection" && !attended) return "Needs a volunteer watching"
   const state = computeListState(list, now)
+  const countSuffix = count === undefined ? "" : ` · ${count.toLocaleString()} checked in`
   if (state === "closed") {
-    if (list.kiosk_force_state === "closed") return "Closed"
+    if (list.kiosk_force_state === "closed") return `Closed${countSuffix}`
     if (list.kiosk_opens_at && now < new Date(list.kiosk_opens_at)) {
-      return `Opens ${new Date(list.kiosk_opens_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+      return `Opens ${new Date(list.kiosk_opens_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}${countSuffix}`
     }
     if (list.kiosk_closes_at) {
-      return `Ended ${new Date(list.kiosk_closes_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+      return `Ended ${new Date(list.kiosk_closes_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}${countSuffix}`
     }
-    return "Closed"
+    return `Closed${countSuffix}`
   }
   if (list.kiosk_closes_at) {
-    return `Closes ${new Date(list.kiosk_closes_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+    return `Closes ${new Date(list.kiosk_closes_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}${countSuffix}`
   }
-  return "Open"
+  return `Open${countSuffix}`
 }
 
 // Single default icon for every job tile: list NAMES are dynamic,
@@ -338,12 +375,14 @@ function JobTile({
   now,
   attended,
   open,
+  count,
   onSelect,
 }: {
   list: AssignedList
   now: Date
   attended: boolean
   open: boolean
+  count?: number
   onSelect: (list: AssignedList) => void
 }) {
   return (
@@ -376,7 +415,7 @@ function JobTile({
           {list.name}
         </span>
         <span className={open ? "text-base sm:text-lg opacity-90" : "text-sm sm:text-base text-muted-foreground/80"}>
-          {listSubline(list, attended, now)}
+          {listSubline(list, attended, now, count)}
         </span>
       </span>
     </button>
@@ -387,11 +426,13 @@ function KioskMenuScreen({
   stationName,
   lists,
   attended,
+  listCounts,
   onSelect,
 }: {
   stationName: string
   lists: AssignedList[]
   attended: boolean
+  listCounts: Record<string, number>
   onSelect: (list: AssignedList) => void
 }) {
   // Live clock for the header chip -- this screen doesn't accept a `now`/
@@ -456,12 +497,28 @@ function KioskMenuScreen({
         {lists.length > 0 && useGrid && (
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-5 min-h-0 items-stretch">
             {openLists.map((list) => (
-              <JobTile key={list.id} list={list} now={now} attended={attended} open onSelect={onSelect} />
+              <JobTile
+                key={list.id}
+                list={list}
+                now={now}
+                attended={attended}
+                open
+                count={listCounts[list.id]}
+                onSelect={onSelect}
+              />
             ))}
             {closedLists.length > 0 && (
               <div className="flex flex-col gap-5">
                 {closedLists.map((list) => (
-                  <JobTile key={list.id} list={list} now={now} attended={attended} open={false} onSelect={onSelect} />
+                  <JobTile
+                    key={list.id}
+                    list={list}
+                    now={now}
+                    attended={attended}
+                    open={false}
+                    count={listCounts[list.id]}
+                    onSelect={onSelect}
+                  />
                 ))}
               </div>
             )}
@@ -477,6 +534,7 @@ function KioskMenuScreen({
                 now={now}
                 attended={attended}
                 open={isListUsable(list, attended, now)}
+                count={listCounts[list.id]}
                 onSelect={onSelect}
               />
             ))}
