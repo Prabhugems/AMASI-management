@@ -11,6 +11,7 @@ function humanizeSettingKey(key: string): string {
     enable_accommodation: 'Accommodation', enable_meals: 'Meals', enable_sponsors: 'Sponsors',
     enable_budget: 'Budget', enable_visa: 'Visa', enable_surveys: 'Surveys',
     enable_delegate_portal: 'Delegate Portal', enable_print_station: 'Print Station',
+    enable_kiosk_stations: 'Kiosk Stations',
     enable_leads: 'Leads', enable_waitlist: 'Waitlist', enable_addons: 'Add-ons',
     enable_forms: 'Forms', enable_abstracts: 'Abstracts', enable_examination: 'Examination',
     // Automation
@@ -120,6 +121,7 @@ export async function GET(request: NextRequest) {
         enable_surveys: true,
         enable_delegate_portal: true,
         enable_print_station: true,
+        enable_kiosk_stations: true,
         enable_leads: true,
         enable_waitlist: true,
         enable_addons: true,
@@ -198,6 +200,7 @@ export async function POST(request: NextRequest) {
       "enable_checkin", "enable_badges", "enable_certificates", "enable_travel",
       "enable_accommodation", "enable_meals", "enable_sponsors", "enable_budget",
       "enable_visa", "enable_surveys", "enable_delegate_portal", "enable_print_station",
+      "enable_kiosk_stations",
       "enable_leads", "enable_waitlist", "enable_addons", "enable_forms",
       "enable_convocation",
     ]

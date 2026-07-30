@@ -5401,6 +5401,7 @@ export type Database = {
           enable_delegate_portal: boolean | null
           enable_examination: boolean | null
           enable_forms: boolean | null
+          enable_kiosk_stations: boolean | null
           enable_leads: boolean | null
           enable_meals: boolean | null
           enable_print_station: boolean | null
@@ -5460,6 +5461,7 @@ export type Database = {
           enable_delegate_portal?: boolean | null
           enable_examination?: boolean | null
           enable_forms?: boolean | null
+          enable_kiosk_stations?: boolean | null
           enable_leads?: boolean | null
           enable_meals?: boolean | null
           enable_print_station?: boolean | null
@@ -5519,6 +5521,7 @@ export type Database = {
           enable_delegate_portal?: boolean | null
           enable_examination?: boolean | null
           enable_forms?: boolean | null
+          enable_kiosk_stations?: boolean | null
           enable_leads?: boolean | null
           enable_meals?: boolean | null
           enable_print_station?: boolean | null

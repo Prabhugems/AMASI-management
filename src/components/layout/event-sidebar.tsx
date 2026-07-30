@@ -101,6 +101,7 @@ type ModuleSettings = {
   enable_surveys: boolean
   enable_delegate_portal: boolean
   enable_print_station: boolean
+  enable_kiosk_stations: boolean
   enable_leads: boolean
   enable_waitlist: boolean
   enable_addons: boolean
@@ -123,7 +124,7 @@ const navItems: NavItem[] = [
   { label: "Program", href: "/program", icon: Calendar, moduleKey: "enable_program" },
   { label: "Checkin Hub", href: "/checkin", icon: QrCode, moduleKey: "enable_checkin", sectionStart: "On-site" },
   { label: "Print Station", href: "/print-stations", icon: Printer, moduleKey: "enable_print_station" },
-  { label: "Kiosk Stations", href: "/kiosk-stations", icon: Monitor, moduleKey: "enable_checkin" },
+  { label: "Kiosk Stations", href: "/kiosk-stations", icon: Monitor, moduleKey: "enable_kiosk_stations" },
   { label: "Badges", href: "/badges", icon: BadgeCheck, statusKey: "badges", moduleKey: "enable_badges" },
   { label: "Certificates", href: "/certificates", icon: Award, statusKey: "certificates", moduleKey: "enable_certificates" },
   { label: "Delegate Portal", href: "/delegate-portal", icon: BarChart3, moduleKey: "enable_delegate_portal" },
@@ -279,7 +280,7 @@ export function EventSidebar({ onNavigate, mobileOpen, onMobileClose }: { onNavi
   })
 
   // Fetch module settings for conditional nav display
-  const MODULE_FIELDS = "enable_abstracts, enable_examination, enable_speakers, enable_program, enable_checkin, enable_badges, enable_certificates, enable_travel, enable_accommodation, enable_meals, enable_sponsors, enable_budget, enable_visa, enable_surveys, enable_delegate_portal, enable_print_station, enable_leads, enable_waitlist, enable_addons, enable_forms"
+  const MODULE_FIELDS = "enable_abstracts, enable_examination, enable_speakers, enable_program, enable_checkin, enable_badges, enable_certificates, enable_travel, enable_accommodation, enable_meals, enable_sponsors, enable_budget, enable_visa, enable_surveys, enable_delegate_portal, enable_print_station, enable_kiosk_stations, enable_leads, enable_waitlist, enable_addons, enable_forms"
 
   const { data: moduleSettings, refetch: refetchModules } = useQuery({
     queryKey: ["event-module-settings", eventId],
@@ -310,6 +311,7 @@ export function EventSidebar({ onNavigate, mobileOpen, onMobileClose }: { onNavi
         enable_surveys: s?.enable_surveys ?? true,
         enable_delegate_portal: s?.enable_delegate_portal ?? true,
         enable_print_station: s?.enable_print_station ?? true,
+        enable_kiosk_stations: s?.enable_kiosk_stations ?? true,
         enable_leads: s?.enable_leads ?? true,
         enable_waitlist: s?.enable_waitlist ?? true,
         enable_addons: s?.enable_addons ?? true,

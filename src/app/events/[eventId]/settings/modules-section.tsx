@@ -18,6 +18,7 @@ const MODULE_DEFS = [
     { key: "enable_badges", label: "Badges", icon: "BadgeCheck", description: "Design and print attendee badges with templates", defaultOn: true, dependsOn: "enable_checkin" },
     { key: "enable_certificates", label: "Certificates", icon: "Award", description: "Generate and email certificates to attendees", defaultOn: true },
     { key: "enable_print_station", label: "Print Station", icon: "Printer", description: "Kiosk mode for on-site badge printing", defaultOn: true, dependsOn: "enable_badges" },
+    { key: "enable_kiosk_stations", label: "Kiosk Stations", icon: "Monitor", description: "Self-service and staff-attended tablet check-in stations", defaultOn: true, dependsOn: "enable_checkin" },
   ]},
   { category: "Registration & Forms", modules: [
     { key: "enable_addons", label: "Addons", icon: "Package", description: "Optional add-on items for registration (meals, kits, etc.)", defaultOn: true },
@@ -46,7 +47,7 @@ const MODULE_DEFS = [
 
 // Dependency map: if you disable a key, dependents should also be disabled
 const MODULE_DEPS: Record<string, string[]> = {
-  enable_checkin: ["enable_badges", "enable_print_station"],
+  enable_checkin: ["enable_badges", "enable_print_station", "enable_kiosk_stations"],
   enable_badges: ["enable_print_station"],
 }
 
