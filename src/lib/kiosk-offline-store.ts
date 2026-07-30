@@ -257,6 +257,33 @@ export async function getStationNames(eventId: string): Promise<CachedStationNam
   return JSON.parse(row.value as string) as CachedStationName[]
 }
 
+// --- Collected-status cache (Layer 2 cross-device duplicate detection) ---
+// One new META_STORE key per list, no VERSION bump -- same JSON-blob-in-meta
+// approach as the station manifest/names caches above. Populated by a ~30s
+// poll (see KioskCheckinScreen) while a collection-purpose list is active on
+// an attended station; read at scan time to catch a duplicate collected on
+// a DIFFERENT tablet. Layer 1 (this same tablet's own scan log, via
+// getScanHistoryForRegistration) is instant and always correct; this layer
+// is only as fresh as the last successful poll.
+
+export interface CachedCollectedEntry {
+  registration_id: string
+  checked_in_at: string
+  station_id: string | null
+}
+
+export async function cacheCollectedStatus(listId: string, entries: CachedCollectedEntry[]): Promise<void> {
+  const db = await getDb()
+  await db.put(META_STORE, { key: `collected_status:${listId}`, value: JSON.stringify(entries) } satisfies MetaRow)
+}
+
+export async function getCollectedStatus(listId: string): Promise<CachedCollectedEntry[]> {
+  const db = await getDb()
+  const row = (await db.get(META_STORE, `collected_status:${listId}`)) as MetaRow | undefined
+  if (!row) return []
+  return JSON.parse(row.value as string) as CachedCollectedEntry[]
+}
+
 // --- Scan log --------------------------------------------------------------
 
 export async function enqueueScan(entry: Omit<ScanLogEntry, "status" | "attempts">): Promise<void> {

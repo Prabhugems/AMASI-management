@@ -44,9 +44,16 @@ import {
   markPrintSynced,
   pruneStaleData,
   getScanHistoryForRegistration,
+  cacheStationNames,
+  getStationNames,
+  cacheCollectedStatus,
+  getCollectedStatus,
+  type CachedStationName,
+  type CachedCollectedEntry,
 } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { isNetworkFailure } from "@/lib/offline-scan-queue"
+import { resolveStationName } from "@/lib/kiosk-station-lookup-client"
 
 type CheckinResult = {
   success: boolean
@@ -194,6 +201,12 @@ export function KioskCheckinScreen({
   const submittingRef = useRef<boolean>(false)
   const delegatesRef = useRef<CachedDelegate[]>([])
   const deviceIdRef = useRef<string>("")
+  // Layer 2 cross-device duplicate detection support (see the two effects
+  // below and handleCheckin's Layer 2 block). Refs, not state -- both are
+  // read synchronously inside handleCheckin, which must never await a
+  // network call.
+  const cachedStationNamesRef = useRef<CachedStationName[]>([])
+  const collectedStatusRef = useRef<Map<string, CachedCollectedEntry>>(new Map())
   // In-flight guard for syncNow -- the click handler (`void syncNow()` in
   // handleCheckin), the `online` listener, and the 20s interval poll can all
   // fire close together, and drainScanQueue has no guard of its own against
@@ -320,6 +333,109 @@ export function KioskCheckinScreen({
       clearInterval(refreshInterval)
     }
   }, [eventId, listId, token, stationToken])
+
+  // Station-name cache: loads/refreshes the display names of every station
+  // at this event, so a cross-device duplicate (Layer 2 below) can show
+  // "collected at Lunch Desk 2" instead of a bare id. Station names change
+  // rarely, so this uses the same 5-minute cadence as the roster refresh
+  // above. Only relevant on the station_token path -- the direct single-
+  // list-token path can never have isCollectionListActive true, so there's
+  // nothing for this data to support there.
+  useEffect(() => {
+    if (!stationToken) return
+    // Narrowed to a local const: TS can't carry the `!stationToken` guard's
+    // narrowing across the nested async closure below (stationToken is an
+    // optional prop, not a const) -- same pattern as printStationId's
+    // capture in the badge-template-cache effect above.
+    const resolvedStationToken = stationToken
+    let cancelled = false
+
+    async function loadStationNames() {
+      try {
+        const cached = await getStationNames(eventId)
+        if (!cancelled) cachedStationNamesRef.current = cached
+      } catch (err) {
+        Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId } })
+      }
+      if (typeof navigator !== "undefined" && !navigator.onLine) return
+      try {
+        const res = await fetch(
+          `/api/kiosk/station-names?event_id=${encodeURIComponent(eventId)}&station_token=${encodeURIComponent(resolvedStationToken)}`
+        )
+        if (!res.ok) return
+        const data = (await res.json()) as { stations: CachedStationName[] }
+        if (cancelled) return
+        cachedStationNamesRef.current = data.stations
+        await cacheStationNames(eventId, data.stations)
+      } catch (err) {
+        // A network failure here is routine (this runs on an interval
+        // regardless of connectivity) -- the cached names stay valid and in
+        // use, nothing to report.
+        if (!isNetworkFailure(err)) {
+          Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId } })
+        }
+      }
+    }
+
+    loadStationNames()
+    const interval = setInterval(loadStationNames, 5 * 60 * 1000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [eventId, stationToken])
+
+  // Layer 2 cross-device duplicate detection: a ~30s background poll of
+  // "already collected" status for the active list, so a tablet that's been
+  // online in the last ~30s already knows what other desks did before the
+  // NEXT scan happens here. Deliberately NOT a synchronous, blocking
+  // round-trip inside handleCheckin -- this kiosk is local-first/optimistic
+  // throughout. Only active when this is a genuinely attended station
+  // serving a collection-purpose list (isCollectionListActive) -- never
+  // runs for entry lists, unattended stations, or the direct-token path.
+  useEffect(() => {
+    if (!stationToken || !isCollectionListActive) return
+    // Narrowed to a local const -- same reasoning as loadStationNames above.
+    const resolvedStationToken = stationToken
+    let cancelled = false
+
+    async function loadCollectedStatus() {
+      try {
+        const cached = await getCollectedStatus(listId)
+        if (!cancelled) {
+          collectedStatusRef.current = new Map(cached.map((e) => [e.registration_id, e]))
+        }
+      } catch (err) {
+        Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId, listId } })
+      }
+      if (typeof navigator !== "undefined" && !navigator.onLine) return
+      try {
+        const res = await fetch(
+          `/api/kiosk/collected-status?event_id=${encodeURIComponent(eventId)}&station_token=${encodeURIComponent(resolvedStationToken)}&list_id=${encodeURIComponent(listId)}`
+        )
+        if (!res.ok) return
+        const data = (await res.json()) as { registrations: CachedCollectedEntry[]; blocked?: boolean }
+        if (cancelled) return
+        if (data.blocked) return
+        collectedStatusRef.current = new Map(data.registrations.map((e) => [e.registration_id, e]))
+        await cacheCollectedStatus(listId, data.registrations)
+      } catch (err) {
+        // A network failure here is routine (this runs on an interval
+        // regardless of connectivity) -- the cached collected-status map
+        // stays valid and in use, nothing to report.
+        if (!isNetworkFailure(err)) {
+          Sentry.captureException(err, { tags: { module: "kiosk-page" }, extra: { eventId, listId } })
+        }
+      }
+    }
+
+    loadCollectedStatus()
+    const interval = setInterval(loadCollectedStatus, 30 * 1000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [eventId, listId, stationToken, isCollectionListActive])
 
   // Fetch event and list details
   const { data: event } = useQuery({
@@ -811,6 +927,31 @@ export function KioskCheckinScreen({
             alreadyCheckedIn: true,
             duplicateCheckedInAt: new Date(earliest.scanned_at).toISOString(),
             duplicateStationName: stationName || "this station",
+            registration: {
+              id: delegate.id,
+              registration_number: delegate.registration_number,
+              attendee_name: delegate.attendee_name,
+              attendee_email: delegate.attendee_email,
+              attendee_designation: delegate.attendee_designation ?? undefined,
+              attendee_institution: delegate.attendee_institution ?? undefined,
+            },
+          })
+          return
+        }
+
+        // Layer 2 duplicate detection: cross-device, from the ~30s
+        // background poll's local cache (never a network call here --
+        // handleCheckin must stay synchronous with respect to fetches). A
+        // hit means some OTHER tablet already collected this item for this
+        // registration on this list, as of the last successful poll.
+        const crossDeviceMatch = collectedStatusRef.current.get(delegate.id)
+        if (crossDeviceMatch) {
+          setResult({
+            success: false,
+            message: "Self check-in isn't available for this list. Please see a staff member.", // PLACEHOLDER -- a later task replaces this with real duplicate-warning screen content
+            alreadyCheckedIn: true,
+            duplicateCheckedInAt: crossDeviceMatch.checked_in_at,
+            duplicateStationName: resolveStationName(crossDeviceMatch.station_id, cachedStationNamesRef.current),
             registration: {
               id: delegate.id,
               registration_number: delegate.registration_number,
