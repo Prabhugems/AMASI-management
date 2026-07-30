@@ -124,6 +124,13 @@ interface KioskCheckinScreenProps {
   externallyDriven?: boolean
   onSwitchList?: () => void
   closingSoonMinutes?: number | null
+  // The active list's scheduled close time (checkin_lists.kiosk_closes_at),
+  // used only for the collection-list "ready to scan" screen's "Open until
+  // {time}" subtext -- distinct from closingSoonMinutes above, which is a
+  // soft ≤5-minute warning, not the actual close time. Only ever populated
+  // by KioskStationShell; every other caller omits it, which this component
+  // must handle by simply omitting the "Open until" line.
+  listClosesAt?: string | null
 }
 
 export function KioskCheckinScreen({
@@ -141,6 +148,7 @@ export function KioskCheckinScreen({
   externallyDriven = false,
   onSwitchList,
   closingSoonMinutes,
+  listClosesAt,
 }: KioskCheckinScreenProps) {
   const supabase = createClient()
 
@@ -164,6 +172,11 @@ export function KioskCheckinScreen({
   // whether a scan is authorized. The server's own `blocked` flag already
   // gates that.
   const [isCollectionListActive, setIsCollectionListActive] = useState(false)
+  // Timestamp of the most recent real check-in attempt (success or failure)
+  // -- drives the collection-list ready screen's "last scan N seconds ago"
+  // status chip. Not set for the empty-input early-return in handleCheckin,
+  // since that's not a real scan attempt.
+  const [lastScanAt, setLastScanAt] = useState<number | null>(null)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
   const [usbSupported, setUsbSupported] = useState(false)
   const [printerConnected, setPrinterConnected] = useState(false)
@@ -437,6 +450,19 @@ export function KioskCheckinScreen({
       clearInterval(interval)
     }
   }, [eventId, listId, stationToken, isCollectionListActive])
+
+  // Forces a re-render once a second while the collection-list ready screen
+  // is showing, purely so its "last scan N seconds ago" chip counts up live
+  // rather than only updating on the next actual scan. The value itself
+  // isn't read anywhere -- it just triggers a render, matching this file's
+  // existing tolerance for small ticking effects (e.g. the auto-reset
+  // countdown below).
+  const [, forceSecondTick] = useState(0)
+  useEffect(() => {
+    if (!isCollectionListActive) return
+    const interval = setInterval(() => forceSecondTick((n) => n + 1), 1000)
+    return () => clearInterval(interval)
+  }, [isCollectionListActive])
 
   // Fetch event and list details
   const { data: event } = useQuery({
@@ -900,6 +926,7 @@ export function KioskCheckinScreen({
     if (submittingRef.current) return
     submittingRef.current = true
     setIsProcessing(true)
+    setLastScanAt(Date.now())
 
     try {
       const delegate = matchDelegate(delegatesRef.current, searchTerm)
@@ -1462,6 +1489,26 @@ export function KioskCheckinScreen({
         />
       )
     }
+    // A successful collection-list scan at a genuinely attended station gets
+    // the redesigned full-screen green confirmation instead of the generic
+    // self-service success screen below. Placed AFTER the duplicate check
+    // above -- a duplicate always takes the amber screen even when
+    // isCollectionListActive is also true, since that branch already
+    // returned by this point.
+    if (isCollectionListActive && result.success) {
+      return (
+        <CollectionSuccessScreen
+          listName={list?.name || "this list"}
+          attendeeName={result.registration?.attendee_name || ""}
+          registrationNumber={result.registration?.registration_number || ""}
+          attendeeInstitution={result.registration?.attendee_institution}
+          countdown={countdown}
+          stationName={stationName}
+          pendingSyncCount={pendingSyncCount}
+          isOnline={isOnline}
+        />
+      )
+    }
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
         {/* Header */}
@@ -1697,6 +1744,42 @@ export function KioskCheckinScreen({
           )}
         </div>
       </div>
+    )
+  }
+
+  // A genuinely attended station serving a collection-purpose list gets the
+  // redesigned "ready to scan" screen instead of the self-service entry
+  // screen below -- entry lists, the direct-token path, and any
+  // checkin_and_print station are untouched (isCollectionListActive is only
+  // ever true for an attended station on a collection list, see its
+  // declaration above).
+  if (isCollectionListActive) {
+    return (
+      <CollectionReadyScreen
+        listName={list?.name || "this list"}
+        listClosesAt={listClosesAt}
+        lastScanAt={lastScanAt}
+        stationName={stationName}
+        pendingSyncCount={pendingSyncCount}
+        isOnline={isOnline}
+        onSwitchList={onSwitchList}
+        scanMode={scanMode}
+        setScanMode={setScanMode}
+        cameraActive={cameraActive}
+        cameraError={cameraError}
+        cameras={cameras}
+        switchCamera={switchCamera}
+        startScanner={startScanner}
+        scannerContainerId={scannerContainerId}
+        registrationNumber={registrationNumber}
+        handleRegChange={handleRegChange}
+        handleKeyDown={handleKeyDown}
+        handleCheckin={handleCheckin}
+        inputRef={inputRef}
+        isProcessing={isProcessing}
+        cacheReady={cacheReady}
+        cacheError={cacheError}
+      />
     )
   }
 
@@ -2170,6 +2253,386 @@ function DuplicateWarningScreen({
           <span className="text-base sm:text-lg font-semibold">{isOnline ? "Online" : "Offline"}</span>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Shared dark sidebar-style footer (Station / List / Waiting to send /
+// Online-Offline) -- byte-identical to DuplicateWarningScreen's footer
+// above, factored out so the two new collection-list screens below don't
+// each hand-duplicate it a second and third time.
+function KioskStationFooter({
+  listName,
+  stationName,
+  pendingSyncCount,
+  isOnline,
+}: {
+  listName: string
+  stationName?: string
+  pendingSyncCount: number
+  isOnline: boolean
+}) {
+  return (
+    <div className="flex-none h-24 sm:h-[104px] bg-sidebar text-sidebar-foreground flex items-center gap-6 sm:gap-8 px-6 sm:px-10">
+      <div className="flex flex-col gap-0.5 w-[180px] sm:w-[220px] shrink-0">
+        <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">Station</p>
+        <p className="text-lg sm:text-xl font-semibold truncate">{stationName || "—"}</p>
+      </div>
+      <div className="flex-1 flex items-center gap-3 px-4 sm:px-5 py-2.5 rounded-xl bg-white/10 border border-white/20 min-w-0">
+        <span className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted shrink-0">List</span>
+        <span className="text-xl sm:text-2xl font-bold truncate">{listName}</span>
+      </div>
+      <div className="flex flex-col gap-0.5 text-right shrink-0">
+        <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">Waiting to send</p>
+        <p className="text-lg sm:text-xl font-semibold">
+          {pendingSyncCount} scan{pendingSyncCount === 1 ? "" : "s"}
+        </p>
+      </div>
+      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-full shrink-0 ${isOnline ? "bg-emerald-500/20" : "bg-amber-500/20"}`}>
+        <span className={`size-3 rounded-full ${isOnline ? "bg-emerald-400" : "bg-amber-400"}`} />
+        <span className="text-base sm:text-lg font-semibold">{isOnline ? "Online" : "Offline"}</span>
+      </div>
+    </div>
+  )
+}
+
+interface CollectionReadyScreenProps {
+  listName: string
+  listClosesAt?: string | null
+  lastScanAt: number | null
+  stationName?: string
+  pendingSyncCount: number
+  isOnline: boolean
+  onSwitchList?: () => void
+  // Camera / manual-entry passthrough -- the exact same state and handlers
+  // the self-service scan screen uses, reused verbatim so no capability
+  // (camera QR scan included) is removed for collection lists, only restyled.
+  scanMode: "camera" | "manual"
+  setScanMode: (mode: "camera" | "manual") => void
+  cameraActive: boolean
+  cameraError: string | null
+  cameras: { id: string; label: string }[]
+  switchCamera: () => void
+  startScanner: () => void
+  scannerContainerId: string
+  registrationNumber: string
+  handleRegChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  handleCheckin: (override?: string) => void
+  inputRef: React.RefObject<HTMLInputElement>
+  isProcessing: boolean
+  cacheReady: boolean
+  cacheError: string | null
+}
+
+// Redesigned "ready to scan" idle screen for a genuinely attended station
+// serving a collection-purpose list (Breakfast/Lunch/Kit Collection etc.) --
+// matches /tmp/screen_2_ready_to_scan.html. Entry lists, the direct-token
+// path, and any checkin_and_print station never reach this component; they
+// keep the original self-service scan/entry screen untouched.
+function CollectionReadyScreen({
+  listName,
+  listClosesAt,
+  lastScanAt,
+  stationName,
+  pendingSyncCount,
+  isOnline,
+  onSwitchList,
+  scanMode,
+  setScanMode,
+  cameraActive,
+  cameraError,
+  cameras,
+  switchCamera,
+  startScanner,
+  scannerContainerId,
+  registrationNumber,
+  handleRegChange,
+  handleKeyDown,
+  handleCheckin,
+  inputRef,
+  isProcessing,
+  cacheReady,
+  cacheError,
+}: CollectionReadyScreenProps) {
+  const lastScanLabel = lastScanAt
+    ? `last scan ${Math.max(0, Math.round((Date.now() - lastScanAt) / 1000))} seconds ago`
+    : "no scans yet"
+
+  return (
+    <div className="fixed inset-0 flex flex-col bg-background" onClick={() => inputRef.current?.focus()}>
+      {/* Header */}
+      <div className="flex-none bg-primary text-primary-foreground px-6 sm:px-12 py-5 sm:py-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+        <div className="flex items-baseline gap-3 sm:gap-4 min-w-0">
+          <span className="text-xs sm:text-sm font-semibold uppercase tracking-widest opacity-80 shrink-0">
+            You are scanning for
+          </span>
+          <span className="text-2xl sm:text-4xl font-bold tracking-tight truncate">{listName}</span>
+        </div>
+        {listClosesAt && (
+          <span className="text-base sm:text-xl font-medium opacity-90 shrink-0">
+            Open until {new Date(listClosesAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+          </span>
+        )}
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-5 sm:gap-6 px-4 sm:px-8 py-6 min-h-0 overflow-y-auto">
+        <div className="size-28 sm:size-40 rounded-full bg-primary-10 flex items-center justify-center text-primary">
+          <QrCode className="h-12 w-12 sm:h-16 sm:w-16" />
+        </div>
+        <h1 className="text-3xl sm:text-5xl font-bold text-foreground text-center">Scan the badge</h1>
+        <p className="text-base sm:text-xl text-muted-foreground text-center max-w-xl">
+          Hold the scanner over the barcode. You don&apos;t have to type anything.
+        </p>
+        <div className="flex items-center gap-3 px-5 py-3 rounded-full bg-card border border-border">
+          <span className="size-3 rounded-full bg-success animate-pulse" />
+          <span className="text-sm sm:text-base font-medium text-muted-foreground">
+            Scanner connected · {lastScanLabel}
+          </span>
+        </div>
+
+        <div className="w-full max-w-2xl mt-2">
+          {/* Scan mode toggle -- same state/handlers as the self-service screen,
+              restyled for a light background */}
+          <div className="flex bg-muted border border-border rounded-xl p-1 mb-4">
+            <button
+              onClick={() => setScanMode("camera")}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+                scanMode === "camera" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Camera className="w-5 h-5" />
+              Camera Scan
+            </button>
+            <button
+              onClick={() => setScanMode("manual")}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+                scanMode === "manual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Keyboard className="w-5 h-5" />
+              Manual / Scanner
+            </button>
+          </div>
+
+          {scanMode === "camera" ? (
+            /* Camera viewport -- identical functionality to the self-service
+               screen's camera branch, restyled for a light background */
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-5">
+              <div className="relative">
+                <div
+                  id={scannerContainerId}
+                  className="w-full aspect-square max-w-sm mx-auto rounded-xl overflow-hidden bg-black"
+                />
+                {cameraActive && (
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="w-56 h-56 sm:w-64 sm:h-64 border-2 border-white/50 rounded-lg relative">
+                      <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-emerald-500 rounded-tl-lg" />
+                      <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-emerald-500 rounded-tr-lg" />
+                      <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-emerald-500 rounded-bl-lg" />
+                      <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-emerald-500 rounded-br-lg" />
+                    </div>
+                  </div>
+                )}
+                {cameraActive && cameras.length > 1 && (
+                  <button
+                    onClick={switchCamera}
+                    className="absolute bottom-4 left-1/2 -translate-x-1/2 p-3 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/70 transition-colors"
+                    title="Switch camera"
+                  >
+                    <SwitchCamera className="w-5 h-5" />
+                  </button>
+                )}
+                {!cameraActive && !cameraError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-xl">
+                    <div className="text-center text-white">
+                      <Loader2 className="w-10 h-10 mx-auto animate-spin" />
+                      <p className="mt-3 text-sm">Starting camera…</p>
+                    </div>
+                  </div>
+                )}
+                {cameraError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/90 rounded-xl p-6">
+                    <div className="text-center">
+                      <XCircle className="w-12 h-12 mx-auto text-red-500" />
+                      <p className="mt-3 text-sm text-white">{cameraError}</p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          startScanner()
+                        }}
+                        className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-500"
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="mt-4 text-center text-sm text-muted-foreground">
+                Point camera at the delegate&apos;s badge QR code
+              </p>
+              {isProcessing && (
+                <div className="mt-3 flex items-center justify-center gap-2 text-success">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm font-medium">Checking in…</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Manual / external-scanner input -- identical functionality to
+               the self-service screen's manual branch */
+            <div className="bg-card border border-border rounded-lg p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="relative">
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Registration #, name, phone, or email…"
+                  value={registrationNumber}
+                  onChange={handleRegChange}
+                  onKeyDown={handleKeyDown}
+                  className="h-14 sm:h-16 text-base sm:text-xl text-center bg-white text-slate-900 border-0 rounded-xl placeholder:text-slate-400 pr-14"
+                  autoComplete="off"
+                  autoFocus
+                />
+                <Keyboard className="absolute right-4 top-1/2 -translate-y-1/2 h-6 w-6 sm:h-7 sm:w-7 text-slate-400 pointer-events-none" />
+              </div>
+
+              <Button
+                size="lg"
+                className="w-full h-14 sm:h-16 mt-4 text-base sm:text-xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl"
+                onClick={() => handleCheckin()}
+                disabled={isProcessing || !cacheReady || !registrationNumber.trim()}
+              >
+                {!cacheReady && cacheError ? (
+                  "Unavailable"
+                ) : !cacheReady ? (
+                  <>
+                    <Loader2 className="h-6 w-6 mr-2 animate-spin" />
+                    Loading…
+                  </>
+                ) : isProcessing ? (
+                  <>
+                    <Loader2 className="h-6 w-6 mr-2 animate-spin" />
+                    Checking in…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-6 w-6 mr-2" />
+                    Check in
+                  </>
+                )}
+              </Button>
+              {cacheError && <p className="mt-2 text-center text-xs text-red-500">{cacheError}</p>}
+            </div>
+          )}
+        </div>
+
+        {onSwitchList && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              if (confirm(`Leave ${listName} and return to the station menu?`)) {
+                onSwitchList()
+              }
+            }}
+            className="mt-2 px-6 py-3 rounded-xl bg-muted border border-border text-sm sm:text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Wrong list? <span className="font-normal opacity-80">Tap here to go back to the station menu</span>
+          </button>
+        )}
+      </div>
+
+      <KioskStationFooter
+        listName={listName}
+        stationName={stationName}
+        pendingSyncCount={pendingSyncCount}
+        isOnline={isOnline}
+      />
+    </div>
+  )
+}
+
+interface CollectionSuccessScreenProps {
+  listName: string
+  attendeeName: string
+  registrationNumber: string
+  attendeeInstitution?: string
+  countdown: number
+  stationName?: string
+  pendingSyncCount: number
+  isOnline: boolean
+}
+
+// Redesigned success confirmation for a collection-purpose list at a
+// genuinely attended station -- matches /tmp/screen_3_success.html. Only
+// ever reached when `result.success` is true for a collection-list scan; a
+// duplicate scan (success: false) is diverted to DuplicateWarningScreen
+// before this component can be reached, so "First time today" is always
+// accurate here, not conditionally computed.
+function CollectionSuccessScreen({
+  listName,
+  attendeeName,
+  registrationNumber,
+  attendeeInstitution,
+  countdown,
+  stationName,
+  pendingSyncCount,
+  isOnline,
+}: CollectionSuccessScreenProps) {
+  return (
+    <div className="fixed inset-0 flex flex-col bg-success text-success-foreground">
+      <div className="flex-1 flex flex-col px-6 sm:px-14 py-8 sm:py-11 gap-2 min-h-0">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4 sm:gap-5 min-w-0">
+            <CheckCircle2 className="h-14 w-14 sm:h-20 sm:w-20 flex-none" strokeWidth={2.2} />
+            <h1 className="text-3xl sm:text-6xl font-bold tracking-wide truncate">
+              {listName.toUpperCase()} GIVEN
+            </h1>
+          </div>
+          <span className="px-5 sm:px-6 py-3 sm:py-3.5 rounded-full bg-white/20 text-lg sm:text-2xl font-semibold shrink-0">
+            First time today
+          </span>
+        </div>
+
+        <div className="flex-1 flex flex-col justify-center gap-4 sm:gap-5 min-h-0">
+          <p className="text-5xl sm:text-8xl font-bold leading-none tracking-tight text-balance break-words">
+            {attendeeName || "Delegate"}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-lg sm:text-3xl font-medium opacity-95">
+            <span>Delegate · {registrationNumber}</span>
+            {attendeeInstitution && (
+              <>
+                <span className="opacity-50">·</span>
+                <span>{attendeeInstitution}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-6 flex-wrap">
+          <div className="flex flex-col gap-2.5 flex-1 min-w-[220px]">
+            <p className="text-lg sm:text-xl font-semibold opacity-90">
+              Back to scanning in {countdown} seconds
+            </p>
+            <div className="h-2.5 rounded-full bg-white/25 overflow-hidden">
+              <div
+                className="h-full bg-white rounded-full transition-all duration-1000 ease-linear"
+                style={{ width: `${(countdown / 10) * 100}%` }}
+              />
+            </div>
+          </div>
+          <p className="text-lg sm:text-xl font-medium opacity-85 shrink-0">Or just scan the next badge</p>
+        </div>
+      </div>
+
+      <KioskStationFooter
+        listName={listName}
+        stationName={stationName}
+        pendingSyncCount={pendingSyncCount}
+        isOnline={isOnline}
+      />
     </div>
   )
 }

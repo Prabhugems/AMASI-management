@@ -197,6 +197,7 @@ export function KioskStationShell({
         externallyDriven
         onSwitchList={() => setActiveListId(null)}
         closingSoonMinutes={minutesUntilClose(activeList)}
+        listClosesAt={activeList.kiosk_closes_at}
       />
     )
   }
