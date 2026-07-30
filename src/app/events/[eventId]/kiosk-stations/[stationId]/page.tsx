@@ -1,10 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -14,13 +20,15 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Clock } from "lucide-react"
+import { QrImage } from "@/components/QrImage"
+import { ArrowLeft, Clock, Copy } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { computeStationStatus, STATION_STATUS_LABELS } from "@/lib/kiosk-station-status"
 import {
   STATUS_META,
   relativeLastSeen,
+  stationUrl,
   StationNameEditor,
   StationListsPicker,
   StationBehaviourControls,
@@ -46,10 +54,19 @@ export default function KioskStationDetailPage() {
   const [printStations, setPrintStations] = useState<PrintStation[]>([])
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
+  // Tracks a non-ok response from loadStation (404 deleted/mistyped id, 400
+  // bad UUID, 403 no permission) -- without this, those all fell through to
+  // `!station` and rendered an infinite "Loading..." spinner forever, since
+  // nothing ever set `station` and nothing explained why. Any bookmarked or
+  // stale station URL would hang silently.
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const loadStation = async () => {
     const res = await fetch(`/api/kiosk-stations/${stationId}`)
-    if (!res.ok) return
+    if (!res.ok) {
+      setLoadFailed(true)
+      return
+    }
     setStation(await res.json())
   }
 
@@ -83,6 +100,19 @@ export default function KioskStationDetailPage() {
     return lists.filter((l) => l.is_active === true && (attended || l.list_purpose !== "collection"))
   }
   const usbPrintStations = printStations.filter((p) => p?.print_settings?.printer_type === "usb")
+
+  // Focus-jump target for StationListsPicker's "hidden collection lists"
+  // note -- unlike the list page (where the Attended switch lives in a
+  // different row/card and genuinely needs a scroll+focus jump), the
+  // Behaviour section with the real switch is already on THIS page, so this
+  // just scrolls/focuses it directly instead of being a no-op.
+  const attendedSwitchRef = useRef<HTMLButtonElement | null>(null)
+  const focusAttendedSwitch = () => {
+    requestAnimationFrame(() => {
+      attendedSwitchRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+      attendedSwitchRef.current?.focus()
+    })
+  }
 
   // Rename
   const [isRenaming, setIsRenaming] = useState(false)
@@ -215,6 +245,12 @@ export default function KioskStationDetailPage() {
   // New link / Revoke / Delete
   const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false)
   const [regenerateBusy, setRegenerateBusy] = useState(false)
+  // Hand-off modal -- the ONLY place the plaintext token is ever shown.
+  // `POST .../access-token` returns `access_token` exactly once (GET
+  // /api/kiosk-stations/[id] deliberately never selects it back), so it must
+  // be captured here or it's gone forever -- matches the list page's
+  // `handoff` state/dialog exactly.
+  const [handoff, setHandoff] = useState<{ name: string; token: string } | null>(null)
   const performRegenerate = async () => {
     if (!station) return
     setRegenerateBusy(true)
@@ -226,11 +262,15 @@ export default function KioskStationDetailPage() {
         return
       }
       setRegenerateConfirmOpen(false)
-      toast.success("New link issued")
+      setHandoff({ name: station.name, token: data.access_token })
       await loadStation()
     } finally {
       setRegenerateBusy(false)
     }
+  }
+  const copyLink = (token: string) => {
+    navigator.clipboard.writeText(stationUrl(token))
+    toast.success("Link copied")
   }
 
   const [dangerAction, setDangerAction] = useState<"revoke" | "delete" | null>(null)
@@ -265,8 +305,28 @@ export default function KioskStationDetailPage() {
     }
   }
 
-  if (loading || !station) {
+  if (loading) {
     return <div className="p-8 text-sm text-muted-foreground">Loading…</div>
+  }
+
+  if (loadFailed || !station) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6 p-6 sm:p-8">
+        <Link
+          href={`/events/${eventId}/kiosk-stations`}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Kiosk Stations
+        </Link>
+        <div className="flex flex-col items-center gap-2 rounded-2xl border bg-card py-14 text-center">
+          <p className="text-sm font-semibold">Station not found</p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            It may have been deleted, or the link is incorrect. Go back to Kiosk Stations and pick it from the list.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   const revoked = !!station.revoked_at
@@ -297,20 +357,30 @@ export default function KioskStationDetailPage() {
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className={cn("h-2 w-2 rounded-full", STATUS_META[status].dot)} />
             {STATION_STATUS_LABELS[status]}
-            <Clock className="h-3 w-3" />
-            {revoked ? "Revoked" : relativeLastSeen(station.last_seen_at)}
+            {/* Revoked already reads "Revoked" from the status label above --
+                showing it again here (as the old `revoked ? "Revoked" : ...`
+                fallback did) was redundant. Only show the clock/last-seen
+                line when there's an actual last-seen to report. */}
+            {!revoked && (
+              <>
+                <Clock className="h-3 w-3" />
+                {relativeLastSeen(station.last_seen_at)}
+              </>
+            )}
           </div>
         </div>
-        <StationActions
-          revoked={revoked}
-          onRegenerate={() => setRegenerateConfirmOpen(true)}
-          onRename={startRename}
-          onRevoke={() => setDangerAction("revoke")}
-          onDelete={() => {
-            setDeleteConfirmText("")
-            setDangerAction("delete")
-          }}
-        />
+        <div className="flex items-center gap-1.5">
+          <StationActions
+            revoked={revoked}
+            onRegenerate={() => setRegenerateConfirmOpen(true)}
+            onRename={startRename}
+            onRevoke={() => setDangerAction("revoke")}
+            onDelete={() => {
+              setDeleteConfirmText("")
+              setDangerAction("delete")
+            }}
+          />
+        </div>
       </div>
 
       <section className="space-y-3 rounded-xl border p-5">
@@ -321,7 +391,7 @@ export default function KioskStationDetailPage() {
           options={assignableLists(station.attended)}
           busy={reassigning}
           onChange={handleReassignLists}
-          onFocusAttended={() => {}}
+          onFocusAttended={focusAttendedSwitch}
         />
       </section>
 
@@ -331,6 +401,9 @@ export default function KioskStationDetailPage() {
           station={station}
           revoked={revoked}
           usbPrintStations={usbPrintStations}
+          attendedSwitchRef={(el) => {
+            attendedSwitchRef.current = el
+          }}
           onToggleAttended={handleAttendedSwitch}
           onTogglePrint={handleToggleAutoPrint}
           onReassignPrintStation={handleReassignPrintStation}
@@ -346,7 +419,12 @@ export default function KioskStationDetailPage() {
             {activity.map((item, i) => (
               <li key={i} className="flex items-center justify-between text-sm">
                 <span>
-                  {item.registration_name || "Unknown"} — {item.list_name || "Unknown list"}
+                  {item.registration_name || "Unknown"}
+                  {item.registration_number && (
+                    <span className="text-muted-foreground"> ({item.registration_number})</span>
+                  )}
+                  {" — "}
+                  {item.list_name || "Unknown list"}
                   {item.type === "duplicate" && (
                     <span className="ml-2 text-xs text-amber-600">already collected, turned away</span>
                   )}
@@ -380,6 +458,35 @@ export default function KioskStationDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Hand-off modal -- the ONLY place the plaintext token is ever shown.
+          Same content/copy as page.tsx's handoff dialog. */}
+      <Dialog open={!!handoff} onOpenChange={() => setHandoff(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{handoff?.name} — Set Up This Device</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              Open this link on the tablet, then &quot;Add to Home Screen&quot;. This is the only time this link is shown —
+              if lost, use &quot;New link&quot; to generate a replacement.
+            </p>
+            {handoff && (
+              <>
+                <div className="flex justify-center">
+                  <QrImage value={stationUrl(handoff.token)} size={192} />
+                </div>
+                <div className="flex gap-2">
+                  <Input readOnly value={stationUrl(handoff.token)} className="font-mono text-xs" />
+                  <Button variant="outline" onClick={() => copyLink(handoff.token)}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Attended-ON confirm -- same copy as page.tsx's attendedConfirmTarget dialog */}
       <AlertDialog open={attendedConfirmOpen} onOpenChange={setAttendedConfirmOpen}>
