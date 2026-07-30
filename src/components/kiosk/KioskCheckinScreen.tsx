@@ -26,6 +26,7 @@ import {
   XCircle,
   Maximize,
   Minimize2,
+  AlertTriangle,
 } from "lucide-react"
 import { toast } from "sonner"
 import * as Sentry from "@sentry/nextjs"
@@ -1439,6 +1440,28 @@ export function KioskCheckinScreen({
   // SUCCESS / ERROR SCREEN
   // ============================================================
   if (result) {
+    // A duplicate collection scan (Layer 1 same-tablet or Layer 2 cross-device)
+    // is a routine, expected, non-error event for a volunteer -- not a system
+    // failure -- so it gets its own full-screen amber warning instead of
+    // falling into the generic red error screen below. This is distinct from
+    // a repeat-ENTRY success (`success: true, alreadyCheckedIn: true`, the
+    // Tito-model case per CLAUDE.md), which never satisfies this condition
+    // and still renders through the existing green success branch untouched.
+    if (!result.success && result.alreadyCheckedIn) {
+      return (
+        <DuplicateWarningScreen
+          attendeeName={result.registration?.attendee_name || ""}
+          registrationNumber={result.registration?.registration_number || ""}
+          listName={list?.name || "this list"}
+          duplicateCheckedInAt={result.duplicateCheckedInAt}
+          duplicateStationName={result.duplicateStationName}
+          countdown={countdown}
+          stationName={stationName}
+          pendingSyncCount={pendingSyncCount}
+          isOnline={isOnline}
+        />
+      )
+    }
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
         {/* Header */}
@@ -1961,6 +1984,191 @@ export function KioskCheckinScreen({
         {pendingSyncCount > 0 && (
           <p className="text-xs text-gray-500 mt-1">Syncing {pendingSyncCount} check-in{pendingSyncCount === 1 ? "" : "s"}…</p>
         )}
+      </div>
+    </div>
+  )
+}
+
+// Renders a human-readable relative time (e.g. "17 minutes ago") for the
+// duplicate-warning screen's footer line. Never hardcoded -- computed live
+// from the real `duplicateCheckedInAt` timestamp every render.
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const minutes = Math.round(diffMs / 60000)
+  if (minutes < 1) return "Just now"
+  if (minutes === 1) return "1 minute ago"
+  if (minutes < 60) return `${minutes} minutes ago`
+  const hours = Math.round(minutes / 60)
+  if (hours === 1) return "1 hour ago"
+  if (hours < 24) return `${hours} hours ago`
+  return new Date(iso).toLocaleString([], { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" })
+}
+
+interface DuplicateWarningScreenProps {
+  attendeeName: string
+  registrationNumber: string
+  listName: string
+  duplicateCheckedInAt?: string
+  duplicateStationName?: string
+  countdown: number
+  stationName?: string
+  pendingSyncCount: number
+  isOnline: boolean
+}
+
+// Full-screen amber "already collected" warning for a duplicate collection
+// scan (Breakfast/Lunch/Dinner/Registration Kit etc.) -- the single
+// highest-priority visual piece of the attended-station feature. Structurally
+// distinct from both the green success screen and the generic red error
+// screen: a hazard-stripe top bar, amber background, near-black text, and a
+// STOP-word headline, so a volunteer working fast can tell it apart from
+// either other outcome at a glance -- this is a routine, expected, non-error
+// event, never a system failure.
+function DuplicateWarningScreen({
+  attendeeName,
+  registrationNumber,
+  listName,
+  duplicateCheckedInAt,
+  duplicateStationName,
+  countdown,
+  stationName,
+  pendingSyncCount,
+  isOnline,
+}: DuplicateWarningScreenProps) {
+  useEffect(() => {
+    let ctx: AudioContext | null = null
+    try {
+      ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+      if (ctx.state === "suspended") {
+        ctx.resume()
+      }
+      // Ported from the staff scanner's "warning" tone (src/app/checkin/access/[accessToken]/page.tsx):
+      // two identical flat beeps, distinct from both the success chime and the
+      // error buzzer, so a volunteer working by ear alone can tell it apart.
+      for (const startOffset of [0, 0.18]) {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.frequency.setValueAtTime(660, ctx.currentTime + startOffset)
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + startOffset)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startOffset + 0.15)
+        osc.start(ctx.currentTime + startOffset)
+        osc.stop(ctx.currentTime + startOffset + 0.15)
+      }
+      if (navigator.vibrate) navigator.vibrate([120, 80, 120])
+    } catch {
+      // Audio can throw in some browsers/contexts (autoplay policy, no audio
+      // device, etc.) -- must never crash the kiosk over a warning tone.
+    }
+    return () => {
+      ctx?.close()
+    }
+  }, [])
+
+  const firstName = attendeeName.split(" ")[0] || attendeeName
+
+  return (
+    <div className="fixed inset-0 flex flex-col bg-warning text-warning-foreground">
+      {/* Hazard-stripe bar -- no Tailwind utility for a repeating diagonal
+          gradient, so this is the one deliberate inline-style exception in
+          this file. */}
+      <div
+        className="flex-none h-[22px]"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(135deg, #111827 0 22px, transparent 22px 44px)",
+        }}
+      />
+
+      <div className="flex-1 flex flex-col gap-5 px-8 sm:px-14 py-8 min-h-0">
+        <div className="flex items-center gap-5 sm:gap-6">
+          <AlertTriangle className="h-16 w-16 sm:h-20 sm:w-20 flex-none" strokeWidth={2.3} />
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-none">
+              ALREADY HAD {listName.toUpperCase()}
+            </h1>
+            <p className="text-xl sm:text-2xl font-semibold">Do not give this again.</p>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col sm:flex-row gap-6 min-h-0">
+          <div className="flex-[1.15] flex flex-col justify-center gap-3 min-w-0">
+            <p className="text-sm sm:text-base font-bold uppercase tracking-widest opacity-70">
+              Same delegate
+            </p>
+            <p className="text-5xl sm:text-7xl font-bold leading-none text-balance break-words">
+              {attendeeName || firstName}
+            </p>
+            <p className="text-xl sm:text-2xl font-medium opacity-80">
+              Delegate · {registrationNumber}
+            </p>
+          </div>
+
+          <div className="flex-1 bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-paper-lg p-6 sm:p-8 flex flex-col justify-center gap-4">
+            <p className="text-sm sm:text-base font-bold uppercase tracking-widest text-slate-500">
+              Already given
+            </p>
+            <div className="flex flex-col gap-3.5">
+              <div className="flex items-baseline gap-3.5">
+                <span className="text-base sm:text-lg w-20 sm:w-24 flex-none text-slate-500">When</span>
+                <span className="text-2xl sm:text-3xl font-bold">
+                  {duplicateCheckedInAt
+                    ? new Date(duplicateCheckedInAt).toLocaleString([], { hour: "numeric", minute: "2-digit" })
+                    : "earlier today"}
+                </span>
+              </div>
+              <div className="flex items-baseline gap-3.5">
+                <span className="text-base sm:text-lg w-20 sm:w-24 flex-none text-slate-500">Where</span>
+                <span className="text-2xl sm:text-3xl font-bold">
+                  {duplicateStationName || "another station"}
+                </span>
+              </div>
+            </div>
+            <p className="text-base sm:text-lg text-slate-500 border-t border-slate-200 pt-4">
+              {duplicateCheckedInAt && `${formatRelativeTime(duplicateCheckedInAt)}. `}
+              If they say this is wrong, send them to the help desk — don&apos;t decide here.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-6">
+          <div className="flex flex-col gap-2.5 flex-1">
+            <p className="text-lg sm:text-xl font-bold">
+              Back to scanning in {countdown}s
+            </p>
+            <div className="h-2.5 rounded-full bg-black/20 overflow-hidden">
+              <div
+                className="h-full bg-black/80 rounded-full transition-all duration-1000 ease-linear"
+                style={{ width: `${(countdown / 10) * 100}%` }}
+              />
+            </div>
+          </div>
+          <p className="text-lg sm:text-xl font-semibold opacity-80 shrink-0">
+            Nothing was recorded for this scan
+          </p>
+        </div>
+      </div>
+
+      <div className="flex-none h-24 sm:h-[104px] bg-sidebar text-sidebar-foreground flex items-center gap-6 sm:gap-8 px-6 sm:px-10">
+        <div className="flex flex-col gap-0.5 w-[180px] sm:w-[220px] shrink-0">
+          <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">Station</p>
+          <p className="text-lg sm:text-xl font-semibold truncate">{stationName || "—"}</p>
+        </div>
+        <div className="flex-1 flex items-center gap-3 px-4 sm:px-5 py-2.5 rounded-xl bg-white/10 border border-white/20 min-w-0">
+          <span className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted shrink-0">List</span>
+          <span className="text-xl sm:text-2xl font-bold truncate">{listName}</span>
+        </div>
+        <div className="flex flex-col gap-0.5 text-right shrink-0">
+          <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">Waiting to send</p>
+          <p className="text-lg sm:text-xl font-semibold">
+            {pendingSyncCount} scan{pendingSyncCount === 1 ? "" : "s"}
+          </p>
+        </div>
+        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-full shrink-0 ${isOnline ? "bg-emerald-500/20" : "bg-amber-500/20"}`}>
+          <span className={`size-3 rounded-full ${isOnline ? "bg-emerald-400" : "bg-amber-400"}`} />
+          <span className="text-base sm:text-lg font-semibold">{isOnline ? "Online" : "Offline"}</span>
+        </div>
       </div>
     </div>
   )
