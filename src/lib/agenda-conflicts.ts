@@ -105,3 +105,91 @@ export function findFacultyDoubleBookings(
   }
   return conflicts
 }
+
+export function findUnassignedSessions(
+  sessions: ConflictSession[],
+  assignments: FacultyAssignmentRow[]
+): Conflict[] {
+  const sessionIdsWithAssignment = new Set(assignments.map((a) => a.session_id))
+  return sessions
+    .filter((s) => !sessionIdsWithAssignment.has(s.id))
+    .map((s) => ({
+      type: "no_speaker" as const,
+      severity: "warning" as const,
+      session_ids: [s.id],
+      message: `"${s.session_name}" has no speaker assigned`,
+    }))
+}
+
+export function findUnconfirmedSpeakers(
+  sessions: ConflictSession[],
+  assignments: FacultyAssignmentRow[]
+): Conflict[] {
+  const sessionsById = new Map(sessions.map((s) => [s.id, s]))
+  const unconfirmedBySession = new Set(
+    assignments.filter((a) => a.status !== "confirmed" && a.status !== "declined" && a.status !== "cancelled").map((a) => a.session_id)
+  )
+  return [...unconfirmedBySession]
+    .filter((id) => sessionsById.has(id))
+    .map((id) => ({
+      type: "unconfirmed_speaker" as const,
+      severity: "warning" as const,
+      session_ids: [id],
+      message: `"${sessionsById.get(id)!.session_name}" has a speaker who hasn't confirmed yet`,
+    }))
+}
+
+export interface HallCapacity {
+  id: string
+  capacity: number | null
+}
+
+export function findOverCapacitySessions(
+  sessions: (ConflictSession & { registeredCount: number })[],
+  halls: HallCapacity[]
+): Conflict[] {
+  const capacityByHall = new Map(halls.map((h) => [h.id, h.capacity]))
+  return sessions
+    .filter((s) => {
+      if (!s.hall_id) return false
+      const capacity = capacityByHall.get(s.hall_id)
+      return capacity != null && s.registeredCount > capacity
+    })
+    .map((s) => ({
+      type: "over_capacity" as const,
+      severity: "warning" as const,
+      session_ids: [s.id],
+      message: `"${s.session_name}" has ${s.registeredCount} registered against a hall capacity of ${capacityByHall.get(s.hall_id!)}`,
+    }))
+}
+
+export function findUnscheduledSessions(sessions: ConflictSession[]): Conflict[] {
+  return sessions
+    .filter((s) => !s.hall_id || !s.session_date || !s.start_time || !s.end_time)
+    .map((s) => ({
+      type: "unscheduled" as const,
+      severity: "warning" as const,
+      session_ids: [s.id],
+      message: `"${s.session_name}" is missing a hall, date, or time`,
+    }))
+}
+
+export function getAllConflicts(input: {
+  sessions: (ConflictSession & { registeredCount: number })[]
+  assignments: FacultyAssignmentRow[]
+  halls: HallCapacity[]
+}): { conflicts: Conflict[]; blockingCount: number; warningCount: number } {
+  const conflicts = [
+    ...findHallDoubleBookings(input.sessions),
+    ...findFacultyDoubleBookings(input.sessions, input.assignments),
+    ...findUnassignedSessions(input.sessions, input.assignments),
+    ...findUnconfirmedSpeakers(input.sessions, input.assignments),
+    ...findOverCapacitySessions(input.sessions, input.halls),
+    ...findUnscheduledSessions(input.sessions),
+  ]
+  return {
+    conflicts,
+    blockingCount: conflicts.filter((c) => c.severity === "blocking").length,
+    warningCount: conflicts.filter((c) => c.severity === "warning").length,
+  }
+}
