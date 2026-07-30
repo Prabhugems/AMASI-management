@@ -438,6 +438,15 @@ async function backfillEvent(eventId) {
 
   console.log(`[${eventId}] ${distinctTrackNames.length} distinct specialty_track values, ${namesToCreate.length} to create`)
 
+  // Dry-run preview only: without this, sessionsToLink below would always
+  // be empty on a fresh event, since lowerNameToTrackId only gets real IDs
+  // when commit is true. The placeholder never reaches a database write --
+  // the write loop below is itself gated on `if (commit)`. See Task 6's
+  // fix round 1 for the identical bug found in the halls backfill script.
+  if (!commit) {
+    for (const name of namesToCreate) lowerNameToTrackId.set(name.toLowerCase(), "preview-only")
+  }
+
   if (commit && namesToCreate.length) {
     const { data: created, error: createError } = await supabase
       .from('tracks')
