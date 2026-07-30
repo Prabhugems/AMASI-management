@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
       const blockedResponse = collectionListBlockedResponse(list, isAttendedStation, stationLookupHadError)
       if (blockedResponse) return blockedResponse
 
-      return completeCheckin(supabase, publicRegistration, registration.id, checkinListId, scanId, stationId, timeWindowWarning)
+      return completeCheckin(supabase, publicRegistration, registration.id, eventId, checkinListId, scanId, stationId, timeWindowWarning)
     }
 
     // --- TEMPORARY fallback: registration_id absent (pre-Stage-2 kiosk bundle) ---
@@ -377,13 +377,46 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return completeCheckin(supabase, fuzzyRegistration, fuzzyRegistration.id, checkinListId, scanId, stationId, timeWindowWarning)
+    return completeCheckin(supabase, fuzzyRegistration, fuzzyRegistration.id, eventId, checkinListId, scanId, stationId, timeWindowWarning)
   } catch (error: any) {
     console.error("Kiosk check-in error:", error)
     return NextResponse.json(
       { success: false, message: "Something went wrong. Please try again." },
       { status: 500 }
     )
+  }
+}
+
+// Best-effort audit trail for a kiosk-detected duplicate/conflict scan --
+// e.g. two devices independently checked the same delegate into the same
+// list while both were offline, and the loser only discovers this once it
+// reconnects and syncs. Without this, that event left NO trace anywhere an
+// admin could review after the fact: checkin_records only ever holds the ONE
+// winning row (correctly -- no kit is double-issued), and this route never
+// wrote to checkin_audit_log at all (only the staff-scanner endpoint,
+// /api/verify/[token], did). `performed_via: "kiosk"` distinguishes these
+// rows from that endpoint's `"qr_scan"` rows. Always `success: true` --
+// matching this repo's documented model (CLAUDE.md's Check-in Model note):
+// a repeat scan is never an error, just a fact worth recording. Wrapped in
+// try/catch and never awaited by the caller's response -- an audit-log
+// failure must never turn a successful check-in response into a 500.
+async function logKioskDuplicateAudit(
+  supabase: any,
+  params: { eventId: string; checkinListId: string; registrationId: string; stationId: string | null }
+): Promise<void> {
+  try {
+    await supabase.from("checkin_audit_log").insert({
+      event_id: params.eventId,
+      checkin_list_id: params.checkinListId,
+      registration_id: params.registrationId,
+      action: "check_in",
+      performed_by: "Self check-in (kiosk)",
+      performed_via: "kiosk",
+      device_info: params.stationId ? { station_id: params.stationId, duplicate: true } : { duplicate: true },
+      success: true,
+    })
+  } catch (err) {
+    console.error("Kiosk duplicate audit log insert failed:", err)
   }
 }
 
@@ -397,6 +430,7 @@ async function completeCheckin(
   supabase: any,
   registrationForResponse: any,
   registrationId: string,
+  eventId: string,
   checkinListId: string,
   scanId: string,
   stationId: string | null,
@@ -417,6 +451,7 @@ async function completeCheckin(
     .maybeSingle()
 
   if (existing) {
+    await logKioskDuplicateAudit(supabase, { eventId, checkinListId, registrationId, stationId })
     return NextResponse.json({
       success: true,
       message: "You're already checked in!",
@@ -477,6 +512,7 @@ async function completeCheckin(
         })
       }
 
+      await logKioskDuplicateAudit(supabase, { eventId, checkinListId, registrationId, stationId })
       return NextResponse.json({
         success: true,
         message: "You're already checked in!",

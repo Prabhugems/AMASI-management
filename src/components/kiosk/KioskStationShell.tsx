@@ -11,6 +11,7 @@ import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 export interface AssignedList extends ScheduledList {
   id: string
   name: string
+  list_purpose: string
 }
 
 interface KioskStationShellProps {
@@ -18,6 +19,13 @@ interface KioskStationShellProps {
   stationToken: string
   stationName: string
   mode: "checkin" | "checkin_and_print"
+  // Whether a volunteer is staffing this tablet (kiosk_stations.attended).
+  // Gates whether a collection-purpose list (Lunch, Kit Collection) is
+  // offered on the menu at all -- see isListUsable below. The server already
+  // enforces this independently on every check-in/roster request; this only
+  // controls what the MENU offers, so a volunteer isn't sent into a scan
+  // screen that can only ever fail.
+  attended: boolean
   printStationId?: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   badgeTemplate?: any
@@ -32,10 +40,24 @@ function toAssignedLists(manifest: StationManifest): AssignedList[] {
   return manifest.lists.map((l) => ({
     id: l.id,
     name: l.name,
+    list_purpose: l.list_purpose,
     kiosk_opens_at: l.kiosk_opens_at,
     kiosk_closes_at: l.kiosk_closes_at,
     kiosk_force_state: l.kiosk_force_state,
   }))
+}
+
+// A collection-purpose list (repeat scan means "do not issue again") is only
+// ever safe to self-serve on a tablet a volunteer is actively holding -- see
+// the attended-station gating already enforced server-side in
+// /api/kiosk/checkin and /api/kiosk/delegates. This mirrors that same rule on
+// the menu, so an unattended station never offers a tile that can only fail
+// at the very last step (previously: the tile showed "Open" and was tappable
+// regardless of `attended`, only failing once a volunteer had scanned a
+// badge and hit "Self check-in isn't available for this list").
+function isListUsable(list: AssignedList, attended: boolean, now: Date = new Date()): boolean {
+  if (list.list_purpose === "collection" && !attended) return false
+  return computeListState(list, now) === "open"
 }
 
 export function KioskStationShell({
@@ -43,6 +65,7 @@ export function KioskStationShell({
   stationToken,
   stationName,
   mode,
+  attended,
   printStationId,
   badgeTemplate,
   printSettings,
@@ -51,18 +74,23 @@ export function KioskStationShell({
   initialLists,
 }: KioskStationShellProps) {
   const [assignedLists, setAssignedLists] = useState<AssignedList[]>(initialLists)
-  // A station with exactly one assigned list skips the menu entirely -- the
-  // common case (most stations still serve one list) shouldn't cost an
-  // extra tap just because the underlying model now supports many.
+  // A station with exactly one assigned USABLE list skips the menu entirely
+  // -- the common case (most stations still serve one list) shouldn't cost
+  // an extra tap just because the underlying model now supports many. A
+  // sole list that's collection-purpose on an unattended station is NOT
+  // usable, so it still shows the (one-tile) menu instead of dropping the
+  // volunteer straight into a scan screen that can only fail.
   const [activeListId, setActiveListIdRaw] = useState<string | null>(
-    initialLists.length === 1 ? initialLists[0].id : null
+    initialLists.length === 1 && isListUsable(initialLists[0], attended) ? initialLists[0].id : null
   )
   // Tracks WHY activeListId is set to what it is: true when it was this
   // component's own "skip the menu" decision, false when a volunteer
   // deliberately tapped a tile. This is what lets the re-derivation effect
   // below tell "the manifest changed, reconsider" apart from "someone is
   // mid-task, do not yank them away" -- see that effect's comment.
-  const [autoSelected, setAutoSelected] = useState(initialLists.length === 1)
+  const [autoSelected, setAutoSelected] = useState(
+    initialLists.length === 1 && isListUsable(initialLists[0], attended)
+  )
   const selectList = useCallback((id: string | null, auto: boolean) => {
     setActiveListIdRaw(id)
     setAutoSelected(auto)
@@ -171,14 +199,18 @@ export function KioskStationShell({
 
   const activeList = assignedLists.find((l) => l.id === activeListId) || null
 
-  // Re-derive the "skip the menu" decision every time the manifest changes,
-  // instead of deciding once at mount and sticking with it forever. Concrete
-  // bug this closes: a station configured with exactly one list, then given
-  // more lists later (e.g. mid-setup -- "spot a missing list, add it") kept
-  // skipping straight to the original single list on any device that had
-  // already loaded before the change, until its local caches were manually
-  // cleared -- the manifest refresh updated `assignedLists` correctly the
-  // whole time, but nothing ever revisited the resulting navigation choice.
+  // Re-derive the "skip the menu" decision every time the manifest OR the
+  // attended flag changes, instead of deciding once at mount and sticking
+  // with it forever. Concrete bug this closes: a station configured with
+  // exactly one list, then given more lists later (e.g. mid-setup -- "spot a
+  // missing list, add it") kept skipping straight to the original single
+  // list on any device that had already loaded before the change, until its
+  // local caches were manually cleared -- the manifest refresh updated
+  // `assignedLists` correctly the whole time, but nothing ever revisited the
+  // resulting navigation choice. `attended` is included for the same reason:
+  // an admin flipping Attended on/off changes whether the sole list is
+  // usable at all, and that must be re-checked exactly like a list-count
+  // change would be.
   useEffect(() => {
     if (activeListId !== null && !autoSelected) {
       // A volunteer's own deliberate pick: never auto-navigate them away
@@ -193,33 +225,35 @@ export function KioskStationShell({
       }
       return
     }
-    if (assignedLists.length === 1) {
+    if (assignedLists.length === 1 && isListUsable(assignedLists[0], attended)) {
       if (activeListId !== assignedLists[0].id) selectList(assignedLists[0].id, true)
     } else if (activeListId !== null) {
       selectList(null, false)
     }
-  }, [assignedLists, activeListId, autoSelected, selectList])
+  }, [assignedLists, activeListId, autoSelected, attended, selectList])
 
-  // At close time, return to the menu automatically -- don't require the
-  // volunteer to notice and tap "Switch list". Driven by the same 30s tick
-  // that recomputes closingSoonMinutes below, so this fires within 30s of
-  // the schedule actually closing. This never interrupts a pending scan:
-  // KioskCheckinScreen's enqueue already durably wrote to IndexedDB before
-  // this effect can fire, and the shell's own drainScanQueue effect keeps
-  // syncing every assigned list's queue regardless of which screen (or
-  // none) is showing. (This one already re-checks continuously off the 30s
-  // tick -- schedule state was never a "decide once" bug, only the
-  // single-vs-menu list-count decision above was.)
+  // At close time (schedule closed OR the station stopped being attended
+  // while a collection list was active), return to the menu automatically --
+  // don't require the volunteer to notice and tap "Switch list". Driven by
+  // the same 30s tick that recomputes closingSoonMinutes below, so this
+  // fires within 30s of the schedule actually closing. This never interrupts
+  // a pending scan: KioskCheckinScreen's enqueue already durably wrote to
+  // IndexedDB before this effect can fire, and the shell's own
+  // drainScanQueue effect keeps syncing every assigned list's queue
+  // regardless of which screen (or none) is showing. (This one already
+  // re-checks continuously off the 30s tick -- schedule state was never a
+  // "decide once" bug, only the single-vs-menu list-count decision above
+  // was.)
   useEffect(() => {
-    if (activeList && computeListState(activeList) === "closed") {
+    if (activeList && !isListUsable(activeList, attended)) {
       selectList(null, false)
     }
     // `tick` is the effect's real trigger (the 30s schedule-recompute
-    // heartbeat); `activeList` is included so a list switch or a fresh
-    // manifest refresh is also re-checked immediately rather than waiting
-    // for the next tick.
+    // heartbeat); `activeList`/`attended` are included so a list switch, a
+    // fresh manifest refresh, or an attended-flag change is also re-checked
+    // immediately rather than waiting for the next tick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, activeList])
+  }, [tick, activeList, attended])
 
   if (activeList) {
     return (
@@ -247,15 +281,21 @@ export function KioskStationShell({
     <KioskMenuScreen
       stationName={stationName}
       lists={assignedLists}
+      attended={attended}
       onSelect={(list) => {
-        if (computeListState(list) !== "open") return
+        if (!isListUsable(list, attended)) return
         selectList(list.id, false)
       }}
     />
   )
 }
 
-function listSubline(list: AssignedList, now: Date): string {
+function listSubline(list: AssignedList, attended: boolean, now: Date): string {
+  // Checked first: a collection-purpose list on an unattended station is
+  // never usable regardless of its schedule -- this takes priority over the
+  // open/closed schedule copy below so the tile always explains the REAL
+  // reason it can't be tapped, not a misleading "Open" while still disabled.
+  if (list.list_purpose === "collection" && !attended) return "Needs a volunteer watching"
   const state = computeListState(list, now)
   if (state === "closed") {
     if (list.kiosk_force_state === "closed") return "Closed"
@@ -282,11 +322,13 @@ function listSubline(list: AssignedList, now: Date): string {
 function JobTile({
   list,
   now,
+  attended,
   open,
   onSelect,
 }: {
   list: AssignedList
   now: Date
+  attended: boolean
   open: boolean
   onSelect: (list: AssignedList) => void
 }) {
@@ -320,7 +362,7 @@ function JobTile({
           {list.name}
         </span>
         <span className={open ? "text-base sm:text-lg opacity-90" : "text-sm sm:text-base text-muted-foreground/80"}>
-          {listSubline(list, now)}
+          {listSubline(list, attended, now)}
         </span>
       </span>
     </button>
@@ -330,10 +372,12 @@ function JobTile({
 function KioskMenuScreen({
   stationName,
   lists,
+  attended,
   onSelect,
 }: {
   stationName: string
   lists: AssignedList[]
+  attended: boolean
   onSelect: (list: AssignedList) => void
 }) {
   // Live clock for the header chip -- this screen doesn't accept a `now`/
@@ -361,8 +405,8 @@ function KioskMenuScreen({
     }
   }, [])
 
-  const openLists = lists.filter((l) => computeListState(l, now) === "open")
-  const closedLists = lists.filter((l) => computeListState(l, now) !== "open")
+  const openLists = lists.filter((l) => isListUsable(l, attended, now))
+  const closedLists = lists.filter((l) => !isListUsable(l, attended, now))
   // Design decision confirmed by the project owner: a station with few jobs
   // gets the mockup's 2-column grid (open tiles large and prominent, closed
   // jobs stacked in their own column); a station with many assigned lists
@@ -398,12 +442,12 @@ function KioskMenuScreen({
         {lists.length > 0 && useGrid && (
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-5 min-h-0 items-stretch">
             {openLists.map((list) => (
-              <JobTile key={list.id} list={list} now={now} open onSelect={onSelect} />
+              <JobTile key={list.id} list={list} now={now} attended={attended} open onSelect={onSelect} />
             ))}
             {closedLists.length > 0 && (
               <div className="flex flex-col gap-5">
                 {closedLists.map((list) => (
-                  <JobTile key={list.id} list={list} now={now} open={false} onSelect={onSelect} />
+                  <JobTile key={list.id} list={list} now={now} attended={attended} open={false} onSelect={onSelect} />
                 ))}
               </div>
             )}
@@ -417,7 +461,8 @@ function KioskMenuScreen({
                 key={list.id}
                 list={list}
                 now={now}
-                open={computeListState(list, now) === "open"}
+                attended={attended}
+                open={isListUsable(list, attended, now)}
                 onSelect={onSelect}
               />
             ))}

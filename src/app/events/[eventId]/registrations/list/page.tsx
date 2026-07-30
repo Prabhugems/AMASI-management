@@ -61,6 +61,7 @@ import {
   Printer,
   Package,
   MessageSquare,
+  History,
   MailCheck,
   MailOpen,
   MousePointerClick,
@@ -691,14 +692,21 @@ function RegistrationsContent() {
     enabled: !!selectedRegistration?.id,
   })
 
-  // Fetch check-in history for selected registration
-  const { data: _checkinHistory } = useQuery({
+  // Fetch check-in history for selected registration -- every
+  // checkin_audit_log row (both staff-scanner "qr_scan" rows and kiosk
+  // "kiosk" rows, success or not), unlike /api/checkin/audit which only
+  // surfaces failures. This is the one place an admin can see that a
+  // delegate was scanned more than once for the same list (e.g. two kiosk
+  // devices independently checked them in while both were offline) -- that
+  // event previously left no trace anywhere once checkin_records settled on
+  // its one winning row.
+  const { data: checkinHistory } = useQuery({
     queryKey: ["registration-checkins", selectedRegistration?.id],
     queryFn: async () => {
       try {
         const { data, error } = await (supabase as any)
           .from("checkin_audit_log")
-          .select("*")
+          .select("id, created_at, action, performed_via, success, device_info, checkin_lists(name)")
           .eq("registration_id", selectedRegistration!.id)
           .order("created_at", { ascending: false })
 
@@ -2755,6 +2763,72 @@ function RegistrationsContent() {
                 )}
               </div>
             </SlideOverSection>
+
+            {/* Check-in History -- every scan attempt recorded against this
+                delegate, from either the staff scanner or a kiosk station,
+                including repeat/duplicate scans that never changed
+                checkin_records (see the useQuery above for why this matters). */}
+            {checkinHistory && checkinHistory.length > 0 && (
+              <SlideOverSection title="Check-in History" icon={History}>
+                <div className="space-y-1.5">
+                  {checkinHistory.map((entry: any) => {
+                    const isDuplicate = entry.device_info?.duplicate === true
+                    const listName = entry.checkin_lists?.name || "Unknown list"
+                    return (
+                      <div
+                        key={entry.id}
+                        className={cn(
+                          "flex items-start gap-3 p-3.5 rounded-xl border transition-all",
+                          !entry.success
+                            ? "border-red-200 bg-gradient-to-r from-red-50 to-rose-50/60 dark:border-red-500/30 dark:from-red-500/10 dark:to-rose-500/5"
+                            : isDuplicate
+                              ? "border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50/60 dark:border-amber-500/30 dark:from-amber-500/10 dark:to-yellow-500/5"
+                              : "border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50/60 dark:border-emerald-500/30 dark:from-emerald-500/10 dark:to-green-500/5"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm text-white",
+                            !entry.success
+                              ? "bg-gradient-to-br from-red-400 to-rose-500"
+                              : isDuplicate
+                                ? "bg-gradient-to-br from-amber-400 to-yellow-500"
+                                : "bg-gradient-to-br from-emerald-400 to-green-500"
+                          )}
+                        >
+                          {!entry.success ? (
+                            <AlertCircle className="w-4 h-4" />
+                          ) : (
+                            <CheckCircle2 className="w-4 h-4" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{listName}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {format(new Date(entry.created_at), "dd MMM yyyy, h:mm a")}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            <Badge className="text-[10px] py-0 h-4 border-0 shadow-sm bg-slate-500 text-white hover:bg-slate-500">
+                              {entry.performed_via === "kiosk" ? "Kiosk" : "Staff scan"}
+                            </Badge>
+                            {isDuplicate && (
+                              <Badge className="text-[10px] py-0 h-4 border-0 shadow-sm bg-amber-500 text-white hover:bg-amber-500">
+                                Repeat scan
+                              </Badge>
+                            )}
+                            {!entry.success && (
+                              <Badge className="text-[10px] py-0 h-4 border-0 shadow-sm bg-red-500 text-white hover:bg-red-500">
+                                Failed
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </SlideOverSection>
+            )}
 
             {/* Communication Timeline */}
             <SlideOverSection title="Communication" icon={MessageSquare}>

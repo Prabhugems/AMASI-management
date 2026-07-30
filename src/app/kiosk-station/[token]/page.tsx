@@ -34,7 +34,7 @@ export default async function KioskStationPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error } = await (supabase as any)
     .from("kiosk_stations")
-    .select("id, name, event_id, mode, print_station_id, auto_print_badge, revoked_at")
+    .select("id, name, event_id, mode, print_station_id, auto_print_badge, revoked_at, attended")
     .eq("access_token_hash", hashStationToken(token))
     .maybeSingle()
 
@@ -65,7 +65,7 @@ export default async function KioskStationPage({
   const { data: lists } = listIds.length > 0
     ? await (supabase as any)
         .from("checkin_lists")
-        .select("id, name, kiosk_opens_at, kiosk_closes_at, kiosk_force_state")
+        .select("id, name, list_purpose, kiosk_opens_at, kiosk_closes_at, kiosk_force_state")
         .in("id", listIds)
     : { data: [] }
 
@@ -104,6 +104,7 @@ export default async function KioskStationPage({
       stationToken={token}
       stationName={station.name}
       mode={station.mode}
+      attended={station.attended === true}
       autoPrintBadge={station.auto_print_badge}
       printStationId={station.print_station_id || undefined}
       badgeTemplate={badgeTemplate || undefined}

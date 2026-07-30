@@ -88,8 +88,8 @@ describe("GET /api/kiosk/station-manifest", () => {
     mock.queueResponse("kiosk_station_lists", { data: [{ checkin_list_id: "list-1" }, { checkin_list_id: "list-2" }], error: null })
     mock.queueResponse("checkin_lists", {
       data: [
-        { id: "list-1", name: "Breakfast", kiosk_opens_at: null, kiosk_closes_at: null, kiosk_force_state: null },
-        { id: "list-2", name: "Lunch", kiosk_opens_at: null, kiosk_closes_at: null, kiosk_force_state: "closed" },
+        { id: "list-1", name: "Breakfast", list_purpose: "entry", kiosk_opens_at: null, kiosk_closes_at: null, kiosk_force_state: null },
+        { id: "list-2", name: "Lunch", list_purpose: "collection", kiosk_opens_at: null, kiosk_closes_at: null, kiosk_force_state: "closed" },
       ],
       error: null,
     })
@@ -101,5 +101,34 @@ describe("GET /api/kiosk/station-manifest", () => {
     expect(body.station_name).toBe("Food Area")
     expect(body.lists).toHaveLength(2)
     expect(body.lists.find((l: any) => l.id === "list-2").kiosk_force_state).toBe("closed")
+    expect(body.lists.find((l: any) => l.id === "list-2").list_purpose).toBe("collection")
+  })
+
+  it("returns attended: true when the station is attended", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, name: "Food Area", mode: "checkin", print_station_id: null, auto_print_badge: false, revoked_at: null, attended: true },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: [], error: null })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "tok" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.attended).toBe(true)
+  })
+
+  it("returns attended: false when the station's attended field is absent or false", async () => {
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, name: "Food Area", mode: "checkin", print_station_id: null, auto_print_badge: false, revoked_at: null },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: [], error: null })
+    const { GET } = await import("./route")
+    const res = await GET(makeRequest(url({ event_id: EVENT_ID, station_token: "tok" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.attended).toBe(false)
   })
 })

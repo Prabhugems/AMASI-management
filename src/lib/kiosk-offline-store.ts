@@ -85,6 +85,7 @@ export interface PrintLogEntry {
 export interface StationManifestList {
   id: string
   name: string
+  list_purpose: string
   kiosk_opens_at: string | null
   kiosk_closes_at: string | null
   kiosk_force_state: "open" | "closed" | null
@@ -95,6 +96,13 @@ export interface StationManifest {
   mode: "checkin" | "checkin_and_print"
   print_station_id: string | null
   auto_print_badge: boolean
+  // Mirrors kiosk_stations.attended -- whether a volunteer is staffing this
+  // tablet. A collection-purpose list (list_purpose === "collection") is
+  // only usable on the device menu when this is true; see KioskStationShell's
+  // isListUsable. The server (/api/kiosk/checkin, /api/kiosk/delegates)
+  // already enforces this independently -- this field lets the menu reflect
+  // the same rule instead of offering a tile that will only fail on submit.
+  attended: boolean
   lists: StationManifestList[]
 }
 

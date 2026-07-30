@@ -704,3 +704,96 @@ describe("POST /api/kiosk/checkin -- already-checked-in response widening", () =
     expect(body.attributed_station_id).toBe("st-existing")
   })
 })
+
+describe("POST /api/kiosk/checkin -- duplicate/conflict audit trail", () => {
+  it("writes a checkin_audit_log row when an active record already exists (pre-insert duplicate)", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", {
+      data: { id: "cr-existing", checked_in_at: "2026-07-20T10:00:00Z", station_id: "st-existing" },
+      error: null,
+    }) // existing-active-record check
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    expect(res.status).toBe(200)
+
+    const auditCall = mock.calls.find((c) => c.table === "checkin_audit_log" && c.method === "insert")
+    expect(auditCall).toBeDefined()
+    const auditRow = auditCall!.args[0] as any
+    expect(auditRow.event_id).toBe(EVENT_ID)
+    expect(auditRow.checkin_list_id).toBe(LIST_ID)
+    expect(auditRow.registration_id).toBe(REG_ID)
+    expect(auditRow.performed_via).toBe("kiosk")
+    expect(auditRow.success).toBe(true)
+    expect(auditRow.device_info.duplicate).toBe(true)
+  })
+
+  it("writes a checkin_audit_log row when a 23505 race is a genuine prior check-in (not our own twin)", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check (not found yet)
+    mock.queueResponse("checkin_records", { data: null, error: { code: "23505" } }) // insert races and loses
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id re-check: not our own twin
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.alreadyCheckedIn).toBe(true)
+    const auditCall = mock.calls.find((c) => c.table === "checkin_audit_log" && c.method === "insert")
+    expect(auditCall).toBeDefined()
+  })
+
+  it("does NOT write a checkin_audit_log row on a fresh, first-time check-in", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check
+    mock.queueResponse("checkin_records", { data: null, error: null }) // insert
+    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    expect(res.status).toBe(200)
+
+    expect(mock.calls.some((c) => c.table === "checkin_audit_log")).toBe(false)
+  })
+
+  it("does NOT write a checkin_audit_log row when a 23505 race is our own twin succeeding", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check
+    mock.queueResponse("checkin_records", { data: null, error: { code: "23505" } }) // insert races and loses
+    mock.queueResponse("checkin_records", { data: { id: "cr-twin" }, error: null }) // our own twin won
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    const body = await res.json()
+
+    expect(body.alreadyCheckedIn).toBe(false)
+    expect(mock.calls.some((c) => c.table === "checkin_audit_log")).toBe(false)
+  })
+
+  it("never fails the check-in response even if the audit log insert itself errors", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", {
+      data: { id: "cr-existing", checked_in_at: "2026-07-20T10:00:00Z", station_id: null },
+      error: null,
+    })
+    mock.queueResponse("checkin_audit_log", { data: null, error: { message: "insert failed" } })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.alreadyCheckedIn).toBe(true)
+  })
+})
