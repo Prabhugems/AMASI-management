@@ -54,20 +54,32 @@ export default function KioskStationDetailPage() {
   const [printStations, setPrintStations] = useState<PrintStation[]>([])
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
-  // Tracks a non-ok response from loadStation (404 deleted/mistyped id, 400
-  // bad UUID, 403 no permission) -- without this, those all fell through to
-  // `!station` and rendered an infinite "Loading..." spinner forever, since
-  // nothing ever set `station` and nothing explained why. Any bookmarked or
-  // stale station URL would hang silently.
-  const [loadFailed, setLoadFailed] = useState(false)
+  // Tracks a non-ok response from the VERY FIRST station load (404
+  // deleted/mistyped id, 400 bad UUID, 403 no permission) -- without this,
+  // those all fell through to `!station` and rendered an infinite
+  // "Loading..." spinner forever, since nothing ever set `station` and
+  // nothing explained why. Any bookmarked or stale station URL would hang
+  // silently.
+  //
+  // Deliberately NOT set by `loadStation()` itself -- every mutation handler
+  // below (rename, reassign lists, toggle attended, reassign printer,
+  // toggle auto-print, regenerate, revoke) calls `await loadStation()` as a
+  // post-mutation refresh. If THAT refresh transiently fails (network blip,
+  // a momentary 401/403, rate limit) after the initial load already
+  // succeeded, the right behavior is to keep showing the working page with
+  // its last-known-good `station` -- not to blank the entire UI. Only the
+  // initial `load()` effect below is allowed to flip this to true, and only
+  // when a station was never successfully loaded even once.
+  const [initialLoadFailed, setInitialLoadFailed] = useState(false)
 
-  const loadStation = async () => {
+  // Returns whether the fetch succeeded, so callers can distinguish "this
+  // was the first load and it failed" (fatal) from "this was a refresh and
+  // it failed" (silently keep the stale-but-valid station).
+  const loadStation = async (): Promise<boolean> => {
     const res = await fetch(`/api/kiosk-stations/${stationId}`)
-    if (!res.ok) {
-      setLoadFailed(true)
-      return
-    }
+    if (!res.ok) return false
     setStation(await res.json())
+    return true
   }
 
   const loadActivity = async () => {
@@ -80,7 +92,7 @@ export default function KioskStationDetailPage() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      await Promise.all([
+      const [stationLoaded] = await Promise.all([
         loadStation(),
         fetch(`/api/checkin-lists?event_id=${eventId}`)
           .then((r) => r.json())
@@ -90,6 +102,7 @@ export default function KioskStationDetailPage() {
           .then((d) => setPrintStations(Array.isArray(d) ? d : [])),
         loadActivity(),
       ])
+      if (!stationLoaded) setInitialLoadFailed(true)
       setLoading(false)
     }
     load()
@@ -309,7 +322,7 @@ export default function KioskStationDetailPage() {
     return <div className="p-8 text-sm text-muted-foreground">Loading…</div>
   }
 
-  if (loadFailed || !station) {
+  if (initialLoadFailed || !station) {
     return (
       <div className="mx-auto max-w-3xl space-y-6 p-6 sm:p-8">
         <Link
