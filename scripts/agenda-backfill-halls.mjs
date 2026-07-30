@@ -59,6 +59,10 @@ async function backfillEvent(eventId) {
 
   console.log(`[${eventId}] ${distinctHallNames.length} distinct hall names, ${namesToCreate.length} to create`)
 
+  if (!commit) {
+    for (const name of namesToCreate) nameToHallId.set(name, 'preview-only')
+  }
+
   if (commit && namesToCreate.length) {
     const { data: created, error: createError } = await supabase
       .from('halls')
