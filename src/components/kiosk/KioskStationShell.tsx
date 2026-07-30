@@ -54,9 +54,19 @@ export function KioskStationShell({
   // A station with exactly one assigned list skips the menu entirely -- the
   // common case (most stations still serve one list) shouldn't cost an
   // extra tap just because the underlying model now supports many.
-  const [activeListId, setActiveListId] = useState<string | null>(
+  const [activeListId, setActiveListIdRaw] = useState<string | null>(
     initialLists.length === 1 ? initialLists[0].id : null
   )
+  // Tracks WHY activeListId is set to what it is: true when it was this
+  // component's own "skip the menu" decision, false when a volunteer
+  // deliberately tapped a tile. This is what lets the re-derivation effect
+  // below tell "the manifest changed, reconsider" apart from "someone is
+  // mid-task, do not yank them away" -- see that effect's comment.
+  const [autoSelected, setAutoSelected] = useState(initialLists.length === 1)
+  const selectList = useCallback((id: string | null, auto: boolean) => {
+    setActiveListIdRaw(id)
+    setAutoSelected(auto)
+  }, [])
   const [tick, forceTick] = useState(0)
 
   const refreshManifest = useCallback(async () => {
@@ -161,6 +171,35 @@ export function KioskStationShell({
 
   const activeList = assignedLists.find((l) => l.id === activeListId) || null
 
+  // Re-derive the "skip the menu" decision every time the manifest changes,
+  // instead of deciding once at mount and sticking with it forever. Concrete
+  // bug this closes: a station configured with exactly one list, then given
+  // more lists later (e.g. mid-setup -- "spot a missing list, add it") kept
+  // skipping straight to the original single list on any device that had
+  // already loaded before the change, until its local caches were manually
+  // cleared -- the manifest refresh updated `assignedLists` correctly the
+  // whole time, but nothing ever revisited the resulting navigation choice.
+  useEffect(() => {
+    if (activeListId !== null && !autoSelected) {
+      // A volunteer's own deliberate pick: never auto-navigate them away
+      // from it just because the manifest refreshed in the background --
+      // EXCEPT when this specific list was removed from the station
+      // entirely. That's not "something else changed", it's "this screen
+      // is no longer valid" -- continuing to run check-in for a list this
+      // station no longer serves would be actively wrong, so that one case
+      // applies regardless of how the current list was chosen.
+      if (!assignedLists.some((l) => l.id === activeListId)) {
+        selectList(null, false)
+      }
+      return
+    }
+    if (assignedLists.length === 1) {
+      if (activeListId !== assignedLists[0].id) selectList(assignedLists[0].id, true)
+    } else if (activeListId !== null) {
+      selectList(null, false)
+    }
+  }, [assignedLists, activeListId, autoSelected, selectList])
+
   // At close time, return to the menu automatically -- don't require the
   // volunteer to notice and tap "Switch list". Driven by the same 30s tick
   // that recomputes closingSoonMinutes below, so this fires within 30s of
@@ -168,10 +207,12 @@ export function KioskStationShell({
   // KioskCheckinScreen's enqueue already durably wrote to IndexedDB before
   // this effect can fire, and the shell's own drainScanQueue effect keeps
   // syncing every assigned list's queue regardless of which screen (or
-  // none) is showing.
+  // none) is showing. (This one already re-checks continuously off the 30s
+  // tick -- schedule state was never a "decide once" bug, only the
+  // single-vs-menu list-count decision above was.)
   useEffect(() => {
     if (activeList && computeListState(activeList) === "closed") {
-      setActiveListId(null)
+      selectList(null, false)
     }
     // `tick` is the effect's real trigger (the 30s schedule-recompute
     // heartbeat); `activeList` is included so a list switch or a fresh
@@ -195,7 +236,7 @@ export function KioskStationShell({
         printSettings={printSettings}
         printMode={printMode}
         externallyDriven
-        onSwitchList={() => setActiveListId(null)}
+        onSwitchList={() => selectList(null, false)}
         closingSoonMinutes={minutesUntilClose(activeList)}
         listClosesAt={activeList.kiosk_closes_at}
       />
@@ -208,7 +249,7 @@ export function KioskStationShell({
       lists={assignedLists}
       onSelect={(list) => {
         if (computeListState(list) !== "open") return
-        setActiveListId(list.id)
+        selectList(list.id, false)
       }}
     />
   )
