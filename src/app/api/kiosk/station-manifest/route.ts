@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error: listsError } = await (supabase as any)
       .from("checkin_lists")
-      .select("id, name, list_purpose, kiosk_opens_at, kiosk_closes_at, kiosk_force_state")
+      .select("id, name, list_purpose, prints_badge, kiosk_opens_at, kiosk_closes_at, kiosk_force_state")
       .in("id", listIds)
 
     if (listsError) {
