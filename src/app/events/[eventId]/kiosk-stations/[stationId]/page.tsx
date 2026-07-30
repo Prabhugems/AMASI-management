@@ -346,7 +346,7 @@ export default function KioskStationDetailPage() {
   const status = computeStationStatus(station)
 
   return (
-    <div className="mx-auto max-w-3xl p-6 sm:p-8 space-y-8">
+    <div className="mx-auto max-w-6xl p-6 sm:p-8 space-y-6">
       <Link
         href={`/events/${eventId}/kiosk-stations`}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -396,60 +396,68 @@ export default function KioskStationDetailPage() {
         </div>
       </div>
 
-      <section className="space-y-3 rounded-xl border p-5">
-        <h2 className="text-sm font-semibold">Check-in lists</h2>
-        <StationListsPicker
-          station={station}
-          lists={lists}
-          options={assignableLists(station.attended)}
-          busy={reassigning}
-          onChange={handleReassignLists}
-          onFocusAttended={focusAttendedSwitch}
-        />
-      </section>
+      {/* Settings (lists + behaviour) sit side-by-side with activity on wide
+          screens instead of one narrow stacked column -- the page previously
+          capped at max-w-3xl and stayed a single centered column regardless
+          of viewport width, leaving most of a normal monitor empty. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        <div className="space-y-6">
+          <section className="space-y-3 rounded-xl border p-5">
+            <h2 className="text-sm font-semibold">Check-in lists</h2>
+            <StationListsPicker
+              station={station}
+              lists={lists}
+              options={assignableLists(station.attended)}
+              busy={reassigning}
+              onChange={handleReassignLists}
+              onFocusAttended={focusAttendedSwitch}
+            />
+          </section>
 
-      <section className="space-y-3 rounded-xl border p-5">
-        <h2 className="text-sm font-semibold">Behaviour</h2>
-        <StationBehaviourControls
-          station={station}
-          revoked={revoked}
-          usbPrintStations={usbPrintStations}
-          attendedSwitchRef={(el) => {
-            attendedSwitchRef.current = el
-          }}
-          onToggleAttended={handleAttendedSwitch}
-          onTogglePrint={handleToggleAutoPrint}
-          onReassignPrintStation={handleReassignPrintStation}
-        />
-      </section>
+          <section className="space-y-3 rounded-xl border p-5">
+            <h2 className="text-sm font-semibold">Behaviour</h2>
+            <StationBehaviourControls
+              station={station}
+              revoked={revoked}
+              usbPrintStations={usbPrintStations}
+              attendedSwitchRef={(el) => {
+                attendedSwitchRef.current = el
+              }}
+              onToggleAttended={handleAttendedSwitch}
+              onTogglePrint={handleToggleAutoPrint}
+              onReassignPrintStation={handleReassignPrintStation}
+            />
+          </section>
+        </div>
 
-      <section className="space-y-3 rounded-xl border p-5">
-        <h2 className="text-sm font-semibold">Recent activity</h2>
-        {activity.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No activity yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {activity.map((item, i) => (
-              <li key={i} className="flex items-center justify-between text-sm">
-                <span>
-                  {item.registration_name || "Unknown"}
-                  {item.registration_number && (
-                    <span className="text-muted-foreground"> ({item.registration_number})</span>
-                  )}
-                  {" — "}
-                  {item.list_name || "Unknown list"}
-                  {item.type === "duplicate" && (
-                    <span className="ml-2 text-xs text-amber-600">already collected, turned away</span>
-                  )}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(item.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        <section className="space-y-3 rounded-xl border p-5">
+          <h2 className="text-sm font-semibold">Recent activity</h2>
+          {activity.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No activity yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {activity.map((item, i) => (
+                <li key={i} className="flex items-center justify-between text-sm">
+                  <span>
+                    {item.registration_name || "Unknown"}
+                    {item.registration_number && (
+                      <span className="text-muted-foreground"> ({item.registration_number})</span>
+                    )}
+                    {" — "}
+                    {item.list_name || "Unknown list"}
+                    {item.type === "duplicate" && (
+                      <span className="ml-2 text-xs text-amber-600">already collected, turned away</span>
+                    )}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(item.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
 
       {/* New link confirm -- same copy as page.tsx's regenerateConfirmStation dialog */}
       <AlertDialog open={regenerateConfirmOpen} onOpenChange={setRegenerateConfirmOpen}>
