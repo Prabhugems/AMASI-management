@@ -1001,7 +1001,7 @@ export function KioskCheckinScreen({
           const earliest = priorScans.reduce((a, b) => (a.scanned_at < b.scanned_at ? a : b))
           setResult({
             success: false,
-            message: "Self check-in isn't available for this list. Please see a staff member.", // PLACEHOLDER -- a later task replaces this with real duplicate-warning screen content
+            message: "Self check-in isn't available for this list. Please see a staff member.", // Never displayed: DuplicateWarningScreen (see below) unconditionally intercepts every alreadyCheckedIn:true+success:false result before this message could render; kept only for CheckinResult's type shape.
             alreadyCheckedIn: true,
             duplicateCheckedInAt: new Date(earliest.scanned_at).toISOString(),
             duplicateStationName: stationName || "this station",
@@ -1026,7 +1026,7 @@ export function KioskCheckinScreen({
         if (crossDeviceMatch) {
           setResult({
             success: false,
-            message: "Self check-in isn't available for this list. Please see a staff member.", // PLACEHOLDER -- a later task replaces this with real duplicate-warning screen content
+            message: "Self check-in isn't available for this list. Please see a staff member.", // Never displayed: DuplicateWarningScreen (see below) unconditionally intercepts every alreadyCheckedIn:true+success:false result before this message could render; kept only for CheckinResult's type shape.
             alreadyCheckedIn: true,
             duplicateCheckedInAt: crossDeviceMatch.checked_in_at,
             duplicateStationName: resolveStationName(crossDeviceMatch.station_id, cachedStationNamesRef.current),
@@ -1534,17 +1534,18 @@ export function KioskCheckinScreen({
     // a repeat-ENTRY success (`success: true, alreadyCheckedIn: true`, the
     // Tito-model case per CLAUDE.md), which never satisfies this condition
     // and still renders through the existing green success branch untouched.
-    // `mode === "checkin"` keeps this scoped to plain check-in stations --
-    // the project owner's explicit scope decision for this whole redesign is
-    // that checkin_and_print stations keep the ORIGINAL self-service
-    // success/failure screens untouched (full printer connect/print UI),
-    // never these collection-specific ones (none of which render printer
-    // controls). alreadyCheckedIn can still be set on a checkin_and_print +
-    // collection-list station (Layer 1/2 detection in handleCheckin isn't
-    // mode-gated), so without this check that combination would land here
-    // and lose all printer UI with no way to recover it -- it now falls
-    // through to the generic result screen below instead.
-    if (!result.success && result.alreadyCheckedIn && mode === "checkin") {
+    // Deliberately NOT gated on `mode === "checkin"` (unlike the collection
+    // ready/success screens below) -- a duplicate scan must never print a
+    // badge regardless of station mode, so there is no printer capability
+    // to lose here. Gating this on mode was tried and reverted: it made a
+    // checkin_and_print + collection-list duplicate fall through to the
+    // generic error screen, which discards duplicateCheckedInAt/
+    // duplicateStationName entirely and shows a placeholder "self check-in
+    // isn't available" message on a station where staff ARE present and
+    // self check-in IS supported -- i.e. it hid the exact "already
+    // collected, do not issue again" signal this whole feature exists to
+    // surface. This screen renders for every mode on a genuine duplicate.
+    if (!result.success && result.alreadyCheckedIn) {
       return (
         <DuplicateWarningScreen
           attendeeName={result.registration?.attendee_name || ""}
