@@ -27,6 +27,7 @@ import {
   Maximize,
   Minimize2,
   AlertTriangle,
+  WifiOff,
 } from "lucide-react"
 import { toast } from "sonner"
 import * as Sentry from "@sentry/nextjs"
@@ -78,6 +79,12 @@ type CheckinResult = {
   // amber duplicate-warning screen.
   duplicateCheckedInAt?: string // ISO timestamp
   duplicateStationName?: string // display name of where it was first collected
+  // Set only when `matchDelegate` found no delegate at all for the scanned
+  // code (as opposed to a matched delegate that turns out to be a
+  // duplicate, or some other failure like an IndexedDB-enqueue error).
+  // Consumed by NotOnListScreen below.
+  notOnList?: boolean
+  scannedCode?: string
 }
 
 // Scanner-burst auto-submit tunables (mirror of the staff check-in kiosk): a
@@ -199,6 +206,15 @@ export function KioskCheckinScreen({
   // logic, which already checks navigator.onLine directly at the point of
   // use rather than trusting a possibly-stale piece of React state.
   const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine)
+  // Brief, transient "just went offline" banner (collection-list stations
+  // only, see the isCollectionListActive branch below) -- a one-time heads-
+  // up that auto-dismisses on its own short timer, NOT a persistent
+  // connectivity gate. Deliberately independent of isOnline/the footer's
+  // Online-Offline dot (which stays accurate and unaffected) and of the
+  // countdown/result auto-reset mechanism (which is specifically for
+  // clearing a completed check-in result, not this).
+  const [showOfflineBanner, setShowOfflineBanner] = useState(false)
+  const offlineBannerTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [requestingHelp, setRequestingHelp] = useState(false)
   const [helpRequestId, setHelpRequestId] = useState<string | null>(null)
   // Fullscreen reduces (but, per browser/OS, cannot eliminate) the surface
@@ -935,6 +951,8 @@ export function KioskCheckinScreen({
         setResult({
           success: false,
           message: "Registration not found. Please check your registration number.",
+          notOnList: true,
+          scannedCode: searchTerm,
         })
         return
       }
@@ -1216,12 +1234,22 @@ export function KioskCheckinScreen({
   // which is separate and unaffected by this).
   useEffect(() => {
     const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
+    const handleOffline = () => {
+      setIsOnline(false)
+      // Trigger the transient "just went offline" banner (collection-list
+      // stations only -- see the isCollectionListActive branch below, which
+      // is the only place showOfflineBanner is ever read). A short,
+      // self-clearing timer, not tied to the countdown/result mechanism.
+      setShowOfflineBanner(true)
+      if (offlineBannerTimerRef.current) clearTimeout(offlineBannerTimerRef.current)
+      offlineBannerTimerRef.current = setTimeout(() => setShowOfflineBanner(false), 6000)
+    }
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
     return () => {
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("offline", handleOffline)
+      if (offlineBannerTimerRef.current) clearTimeout(offlineBannerTimerRef.current)
     }
   }, [])
 
@@ -1509,6 +1537,22 @@ export function KioskCheckinScreen({
         />
       )
     }
+    // A scanned code that matches nobody on the active collection list --
+    // distinct from a duplicate (matched delegate, already collected) and
+    // from any other failure (e.g. an IndexedDB-enqueue error), neither of
+    // which set `notOnList`.
+    if (isCollectionListActive && result.notOnList) {
+      return (
+        <NotOnListScreen
+          listName={list?.name || "this list"}
+          scannedCode={result.scannedCode}
+          countdown={countdown}
+          stationName={stationName}
+          pendingSyncCount={pendingSyncCount}
+          isOnline={isOnline}
+        />
+      )
+    }
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
         {/* Header */}
@@ -1754,6 +1798,23 @@ export function KioskCheckinScreen({
   // ever true for an attended station on a collection list, see its
   // declaration above).
   if (isCollectionListActive) {
+    // A short-lived, one-time "just went offline" notice -- NOT a
+    // persistent connectivity gate. showOfflineBanner flips back to false on
+    // its own timer (see handleOffline above) regardless of whether
+    // connectivity has actually returned, and CollectionReadyScreen (full
+    // camera/manual scan capability) always becomes reachable again after
+    // it -- offline scanning must never be blocked by this notice.
+    if (showOfflineBanner) {
+      return (
+        <OfflineTransitionScreen
+          queueDepth={pendingSyncCount}
+          mode={mode}
+          stationName={stationName}
+          listName={list?.name || "this list"}
+          isOnline={isOnline}
+        />
+      )
+    }
     return (
       <CollectionReadyScreen
         listName={list?.name || "this list"}
@@ -2631,6 +2692,152 @@ function CollectionSuccessScreen({
         listName={listName}
         stationName={stationName}
         pendingSyncCount={pendingSyncCount}
+        isOnline={isOnline}
+      />
+    </div>
+  )
+}
+
+interface NotOnListScreenProps {
+  listName: string
+  scannedCode?: string
+  countdown: number
+  stationName?: string
+  pendingSyncCount: number
+  isOnline: boolean
+}
+
+// Full-screen red "not on this list" result for a scanned badge that
+// matches nobody on the active collection list -- matches
+// /tmp/screen_5_not_found.html. Only ever reached for a collection-list
+// scan (isCollectionListActive); the self-service "Registration not found"
+// error keeps its existing generic red error screen untouched. Distinct
+// from DuplicateWarningScreen (a matched delegate who already collected) --
+// here there's no delegate at all, so there's nothing to hand over and
+// nothing to warn about repeating.
+function NotOnListScreen({
+  listName,
+  scannedCode,
+  countdown,
+  stationName,
+  pendingSyncCount,
+  isOnline,
+}: NotOnListScreenProps) {
+  return (
+    <div className="fixed inset-0 flex flex-col bg-destructive text-destructive-foreground">
+      <div className="flex-1 flex flex-col gap-5 px-8 sm:px-14 py-8 sm:py-11 min-h-0">
+        <div className="flex items-center gap-5 sm:gap-6">
+          <XCircle className="h-16 w-16 sm:h-20 sm:w-20 flex-none" strokeWidth={2.3} />
+          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-none text-balance">
+            NOT ON THE {listName.toUpperCase()} LIST
+          </h1>
+        </div>
+
+        <div className="flex-1 flex flex-col justify-center gap-5 sm:gap-6 min-h-0">
+          <p className="text-6xl sm:text-8xl font-bold leading-none tracking-tight">Please see staff</p>
+          <p className="text-xl sm:text-3xl font-medium opacity-95 max-w-3xl text-balance">
+            Walk them to the help desk. Don&apos;t hand anything over, and don&apos;t scan again.
+          </p>
+          {scannedCode && (
+            <div className="flex items-center gap-4 px-6 py-4 rounded-xl bg-white/15 self-start">
+              <span className="text-sm sm:text-base font-semibold uppercase tracking-widest opacity-80">
+                Badge scanned
+              </span>
+              <span className="font-mono text-xl sm:text-2xl font-bold">{scannedCode}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-6 flex-wrap">
+          <div className="flex flex-col gap-2.5 flex-1 min-w-[220px]">
+            <p className="text-lg sm:text-xl font-semibold opacity-90">
+              Back to scanning in {countdown}s
+            </p>
+            <div className="h-2.5 rounded-full bg-white/25 overflow-hidden">
+              <div
+                className="h-full bg-white rounded-full transition-all duration-1000 ease-linear"
+                style={{ width: `${(countdown / 10) * 100}%` }}
+              />
+            </div>
+          </div>
+          <p className="text-lg sm:text-xl font-medium opacity-85 shrink-0">
+            This may belong to another day or list
+          </p>
+        </div>
+      </div>
+
+      <KioskStationFooter
+        listName={listName}
+        stationName={stationName}
+        pendingSyncCount={pendingSyncCount}
+        isOnline={isOnline}
+      />
+    </div>
+  )
+}
+
+interface OfflineTransitionScreenProps {
+  queueDepth: number
+  mode: "checkin" | "checkin_and_print"
+  stationName?: string
+  listName: string
+  isOnline: boolean
+}
+
+// Brief, transient full-screen "just went offline" notice -- shown for a
+// few seconds the instant this tablet loses connectivity (see
+// showOfflineBanner/handleOffline above), then automatically replaced by
+// the normal CollectionReadyScreen regardless of whether connectivity has
+// actually returned. Pure reassurance, never a blocker: scanning keeps full
+// capability throughout, since offline scanning is this kiosk's whole
+// reason for existing. `isOnline` is false by construction here -- this
+// component only ever renders while showOfflineBanner is true, which is
+// only ever set inside handleOffline.
+function OfflineTransitionScreen({
+  queueDepth,
+  mode,
+  stationName,
+  listName,
+  isOnline,
+}: OfflineTransitionScreenProps) {
+  return (
+    <div className="fixed inset-0 flex flex-col bg-background">
+      <div className="flex-none bg-info text-info-foreground px-6 sm:px-12 py-5 sm:py-6 flex flex-wrap items-center gap-4 sm:gap-6">
+        <WifiOff className="h-8 w-8 sm:h-10 sm:w-10 flex-none" strokeWidth={2.1} />
+        <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">No Wi-Fi right now — keep going</h1>
+        <span className="ml-auto px-5 py-2.5 rounded-full bg-white/20 text-base sm:text-xl font-semibold shrink-0">
+          {queueDepth} scan{queueDepth === 1 ? "" : "s"} saved on this tablet
+        </span>
+      </div>
+
+      <div className="flex-1 flex flex-col items-center justify-center gap-5 sm:gap-6 px-4 sm:px-14 py-8 min-h-0 text-center">
+        <div className="size-28 sm:size-40 rounded-full bg-info/10 flex items-center justify-center text-info">
+          <WifiOff className="h-12 w-12 sm:h-16 sm:w-16" />
+        </div>
+        <h2 className="text-3xl sm:text-5xl font-bold text-foreground">Scanning still works</h2>
+        <p className="text-base sm:text-xl text-muted-foreground max-w-2xl text-balance">
+          Every scan is saved here and sent up on its own when the Wi-Fi returns. A duplicate scanned on THIS
+          tablet is always caught instantly. A duplicate collected on another tablet won&apos;t show here until
+          you&apos;re back online. You don&apos;t need to write anything down.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mt-1">
+          <div className="flex items-center gap-3 px-5 sm:px-6 py-3 sm:py-4 rounded-xl bg-card border border-border shadow-sm">
+            <CheckCircle2 className="h-6 w-6 sm:h-7 sm:w-7 text-success" strokeWidth={2.2} />
+            <span className="text-base sm:text-lg font-semibold text-foreground">Delegate list is on this tablet</span>
+          </div>
+          {mode === "checkin_and_print" && (
+            <div className="flex items-center gap-3 px-5 sm:px-6 py-3 sm:py-4 rounded-xl bg-card border border-border shadow-sm">
+              <CheckCircle2 className="h-6 w-6 sm:h-7 sm:w-7 text-success" strokeWidth={2.2} />
+              <span className="text-base sm:text-lg font-semibold text-foreground">Badge printer still working</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <KioskStationFooter
+        listName={listName}
+        stationName={stationName}
+        pendingSyncCount={queueDepth}
         isOnline={isOnline}
       />
     </div>
