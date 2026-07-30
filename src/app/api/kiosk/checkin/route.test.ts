@@ -595,6 +595,93 @@ describe("POST /api/kiosk/checkin -- attended-station collection-list exception"
 
     expect(res.status).toBe(403)
   })
+
+  it("503s (not 403) a collection-purpose list when stationServesList itself errors on an otherwise-valid, attended-eligible station", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: null, attended: true },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: null, error: { message: "boom" } }) // membership query errors
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ list_purpose: "collection", ticket_type_ids: [] }), error: null })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ station_token: "attended-station-token" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(503)
+    expect(body.success).toBe(false)
+  })
+
+  it("503s (not 403) a collection-purpose list when resolveStationByToken itself errors", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("kiosk_stations", { data: null, error: { message: "boom" } }) // station lookup errors
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ list_purpose: "collection", ticket_type_ids: [] }), error: null })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ station_token: "erroring-station-token" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(503)
+    expect(body.success).toBe(false)
+  })
+
+  it("does not regress the entry-list case when resolveStationByToken itself errors -- still unattributed, still succeeds", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("kiosk_stations", { data: null, error: { message: "boom" } }) // station lookup errors
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null }) // entry list
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check
+    mock.queueResponse("checkin_records", { data: null, error: null }) // insert
+    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ station_token: "erroring-station-token" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(true)
+    const insertCall = mock.calls.find((c) => c.table === "checkin_records" && c.method === "insert")
+    expect("station_id" in (insertCall!.args[0] as any)).toBe(false)
+  })
+
+  it("still 403s (not 503) a collection-purpose list when the station genuinely isn't a member of this list (no error)", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: null, attended: true },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: null, error: null }) // clean "not a member", no error
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ list_purpose: "collection", ticket_type_ids: [] }), error: null })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ station_token: "non-member-station-token" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(403)
+    expect(body.success).toBe(false)
+  })
+
+  it("still 403s (not 503) a collection-purpose list on a station that's simply not attended, with no errors anywhere", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: null, attended: false },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: { station_id: "st-1" }, error: null }) // is a member, just not attended
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ list_purpose: "collection", ticket_type_ids: [] }), error: null })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ station_token: "unattended-station-token" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(403)
+    expect(body.success).toBe(false)
+  })
 })
 
 describe("POST /api/kiosk/checkin -- already-checked-in response widening", () => {

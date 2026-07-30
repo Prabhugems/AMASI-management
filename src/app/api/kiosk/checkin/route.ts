@@ -36,17 +36,31 @@ import { resolveStationByToken, stationServesList } from "@/lib/kiosk-station-lo
 // ticket_type_ids/addon_ids eligibility check at all, unlike this one, so it
 // must never honor isAttendedStation; see the comment at that call site).
 // This split is a deliberate earlier decision, not an oversight.
+//
+// `hadError` distinguishes two very different reasons isAttendedStation can
+// be false: a genuine, definitive verdict (station not found/revoked/wrong
+// mode/wrong event/not a member of this list, or simply not attended) vs. a
+// transient lookup error (resolveStationByToken or stationServesList itself
+// errored) that left the question unanswered. The former is a permanent
+// business rejection (403); the latter is retryable and must not be
+// presented as one (503) -- matching /api/kiosk/delegates' existing
+// distinction for the equivalent situation.
 function collectionListBlockedResponse(
   list: { list_purpose: string },
-  isAttendedStation: boolean
+  isAttendedStation: boolean,
+  hadError: boolean
 ): NextResponse | null {
-  if (list.list_purpose === "collection" && !isAttendedStation) {
+  if (list.list_purpose !== "collection" || isAttendedStation) return null
+  if (hadError) {
     return NextResponse.json(
-      { success: false, message: "Self check-in isn't available for this list. Please see a staff member." },
-      { status: 403 }
+      { success: false, message: "Something went wrong. Please try again in a moment." },
+      { status: 503 }
     )
   }
-  return null
+  return NextResponse.json(
+    { success: false, message: "Self check-in isn't available for this list. Please see a staff member." },
+    { status: 403 }
+  )
 }
 
 export async function POST(request: NextRequest) {
@@ -102,31 +116,55 @@ export async function POST(request: NextRequest) {
     // mode, correct event, confirmed member of this list) has positively
     // succeeded -- so any resolution failure or ambiguity leaves it false,
     // exactly like it already leaves `stationId` null, and a collection
-    // scan is denied. This is intentionally an AND-chain of successes, not
-    // a negated failure check, so a future edit to this condition can't
-    // silently flip a resolution failure into an "allow".
+    // scan is denied by default. This is intentionally an AND-chain of
+    // successes, not a negated failure check, so a future edit to this
+    // condition can't silently flip a resolution failure into an "allow".
     let isAttendedStation = false
+    // True only when a GENUINE, transient lookup error occurred on an
+    // otherwise-plausible station (the lookup itself errored, or the
+    // station resolved and passed every check but the membership query
+    // errored) -- as opposed to a definitive negative match (no/invalid
+    // token, station not found, revoked, wrong mode/event, or a clean
+    // "not a member of this list"/"not attended"). This does NOT change
+    // entry-list behavior at all: a resolution error there still simply
+    // leaves the scan unattributed (stationId stays null), never blocking,
+    // exactly as before. It exists ONLY so the collection-list gate below
+    // (collectionListBlockedResponse) can tell "genuinely not an attended
+    // station" (403, permanent) apart from "we couldn't tell because a
+    // query errored" (503, retryable) -- mirroring the distinction
+    // /api/kiosk/delegates already makes for the equivalent situation.
+    let stationLookupHadError = false
     if (stationToken) {
-      const { station } = await resolveStationByToken(supabase, stationToken)
+      const { station, error: stationLookupError } = await resolveStationByToken(supabase, stationToken)
 
-      if (
+      if (stationLookupError) {
+        // The lookup itself errored -- unconditionally a resolution error,
+        // never a "station doesn't exist" verdict. (A missing/invalid
+        // token instead resolves cleanly to station === null with no
+        // error, and falls through the `else if` below as a genuine,
+        // definitive non-match.)
+        stationLookupHadError = true
+      } else if (
         station &&
         !station.revoked_at &&
         (station.mode === "checkin" || station.mode === "checkin_and_print") &&
-        station.event_id === eventId &&
-        // This route's policy is already "any miss, for any reason,
-        // including a query error -> unattributed, never blocks" -- so the
-        // new `error` field from stationServesList is deliberately ignored
-        // here (Finding 5's own note: /api/kiosk/delegates is the one that
-        // needs to distinguish a transient error from a genuine miss, not
-        // this route).
-        (await stationServesList(supabase, station.id, checkinListId)).isMember
+        station.event_id === eventId
       ) {
-        stationId = station.id
-        // Only reachable once every check above has already passed --
-        // AND-ing station.attended onto an already-fully-resolved station,
-        // never evaluated independently of it.
-        isAttendedStation = station.attended === true
+        // Station itself resolved fully and unambiguously -- now check
+        // list membership. A query error here is ALSO a resolution error
+        // (the station is otherwise plausible; we simply couldn't confirm
+        // membership) -- distinct from a clean isMember: false, which is a
+        // genuine, definitive "not assigned to this list."
+        const { isMember, error: membershipError } = await stationServesList(supabase, station.id, checkinListId)
+        if (membershipError) {
+          stationLookupHadError = true
+        } else if (isMember) {
+          stationId = station.id
+          // Only reachable once every check above has already passed --
+          // AND-ing station.attended onto an already-fully-resolved
+          // station, never evaluated independently of it.
+          isAttendedStation = station.attended === true
+        }
       }
     }
 
@@ -254,9 +292,14 @@ export async function POST(request: NextRequest) {
       // staff-scanner-only. The one exception: isAttendedStation (see
       // above), which can only be true when station resolution fully and
       // unambiguously succeeded AND the station is staff-attended -- any
-      // other case (no station_token, unattended station, or ANY resolution
-      // failure/ambiguity) leaves it false and this still blocks.
-      const blockedResponse = collectionListBlockedResponse(list, isAttendedStation)
+      // other case (no station_token, unattended station, or a genuine,
+      // definitive non-match) leaves it false and this still blocks with a
+      // 403. The one further distinction: if isAttendedStation is false
+      // because a lookup genuinely ERRORED (stationLookupHadError) rather
+      // than definitively resolving to "not attended", this returns a 503
+      // instead -- a transient infrastructure hiccup must not look like a
+      // permanent business rejection to the client's retry logic.
+      const blockedResponse = collectionListBlockedResponse(list, isAttendedStation, stationLookupHadError)
       if (blockedResponse) return blockedResponse
 
       return completeCheckin(supabase, publicRegistration, registration.id, checkinListId, scanId, stationId, timeWindowWarning)
