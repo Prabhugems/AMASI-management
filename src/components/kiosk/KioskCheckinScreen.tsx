@@ -214,6 +214,22 @@ export function KioskCheckinScreen({
   const [selectedCameraId, setSelectedCameraId] = useState<string>("")
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const scannerContainerId = "kiosk-qr-scanner-container"
+  // True for the component's whole lifetime, flipped false exactly once on
+  // real unmount (see the dedicated effect below with an empty dep array).
+  // switchCamera and the visibility-regain handler both `await` a stop()
+  // call before deciding whether to restart the scanner -- if the whole
+  // screen unmounts (a volunteer tapped "Switch list") while that await is
+  // in flight, clearing restartScannerTimeoutRef alone isn't enough: the
+  // async function resumes AFTER unmount and would schedule a brand-new,
+  // now-uncancellable timeout. Checking this ref right after every such
+  // await is what actually stops that continuation from proceeding.
+  const isMountedRef = useRef(true)
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
   // Tracks the pending "restart the scanner in 300ms" timer scheduled by
   // switchCamera and the visibility-regain handler below. Both used a bare,
   // uncancelled setTimeout -- if the component unmounted in that 300ms
@@ -1210,10 +1226,11 @@ export function KioskCheckinScreen({
     }
     if (cameraActive) {
       await stopScanner()
+      if (!isMountedRef.current) return
       if (restartScannerTimeoutRef.current) clearTimeout(restartScannerTimeoutRef.current)
       restartScannerTimeoutRef.current = setTimeout(() => {
         restartScannerTimeoutRef.current = null
-        startScanner()
+        if (isMountedRef.current) startScanner()
       }, 300)
     }
   }, [cameras, selectedCameraId, cameraActive, stopScanner, startScanner])
@@ -1262,10 +1279,11 @@ export function KioskCheckinScreen({
       if (document.visibilityState !== "visible") return
       if (scanMode !== "camera" || result) return
       stopScanner().then(() => {
+        if (!isMountedRef.current) return
         if (restartScannerTimeoutRef.current) clearTimeout(restartScannerTimeoutRef.current)
         restartScannerTimeoutRef.current = setTimeout(() => {
           restartScannerTimeoutRef.current = null
-          startScanner()
+          if (isMountedRef.current) startScanner()
         }, 300)
       })
     }

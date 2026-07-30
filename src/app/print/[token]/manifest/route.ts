@@ -21,7 +21,8 @@ export async function GET(
       start_url: stationUrl,
       scope: stationUrl,
       display: "standalone",
-      orientation: "portrait",
+      // No `orientation` lock -- see the identical fix and rationale in
+      // src/app/kiosk-station/[token]/manifest/route.ts.
       background_color: "#0f172a",
       theme_color: "#2563eb",
       icons: [

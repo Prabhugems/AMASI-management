@@ -21,7 +21,12 @@ export async function GET(
       start_url: stationUrl,
       scope: stationUrl,
       display: "standalone",
-      orientation: "portrait",
+      // No `orientation` lock -- a station's tablet may be mounted in
+      // either orientation depending on the desk, and a hardcoded
+      // "portrait" here prevented the installed home-screen icon from
+      // ever rotating to landscape regardless of how the device was held.
+      // Omitting the field lets the OS/device orientation apply normally,
+      // matching how a plain (non-installed) browser tab already behaves.
       background_color: "#0f172a",
       theme_color: "#2563eb",
       icons: [
