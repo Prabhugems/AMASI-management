@@ -284,6 +284,34 @@ export async function getCollectedStatus(listId: string): Promise<CachedCollecte
   return JSON.parse(row.value as string) as CachedCollectedEntry[]
 }
 
+// --- List purpose/blocked cache (offline cold-start support) ---------------
+// One new META_STORE key per list, no VERSION bump -- same JSON-blob-in-meta
+// approach as the station manifest/names/collected-status caches above.
+// Mirrors the server's last-known-good answer for this list's
+// list_purpose/blocked fields (see /api/kiosk/delegates), so a tablet that
+// cold-starts (or reloads) while offline can still correctly determine
+// whether it's a genuinely attended station serving a collection-purpose
+// list -- WITHOUT waiting for a successful refreshFromServer() call, which
+// may not happen for a long time (or ever, if the device never regains
+// connectivity before the next check-in).
+
+export interface CachedListPurpose {
+  list_purpose: string
+  blocked: boolean
+}
+
+export async function cacheListPurpose(listId: string, info: CachedListPurpose): Promise<void> {
+  const db = await getDb()
+  await db.put(META_STORE, { key: `list_purpose:${listId}`, value: JSON.stringify(info) } satisfies MetaRow)
+}
+
+export async function getListPurpose(listId: string): Promise<CachedListPurpose | null> {
+  const db = await getDb()
+  const row = (await db.get(META_STORE, `list_purpose:${listId}`)) as MetaRow | undefined
+  if (!row) return null
+  return JSON.parse(row.value as string) as CachedListPurpose
+}
+
 // --- Scan log --------------------------------------------------------------
 
 export async function enqueueScan(entry: Omit<ScanLogEntry, "status" | "attempts">): Promise<void> {

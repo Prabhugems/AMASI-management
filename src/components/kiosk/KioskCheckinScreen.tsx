@@ -50,6 +50,8 @@ import {
   getStationNames,
   cacheCollectedStatus,
   getCollectedStatus,
+  cacheListPurpose,
+  getListPurpose,
   type CachedStationName,
   type CachedCollectedEntry,
 } from "@/lib/kiosk-offline-store"
@@ -299,6 +301,18 @@ export function KioskCheckinScreen({
         // that doesn't say otherwise.
         setIsCollectionListActive(data.list_purpose === "collection" && data.blocked === false)
 
+        // Persist this server answer alongside the roster -- unlike the
+        // delegate cache, list_purpose/blocked previously had no offline
+        // persistence at all, so a cold-started/reloaded tablet had no way
+        // to recover isCollectionListActive without a fresh, successful,
+        // online round-trip. Written in BOTH branches below (blocked and
+        // success) since either one is a definitive server answer about this
+        // list's purpose/blocked state.
+        await cacheListPurpose(listId, {
+          list_purpose: data.list_purpose ?? "",
+          blocked: data.blocked ?? true,
+        })
+
         if (data.blocked) {
           // The server is the single authority on whether self check-in is
           // allowed against this list -- an unattended collection-purpose
@@ -345,6 +359,18 @@ export function KioskCheckinScreen({
         // cacheReady here, or a brand-new device would accept scans against
         // a roster it hasn't actually fetched yet.
         if (!cancelled && delegatesRef.current.length > 0) setCacheReady(true)
+        // Rehydrate isCollectionListActive from the last known-good server
+        // answer BEFORE anything network-dependent happens -- this must run
+        // regardless of online/offline state, exactly like getDelegateCache
+        // above, so a cold-started tablet (or one reloaded while offline)
+        // has the CORRECT collection-list-active flag immediately, rather
+        // than silently defaulting to false (plain entry-list behavior,
+        // with all collection-list duplicate detection disabled) until the
+        // next successful online refreshFromServer() call.
+        const cachedPurpose = await getListPurpose(listId)
+        if (cachedPurpose && !cancelled) {
+          setIsCollectionListActive(cachedPurpose.list_purpose === "collection" && cachedPurpose.blocked === false)
+        }
         await refreshFromServer()
       } catch (err) {
         // getOrCreateDeviceId/getDelegateCache throwing (e.g. IndexedDB
@@ -358,9 +384,15 @@ export function KioskCheckinScreen({
 
     bootstrap()
     const refreshInterval = setInterval(refreshFromServer, 5 * 60 * 1000)
+    // Re-sync the instant connectivity returns, rather than waiting for the
+    // next scheduled 5-minute poll -- closes the "up to 5 minutes of
+    // silently-stale collection-list state after Wi-Fi returns" gap left by
+    // the interval alone.
+    window.addEventListener("online", refreshFromServer)
     return () => {
       cancelled = true
       clearInterval(refreshInterval)
+      window.removeEventListener("online", refreshFromServer)
     }
   }, [eventId, listId, token, stationToken])
 
@@ -1502,7 +1534,17 @@ export function KioskCheckinScreen({
     // a repeat-ENTRY success (`success: true, alreadyCheckedIn: true`, the
     // Tito-model case per CLAUDE.md), which never satisfies this condition
     // and still renders through the existing green success branch untouched.
-    if (!result.success && result.alreadyCheckedIn) {
+    // `mode === "checkin"` keeps this scoped to plain check-in stations --
+    // the project owner's explicit scope decision for this whole redesign is
+    // that checkin_and_print stations keep the ORIGINAL self-service
+    // success/failure screens untouched (full printer connect/print UI),
+    // never these collection-specific ones (none of which render printer
+    // controls). alreadyCheckedIn can still be set on a checkin_and_print +
+    // collection-list station (Layer 1/2 detection in handleCheckin isn't
+    // mode-gated), so without this check that combination would land here
+    // and lose all printer UI with no way to recover it -- it now falls
+    // through to the generic result screen below instead.
+    if (!result.success && result.alreadyCheckedIn && mode === "checkin") {
       return (
         <DuplicateWarningScreen
           attendeeName={result.registration?.attendee_name || ""}
@@ -1522,8 +1564,12 @@ export function KioskCheckinScreen({
     // self-service success screen below. Placed AFTER the duplicate check
     // above -- a duplicate always takes the amber screen even when
     // isCollectionListActive is also true, since that branch already
-    // returned by this point.
-    if (isCollectionListActive && result.success) {
+    // returned by this point. `mode === "checkin"` exemption -- see the
+    // DuplicateWarningScreen gate above for the full rationale: a
+    // checkin_and_print station falls through to the original self-service
+    // success screen instead, which has the printer connect/print UI this
+    // component deliberately does not.
+    if (isCollectionListActive && result.success && mode === "checkin") {
       return (
         <CollectionSuccessScreen
           listName={list?.name || "this list"}
@@ -1540,8 +1586,11 @@ export function KioskCheckinScreen({
     // A scanned code that matches nobody on the active collection list --
     // distinct from a duplicate (matched delegate, already collected) and
     // from any other failure (e.g. an IndexedDB-enqueue error), neither of
-    // which set `notOnList`.
-    if (isCollectionListActive && result.notOnList) {
+    // which set `notOnList`. Same `mode === "checkin"` exemption as the two
+    // gates above, for consistency -- a checkin_and_print station falls
+    // through to the original generic "Registration not found" error screen
+    // instead.
+    if (isCollectionListActive && result.notOnList && mode === "checkin") {
       return (
         <NotOnListScreen
           listName={list?.name || "this list"}
@@ -1794,53 +1843,63 @@ export function KioskCheckinScreen({
   // A genuinely attended station serving a collection-purpose list gets the
   // redesigned "ready to scan" screen instead of the self-service entry
   // screen below -- entry lists, the direct-token path, and any
-  // checkin_and_print station are untouched (isCollectionListActive is only
-  // ever true for an attended station on a collection list, see its
-  // declaration above).
-  if (isCollectionListActive) {
-    // A short-lived, one-time "just went offline" notice -- NOT a
-    // persistent connectivity gate. showOfflineBanner flips back to false on
-    // its own timer (see handleOffline above) regardless of whether
-    // connectivity has actually returned, and CollectionReadyScreen (full
-    // camera/manual scan capability) always becomes reachable again after
-    // it -- offline scanning must never be blocked by this notice.
-    if (showOfflineBanner) {
-      return (
-        <OfflineTransitionScreen
-          queueDepth={pendingSyncCount}
-          mode={mode}
-          stationName={stationName}
-          listName={list?.name || "this list"}
-          isOnline={isOnline}
-        />
-      )
-    }
+  // checkin_and_print station are untouched (`mode === "checkin"` -- the
+  // project owner's explicit scope decision is that checkin_and_print
+  // stations keep the original self-service screens, which have the printer
+  // connect/print UI CollectionReadyScreen deliberately does not).
+  if (isCollectionListActive && mode === "checkin") {
     return (
-      <CollectionReadyScreen
-        listName={list?.name || "this list"}
-        listClosesAt={listClosesAt}
-        lastScanAt={lastScanAt}
-        stationName={stationName}
-        pendingSyncCount={pendingSyncCount}
-        isOnline={isOnline}
-        onSwitchList={onSwitchList}
-        scanMode={scanMode}
-        setScanMode={setScanMode}
-        cameraActive={cameraActive}
-        cameraError={cameraError}
-        cameras={cameras}
-        switchCamera={switchCamera}
-        startScanner={startScanner}
-        scannerContainerId={scannerContainerId}
-        registrationNumber={registrationNumber}
-        handleRegChange={handleRegChange}
-        handleKeyDown={handleKeyDown}
-        handleCheckin={handleCheckin}
-        inputRef={inputRef}
-        isProcessing={isProcessing}
-        cacheReady={cacheReady}
-        cacheError={cacheError}
-      />
+      // CollectionReadyScreen renders continuously here, regardless of
+      // showOfflineBanner -- see the comment on OfflineTransitionScreen's
+      // render below for why. The wrapper is a plain non-fixed div (the
+      // fixed positioning lives on CollectionReadyScreen's own root), just
+      // tall enough to host the absolutely-positioned overlay banner.
+      <div className="relative h-full w-full">
+        <CollectionReadyScreen
+          listName={list?.name || "this list"}
+          listClosesAt={listClosesAt}
+          lastScanAt={lastScanAt}
+          stationName={stationName}
+          pendingSyncCount={pendingSyncCount}
+          isOnline={isOnline}
+          onSwitchList={onSwitchList}
+          scanMode={scanMode}
+          setScanMode={setScanMode}
+          cameraActive={cameraActive}
+          cameraError={cameraError}
+          cameras={cameras}
+          switchCamera={switchCamera}
+          startScanner={startScanner}
+          scannerContainerId={scannerContainerId}
+          registrationNumber={registrationNumber}
+          handleRegChange={handleRegChange}
+          handleKeyDown={handleKeyDown}
+          handleCheckin={handleCheckin}
+          inputRef={inputRef}
+          isProcessing={isProcessing}
+          cacheReady={cacheReady}
+          cacheError={cacheError}
+        />
+        {/* A short-lived, one-time "just went offline" notice -- NOT a
+            persistent connectivity gate, and NOT a full-screen replacement
+            of CollectionReadyScreen above (which previously unmounted the
+            live camera/Html5Qrcode viewport and the focused manual-entry
+            <Input> for its ~6s duration -- neither the camera effect nor
+            the input ever re-initialized on remount, permanently killing
+            the scanner until a manual reload). Rendered as an absolutely-
+            positioned overlay banner on top of the still-mounted screen
+            instead, so nothing here ever unmounts: the camera keeps
+            streaming and the input keeps accepting keystrokes underneath,
+            completely unaffected by this banner appearing/disappearing.
+            showOfflineBanner flips back to false on its own timer (see
+            handleOffline above) regardless of whether connectivity has
+            actually returned. */}
+        {showOfflineBanner && (
+          <div className="fixed inset-x-0 top-0 z-50 flex justify-center pointer-events-none px-4 pt-4 sm:pt-6">
+            <OfflineTransitionScreen queueDepth={pendingSyncCount} mode={mode} />
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -2778,68 +2837,52 @@ function NotOnListScreen({
 
 interface OfflineTransitionScreenProps {
   queueDepth: number
+  // Kept for the "Badge printer still working" reassurance line -- in
+  // practice this component's only call site (the isCollectionListActive
+  // render branch above) already gates on `mode === "checkin"`, so this is
+  // always "checkin" today. Left as a real prop (not hardcoded) rather than
+  // assuming that will always be true, since it costs nothing here.
   mode: "checkin" | "checkin_and_print"
-  stationName?: string
-  listName: string
-  isOnline: boolean
 }
 
-// Brief, transient full-screen "just went offline" notice -- shown for a
-// few seconds the instant this tablet loses connectivity (see
-// showOfflineBanner/handleOffline above), then automatically replaced by
-// the normal CollectionReadyScreen regardless of whether connectivity has
-// actually returned. Pure reassurance, never a blocker: scanning keeps full
-// capability throughout, since offline scanning is this kiosk's whole
-// reason for existing. `isOnline` is false by construction here -- this
-// component only ever renders while showOfflineBanner is true, which is
-// only ever set inside handleOffline.
-function OfflineTransitionScreen({
-  queueDepth,
-  mode,
-  stationName,
-  listName,
-  isOnline,
-}: OfflineTransitionScreenProps) {
+// Brief, transient "just went offline" notice -- shown for a few seconds
+// the instant this tablet loses connectivity (see
+// showOfflineBanner/handleOffline above), then automatically hidden again
+// regardless of whether connectivity has actually returned. Pure
+// reassurance, never a blocker.
+//
+// Deliberately a small, non-fixed BANNER (not a full-screen takeover) --
+// its caller renders it as an absolutely-positioned overlay ON TOP of the
+// still-mounted, still-live CollectionReadyScreen (camera viewport +
+// manual-entry input), rather than replacing it. An earlier version of
+// this component was a `fixed inset-0` full-screen replacement, which
+// unmounted CollectionReadyScreen for its ~6s duration; neither the camera
+// effect nor the manual <Input> ever re-initialized on the subsequent
+// remount, so the camera preview never came back until a manual reload,
+// while the UI's own "Camera active" indicator kept claiming everything
+// was fine. Rendering this as a small overlay instead means
+// CollectionReadyScreen never unmounts, so that failure mode can't happen
+// -- scanning keeps full capability throughout, exactly as required.
+function OfflineTransitionScreen({ queueDepth, mode }: OfflineTransitionScreenProps) {
   return (
-    <div className="fixed inset-0 flex flex-col bg-background">
-      <div className="flex-none bg-info text-info-foreground px-6 sm:px-12 py-5 sm:py-6 flex flex-wrap items-center gap-4 sm:gap-6">
-        <WifiOff className="h-8 w-8 sm:h-10 sm:w-10 flex-none" strokeWidth={2.1} />
-        <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">No Wi-Fi right now — keep going</h1>
-        <span className="ml-auto px-5 py-2.5 rounded-full bg-white/20 text-base sm:text-xl font-semibold shrink-0">
+    <div className="pointer-events-auto w-full max-w-2xl rounded-2xl bg-info text-info-foreground shadow-lg overflow-hidden">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4 px-5 sm:px-7 py-3 sm:py-4">
+        <WifiOff className="h-6 w-6 sm:h-7 sm:w-7 flex-none" strokeWidth={2.1} />
+        <h2 className="text-base sm:text-xl font-bold tracking-tight">No Wi-Fi right now — keep going</h2>
+        <span className="ml-auto px-3.5 py-1.5 rounded-full bg-white/20 text-xs sm:text-sm font-semibold shrink-0">
           {queueDepth} scan{queueDepth === 1 ? "" : "s"} saved on this tablet
         </span>
       </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center gap-5 sm:gap-6 px-4 sm:px-14 py-8 min-h-0 text-center">
-        <div className="size-28 sm:size-40 rounded-full bg-info/10 flex items-center justify-center text-info">
-          <WifiOff className="h-12 w-12 sm:h-16 sm:w-16" />
-        </div>
-        <h2 className="text-3xl sm:text-5xl font-bold text-foreground">Scanning still works</h2>
-        <p className="text-base sm:text-xl text-muted-foreground max-w-2xl text-balance">
-          Every scan is saved here and sent up on its own when the Wi-Fi returns. A duplicate scanned on THIS
-          tablet is always caught instantly. A duplicate collected on another tablet won&apos;t show here until
-          you&apos;re back online. You don&apos;t need to write anything down.
+      <div className="px-5 sm:px-7 pb-3.5 sm:pb-4">
+        <p className="text-xs sm:text-sm leading-snug opacity-95 text-balance">
+          <span className="font-bold">Scanning still works.</span> Every scan is saved here and sent up on its own
+          when the Wi-Fi returns. A duplicate scanned on THIS tablet is always caught instantly. A duplicate
+          collected on another tablet won&apos;t show here until you&apos;re back online.
         </p>
-        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mt-1">
-          <div className="flex items-center gap-3 px-5 sm:px-6 py-3 sm:py-4 rounded-xl bg-card border border-border shadow-sm">
-            <CheckCircle2 className="h-6 w-6 sm:h-7 sm:w-7 text-success" strokeWidth={2.2} />
-            <span className="text-base sm:text-lg font-semibold text-foreground">Delegate list is on this tablet</span>
-          </div>
-          {mode === "checkin_and_print" && (
-            <div className="flex items-center gap-3 px-5 sm:px-6 py-3 sm:py-4 rounded-xl bg-card border border-border shadow-sm">
-              <CheckCircle2 className="h-6 w-6 sm:h-7 sm:w-7 text-success" strokeWidth={2.2} />
-              <span className="text-base sm:text-lg font-semibold text-foreground">Badge printer still working</span>
-            </div>
-          )}
-        </div>
+        {mode === "checkin_and_print" && (
+          <p className="mt-1.5 text-xs sm:text-sm font-semibold opacity-95">Badge printer still working.</p>
+        )}
       </div>
-
-      <KioskStationFooter
-        listName={listName}
-        stationName={stationName}
-        pendingSyncCount={queueDepth}
-        isOnline={isOnline}
-      />
     </div>
   )
 }
