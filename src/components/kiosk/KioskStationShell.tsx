@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import * as Sentry from "@sentry/nextjs"
+import { ClipboardList } from "lucide-react"
 import { KioskCheckinScreen } from "./KioskCheckinScreen"
 import { computeListState, minutesUntilClose, type ScheduledList } from "@/lib/kiosk-list-schedule"
 import { cacheStationManifest, getStationManifest, replaceDelegateCache, type StationManifest } from "@/lib/kiosk-offline-store"
@@ -230,6 +231,60 @@ function listSubline(list: AssignedList, now: Date): string {
   return "Open"
 }
 
+// Single default icon for every job tile: list NAMES are dynamic,
+// admin-configured free text (not a fixed enum), so there's no reliable way
+// to pattern-match a name like "Kit collection" or "Lunch" to a specific
+// icon. One generic icon for every tile is simpler and correct for
+// arbitrary names, matching this file's existing philosophy of never
+// assuming specific list names.
+function JobTile({
+  list,
+  now,
+  open,
+  onSelect,
+}: {
+  list: AssignedList
+  now: Date
+  open: boolean
+  onSelect: (list: AssignedList) => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={!open}
+      onClick={() => onSelect(list)}
+      className={`flex items-center gap-5 sm:gap-6 text-left transition-transform ${
+        open
+          ? "rounded-2xl sm:rounded-3xl bg-primary text-primary-foreground shadow-paper-lg px-6 sm:px-8 py-6 sm:py-7 hover:scale-[1.01] active:scale-[0.99]"
+          : "rounded-2xl border border-border bg-muted/60 px-5 sm:px-7 py-4 sm:py-5 opacity-70 cursor-not-allowed"
+      }`}
+    >
+      <span
+        className={`flex-none rounded-full flex items-center justify-center ${
+          open ? "size-16 sm:size-[76px] bg-white/20" : "size-12 sm:size-[60px] bg-muted"
+        }`}
+      >
+        <ClipboardList
+          className={open ? "size-8 sm:size-9" : "size-6 sm:size-7 text-muted-foreground"}
+          strokeWidth={1.9}
+        />
+      </span>
+      <span className="flex flex-col gap-1 min-w-0">
+        <span
+          className={`font-bold tracking-tight truncate ${
+            open ? "text-2xl sm:text-4xl" : "text-xl sm:text-3xl text-muted-foreground"
+          }`}
+        >
+          {list.name}
+        </span>
+        <span className={open ? "text-base sm:text-lg opacity-90" : "text-sm sm:text-base text-muted-foreground/80"}>
+          {listSubline(list, now)}
+        </span>
+      </span>
+    </button>
+  )
+}
+
 function KioskMenuScreen({
   stationName,
   lists,
@@ -239,39 +294,111 @@ function KioskMenuScreen({
   lists: AssignedList[]
   onSelect: (list: AssignedList) => void
 }) {
-  const now = new Date()
+  // Live clock for the header chip -- this screen doesn't accept a `now`/
+  // `tick` prop from the parent shell (KioskStationShell's own 30s tick
+  // drives schedule recomputation, not this component), so it keeps its own
+  // minimal state, updated once a minute (plenty for a clock display).
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Real online/offline signal, mirroring the exact pattern already used in
+  // KioskCheckinScreen.tsx (display-only, cheap, no new plumbing) -- no list
+  // is active yet on this screen, so there's no sync queue to report on.
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine)
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [])
+
+  const openLists = lists.filter((l) => computeListState(l, now) === "open")
+  const closedLists = lists.filter((l) => computeListState(l, now) !== "open")
+  // Design decision confirmed by the project owner: a station with few jobs
+  // gets the mockup's 2-column grid (open tiles large and prominent, closed
+  // jobs stacked in their own column); a station with many assigned lists
+  // switches to a single-column list instead of producing cramped,
+  // illegibly-small grid tiles.
+  const useGrid = lists.length > 0 && lists.length <= 4
+  const timeLabel = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
-      <div className="bg-gray-800/50 border-b border-white/10 px-4 sm:px-8 py-4 sm:py-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-white">{stationName}</h1>
-        <p className="text-xs sm:text-sm text-gray-400 mt-1">Choose what you&apos;re here for</p>
-      </div>
-      <div className="flex-1 overflow-y-auto p-4 sm:p-8">
-        <div className="max-w-xl mx-auto space-y-3">
-          {lists.length === 0 && (
-            <p className="text-center text-gray-400 text-sm">No lists assigned to this station yet.</p>
-          )}
-          {lists.map((list) => {
-            const open = computeListState(list, now) === "open"
-            return (
-              <button
+    <div className="fixed inset-0 bg-background flex flex-col">
+      <div className="flex-1 flex flex-col px-6 sm:px-12 py-8 sm:py-10 gap-6 sm:gap-8 min-h-0 overflow-y-auto">
+        <div className="flex items-end justify-between gap-6 flex-wrap">
+          <div className="flex flex-col gap-1.5 min-w-0">
+            <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground truncate">
+              {stationName}
+            </p>
+            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-foreground">
+              What are you doing at this desk?
+            </h1>
+          </div>
+          <div className="flex items-center gap-2.5 px-5 py-3.5 rounded-full bg-card border border-border shadow-paper shrink-0">
+            <span className="size-3 rounded-full bg-success" />
+            <span className="text-lg font-semibold text-foreground">{timeLabel}</span>
+          </div>
+        </div>
+
+        {lists.length === 0 && (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-center text-muted-foreground text-base">No lists assigned to this station yet.</p>
+          </div>
+        )}
+
+        {lists.length > 0 && useGrid && (
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-5 min-h-0 items-stretch">
+            {openLists.map((list) => (
+              <JobTile key={list.id} list={list} now={now} open onSelect={onSelect} />
+            ))}
+            {closedLists.length > 0 && (
+              <div className="flex flex-col gap-5">
+                {closedLists.map((list) => (
+                  <JobTile key={list.id} list={list} now={now} open={false} onSelect={onSelect} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {lists.length > 0 && !useGrid && (
+          <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-y-auto">
+            {lists.map((list) => (
+              <JobTile
                 key={list.id}
-                type="button"
-                disabled={!open}
-                onClick={() => onSelect(list)}
-                className={`w-full text-left rounded-2xl border-2 p-5 transition-all flex items-center justify-between gap-4 ${
-                  open
-                    ? "border-white/10 bg-gray-800/50 hover:border-emerald-500/50"
-                    : "border-white/5 bg-gray-900/50 opacity-60 cursor-not-allowed"
-                }`}
-              >
-                <span className="text-lg font-semibold text-white">{list.name}</span>
-                <span className={`text-xs font-medium shrink-0 ${open ? "text-emerald-400" : "text-gray-500"}`}>
-                  {listSubline(list, now)}
-                </span>
-              </button>
-            )
-          })}
+                list={list}
+                now={now}
+                open={computeListState(list, now) === "open"}
+                onSelect={onSelect}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex-none h-24 sm:h-[104px] bg-sidebar text-sidebar-foreground flex items-center gap-6 sm:gap-8 px-6 sm:px-10">
+        <div className="flex flex-col gap-0.5 w-[180px] sm:w-[220px] shrink-0">
+          <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">Station</p>
+          <p className="text-lg sm:text-xl font-semibold truncate">{stationName}</p>
+        </div>
+        <div className="flex-1 flex items-center gap-3 px-4 sm:px-5 py-2.5 rounded-xl bg-white/10 border border-white/20 min-w-0">
+          <span className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted shrink-0">List</span>
+          <span className="text-xl sm:text-2xl font-bold text-sidebar-muted truncate">No job chosen yet</span>
+        </div>
+        <div
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-full shrink-0 ${
+            isOnline ? "bg-emerald-500/20" : "bg-amber-500/20"
+          }`}
+        >
+          <span className={`size-3 rounded-full ${isOnline ? "bg-emerald-400" : "bg-amber-400"}`} />
+          <span className="text-base sm:text-lg font-semibold">{isOnline ? "Online" : "Offline"}</span>
         </div>
       </div>
     </div>
