@@ -54,3 +54,6 @@ docs/abstract-management.*
 
 # Superpowers brainstorming companion sessions
 .superpowers/
+
+# Git worktrees for isolated plan execution
+.worktrees/
