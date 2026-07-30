@@ -43,6 +43,7 @@ import {
   getPendingPrintSyncs,
   markPrintSynced,
   pruneStaleData,
+  getScanHistoryForRegistration,
 } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { isNetworkFailure } from "@/lib/offline-scan-queue"
@@ -63,6 +64,12 @@ type CheckinResult = {
     ticket_type?: { name: string }
   }
   alreadyCheckedIn?: boolean
+  // Set when `alreadyCheckedIn` was determined to be a duplicate collection
+  // scan for this delegate/list (as opposed to the server's own "repeat
+  // entry" success path, which never sets these). Consumed by a later task's
+  // amber duplicate-warning screen.
+  duplicateCheckedInAt?: string // ISO timestamp
+  duplicateStationName?: string // display name of where it was first collected
 }
 
 // Scanner-burst auto-submit tunables (mirror of the staff check-in kiosk): a
@@ -140,6 +147,15 @@ export function KioskCheckinScreen({
   const [cacheReady, setCacheReady] = useState(false)
   const [cacheError, setCacheError] = useState<string | null>(null)
   const [listBlockedReason, setListBlockedReason] = useState<string | null>(null)
+  // True only when the server's last-known response for this list was
+  // list_purpose === "collection" AND blocked === false (a genuinely
+  // attended station serving a collection list). Defaults to false --
+  // "treat as an entry list, no local duplicate check" -- including while
+  // the very first fetch is still in flight or has failed: this state only
+  // decides whether handleCheckin shows a nicer local "duplicate" UI, never
+  // whether a scan is authorized. The server's own `blocked` flag already
+  // gates that.
+  const [isCollectionListActive, setIsCollectionListActive] = useState(false)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
   const [usbSupported, setUsbSupported] = useState(false)
   const [printerConnected, setPrinterConnected] = useState(false)
@@ -230,6 +246,15 @@ export function KioskCheckinScreen({
         }
         const data = (await res.json()) as { delegates: CachedDelegate[]; list_purpose?: string; blocked?: boolean }
         if (cancelled) return
+
+        // This state's only job is deciding whether handleCheckin runs a
+        // local, same-tablet duplicate check for a nicer UI -- it is NOT the
+        // authorization boundary (the server's `blocked` flag above already
+        // is). True only when this is a collection-purpose list AND the
+        // station is genuinely attended (blocked === false); false for
+        // entry lists, blocked collection lists, and any response shape
+        // that doesn't say otherwise.
+        setIsCollectionListActive(data.list_purpose === "collection" && data.blocked === false)
 
         if (data.blocked) {
           // The server is the single authority on whether self check-in is
@@ -768,6 +793,35 @@ export function KioskCheckinScreen({
           message: "Registration not found. Please check your registration number.",
         })
         return
+      }
+
+      // Layer 1 duplicate detection: instant, same-tablet, fully offline --
+      // only relevant on a collection-purpose list at a genuinely attended
+      // station (isCollectionListActive). Entry-purpose lists (and any list
+      // this component isn't sure about) must take the exact same path as
+      // before this check existed -- repeat entry scans are always a
+      // success, never flagged here.
+      if (isCollectionListActive) {
+        const priorScans = await getScanHistoryForRegistration(listId, delegate.id)
+        if (priorScans.length > 0) {
+          const earliest = priorScans.reduce((a, b) => (a.scanned_at < b.scanned_at ? a : b))
+          setResult({
+            success: false,
+            message: "Self check-in isn't available for this list. Please see a staff member.", // PLACEHOLDER -- a later task replaces this with real duplicate-warning screen content
+            alreadyCheckedIn: true,
+            duplicateCheckedInAt: new Date(earliest.scanned_at).toISOString(),
+            duplicateStationName: stationName || "this station",
+            registration: {
+              id: delegate.id,
+              registration_number: delegate.registration_number,
+              attendee_name: delegate.attendee_name,
+              attendee_email: delegate.attendee_email,
+              attendee_designation: delegate.attendee_designation ?? undefined,
+              attendee_institution: delegate.attendee_institution ?? undefined,
+            },
+          })
+          return
+        }
       }
 
       const scanId = newId()

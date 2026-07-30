@@ -274,6 +274,18 @@ export async function getPendingScanCount(listId: string): Promise<number> {
   return (await getPendingScans(listId)).length
 }
 
+// Every prior scan of this exact registration on this exact list, from THIS
+// device, regardless of sync outcome (pending, synced, or conflict all
+// count -- if this tablet has recorded a scan for this person on this list
+// before, a second scan is a duplicate no matter what happened to the
+// first one server-side). Used for instant, offline-capable same-tablet
+// duplicate detection on collection-purpose lists.
+export async function getScanHistoryForRegistration(listId: string, registrationId: string): Promise<ScanLogEntry[]> {
+  const db = await getDb()
+  const all = (await db.getAll(SCAN_STORE)) as ScanLogEntry[]
+  return all.filter((entry) => entry.list_id === listId && entry.registration_id === registrationId)
+}
+
 export async function recordScanAttempt(scanId: string, attempts: number, lastError: string): Promise<void> {
   const db = await getDb()
   const entry = (await db.get(SCAN_STORE, scanId)) as ScanLogEntry | undefined
