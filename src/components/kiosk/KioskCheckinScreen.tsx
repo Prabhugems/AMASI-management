@@ -214,6 +214,18 @@ export function KioskCheckinScreen({
   const [selectedCameraId, setSelectedCameraId] = useState<string>("")
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const scannerContainerId = "kiosk-qr-scanner-container"
+  // Tracks the pending "restart the scanner in 300ms" timer scheduled by
+  // switchCamera and the visibility-regain handler below. Both used a bare,
+  // uncancelled setTimeout -- if the component unmounted in that 300ms
+  // window (e.g. a volunteer tapped "Switch list" right after switching
+  // cameras), the stale timer still fired after unmount and called
+  // startScanner() again, racing the unmount cleanup's own scanner.stop().
+  // Two overlapping getUserMedia/track-stop calls on the same physical
+  // camera is a known cause of multi-second-to-tens-of-seconds stalls in
+  // Chromium's video-capture pipeline -- consistent with the tab-freeze
+  // reported when leaving a camera-active screen. Storing the timer id
+  // lets every relevant cleanup cancel it before it can fire late.
+  const restartScannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // For the persistent status strip only -- not read by any check-in/sync
   // logic, which already checks navigator.onLine directly at the point of
   // use rather than trusting a possibly-stale piece of React state.
@@ -1198,7 +1210,11 @@ export function KioskCheckinScreen({
     }
     if (cameraActive) {
       await stopScanner()
-      setTimeout(() => startScanner(), 300)
+      if (restartScannerTimeoutRef.current) clearTimeout(restartScannerTimeoutRef.current)
+      restartScannerTimeoutRef.current = setTimeout(() => {
+        restartScannerTimeoutRef.current = null
+        startScanner()
+      }, 300)
     }
   }, [cameras, selectedCameraId, cameraActive, stopScanner, startScanner])
 
@@ -1211,6 +1227,16 @@ export function KioskCheckinScreen({
       stopScanner()
     }
     return () => {
+      // Cancel any restart scheduled by switchCamera/visibilitychange below
+      // -- without this, a restart timer still pending when this effect's
+      // cleanup runs (e.g. the whole component unmounting because a
+      // volunteer tapped "Switch list") fires late, racing the stop() call
+      // right below it for the same physical camera device. See this ref's
+      // declaration for the full incident this closes.
+      if (restartScannerTimeoutRef.current) {
+        clearTimeout(restartScannerTimeoutRef.current)
+        restartScannerTimeoutRef.current = null
+      }
       if (scannerRef.current && scannerRef.current.isScanning) {
         scannerRef.current.stop().catch(() => {})
       }
@@ -1236,11 +1262,21 @@ export function KioskCheckinScreen({
       if (document.visibilityState !== "visible") return
       if (scanMode !== "camera" || result) return
       stopScanner().then(() => {
-        setTimeout(() => startScanner(), 300)
+        if (restartScannerTimeoutRef.current) clearTimeout(restartScannerTimeoutRef.current)
+        restartScannerTimeoutRef.current = setTimeout(() => {
+          restartScannerTimeoutRef.current = null
+          startScanner()
+        }, 300)
       })
     }
     document.addEventListener("visibilitychange", handleVisibilityChange)
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      if (restartScannerTimeoutRef.current) {
+        clearTimeout(restartScannerTimeoutRef.current)
+        restartScannerTimeoutRef.current = null
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanMode, result])
 
