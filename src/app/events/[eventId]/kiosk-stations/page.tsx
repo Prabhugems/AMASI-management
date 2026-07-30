@@ -68,6 +68,15 @@ import {
   type KioskStation,
 } from "@/components/kiosk-admin/station-controls"
 
+function nextDefaultStationName(stations: KioskStation[]): string {
+  let highest = 0
+  for (const s of stations) {
+    const match = /^Tablet (\d+)$/.exec(s.name.trim())
+    if (match) highest = Math.max(highest, parseInt(match[1], 10))
+  }
+  return `Tablet ${highest + 1}`
+}
+
 export default function KioskStationsPage() {
   const params = useParams()
   const eventId = params.eventId as string
@@ -668,7 +677,12 @@ export default function KioskStationsPage() {
             stays signed in on its own and never needs a password again.
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)}>
+        <Button
+          onClick={() => {
+            setNewName(nextDefaultStationName(stations))
+            setShowCreate(true)
+          }}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Station
         </Button>
@@ -683,7 +697,12 @@ export default function KioskStationsPage() {
             Add one station for each tablet you&apos;ll hand to a volunteer. Give it the desk&apos;s name, tick the
             lists that desk handles, and connect a printer if badges are printed there.
           </p>
-          <Button onClick={() => setShowCreate(true)}>
+          <Button
+            onClick={() => {
+              setNewName(nextDefaultStationName(stations))
+              setShowCreate(true)
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Station
           </Button>
