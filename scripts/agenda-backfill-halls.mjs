@@ -31,29 +31,39 @@ const args = process.argv.slice(2)
 const commit = args.includes('--commit')
 const eventIdArg = args.includes('--event') ? args[args.indexOf('--event') + 1] : null
 
+const PAGE_SIZE = 1000
+
+// PostgREST caps a single response at PAGE_SIZE rows by default -- fetch in
+// pages via .range() until a short page signals the end, so events with more
+// matching rows than the cap don't silently get truncated.
+async function fetchAllPages(query) {
+  const rows = []
+  let from = 0
+  for (;;) {
+    const { data, error } = await query.range(from, from + PAGE_SIZE - 1)
+    if (error) throw error
+    rows.push(...data)
+    if (data.length < PAGE_SIZE) break
+    from += PAGE_SIZE
+  }
+  return rows
+}
+
 async function getEventIds() {
   if (eventIdArg) return [eventIdArg]
-  const { data, error } = await supabase.from('events').select('id')
-  if (error) throw error
+  const data = await fetchAllPages(supabase.from('events').select('id'))
   return data.map((e) => e.id)
 }
 
 async function backfillEvent(eventId) {
-  const { data: sessions, error: sessionsError } = await supabase
-    .from('sessions')
-    .select('id, hall, hall_id')
-    .eq('event_id', eventId)
-    .not('hall', 'is', null)
-  if (sessionsError) throw sessionsError
+  const sessions = await fetchAllPages(
+    supabase.from('sessions').select('id, hall, hall_id').eq('event_id', eventId).not('hall', 'is', null)
+  )
   if (!sessions.length) return { eventId, hallsCreated: 0, sessionsLinked: 0, coordinatorsLinked: 0 }
 
   const distinctHallNames = [...new Set(sessions.map((s) => s.hall.trim()).filter(Boolean))]
 
-  const { data: existingHalls, error: existingHallsError } = await supabase
-    .from('halls')
-    .select('id, name')
-    .eq('event_id', eventId)
-  if (existingHallsError) throw existingHallsError
+  const existingHalls = await fetchAllPages(supabase.from('halls').select('id, name').eq('event_id', eventId))
 
   const nameToHallId = new Map(existingHalls.map((h) => [h.name, h.id]))
   const namesToCreate = distinctHallNames.filter((name) => !nameToHallId.has(name))
@@ -87,12 +97,9 @@ async function backfillEvent(eventId) {
     }
   }
 
-  const { data: coordinators, error: coordinatorsError } = await supabase
-    .from('hall_coordinators')
-    .select('id, hall_name, hall_id')
-    .eq('event_id', eventId)
-    .not('hall_name', 'is', null)
-  if (coordinatorsError) throw coordinatorsError
+  const coordinators = await fetchAllPages(
+    supabase.from('hall_coordinators').select('id, hall_name, hall_id').eq('event_id', eventId).not('hall_name', 'is', null)
+  )
 
   const coordinatorsToLink = coordinators.filter(
     (c) => !c.hall_id && c.hall_name && nameToHallId.has(c.hall_name.trim())

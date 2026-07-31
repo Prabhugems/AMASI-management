@@ -32,29 +32,39 @@ const args = process.argv.slice(2)
 const commit = args.includes('--commit')
 const eventIdArg = args.includes('--event') ? args[args.indexOf('--event') + 1] : null
 
+const PAGE_SIZE = 1000
+
+// PostgREST caps a single response at PAGE_SIZE rows by default -- fetch in
+// pages via .range() until a short page signals the end, so events with more
+// matching rows than the cap don't silently get truncated.
+async function fetchAllPages(query) {
+  const rows = []
+  let from = 0
+  for (;;) {
+    const { data, error } = await query.range(from, from + PAGE_SIZE - 1)
+    if (error) throw error
+    rows.push(...data)
+    if (data.length < PAGE_SIZE) break
+    from += PAGE_SIZE
+  }
+  return rows
+}
+
 async function getEventIds() {
   if (eventIdArg) return [eventIdArg]
-  const { data, error } = await supabase.from('events').select('id')
-  if (error) throw error
+  const data = await fetchAllPages(supabase.from('events').select('id'))
   return data.map((e) => e.id)
 }
 
 async function backfillEvent(eventId) {
-  const { data: sessions, error: sessionsError } = await supabase
-    .from('sessions')
-    .select('id, specialty_track, track_id')
-    .eq('event_id', eventId)
-    .not('specialty_track', 'is', null)
-  if (sessionsError) throw sessionsError
+  const sessions = await fetchAllPages(
+    supabase.from('sessions').select('id, specialty_track, track_id').eq('event_id', eventId).not('specialty_track', 'is', null)
+  )
   if (!sessions.length) return { eventId, tracksCreated: 0, sessionsLinked: 0 }
 
   const distinctTrackNames = [...new Set(sessions.map((s) => s.specialty_track.trim()).filter(Boolean))]
 
-  const { data: existingTracks, error: existingTracksError } = await supabase
-    .from('tracks')
-    .select('id, name')
-    .eq('event_id', eventId)
-  if (existingTracksError) throw existingTracksError
+  const existingTracks = await fetchAllPages(supabase.from('tracks').select('id, name').eq('event_id', eventId))
 
   const lowerNameToTrackId = new Map(existingTracks.map((t) => [t.name.toLowerCase(), t.id]))
   const namesToCreate = distinctTrackNames.filter((name) => !lowerNameToTrackId.has(name.toLowerCase()))
