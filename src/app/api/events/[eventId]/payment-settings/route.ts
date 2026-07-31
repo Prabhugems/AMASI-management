@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAccess } from "@/lib/auth/api-auth"
+import { DEFAULT_PAYMENT_METHODS_ENABLED } from "@/lib/types/payment-methods"
 
 export async function PUT(
   request: NextRequest,
@@ -39,12 +40,7 @@ export async function PUT(
         razorpay_key_id: razorpay_key_id || null,
         razorpay_key_secret: razorpay_key_secret || null,
         razorpay_webhook_secret: razorpay_webhook_secret || null,
-        payment_methods_enabled: payment_methods_enabled || {
-          razorpay: true,
-          bank_transfer: false,
-          cash: false,
-          free: true,
-        },
+        payment_methods_enabled: payment_methods_enabled || DEFAULT_PAYMENT_METHODS_ENABLED,
         bank_account_name: bank_account_name || null,
         bank_account_number: bank_account_number || null,
         bank_ifsc_code: bank_ifsc_code || null,
