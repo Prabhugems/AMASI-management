@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import * as Sentry from "@sentry/nextjs"
-import { ClipboardList } from "lucide-react"
+import { ClipboardList, Printer } from "lucide-react"
 import { KioskCheckinScreen } from "./KioskCheckinScreen"
 import { computeListState, minutesUntilClose, type ScheduledList } from "@/lib/kiosk-list-schedule"
 import { cacheStationManifest, getStationManifest, replaceDelegateCache, type StationManifest } from "@/lib/kiosk-offline-store"
@@ -340,6 +340,7 @@ export function KioskStationShell({
       lists={assignedLists}
       attended={attended}
       listCounts={listCounts}
+      mode={mode}
       onSelect={(list) => {
         if (!isListUsable(list, attended)) return
         selectList(list.id, false)
@@ -384,6 +385,7 @@ function JobTile({
   attended,
   open,
   count,
+  mode,
   onSelect,
 }: {
   list: AssignedList
@@ -391,6 +393,7 @@ function JobTile({
   attended: boolean
   open: boolean
   count?: number
+  mode: "checkin" | "checkin_and_print"
   onSelect: (list: AssignedList) => void
 }) {
   return (
@@ -409,10 +412,17 @@ function JobTile({
           open ? "size-16 sm:size-[76px] bg-white/20" : "size-12 sm:size-[60px] bg-muted"
         }`}
       >
-        <ClipboardList
-          className={open ? "size-8 sm:size-9" : "size-6 sm:size-7 text-muted-foreground"}
-          strokeWidth={1.9}
-        />
+        {mode === "checkin_and_print" && list.prints_badge ? (
+          <Printer
+            className={open ? "size-8 sm:size-9" : "size-6 sm:size-7 text-muted-foreground"}
+            strokeWidth={1.9}
+          />
+        ) : (
+          <ClipboardList
+            className={open ? "size-8 sm:size-9" : "size-6 sm:size-7 text-muted-foreground"}
+            strokeWidth={1.9}
+          />
+        )}
       </span>
       <span className="flex flex-col gap-1 min-w-0">
         <span
@@ -435,12 +445,14 @@ function KioskMenuScreen({
   lists,
   attended,
   listCounts,
+  mode,
   onSelect,
 }: {
   stationName: string
   lists: AssignedList[]
   attended: boolean
   listCounts: Record<string, number>
+  mode: "checkin" | "checkin_and_print"
   onSelect: (list: AssignedList) => void
 }) {
   // Live clock for the header chip -- this screen doesn't accept a `now`/
@@ -512,6 +524,7 @@ function KioskMenuScreen({
                 attended={attended}
                 open
                 count={listCounts[list.id]}
+                mode={mode}
                 onSelect={onSelect}
               />
             ))}
@@ -525,6 +538,7 @@ function KioskMenuScreen({
                     attended={attended}
                     open={false}
                     count={listCounts[list.id]}
+                    mode={mode}
                     onSelect={onSelect}
                   />
                 ))}
@@ -543,6 +557,7 @@ function KioskMenuScreen({
                 attended={attended}
                 open={isListUsable(list, attended, now)}
                 count={listCounts[list.id]}
+                mode={mode}
                 onSelect={onSelect}
               />
             ))}
