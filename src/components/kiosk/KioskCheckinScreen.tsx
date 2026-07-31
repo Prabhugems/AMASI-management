@@ -164,6 +164,12 @@ export function KioskCheckinScreen({
 }: KioskCheckinScreenProps) {
   const supabase = createClient()
 
+  // Render-time / effect-gating printer type -- from the top-level SSR
+  // prop (always synchronously available), NOT the offline-cached
+  // template (which only resolves async inside printBadge itself). Both
+  // trace to the same print_stations.print_settings column.
+  const printerType: "usb" | "browser" = printSettings?.printer_type === "browser" ? "browser" : "usb"
+
   const [registrationNumber, setRegistrationNumber] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [result, setResult] = useState<CheckinResult | null>(null)
@@ -686,7 +692,7 @@ export function KioskCheckinScreen({
   // mode so this never touches navigator.usb for any existing mode:
   // "checkin" caller.
   useEffect(() => {
-    if (mode !== "checkin_and_print") {
+    if (mode !== "checkin_and_print" || printerType === "browser") {
       setCheckingPrinter(false)
       return
     }
@@ -716,7 +722,7 @@ export function KioskCheckinScreen({
       cancelled = true
       cleanupDisconnect?.()
     }
-  }, [mode])
+  }, [mode, printerType])
 
   const handleConnectPrinter = useCallback(async () => {
     setPrintStatus(null)
@@ -737,6 +743,16 @@ export function KioskCheckinScreen({
     setTestPrintStatus(null)
     setPrinterVerified(false)
     try {
+      if (printerType === "browser") {
+        const { printHtmlViaBrowser, buildBrowserTestPageHtml } = await import("@/lib/browser-print")
+        const res = printHtmlViaBrowser(buildBrowserTestPageHtml(event?.short_name || event?.name || "Event"))
+        if (res.success) {
+          setAwaitingPrintConfirm(true)
+        } else {
+          setTestPrintStatus({ success: false, message: res.error || "Could not open the print dialog." })
+        }
+        return
+      }
       const { testUsbPrinter } = await import("@/lib/usb-printer")
       const res = await testUsbPrinter()
       if (res.success) {
@@ -753,7 +769,7 @@ export function KioskCheckinScreen({
     } finally {
       setTestPrinting(false)
     }
-  }, [])
+  }, [printerType, event?.short_name, event?.name])
 
   const handleConfirmTestPrint = useCallback((badgePrinted: boolean) => {
     setAwaitingPrintConfirm(false)
@@ -1698,6 +1714,7 @@ export function KioskCheckinScreen({
         onConfirmTestPrint={handleConfirmTestPrint}
         testPrintStatus={testPrintStatus}
         contactPhone={contactPhone}
+        printerType={printerType}
         onContinue={() => {
           setPrintStatus(null)
           setPrinterSetupDone(true)
@@ -2468,6 +2485,7 @@ interface PrinterSetupScreenProps {
   onContinue: () => void
   isOnline: boolean
   contactPhone?: string | null
+  printerType: "usb" | "browser"
 }
 
 // Gates the scan screen for any checkin_and_print list -- a volunteer
@@ -2494,6 +2512,7 @@ function PrinterSetupScreen({
   onContinue,
   isOnline,
   contactPhone,
+  printerType,
 }: PrinterSetupScreenProps) {
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
@@ -2528,6 +2547,11 @@ function PrinterSetupScreen({
                 <span className="inline-flex items-center gap-1.5 text-sm text-gray-400">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking…
                 </span>
+              ) : printerType === "browser" ? (
+                <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${printerVerified ? "text-emerald-400" : "text-gray-400"}`}>
+                  <span className={`size-1.5 rounded-full ${printerVerified ? "bg-emerald-400" : "bg-gray-500"}`} />
+                  {printerVerified ? "Verified" : "Not tested yet"}
+                </span>
               ) : (
                 <span
                   className={`inline-flex items-center gap-1.5 text-sm font-semibold ${
@@ -2548,14 +2572,14 @@ function PrinterSetupScreen({
               )}
             </div>
 
-            {!usbSupported && !checking && (
+            {printerType !== "browser" && !usbSupported && !checking && (
               <p className="text-xs text-amber-400">
                 This browser can&apos;t connect to a printer over USB. Use Chrome or Edge, or skip and print
                 elsewhere.
               </p>
             )}
 
-            {usbSupported && (
+            {(printerType === "browser" || usbSupported) && (
               awaitingPrintConfirm ? (
                 <div className="space-y-2">
                   <p className="text-sm text-gray-300 text-center">Did a badge come out?</p>
@@ -2572,6 +2596,11 @@ function PrinterSetupScreen({
                     </Button>
                   </div>
                 </div>
+              ) : printerType === "browser" ? (
+                <Button className="w-full h-12" onClick={onTestPrint} disabled={testPrinting}>
+                  {testPrinting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Test Print
+                </Button>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   <Button
