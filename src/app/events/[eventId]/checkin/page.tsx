@@ -36,6 +36,7 @@ import {
 } from "lucide-react"
 import { HelpTooltip } from "@/components/ui/help-tooltip"
 import { QrImage } from "@/components/QrImage"
+import { CATEGORY_COLORS, type ListCategory } from "@/lib/checkin-list-category"
 
 interface CheckinList {
   id: string
@@ -47,6 +48,7 @@ interface CheckinList {
   is_active: boolean
   allow_multiple_checkins: boolean
   list_purpose: "entry" | "collection"
+  category: ListCategory
   sort_order: number
   access_token?: string  // For staff access without login (like Tito)
   stats: {
@@ -356,18 +358,6 @@ export default function CheckinHubPage() {
     return <Users className={size} />
   }
 
-  const getGradient = (index: number) => {
-    const gradients = [
-      "from-orange-500 to-amber-500",
-      "from-blue-500 to-cyan-500",
-      "from-purple-500 to-pink-500",
-      "from-green-500 to-emerald-500",
-      "from-red-500 to-rose-500",
-      "from-indigo-500 to-violet-500"
-    ]
-    return gradients[index % gradients.length]
-  }
-
   // Calculate totals
   const totalStats = checkinLists?.reduce(
     (acc, list) => ({
@@ -379,7 +369,6 @@ export default function CheckinHubPage() {
   ) || { total: 0, checkedIn: 0, remaining: 0 }
 
   const selectedListData = checkinLists?.find(l => l.id === selectedList)
-  const selectedListIndex = checkinLists?.findIndex(l => l.id === selectedList) || 0
 
   // Calculate time ago
   const timeAgo = (date: string) => {
@@ -531,7 +520,7 @@ export default function CheckinHubPage() {
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-center gap-4">
-                          <div className={`w-14 h-14 bg-gradient-to-br ${getGradient(index)} rounded-2xl flex items-center justify-center text-white shadow-lg`}>
+                          <div className={`w-14 h-14 ${CATEGORY_COLORS[list.category].solid} rounded-2xl flex items-center justify-center text-white shadow-lg`}>
                             {getListIcon(list.name, "w-7 h-7")}
                           </div>
                           <div>
@@ -601,7 +590,7 @@ export default function CheckinHubPage() {
                             e.stopPropagation()
                             router.push(`/events/${eventId}/checkin/${list.id}/scan`)
                           }}
-                          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r ${getGradient(index)} text-white rounded-xl font-medium transition-all hover:opacity-90`}
+                          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 ${CATEGORY_COLORS[list.category].solid} text-white rounded-xl font-medium transition-all hover:opacity-90`}
                         >
                           <ScanLine className="w-5 h-5" />
                           Open Scanner
@@ -710,7 +699,7 @@ export default function CheckinHubPage() {
                 {selectedListData && (
                   <div className="p-4 border-b border-border bg-muted/30">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 bg-gradient-to-br ${getGradient(selectedListIndex)} rounded-xl flex items-center justify-center text-white`}>
+                      <div className={`w-10 h-10 ${CATEGORY_COLORS[selectedListData.category].solid} rounded-xl flex items-center justify-center text-white`}>
                         {getListIcon(selectedListData.name, "w-5 h-5")}
                       </div>
                       <div>
