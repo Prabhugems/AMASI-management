@@ -59,6 +59,7 @@ import {
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { isNetworkFailure } from "@/lib/offline-scan-queue"
 import { resolveStationName } from "@/lib/kiosk-station-lookup-client"
+import { CATEGORY_COLORS, type ListCategory } from "@/lib/checkin-list-category"
 
 type CheckinResult = {
   success: boolean
@@ -142,6 +143,7 @@ interface KioskCheckinScreenProps {
   // must handle by simply omitting the "Open until" line.
   listClosesAt?: string | null
   contactPhone?: string | null
+  category?: ListCategory
 }
 
 export function KioskCheckinScreen({
@@ -161,6 +163,7 @@ export function KioskCheckinScreen({
   closingSoonMinutes,
   listClosesAt,
   contactPhone,
+  category,
 }: KioskCheckinScreenProps) {
   const supabase = createClient()
 
@@ -2135,11 +2138,14 @@ export function KioskCheckinScreen({
       className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col"
       onClick={() => inputRef.current?.focus()}
     >
-      {/* Header */}
-      <div className="bg-gray-800/50 border-b border-white/10 px-4 sm:px-8 py-4 sm:py-6 relative">
+      {/* Header — coloured by the active list's category (blue/violet/cyan)
+          so the job is identifiable from 2 metres, replacing the previous
+          neutral grey bar. Falls back to the neutral grey only if category
+          is somehow unset (should not happen once every caller supplies it). */}
+      <div className={`${category ? CATEGORY_COLORS[category].header : "bg-gray-800/50"} border-b border-white/10 px-4 sm:px-8 py-4 sm:py-6 relative`}>
         <button
           onClick={toggleFullscreen}
-          className="absolute top-2 right-2 sm:top-3 sm:right-3 p-2 rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
+          className="absolute top-2 right-2 sm:top-3 sm:right-3 p-2 rounded-full text-gray-200 hover:text-white hover:bg-white/10 transition-colors"
           title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
         >
           {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
@@ -2149,7 +2155,7 @@ export function KioskCheckinScreen({
             <h1 className="text-2xl sm:text-3xl font-bold text-white truncate">
               {event?.short_name || event?.name || "Event"}
             </h1>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs sm:text-sm text-gray-400">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs sm:text-sm text-white/70">
               {event?.start_date && (
                 <span className="flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" />
@@ -2191,7 +2197,7 @@ export function KioskCheckinScreen({
                 </span>
               </div>
             )}
-            <p className="text-xs sm:text-sm text-gray-400">Checking in for</p>
+            <p className="text-xs sm:text-sm text-white/70">Checking in for</p>
             <div className="flex items-center gap-2 justify-end">
               <p
                 className={`text-base sm:text-xl font-semibold truncate ${

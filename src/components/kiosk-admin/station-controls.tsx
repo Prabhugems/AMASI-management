@@ -28,6 +28,7 @@ import { Pencil, RefreshCw, MoreVertical } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { type KioskStationStatus } from "@/lib/kiosk-station-status"
+import { CATEGORY_COLORS } from "@/lib/checkin-list-category"
 
 // Admin-facing meaning of each status, worded for someone who has never seen
 // this system before (no "heartbeat", no "token"). Used both as the footer
@@ -60,7 +61,7 @@ export function autoPrintHelpText(autoPrint: boolean) {
 export const PRINTER_USB_HELP_TEXT =
   "The printer must be plugged into this tablet by USB. A printer at another desk cannot be used from here."
 
-export type CheckinList = { id: string; name: string; is_active?: boolean; list_purpose?: string }
+export type CheckinList = { id: string; name: string; is_active?: boolean; list_purpose?: string; category?: "entry_access" | "food_drink" | "goods_kits" }
 export type PrintStation = { id: string; name: string; print_settings?: { printer_type?: string } }
 export type KioskStation = {
   id: string
@@ -165,15 +166,16 @@ export function StationListsPicker({
   onFocusAttended: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const listNames = station.list_ids
+  const chipData = station.list_ids
     .map((id) => {
       const list = lists.find((l) => l.id === id)
       if (!list) return null
-      return counts?.[id] !== undefined ? `${list.name} · ${counts[id]}` : list.name
+      const label = counts?.[id] !== undefined ? `${list.name} · ${counts[id]}` : list.name
+      return { id, label, category: list.category }
     })
-    .filter(Boolean) as string[]
-  const visibleChips = listNames.slice(0, CHIP_LIMIT)
-  const moreCount = listNames.length - visibleChips.length
+    .filter((c): c is { id: string; label: string; category: "entry_access" | "food_drink" | "goods_kits" | undefined } => c !== null)
+  const visibleChips = chipData.slice(0, CHIP_LIMIT)
+  const moreCount = chipData.length - visibleChips.length
   const hasCollectionLists = lists.some((l) => l.is_active === true && l.list_purpose === "collection")
 
   const renderRow = (list: CheckinList) => {
@@ -213,18 +215,20 @@ export function StationListsPicker({
             type="button"
             className="flex w-full flex-wrap items-center gap-1.5 rounded-lg border border-dashed border-transparent px-1 py-1 -mx-1 text-left transition-colors hover:border-border hover:bg-muted/50"
           >
-            {listNames.length === 0 ? (
+            {chipData.length === 0 ? (
               <span className="rounded-md border border-dashed border-warning/50 px-2 py-0.5 text-xs text-warning">
                 Assign lists
               </span>
             ) : (
               <>
-                {visibleChips.map((name) => (
+                {visibleChips.map((chip) => (
                   <span
-                    key={name}
-                    className="rounded-md border bg-muted px-2 py-0.5 text-xs whitespace-nowrap text-foreground/80"
+                    key={chip.id}
+                    className={`rounded-md border px-2 py-0.5 text-xs whitespace-nowrap ${
+                      chip.category ? CATEGORY_COLORS[chip.category].pill : "bg-muted text-foreground/80"
+                    }`}
                   >
-                    {name}
+                    {chip.label}
                   </span>
                 ))}
                 {moreCount > 0 && (
@@ -285,12 +289,12 @@ export function StationListsPicker({
           )}
         </PopoverContent>
       </Popover>
-      {listNames.length >= 2 && (
+      {chipData.length >= 2 && (
         <p className="mt-1 text-[10.5px] leading-snug text-muted-foreground">
           This tablet shows a menu so the volunteer picks which job they&apos;re doing.
         </p>
       )}
-      {listNames.length === 1 && (
+      {chipData.length === 1 && (
         <p className="mt-1 text-[10.5px] leading-snug text-muted-foreground">
           With one list, the tablet goes straight to scanning — no menu.
         </p>

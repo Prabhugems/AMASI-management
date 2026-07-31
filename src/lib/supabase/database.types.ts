@@ -3713,6 +3713,7 @@ export type Database = {
           access_token_expires_at: string | null
           addon_ids: string[] | null
           allow_multiple_checkins: boolean | null
+          category: string
           created_at: string | null
           description: string | null
           ends_at: string | null
@@ -3736,6 +3737,7 @@ export type Database = {
           access_token_expires_at?: string | null
           addon_ids?: string[] | null
           allow_multiple_checkins?: boolean | null
+          category: string
           created_at?: string | null
           description?: string | null
           ends_at?: string | null
@@ -3759,6 +3761,7 @@ export type Database = {
           access_token_expires_at?: string | null
           addon_ids?: string[] | null
           allow_multiple_checkins?: boolean | null
+          category?: string
           created_at?: string | null
           description?: string | null
           ends_at?: string | null
