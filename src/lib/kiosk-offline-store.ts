@@ -86,6 +86,7 @@ export interface StationManifestList {
   id: string
   name: string
   list_purpose: string
+  category: "entry_access" | "food_drink" | "goods_kits"
   prints_badge: boolean
   kiosk_opens_at: string | null
   kiosk_closes_at: string | null

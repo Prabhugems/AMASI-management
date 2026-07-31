@@ -12,6 +12,7 @@ export interface AssignedList extends ScheduledList {
   id: string
   name: string
   list_purpose: string
+  category: "entry_access" | "food_drink" | "goods_kits"
   prints_badge: boolean
 }
 
@@ -43,6 +44,7 @@ function toAssignedLists(manifest: StationManifest): AssignedList[] {
     id: l.id,
     name: l.name,
     list_purpose: l.list_purpose,
+    category: l.category,
     prints_badge: l.prints_badge,
     kiosk_opens_at: l.kiosk_opens_at,
     kiosk_closes_at: l.kiosk_closes_at,

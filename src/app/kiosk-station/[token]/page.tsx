@@ -77,7 +77,7 @@ export default async function KioskStationPage({
   const { data: lists, error: listsError } = listIds.length > 0
     ? await (supabase as any)
         .from("checkin_lists")
-        .select("id, name, list_purpose, prints_badge, kiosk_opens_at, kiosk_closes_at, kiosk_force_state")
+        .select("id, name, list_purpose, category, prints_badge, kiosk_opens_at, kiosk_closes_at, kiosk_force_state")
         .in("id", listIds)
     : { data: [], error: null }
 
