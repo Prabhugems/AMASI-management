@@ -43,7 +43,10 @@ export async function PATCH(
   }
 
   if (session.checkin_enabled && session.session_date && session.start_time && session.end_time) {
-    const { data: event } = await supabase.from("events").select("timezone").eq("id", eventId).single()
+    const { data: event, error: eventError } = await supabase.from("events").select("timezone").eq("id", eventId).single()
+    if (eventError) {
+      return NextResponse.json({ error: "Session updated, but failed to look up event timezone for check-in provisioning" }, { status: 500 })
+    }
     const timezone = event?.timezone ?? "Asia/Kolkata"
 
     const { opensAt, closesAt } = computeSessionCheckinWindow(
@@ -51,19 +54,25 @@ export async function PATCH(
       timezone
     )
 
-    const { data: existingList } = await supabase
+    const { data: existingList, error: existingListError } = await supabase
       .from("checkin_lists")
       .select("id")
       .eq("session_id", sessionId)
       .maybeSingle()
+    if (existingListError) {
+      return NextResponse.json({ error: "Session updated, but failed to check for an existing check-in list" }, { status: 500 })
+    }
 
     if (existingList) {
-      await supabase
+      const { error: updateListError } = await supabase
         .from("checkin_lists")
         .update({ kiosk_opens_at: opensAt, kiosk_closes_at: closesAt, updated_at: new Date().toISOString() })
         .eq("id", existingList.id)
+      if (updateListError) {
+        return NextResponse.json({ error: "Session updated, but failed to update its check-in list" }, { status: 500 })
+      }
     } else {
-      await supabase.from("checkin_lists").insert({
+      const { error: insertListError } = await supabase.from("checkin_lists").insert({
         event_id: eventId,
         session_id: sessionId,
         name: `Session check-in — ${sessionId}`,
@@ -71,6 +80,9 @@ export async function PATCH(
         kiosk_opens_at: opensAt,
         kiosk_closes_at: closesAt,
       })
+      if (insertListError) {
+        return NextResponse.json({ error: "Session updated, but failed to create its check-in list" }, { status: 500 })
+      }
     }
   }
 
