@@ -141,6 +141,7 @@ interface KioskCheckinScreenProps {
   // by KioskStationShell; every other caller omits it, which this component
   // must handle by simply omitting the "Open until" line.
   listClosesAt?: string | null
+  contactPhone?: string | null
 }
 
 export function KioskCheckinScreen({
@@ -159,6 +160,7 @@ export function KioskCheckinScreen({
   onSwitchList,
   closingSoonMinutes,
   listClosesAt,
+  contactPhone,
 }: KioskCheckinScreenProps) {
   const supabase = createClient()
 
@@ -209,6 +211,12 @@ export function KioskCheckinScreen({
   const [testPrintStatus, setTestPrintStatus] = useState<{ success: boolean; message: string } | null>(null)
   const [printerVerified, setPrinterVerified] = useState(false)
   const [awaitingPrintConfirm, setAwaitingPrintConfirm] = useState(false)
+  // Set on every print attempt (success or failure) so the idle/ready
+  // screen's "Reprint last badge" action always has a target -- most useful
+  // exactly when the last attempt failed and the volunteer has already
+  // moved on to the next delegate before noticing. Deliberately NOT cleared
+  // by resetKiosk (see spec §6 -- this must survive across resets).
+  const [lastPrintedRegistration, setLastPrintedRegistration] = useState<NonNullable<CheckinResult["registration"]> | null>(null)
   // Camera QR scan mode -- an alternative to the manual/external-scanner text
   // input below, using the same html5-qrcode integration already proven in
   // the standalone Print Station page (src/app/print/[token]/page.tsx).
@@ -764,6 +772,7 @@ export function KioskCheckinScreen({
   // invoked from mode === "checkin_and_print" code paths (auto-print effect
   // below, handlePrintButtonClick).
   const printBadge = useCallback(async (registration: NonNullable<CheckinResult["registration"]>) => {
+    setLastPrintedRegistration(registration)
     setPrinting(true)
     setPrintStatus(null)
     try {
@@ -1667,6 +1676,7 @@ export function KioskCheckinScreen({
         awaitingPrintConfirm={awaitingPrintConfirm}
         onConfirmTestPrint={handleConfirmTestPrint}
         testPrintStatus={testPrintStatus}
+        contactPhone={contactPhone}
         onContinue={() => {
           setPrintStatus(null)
           setPrinterSetupDone(true)
@@ -1857,6 +1867,36 @@ export function KioskCheckinScreen({
                   </ul>
                 </div>
 
+                {mode === "checkin_and_print" && printStatus && !printStatus.success && (
+                  <div className="mb-8 rounded-lg border border-amber-500/30 bg-amber-500/10 p-5 sm:p-6 text-left">
+                    <p className="text-lg sm:text-xl font-bold text-amber-300 mb-1">
+                      Checked in — badge did not print
+                    </p>
+                    <p className="text-sm text-amber-200/80 mb-4">
+                      Check the printer: labels loaded, cable connected, lid closed.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button
+                        size="lg"
+                        className="h-12 px-6 text-sm"
+                        onClick={handlePrintButtonClick}
+                        disabled={printing}
+                      >
+                        {printing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                        Print again
+                      </Button>
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="h-12 px-6 text-sm bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                        onClick={resetKiosk}
+                      >
+                        Skip and continue
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Button
@@ -1916,7 +1956,7 @@ export function KioskCheckinScreen({
                       Sent on WhatsApp
                     </Button>
                   )}
-                  {mode === "checkin_and_print" && usbSupported && (
+                  {mode === "checkin_and_print" && usbSupported && !(printStatus && !printStatus.success) && (
                     !printerConnected ? (
                       <Button
                         size="lg"
@@ -2333,9 +2373,9 @@ export function KioskCheckinScreen({
             </span>
           )}
           {mode === "checkin_and_print" && usbSupported && (
-            <span className={`inline-flex items-center gap-1 ${printerConnected ? "text-emerald-400" : "text-gray-500"}`}>
-              <span className={`size-1.5 rounded-full ${printerConnected ? "bg-emerald-400" : "bg-gray-500"}`} />
-              {printerConnected ? "Printer connected" : "Printer not connected"}
+            <span className={`inline-flex items-center gap-1 ${printerConnected && printerVerified ? "text-emerald-400" : "text-red-400"}`}>
+              <span className={`size-1.5 rounded-full ${printerConnected && printerVerified ? "bg-emerald-400" : "bg-red-400"}`} />
+              {printerConnected && printerVerified ? "Printer ready" : "Printer problem — call for help"}
             </span>
           )}
         </div>
@@ -2351,6 +2391,15 @@ export function KioskCheckinScreen({
             className="text-xs text-indigo-300 underline hover:text-indigo-200 mt-1 disabled:opacity-50"
           >
             {requestingHelp ? "Sending…" : "Tap here to notify an admin"}
+          </button>
+        )}
+        {mode === "checkin_and_print" && lastPrintedRegistration && (
+          <button
+            onClick={() => printBadge(lastPrintedRegistration)}
+            disabled={printing}
+            className="text-xs text-indigo-300 underline hover:text-indigo-200 mt-1 disabled:opacity-50"
+          >
+            {printing ? "Reprinting…" : `Reprint badge for ${lastPrintedRegistration.attendee_name}`}
           </button>
         )}
         {cacheError && (
@@ -2397,6 +2446,7 @@ interface PrinterSetupScreenProps {
   testPrintStatus: { success: boolean; message: string } | null
   onContinue: () => void
   isOnline: boolean
+  contactPhone?: string | null
 }
 
 // Gates the scan screen for any checkin_and_print list -- a volunteer
@@ -2422,6 +2472,7 @@ function PrinterSetupScreen({
   testPrintStatus,
   onContinue,
   isOnline,
+  contactPhone,
 }: PrinterSetupScreenProps) {
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
@@ -2529,6 +2580,12 @@ function PrinterSetupScreen({
           <Button size="lg" className="w-full h-14 sm:h-16 mt-6 text-base" onClick={onContinue}>
             {printerVerified ? "Start Scanning" : "Skip — Start Scanning"}
           </Button>
+
+          {contactPhone && (
+            <p className="mt-4 text-center text-xs text-gray-500">
+              Printer trouble? Call {contactPhone}
+            </p>
+          )}
         </div>
       </div>
 

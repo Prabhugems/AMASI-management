@@ -53,6 +53,18 @@ export default async function KioskStationPage({
     return <StationNotFound />
   }
 
+  // Best-effort only -- a missing/failed phone lookup must never block the
+  // station from rendering. Shown on the printer setup screen so a
+  // volunteer who can't fix a printer problem knows who to call (spec
+  // §4: "the volunteer cannot fix a wrong setting and needs to know who to
+  // call").
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: eventRow } = await (supabase as any)
+    .from("events")
+    .select("contact_phone")
+    .eq("id", station.event_id)
+    .maybeSingle()
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: joinRows } = await (supabase as any)
     .from("kiosk_station_lists")
@@ -121,6 +133,7 @@ export default async function KioskStationPage({
       printSettings={printSettings || undefined}
       printMode={printMode}
       initialLists={lists}
+      contactPhone={eventRow?.contact_phone || null}
     />
   )
 }
