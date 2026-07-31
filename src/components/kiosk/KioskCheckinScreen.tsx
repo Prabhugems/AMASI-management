@@ -28,6 +28,7 @@ import {
   Minimize2,
   AlertTriangle,
   WifiOff,
+  Printer,
 } from "lucide-react"
 import { toast } from "sonner"
 import * as Sentry from "@sentry/nextjs"
@@ -202,6 +203,10 @@ export function KioskCheckinScreen({
   const [printerName, setPrinterName] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
   const [printStatus, setPrintStatus] = useState<{ success: boolean; message: string } | null>(null)
+  const [printerSetupDone, setPrinterSetupDone] = useState(false)
+  const [checkingPrinter, setCheckingPrinter] = useState(true)
+  const [testPrinting, setTestPrinting] = useState(false)
+  const [testPrintStatus, setTestPrintStatus] = useState<{ success: boolean; message: string } | null>(null)
   // Camera QR scan mode -- an alternative to the manual/external-scanner text
   // input below, using the same html5-qrcode integration already proven in
   // the standalone Print Station page (src/app/print/[token]/page.tsx).
@@ -671,12 +676,18 @@ export function KioskCheckinScreen({
   // mode so this never touches navigator.usb for any existing mode:
   // "checkin" caller.
   useEffect(() => {
-    if (mode !== "checkin_and_print") return
+    if (mode !== "checkin_and_print") {
+      setCheckingPrinter(false)
+      return
+    }
     let cancelled = false
     let cleanupDisconnect: (() => void) | undefined
     ;(async () => {
       const { isWebUSBSupported, reconnectUsbPrinter, getUsbPrinterName, onUsbDisconnect } = await import("@/lib/usb-printer")
-      if (!isWebUSBSupported()) return
+      if (!isWebUSBSupported()) {
+        if (!cancelled) setCheckingPrinter(false)
+        return
+      }
       if (cancelled) return
       setUsbSupported(true)
       const result = await reconnectUsbPrinter()
@@ -685,6 +696,7 @@ export function KioskCheckinScreen({
         setPrinterConnected(true)
         setPrinterName(result.name || getUsbPrinterName())
       }
+      setCheckingPrinter(false)
       cleanupDisconnect = onUsbDisconnect(() => {
         setPrinterConnected(false)
         setPrinterName(null)
@@ -695,6 +707,31 @@ export function KioskCheckinScreen({
       cleanupDisconnect?.()
     }
   }, [mode])
+
+  const handleConnectPrinter = useCallback(async () => {
+    const { connectUsbPrinter } = await import("@/lib/usb-printer")
+    const res = await connectUsbPrinter()
+    if (res.success) {
+      setPrinterConnected(true)
+      setPrinterName(res.name || null)
+    } else {
+      setPrintStatus({ success: false, message: res.error || "Connection failed" })
+    }
+  }, [])
+
+  const handleTestPrint = useCallback(async () => {
+    setTestPrinting(true)
+    setTestPrintStatus(null)
+    try {
+      const { testUsbPrinter } = await import("@/lib/usb-printer")
+      const res = await testUsbPrinter()
+      setTestPrintStatus(
+        res.success ? { success: true, message: "Test page sent." } : { success: false, message: res.error || "Test print failed." }
+      )
+    } finally {
+      setTestPrinting(false)
+    }
+  }, [])
 
   // Stage 4: local-first badge print. Renders the already-cached template
   // (Task 6) to a canvas and sends it over an already-paired WebUSB
@@ -1238,7 +1275,8 @@ export function KioskCheckinScreen({
   // Camera only runs on the entry screen (no active result) and only in
   // "camera" scan mode -- mirrors the print station page's identical gate.
   useEffect(() => {
-    if (scanMode === "camera" && !result) {
+    const showingPrinterSetup = mode === "checkin_and_print" && !printerSetupDone
+    if (scanMode === "camera" && !result && !showingPrinterSetup) {
       getCameras()
     } else if (scanMode === "manual") {
       stopScanner()
@@ -1259,7 +1297,7 @@ export function KioskCheckinScreen({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanMode, result])
+  }, [scanMode, result, mode, printerSetupDone])
 
   useEffect(() => {
     if (scanMode === "camera" && selectedCameraId && !result && !cameraActive) {
@@ -1579,6 +1617,35 @@ export function KioskCheckinScreen({
   }
 
   // ============================================================
+  // PRINTER SETUP SCREEN — shown once per mount (i.e. once per time the
+  // volunteer enters this job from the menu, since KioskCheckinScreen
+  // remounts on key={activeList.id} in KioskStationShell), before the scan
+  // screen or its camera ever start. A volunteer must be able to connect
+  // and test a badge before any delegate is standing there -- discovering
+  // a dead printer on the success card after the first scan is too late.
+  // ============================================================
+  if (mode === "checkin_and_print" && !printerSetupDone) {
+    return (
+      <PrinterSetupScreen
+        eventName={event?.short_name || event?.name}
+        stationName={stationName}
+        listName={listName || "this list"}
+        checking={checkingPrinter}
+        usbSupported={usbSupported}
+        printerConnected={printerConnected}
+        printerName={printerName}
+        onConnect={handleConnectPrinter}
+        connectStatus={printStatus}
+        onTestPrint={handleTestPrint}
+        testPrinting={testPrinting}
+        testPrintStatus={testPrintStatus}
+        onContinue={() => setPrinterSetupDone(true)}
+        isOnline={isOnline}
+      />
+    )
+  }
+
+  // ============================================================
   // SUCCESS / ERROR SCREEN
   // ============================================================
   if (result) {
@@ -1824,16 +1891,7 @@ export function KioskCheckinScreen({
                         size="lg"
                         variant="outline"
                         className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
-                        onClick={async () => {
-                          const { connectUsbPrinter } = await import("@/lib/usb-printer")
-                          const res = await connectUsbPrinter()
-                          if (res.success) {
-                            setPrinterConnected(true)
-                            setPrinterName(res.name || null)
-                          } else {
-                            setPrintStatus({ success: false, message: res.error || "Connection failed" })
-                          }
-                        }}
+                        onClick={handleConnectPrinter}
                       >
                         Connect Printer
                       </Button>
@@ -2288,6 +2346,144 @@ function formatRelativeTime(iso: string): string {
   if (hours === 1) return "1 hour ago"
   if (hours < 24) return `${hours} hours ago`
   return new Date(iso).toLocaleString([], { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" })
+}
+
+interface PrinterSetupScreenProps {
+  eventName?: string
+  stationName?: string
+  listName: string
+  checking: boolean
+  usbSupported: boolean
+  printerConnected: boolean
+  printerName: string | null
+  onConnect: () => void
+  connectStatus: { success: boolean; message: string } | null
+  onTestPrint: () => void
+  testPrinting: boolean
+  testPrintStatus: { success: boolean; message: string } | null
+  onContinue: () => void
+  isOnline: boolean
+}
+
+// Gates the scan screen for any checkin_and_print list -- a volunteer
+// connects and test-prints here, before a delegate is ever standing in
+// front of them. Skippable: the Continue button always works, and the
+// success screen's own Connect Printer / Print Badge flow (unchanged) is
+// still there as a fallback for anyone who skips this screen.
+function PrinterSetupScreen({
+  eventName,
+  stationName,
+  listName,
+  checking,
+  usbSupported,
+  printerConnected,
+  printerName,
+  onConnect,
+  connectStatus,
+  onTestPrint,
+  testPrinting,
+  testPrintStatus,
+  onContinue,
+  isOnline,
+}: PrinterSetupScreenProps) {
+  return (
+    <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+      <div className="bg-gray-800/50 border-b border-white/10 px-4 sm:px-8 py-4 sm:py-6">
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-white truncate">{eventName || "Event"}</h1>
+          {stationName && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/15 px-3 py-1 text-xs sm:text-sm font-bold uppercase tracking-wide text-indigo-300 shrink-0">
+              <span className="size-1.5 rounded-full bg-indigo-400" />
+              {stationName}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-6">
+            <div className="size-20 sm:size-24 mx-auto rounded-3xl bg-indigo-500/15 outline outline-1 -outline-offset-1 outline-indigo-500/30 flex items-center justify-center mb-5 text-indigo-300">
+              <Printer className="h-10 w-10 sm:h-12 sm:w-12" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Set up the printer</h2>
+            <p className="text-sm sm:text-base text-gray-400">
+              {listName} prints a badge on check-in. Connect and test it now — the delegate line can&apos;t wait
+              while you find out it&apos;s dead.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-gray-800/50 p-5 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-gray-300">Status</span>
+              {checking ? (
+                <span className="inline-flex items-center gap-1.5 text-sm text-gray-400">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking…
+                </span>
+              ) : (
+                <span
+                  className={`inline-flex items-center gap-1.5 text-sm font-semibold ${printerConnected ? "text-emerald-400" : "text-gray-400"}`}
+                >
+                  <span className={`size-1.5 rounded-full ${printerConnected ? "bg-emerald-400" : "bg-gray-500"}`} />
+                  {printerConnected ? printerName || "Printer connected" : "Not connected"}
+                </span>
+              )}
+            </div>
+
+            {!usbSupported && !checking && (
+              <p className="text-xs text-amber-400">
+                This browser can&apos;t connect to a printer over USB. Use Chrome or Edge, or skip and print
+                elsewhere.
+              </p>
+            )}
+
+            {usbSupported && (
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="h-12 bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                  onClick={onConnect}
+                  disabled={checking}
+                >
+                  {printerConnected ? "Reconnect" : "Connect Printer"}
+                </Button>
+                <Button className="h-12" onClick={onTestPrint} disabled={!printerConnected || testPrinting}>
+                  {testPrinting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Test Print
+                </Button>
+              </div>
+            )}
+
+            {connectStatus && !connectStatus.success && <p className="text-xs text-red-400">{connectStatus.message}</p>}
+            {testPrintStatus && (
+              <p className={testPrintStatus.success ? "text-xs text-emerald-400" : "text-xs text-red-400"}>
+                {testPrintStatus.message}
+              </p>
+            )}
+          </div>
+
+          <Button size="lg" className="w-full h-14 sm:h-16 mt-6 text-base" onClick={onContinue}>
+            {printerConnected ? "Start Scanning" : "Skip — Start Scanning"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-gray-800/50 border-t border-white/10 px-4 sm:px-8 py-3 text-center">
+        <div className="flex items-center justify-center flex-wrap gap-x-3 gap-y-1 text-[11px]">
+          <span className={`inline-flex items-center gap-1 ${isOnline ? "text-emerald-400" : "text-amber-400"}`}>
+            <span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-400" : "bg-amber-400"}`} />
+            {isOnline ? "Online" : "Offline"}
+          </span>
+          {usbSupported && (
+            <span className={`inline-flex items-center gap-1 ${printerConnected ? "text-emerald-400" : "text-gray-500"}`}>
+              <span className={`size-1.5 rounded-full ${printerConnected ? "bg-emerald-400" : "bg-gray-500"}`} />
+              {printerConnected ? "Printer connected" : "Printer not connected"}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 interface DuplicateWarningScreenProps {
