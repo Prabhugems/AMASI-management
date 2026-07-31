@@ -7,6 +7,7 @@ import { KioskCheckinScreen } from "./KioskCheckinScreen"
 import { computeListState, minutesUntilClose, type ScheduledList } from "@/lib/kiosk-list-schedule"
 import { cacheStationManifest, getStationManifest, replaceDelegateCache, type StationManifest } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
+import { CATEGORY_COLORS } from "@/lib/checkin-list-category"
 
 export interface AssignedList extends ScheduledList {
   id: string
@@ -415,8 +416,8 @@ function JobTile({
       }`}
     >
       <span
-        className={`flex-none rounded-full flex items-center justify-center ${
-          open ? "size-16 sm:size-[76px] bg-white/20" : "size-12 sm:size-[60px] bg-muted"
+        className={`flex-none rounded-full flex items-center justify-center text-white ${
+          open ? `size-16 sm:size-[76px] ${CATEGORY_COLORS[list.category].solid}` : "size-12 sm:size-[60px] bg-muted"
         }`}
       >
         {mode === "checkin_and_print" && list.prints_badge ? (
