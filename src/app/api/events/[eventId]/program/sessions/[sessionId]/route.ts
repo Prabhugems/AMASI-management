@@ -66,7 +66,7 @@ export async function PATCH(
     if (existingList) {
       const { error: updateListError } = await supabase
         .from("checkin_lists")
-        .update({ kiosk_opens_at: opensAt, kiosk_closes_at: closesAt, updated_at: new Date().toISOString() })
+        .update({ kiosk_opens_at: opensAt, kiosk_closes_at: closesAt, kiosk_force_state: null, updated_at: new Date().toISOString() })
         .eq("id", existingList.id)
       if (updateListError) {
         return NextResponse.json({ error: "Session updated, but failed to update its check-in list" }, { status: 500 })
