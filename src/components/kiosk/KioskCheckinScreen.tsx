@@ -1860,6 +1860,36 @@ export function KioskCheckinScreen({
                   </ul>
                 </div>
 
+                {mode === "checkin_and_print" && printStatus && !printStatus.success && (
+                  <div className="mb-8 rounded-lg border border-amber-500/30 bg-amber-500/10 p-5 sm:p-6 text-left">
+                    <p className="text-lg sm:text-xl font-bold text-amber-300 mb-1">
+                      Checked in — badge did not print
+                    </p>
+                    <p className="text-sm text-amber-200/80 mb-4">
+                      Check the printer: labels loaded, cable connected, lid closed.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button
+                        size="lg"
+                        className="h-12 px-6 text-sm"
+                        onClick={handlePrintButtonClick}
+                        disabled={printing}
+                      >
+                        {printing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                        Print again
+                      </Button>
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="h-12 px-6 text-sm bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                        onClick={resetKiosk}
+                      >
+                        Skip and continue
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Button
@@ -1919,7 +1949,7 @@ export function KioskCheckinScreen({
                       Sent on WhatsApp
                     </Button>
                   )}
-                  {mode === "checkin_and_print" && usbSupported && (
+                  {mode === "checkin_and_print" && usbSupported && !(printStatus && !printStatus.success) && (
                     !printerConnected ? (
                       <Button
                         size="lg"
