@@ -141,6 +141,7 @@ interface KioskCheckinScreenProps {
   // by KioskStationShell; every other caller omits it, which this component
   // must handle by simply omitting the "Open until" line.
   listClosesAt?: string | null
+  contactPhone?: string | null
 }
 
 export function KioskCheckinScreen({
@@ -159,6 +160,7 @@ export function KioskCheckinScreen({
   onSwitchList,
   closingSoonMinutes,
   listClosesAt,
+  contactPhone,
 }: KioskCheckinScreenProps) {
   const supabase = createClient()
 
@@ -1667,6 +1669,7 @@ export function KioskCheckinScreen({
         awaitingPrintConfirm={awaitingPrintConfirm}
         onConfirmTestPrint={handleConfirmTestPrint}
         testPrintStatus={testPrintStatus}
+        contactPhone={contactPhone}
         onContinue={() => {
           setPrintStatus(null)
           setPrinterSetupDone(true)
@@ -2397,6 +2400,7 @@ interface PrinterSetupScreenProps {
   testPrintStatus: { success: boolean; message: string } | null
   onContinue: () => void
   isOnline: boolean
+  contactPhone?: string | null
 }
 
 // Gates the scan screen for any checkin_and_print list -- a volunteer
@@ -2422,6 +2426,7 @@ function PrinterSetupScreen({
   testPrintStatus,
   onContinue,
   isOnline,
+  contactPhone,
 }: PrinterSetupScreenProps) {
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
@@ -2529,6 +2534,12 @@ function PrinterSetupScreen({
           <Button size="lg" className="w-full h-14 sm:h-16 mt-6 text-base" onClick={onContinue}>
             {printerVerified ? "Start Scanning" : "Skip — Start Scanning"}
           </Button>
+
+          {contactPhone && (
+            <p className="mt-4 text-center text-xs text-gray-500">
+              Printer trouble? Call {contactPhone}
+            </p>
+          )}
         </div>
       </div>
 

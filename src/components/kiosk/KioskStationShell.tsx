@@ -35,6 +35,7 @@ interface KioskStationShellProps {
   printMode?: string
   autoPrintBadge: boolean
   initialLists: AssignedList[]
+  contactPhone?: string | null
 }
 
 function toAssignedLists(manifest: StationManifest): AssignedList[] {
@@ -74,6 +75,7 @@ export function KioskStationShell({
   printMode,
   autoPrintBadge,
   initialLists,
+  contactPhone,
 }: KioskStationShellProps) {
   const [assignedLists, setAssignedLists] = useState<AssignedList[]>(initialLists)
   // A station with exactly one assigned USABLE list skips the menu entirely
@@ -326,6 +328,7 @@ export function KioskStationShell({
         badgeTemplate={badgeTemplate}
         printSettings={printSettings}
         printMode={printMode}
+        contactPhone={contactPhone}
         externallyDriven
         onSwitchList={requestMenu}
         closingSoonMinutes={minutesUntilClose(activeList)}
