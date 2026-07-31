@@ -36,6 +36,7 @@ import { usePageTracking } from "@/hooks/usePageTracking"
 import { toast } from "sonner"
 import { COMPANY_CONFIG, FEATURES } from "@/lib/config"
 import { getTenant } from "@/lib/tenant"
+import { DEFAULT_PAYMENT_METHODS_ENABLED, type PaymentMethodsEnabled } from "@/lib/types/payment-methods"
 
 // Map form-builder field responses (keyed by field UUID) to dedicated
 // registration columns by matching field labels. Without this, a field
@@ -120,13 +121,6 @@ interface CheckoutData {
 }
 
 type PaymentMethod = "razorpay" | "bank_transfer" | "cash" | "free"
-
-interface PaymentMethodsEnabled {
-  razorpay: boolean
-  bank_transfer: boolean
-  cash: boolean
-  free: boolean
-}
 
 interface TicketType {
   id: string
@@ -532,8 +526,7 @@ export default function CheckoutPage() {
 
   // Get enabled payment methods from event
   const paymentMethods = useMemo(() => {
-    const defaultMethods: PaymentMethodsEnabled = { razorpay: true, bank_transfer: false, cash: false, free: true }
-    return event?.payment_methods_enabled || defaultMethods
+    return (event?.payment_methods_enabled as PaymentMethodsEnabled | undefined) || DEFAULT_PAYMENT_METHODS_ENABLED
   }, [event])
 
   // Get available payment methods based on total
