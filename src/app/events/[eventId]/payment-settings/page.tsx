@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COMPANY_CONFIG } from "@/lib/config"
+import { DEFAULT_PAYMENT_METHODS_ENABLED, type PaymentMethodsEnabled } from "@/lib/types/payment-methods"
 
 export default function PaymentSettingsPage() {
   const params = useParams()
@@ -63,7 +64,7 @@ export default function PaymentSettingsPage() {
     razorpay_key_id: string | null
     razorpay_key_secret: string | null
     razorpay_webhook_secret: string | null
-    payment_methods_enabled: any
+    payment_methods_enabled: PaymentMethodsEnabled | null
     bank_account_name: string | null
     bank_account_number: string | null
     bank_ifsc_code: string | null
@@ -87,7 +88,7 @@ export default function PaymentSettingsPage() {
       // Load payment settings into state (only once)
       if (data && !paymentSettingsLoaded) {
         const eventData = data as EventData
-        const defaultMethods = { razorpay: true, bank_transfer: false, cash: false, free: true }
+        const defaultMethods = DEFAULT_PAYMENT_METHODS_ENABLED
         setPaymentSettings({
           razorpay_key_id: eventData.razorpay_key_id || "",
           razorpay_key_secret: eventData.razorpay_key_secret || "",
@@ -173,7 +174,7 @@ export default function PaymentSettingsPage() {
             <label className="text-sm font-medium text-foreground">
               Enabled Payment Methods
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {/* Razorpay */}
               <button
                 type="button"
@@ -303,6 +304,18 @@ export default function PaymentSettingsPage() {
                 </span>
                 <span className="text-xs text-muted-foreground">No Payment</span>
               </button>
+
+              {/* ICICI Payment Gateway -- coming soon, not yet toggleable */}
+              <div
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-border opacity-60 cursor-not-allowed"
+                title="ICICI Payment Gateway integration is not yet available"
+              >
+                <CreditCard className="h-6 w-6 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">
+                  ICICI
+                </span>
+                <span className="text-xs text-muted-foreground">Coming soon</span>
+              </div>
             </div>
           </div>
 
