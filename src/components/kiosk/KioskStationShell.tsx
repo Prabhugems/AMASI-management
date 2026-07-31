@@ -336,6 +336,7 @@ export function KioskStationShell({
         onSwitchList={requestMenu}
         closingSoonMinutes={minutesUntilClose(activeList)}
         listClosesAt={activeList.kiosk_closes_at}
+        category={activeList.category}
       />
     )
   }
