@@ -1707,6 +1707,105 @@ export type Database = {
         }
         Relationships: []
       }
+      agenda_approval_log: {
+        Row: {
+          action: string
+          actor_user_id: string
+          comment: string | null
+          created_at: string
+          event_id: string
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          comment?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          comment?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_approval_log_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_approval_log_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_approval_log_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agenda_settings: {
+        Row: {
+          created_at: string
+          enable_attendance_points: boolean
+          enable_capacity_limits: boolean
+          enable_certificates: boolean
+          enable_feedback: boolean
+          enable_public_programme: boolean
+          enable_session_checkin: boolean
+          enable_session_registration: boolean
+          enable_virtual_delivery: boolean
+          event_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enable_attendance_points?: boolean
+          enable_capacity_limits?: boolean
+          enable_certificates?: boolean
+          enable_feedback?: boolean
+          enable_public_programme?: boolean
+          enable_session_checkin?: boolean
+          enable_session_registration?: boolean
+          enable_virtual_delivery?: boolean
+          event_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enable_attendance_points?: boolean
+          enable_capacity_limits?: boolean
+          enable_certificates?: boolean
+          enable_feedback?: boolean
+          enable_public_programme?: boolean
+          enable_session_checkin?: boolean
+          enable_session_registration?: boolean
+          enable_virtual_delivery?: boolean
+          event_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_settings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_decisions: {
         Row: {
           application_id: string
@@ -3626,6 +3725,7 @@ export type Database = {
           list_purpose: string
           name: string
           prints_badge: boolean
+          session_id: string | null
           sort_order: number | null
           starts_at: string | null
           ticket_type_ids: string[] | null
@@ -3648,6 +3748,7 @@ export type Database = {
           list_purpose: string
           name: string
           prints_badge?: boolean
+          session_id?: string | null
           sort_order?: number | null
           starts_at?: string | null
           ticket_type_ids?: string[] | null
@@ -3670,6 +3771,7 @@ export type Database = {
           list_purpose?: string
           name?: string
           prints_badge?: boolean
+          session_id?: string | null
           sort_order?: number | null
           starts_at?: string | null
           ticket_type_ids?: string[] | null
@@ -3681,6 +3783,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkin_lists_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -6871,6 +6980,7 @@ export type Database = {
           coordinator_phone: string | null
           created_at: string | null
           event_id: string
+          hall_id: string | null
           hall_name: string
           id: string
           portal_token: string
@@ -6882,6 +6992,7 @@ export type Database = {
           coordinator_phone?: string | null
           created_at?: string | null
           event_id: string
+          hall_id?: string | null
           hall_name: string
           id?: string
           portal_token?: string
@@ -6893,6 +7004,7 @@ export type Database = {
           coordinator_phone?: string | null
           created_at?: string | null
           event_id?: string
+          hall_id?: string | null
           hall_name?: string
           id?: string
           portal_token?: string
@@ -6901,6 +7013,54 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "hall_coordinators_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hall_coordinators_hall_id_fkey"
+            columns: ["hall_id"]
+            isOneToOne: false
+            referencedRelation: "halls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      halls: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          display_order: number
+          event_id: string
+          floor: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          display_order?: number
+          event_id: string
+          floor?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          display_order?: number
+          event_id?: string
+          floor?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "halls_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
@@ -12985,6 +13145,7 @@ export type Database = {
           av_requirements: Json | null
           chairpersons: string | null
           chairpersons_text: string | null
+          checkin_enabled: boolean
           coordinator_checklist: Json | null
           coordinator_notes: string | null
           coordinator_status: string | null
@@ -13000,6 +13161,7 @@ export type Database = {
           faculty_phone: string | null
           floor: string | null
           hall: string | null
+          hall_id: string | null
           id: string
           import_batch_id: string | null
           livestream_required: boolean | null
@@ -13020,6 +13182,7 @@ export type Database = {
           start_time: string | null
           status: string | null
           topics: string[] | null
+          track_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -13027,6 +13190,7 @@ export type Database = {
           av_requirements?: Json | null
           chairpersons?: string | null
           chairpersons_text?: string | null
+          checkin_enabled?: boolean
           coordinator_checklist?: Json | null
           coordinator_notes?: string | null
           coordinator_status?: string | null
@@ -13042,6 +13206,7 @@ export type Database = {
           faculty_phone?: string | null
           floor?: string | null
           hall?: string | null
+          hall_id?: string | null
           id?: string
           import_batch_id?: string | null
           livestream_required?: boolean | null
@@ -13062,6 +13227,7 @@ export type Database = {
           start_time?: string | null
           status?: string | null
           topics?: string[] | null
+          track_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -13069,6 +13235,7 @@ export type Database = {
           av_requirements?: Json | null
           chairpersons?: string | null
           chairpersons_text?: string | null
+          checkin_enabled?: boolean
           coordinator_checklist?: Json | null
           coordinator_notes?: string | null
           coordinator_status?: string | null
@@ -13084,6 +13251,7 @@ export type Database = {
           faculty_phone?: string | null
           floor?: string | null
           hall?: string | null
+          hall_id?: string | null
           id?: string
           import_batch_id?: string | null
           livestream_required?: boolean | null
@@ -13104,6 +13272,7 @@ export type Database = {
           start_time?: string | null
           status?: string | null
           topics?: string[] | null
+          track_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -13112,6 +13281,20 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_hall_id_fkey"
+            columns: ["hall_id"]
+            isOneToOne: false
+            referencedRelation: "halls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
             referencedColumns: ["id"]
           },
         ]
