@@ -30,6 +30,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { LIST_CATEGORIES, CATEGORY_COLORS, type ListCategory } from "@/lib/checkin-list-category"
 
 type CheckinList = {
   id: string
@@ -37,6 +38,7 @@ type CheckinList = {
   description?: string
   is_active: boolean
   list_purpose: "entry" | "collection"
+  category: ListCategory
   prints_badge: boolean
   ticket_type_ids?: string[]
   addon_ids?: string[]
@@ -101,6 +103,8 @@ export default function CheckinListsPage() {
     // "" = not yet chosen. No default — the volunteer amber card is wrong
     // for one of the two purposes, so this has to be an explicit pick.
     list_purpose: "" as "" | "entry" | "collection",
+    // "" = not yet chosen. No default -- same rationale as list_purpose above.
+    category: "" as "" | ListCategory,
     prints_badge: false,
     ticket_type_ids: [] as string[],
     addon_ids: [] as string[],
@@ -164,6 +168,7 @@ export default function CheckinListsPage() {
           description: list.description || "",
           is_active: list.is_active,
           list_purpose: list.list_purpose,
+          category: list.category,
           prints_badge: list.prints_badge,
           ticket_type_ids: list.ticket_type_ids || [],
           addon_ids: list.addon_ids || [],
@@ -185,6 +190,7 @@ export default function CheckinListsPage() {
         description: data.description || null,
         is_active: data.is_active,
         list_purpose: data.list_purpose,
+        category: data.category,
         prints_badge: data.prints_badge,
         ticket_type_ids: data.ticket_type_ids.length > 0 ? data.ticket_type_ids : null,
         addon_ids: data.addon_ids.length > 0 ? data.addon_ids : null,
@@ -263,6 +269,7 @@ export default function CheckinListsPage() {
       description: "",
       is_active: true,
       list_purpose: "",
+      category: "",
       prints_badge: false,
       ticket_type_ids: [],
       addon_ids: [],
@@ -294,10 +301,14 @@ export default function CheckinListsPage() {
       toast.error("Choose Entry or Collection before saving")
       return
     }
+    if (!formData.category) {
+      toast.error("Choose a Category before saving")
+      return
+    }
     if (isCreating) {
-      saveMutation.mutate(formData as typeof formData & { list_purpose: "entry" | "collection" })
+      saveMutation.mutate(formData as typeof formData & { list_purpose: "entry" | "collection"; category: ListCategory })
     } else if (selectedListId) {
-      saveMutation.mutate({ ...formData, id: selectedListId } as typeof formData & { id: string; list_purpose: "entry" | "collection" })
+      saveMutation.mutate({ ...formData, id: selectedListId } as typeof formData & { id: string; list_purpose: "entry" | "collection"; category: ListCategory })
     }
   }
 
@@ -322,18 +333,6 @@ export default function CheckinListsPage() {
       return CalendarDays
     }
     return Users
-  }
-
-  const getGradient = (index: number) => {
-    const gradients = [
-      "from-orange-500 to-amber-500",
-      "from-blue-500 to-cyan-500",
-      "from-purple-500 to-pink-500",
-      "from-green-500 to-emerald-500",
-      "from-red-500 to-rose-500",
-      "from-indigo-500 to-violet-500",
-    ]
-    return gradients[index % gradients.length]
   }
 
   if (isLoading) {
@@ -395,10 +394,8 @@ export default function CheckinListsPage() {
                   >
                     <div className="flex items-center gap-3">
                       <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
-                        isSelected
-                          ? "bg-white/20"
-                          : `bg-gradient-to-br ${getGradient(index)} text-white`
+                        "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white",
+                        isSelected ? "bg-white/20" : CATEGORY_COLORS[list.category].solid
                       )}>
                         <Icon className="h-5 w-5" />
                       </div>
@@ -715,6 +712,37 @@ export default function CheckinListsPage() {
                   )}
                 </div>
 
+                {/* Category — required, no default. Drives the colour
+                    shown on this list's tile/pill/header everywhere it
+                    appears -- never green/amber/red, those are reserved
+                    for scan results. */}
+                <div className="bg-card rounded-2xl border p-5 space-y-3">
+                  <h3 className="font-medium flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
+                    Category <span className="text-destructive normal-case tracking-normal">(required)</span>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {LIST_CATEGORIES.map((cat) => (
+                      <button
+                        key={cat.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, category: cat.value })}
+                        className={cn(
+                          "text-left rounded-xl border-2 p-4 transition-all",
+                          formData.category === cat.value
+                            ? CATEGORY_COLORS[cat.value].formSelected
+                            : cn("border-border", CATEGORY_COLORS[cat.value].formHover)
+                        )}
+                      >
+                        <p className="font-medium">{cat.label}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{cat.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                  {!formData.category && (
+                    <p className="text-xs text-destructive">Pick one — there is no default.</p>
+                  )}
+                </div>
+
                 {/* Settings */}
                 <div className="bg-card rounded-2xl border p-5 space-y-4">
                   <h3 className="font-medium flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
@@ -773,7 +801,7 @@ export default function CheckinListsPage() {
                     )}
                     <Button
                       onClick={handleSave}
-                      disabled={!formData.name.trim() || !formData.list_purpose || saveMutation.isPending || showSaved}
+                      disabled={!formData.name.trim() || !formData.list_purpose || !formData.category || saveMutation.isPending || showSaved}
                       className={cn(
                         "min-w-[120px] transition-all",
                         showSaved && "bg-green-600 hover:bg-green-600"
