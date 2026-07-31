@@ -62,6 +62,7 @@ describe("POST /api/checkin-lists", () => {
         event_id: EVENT_ID,
         name: "Lunch",
         list_purpose: "collection",
+        category: "food_drink",
         kiosk_opens_at: "2026-08-01T09:00:00Z",
         kiosk_closes_at: "2026-08-01T11:00:00Z",
         kiosk_force_state: "open",

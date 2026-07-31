@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { event_id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, list_purpose, kiosk_opens_at, kiosk_closes_at, kiosk_force_state, prints_badge } = body
+    const { event_id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, list_purpose, kiosk_opens_at, kiosk_closes_at, kiosk_force_state, prints_badge, category } = body
 
     if (!event_id || !name) {
       return NextResponse.json({ error: "event_id and name are required" }, { status: 400 })
@@ -124,6 +124,13 @@ export async function POST(request: NextRequest) {
     if (list_purpose !== "entry" && list_purpose !== "collection") {
       return NextResponse.json(
         { error: "list_purpose is required and must be 'entry' or 'collection'" },
+        { status: 400 }
+      )
+    }
+
+    if (category !== "entry_access" && category !== "food_drink" && category !== "goods_kits") {
+      return NextResponse.json(
+        { error: "category is required and must be 'entry_access', 'food_drink', or 'goods_kits'" },
         { status: 400 }
       )
     }
@@ -175,6 +182,7 @@ export async function POST(request: NextRequest) {
         // not a repeat check-in on the same one. See CLAUDE.md.
         allow_multiple_checkins: false,
         list_purpose,
+        category,
         prints_badge: prints_badge ?? false,
         access_token_expires_at,
         sort_order: nextOrder
@@ -197,7 +205,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, is_active, sort_order, list_purpose, kiosk_opens_at, kiosk_closes_at, kiosk_force_state, prints_badge } = body
+    const { id, name, description, ticket_type_ids, addon_ids, starts_at, ends_at, is_active, sort_order, list_purpose, kiosk_opens_at, kiosk_closes_at, kiosk_force_state, prints_badge, category } = body
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 })
@@ -206,6 +214,13 @@ export async function PUT(request: NextRequest) {
     if (list_purpose !== undefined && list_purpose !== "entry" && list_purpose !== "collection") {
       return NextResponse.json(
         { error: "list_purpose must be 'entry' or 'collection'" },
+        { status: 400 }
+      )
+    }
+
+    if (category !== undefined && category !== "entry_access" && category !== "food_drink" && category !== "goods_kits") {
+      return NextResponse.json(
+        { error: "category must be 'entry_access', 'food_drink', or 'goods_kits'" },
         { status: 400 }
       )
     }
@@ -244,6 +259,7 @@ export async function PUT(request: NextRequest) {
     if (is_active !== undefined) updateData.is_active = is_active
     if (sort_order !== undefined) updateData.sort_order = sort_order
     if (list_purpose !== undefined) updateData.list_purpose = list_purpose
+    if (category !== undefined) updateData.category = category
     if (prints_badge !== undefined) updateData.prints_badge = prints_badge
 
     const { data, error } = await (supabase as any)
