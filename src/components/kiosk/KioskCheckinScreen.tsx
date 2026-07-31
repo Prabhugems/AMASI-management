@@ -211,6 +211,12 @@ export function KioskCheckinScreen({
   const [testPrintStatus, setTestPrintStatus] = useState<{ success: boolean; message: string } | null>(null)
   const [printerVerified, setPrinterVerified] = useState(false)
   const [awaitingPrintConfirm, setAwaitingPrintConfirm] = useState(false)
+  // Set on every print attempt (success or failure) so the idle/ready
+  // screen's "Reprint last badge" action always has a target -- most useful
+  // exactly when the last attempt failed and the volunteer has already
+  // moved on to the next delegate before noticing. Deliberately NOT cleared
+  // by resetKiosk (see spec §6 -- this must survive across resets).
+  const [lastPrintedRegistration, setLastPrintedRegistration] = useState<NonNullable<CheckinResult["registration"]> | null>(null)
   // Camera QR scan mode -- an alternative to the manual/external-scanner text
   // input below, using the same html5-qrcode integration already proven in
   // the standalone Print Station page (src/app/print/[token]/page.tsx).
@@ -766,6 +772,7 @@ export function KioskCheckinScreen({
   // invoked from mode === "checkin_and_print" code paths (auto-print effect
   // below, handlePrintButtonClick).
   const printBadge = useCallback(async (registration: NonNullable<CheckinResult["registration"]>) => {
+    setLastPrintedRegistration(registration)
     setPrinting(true)
     setPrintStatus(null)
     try {
@@ -2384,6 +2391,15 @@ export function KioskCheckinScreen({
             className="text-xs text-indigo-300 underline hover:text-indigo-200 mt-1 disabled:opacity-50"
           >
             {requestingHelp ? "Sending…" : "Tap here to notify an admin"}
+          </button>
+        )}
+        {mode === "checkin_and_print" && lastPrintedRegistration && (
+          <button
+            onClick={() => printBadge(lastPrintedRegistration)}
+            disabled={printing}
+            className="text-xs text-indigo-300 underline hover:text-indigo-200 mt-1 disabled:opacity-50"
+          >
+            {printing ? "Reprinting…" : `Reprint badge for ${lastPrintedRegistration.attendee_name}`}
           </button>
         )}
         {cacheError && (
