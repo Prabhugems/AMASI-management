@@ -1994,8 +1994,8 @@ export function KioskCheckinScreen({
                       Sent on WhatsApp
                     </Button>
                   )}
-                  {mode === "checkin_and_print" && usbSupported && !(printStatus && !printStatus.success) && (
-                    !printerConnected ? (
+                  {mode === "checkin_and_print" && (usbSupported || printerType === "browser") && !(printStatus && !printStatus.success) && (
+                    printerType !== "browser" && !printerConnected ? (
                       <Button
                         size="lg"
                         variant="outline"
@@ -2410,10 +2410,10 @@ export function KioskCheckinScreen({
               {cameraActive ? "Camera active" : cameraError ? "Camera error" : "Camera starting…"}
             </span>
           )}
-          {mode === "checkin_and_print" && usbSupported && (
-            <span className={`inline-flex items-center gap-1 ${printerConnected && printerVerified ? "text-emerald-400" : "text-red-400"}`}>
-              <span className={`size-1.5 rounded-full ${printerConnected && printerVerified ? "bg-emerald-400" : "bg-red-400"}`} />
-              {printerConnected && printerVerified ? "Printer ready" : "Printer problem — call for help"}
+          {mode === "checkin_and_print" && (usbSupported || printerType === "browser") && (
+            <span className={`inline-flex items-center gap-1 ${(printerType === "browser" ? printerVerified : printerConnected && printerVerified) ? "text-emerald-400" : "text-red-400"}`}>
+              <span className={`size-1.5 rounded-full ${(printerType === "browser" ? printerVerified : printerConnected && printerVerified) ? "bg-emerald-400" : "bg-red-400"}`} />
+              {(printerType === "browser" ? printerVerified : printerConnected && printerVerified) ? "Printer ready" : "Printer problem — call for help"}
             </span>
           )}
         </div>
