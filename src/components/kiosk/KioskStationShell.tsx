@@ -378,7 +378,9 @@ function listSubline(list: AssignedList, attended: boolean, now: Date, count?: n
 // to pattern-match a name like "Kit collection" or "Lunch" to a specific
 // icon. One generic icon for every tile is simpler and correct for
 // arbitrary names, matching this file's existing philosophy of never
-// assuming specific list names.
+// assuming specific list names. One exception: a printer icon is shown when
+// mode === "checkin_and_print" && list.prints_badge, driven by that flag
+// rather than the list's name, so it doesn't conflict with this reasoning.
 function JobTile({
   list,
   now,

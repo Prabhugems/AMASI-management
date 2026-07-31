@@ -709,6 +709,7 @@ export function KioskCheckinScreen({
   }, [mode])
 
   const handleConnectPrinter = useCallback(async () => {
+    setPrintStatus(null)
     const { connectUsbPrinter } = await import("@/lib/usb-printer")
     const res = await connectUsbPrinter()
     if (res.success) {
@@ -1639,7 +1640,10 @@ export function KioskCheckinScreen({
         onTestPrint={handleTestPrint}
         testPrinting={testPrinting}
         testPrintStatus={testPrintStatus}
-        onContinue={() => setPrinterSetupDone(true)}
+        onContinue={() => {
+          setPrintStatus(null)
+          setPrinterSetupDone(true)
+        }}
         isOnline={isOnline}
       />
     )
