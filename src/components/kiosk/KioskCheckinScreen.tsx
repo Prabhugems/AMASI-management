@@ -2333,9 +2333,9 @@ export function KioskCheckinScreen({
             </span>
           )}
           {mode === "checkin_and_print" && usbSupported && (
-            <span className={`inline-flex items-center gap-1 ${printerConnected ? "text-emerald-400" : "text-gray-500"}`}>
-              <span className={`size-1.5 rounded-full ${printerConnected ? "bg-emerald-400" : "bg-gray-500"}`} />
-              {printerConnected ? "Printer connected" : "Printer not connected"}
+            <span className={`inline-flex items-center gap-1 ${printerConnected && printerVerified ? "text-emerald-400" : "text-red-400"}`}>
+              <span className={`size-1.5 rounded-full ${printerConnected && printerVerified ? "bg-emerald-400" : "bg-red-400"}`} />
+              {printerConnected && printerVerified ? "Printer ready" : "Printer problem — call for help"}
             </span>
           )}
         </div>
