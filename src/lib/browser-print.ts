@@ -7,11 +7,16 @@
 // own browser-print branch already uses this technique.
 export function printHtmlViaBrowser(html: string): { success: boolean; error?: string } {
   const iframe = document.createElement("iframe")
-  iframe.style.position = "fixed"
-  iframe.style.right = "0"
-  iframe.style.bottom = "0"
-  iframe.style.width = "0"
-  iframe.style.height = "0"
+  // A 0x0 iframe opens the print dialog fine but prints a blank page in
+  // Chrome -- @page CSS only controls the OUTPUT paper size, the source
+  // iframe still needs a real content box to lay out into. Give it actual
+  // dimensions and move it off-screen instead (same off-screen technique
+  // already used for printBadge's html2canvas container below).
+  iframe.style.position = "absolute"
+  iframe.style.left = "-9999px"
+  iframe.style.top = "0"
+  iframe.style.width = "800px"
+  iframe.style.height = "1000px"
   iframe.style.border = "0"
   document.body.appendChild(iframe)
 
