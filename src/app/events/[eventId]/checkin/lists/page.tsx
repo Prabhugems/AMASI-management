@@ -37,6 +37,7 @@ type CheckinList = {
   description?: string
   is_active: boolean
   list_purpose: "entry" | "collection"
+  prints_badge: boolean
   ticket_type_ids?: string[]
   addon_ids?: string[]
   starts_at?: string
@@ -100,6 +101,7 @@ export default function CheckinListsPage() {
     // "" = not yet chosen. No default — the volunteer amber card is wrong
     // for one of the two purposes, so this has to be an explicit pick.
     list_purpose: "" as "" | "entry" | "collection",
+    prints_badge: false,
     ticket_type_ids: [] as string[],
     addon_ids: [] as string[],
     starts_at: "",
@@ -162,6 +164,7 @@ export default function CheckinListsPage() {
           description: list.description || "",
           is_active: list.is_active,
           list_purpose: list.list_purpose,
+          prints_badge: list.prints_badge,
           ticket_type_ids: list.ticket_type_ids || [],
           addon_ids: list.addon_ids || [],
           starts_at: list.starts_at ? list.starts_at.slice(0, 16) : "",
@@ -182,6 +185,7 @@ export default function CheckinListsPage() {
         description: data.description || null,
         is_active: data.is_active,
         list_purpose: data.list_purpose,
+        prints_badge: data.prints_badge,
         ticket_type_ids: data.ticket_type_ids.length > 0 ? data.ticket_type_ids : null,
         addon_ids: data.addon_ids.length > 0 ? data.addon_ids : null,
         starts_at: data.starts_at || null,
@@ -259,6 +263,7 @@ export default function CheckinListsPage() {
       description: "",
       is_active: true,
       list_purpose: "",
+      prints_badge: false,
       ticket_type_ids: [],
       addon_ids: [],
       starts_at: "",
@@ -724,6 +729,19 @@ export default function CheckinListsPage() {
                       <Switch
                         checked={formData.is_active}
                         onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between py-2">
+                      <div>
+                        <Label className="font-medium">Prints badge</Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Only turn this on for the desk that actually prints badges. Other check-in jobs (meals, kit
+                          collection) never need it, even on a station with a printer configured.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={formData.prints_badge}
+                        onCheckedChange={(checked) => setFormData({ ...formData, prints_badge: checked })}
                       />
                     </div>
                   </div>

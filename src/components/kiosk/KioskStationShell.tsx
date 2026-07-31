@@ -12,6 +12,7 @@ export interface AssignedList extends ScheduledList {
   id: string
   name: string
   list_purpose: string
+  prints_badge: boolean
 }
 
 interface KioskStationShellProps {
@@ -41,6 +42,7 @@ function toAssignedLists(manifest: StationManifest): AssignedList[] {
     id: l.id,
     name: l.name,
     list_purpose: l.list_purpose,
+    prints_badge: l.prints_badge,
     kiosk_opens_at: l.kiosk_opens_at,
     kiosk_closes_at: l.kiosk_closes_at,
     kiosk_force_state: l.kiosk_force_state,
@@ -305,6 +307,12 @@ export function KioskStationShell({
   }, [tick, activeList, attended])
 
   if (activeList) {
+    // Printing is a property of the LIST, not the station -- a
+    // checkin_and_print station only actually shows print controls on
+    // lists an admin has explicitly flagged. Every other list on the same
+    // station (e.g. Lunch, Kit Collection) behaves as checkin-only, even
+    // though the station's printer hardware is fully configured.
+    const effectiveMode = mode === "checkin_and_print" && activeList.prints_badge ? "checkin_and_print" : "checkin"
     return (
       <KioskCheckinScreen
         key={activeList.id}
@@ -312,7 +320,7 @@ export function KioskStationShell({
         listId={activeList.id}
         stationToken={stationToken}
         stationName={stationName}
-        mode={mode}
+        mode={effectiveMode}
         autoPrintBadge={autoPrintBadge}
         printStationId={printStationId}
         badgeTemplate={badgeTemplate}

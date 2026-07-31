@@ -62,12 +62,22 @@ export default async function KioskStationPage({
   const listIds = (joinRows || []).map((r: any) => r.checkin_list_id)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: lists } = listIds.length > 0
+  const { data: lists, error: listsError } = listIds.length > 0
     ? await (supabase as any)
         .from("checkin_lists")
-        .select("id, name, list_purpose, kiosk_opens_at, kiosk_closes_at, kiosk_force_state")
+        .select("id, name, list_purpose, prints_badge, kiosk_opens_at, kiosk_closes_at, kiosk_force_state")
         .in("id", listIds)
-    : { data: [] }
+    : { data: [], error: null }
+
+  // A genuine query error (e.g. a column the DB doesn't have yet) must not
+  // be conflated with "the admin unassigned every list" -- the same
+  // distinction the station lookup above already makes. Left undistinguished,
+  // a transient/schema-drift failure here would render the misleading
+  // "list removed" screen for every station, every time.
+  if (listsError) {
+    Sentry.captureException(listsError, { tags: { route: "kiosk-station/[token]" } })
+    return <StationLookupError />
+  }
 
   if (!lists || lists.length === 0) {
     return <StationListRemoved />
