@@ -3,7 +3,8 @@ import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { deriveAgendaStatus, getLastApprovalTimestamp, canSubmitForApproval, type ApprovalLogRow } from "@/lib/agenda-approval-state"
-import { getAllConflicts, type ConflictSession, type FacultyAssignmentRow, type HallCapacity } from "@/lib/agenda-conflicts"
+import { getAllConflicts } from "@/lib/agenda-conflicts"
+import { fetchConflictInputs } from "@/lib/agenda-conflict-inputs"
 
 export async function GET(
   request: NextRequest,
@@ -65,36 +66,14 @@ export async function POST(
   const supabase = (await createAdminClient()) as any
 
   if (parsed.data.action === "submitted") {
-    const [sessionsResult, assignmentsResult, hallsResult, checkinCountsResult] = await Promise.all([
-      supabase.from("sessions").select("id, session_name, session_date, start_time, end_time, hall_id").eq("event_id", eventId),
-      supabase.from("faculty_assignments").select("session_id, faculty_id, faculty_name, status").eq("event_id", eventId),
-      supabase.from("halls").select("id, capacity").eq("event_id", eventId),
-      supabase
-        .from("checkin_records")
-        .select("checkin_list_id, checkin_lists!inner(session_id)")
-        .not("checkin_lists.session_id", "is", null)
-        .eq("checkin_lists.event_id", eventId),
-    ])
-
-    // Mirrors the same registered-count computation as the GET /conflicts
-    // route (Task 14) -- duplicated rather than imported because the two
-    // routes have different auth/response shapes; both call the same
-    // getAllConflicts() for the actual conflict logic.
-    const registeredCountBySession = new Map<string, number>()
-    for (const row of checkinCountsResult.data ?? []) {
-      const sessionId = row.checkin_lists?.session_id
-      if (!sessionId) continue
-      registeredCountBySession.set(sessionId, (registeredCountBySession.get(sessionId) ?? 0) + 1)
+    let conflicts
+    try {
+      const inputs = await fetchConflictInputs(supabase, eventId)
+      conflicts = getAllConflicts(inputs).conflicts
+    } catch {
+      return NextResponse.json({ error: "Failed to check conflicts before submission" }, { status: 500 })
     }
 
-    const sessions: (ConflictSession & { registeredCount: number })[] = (sessionsResult.data ?? []).map((s: any) => ({
-      ...s,
-      registeredCount: registeredCountBySession.get(s.id) ?? 0,
-    }))
-    const assignments: FacultyAssignmentRow[] = assignmentsResult.data ?? []
-    const halls: HallCapacity[] = hallsResult.data ?? []
-
-    const { conflicts } = getAllConflicts({ sessions, assignments, halls })
     if (!canSubmitForApproval(conflicts)) {
       return NextResponse.json(
         { error: "Cannot submit for approval while blocking conflicts exist", conflicts: conflicts.filter((c) => c.severity === "blocking") },
