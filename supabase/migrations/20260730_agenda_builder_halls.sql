@@ -17,5 +17,9 @@ create table if not exists halls (
 );
 create index if not exists idx_halls_event on halls(event_id);
 
+alter table halls enable row level security;
+-- No policies -- default-deny. Only ever read/written via the admin
+-- (service-role) Supabase client, matching kiosk_stations' posture.
+
 alter table sessions add column if not exists hall_id uuid references halls(id);
 alter table hall_coordinators add column if not exists hall_id uuid references halls(id);

@@ -13,3 +13,7 @@ create table if not exists agenda_approval_log (
   created_at timestamptz not null default now()
 );
 create index if not exists idx_agenda_approval_log_event on agenda_approval_log(event_id, created_at desc);
+
+alter table agenda_approval_log enable row level security;
+-- No policies -- default-deny. Only ever read/written via the admin
+-- (service-role) Supabase client, matching kiosk_stations' posture.

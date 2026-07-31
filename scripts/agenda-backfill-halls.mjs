@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Agenda Builder Phase 1 backfill: creates one `halls` row per distinct
- * `sessions.hall` text value (per event) and links `sessions.hall_id` to it.
+ * `sessions.hall` text value (per event), links `sessions.hall_id` to it,
+ * and does the same match for `hall_coordinators.hall_name` -> `hall_id`.
  *
  * Read-only by default (dry run). Pass --commit to actually write.
  * --commit requires supabase/migrations/20260730_agenda_builder_halls.sql
@@ -44,7 +45,7 @@ async function backfillEvent(eventId) {
     .eq('event_id', eventId)
     .not('hall', 'is', null)
   if (sessionsError) throw sessionsError
-  if (!sessions.length) return { eventId, hallsCreated: 0, sessionsLinked: 0 }
+  if (!sessions.length) return { eventId, hallsCreated: 0, sessionsLinked: 0, coordinatorsLinked: 0 }
 
   const distinctHallNames = [...new Set(sessions.map((s) => s.hall.trim()).filter(Boolean))]
 
@@ -86,7 +87,35 @@ async function backfillEvent(eventId) {
     }
   }
 
-  return { eventId, hallsCreated: namesToCreate.length, sessionsLinked: sessionsToLink.length }
+  const { data: coordinators, error: coordinatorsError } = await supabase
+    .from('hall_coordinators')
+    .select('id, hall_name, hall_id')
+    .eq('event_id', eventId)
+    .not('hall_name', 'is', null)
+  if (coordinatorsError) throw coordinatorsError
+
+  const coordinatorsToLink = coordinators.filter(
+    (c) => !c.hall_id && c.hall_name && nameToHallId.has(c.hall_name.trim())
+  )
+  console.log(`[${eventId}] ${coordinatorsToLink.length} hall coordinators to link to a hall_id`)
+
+  if (commit) {
+    for (const coordinator of coordinatorsToLink) {
+      const hallId = nameToHallId.get(coordinator.hall_name.trim())
+      const { error: updateError } = await supabase
+        .from('hall_coordinators')
+        .update({ hall_id: hallId })
+        .eq('id', coordinator.id)
+      if (updateError) throw updateError
+    }
+  }
+
+  return {
+    eventId,
+    hallsCreated: namesToCreate.length,
+    sessionsLinked: sessionsToLink.length,
+    coordinatorsLinked: coordinatorsToLink.length,
+  }
 }
 
 async function main() {
@@ -97,10 +126,16 @@ async function main() {
     results.push(await backfillEvent(eventId))
   }
   const totals = results.reduce(
-    (acc, r) => ({ hallsCreated: acc.hallsCreated + r.hallsCreated, sessionsLinked: acc.sessionsLinked + r.sessionsLinked }),
-    { hallsCreated: 0, sessionsLinked: 0 }
+    (acc, r) => ({
+      hallsCreated: acc.hallsCreated + r.hallsCreated,
+      sessionsLinked: acc.sessionsLinked + r.sessionsLinked,
+      coordinatorsLinked: acc.coordinatorsLinked + r.coordinatorsLinked,
+    }),
+    { hallsCreated: 0, sessionsLinked: 0, coordinatorsLinked: 0 }
   )
-  console.log(`\nTotal: ${totals.hallsCreated} halls, ${totals.sessionsLinked} sessions linked across ${eventIds.length} events`)
+  console.log(
+    `\nTotal: ${totals.hallsCreated} halls, ${totals.sessionsLinked} sessions linked, ${totals.coordinatorsLinked} hall coordinators linked across ${eventIds.length} events`
+  )
 }
 
 main().catch((err) => {

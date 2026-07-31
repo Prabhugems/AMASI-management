@@ -27,14 +27,17 @@ export async function GET(
   const status = deriveAgendaStatus(log as ApprovalLogRow[])
   const lastApprovedAt = getLastApprovalTimestamp(log as ApprovalLogRow[])
 
-  const { data: changesSinceApproval } = lastApprovedAt
-    ? await supabase
-        .from("program_change_log")
-        .select("*")
-        .eq("event_id", eventId)
-        .gt("created_at", lastApprovedAt)
-        .order("created_at", { ascending: false })
-    : { data: [] }
+  let changesSinceApproval: unknown[] = []
+  if (lastApprovedAt) {
+    const { data: changes, error: changesError } = await supabase
+      .from("program_change_log")
+      .select("*")
+      .eq("event_id", eventId)
+      .gt("created_at", lastApprovedAt)
+      .order("created_at", { ascending: false })
+    if (changesError) return NextResponse.json({ error: "Failed to fetch changes since approval" }, { status: 500 })
+    changesSinceApproval = changes ?? []
+  }
 
   return NextResponse.json({
     status,

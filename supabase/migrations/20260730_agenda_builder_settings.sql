@@ -18,3 +18,7 @@ create table if not exists agenda_settings (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table agenda_settings enable row level security;
+-- No policies -- default-deny. Only ever read/written via the admin
+-- (service-role) Supabase client, matching kiosk_stations' posture.

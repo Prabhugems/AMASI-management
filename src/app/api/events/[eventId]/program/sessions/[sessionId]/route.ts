@@ -43,7 +43,7 @@ export async function PATCH(
   }
 
   if (session.checkin_enabled && session.session_date && session.start_time && session.end_time) {
-    const { data: event, error: eventError } = await supabase.from("events").select("timezone").eq("id", eventId).single()
+    const { data: event, error: eventError } = await supabase.from("events").select("timezone, end_date").eq("id", eventId).single()
     if (eventError) {
       return NextResponse.json({ error: "Session updated, but failed to look up event timezone for check-in provisioning" }, { status: 500 })
     }
@@ -72,6 +72,10 @@ export async function PATCH(
         return NextResponse.json({ error: "Session updated, but failed to update its check-in list" }, { status: 500 })
       }
     } else {
+      const accessTokenExpiresAt = new Date(
+        event?.end_date ? new Date(event.end_date).getTime() + 2 * 864e5 : Date.now() + 30 * 864e5
+      ).toISOString()
+
       const { error: insertListError } = await supabase.from("checkin_lists").insert({
         event_id: eventId,
         session_id: sessionId,
@@ -79,9 +83,30 @@ export async function PATCH(
         list_purpose: "session",
         kiosk_opens_at: opensAt,
         kiosk_closes_at: closesAt,
+        allow_multiple_checkins: false,
+        access_token_expires_at: accessTokenExpiresAt,
+        is_active: true,
       })
       if (insertListError) {
         return NextResponse.json({ error: "Session updated, but failed to create its check-in list" }, { status: 500 })
+      }
+    }
+  } else if (!session.checkin_enabled) {
+    const { data: existingList, error: existingListError } = await supabase
+      .from("checkin_lists")
+      .select("id")
+      .eq("session_id", sessionId)
+      .maybeSingle()
+    if (existingListError) {
+      return NextResponse.json({ error: "Session updated, but failed to check for an existing check-in list to close" }, { status: 500 })
+    }
+    if (existingList) {
+      const { error: closeError } = await supabase
+        .from("checkin_lists")
+        .update({ kiosk_force_state: "closed", updated_at: new Date().toISOString() })
+        .eq("id", existingList.id)
+      if (closeError) {
+        return NextResponse.json({ error: "Session updated, but failed to close its check-in list" }, { status: 500 })
       }
     }
   }

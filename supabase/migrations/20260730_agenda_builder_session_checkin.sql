@@ -8,6 +8,9 @@ alter table sessions add column if not exists checkin_enabled boolean not null d
 
 alter table checkin_lists add column if not exists session_id uuid references sessions(id) on delete cascade;
 
+create unique index if not exists checkin_lists_session_id_key
+  on checkin_lists (session_id) where session_id is not null;
+
 alter table checkin_lists drop constraint if exists checkin_lists_list_purpose_check;
 alter table checkin_lists add constraint checkin_lists_list_purpose_check
   check (list_purpose in ('entry', 'collection', 'session'));
