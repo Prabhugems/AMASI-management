@@ -3625,6 +3625,7 @@ export type Database = {
           kiosk_opens_at: string | null
           list_purpose: string
           name: string
+          prints_badge: boolean
           sort_order: number | null
           starts_at: string | null
           ticket_type_ids: string[] | null
@@ -3646,6 +3647,7 @@ export type Database = {
           kiosk_opens_at?: string | null
           list_purpose: string
           name: string
+          prints_badge?: boolean
           sort_order?: number | null
           starts_at?: string | null
           ticket_type_ids?: string[] | null
@@ -3667,6 +3669,7 @@ export type Database = {
           kiosk_opens_at?: string | null
           list_purpose?: string
           name?: string
+          prints_badge?: boolean
           sort_order?: number | null
           starts_at?: string | null
           ticket_type_ids?: string[] | null
