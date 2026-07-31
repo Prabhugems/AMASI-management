@@ -776,17 +776,6 @@ export function KioskCheckinScreen({
     setPrinting(true)
     setPrintStatus(null)
     try {
-      // Cheapest possible check first, before any rendering work: if the
-      // printer isn't actually connected (unplugged, reset, or the reconnect
-      // on mount never found it), fail fast with a clear message instead of
-      // doing a full QR-gen + html2canvas render that's guaranteed to be
-      // thrown away.
-      const { isUsbPrinterConnected } = await import("@/lib/usb-printer")
-      if (!isUsbPrinterConnected()) {
-        setPrintStatus({ success: false, message: "Printer not connected — tap Connect Printer first." })
-        return
-      }
-
       const template = await getPrintTemplate(listId)
       if (!template) {
         // Two different failure modes look identical here but need different
@@ -801,6 +790,18 @@ export function KioskCheckinScreen({
             : { success: false, message: "This station isn't set up for printing yet — see an admin." }
         )
         return
+      }
+
+      const printerType = template.printSettings?.printer_type === "browser" ? "browser" : "usb"
+
+      // Cheapest possible check first, before any rendering work, for Path A
+      // only -- Path B has no persistent WebUSB connection to check.
+      if (printerType !== "browser") {
+        const { isUsbPrinterConnected } = await import("@/lib/usb-printer")
+        if (!isUsbPrinterConnected()) {
+          setPrintStatus({ success: false, message: "Printer not connected — tap Connect Printer first." })
+          return
+        }
       }
 
       const badgeTemplate = template.badgeTemplate
@@ -863,6 +864,26 @@ export function KioskCheckinScreen({
         badgeTemplate: { ...badgeTemplate, template_data: { ...badgeTemplate.template_data, elements: resolvedElements } },
         eventName: template.eventName || "",
       })
+
+      if (printerType === "browser") {
+        // Path B: printContent is already a full HTML document, correctly
+        // sized via @page CSS (getPaperDimensions/generatePrintContent) --
+        // no canvas rasterization or WebUSB needed, just the OS print
+        // dialog. Zero network calls, matches the offline-first
+        // requirement identically to Path A.
+        const { printHtmlViaBrowser } = await import("@/lib/browser-print")
+        const result = printHtmlViaBrowser(printContent)
+        await recordPrintOutcome(
+          { print_id: newId(), list_id: listId, registration_id: registration.id, printed_at: Date.now() },
+          result.success ? "success" : "failed"
+        )
+        setPrintStatus(
+          result.success
+            ? { success: true, message: "Sent to printer." }
+            : { success: false, message: result.error || "Could not open the print dialog." }
+        )
+        return
+      }
 
       const dim = getPaperDimensions(template.printSettings?.paper_size || "4x6", template.printSettings?.orientation || "portrait")
       const container = document.createElement("div")
