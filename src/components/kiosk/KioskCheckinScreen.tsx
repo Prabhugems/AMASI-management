@@ -2412,8 +2412,7 @@ function PrinterSetupScreen({
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Set up the printer</h2>
             <p className="text-sm sm:text-base text-gray-400">
-              {listName} prints a badge on check-in. Connect and test it now — the delegate line can&apos;t wait
-              while you find out it&apos;s dead.
+              {`${listName} prints a badge on check-in. Connect and test it now — the delegate line can't wait while you find out it's dead.`}
             </p>
           </div>
 
