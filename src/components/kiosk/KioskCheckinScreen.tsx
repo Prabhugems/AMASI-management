@@ -207,6 +207,8 @@ export function KioskCheckinScreen({
   const [checkingPrinter, setCheckingPrinter] = useState(true)
   const [testPrinting, setTestPrinting] = useState(false)
   const [testPrintStatus, setTestPrintStatus] = useState<{ success: boolean; message: string } | null>(null)
+  const [printerVerified, setPrinterVerified] = useState(false)
+  const [awaitingPrintConfirm, setAwaitingPrintConfirm] = useState(false)
   // Camera QR scan mode -- an alternative to the manual/external-scanner text
   // input below, using the same html5-qrcode integration already proven in
   // the standalone Print Station page (src/app/print/[token]/page.tsx).
@@ -710,6 +712,8 @@ export function KioskCheckinScreen({
 
   const handleConnectPrinter = useCallback(async () => {
     setPrintStatus(null)
+    setPrinterVerified(false)
+    setAwaitingPrintConfirm(false)
     const { connectUsbPrinter } = await import("@/lib/usb-printer")
     const res = await connectUsbPrinter()
     if (res.success) {
@@ -723,14 +727,34 @@ export function KioskCheckinScreen({
   const handleTestPrint = useCallback(async () => {
     setTestPrinting(true)
     setTestPrintStatus(null)
+    setPrinterVerified(false)
     try {
       const { testUsbPrinter } = await import("@/lib/usb-printer")
       const res = await testUsbPrinter()
-      setTestPrintStatus(
-        res.success ? { success: true, message: "Test page sent." } : { success: false, message: res.error || "Test print failed." }
-      )
+      if (res.success) {
+        // Bytes leaving the USB port successfully is not proof a badge
+        // actually printed -- a non-thermal printer, or a thermal printer
+        // with no paper loaded, accepts the exact same bytes and produces
+        // nothing. Confirmed live: an HP LaserJet reported "sent" and
+        // printed nothing. Ask the volunteer to confirm with their own
+        // eyes before this printer is considered ready.
+        setAwaitingPrintConfirm(true)
+      } else {
+        setTestPrintStatus({ success: false, message: res.error || "Test print failed." })
+      }
     } finally {
       setTestPrinting(false)
+    }
+  }, [])
+
+  const handleConfirmTestPrint = useCallback((badgePrinted: boolean) => {
+    setAwaitingPrintConfirm(false)
+    if (badgePrinted) {
+      setPrinterVerified(true)
+      setTestPrintStatus({ success: true, message: "Printer verified." })
+    } else {
+      setPrinterVerified(false)
+      setTestPrintStatus({ success: false, message: "No badge came out — check the printer and try again." })
     }
   }, [])
 
@@ -1634,11 +1658,14 @@ export function KioskCheckinScreen({
         checking={checkingPrinter}
         usbSupported={usbSupported}
         printerConnected={printerConnected}
+        printerVerified={printerVerified}
         printerName={printerName}
         onConnect={handleConnectPrinter}
         connectStatus={printStatus}
         onTestPrint={handleTestPrint}
         testPrinting={testPrinting}
+        awaitingPrintConfirm={awaitingPrintConfirm}
+        onConfirmTestPrint={handleConfirmTestPrint}
         testPrintStatus={testPrintStatus}
         onContinue={() => {
           setPrintStatus(null)
@@ -2359,11 +2386,14 @@ interface PrinterSetupScreenProps {
   checking: boolean
   usbSupported: boolean
   printerConnected: boolean
+  printerVerified: boolean
   printerName: string | null
   onConnect: () => void
   connectStatus: { success: boolean; message: string } | null
   onTestPrint: () => void
   testPrinting: boolean
+  awaitingPrintConfirm: boolean
+  onConfirmTestPrint: (badgePrinted: boolean) => void
   testPrintStatus: { success: boolean; message: string } | null
   onContinue: () => void
   isOnline: boolean
@@ -2381,11 +2411,14 @@ function PrinterSetupScreen({
   checking,
   usbSupported,
   printerConnected,
+  printerVerified,
   printerName,
   onConnect,
   connectStatus,
   onTestPrint,
   testPrinting,
+  awaitingPrintConfirm,
+  onConfirmTestPrint,
   testPrintStatus,
   onContinue,
   isOnline,
@@ -2425,10 +2458,20 @@ function PrinterSetupScreen({
                 </span>
               ) : (
                 <span
-                  className={`inline-flex items-center gap-1.5 text-sm font-semibold ${printerConnected ? "text-emerald-400" : "text-gray-400"}`}
+                  className={`inline-flex items-center gap-1.5 text-sm font-semibold ${
+                    !printerConnected ? "text-gray-400" : printerVerified ? "text-emerald-400" : "text-amber-400"
+                  }`}
                 >
-                  <span className={`size-1.5 rounded-full ${printerConnected ? "bg-emerald-400" : "bg-gray-500"}`} />
-                  {printerConnected ? printerName || "Printer connected" : "Not connected"}
+                  <span
+                    className={`size-1.5 rounded-full ${
+                      !printerConnected ? "bg-gray-500" : printerVerified ? "bg-emerald-400" : "bg-amber-400"
+                    }`}
+                  />
+                  {!printerConnected
+                    ? "Not connected"
+                    : printerVerified
+                      ? `${printerName || "Printer"} — verified`
+                      : "Connected — not tested"}
                 </span>
               )}
             </div>
@@ -2441,20 +2484,38 @@ function PrinterSetupScreen({
             )}
 
             {usbSupported && (
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  className="h-12 bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
-                  onClick={onConnect}
-                  disabled={checking}
-                >
-                  {printerConnected ? "Reconnect" : "Connect Printer"}
-                </Button>
-                <Button className="h-12" onClick={onTestPrint} disabled={!printerConnected || testPrinting}>
-                  {testPrinting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                  Test Print
-                </Button>
-              </div>
+              awaitingPrintConfirm ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-300 text-center">Did a badge come out?</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="outline"
+                      className="h-12 bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                      onClick={() => onConfirmTestPrint(false)}
+                    >
+                      No
+                    </Button>
+                    <Button className="h-12" onClick={() => onConfirmTestPrint(true)}>
+                      Yes
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    className="h-12 bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                    onClick={onConnect}
+                    disabled={checking}
+                  >
+                    {printerConnected ? "Reconnect" : "Connect Printer"}
+                  </Button>
+                  <Button className="h-12" onClick={onTestPrint} disabled={!printerConnected || testPrinting}>
+                    {testPrinting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Test Print
+                  </Button>
+                </div>
+              )
             )}
 
             {connectStatus && !connectStatus.success && <p className="text-xs text-red-400">{connectStatus.message}</p>}
@@ -2466,7 +2527,7 @@ function PrinterSetupScreen({
           </div>
 
           <Button size="lg" className="w-full h-14 sm:h-16 mt-6 text-base" onClick={onContinue}>
-            {printerConnected ? "Start Scanning" : "Skip — Start Scanning"}
+            {printerVerified ? "Start Scanning" : "Skip — Start Scanning"}
           </Button>
         </div>
       </div>
