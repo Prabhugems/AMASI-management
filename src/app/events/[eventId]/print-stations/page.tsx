@@ -44,6 +44,7 @@ interface PrintStation {
     rotation?: number
     printer_ip?: string
     printer_port?: number
+    printer_type?: "usb" | "browser"
     margins: { top: number; right: number; bottom: number; left: number }
     scale: number
     copies: number
@@ -122,6 +123,7 @@ export default function PrintStationHubPage() {
   const [formRequireCheckin, setFormRequireCheckin] = useState(false)
   const [formTicketTypeIds, setFormTicketTypeIds] = useState<string[]>([])
   const [formTokenExpiry, setFormTokenExpiry] = useState("")
+  const [formPrinterType, setFormPrinterType] = useState<"usb" | "browser">("usb")
   const [testingPrinter, setTestingPrinter] = useState(false)
   const [printerTestResult, setPrinterTestResult] = useState<{ success: boolean; message: string } | null>(null)
 
@@ -310,6 +312,7 @@ export default function PrintStationHubPage() {
     setFormRequireCheckin(false)
     setFormTicketTypeIds([])
     setFormTokenExpiry("")
+    setFormPrinterType("usb")
     setPrinterTestResult(null)
   }
 
@@ -323,6 +326,7 @@ export default function PrintStationHubPage() {
     setFormOrientation(station.print_settings?.orientation || "portrait")
     setFormRotation(station.print_settings?.rotation || 0)
     setFormPrinterIp(station.print_settings?.printer_ip || "")
+    setFormPrinterType(station.print_settings?.printer_type === "browser" ? "browser" : "usb")
     setFormAllowReprint(station.allow_reprint)
     setFormMaxReprints(station.max_reprints)
     setFormAutoPrint(station.auto_print)
@@ -346,6 +350,7 @@ export default function PrintStationHubPage() {
         orientation: formOrientation,
         rotation: formRotation,
         printer_ip: formPrinterIp || null,
+        printer_type: formPrinterType,
         margins: { top: 0, right: 0, bottom: 0, left: 0 },
         scale: 100,
         copies: 1
@@ -796,6 +801,36 @@ export default function PrintStationHubPage() {
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2">Printer Type</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormPrinterType("usb")}
+                    className={`text-left rounded-xl border-2 p-4 transition-all ${
+                      formPrinterType === "usb"
+                        ? "border-purple-500 bg-purple-500/10"
+                        : "border-border hover:border-purple-500/40"
+                    }`}
+                  >
+                    <p className="font-medium">Thermal</p>
+                    <p className="text-xs text-muted-foreground mt-1">Fast, no dialog. USB-connected thermal label/badge printer.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormPrinterType("browser")}
+                    className={`text-left rounded-xl border-2 p-4 transition-all ${
+                      formPrinterType === "browser"
+                        ? "border-purple-500 bg-purple-500/10"
+                        : "border-border hover:border-purple-500/40"
+                    }`}
+                  >
+                    <p className="font-medium">Any other printer</p>
+                    <p className="text-xs text-muted-foreground mt-1">Goes through the browser&apos;s print dialog. Works with laser, inkjet, or network printers.</p>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
