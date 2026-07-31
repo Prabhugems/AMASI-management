@@ -2539,9 +2539,17 @@ function PrinterSetupScreen({
             {isOnline ? "Online" : "Offline"}
           </span>
           {usbSupported && (
-            <span className={`inline-flex items-center gap-1 ${printerConnected ? "text-emerald-400" : "text-gray-500"}`}>
-              <span className={`size-1.5 rounded-full ${printerConnected ? "bg-emerald-400" : "bg-gray-500"}`} />
-              {printerConnected ? "Printer connected" : "Printer not connected"}
+            <span
+              className={`inline-flex items-center gap-1 ${
+                !printerConnected ? "text-gray-500" : printerVerified ? "text-emerald-400" : "text-amber-400"
+              }`}
+            >
+              <span
+                className={`size-1.5 rounded-full ${
+                  !printerConnected ? "bg-gray-500" : printerVerified ? "bg-emerald-400" : "bg-amber-400"
+                }`}
+              />
+              {!printerConnected ? "Printer not connected" : printerVerified ? "Printer verified" : "Printer connected — not tested"}
             </span>
           )}
         </div>
