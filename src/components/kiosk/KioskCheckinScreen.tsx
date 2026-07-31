@@ -1720,6 +1720,7 @@ export function KioskCheckinScreen({
           setPrinterSetupDone(true)
         }}
         isOnline={isOnline}
+        onSwitchList={onSwitchList}
       />
     )
   }
@@ -2486,6 +2487,7 @@ interface PrinterSetupScreenProps {
   isOnline: boolean
   contactPhone?: string | null
   printerType: "usb" | "browser"
+  onSwitchList?: () => void
 }
 
 // Gates the scan screen for any checkin_and_print list -- a volunteer
@@ -2513,6 +2515,7 @@ function PrinterSetupScreen({
   isOnline,
   contactPhone,
   printerType,
+  onSwitchList,
 }: PrinterSetupScreenProps) {
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
@@ -2635,6 +2638,19 @@ function PrinterSetupScreen({
             <p className="mt-4 text-center text-xs text-gray-500">
               Printer trouble? Call {contactPhone}
             </p>
+          )}
+
+          {onSwitchList && (
+            <button
+              onClick={() => {
+                if (confirm(`Leave ${listName} and return to the station menu?`)) {
+                  onSwitchList()
+                }
+              }}
+              className="mt-4 w-full px-6 py-3 rounded-xl bg-muted border border-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Wrong list? <span className="font-normal opacity-80">Tap here to go back to the station menu</span>
+            </button>
           )}
         </div>
       </div>
