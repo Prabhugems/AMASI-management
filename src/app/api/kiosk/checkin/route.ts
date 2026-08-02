@@ -504,17 +504,24 @@ async function completeCheckin(
   // INSERT that always violates the UNIQUE constraint regardless -- landing
   // in the generic 23505 handler below with a misleading "You're already
   // checked in!" and no working path in this route to ever actually
-  // reactivate them. Now fetches ANY existing row (checked-out or not) and
-  // branches on it explicitly.
+  // reactivate them. Now fetches ANY existing row (checked-out, reversed, or
+  // not) and branches on it explicitly.
+  //
+  // reversed_at follow-up (2026-08): the help desk's Reverse action
+  // explicitly promises "this delegate can be checked in again" -- without
+  // treating a reversed row the same as a checked-out one here, this route
+  // would still tell that delegate "You're already checked in!" and block
+  // the exact re-scan the reversal was meant to allow (the staff-scanner
+  // side of this same gap was fixed separately in /api/verify/[token]).
   const { data: existing } = await (supabase as any)
     .from("checkin_records")
-    .select("id, checked_in_at, station_id, checked_out_at")
+    .select("id, checked_in_at, station_id, checked_out_at, reversed_at")
     .eq("registration_id", registrationId)
     .eq("checkin_list_id", checkinListId)
     .limit(1)
     .maybeSingle()
 
-  if (existing && !existing.checked_out_at) {
+  if (existing && !existing.checked_out_at && !existing.reversed_at) {
     await logKioskDuplicateAudit(supabase, { eventId, checkinListId, registrationId, stationId })
     return NextResponse.json({
       success: true,
@@ -533,7 +540,7 @@ async function completeCheckin(
 
   const now = new Date().toISOString()
 
-  if (existing && existing.checked_out_at) {
+  if (existing && (existing.checked_out_at || existing.reversed_at)) {
     // Reactivate the same row rather than inserting a second one -- the
     // UNIQUE(checkin_list_id, registration_id) constraint means a second row
     // for this pair can never be created. This is a genuine, fresh
@@ -545,6 +552,9 @@ async function completeCheckin(
         checked_in_at: now,
         checked_in_by: "Self check-in (kiosk)",
         checked_out_at: null,
+        reversed_at: null,
+        reversed_by: null,
+        reversal_reason: null,
         scan_id: scanId,
         station_id: stationId,
       })
