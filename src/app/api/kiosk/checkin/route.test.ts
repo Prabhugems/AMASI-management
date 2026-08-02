@@ -10,6 +10,9 @@ const SCAN_ID = "55555555-5555-5555-5555-555555555555"
 const TICKET_TYPE_ID = "66666666-6666-6666-6666-666666666666"
 const OTHER_TICKET_TYPE_ID = "77777777-7777-7777-7777-777777777777"
 const ADDON_ID = "88888888-8888-8888-8888-888888888888"
+// The list's own checkin_lists.access_token -- required on every request
+// unless a station_token resolves instead (bug-audit fix, 2026-08).
+const LIST_TOKEN = "list-access-token"
 
 let mock: ReturnType<typeof createSupabaseMock>
 
@@ -32,6 +35,7 @@ function baseBody(overrides: Record<string, unknown> = {}) {
     registration_id: REG_ID,
     scan_id: SCAN_ID,
     search: "125A1001",
+    token: LIST_TOKEN,
     ...overrides,
   }
 }
@@ -45,6 +49,8 @@ function baseList(overrides: Record<string, unknown> = {}) {
     addon_ids: null,
     starts_at: null,
     ends_at: null,
+    access_token: LIST_TOKEN,
+    access_token_expires_at: null,
     ...overrides,
   }
 }
@@ -795,5 +801,128 @@ describe("POST /api/kiosk/checkin -- duplicate/conflict audit trail", () => {
 
     expect(res.status).toBe(200)
     expect(body.alreadyCheckedIn).toBe(true)
+  })
+})
+
+describe("POST /api/kiosk/checkin -- authorization gate (bug-audit fix)", () => {
+  it("401s immediately when neither token nor station_token is present -- no DB calls made", async () => {
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ token: undefined })))
+    const body = await res.json()
+
+    expect(res.status).toBe(401)
+    expect(body.success).toBe(false)
+    expect(mock.calls.length).toBe(0)
+  })
+
+  it("401s when token doesn't match this list's own access_token", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ token: "wrong-token" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(401)
+    expect(body.success).toBe(false)
+  })
+
+  it("401s when token belongs to a different list (even if otherwise well-formed)", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    // access_token doesn't match the token this request sent
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [], access_token: "someone-elses-list-token" }), error: null })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    const body = await res.json()
+
+    expect(res.status).toBe(401)
+    expect(body.success).toBe(false)
+  })
+
+  it("401s when the token is valid but expired", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", {
+      data: baseList({ ticket_type_ids: [], access_token_expires_at: "2020-01-01T00:00:00Z" }),
+      error: null,
+    })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    const body = await res.json()
+
+    expect(res.status).toBe(401)
+    expect(body.message).toBe("This link has expired.")
+  })
+
+  it("succeeds via station_token alone, with no token needed at all, when the station resolves", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("kiosk_stations", {
+      data: { id: "st-1", event_id: EVENT_ID, mode: "checkin", revoked_at: null },
+      error: null,
+    })
+    mock.queueResponse("kiosk_station_lists", { data: { station_id: "st-1" }, error: null })
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existing-active-record check
+    mock.queueResponse("checkin_records", { data: null, error: null }) // insert
+    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ token: undefined, station_token: "st-tok" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(true)
+  })
+
+  it("401s the pre-Stage-2 fallback path too when no credential validates", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("checkin_lists", { data: baseList(), error: null })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ registration_id: undefined, token: "wrong-token" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(401)
+    expect(body.success).toBe(false)
+  })
+})
+
+describe("POST /api/kiosk/checkin -- fallback search wildcard escaping (bug-audit fix)", () => {
+  it("escapes a bare '%' so it can't match every registration in the event", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("checkin_lists", { data: baseList(), error: null })
+    mock.queueResponse("registrations", { data: null, error: null }) // no match -- the escaped pattern matches nothing
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ registration_id: undefined, search: "%" })))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(false)
+
+    const orCall = mock.calls.find((c) => c.table === "registrations" && c.method === "or")
+    expect(orCall).toBeDefined()
+    // The literal '%' must be escaped to '\%' inside the .or() filter string
+    // -- otherwise it's an ilike wildcard matching every row.
+    expect(orCall!.args[0] as string).toContain("\\%")
+    expect(orCall!.args[0] as string).not.toMatch(/ilike\.%%%/)
+  })
+
+  it("escapes an underscore so it matches literally, not as an ilike single-char wildcard", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("checkin_lists", { data: baseList(), error: null })
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody({ registration_id: undefined, search: "a_b" })))
+    expect(res.status).toBe(200)
+
+    const orCall = mock.calls.find((c) => c.table === "registrations" && c.method === "or")
+    expect(orCall!.args[0] as string).toContain("a\\_b")
   })
 })

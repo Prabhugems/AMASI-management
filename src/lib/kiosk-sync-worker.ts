@@ -82,6 +82,12 @@ export async function drainScanQueue(
   // undefined for the original direct-URL (checkin_lists.access_token) path,
   // where there is no station to attribute to.
   stationToken: string | undefined,
+  // The target list's own checkin_lists.access_token -- the direct-URL
+  // kiosk path's credential. Required by /api/kiosk/checkin whenever
+  // stationToken is absent (bug-audit fix, 2026-08: this route previously
+  // accepted a check-in from anyone who knew the event/list id alone).
+  // undefined on the station path, which authorizes via stationToken instead.
+  token: string | undefined,
   onSynced: (entry: ScanLogEntry, response: unknown) => void,
   onConflict: (entry: ScanLogEntry, response: unknown) => void
 ): Promise<{ synced: number; conflicted: number; remaining: number }> {
@@ -105,6 +111,7 @@ export async function drainScanQueue(
           search: entry.delegate_code,
           scan_id: entry.scan_id,
           ...(stationToken && { station_token: stationToken }),
+          ...(token && { token }),
         }),
       })
       // No .catch(() => ({})) here -- an unparseable body (e.g. a captive

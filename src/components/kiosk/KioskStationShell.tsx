@@ -207,7 +207,10 @@ export function KioskStationShell({
       for (const list of assignedLists) {
         if (cancelled) return
         try {
-          await drainScanQueue(list.id, eventId, stationToken, () => {}, () => {})
+          // A station-shell-owned station always authorizes via stationToken
+          // -- there is no per-list access_token on this path (see
+          // drainScanQueue's own param comment).
+          await drainScanQueue(list.id, eventId, stationToken, undefined, () => {}, () => {})
         } catch (err) {
           Sentry.captureException(err, { tags: { module: "kiosk-station-shell" }, extra: { listId: list.id } })
         }

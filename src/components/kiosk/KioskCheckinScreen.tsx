@@ -1097,6 +1097,7 @@ export function KioskCheckinScreen({
         listId,
         eventId,
         stationToken,
+        token,
         () => {},
         () => {}
       )
@@ -1112,7 +1113,7 @@ export function KioskCheckinScreen({
     } finally {
       syncInFlightRef.current = false
     }
-  }, [eventId, listId, stationToken])
+  }, [eventId, listId, stationToken, token])
 
   // Local-first: resolve from the on-device delegate cache and render
   // immediately -- zero network calls on this path. The scan is durably
