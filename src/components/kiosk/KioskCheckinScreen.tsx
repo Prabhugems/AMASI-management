@@ -913,7 +913,7 @@ export function KioskCheckinScreen({
         })
       )
 
-      const { generatePrintContent, getPaperDimensions } = await import("@/lib/badge-render")
+      const { generatePrintContent, getPaperDimensions, getBadgeRotationDegrees } = await import("@/lib/badge-render")
       const printContent = generatePrintContent({
         registration,
         printSettings: template.printSettings,
@@ -960,11 +960,20 @@ export function KioskCheckinScreen({
       // absolutely-positioned children collapse the container to 0×0 and
       // html2canvas produces an empty canvas -- mirrors the exact pattern
       // in src/app/print/[token]/page.tsx's USB print branch.
+      // rotationDeg: real bug found live (2026-08) -- stripping printContent's
+      // <head> above also strips the rotation transform generatePrintContent()
+      // applied there, and this scoped style never re-applied it, so
+      // print_settings.rotation had silently done nothing for this entire
+      // print path regardless of what an admin set it to.
+      const rotationDeg = getBadgeRotationDegrees(template.printSettings, template.printMode || "full_badge")
       const scopedStyle = `<style>
         #${container.id} .badge-wrapper, #${container.id} .badge-container {
           width: ${dim.width}; height: ${dim.height};
         }
-        #${container.id} .badge-container { position: relative; overflow: hidden; }
+        #${container.id} .badge-container {
+          position: relative; overflow: hidden;
+          ${rotationDeg ? `transform: rotate(${rotationDeg}deg); transform-origin: center center;` : ""}
+        }
       </style>`
       container.innerHTML = scopedStyle + (bodyMatch ? bodyMatch[1] : printContent)
       document.body.appendChild(container)

@@ -181,6 +181,24 @@ export function getPaperDimensions(paperSize: string, orientation: string): { wi
   return size
 }
 
+// Shared with every html2canvas call site (KioskCheckinScreen.tsx,
+// print/[token]/page.tsx x2) so the rotation setting actually takes effect
+// on canvas-rasterized (WebUSB/USB thermal) prints, not just on the
+// window.print() "Browser print" path. Those call sites strip printContent's
+// <head> (and the rotation CSS transform that lives there, applied to
+// .badge-container) before handing the remaining <body> to html2canvas, and
+// rebuild a minimal scoped <style> of their own -- which never re-applied
+// this, so print_settings.rotation had zero effect on any canvas-based
+// print, ever, regardless of what an admin set it to. Exporting the same
+// computation used below lets each call site put the transform back.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getBadgeRotationDegrees(settings: any, printMode: string): number {
+  const isOverlayMode = printMode === "overlay"
+  // Overlay mode: NO rotation (pre-printed stock orientation is fixed)
+  // Full badge/label: 180° rotation for thermal printers (labels feed bottom-first)
+  return (settings || {}).rotation ?? (isOverlayMode ? 0 : 180)
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function generatePrintContent(data: {
   registration: any
@@ -200,9 +218,7 @@ export function generatePrintContent(data: {
   const settings = printSettings || {}
   const dimensions = getPaperDimensions(settings.paper_size, settings.orientation)
   const isOverlayMode = printMode === "overlay"
-  // Overlay mode: NO rotation (pre-printed stock orientation is fixed)
-  // Full badge/label: 180° rotation for thermal printers (labels feed bottom-first)
-  const rotation = settings.rotation ?? (isOverlayMode ? 0 : 180)
+  const rotation = getBadgeRotationDegrees(settings, printMode)
 
   // If we have a badge template, render it
   if (badgeTemplate?.template_data) {
