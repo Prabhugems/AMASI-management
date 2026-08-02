@@ -99,20 +99,56 @@ export function buildTsplRaster(
   return buffer
 }
 
-// Build a simple TSPL2 text test print -- printer's built-in font, no
-// rasterization needed, so a failure here isolates command-language issues
-// from html2canvas/bitmap-specific ones.
+// A tiny 64x64-dot checkerboard: top-left + bottom-right BLACK, the other
+// two quadrants WHITE. Deliberately hand-built (not run through
+// ditherToMonochrome/packBits) so its expected output is known by
+// construction, not by trusting the same pipeline we're debugging.
+// Small and simple enough to read by eye, unlike a full badge -- reveals
+// bit-polarity inversion (colors fully swapped) and row/column
+// misalignment (quadrants shifted, smeared, or scrambled instead of clean
+// squares) in one shot, isolated from html2canvas/badge-template concerns
+// entirely.
+function buildDiagnosticCheckerboard(): { packed: Uint8Array; bytesPerRow: number; height: number } {
+  const width = 64 // dots
+  const height = 64 // dots
+  const bytesPerRow = width / 8 // 8 bytes/row -- 1 bit per dot, MSB first
+
+  const packed = new Uint8Array(bytesPerRow * height)
+  for (let y = 0; y < height; y++) {
+    for (let byteX = 0; byteX < bytesPerRow; byteX++) {
+      const isLeftHalf = byteX < bytesPerRow / 2
+      const isTopHalf = y < height / 2
+      const shouldBeBlack = isTopHalf === isLeftHalf // TL and BR black, TR and BL white
+      packed[y * bytesPerRow + byteX] = shouldBeBlack ? 0xff : 0x00
+    }
+  }
+  return { packed, bytesPerRow, height }
+}
+
+// Build a TSPL2 test print combining plain text (printer's own font -- no
+// rasterization, isolates command-language issues) with the diagnostic
+// checkerboard bitmap (isolates BITMAP-specific format issues) in one job.
 export function buildTsplTestPrint(): Uint8Array {
-  const lines =
-    `SIZE 4 in,2 in\r\n` +
+  const { packed, bytesPerRow, height } = buildDiagnosticCheckerboard()
+
+  const header = textToBytes(
+    `SIZE 4 in,3 in\r\n` +
     `GAP 0 in,0 in\r\n` +
     `DIRECTION 0\r\n` +
     `CLS\r\n` +
-    `TEXT 50,40,"3",0,1,1,"TEST PRINT"\r\n` +
-    `TEXT 50,100,"2",0,1,1,"AMASI Print Station"\r\n` +
-    `TEXT 50,130,"2",0,1,1,"TSPL2 Connected!"\r\n` +
-    `PRINT 1,1\r\n`
-  return new Uint8Array(textToBytes(lines))
+    `TEXT 20,20,"3",0,1,1,"TEST PRINT"\r\n` +
+    `TEXT 20,70,"1",0,1,1,"AMASI Print Station - TSPL2 Connected!"\r\n` +
+    `TEXT 20,100,"1",0,1,1,"Top-left + bottom-right = BLACK"\r\n` +
+    `TEXT 20,120,"1",0,1,1,"Top-right + bottom-left = WHITE"\r\n` +
+    `BITMAP 20,150,${bytesPerRow},${height},0,`
+  )
+  const footer = textToBytes(`\r\nPRINT 1,1\r\n`)
+
+  const buffer = new Uint8Array(header.length + packed.length + footer.length)
+  buffer.set(header, 0)
+  buffer.set(packed, header.length)
+  buffer.set(footer, header.length + packed.length)
+  return buffer
 }
 
 // Convert a canvas to a TSPL2 raster job, scaling to the printer's dot width.
