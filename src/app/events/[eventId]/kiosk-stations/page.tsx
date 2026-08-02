@@ -33,6 +33,7 @@ import {
   List,
   LayoutGrid,
   ChevronDown,
+  ChevronRight,
   X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -174,6 +175,25 @@ export default function KioskStationsPage() {
   const dismissFirstRun = () => {
     if (typeof window !== "undefined") window.localStorage.setItem(firstRunStorageKey, "true")
     setFirstRunDismissed(true)
+  }
+
+  // Collapsed by default (independent of the dismiss-forever state above) --
+  // reduces vertical space at every width, not just mobile, once an admin
+  // has already seen the checklist once. Same per-event localStorage
+  // convention as firstRunStorageKey above, but its own key: dismissal and
+  // expand/collapse are independent axes (a not-yet-dismissed banner still
+  // starts collapsed; expanding it doesn't dismiss it).
+  const firstRunExpandedKey = `kiosk-stations-firstrun-expanded:${eventId}`
+  const [firstRunExpanded, setFirstRunExpanded] = useState(false)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    setFirstRunExpanded(window.localStorage.getItem(firstRunExpandedKey) === "true")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId])
+  const toggleFirstRunExpanded = () => {
+    const next = !firstRunExpanded
+    if (typeof window !== "undefined") window.localStorage.setItem(firstRunExpandedKey, String(next))
+    setFirstRunExpanded(next)
   }
 
   // A collection-purpose list rejects every kiosk self-check-in scan on an
@@ -629,17 +649,30 @@ export default function KioskStationsPage() {
               >
                 <X className="h-4 w-4" />
               </button>
-              <p className="pr-6 font-semibold">Setting up for an event?</p>
-              <ol className="mt-2 list-decimal space-y-1 pl-4 text-muted-foreground">
-                <li>Add one station per tablet, named after its desk</li>
-                <li>Tick the lists that desk handles</li>
-                <li>Turn on &quot;Attended&quot; if a volunteer holds it</li>
-                <li>Open the station&apos;s link on the tablet, and add it to the home screen</li>
-                <li>Print one test badge before the tablet leaves</li>
-              </ol>
-              <p className="mt-2 text-muted-foreground">
-                After that the volunteer just taps the icon — no login, no link.
-              </p>
+              <button
+                type="button"
+                onClick={toggleFirstRunExpanded}
+                className="flex items-center gap-1.5 pr-6 font-semibold text-left"
+              >
+                <ChevronRight
+                  className={cn("h-3.5 w-3.5 shrink-0 transition-transform", firstRunExpanded && "rotate-90")}
+                />
+                Setting up for an event?
+              </button>
+              {firstRunExpanded && (
+                <>
+                  <ol className="mt-2 list-decimal space-y-1 pl-4 text-muted-foreground">
+                    <li>Add one station per tablet, named after its desk</li>
+                    <li>Tick the lists that desk handles</li>
+                    <li>Turn on &quot;Attended&quot; if a volunteer holds it</li>
+                    <li>Open the station&apos;s link on the tablet, and add it to the home screen</li>
+                    <li>Print one test badge before the tablet leaves</li>
+                  </ol>
+                  <p className="mt-2 text-muted-foreground">
+                    After that the volunteer just taps the icon — no login, no link.
+                  </p>
+                </>
+              )}
             </div>
           )}
           {/* Search + status filter tabs + view toggle */}
