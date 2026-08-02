@@ -44,7 +44,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
-import { replacePlaceholders, renderElementToHtml, generatePrintContent, getPaperDimensions } from "@/lib/badge-render"
+import { replacePlaceholders, renderElementToHtml, generatePrintContent, getPaperDimensions, getBadgeRotationDegrees } from "@/lib/badge-render"
 
 interface PrintStation {
   id: string
@@ -1114,6 +1114,11 @@ function PrintStationKioskPage() {
       // (which lived there) are re-applied via scoped CSS below — without
       // them the absolutely-positioned children collapse the container to
       // 0×0 and html2canvas produces an empty canvas.
+      // rotationDeg: real bug found live (2026-08) -- stripping the <head>
+      // above also strips the rotation transform generatePrintContent()
+      // applied there, and this scoped style never re-applied it, so
+      // print_settings.rotation had silently done nothing for this print
+      // path regardless of what an admin set it to.
       const container = document.createElement("div")
       container.id = `print-render-${Date.now()}`
       container.style.position = "absolute"
@@ -1122,11 +1127,15 @@ function PrintStationKioskPage() {
       container.style.width = dim.width
       container.style.height = dim.height
       const bodyMatch = printContent.match(/<body[^>]*>([\s\S]*)<\/body>/)
+      const rotationDeg = getBadgeRotationDegrees(settings, (data.station || station)?.print_mode)
       const scopedStyle = `<style>
         #${container.id} .badge-wrapper, #${container.id} .badge-container {
           width: ${dim.width}; height: ${dim.height};
         }
-        #${container.id} .badge-container { position: relative; overflow: hidden; }
+        #${container.id} .badge-container {
+          position: relative; overflow: hidden;
+          ${rotationDeg ? `transform: rotate(${rotationDeg}deg); transform-origin: center center;` : ""}
+        }
       </style>`
       container.innerHTML = scopedStyle + (bodyMatch ? bodyMatch[1] : printContent)
       document.body.appendChild(container)
@@ -1252,7 +1261,9 @@ function PrintStationKioskPage() {
 
       // See triggerThermalPrint for why we re-apply scoped wrapper styles
       // here (the <style> block from <head> is intentionally not injected
-      // into the host document).
+      // into the host document). rotationDeg: see triggerThermalPrint's own
+      // comment on this same bug -- print_settings.rotation had silently
+      // done nothing on this path either.
       const container = document.createElement("div")
       container.id = `print-render-usb-${Date.now()}`
       container.style.position = "absolute"
@@ -1261,11 +1272,15 @@ function PrintStationKioskPage() {
       container.style.width = dim.width
       container.style.height = dim.height
       const bodyMatch = printContent.match(/<body[^>]*>([\s\S]*)<\/body>/)
+      const rotationDeg = getBadgeRotationDegrees(settings, (data.station || station)?.print_mode)
       const scopedStyle = `<style>
         #${container.id} .badge-wrapper, #${container.id} .badge-container {
           width: ${dim.width}; height: ${dim.height};
         }
-        #${container.id} .badge-container { position: relative; overflow: hidden; }
+        #${container.id} .badge-container {
+          position: relative; overflow: hidden;
+          ${rotationDeg ? `transform: rotate(${rotationDeg}deg); transform-origin: center center;` : ""}
+        }
       </style>`
       container.innerHTML = scopedStyle + (bodyMatch ? bodyMatch[1] : printContent)
       document.body.appendChild(container)
