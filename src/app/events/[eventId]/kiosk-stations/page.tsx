@@ -92,10 +92,15 @@ export default function KioskStationsPage() {
   // List/grid view toggle + bulk selection -- all client-side, operating on
   // the already-filtered/searched `stations` array. No new fetch params.
   const [view, setView] = useState<"list" | "grid">("list")
-  // List is a fixed-pixel desktop table (~1018px minimum); below 1024px it
-  // forces Grid instead, which is already responsive down to one column.
+  // List is a fixed-pixel desktop table (~1097px minimum content width,
+  // measured live: fixed columns + gaps + row padding). The page's own
+  // max-w-6xl container caps available width at ~1102px once past that
+  // breakpoint, so xl: (1280px) is the lowest viewport where the container
+  // is guaranteed to have reached that cap and the table is guaranteed to
+  // fit without horizontal scroll. Below xl:, forces Grid instead, which is
+  // already responsive down to one column.
   // See docs/superpowers/specs/2026-08-02-kiosk-stations-responsive-layout-design.md.
-  const isDesktop = useMediaQuery("(min-width: 1152px)")
+  const isDesktop = useMediaQuery("(min-width: 1280px)")
   const effectiveView = isDesktop ? view : "grid"
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkListPickerOpen, setBulkListPickerOpen] = useState(false)
@@ -596,7 +601,7 @@ export default function KioskStationsPage() {
     setBulkListPickerOpen(false)
   }
 
-  const gridCols = "28px 150px minmax(200px,1fr) 260px 190px 190px"
+  const gridCols = "28px 150px minmax(200px,1fr) 260px 190px 165px"
 
   const confirmStations = confirmState?.stations ?? []
   const confirmIsBulk = confirmStations.length > 1
@@ -606,7 +611,7 @@ export default function KioskStationsPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-col gap-4 min-[1152px]:flex-row min-[1152px]:items-center min-[1152px]:justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Monitor className="h-5 w-5" />
@@ -617,7 +622,7 @@ export default function KioskStationsPage() {
             stays signed in on its own and never needs a password again.
           </p>
         </div>
-        <Button className="w-full min-[1152px]:w-auto" onClick={() => setAddWizardOpen(true)}>
+        <Button className="w-full xl:w-auto" onClick={() => setAddWizardOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Station
         </Button>
@@ -652,6 +657,7 @@ export default function KioskStationsPage() {
               <button
                 type="button"
                 onClick={toggleFirstRunExpanded}
+                aria-expanded={firstRunExpanded}
                 className="flex items-center gap-1.5 pr-6 font-semibold text-left"
               >
                 <ChevronRight
@@ -676,7 +682,7 @@ export default function KioskStationsPage() {
             </div>
           )}
           {/* Search + status filter tabs + view toggle */}
-          <div className="flex flex-col gap-3 min-[1152px]:flex-row min-[1152px]:items-center">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
             <div className="flex gap-1 overflow-x-auto rounded-lg bg-muted p-1">
               {STATUS_FILTERS.map((f) => (
                 <button
@@ -695,7 +701,7 @@ export default function KioskStationsPage() {
                 </button>
               ))}
             </div>
-            <div className="relative w-full min-[1152px]:max-w-xs">
+            <div className="relative w-full xl:max-w-xs">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
@@ -704,7 +710,7 @@ export default function KioskStationsPage() {
                 className="h-9 pl-8 text-sm"
               />
             </div>
-            <div className="flex items-center gap-3 min-[1152px]:ml-auto">
+            <div className="flex items-center gap-3 xl:ml-auto">
               <div className="text-xs text-muted-foreground">
                 {visibleStations.length} of {stations.length} stations
               </div>
@@ -1012,7 +1018,7 @@ export default function KioskStationsPage() {
                     <span className="h-px flex-1 bg-border" />
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 min-[1152px]:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {group.stations.map((station) => {
                       const status = computeStationStatus(station)
                       const meta = STATUS_META[status]

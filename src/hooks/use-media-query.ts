@@ -1,3 +1,5 @@
+"use client"
+
 import { useEffect, useState } from "react"
 
 // SSR-safe: renders as `defaultValue` (desktop, for this page's only
