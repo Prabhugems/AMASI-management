@@ -586,7 +586,7 @@ export default function KioskStationsPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Monitor className="h-5 w-5" />
@@ -597,7 +597,7 @@ export default function KioskStationsPage() {
             stays signed in on its own and never needs a password again.
           </p>
         </div>
-        <Button onClick={() => setAddWizardOpen(true)}>
+        <Button className="w-full lg:w-auto" onClick={() => setAddWizardOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Station
         </Button>
@@ -643,15 +643,15 @@ export default function KioskStationsPage() {
             </div>
           )}
           {/* Search + status filter tabs + view toggle */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex gap-1 rounded-lg bg-muted p-1">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex gap-1 overflow-x-auto rounded-lg bg-muted p-1">
               {STATUS_FILTERS.map((f) => (
                 <button
                   key={f.key}
                   type="button"
                   onClick={() => setStatusFilter(f.key)}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                    "flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                     statusFilter === f.key
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -662,7 +662,7 @@ export default function KioskStationsPage() {
                 </button>
               ))}
             </div>
-            <div className="relative w-full max-w-xs">
+            <div className="relative w-full lg:max-w-xs">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
@@ -671,7 +671,7 @@ export default function KioskStationsPage() {
                 className="h-9 pl-8 text-sm"
               />
             </div>
-            <div className="ml-auto flex items-center gap-3">
+            <div className="flex items-center gap-3 lg:ml-auto">
               <div className="text-xs text-muted-foreground">
                 {visibleStations.length} of {stations.length} stations
               </div>
