@@ -29,10 +29,11 @@ import {
   AlertTriangle,
   WifiOff,
   Printer,
+  Search,
 } from "lucide-react"
 import { toast } from "sonner"
 import * as Sentry from "@sentry/nextjs"
-import { matchDelegate, type CachedDelegate } from "@/lib/kiosk-delegate-match"
+import { matchDelegate, searchDelegates, type CachedDelegate } from "@/lib/kiosk-delegate-match"
 import {
   getOrCreateDeviceId,
   replaceDelegateCache,
@@ -247,6 +248,12 @@ export function KioskCheckinScreen({
   // Defaults to "camera" (unlike that page's "manual" default) since a
   // self-service kiosk's primary interaction is walk-up-and-scan.
   const [scanMode, setScanMode] = useState<"camera" | "manual">("camera")
+  // Work order §5 -- lookup-only fallback for a badge that won't scan or a
+  // phone whose QR won't load, so that doesn't require a walk to the (one-
+  // person) help desk. Deliberately kept out of the scanMode toggle above:
+  // this is secondary to the scanner, not a co-equal third input mode.
+  const [nameSearchOpen, setNameSearchOpen] = useState(false)
+  const [nameSearchQuery, setNameSearchQuery] = useState("")
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([])
@@ -2121,6 +2128,7 @@ export function KioskCheckinScreen({
           isProcessing={isProcessing}
           cacheReady={cacheReady}
           cacheError={cacheError}
+          delegatesRef={delegatesRef}
         />
         {/* A short-lived, one-time "just went offline" notice -- NOT a
             persistent connectivity gate, and NOT a full-screen replacement
@@ -2412,6 +2420,81 @@ export function KioskCheckinScreen({
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Name search — secondary to the scanner (work order §5). A
+              badge that won't scan, or a phone whose QR won't load, must not
+              require a walk to the help desk. Searches only the already-
+              cached roster in delegatesRef -- no network call, works
+              offline -- and never auto-selects: the volunteer always taps
+              the right person, then proceeds through the exact same
+              handleCheckin path a scan uses (registration_number override,
+              so matchDelegate resolves to precisely this person). */}
+          <div className="mt-4 text-center">
+            {!nameSearchOpen ? (
+              <button
+                onClick={() => setNameSearchOpen(true)}
+                className="text-sm text-indigo-600 underline hover:text-indigo-800"
+              >
+                Can&apos;t scan? Search by name
+              </button>
+            ) : (
+              <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg p-4 sm:p-5 text-left">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <p className="text-sm font-semibold text-foreground">Search by name</p>
+                  <button
+                    onClick={() => {
+                      setNameSearchOpen(false)
+                      setNameSearchQuery("")
+                    }}
+                    className="text-xs text-muted-foreground underline hover:text-foreground"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    autoFocus
+                    type="text"
+                    value={nameSearchQuery}
+                    onChange={(e) => setNameSearchQuery(e.target.value)}
+                    placeholder="Name, phone, or registration ID…"
+                    autoComplete="off"
+                    className="pl-10"
+                  />
+                </div>
+                {nameSearchQuery.trim().length >= 2 && (() => {
+                  const results = searchDelegates(delegatesRef.current, nameSearchQuery)
+                  return (
+                    <div className="mt-3 space-y-1.5 max-h-64 overflow-y-auto">
+                      {results.map((d) => (
+                        <button
+                          key={d.id}
+                          onClick={() => {
+                            setNameSearchOpen(false)
+                            setNameSearchQuery("")
+                            void handleCheckin(d.registration_number)
+                          }}
+                          className="w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2.5 text-left hover:bg-muted transition-colors"
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium text-foreground truncate">{d.attendee_name}</span>
+                            <span className="block text-xs text-muted-foreground truncate">
+                              {d.registration_number}
+                              {d.attendee_institution ? ` · ${d.attendee_institution}` : ""}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                      {results.length === 0 && (
+                        <p className="text-sm text-muted-foreground py-2">No match — see the help desk</p>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -2940,6 +3023,10 @@ interface CollectionReadyScreenProps {
   isProcessing: boolean
   cacheReady: boolean
   cacheError: string | null
+  // Work order §5 name search -- same cached-roster ref the parent already
+  // reads for the primary scan/manual path, threaded down so this screen
+  // can search it too without a second fetch/cache.
+  delegatesRef: { current: CachedDelegate[] }
 }
 
 // Redesigned "ready to scan" idle screen for a genuinely attended station
@@ -2971,10 +3058,13 @@ function CollectionReadyScreen({
   isProcessing,
   cacheReady,
   cacheError,
+  delegatesRef,
 }: CollectionReadyScreenProps) {
   const lastScanLabel = lastScanAt
     ? `last scan ${Math.max(0, Math.round((Date.now() - lastScanAt) / 1000))} seconds ago`
     : "no scans yet"
+  const [nameSearchOpen, setNameSearchOpen] = useState(false)
+  const [nameSearchQuery, setNameSearchQuery] = useState("")
 
   return (
     <div className="fixed inset-0 flex flex-col bg-background" onClick={() => inputRef.current?.focus()}>
@@ -3144,6 +3234,76 @@ function CollectionReadyScreen({
               {cacheError && <p className="mt-2 text-center text-xs text-red-500">{cacheError}</p>}
             </div>
           )}
+
+          {/* Name search -- same offline-only roster lookup as the
+              self-service screen (work order §5), secondary to the
+              scanner/manual entry above. */}
+          <div className="mt-4 text-center" onClick={(e) => e.stopPropagation()}>
+            {!nameSearchOpen ? (
+              <button
+                onClick={() => setNameSearchOpen(true)}
+                className="text-sm text-indigo-600 underline hover:text-indigo-800"
+              >
+                Can&apos;t scan? Search by name
+              </button>
+            ) : (
+              <div className="bg-card border border-border rounded-lg p-4 sm:p-5 text-left">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <p className="text-sm font-semibold text-foreground">Search by name</p>
+                  <button
+                    onClick={() => {
+                      setNameSearchOpen(false)
+                      setNameSearchQuery("")
+                    }}
+                    className="text-xs text-muted-foreground underline hover:text-foreground"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    autoFocus
+                    type="text"
+                    value={nameSearchQuery}
+                    onChange={(e) => setNameSearchQuery(e.target.value)}
+                    placeholder="Name, phone, or registration ID…"
+                    autoComplete="off"
+                    className="pl-10"
+                  />
+                </div>
+                {nameSearchQuery.trim().length >= 2 && (() => {
+                  const results = searchDelegates(delegatesRef.current, nameSearchQuery)
+                  return (
+                    <div className="mt-3 space-y-1.5 max-h-64 overflow-y-auto">
+                      {results.map((d) => (
+                        <button
+                          key={d.id}
+                          onClick={() => {
+                            setNameSearchOpen(false)
+                            setNameSearchQuery("")
+                            handleCheckin(d.registration_number)
+                          }}
+                          className="w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2.5 text-left hover:bg-muted transition-colors"
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium text-foreground truncate">{d.attendee_name}</span>
+                            <span className="block text-xs text-muted-foreground truncate">
+                              {d.registration_number}
+                              {d.attendee_institution ? ` · ${d.attendee_institution}` : ""}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                      {results.length === 0 && (
+                        <p className="text-sm text-muted-foreground py-2">No match — see the help desk</p>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+          </div>
         </div>
 
         {onSwitchList && (
