@@ -770,7 +770,7 @@ export function KioskCheckinScreen({
     try {
       if (printerType === "browser") {
         const { printHtmlViaBrowser, buildBrowserTestPageHtml } = await import("@/lib/browser-print")
-        const res = printHtmlViaBrowser(buildBrowserTestPageHtml(event?.short_name || event?.name || "Event"))
+        const res = await printHtmlViaBrowser(buildBrowserTestPageHtml(event?.short_name || event?.name || "Event"))
         if (res.success) {
           setAwaitingPrintConfirm(true)
         } else {
@@ -913,7 +913,7 @@ export function KioskCheckinScreen({
         // dialog. Zero network calls, matches the offline-first
         // requirement identically to Path A.
         const { printHtmlViaBrowser } = await import("@/lib/browser-print")
-        const result = printHtmlViaBrowser(printContent)
+        const result = await printHtmlViaBrowser(printContent)
         await recordPrintOutcome(
           { print_id: newId(), list_id: listId, registration_id: registration.id, printed_at: Date.now() },
           result.success ? "success" : "failed"
