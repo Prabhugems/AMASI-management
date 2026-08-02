@@ -18,6 +18,57 @@ declare global {
 let usbDevice: any = null
 let usbEndpoint: number | null = null
 
+// Defensive best-effort init for USB-to-serial bridge chips (CH340/CH341,
+// PL2303, FTDI -- see the vendorId filters in connectUsbPrinter). Live
+// testing (2026-08, 4BARCODE 4B-2054TG): connect + claimInterface +
+// selectAlternateInterface all succeed and transferOut() resolves with
+// status "ok", yet nothing prints -- while the SAME physical printer has
+// printed correctly before from iPad/iMac (over Bluetooth or a real OS
+// driver, not this code path) and its own built-in self-test print works.
+// That combination -- USB link succeeds, ESC/POS commands are already
+// proven correct on this exact unit via other links, only raw-WebUSB fails
+// -- points at the one handshake a real driver performs that this code
+// never has: for a CDC-ACM virtual-serial bridge, the firmware treats the
+// "port" as closed (and silently discards writes to it) until the host
+// sends SET_LINE_CODING (configure baud/parity/bits) and
+// SET_CONTROL_LINE_STATE (assert DTR/RTS) class-specific control requests
+// on the CDC "Communications" interface -- a sibling of the "Data"
+// interface the bulk endpoints live on, not necessarily the same interface
+// number. A native USB-printer-class device has no such interface and no
+// such requirement; this is wrapped so failing/being rejected there is a
+// harmless no-op.
+async function tryCdcAcmHandshake(device: any, dataInterfaceNumber: number): Promise<void> {
+  let commInterfaceNumber = dataInterfaceNumber
+  try {
+    for (const iface of device.configuration?.interfaces || []) {
+      for (const alt of iface.alternates) {
+        if (alt.interfaceClass === 0x02) {
+          commInterfaceNumber = iface.interfaceNumber
+          try {
+            await device.claimInterface(iface.interfaceNumber)
+          } catch {
+            // Already claimed (e.g. part of the same interface association) -- fine.
+          }
+        }
+      }
+    }
+
+    // SET_LINE_CODING (bRequest 0x20): dwDTERate(LE32) + bCharFormat + bParityType + bDataBits.
+    // Most bridge firmwares ignore the actual rate/format values but require the call itself
+    // before they'll consider the virtual port "open".
+    await device.controlTransferOut(
+      { requestType: "class", recipient: "interface", request: 0x20, value: 0x00, index: commInterfaceNumber },
+      new Uint8Array([0x00, 0x25, 0x00, 0x00, 0x00, 0x00, 0x08]) // 9600 baud, 1 stop, no parity, 8 data bits
+    )
+    // SET_CONTROL_LINE_STATE (bRequest 0x22): bit0 = DTR, bit1 = RTS.
+    await device.controlTransferOut(
+      { requestType: "class", recipient: "interface", request: 0x22, value: 0x03, index: commInterfaceNumber }
+    )
+  } catch {
+    // Not a CDC-ACM device, or it doesn't need/support this -- ignore.
+  }
+}
+
 // Hardware-testing fix (found live, 2026-08): a page teardown that never
 // calls device.close() first (a manual browser refresh, closing the tab,
 // or previously, a plain <a href> navigation elsewhere in the app -- see
@@ -158,6 +209,16 @@ export async function connectUsbPrinter(): Promise<{
     if (foundAlternate && foundAlternate.alternateSetting !== 0) {
       await device.selectAlternateInterface(foundInterface.interfaceNumber, foundAlternate.alternateSetting)
     }
+
+    // Clear any stale halt/stall condition left on the endpoint by a prior
+    // interrupted session -- best-effort, not all platforms support it.
+    try {
+      await device.clearHalt("out", foundEndpoint.endpointNumber)
+    } catch {
+      // Ignore -- not fatal if unsupported.
+    }
+
+    await tryCdcAcmHandshake(device, foundInterface.interfaceNumber)
 
     usbDevice = device
     usbEndpoint = foundEndpoint.endpointNumber
@@ -317,10 +378,16 @@ export async function reconnectUsbPrinter(): Promise<{
 
         if (foundInterface && foundEndpoint) {
           await device.claimInterface(foundInterface.interfaceNumber)
-          // See connectUsbPrinter() for why this is required, not optional.
+          // See connectUsbPrinter() for why these are required, not optional.
           if (foundAlternate && foundAlternate.alternateSetting !== 0) {
             await device.selectAlternateInterface(foundInterface.interfaceNumber, foundAlternate.alternateSetting)
           }
+          try {
+            await device.clearHalt("out", foundEndpoint.endpointNumber)
+          } catch {
+            // Ignore -- not fatal if unsupported.
+          }
+          await tryCdcAcmHandshake(device, foundInterface.interfaceNumber)
           usbDevice = device
           usbEndpoint = foundEndpoint.endpointNumber
           const name = device.productName || device.manufacturerName || "USB Printer"
