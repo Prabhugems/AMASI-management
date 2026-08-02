@@ -17,14 +17,11 @@ import { isValidUUID } from "@/lib/validation"
 // looks implausible (e.g. zero from a station known to be busy, or a
 // station appearing on a list it was never assigned), that's the signal.
 //
-// Intentionally does not reference checkin_records.reversed_at/reversed_by
-// -- those columns exist only in a migration written this session and NOT
-// YET APPLIED (see supabase/migrations/20260802_checkin_records_reversal.sql).
-// Referencing them here before that migration is applied would 500 this
-// route in production, the exact "code shipped ahead of its migration"
-// incident class this repo has hit repeatedly. Once applied, this query
-// should add `.is("reversed_at", null)` alongside the existing
-// `.is("checked_out_at", null)` filter.
+// checkin_records.reversed_at is now excluded alongside checked_out_at
+// (bug-audit fix, 2026-08) -- the migration adding it
+// (supabase/migrations/20260802_checkin_records_reversal.sql) has since
+// been applied to production, closing the "code shipped ahead of its
+// migration" risk this file's comment used to warn about.
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const eventId = searchParams.get("event_id")
@@ -68,7 +65,31 @@ export async function GET(request: NextRequest) {
       if (list.ticket_type_ids && list.ticket_type_ids.length > 0) {
         totalQuery = totalQuery.in("ticket_type_id", list.ticket_type_ids)
       }
-      const { count: eligibleCount } = await totalQuery
+      // Bug-audit fix (2026-08): this file's own header comment claimed
+      // eligibility "mirrors ticket_type_ids/addon_ids match," but addon_ids
+      // was selected and typed, never actually applied -- an addon-scoped
+      // list (e.g. a workshop-kit collection list) came back with "eligible"
+      // = every confirmed registration instead of just the addon-holders.
+      // Mirrors /api/checkin-lists' own addon-eligibility computation.
+      let eligibleCount: number | null = null
+      if (Array.isArray(list.addon_ids) && list.addon_ids.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: addonRegs } = await (supabase as any)
+          .from("registration_addons")
+          .select("registration_id")
+          .in("addon_id", list.addon_ids)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const addonRegIds = [...new Set((addonRegs || []).map((r: any) => r.registration_id))]
+        if (addonRegIds.length === 0) {
+          eligibleCount = 0
+        } else {
+          const { count } = await totalQuery.in("id", addonRegIds)
+          eligibleCount = count
+        }
+      } else {
+        const { count } = await totalQuery
+        eligibleCount = count
+      }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: checkinRows } = await (supabase as any)
@@ -76,6 +97,7 @@ export async function GET(request: NextRequest) {
         .select("station_id")
         .eq("checkin_list_id", list.id)
         .is("checked_out_at", null)
+        .is("reversed_at", null)
 
       const byStation = new Map<string, number>()
       for (const row of checkinRows || []) {
