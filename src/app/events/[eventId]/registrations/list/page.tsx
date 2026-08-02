@@ -1977,7 +1977,7 @@ function RegistrationsContent() {
                       Check-in<SortIndicator column="checkin" />
                     </button>
                   </th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground sticky right-0 bg-secondary/30 border-l border-border">
                     Actions
                   </th>
                 </tr>
@@ -1987,7 +1987,7 @@ function RegistrationsContent() {
                   <tr
                     key={reg.id}
                     className={cn(
-                      "border-b border-border hover:bg-secondary/20 transition-colors cursor-pointer",
+                      "group border-b border-border hover:bg-secondary/20 transition-colors cursor-pointer",
                       selectedRegistration?.id === reg.id && "bg-primary/5",
                       selectedIds.has(reg.id) && "bg-primary/10"
                     )}
@@ -2012,18 +2012,18 @@ function RegistrationsContent() {
                       </div>
                     </td>
                     <td className="p-4">
-                      <div>
-                        <p className="font-medium">{reg.attendee_name}</p>
-                        <p className="text-sm text-muted-foreground">{reg.attendee_email}</p>
+                      <div className="max-w-[220px]">
+                        <p className="font-medium truncate" title={reg.attendee_name}>{reg.attendee_name}</p>
+                        <p className="text-sm text-muted-foreground truncate" title={reg.attendee_email}>{reg.attendee_email}</p>
                         {reg.attendee_institution && (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground truncate" title={reg.attendee_institution}>
                             {reg.attendee_institution}
                           </p>
                         )}
                       </div>
                     </td>
                     <td className="p-4">
-                      <Badge variant="outline" className="font-normal">
+                      <Badge variant="outline" className="font-normal max-w-[160px] truncate inline-block align-middle" title={reg.ticket_type?.name || "Unknown"}>
                         {reg.ticket_type?.name || "Unknown"}
                       </Badge>
                     </td>
@@ -2084,7 +2084,17 @@ function RegistrationsContent() {
                         </div>
                       )}
                     </td>
-                    <td className="p-4 text-right">
+                    <td
+                      className={cn(
+                        "p-4 text-right sticky right-0 border-l border-border transition-colors",
+                        selectedRegistration?.id === reg.id
+                          ? "bg-primary/5"
+                          : selectedIds.has(reg.id)
+                            ? "bg-primary/10"
+                            : "bg-card group-hover:bg-secondary/20"
+                      )}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
