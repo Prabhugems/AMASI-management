@@ -32,3 +32,33 @@ export function matchDelegate(delegates: CachedDelegate[], query: string): Cache
     null
   )
 }
+
+// Kiosk work order §5 -- "search by name" lookup for a volunteer whose
+// scanner or the delegate's phone/QR isn't working. Unlike matchDelegate
+// (one best match, for the scan/manual-entry auto-submit path), this
+// returns every plausible candidate so a volunteer can pick the right
+// person out of a same-name/near-duplicate set -- never auto-selects.
+// Pure and synchronous like matchDelegate, so it can run on every
+// keystroke against the already-cached roster with no network/IndexedDB
+// round-trip.
+export function searchDelegates(delegates: CachedDelegate[], query: string, limit = 6): CachedDelegate[] {
+  const term = query.trim().toLowerCase()
+  if (term.length < 2) return []
+
+  const seen = new Set<string>()
+  const results: CachedDelegate[] = []
+  const add = (d: CachedDelegate) => {
+    if (seen.has(d.id) || results.length >= limit) return
+    seen.add(d.id)
+    results.push(d)
+  }
+
+  // Priority order matches matchDelegate: an identifier match should never
+  // be buried under a pile of coincidental name matches.
+  delegates.filter((d) => includesTerm(d.registration_number, term)).forEach(add)
+  delegates.filter((d) => includesTerm(d.attendee_name, term)).forEach(add)
+  delegates.filter((d) => includesTerm(d.attendee_email, term)).forEach(add)
+  delegates.filter((d) => includesTerm(d.attendee_phone, term)).forEach(add)
+
+  return results
+}
