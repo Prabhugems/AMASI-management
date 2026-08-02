@@ -332,6 +332,16 @@ export function KioskCheckinScreen({
   // print-log sync and scan sync are independent pending queues, so this is
   // a separate ref rather than reusing syncInFlightRef.
   const printSyncInFlightRef = useRef<boolean>(false)
+  // Bug-audit fix (2026-08): the auto-print effect and the manual "Print
+  // Badge" button's handler each independently await getLastPrintForRegistration
+  // (an async IndexedDB read) before calling printBadge -- the `printing`
+  // STATE flag alone can't prevent both from starting, since both can read
+  // the same stale `printing: false` before either's setPrinting(true)
+  // takes effect. A synchronous ref, checked and set atomically at the top
+  // of printBadge itself (same pattern as submittingRef/syncInFlightRef
+  // above), is what actually closes the race -- two physical badges could
+  // otherwise print for the same person.
+  const printingRef = useRef<boolean>(false)
 
   // Local-first bootstrap: load whatever's already cached from a previous
   // session immediately (works offline from a cold reload), then refresh
@@ -813,6 +823,12 @@ export function KioskCheckinScreen({
   // invoked from mode === "checkin_and_print" code paths (auto-print effect
   // below, handlePrintButtonClick).
   const printBadge = useCallback(async (registration: NonNullable<CheckinResult["registration"]>) => {
+    // See printingRef's own declaration comment: the auto-print effect and
+    // the manual button's handler can both reach this call before either
+    // sets `printing` state, so only a synchronous ref actually prevents
+    // two concurrent prints for the same registration.
+    if (printingRef.current) return
+    printingRef.current = true
     setLastPrintedRegistration(registration)
     setPrinting(true)
     setPrintStatus(null)
@@ -974,6 +990,7 @@ export function KioskCheckinScreen({
       Sentry.captureException(err, { tags: { module: "kiosk-print" }, extra: { eventId, listId } })
       setPrintStatus({ success: false, message: "Something went wrong printing this badge." })
     } finally {
+      printingRef.current = false
       setPrinting(false)
     }
   }, [listId, eventId, printStationId])
