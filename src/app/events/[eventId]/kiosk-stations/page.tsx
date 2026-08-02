@@ -58,6 +58,7 @@ import {
   type KioskStation,
 } from "@/components/kiosk-admin/station-controls"
 import { AddStationWizard } from "@/components/kiosk-admin/add-station-wizard"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 export default function KioskStationsPage() {
   const params = useParams()
@@ -90,6 +91,11 @@ export default function KioskStationsPage() {
   // List/grid view toggle + bulk selection -- all client-side, operating on
   // the already-filtered/searched `stations` array. No new fetch params.
   const [view, setView] = useState<"list" | "grid">("list")
+  // List is a fixed-pixel desktop table (~1018px minimum); below 1024px it
+  // forces Grid instead, which is already responsive down to one column.
+  // See docs/superpowers/specs/2026-08-02-kiosk-stations-responsive-layout-design.md.
+  const isDesktop = useMediaQuery("(min-width: 1024px)")
+  const effectiveView = isDesktop ? view : "grid"
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkListPickerOpen, setBulkListPickerOpen] = useState(false)
   const [bulkAssigning, setBulkAssigning] = useState(false)
@@ -669,34 +675,36 @@ export default function KioskStationsPage() {
               <div className="text-xs text-muted-foreground">
                 {visibleStations.length} of {stations.length} stations
               </div>
-              <div className="flex gap-1 rounded-lg bg-muted p-1">
-                <button
-                  type="button"
-                  title="List view"
-                  onClick={() => setView("list")}
-                  className={cn(
-                    "flex h-7 w-8 items-center justify-center rounded-md transition-colors",
-                    view === "list"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <List className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  title="Grid view"
-                  onClick={() => setView("grid")}
-                  className={cn(
-                    "flex h-7 w-8 items-center justify-center rounded-md transition-colors",
-                    view === "grid"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              {isDesktop && (
+                <div className="flex gap-1 rounded-lg bg-muted p-1">
+                  <button
+                    type="button"
+                    title="List view"
+                    onClick={() => setView("list")}
+                    className={cn(
+                      "flex h-7 w-8 items-center justify-center rounded-md transition-colors",
+                      view === "list"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Grid view"
+                    onClick={() => setView("grid")}
+                    className={cn(
+                      "flex h-7 w-8 items-center justify-center rounded-md transition-colors",
+                      view === "grid"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -787,7 +795,7 @@ export default function KioskStationsPage() {
                 Clear filters
               </Button>
             </div>
-          ) : view === "list" ? (
+          ) : effectiveView === "list" ? (
             <div className="rounded-2xl border bg-card overflow-hidden">
               <div className="overflow-x-auto">
                 <div>
@@ -971,7 +979,7 @@ export default function KioskStationsPage() {
                     <span className="h-px flex-1 bg-border" />
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {group.stations.map((station) => {
                       const status = computeStationStatus(station)
                       const meta = STATUS_META[status]
