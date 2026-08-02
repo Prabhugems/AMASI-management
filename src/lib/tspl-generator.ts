@@ -176,6 +176,39 @@ function buildLargeDiagnosticJob(): Uint8Array {
 // compare: a small known-good one, and one at real data-volume to isolate
 // whether this printer has a structural limit at that size independent of
 // content.
+// A ruled 4x6 label: a solid tick-mark bar drawn at every 1-inch increment
+// (0 through 6), each labeled with its inch number. Built at the exact
+// paper size a real badge declares -- SIZE 4 in,6 in -- so the physical
+// distance between consecutive tick marks on the printed label IS the
+// ground truth for whatever the printer's feed/calibration actually does,
+// independent of any bitmap/dithering content. Measure with a ruler: if
+// the marks land at 0/1/2/3/4/5/6 inches apart, the printer is feeding
+// correctly for this exact command and the 1.5x issue is happening
+// somewhere else; if they're spread further apart than 1 inch each
+// (proportionally, e.g. every mark 1.5x too far from the last), that's
+// definitive proof it's the printer's own feed, not this software.
+function buildRulerVerificationJob(): Uint8Array {
+  const DOTS_PER_INCH = 203
+  const WIDTH_IN = 4
+  const HEIGHT_IN = 6
+  const BAR_WIDTH_DOTS = Math.round(WIDTH_IN * DOTS_PER_INCH * 0.6) // 60% of width, easy to see it's a ruled line, not a border
+
+  const lines: string[] = [
+    `SIZE ${WIDTH_IN} in,${HEIGHT_IN} in\r\n`,
+    `GAP 0 in,0 in\r\n`,
+    `DIRECTION 0\r\n`,
+    `CLS\r\n`,
+  ]
+  for (let inch = 0; inch <= HEIGHT_IN; inch++) {
+    const y = inch * DOTS_PER_INCH
+    lines.push(`BAR 0,${y},${BAR_WIDTH_DOTS},3\r\n`)
+    lines.push(`TEXT ${BAR_WIDTH_DOTS + 10},${y - 8},"2",0,1,1,"${inch} in"\r\n`)
+  }
+  lines.push(`PRINT 1,1\r\n`)
+
+  return new Uint8Array(textToBytes(lines.join("")))
+}
+
 export function buildTsplTestPrint(): Uint8Array {
   const { packed, bytesPerRow, height } = buildDiagnosticCheckerboard(64, 64)
 
@@ -198,10 +231,12 @@ export function buildTsplTestPrint(): Uint8Array {
   smallJob.set(footer, header.length + packed.length)
 
   const largeJob = buildLargeDiagnosticJob()
+  const rulerJob = buildRulerVerificationJob()
 
-  const combined = new Uint8Array(smallJob.length + largeJob.length)
+  const combined = new Uint8Array(smallJob.length + largeJob.length + rulerJob.length)
   combined.set(smallJob, 0)
   combined.set(largeJob, smallJob.length)
+  combined.set(rulerJob, smallJob.length + largeJob.length)
   return combined
 }
 
