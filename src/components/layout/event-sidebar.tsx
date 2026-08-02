@@ -47,6 +47,7 @@ import {
   ChevronDown,
   Monitor,
   LifeBuoy,
+  FileBarChart,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -125,6 +126,7 @@ const navItems: NavItem[] = [
   { label: "Program", href: "/program", icon: Calendar, moduleKey: "enable_program" },
   { label: "Checkin Hub", href: "/checkin", icon: QrCode, moduleKey: "enable_checkin", sectionStart: "On-site" },
   { label: "Help Desk", href: "/checkin/help-desk", icon: LifeBuoy, moduleKey: "enable_checkin" },
+  { label: "Check-in Reports", href: "/checkin/reports", icon: FileBarChart, moduleKey: "enable_checkin" },
   { label: "Print Station", href: "/print-stations", icon: Printer, moduleKey: "enable_print_station" },
   { label: "Kiosk Stations", href: "/kiosk-stations", icon: Monitor, moduleKey: "enable_kiosk_stations" },
   { label: "Badges", href: "/badges", icon: BadgeCheck, statusKey: "badges", moduleKey: "enable_badges" },
