@@ -73,7 +73,11 @@ export function KioskStationShell({
   stationToken,
   stationName,
   mode,
-  attended,
+  // Renamed at the destructure site (not `attended` directly) -- this is
+  // only the SSR-time value. Everywhere else in this component reads the
+  // reactive `attended` state declared below, which the manifest poll keeps
+  // live. See that state's own comment for why the prop alone isn't enough.
+  attended: initialAttended,
   printStationId,
   badgeTemplate,
   printSettings,
@@ -88,6 +92,16 @@ export function KioskStationShell({
   // active-job screen forces it again itself for the direct-URL path, which
   // never mounts this shell at all.
   useForceLightTheme()
+
+  // Bug-audit fix (2026-08): the station-manifest poll has always returned a
+  // live `attended` value (station-manifest/route.ts), and refreshManifest
+  // below did fetch and cache it -- but this component only ever read the
+  // SSR-time `initialAttended` prop, so an admin flipping Attended on/off
+  // from the admin panel while a tablet was already running never reached
+  // it. These are long-lived installed PWAs by design (CLAUDE.md documents
+  // admins doing exactly this mid-event), so that gap could persist for
+  // hours. Now kept live by refreshManifest, same as every list field.
+  const [attended, setAttended] = useState(initialAttended)
 
   const [assignedLists, setAssignedLists] = useState<AssignedList[]>(initialLists)
   // A station with exactly one assigned USABLE list skips the menu entirely
@@ -139,6 +153,7 @@ export function KioskStationShell({
       if (!res.ok) return
       const manifest = (await res.json()) as StationManifest
       setAssignedLists(toAssignedLists(manifest))
+      setAttended(manifest.attended)
       await cacheStationManifest(stationToken, manifest)
     } catch {
       // Offline/transient -- keep whatever's currently in state.
@@ -154,7 +169,10 @@ export function KioskStationShell({
     ;(async () => {
       try {
         const cached = await getStationManifest(stationToken)
-        if (cached && !cancelled) setAssignedLists(toAssignedLists(cached))
+        if (cached && !cancelled) {
+          setAssignedLists(toAssignedLists(cached))
+          setAttended(cached.attended)
+        }
       } catch (err) {
         Sentry.captureException(err, { tags: { module: "kiosk-station-shell" } })
       }
