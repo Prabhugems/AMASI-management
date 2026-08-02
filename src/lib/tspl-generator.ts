@@ -45,21 +45,15 @@ function getPaperDimensionsInches(paperSize: string): { widthIn: number; heightI
   }
 }
 
-// Live hardware test (2026-08, 4BARCODE 4B-2054TG): the first real TSPL2
-// print came out fully solid black. ditherToMonochrome()/packBits() encode
-// 1 = black / 0 = white -- the ESC/POS raster convention -- but this
-// printer's BITMAP dialect (its own CUPS filter is literally named
-// "rastertosnailtspl", not plain TSPL) reads that polarity inverted: a
-// mostly-white badge (sparse black text/graphics) becomes almost entirely
-// black on paper when every bit is read backwards. Inverting each packed
-// byte here (XOR 0xFF) corrects it for TSPL specifically, without touching
-// the shared helpers escpos-printer.ts still relies on for its own,
-// unrelated printer class.
-function invertPackedBits(packed: Uint8Array): Uint8Array {
-  const inverted = new Uint8Array(packed.length)
-  for (let i = 0; i < packed.length; i++) inverted[i] = packed[i] ^ 0xff
-  return inverted
-}
+// Real thermal-label printers commonly cap how much data a single BITMAP
+// command can hold (their receive/print buffer isn't infinite). A real 4x6
+// badge at 203 DPI is roughly 120KB in one command -- ~250x the diagnostic
+// checkerboard below, which printed correctly at its tiny size. Splitting
+// the image into horizontal bands, each its own BITMAP command at the
+// correct Y offset, keeps every single command small regardless of the
+// printer's exact limit (a number this codebase has no way to know without
+// its datasheet), while printing the identical assembled image.
+const MAX_BAND_HEIGHT_DOTS = 100
 
 // Build a TSPL2 job that prints a raster image filling the label.
 export function buildTsplRaster(
@@ -68,9 +62,20 @@ export function buildTsplRaster(
 ): Uint8Array {
   const mono = ditherToMonochrome(imageData)
   const { data: packed, bytesPerRow } = packBits(mono, imageData.width, imageData.height)
-  const inverted = invertPackedBits(packed)
   const { widthIn, heightIn } = getPaperDimensionsInches(paperSize)
+  const totalHeight = imageData.height
 
+  // Bit polarity is deliberately NOT inverted -- an earlier attempt (live
+  // hardware test, 2026-08) inverted every byte here to try to fix a real
+  // badge printing fully solid black, which didn't help. A hand-built
+  // diagnostic checkerboard (buildTsplTestPrint(), same packing convention,
+  // no inversion) then printed with correct, clean quadrants -- proving
+  // this printer's BITMAP dialect does use the same 1=black/0=white
+  // convention as ditherToMonochrome()/packBits() natively. The solid-black
+  // real-badge bug survived both a confirmed-correct print mode (overlay,
+  // transparent background) and polarity, which is what points at a size
+  // limit on the BITMAP command itself instead -- see MAX_BAND_HEIGHT_DOTS.
+  //
   // Gap = 0 assumes continuous/tear-off stock, matching print-proxy.mjs's
   // documented working state for this printer (no cutter/backfeed control).
   // DIRECTION is deliberately left at the neutral 0 -- orientation is
@@ -82,20 +87,33 @@ export function buildTsplRaster(
   // comment on this), so that one Rotation dropdown already covers this
   // WebUSB path too -- adding a second rotation here would double up with
   // it instead of composing.
-  const header = textToBytes(
+  const parts: Uint8Array[] = []
+  parts.push(new Uint8Array(textToBytes(
     `SIZE ${widthIn} in,${heightIn} in\r\n` +
     `GAP 0 in,0 in\r\n` +
     `DIRECTION 0\r\n` +
     `REFERENCE 0,0\r\n` +
-    `CLS\r\n` +
-    `BITMAP 0,0,${bytesPerRow},${imageData.height},0,`
-  )
-  const footer = textToBytes(`\r\nPRINT 1,1\r\n`)
+    `CLS\r\n`
+  )))
 
-  const buffer = new Uint8Array(header.length + inverted.length + footer.length)
-  buffer.set(header, 0)
-  buffer.set(inverted, header.length)
-  buffer.set(footer, header.length + inverted.length)
+  for (let y = 0; y < totalHeight; y += MAX_BAND_HEIGHT_DOTS) {
+    const bandHeight = Math.min(MAX_BAND_HEIGHT_DOTS, totalHeight - y)
+    const bandStart = y * bytesPerRow
+    const bandBytes = bandHeight * bytesPerRow
+    parts.push(new Uint8Array(textToBytes(`BITMAP 0,${y},${bytesPerRow},${bandHeight},0,`)))
+    parts.push(packed.subarray(bandStart, bandStart + bandBytes))
+    parts.push(new Uint8Array(textToBytes(`\r\n`)))
+  }
+
+  parts.push(new Uint8Array(textToBytes(`PRINT 1,1\r\n`)))
+
+  const totalLength = parts.reduce((sum, p) => sum + p.length, 0)
+  const buffer = new Uint8Array(totalLength)
+  let offset = 0
+  for (const part of parts) {
+    buffer.set(part, offset)
+    offset += part.length
+  }
   return buffer
 }
 
