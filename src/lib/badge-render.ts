@@ -38,7 +38,19 @@ export function replacePlaceholders(text: string, reg: any, eventName: string): 
   let result = text
   result = result.replace(/\{\{name\}\}/g, reg?.attendee_name || "")
   result = result.replace(/\{\{registration_number\}\}/g, reg?.registration_number || "")
-  result = result.replace(/\{\{ticket_type\}\}/g, reg?.ticket_type || reg?.ticket_types?.name || "")
+  // Different registration-fetching code paths across this app shape ticket
+  // type differently: a plain string, an aliased `ticket_type: { name }`
+  // object (e.g. the Kiosk Station's own check-in query -- see
+  // KioskCheckinScreen.tsx's own `ticket_type?: { name: string }` type), or
+  // an unaliased `ticket_types: { name }` relation. Checking `reg?.ticket_type`
+  // alone treated the object case as truthy and used the object itself (via
+  // implicit toString(), producing "[object Object]") instead of its `.name`
+  // -- found live (2026-08) as a real badge printing with the ticket type
+  // silently blank on the Kiosk Station path specifically, while a
+  // differently-shaped registration object elsewhere resolved it correctly.
+  const ticketTypeValue =
+    typeof reg?.ticket_type === "string" ? reg.ticket_type : reg?.ticket_type?.name
+  result = result.replace(/\{\{ticket_type\}\}/g, ticketTypeValue || reg?.ticket_types?.name || "")
   result = result.replace(/\{\{email\}\}/g, reg?.attendee_email || "")
   result = result.replace(/\{\{phone\}\}/g, reg?.attendee_phone || "")
   result = result.replace(/\{\{institution\}\}/g, reg?.attendee_institution || "")
@@ -342,7 +354,13 @@ export function generatePrintContent(data: {
 
   // Fallback: Simple default layout if no template
   const isLabel = printMode === "label"
-  const ticketTypeName = registration.ticket_type || registration.ticket_types?.name || "Attendee"
+  // See replacePlaceholders()'s own comment above on why the object-shaped
+  // `ticket_type: { name }` case (the Kiosk Station's own check-in query)
+  // needs its `.name` read explicitly rather than being used as truthy.
+  const ticketTypeName =
+    (typeof registration.ticket_type === "string" ? registration.ticket_type : registration.ticket_type?.name) ||
+    registration.ticket_types?.name ||
+    "Attendee"
 
   return `
     <!DOCTYPE html>
