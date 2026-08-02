@@ -45,6 +45,22 @@ function getPaperDimensionsInches(paperSize: string): { widthIn: number; heightI
   }
 }
 
+// Live hardware test (2026-08, 4BARCODE 4B-2054TG): the first real TSPL2
+// print came out fully solid black. ditherToMonochrome()/packBits() encode
+// 1 = black / 0 = white -- the ESC/POS raster convention -- but this
+// printer's BITMAP dialect (its own CUPS filter is literally named
+// "rastertosnailtspl", not plain TSPL) reads that polarity inverted: a
+// mostly-white badge (sparse black text/graphics) becomes almost entirely
+// black on paper when every bit is read backwards. Inverting each packed
+// byte here (XOR 0xFF) corrects it for TSPL specifically, without touching
+// the shared helpers escpos-printer.ts still relies on for its own,
+// unrelated printer class.
+function invertPackedBits(packed: Uint8Array): Uint8Array {
+  const inverted = new Uint8Array(packed.length)
+  for (let i = 0; i < packed.length; i++) inverted[i] = packed[i] ^ 0xff
+  return inverted
+}
+
 // Build a TSPL2 job that prints a raster image filling the label.
 export function buildTsplRaster(
   imageData: { data: Uint8ClampedArray; width: number; height: number },
@@ -52,10 +68,20 @@ export function buildTsplRaster(
 ): Uint8Array {
   const mono = ditherToMonochrome(imageData)
   const { data: packed, bytesPerRow } = packBits(mono, imageData.width, imageData.height)
+  const inverted = invertPackedBits(packed)
   const { widthIn, heightIn } = getPaperDimensionsInches(paperSize)
 
   // Gap = 0 assumes continuous/tear-off stock, matching print-proxy.mjs's
   // documented working state for this printer (no cutter/backfeed control).
+  // DIRECTION is deliberately left at the neutral 0 -- orientation is
+  // already controlled upstream, baked into imageData's pixels before this
+  // function ever runs, by the existing admin-configurable
+  // print_settings.rotation (badge-render.ts, defaults to 180 for full
+  // badges). Kiosk Stations and the Print Station page share the exact same
+  // print_stations.print_settings row (see KioskCheckinScreen.tsx's own
+  // comment on this), so that one Rotation dropdown already covers this
+  // WebUSB path too -- adding a second rotation here would double up with
+  // it instead of composing.
   const header = textToBytes(
     `SIZE ${widthIn} in,${heightIn} in\r\n` +
     `GAP 0 in,0 in\r\n` +
@@ -66,10 +92,10 @@ export function buildTsplRaster(
   )
   const footer = textToBytes(`\r\nPRINT 1,1\r\n`)
 
-  const buffer = new Uint8Array(header.length + packed.length + footer.length)
+  const buffer = new Uint8Array(header.length + inverted.length + footer.length)
   buffer.set(header, 0)
-  buffer.set(packed, header.length)
-  buffer.set(footer, header.length + packed.length)
+  buffer.set(inverted, header.length)
+  buffer.set(footer, header.length + inverted.length)
   return buffer
 }
 
