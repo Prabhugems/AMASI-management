@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { isValidUUID } from "@/lib/validation"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -16,6 +17,16 @@ const BADGE_WHATSAPP_TEMPLATE = "delegate_login"
 // Sends the attendee their badge download link over WhatsApp via Gallabox.
 // Runs server-side with the admin client (the kiosk page is anon).
 export async function POST(request: NextRequest) {
+  // Bug-audit fix (2026-08): this route had no rate limit at all, unlike its
+  // sibling public kiosk routes (/api/kiosk/checkin, /api/kiosk/delegates),
+  // which both gate on this same "public" tier. Anyone holding a valid
+  // (event_id, registration_id) pair could trigger unlimited real WhatsApp
+  // sends to a delegate's actual phone -- a harassment vector against
+  // attendees and an unbounded cost-abuse vector against the org.
+  const clientIp = getClientIp(request)
+  const rateLimit = checkRateLimit(`kiosk-whatsapp-badge:${clientIp}`, "public")
+  if (!rateLimit.success) return rateLimitExceededResponse(rateLimit)
+
   try {
     const body = await request.json().catch(() => ({}))
     const eventId = body.event_id as string | undefined

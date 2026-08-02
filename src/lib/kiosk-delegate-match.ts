@@ -20,14 +20,31 @@ function includesTerm(value: string | null | undefined, term: string): boolean {
   return !!value && value.toLowerCase().includes(term)
 }
 
+function exactMatch(value: string | null | undefined, term: string): boolean {
+  return !!value && value.toLowerCase() === term
+}
+
+// Bug-audit fix (2026-08): registration numbers are unpadded and sequential
+// ("AMASI1", "AMASI11", "AMASI100" can all coexist), so a plain substring
+// search on registration_number alone could resolve to the WRONG delegate --
+// whichever one happened to sort first in the cached array, not the one
+// whose number was actually scanned. Within each field, an exact match is
+// now always tried first, before falling back to substring -- a scan of
+// "AMASI1" can only resolve to the delegate whose number IS "AMASI1", never
+// to "AMASI11" merely because it contains that substring. Field priority
+// (registration_number, then email, then name, then phone) is unchanged.
 export function matchDelegate(delegates: CachedDelegate[], query: string): CachedDelegate | null {
   const term = query.trim().toLowerCase()
   if (!term) return null
 
   return (
+    delegates.find((d) => exactMatch(d.registration_number, term)) ??
     delegates.find((d) => includesTerm(d.registration_number, term)) ??
+    delegates.find((d) => exactMatch(d.attendee_email, term)) ??
     delegates.find((d) => includesTerm(d.attendee_email, term)) ??
+    delegates.find((d) => exactMatch(d.attendee_name, term)) ??
     delegates.find((d) => includesTerm(d.attendee_name, term)) ??
+    delegates.find((d) => exactMatch(d.attendee_phone, term)) ??
     delegates.find((d) => includesTerm(d.attendee_phone, term)) ??
     null
   )

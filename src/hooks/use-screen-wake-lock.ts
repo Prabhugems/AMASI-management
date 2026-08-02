@@ -22,6 +22,17 @@ export function useScreenWakeLock() {
           void sentinel.release()
           return
         }
+        // Bug-audit fix (2026-08): the UA auto-releases a "screen" wake lock
+        // whenever the tab is hidden (fires a `release` event ON THE
+        // SENTINEL, not on `document`) -- without this listener,
+        // sentinelRef.current stayed pointing at that now-released sentinel
+        // forever, so handleVisibilityChange's `!sentinelRef.current` guard
+        // read false from the very first hide/show cycle onward and never
+        // re-acquired again for the rest of the page's life. A day-long
+        // kiosk session effectively lost this feature after one screen lock.
+        sentinel.addEventListener("release", () => {
+          if (sentinelRef.current === sentinel) sentinelRef.current = null
+        })
         sentinelRef.current = sentinel
       } catch (err) {
         // Expected in some states (e.g. document not visible yet) -- only

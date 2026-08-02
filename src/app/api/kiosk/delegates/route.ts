@@ -197,10 +197,19 @@ export async function GET(request: NextRequest) {
       let hasMore = true
 
       while (hasMore) {
+        // .order() is required, not optional -- bug-audit fix (2026-08).
+        // Without an explicit, stable order, Postgres/PostgREST doesn't
+        // guarantee consistent row order across repeated paginated requests
+        // (not even between two back-to-back queries with nothing written in
+        // between). Under concurrent inserts during a live event, that could
+        // silently skip or duplicate rows across pages -- the same
+        // pagination bug class CLAUDE.md already documents was found (and
+        // fixed the same way) in the halls/tracks backfill scripts.
         const { data: batch, error: addonError } = await (supabase as any)
           .from("registration_addons")
           .select("registration_id")
           .in("addon_id", list.addon_ids)
+          .order("id")
           .range(offset, offset + batchSize - 1)
 
         if (addonError) {
@@ -260,7 +269,9 @@ export async function GET(request: NextRequest) {
         registrationsQuery = registrationsQuery.in("id", addonFilteredRegIds)
       }
 
-      const { data: batch, error } = await registrationsQuery.range(offset, offset + batchSize - 1)
+      // .order() is required, not optional -- see the identical comment on
+      // the registration_addons batch loop above (bug-audit fix, 2026-08).
+      const { data: batch, error } = await registrationsQuery.order("id").range(offset, offset + batchSize - 1)
 
       if (error) {
         Sentry.captureException(error, { tags: { route: "kiosk/delegates" }, extra: { eventId, listId: list.id, offset } })

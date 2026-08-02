@@ -332,6 +332,16 @@ export function KioskCheckinScreen({
   // print-log sync and scan sync are independent pending queues, so this is
   // a separate ref rather than reusing syncInFlightRef.
   const printSyncInFlightRef = useRef<boolean>(false)
+  // Bug-audit fix (2026-08): the auto-print effect and the manual "Print
+  // Badge" button's handler each independently await getLastPrintForRegistration
+  // (an async IndexedDB read) before calling printBadge -- the `printing`
+  // STATE flag alone can't prevent both from starting, since both can read
+  // the same stale `printing: false` before either's setPrinting(true)
+  // takes effect. A synchronous ref, checked and set atomically at the top
+  // of printBadge itself (same pattern as submittingRef/syncInFlightRef
+  // above), is what actually closes the race -- two physical badges could
+  // otherwise print for the same person.
+  const printingRef = useRef<boolean>(false)
 
   // Local-first bootstrap: load whatever's already cached from a previous
   // session immediately (works offline from a cold reload), then refresh
@@ -770,7 +780,7 @@ export function KioskCheckinScreen({
     try {
       if (printerType === "browser") {
         const { printHtmlViaBrowser, buildBrowserTestPageHtml } = await import("@/lib/browser-print")
-        const res = printHtmlViaBrowser(buildBrowserTestPageHtml(event?.short_name || event?.name || "Event"))
+        const res = await printHtmlViaBrowser(buildBrowserTestPageHtml(event?.short_name || event?.name || "Event"))
         if (res.success) {
           setAwaitingPrintConfirm(true)
         } else {
@@ -813,6 +823,12 @@ export function KioskCheckinScreen({
   // invoked from mode === "checkin_and_print" code paths (auto-print effect
   // below, handlePrintButtonClick).
   const printBadge = useCallback(async (registration: NonNullable<CheckinResult["registration"]>) => {
+    // See printingRef's own declaration comment: the auto-print effect and
+    // the manual button's handler can both reach this call before either
+    // sets `printing` state, so only a synchronous ref actually prevents
+    // two concurrent prints for the same registration.
+    if (printingRef.current) return
+    printingRef.current = true
     setLastPrintedRegistration(registration)
     setPrinting(true)
     setPrintStatus(null)
@@ -913,7 +929,7 @@ export function KioskCheckinScreen({
         // dialog. Zero network calls, matches the offline-first
         // requirement identically to Path A.
         const { printHtmlViaBrowser } = await import("@/lib/browser-print")
-        const result = printHtmlViaBrowser(printContent)
+        const result = await printHtmlViaBrowser(printContent)
         await recordPrintOutcome(
           { print_id: newId(), list_id: listId, registration_id: registration.id, printed_at: Date.now() },
           result.success ? "success" : "failed"
@@ -974,6 +990,7 @@ export function KioskCheckinScreen({
       Sentry.captureException(err, { tags: { module: "kiosk-print" }, extra: { eventId, listId } })
       setPrintStatus({ success: false, message: "Something went wrong printing this badge." })
     } finally {
+      printingRef.current = false
       setPrinting(false)
     }
   }, [listId, eventId, printStationId])
@@ -1097,6 +1114,7 @@ export function KioskCheckinScreen({
         listId,
         eventId,
         stationToken,
+        token,
         () => {},
         () => {}
       )
@@ -1112,7 +1130,7 @@ export function KioskCheckinScreen({
     } finally {
       syncInFlightRef.current = false
     }
-  }, [eventId, listId, stationToken])
+  }, [eventId, listId, stationToken, token])
 
   // Local-first: resolve from the on-device delegate cache and render
   // immediately -- zero network calls on this path. The scan is durably
@@ -1158,7 +1176,25 @@ export function KioskCheckinScreen({
       // before this check existed -- repeat entry scans are always a
       // success, never flagged here.
       if (isCollectionListActive) {
-        const priorScans = await getScanHistoryForRegistration(listId, delegate.id)
+        const allPriorScans = await getScanHistoryForRegistration(listId, delegate.id)
+        // Bug-audit fix (2026-08): a "conflict" scan_log entry means either a
+        // genuine duplicate (the server said alreadyCheckedIn:true) OR a
+        // completely unrelated terminal business rejection (e.g. eligibility
+        // changed mid-sync, list not found) that the sync worker files under
+        // the exact same status. Treating any conflict record as "already
+        // collected" permanently blocked a legitimate re-scan on this same
+        // device once its history held even one such rejection. A "pending"
+        // entry still counts -- that's this same tablet's own not-yet-synced
+        // enqueue, exactly the local duplicate Layer 1 exists to catch.
+        const priorScans = allPriorScans.filter(
+          (s) =>
+            s.status === "pending" ||
+            s.status === "synced" ||
+            (s.status === "conflict" &&
+              typeof s.server_response === "object" &&
+              s.server_response !== null &&
+              (s.server_response as { alreadyCheckedIn?: boolean }).alreadyCheckedIn === true)
+        )
         if (priorScans.length > 0) {
           const earliest = priorScans.reduce((a, b) => (a.scanned_at < b.scanned_at ? a : b))
           setResult({

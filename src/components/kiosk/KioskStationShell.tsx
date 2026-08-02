@@ -73,7 +73,11 @@ export function KioskStationShell({
   stationToken,
   stationName,
   mode,
-  attended,
+  // Renamed at the destructure site (not `attended` directly) -- this is
+  // only the SSR-time value. Everywhere else in this component reads the
+  // reactive `attended` state declared below, which the manifest poll keeps
+  // live. See that state's own comment for why the prop alone isn't enough.
+  attended: initialAttended,
   printStationId,
   badgeTemplate,
   printSettings,
@@ -88,6 +92,16 @@ export function KioskStationShell({
   // active-job screen forces it again itself for the direct-URL path, which
   // never mounts this shell at all.
   useForceLightTheme()
+
+  // Bug-audit fix (2026-08): the station-manifest poll has always returned a
+  // live `attended` value (station-manifest/route.ts), and refreshManifest
+  // below did fetch and cache it -- but this component only ever read the
+  // SSR-time `initialAttended` prop, so an admin flipping Attended on/off
+  // from the admin panel while a tablet was already running never reached
+  // it. These are long-lived installed PWAs by design (CLAUDE.md documents
+  // admins doing exactly this mid-event), so that gap could persist for
+  // hours. Now kept live by refreshManifest, same as every list field.
+  const [attended, setAttended] = useState(initialAttended)
 
   const [assignedLists, setAssignedLists] = useState<AssignedList[]>(initialLists)
   // A station with exactly one assigned USABLE list skips the menu entirely
@@ -139,6 +153,7 @@ export function KioskStationShell({
       if (!res.ok) return
       const manifest = (await res.json()) as StationManifest
       setAssignedLists(toAssignedLists(manifest))
+      setAttended(manifest.attended)
       await cacheStationManifest(stationToken, manifest)
     } catch {
       // Offline/transient -- keep whatever's currently in state.
@@ -154,7 +169,10 @@ export function KioskStationShell({
     ;(async () => {
       try {
         const cached = await getStationManifest(stationToken)
-        if (cached && !cancelled) setAssignedLists(toAssignedLists(cached))
+        if (cached && !cancelled) {
+          setAssignedLists(toAssignedLists(cached))
+          setAttended(cached.attended)
+        }
       } catch (err) {
         Sentry.captureException(err, { tags: { module: "kiosk-station-shell" } })
       }
@@ -207,7 +225,10 @@ export function KioskStationShell({
       for (const list of assignedLists) {
         if (cancelled) return
         try {
-          await drainScanQueue(list.id, eventId, stationToken, () => {}, () => {})
+          // A station-shell-owned station always authorizes via stationToken
+          // -- there is no per-list access_token on this path (see
+          // drainScanQueue's own param comment).
+          await drainScanQueue(list.id, eventId, stationToken, undefined, () => {}, () => {})
         } catch (err) {
           Sentry.captureException(err, { tags: { module: "kiosk-station-shell" }, extra: { listId: list.id } })
         }
@@ -362,6 +383,11 @@ export function KioskStationShell({
         if (!isListUsable(list, attended)) return
         selectList(list.id, false)
       }}
+      // Recomputed fresh on every render -- this component already re-renders
+      // at least every 30s via the `tick` state below (see that effect's
+      // comment), so this stays in sync with the exact same cadence every
+      // other schedule computation in this file already uses.
+      now={new Date()}
     />
   )
 }
@@ -472,6 +498,7 @@ function KioskMenuScreen({
   listCounts,
   mode,
   onSelect,
+  now,
 }: {
   stationName: string
   stationToken: string
@@ -480,17 +507,18 @@ function KioskMenuScreen({
   listCounts: Record<string, number>
   mode: "checkin" | "checkin_and_print"
   onSelect: (list: AssignedList) => void
+  // Bug-audit fix (2026-08): this screen used to keep its own independent
+  // 60s clock, driving BOTH the header chip AND which tiles render as open
+  // vs closed -- lagging the parent shell's own 30s schedule-recompute tick
+  // (used everywhere else in this file for the identical computation) by up
+  // to a full minute at a schedule boundary. A list due to open at 12:00:00
+  // could still render disabled/un-tappable until 12:00:59, and the reverse
+  // case (still shown open after actually closing) failed silently -- the
+  // real click handler re-checks with a fresh Date and just no-ops. Now
+  // driven by the parent's own tick, so both screens agree within the same
+  // 30s window instead of two independently-drifting timers.
+  now: Date
 }) {
-  // Live clock for the header chip -- this screen doesn't accept a `now`/
-  // `tick` prop from the parent shell (KioskStationShell's own 30s tick
-  // drives schedule recomputation, not this component), so it keeps its own
-  // minimal state, updated once a minute (plenty for a clock display).
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 60000)
-    return () => clearInterval(interval)
-  }, [])
-
   // Real online/offline signal, mirroring the exact pattern already used in
   // KioskCheckinScreen.tsx (display-only, cheap, no new plumbing) -- no list
   // is active yet on this screen, so there's no sync queue to report on.

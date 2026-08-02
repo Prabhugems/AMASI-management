@@ -128,7 +128,7 @@ export function StationSelfTest({
     try {
       if (printerType === "browser") {
         const { printHtmlViaBrowser, buildBrowserTestPageHtml } = await import("@/lib/browser-print")
-        const res = printHtmlViaBrowser(buildBrowserTestPageHtml(stationName))
+        const res = await printHtmlViaBrowser(buildBrowserTestPageHtml(stationName))
         if (res.success) {
           setAwaitingConfirm(true)
         } else {

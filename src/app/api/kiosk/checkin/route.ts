@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
-import { isValidUUID } from "@/lib/validation"
+import { isValidUUID, sanitizeSearchInput } from "@/lib/validation"
 import { checkTimeWindow } from "@/lib/checkin-time-window"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { resolveStationByToken, stationServesList } from "@/lib/kiosk-station-lookup"
@@ -63,6 +63,29 @@ function collectionListBlockedResponse(
   )
 }
 
+// Authorization gate (bug-audit finding, 2026-08): this route previously
+// accepted a check-in from anyone who knew an event_id + checkin_list_id --
+// both plainly visible, non-secret path segments of the public kiosk URL.
+// Called once per branch below, right after that branch's own
+// `checkin_lists` fetch (which already selects access_token/
+// access_token_expires_at) -- no separate query needed. A resolved
+// station_token (stationId !== null) already proved authorization on its
+// own; `token` is only checked when that's not the case.
+function validateListToken(
+  list: { id: string; access_token: string | null; access_token_expires_at: string | null },
+  token: string | undefined,
+  stationId: string | null
+): NextResponse | null {
+  if (stationId) return null
+  if (!token || !list.access_token || token !== list.access_token) {
+    return NextResponse.json({ success: false, message: "Invalid access token." }, { status: 401 })
+  }
+  if (list.access_token_expires_at && new Date(list.access_token_expires_at) < new Date()) {
+    return NextResponse.json({ success: false, message: "This link has expired." }, { status: 401 })
+  }
+  return null
+}
+
 export async function POST(request: NextRequest) {
   // Public, unauthenticated -- rate-limit by IP to blunt enumeration while
   // staying generous enough for a real kiosk queue.
@@ -77,11 +100,22 @@ export async function POST(request: NextRequest) {
     const registrationId = body.registration_id as string | undefined
     const scanId = body.scan_id as string | undefined
     const stationToken = body.station_token as string | undefined
+    // The target list's own checkin_lists.access_token -- the direct-URL
+    // kiosk path's credential (same one /api/kiosk/delegates already
+    // requires). Added retroactively (bug-audit finding, 2026-08): this
+    // route previously accepted a check-in from anyone who merely knew an
+    // event_id + checkin_list_id, both plainly visible in the public kiosk
+    // URL/QR code -- see the token-gate check below.
+    const token = body.token as string | undefined
     // Strip characters that have meaning in PostgREST's .or() filter so user
     // input can't break out of the ilike clauses -- only matters on the
     // registration_id-absent fallback path below, where this is used for
     // matching again; on the normal path it's kept only for context.
-    const searchTerm = (body.search ?? "").toString().replace(/[(),]/g, "").trim()
+    // sanitizeSearchInput escapes ilike's own wildcard characters (% and _)
+    // -- previously unescaped here, a bare "%" search matched every
+    // registration in the event and checked in whichever came back first
+    // (bug-audit finding, 2026-08).
+    const searchTerm = sanitizeSearchInput((body.search ?? "").toString().replace(/[(),]/g, "")).trim()
 
     if (!eventId || !isValidUUID(eventId)) {
       return NextResponse.json({ success: false, message: "Invalid event." }, { status: 400 })
@@ -97,14 +131,24 @@ export async function POST(request: NextRequest) {
     if (!scanId || !isValidUUID(scanId)) {
       return NextResponse.json({ success: false, message: "Invalid scan." }, { status: 400 })
     }
+    // Authorization gate (bug-audit finding, 2026-08): every legitimate
+    // caller has one of these two credentials -- kiosk-sync-worker.ts now
+    // sends the list's own access_token on the direct-URL path and
+    // station_token on the station path (mirroring /api/kiosk/delegates,
+    // which has required this since Stage 3). Neither present means this
+    // request didn't come from a real kiosk device.
+    if (!token && !stationToken) {
+      return NextResponse.json({ success: false, message: "Missing access token." }, { status: 401 })
+    }
 
     const supabase = await createAdminClient()
 
-    // Stage 3: resolve station_id for attribution only -- this route was
-    // never token-gated (see the header comment above), so a station_token
-    // that's absent, malformed, revoked, doesn't resolve, or doesn't serve
-    // this list must NEVER block a check-in from completing. It only fails
-    // to attribute it to a station.
+    // Stage 3: resolve station_id for attribution AND (see the token-gate
+    // check below) authorization. A station_token that's absent, malformed,
+    // revoked, doesn't resolve, or doesn't serve this list never blocks a
+    // check-in by itself -- it only fails to attribute/authorize via this
+    // credential, and the request still succeeds if `token` independently
+    // validates.
     let stationId: string | null = null
     // Defaults closed. This is the ONE place in this route where station
     // resolution stops being purely cosmetic attribution and starts gating
@@ -167,6 +211,12 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    // The second half of this gate -- validating `token` against this exact
+    // list's own access_token when station_token didn't resolve -- happens
+    // per-branch below (validateListToken), against the same `checkin_lists`
+    // row each branch already has to fetch for its own business logic. No
+    // separate query needed.
 
     // --- scan_id replay check, first, before anything else -------------
     // A row found here was, by construction, inserted BY this exact scan_id
@@ -240,13 +290,16 @@ export async function POST(request: NextRequest) {
 
       const { data: list } = await (supabase as any)
         .from("checkin_lists")
-        .select("id, event_id, list_purpose, ticket_type_ids, addon_ids, starts_at, ends_at")
+        .select("id, event_id, list_purpose, ticket_type_ids, addon_ids, starts_at, ends_at, access_token, access_token_expires_at")
         .eq("id", checkinListId)
         .maybeSingle()
 
       if (!list || list.event_id !== eventId) {
         return NextResponse.json({ success: false, message: "Check-in list not found." }, { status: 404 })
       }
+
+      const tokenError = validateListToken(list, token, stationId)
+      if (tokenError) return tokenError
 
       // --- List eligibility: mirrors src/app/api/checkin/access/[accessToken]/attendees/route.ts:49-84 exactly.
       // Empty/null ticket_type_ids/addon_ids = unrestricted, matching that
@@ -315,13 +368,16 @@ export async function POST(request: NextRequest) {
     // reloaded past this stage.
     const { data: list } = await (supabase as any)
       .from("checkin_lists")
-      .select("id, event_id, list_purpose, starts_at, ends_at")
+      .select("id, event_id, list_purpose, starts_at, ends_at, access_token, access_token_expires_at")
       .eq("id", checkinListId)
       .maybeSingle()
 
     if (!list || list.event_id !== eventId) {
       return NextResponse.json({ success: false, message: "Check-in list not found." }, { status: 404 })
     }
+
+    const tokenError = validateListToken(list, token, stationId)
+    if (tokenError) return tokenError
 
     const { warning: timeWindowWarning } = checkTimeWindow(list)
 
@@ -441,16 +497,24 @@ async function completeCheckin(
   // intentionally ignored: UNIQUE(checkin_list_id, registration_id) means a
   // second insert always violates the constraint. This row's scan_id is NOT
   // backfilled -- it belongs to whatever originally created it.
+  //
+  // Bug-audit fix (2026-08): this used to filter on `.is("checked_out_at",
+  // null)`, so a delegate who'd been checked OUT (e.g. via the staff
+  // checkout flow) was invisible to this pre-check and fell through to an
+  // INSERT that always violates the UNIQUE constraint regardless -- landing
+  // in the generic 23505 handler below with a misleading "You're already
+  // checked in!" and no working path in this route to ever actually
+  // reactivate them. Now fetches ANY existing row (checked-out or not) and
+  // branches on it explicitly.
   const { data: existing } = await (supabase as any)
     .from("checkin_records")
-    .select("id, checked_in_at, station_id")
+    .select("id, checked_in_at, station_id, checked_out_at")
     .eq("registration_id", registrationId)
     .eq("checkin_list_id", checkinListId)
-    .is("checked_out_at", null)
     .limit(1)
     .maybeSingle()
 
-  if (existing) {
+  if (existing && !existing.checked_out_at) {
     await logKioskDuplicateAudit(supabase, { eventId, checkinListId, registrationId, stationId })
     return NextResponse.json({
       success: true,
@@ -468,6 +532,45 @@ async function completeCheckin(
   }
 
   const now = new Date().toISOString()
+
+  if (existing && existing.checked_out_at) {
+    // Reactivate the same row rather than inserting a second one -- the
+    // UNIQUE(checkin_list_id, registration_id) constraint means a second row
+    // for this pair can never be created. This is a genuine, fresh
+    // check-in from the delegate's perspective, so it gets the same
+    // success response a brand-new insert would, not "already checked in."
+    const { error: reactivateError } = await (supabase as any)
+      .from("checkin_records")
+      .update({
+        checked_in_at: now,
+        checked_in_by: "Self check-in (kiosk)",
+        checked_out_at: null,
+        scan_id: scanId,
+        station_id: stationId,
+      })
+      .eq("id", existing.id)
+
+    if (reactivateError) {
+      console.error("Kiosk check-in reactivation failed:", reactivateError)
+      return NextResponse.json(
+        { success: false, message: "Failed to check in. Please try again." },
+        { status: 500 }
+      )
+    }
+
+    await (supabase as any)
+      .from("registrations")
+      .update({ checked_in: true, checked_in_at: now })
+      .eq("id", registrationId)
+
+    return NextResponse.json({
+      success: true,
+      message: "Check-in successful!",
+      registration: registrationForResponse,
+      alreadyCheckedIn: false,
+      ...(timeWindowWarning && { warning: timeWindowWarning }),
+    })
+  }
 
   const { error: insertError } = await (supabase as any)
     .from("checkin_records")
