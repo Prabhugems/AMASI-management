@@ -394,7 +394,7 @@ export default function TeamPage() {
       const res = await fetch('/api/team/invite')
       if (!res.ok) return []
       const data = await res.json()
-      return (data.invitations || []) as Invitation[]
+      return (data.data || []) as Invitation[]
     },
   })
 
