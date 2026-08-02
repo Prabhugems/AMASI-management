@@ -128,13 +128,11 @@ export function buildTsplRaster(
 // A tiny 64x64-dot checkerboard: top-left + bottom-right BLACK, the other
 // two quadrants WHITE. Deliberately hand-built (not run through
 // ditherToMonochrome/packBits) so its expected output is known by
-// construction, not by trusting the same pipeline we're debugging.
-// Small and simple enough to read by eye, unlike a full badge -- reveals
-// bit-polarity inversion (colors fully swapped) and row/column
-// misalignment (quadrants shifted, smeared, or scrambled instead of clean
-// squares) in one shot, isolated from html2canvas/badge-template concerns
-// entirely.
-function buildDiagnosticCheckerboard(width: number, height: number): { packed: Uint8Array; bytesPerRow: number; height: number } {
+// construction. Included in the Test Print so it exercises the BITMAP
+// raster path -- the same path real badges print through -- rather than
+// only the printer's built-in TEXT font: a printer can render TEXT fine yet
+// fail to render a BITMAP, and a text-only test wouldn't catch that.
+function buildTestCheckerboard(width: number, height: number): { packed: Uint8Array; bytesPerRow: number; height: number } {
   const bytesPerRow = Math.ceil(width / 8) // 1 bit per dot, MSB first
 
   const packed = new Uint8Array(bytesPerRow * height)
@@ -149,48 +147,21 @@ function buildDiagnosticCheckerboard(width: number, height: number): { packed: U
   return { packed, bytesPerRow, height }
 }
 
-// Full real-badge-sized (4x6 @ 203 DPI) checkerboard, sent as ONE single,
-// unchunked BITMAP command -- same ~120KB data volume as a real badge, but
-// hand-built content with a known-correct expected appearance, isolating
-// "is this a size/structural limit on this printer" from "is this specific
-// to the real badge's actual dithered html2canvas content". If this prints
-// clean, the row-band chunking in buildTsplRaster() was solving a problem
-// that didn't exist and the real bug is in the badge's rendered content; if
-// this ALSO comes out solid black, it confirms something structural breaks
-// at real-badge data volumes on this printer regardless of chunking.
-function buildLargeDiagnosticJob(): Uint8Array {
-  const width = getPaperWidthDots("4x6") // 812 dots
-  const height = Math.round(width * (6 / 4)) // 1218 dots, matching a real 4x6 badge
-  const { packed, bytesPerRow } = buildDiagnosticCheckerboard(width, height)
-  const { widthIn, heightIn } = getPaperDimensionsInches("4x6")
-
-  const header = textToBytes(
-    `SIZE ${widthIn} in,${heightIn} in\r\n` +
-    `GAP 0 in,0 in\r\n` +
-    `DIRECTION 0\r\n` +
-    `CLS\r\n` +
-    `BITMAP 0,0,${bytesPerRow},${height},0,`
-  )
-  const footer = textToBytes(`\r\nPRINT 1,1\r\n`)
-
-  const buffer = new Uint8Array(header.length + packed.length + footer.length)
-  buffer.set(header, 0)
-  buffer.set(packed, header.length)
-  buffer.set(footer, header.length + packed.length)
-  return buffer
-}
-
-// Build a TSPL2 test print combining plain text (printer's own font -- no
-// rasterization, isolates command-language issues) with the diagnostic
-// checkerboard bitmap (isolates BITMAP-specific format issues) in one job,
-// followed by a SECOND, separate job: a full real-badge-sized checkerboard
-// (buildLargeDiagnosticJob) -- since chunking (#137) didn't fix a real
-// badge still printing solid black, one Test Print now yields two labels to
-// compare: a small known-good one, and one at real data-volume to isolate
-// whether this printer has a structural limit at that size independent of
-// content.
+// Build a TSPL2 test print: a single clean label a volunteer can eyeball to
+// confirm the station's printer is working. Combines plain text (the
+// printer's own font -- isolates command-language issues) with a small
+// checkerboard bitmap (exercises the BITMAP raster path real badges print
+// through). The volunteer only needs to confirm a label physically came out
+// (see the "did a badge come out?" confirm step that calls this) -- the
+// checkerboard just makes a bitmap-render failure visible if there is one.
+//
+// This deliberately no longer emits the developer-facing diagnostic output
+// (labeled quadrant instructions + a second full-size checkerboard label)
+// added while the raster path was being debugged (#135, #139): that path is
+// fixed (#141-#143), and a production Test Print should yield one clean
+// label, not two diagnostic ones.
 export function buildTsplTestPrint(): Uint8Array {
-  const { packed, bytesPerRow, height } = buildDiagnosticCheckerboard(64, 64)
+  const { packed, bytesPerRow, height } = buildTestCheckerboard(64, 64)
 
   const header = textToBytes(
     `SIZE 4 in,3 in\r\n` +
@@ -198,24 +169,17 @@ export function buildTsplTestPrint(): Uint8Array {
     `DIRECTION 0\r\n` +
     `CLS\r\n` +
     `TEXT 20,20,"3",0,1,1,"TEST PRINT"\r\n` +
-    `TEXT 20,70,"1",0,1,1,"AMASI Print Station - TSPL2 Connected!"\r\n` +
-    `TEXT 20,100,"1",0,1,1,"Top-left + bottom-right = BLACK"\r\n` +
-    `TEXT 20,120,"1",0,1,1,"Top-right + bottom-left = WHITE"\r\n` +
+    `TEXT 20,70,"2",0,1,1,"Printer connected"\r\n` +
+    `TEXT 20,110,"1",0,1,1,"If this label printed, the station is ready."\r\n` +
     `BITMAP 20,150,${bytesPerRow},${height},0,`
   )
   const footer = textToBytes(`\r\nPRINT 1,1\r\n`)
 
-  const smallJob = new Uint8Array(header.length + packed.length + footer.length)
-  smallJob.set(header, 0)
-  smallJob.set(packed, header.length)
-  smallJob.set(footer, header.length + packed.length)
-
-  const largeJob = buildLargeDiagnosticJob()
-
-  const combined = new Uint8Array(smallJob.length + largeJob.length)
-  combined.set(smallJob, 0)
-  combined.set(largeJob, smallJob.length)
-  return combined
+  const job = new Uint8Array(header.length + packed.length + footer.length)
+  job.set(header, 0)
+  job.set(packed, header.length)
+  job.set(footer, header.length + packed.length)
+  return job
 }
 
 // Convert a canvas to a TSPL2 raster job, scaling to the printer's dot width.
