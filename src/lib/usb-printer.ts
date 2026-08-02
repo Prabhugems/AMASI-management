@@ -18,6 +18,28 @@ declare global {
 let usbDevice: any = null
 let usbEndpoint: number | null = null
 
+// Hardware-testing fix (found live, 2026-08): a page teardown that never
+// calls device.close() first (a manual browser refresh, closing the tab,
+// or previously, a plain <a href> navigation elsewhere in the app -- see
+// KioskStationShell's self-test link) leaves the OS thinking this interface
+// is still claimed by the browser, so the NEXT connection attempt -- even
+// from a completely fresh page load -- fails with "Unable to claim
+// interface" until the cable is physically unplugged and replugged.
+// `pagehide` (not `beforeunload`, which mobile Chrome doesn't reliably fire
+// and which blocks the bfcache) is the closest thing to a guaranteed
+// last-chance hook for this. Best-effort only: it cannot help the plain-
+// unplug or app-crash cases, but should be able to close the device before
+// most reload/navigation/tab-close ways this can happen.
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    if (usbDevice && usbDevice.opened) {
+      // Fire-and-forget -- the page is already being torn down, there's no
+      // way to await this, and it must never throw into an unload handler.
+      usbDevice.close().catch(() => {})
+    }
+  })
+}
+
 // Check if WebUSB is available in this browser
 export function isWebUSBSupported(): boolean {
   return typeof navigator !== "undefined" && "usb" in navigator
