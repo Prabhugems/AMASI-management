@@ -126,10 +126,8 @@ export function buildTsplRaster(
 // misalignment (quadrants shifted, smeared, or scrambled instead of clean
 // squares) in one shot, isolated from html2canvas/badge-template concerns
 // entirely.
-function buildDiagnosticCheckerboard(): { packed: Uint8Array; bytesPerRow: number; height: number } {
-  const width = 64 // dots
-  const height = 64 // dots
-  const bytesPerRow = width / 8 // 8 bytes/row -- 1 bit per dot, MSB first
+function buildDiagnosticCheckerboard(width: number, height: number): { packed: Uint8Array; bytesPerRow: number; height: number } {
+  const bytesPerRow = Math.ceil(width / 8) // 1 bit per dot, MSB first
 
   const packed = new Uint8Array(bytesPerRow * height)
   for (let y = 0; y < height; y++) {
@@ -143,11 +141,48 @@ function buildDiagnosticCheckerboard(): { packed: Uint8Array; bytesPerRow: numbe
   return { packed, bytesPerRow, height }
 }
 
+// Full real-badge-sized (4x6 @ 203 DPI) checkerboard, sent as ONE single,
+// unchunked BITMAP command -- same ~120KB data volume as a real badge, but
+// hand-built content with a known-correct expected appearance, isolating
+// "is this a size/structural limit on this printer" from "is this specific
+// to the real badge's actual dithered html2canvas content". If this prints
+// clean, the row-band chunking in buildTsplRaster() was solving a problem
+// that didn't exist and the real bug is in the badge's rendered content; if
+// this ALSO comes out solid black, it confirms something structural breaks
+// at real-badge data volumes on this printer regardless of chunking.
+function buildLargeDiagnosticJob(): Uint8Array {
+  const width = getPaperWidthDots("4x6") // 812 dots
+  const height = Math.round(width * (6 / 4)) // 1218 dots, matching a real 4x6 badge
+  const { packed, bytesPerRow } = buildDiagnosticCheckerboard(width, height)
+  const { widthIn, heightIn } = getPaperDimensionsInches("4x6")
+
+  const header = textToBytes(
+    `SIZE ${widthIn} in,${heightIn} in\r\n` +
+    `GAP 0 in,0 in\r\n` +
+    `DIRECTION 0\r\n` +
+    `CLS\r\n` +
+    `BITMAP 0,0,${bytesPerRow},${height},0,`
+  )
+  const footer = textToBytes(`\r\nPRINT 1,1\r\n`)
+
+  const buffer = new Uint8Array(header.length + packed.length + footer.length)
+  buffer.set(header, 0)
+  buffer.set(packed, header.length)
+  buffer.set(footer, header.length + packed.length)
+  return buffer
+}
+
 // Build a TSPL2 test print combining plain text (printer's own font -- no
 // rasterization, isolates command-language issues) with the diagnostic
-// checkerboard bitmap (isolates BITMAP-specific format issues) in one job.
+// checkerboard bitmap (isolates BITMAP-specific format issues) in one job,
+// followed by a SECOND, separate job: a full real-badge-sized checkerboard
+// (buildLargeDiagnosticJob) -- since chunking (#137) didn't fix a real
+// badge still printing solid black, one Test Print now yields two labels to
+// compare: a small known-good one, and one at real data-volume to isolate
+// whether this printer has a structural limit at that size independent of
+// content.
 export function buildTsplTestPrint(): Uint8Array {
-  const { packed, bytesPerRow, height } = buildDiagnosticCheckerboard()
+  const { packed, bytesPerRow, height } = buildDiagnosticCheckerboard(64, 64)
 
   const header = textToBytes(
     `SIZE 4 in,3 in\r\n` +
@@ -162,11 +197,17 @@ export function buildTsplTestPrint(): Uint8Array {
   )
   const footer = textToBytes(`\r\nPRINT 1,1\r\n`)
 
-  const buffer = new Uint8Array(header.length + packed.length + footer.length)
-  buffer.set(header, 0)
-  buffer.set(packed, header.length)
-  buffer.set(footer, header.length + packed.length)
-  return buffer
+  const smallJob = new Uint8Array(header.length + packed.length + footer.length)
+  smallJob.set(header, 0)
+  smallJob.set(packed, header.length)
+  smallJob.set(footer, header.length + packed.length)
+
+  const largeJob = buildLargeDiagnosticJob()
+
+  const combined = new Uint8Array(smallJob.length + largeJob.length)
+  combined.set(smallJob, 0)
+  combined.set(largeJob, smallJob.length)
+  return combined
 }
 
 // Convert a canvas to a TSPL2 raster job, scaling to the printer's dot width.
