@@ -24,25 +24,12 @@
 // for this printer.
 
 import { ditherToMonochrome, packBits, getPaperWidthDots } from "./escpos-printer"
+import { getPaperSizeInches as getPaperDimensionsInches } from "./paper-sizes"
 
 function textToBytes(s: string): number[] {
   const out: number[] = []
   for (let i = 0; i < s.length; i++) out.push(s.charCodeAt(i) & 0xff)
   return out
-}
-
-// Paper size in inches for the TSPL `SIZE`/`GAP` commands -- kept in lockstep
-// with getPaperWidthDots()'s 203-DPI dot widths for the same paperSize keys.
-function getPaperDimensionsInches(paperSize: string): { widthIn: number; heightIn: number } {
-  switch (paperSize) {
-    case "4x6": return { widthIn: 4, heightIn: 6 }
-    case "4x3": return { widthIn: 4, heightIn: 3 }
-    case "4x2": return { widthIn: 4, heightIn: 2 }
-    case "3x2": return { widthIn: 3, heightIn: 2 }
-    case "A4": return { widthIn: 8.27, heightIn: 11.69 }
-    case "Letter": return { widthIn: 8.5, heightIn: 11 }
-    default: return { widthIn: 4, heightIn: 6 }
-  }
 }
 
 // Real thermal-label printers commonly cap how much data a single BITMAP
