@@ -278,25 +278,29 @@ export async function sendToUsbPrinter(data: Uint8Array): Promise<{
   }
 }
 
-// Send a test print to verify the USB connection works
+// Send a test print to verify the USB connection works.
+// TSPL2, not ESC/POS -- see tspl-generator.ts for why: this WebUSB path
+// targets the 4BARCODE/Godex DC421 family, whose real command language is
+// TSPL2, confirmed via scripts/print-proxy.mjs's macOS CUPS pipeline for
+// the same printer family.
 export async function testUsbPrinter(): Promise<{
   success: boolean
   error?: string
 }> {
-  const { buildTestPrint } = await import("./escpos-printer")
-  const data = buildTestPrint()
+  const { buildTsplTestPrint } = await import("./tspl-generator")
+  const data = buildTsplTestPrint()
   return sendToUsbPrinter(data)
 }
 
-// Print a badge image via USB using ESC/POS raster format
-// Renders canvas to ESC/POS and sends via WebUSB
+// Print a badge image via USB using TSPL2 raster format.
+// Renders canvas to TSPL2 and sends via WebUSB.
 export async function printBadgeViaUsb(
   canvas: HTMLCanvasElement,
   paperSize: string = "4x6"
 ): Promise<{ success: boolean; error?: string }> {
-  const { canvasToEscPos } = await import("./escpos-printer")
-  const escposData = await canvasToEscPos(canvas, paperSize)
-  return sendToUsbPrinter(escposData)
+  const { canvasToTspl } = await import("./tspl-generator")
+  const tsplData = await canvasToTspl(canvas, paperSize)
+  return sendToUsbPrinter(tsplData)
 }
 
 // Listen for USB disconnect events

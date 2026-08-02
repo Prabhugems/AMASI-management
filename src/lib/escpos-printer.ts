@@ -1,8 +1,15 @@
-// ESC/POS thermal printer support (e.g. 4BARCODE 4B-2054TG)
-// Converts images to ESC/POS raster format and sends via raw TCP (port 9100)
+// ESC/POS thermal printer support.
+// Converts images to ESC/POS raster format and sends via raw TCP (port 9100).
+//
+// NOT for the 4BARCODE / Godex DC421 family (see tspl-generator.ts instead)
+// -- confirmed via scripts/print-proxy.mjs's macOS CUPS pipeline for that
+// exact printer family that its real command language is TSPL2. This file
+// stayed named/exampled after that printer for a long time before that was
+// caught (2026-08), which is exactly why the WebUSB path silently never
+// printed anything on it despite every USB-layer step succeeding.
 
 // Paper width in dots at 203 DPI for common paper sizes
-function getPaperWidthDots(paperSize: string): number {
+export function getPaperWidthDots(paperSize: string): number {
   // 203 DPI standard
   switch (paperSize) {
     case "4x6":
@@ -20,7 +27,7 @@ function getPaperWidthDots(paperSize: string): number {
 }
 
 // Floyd-Steinberg dithering: convert RGBA image data to 1-bit monochrome
-function ditherToMonochrome(
+export function ditherToMonochrome(
   imageData: { data: Uint8ClampedArray; width: number; height: number }
 ): Uint8Array {
   const { width, height, data } = imageData
@@ -63,7 +70,7 @@ function ditherToMonochrome(
 }
 
 // Pack monochrome pixel array (1 byte per pixel) into bit-packed bytes (MSB first)
-function packBits(mono: Uint8Array, width: number, height: number): { data: Uint8Array; bytesPerRow: number } {
+export function packBits(mono: Uint8Array, width: number, height: number): { data: Uint8Array; bytesPerRow: number } {
   const bytesPerRow = Math.ceil(width / 8)
   const packed = new Uint8Array(bytesPerRow * height)
 
