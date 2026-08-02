@@ -112,143 +112,34 @@ export function buildTsplRaster(
   return buffer
 }
 
-// A tiny 64x64-dot checkerboard: top-left + bottom-right BLACK, the other
-// two quadrants WHITE. Deliberately hand-built (not run through
-// ditherToMonochrome/packBits) so its expected output is known by
-// construction, not by trusting the same pipeline we're debugging.
-// Small and simple enough to read by eye, unlike a full badge -- reveals
-// bit-polarity inversion (colors fully swapped) and row/column
-// misalignment (quadrants shifted, smeared, or scrambled instead of clean
-// squares) in one shot, isolated from html2canvas/badge-template concerns
-// entirely.
-function buildDiagnosticCheckerboard(width: number, height: number): { packed: Uint8Array; bytesPerRow: number; height: number } {
-  const bytesPerRow = Math.ceil(width / 8) // 1 bit per dot, MSB first
 
-  const packed = new Uint8Array(bytesPerRow * height)
-  for (let y = 0; y < height; y++) {
-    for (let byteX = 0; byteX < bytesPerRow; byteX++) {
-      const isLeftHalf = byteX < bytesPerRow / 2
-      const isTopHalf = y < height / 2
-      const shouldBeBlack = isTopHalf === isLeftHalf // TL and BR black, TR and BL white
-      packed[y * bytesPerRow + byteX] = shouldBeBlack ? 0xff : 0x00
-    }
-  }
-  return { packed, bytesPerRow, height }
-}
-
-// Full real-badge-sized (4x6 @ 203 DPI) checkerboard, sent as ONE single,
-// unchunked BITMAP command -- same ~120KB data volume as a real badge, but
-// hand-built content with a known-correct expected appearance, isolating
-// "is this a size/structural limit on this printer" from "is this specific
-// to the real badge's actual dithered html2canvas content". If this prints
-// clean, the row-band chunking in buildTsplRaster() was solving a problem
-// that didn't exist and the real bug is in the badge's rendered content; if
-// this ALSO comes out solid black, it confirms something structural breaks
-// at real-badge data volumes on this printer regardless of chunking.
-function buildLargeDiagnosticJob(): Uint8Array {
-  const width = getPaperWidthDots("4x6") // 812 dots
-  const height = Math.round(width * (6 / 4)) // 1218 dots, matching a real 4x6 badge
-  const { packed, bytesPerRow } = buildDiagnosticCheckerboard(width, height)
-  const { widthIn, heightIn } = getPaperDimensionsInches("4x6")
-
-  const header = textToBytes(
-    `SIZE ${widthIn} in,${heightIn} in\r\n` +
+// Smallest possible label: a single 1x1 inch declared size, sent alone --
+// no jobs before it in the same transfer, no bitmap, one TEXT command.
+// Live hardware test (2026-08): the 6-inch ruler test, always sent as the
+// 3rd job in a row after two other full-size jobs, has now had both of its
+// own candidate bugs (a negative TSPL coordinate, then an unproven BAR
+// command) removed and STILL printed ~1.5x too long -- meaning neither was
+// the actual cause. Two remaining, untested variables: (1) is a small
+// declared size ALSO affected proportionally (a universal scale-factor
+// issue would show a 1-inch label as ~1.5 inches too), and (2) does being
+// the THIRD job in one continuous transfer matter at all, independent of
+// content (something drifting cumulatively across jobs, not a per-job
+// bug). This test isolates both by being tiny AND standalone -- minimal
+// paper cost, answers two questions with one print instead of guessing
+// another full-size job and burning more stock.
+function buildTinyStandaloneSizeTest(): Uint8Array {
+  const lines =
+    `SIZE 1 in,1 in\r\n` +
     `GAP 0 in,0 in\r\n` +
     `DIRECTION 0\r\n` +
     `CLS\r\n` +
-    `BITMAP 0,0,${bytesPerRow},${height},0,`
-  )
-  const footer = textToBytes(`\r\nPRINT 1,1\r\n`)
-
-  const buffer = new Uint8Array(header.length + packed.length + footer.length)
-  buffer.set(header, 0)
-  buffer.set(packed, header.length)
-  buffer.set(footer, header.length + packed.length)
-  return buffer
-}
-
-// Build a TSPL2 test print combining plain text (printer's own font -- no
-// rasterization, isolates command-language issues) with the diagnostic
-// checkerboard bitmap (isolates BITMAP-specific format issues) in one job,
-// followed by a SECOND, separate job: a full real-badge-sized checkerboard
-// (buildLargeDiagnosticJob) -- since chunking (#137) didn't fix a real
-// badge still printing solid black, one Test Print now yields two labels to
-// compare: a small known-good one, and one at real data-volume to isolate
-// whether this printer has a structural limit at that size independent of
-// content.
-// A ruled 4x6 label: an inch-number label printed at every 1-inch increment
-// (0 through 6). Built at the exact paper size a real badge declares --
-// SIZE 4 in,6 in -- so the physical distance between consecutive labels on
-// the printed label IS the ground truth for whatever the printer's
-// feed/calibration actually does, independent of any bitmap/dithering
-// content. Measure with a ruler: if the labels land 0/1/2/3/4/5/6 inches
-// apart, the printer is feeding correctly for this exact command and the
-// 1.5x issue is happening somewhere else; if they're spread further apart
-// than 1 inch each (proportionally), that's evidence of the printer's own
-// feed, not this software.
-//
-// TEXT-only, deliberately no BAR command: an earlier version used BAR to
-// draw a tick-mark line at each label, and printed ~1.5x too long even
-// after fixing an unrelated negative-coordinate bug in the same job (live
-// hardware test, 2026-08) -- while job 1 in the same combined test print
-// (small checkerboard + TEXT labels, no BAR at all) has always printed at
-// the correct size. BAR is the one command type in this file with zero
-// prior confirmed-working use on this printer's TSPL dialect; removing it
-// isolates whether it's the actual cause without another guess-and-reprint
-// cycle.
-function buildRulerVerificationJob(): Uint8Array {
-  const DOTS_PER_INCH = 203
-  const WIDTH_IN = 4
-  const HEIGHT_IN = 6
-
-  const lines: string[] = [
-    `SIZE ${WIDTH_IN} in,${HEIGHT_IN} in\r\n`,
-    `GAP 0 in,0 in\r\n`,
-    `DIRECTION 0\r\n`,
-    `CLS\r\n`,
-  ]
-  // Total label height, minus a margin for the text glyph's own height so
-  // the last label's text doesn't render past the declared canvas bound the
-  // same way the removed BAR command's last tick mark did.
-  const maxY = HEIGHT_IN * DOTS_PER_INCH - 24
-  for (let inch = 0; inch <= HEIGHT_IN; inch++) {
-    const y = Math.min(inch * DOTS_PER_INCH, maxY)
-    lines.push(`TEXT 10,${y},"2",0,1,1,"${inch} in"\r\n`)
-  }
-  lines.push(`PRINT 1,1\r\n`)
-
-  return new Uint8Array(textToBytes(lines.join("")))
+    `TEXT 5,5,"1",0,1,1,"1x1 TEST"\r\n` +
+    `PRINT 1,1\r\n`
+  return new Uint8Array(textToBytes(lines))
 }
 
 export function buildTsplTestPrint(): Uint8Array {
-  const { packed, bytesPerRow, height } = buildDiagnosticCheckerboard(64, 64)
-
-  const header = textToBytes(
-    `SIZE 4 in,3 in\r\n` +
-    `GAP 0 in,0 in\r\n` +
-    `DIRECTION 0\r\n` +
-    `CLS\r\n` +
-    `TEXT 20,20,"3",0,1,1,"TEST PRINT"\r\n` +
-    `TEXT 20,70,"1",0,1,1,"AMASI Print Station - TSPL2 Connected!"\r\n` +
-    `TEXT 20,100,"1",0,1,1,"Top-left + bottom-right = BLACK"\r\n` +
-    `TEXT 20,120,"1",0,1,1,"Top-right + bottom-left = WHITE"\r\n` +
-    `BITMAP 20,150,${bytesPerRow},${height},0,`
-  )
-  const footer = textToBytes(`\r\nPRINT 1,1\r\n`)
-
-  const smallJob = new Uint8Array(header.length + packed.length + footer.length)
-  smallJob.set(header, 0)
-  smallJob.set(packed, header.length)
-  smallJob.set(footer, header.length + packed.length)
-
-  const largeJob = buildLargeDiagnosticJob()
-  const rulerJob = buildRulerVerificationJob()
-
-  const combined = new Uint8Array(smallJob.length + largeJob.length + rulerJob.length)
-  combined.set(smallJob, 0)
-  combined.set(largeJob, smallJob.length)
-  combined.set(rulerJob, smallJob.length + largeJob.length)
-  return combined
+  return buildTinyStandaloneSizeTest()
 }
 
 // Convert a canvas to a TSPL2 raster job, scaling to the printer's dot width.
