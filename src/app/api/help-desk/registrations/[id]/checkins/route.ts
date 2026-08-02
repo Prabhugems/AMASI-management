@@ -99,10 +99,26 @@ export async function POST(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existing } = await (supabase as any)
     .from("checkin_records")
-    .select("id")
+    .select("id, checked_out_at, reversed_at")
     .eq("checkin_list_id", checkinListId)
     .eq("registration_id", id)
     .maybeSingle()
+
+  // Bug-audit fix (2026-08): this used to reactivate ANY existing row --
+  // including one that's currently ACTIVE (not reversed, not checked out)
+  // -- silently overwriting its real checked_in_at/checked_in_by/station_id
+  // with "now"/this operator/no-station. An operator re-checking a
+  // delegate's status who taps Check In on a list they're already on would
+  // permanently lose the real scan time and station attribution that
+  // reconciliation and the duplicate report depend on. Only a genuinely
+  // inactive row (checked out or reversed) gets reactivated; an active one
+  // is rejected instead.
+  if (existing && !existing.checked_out_at && !existing.reversed_at) {
+    return NextResponse.json(
+      { error: "Already checked in to this list. Reverse the existing check-in first if this was a mistake." },
+      { status: 409 }
+    )
+  }
 
   const nowIso = new Date().toISOString()
   let recordId = existing?.id as string | undefined

@@ -395,11 +395,20 @@ export default function HelpDeskPage() {
                       <SelectValue placeholder="Choose a list…" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(checkinLists || []).map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.name}
-                        </SelectItem>
-                      ))}
+                      {/* Bug-audit fix (2026-08): don't even offer a list
+                          this delegate is already actively checked into --
+                          the server now rejects it (409), this just avoids
+                          the round-trip and the confusing error for the
+                          common case of an operator re-checking status. */}
+                      {(checkinLists || [])
+                        .filter(
+                          (l) => !checkins?.some((c) => c.checkin_list_id === l.id && !c.checked_out_at && !c.reversed_at)
+                        )
+                        .map((l) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                   <Button
