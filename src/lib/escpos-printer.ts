@@ -8,22 +8,19 @@
 // caught (2026-08), which is exactly why the WebUSB path silently never
 // printed anything on it despite every USB-layer step succeeding.
 
-// Paper width in dots at 203 DPI for common paper sizes
+import { getPaperSizeInches } from "./paper-sizes"
+
+const THERMAL_DPI = 203
+const THERMAL_MAX_WIDTH_IN = 4 // this printer class can't physically exceed ~4" wide
+
+// Paper width in dots at 203 DPI for common paper sizes. Derives from the
+// shared PAPER_SIZES_IN table (see paper-sizes.ts for why a single shared
+// table exists) instead of its own separate list -- clamped to this
+// printer class's real max width for oversized sizes like A4/Letter, which
+// were never meant to print full-size on a thermal label printer.
 export function getPaperWidthDots(paperSize: string): number {
-  // 203 DPI standard
-  switch (paperSize) {
-    case "4x6":
-    case "4x3":
-    case "4x2":
-      return 203 * 4 // 812 dots for 4" wide paper
-    case "3x2":
-      return 203 * 3 // 609 dots for 3" wide paper
-    case "A4":
-    case "Letter":
-      return 203 * 4 // Clamp to 4" for thermal
-    default:
-      return 203 * 4
-  }
+  const { widthIn } = getPaperSizeInches(paperSize)
+  return Math.round(Math.min(widthIn, THERMAL_MAX_WIDTH_IN) * THERMAL_DPI)
 }
 
 // Floyd-Steinberg dithering: convert RGBA image data to 1-bit monochrome

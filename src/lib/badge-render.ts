@@ -7,6 +7,8 @@
 // html2canvas) and sends the result to a printer -- this module has no
 // printer-specific code and no network calls of its own.
 
+import { getPaperSizeInches } from "./paper-sizes"
+
 // Shared by every html2canvas capture site (KioskCheckinScreen.tsx,
 // print/[token]/page.tsx x2) in place of a fixed setTimeout guess before
 // capturing the rendered badge. Live hardware test (2026-08): the exact
@@ -198,17 +200,14 @@ export function renderElementToHtml(element: any, registration: any, eventName: 
   ">${content}</div>`
 }
 
+// Derives from the shared PAPER_SIZES_IN table (paper-sizes.ts) instead of
+// its own separate, previously-inconsistent list -- see that file's header
+// comment for the mismatches this caused (e.g. "3.5x2"/"3x4" not existing
+// here at all, "A6" vs "a6" case mismatch), each silently falling back to
+// a 4x6 canvas.
 export function getPaperDimensions(paperSize: string, orientation: string): { width: string; height: string } {
-  const sizes: Record<string, { width: string; height: string }> = {
-    "4x2": { width: "4in", height: "2in" },
-    "4x3": { width: "4in", height: "3in" },
-    "4x6": { width: "4in", height: "6in" },
-    "62x86": { width: "62mm", height: "86mm" },
-    "a6": { width: "105mm", height: "148mm" },
-    "a5": { width: "148mm", height: "210mm" }
-  }
-
-  const size = sizes[paperSize] || sizes["4x6"]
+  const { widthIn, heightIn } = getPaperSizeInches(paperSize)
+  const size = { width: `${widthIn}in`, height: `${heightIn}in` }
 
   if (orientation === "landscape") {
     return { width: size.height, height: size.width }
