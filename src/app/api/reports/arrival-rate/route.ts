@@ -34,12 +34,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: { stations: [], hourly: [] } })
   }
 
+  // Bug-audit fix (2026-08): this used to include every row regardless of
+  // checked_out_at or reversed_at. A station whose volunteer repeatedly
+  // mis-scanned (later reversed by help desk) showed inflated activity here,
+  // masking a station that may actually be struggling with real, valid
+  // throughput -- the exact signal this report exists to surface.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: checkins, error } = await (supabase as any)
     .from("checkin_records")
     .select("station_id, checked_in_at")
     .in("checkin_list_id", listIds)
     .not("station_id", "is", null)
+    .is("checked_out_at", null)
+    .is("reversed_at", null)
 
   if (error) {
     return NextResponse.json({ error: "Failed to load arrival-rate data" }, { status: 500 })

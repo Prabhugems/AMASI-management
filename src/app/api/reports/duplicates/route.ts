@@ -65,6 +65,11 @@ export async function GET(request: NextRequest) {
         .eq("registration_id", row.registration_id)
         .eq("checkin_list_id", row.checkin_list_id)
         .is("checked_out_at", null)
+        // Bug-audit fix (2026-08): without this, a reversed "original" kept
+        // showing here as the current truth even after help desk corrected
+        // it -- misrepresenting the evidence trail this report exists to
+        // provide.
+        .is("reversed_at", null)
         .maybeSingle()
 
       const duplicateStationId = row.device_info?.station_id as string | undefined
