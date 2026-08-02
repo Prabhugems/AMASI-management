@@ -383,6 +383,11 @@ export function KioskStationShell({
         if (!isListUsable(list, attended)) return
         selectList(list.id, false)
       }}
+      // Recomputed fresh on every render -- this component already re-renders
+      // at least every 30s via the `tick` state below (see that effect's
+      // comment), so this stays in sync with the exact same cadence every
+      // other schedule computation in this file already uses.
+      now={new Date()}
     />
   )
 }
@@ -493,6 +498,7 @@ function KioskMenuScreen({
   listCounts,
   mode,
   onSelect,
+  now,
 }: {
   stationName: string
   stationToken: string
@@ -501,17 +507,18 @@ function KioskMenuScreen({
   listCounts: Record<string, number>
   mode: "checkin" | "checkin_and_print"
   onSelect: (list: AssignedList) => void
+  // Bug-audit fix (2026-08): this screen used to keep its own independent
+  // 60s clock, driving BOTH the header chip AND which tiles render as open
+  // vs closed -- lagging the parent shell's own 30s schedule-recompute tick
+  // (used everywhere else in this file for the identical computation) by up
+  // to a full minute at a schedule boundary. A list due to open at 12:00:00
+  // could still render disabled/un-tappable until 12:00:59, and the reverse
+  // case (still shown open after actually closing) failed silently -- the
+  // real click handler re-checks with a fresh Date and just no-ops. Now
+  // driven by the parent's own tick, so both screens agree within the same
+  // 30s window instead of two independently-drifting timers.
+  now: Date
 }) {
-  // Live clock for the header chip -- this screen doesn't accept a `now`/
-  // `tick` prop from the parent shell (KioskStationShell's own 30s tick
-  // drives schedule recomputation, not this component), so it keeps its own
-  // minimal state, updated once a minute (plenty for a clock display).
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 60000)
-    return () => clearInterval(interval)
-  }, [])
-
   // Real online/offline signal, mirroring the exact pattern already used in
   // KioskCheckinScreen.tsx (display-only, cheap, no new plumbing) -- no list
   // is active yet on this screen, so there's no sync queue to report on.
