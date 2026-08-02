@@ -920,6 +920,11 @@ export function KioskCheckinScreen({
         printMode: template.printMode || "full_badge",
         badgeTemplate: { ...badgeTemplate, template_data: { ...badgeTemplate.template_data, elements: resolvedElements } },
         eventName: template.eventName || "",
+        // A custom-font template's Google Fonts <link> would otherwise load
+        // live inside the print iframe (a real network call) -- found during
+        // the §8 printing-spec audit. Path A (USB) never had this problem:
+        // it strips the <head> before rendering, so this only matters here.
+        offline: true,
       })
 
       if (printerType === "browser") {
@@ -2119,6 +2124,22 @@ export function KioskCheckinScreen({
             <p className={printStatus.success ? "text-xs text-emerald-700 mt-1" : "text-xs text-red-700 mt-1"}>
               {printStatus.message}
             </p>
+          )}
+          {/* Persistent, small, cornered reprint action (badge-printing spec
+              §6) -- distinct from the primary "Print Badge" button above,
+              which prints/retries THIS check-in. This survives to whichever
+              person's badge was printed most recently, matching the exact
+              pattern already used on the idle/ready screen's footer, so a
+              volunteer who's moved on can still reprint the last badge from
+              here too. */}
+          {mode === "checkin_and_print" && lastPrintedRegistration && (
+            <button
+              onClick={() => printBadge(lastPrintedRegistration)}
+              disabled={printing}
+              className="text-xs text-indigo-600 underline hover:text-indigo-800 mt-1 disabled:opacity-50"
+            >
+              {printing ? "Reprinting…" : `Reprint badge for ${lastPrintedRegistration.attendee_name}`}
+            </button>
           )}
         </div>
       </div>

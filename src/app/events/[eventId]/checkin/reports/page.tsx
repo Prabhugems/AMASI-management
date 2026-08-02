@@ -27,8 +27,31 @@ import {
   FileSpreadsheet,
   FileText,
   RefreshCw,
+  AlertTriangle,
+  Copy,
 } from "lucide-react"
 import { toast } from "sonner"
+
+interface StationActivity {
+  stationId: string
+  stationName: string
+  lastSeenAt: string | null
+  recentlySeen: boolean
+  lastHourCount: number
+  quietWhileActive: boolean
+}
+
+interface DuplicateEntry {
+  id: string
+  attendeeName: string
+  registrationNumber: string
+  listName: string
+  originalStation: string
+  originalTime: string | null
+  duplicateStation: string
+  duplicateTime: string
+  crossDesk: boolean
+}
 
 type Registration = {
   id: string
@@ -118,6 +141,12 @@ export default function CheckinReportsPage() {
         `)
         .in("checkin_list_id", listIds)
         .is("checked_out_at", null)
+        // Bug-audit fix (2026-08): this query feeds Total/Checked-In/
+        // Remaining, the by-ticket-type and by-list breakdowns, the hourly
+        // chart, and every CSV export on this page -- all of it kept
+        // counting a help-desk-reversed check-in as attended, since only
+        // checked_out_at was excluded, never reversed_at.
+        .is("reversed_at", null)
       return (data || []) as CheckinRecord[]
     },
   })
@@ -225,6 +254,51 @@ export default function CheckinReportsPage() {
     if (!stats) return 1
     return Math.max(...Object.values(stats.byHour), 1)
   }, [stats])
+
+  // §7.1 reconciliation, per list AND per station -- distinct from the
+  // "By Check-in List" table above, which only shows checked-in count
+  // against ALL registrations. This uses each list's own ticket_type_ids/
+  // addon_ids filter for "eligible" (the closest real denominator this
+  // schema has to "paid"/"ordered"/"stocked"), broken down by which
+  // station did the checking-in -- how a desk scanning into the wrong
+  // list gets caught.
+  const { data: reconciliation } = useQuery({
+    queryKey: ["reports-reconciliation", eventId],
+    queryFn: async () => {
+      const res = await fetch(`/api/reports/reconciliation?event_id=${encodeURIComponent(eventId)}`)
+      if (!res.ok) throw new Error("Failed to load reconciliation report")
+      return (await res.json()).data as {
+        listId: string
+        listName: string
+        eligible: number
+        checkedIn: number
+        remaining: number
+        percentage: number
+        byStation: { station: string; count: number }[]
+      }[]
+    },
+  })
+
+  // §7.3 arrival rate / station activity.
+  const { data: stationActivity } = useQuery({
+    queryKey: ["reports-arrival-rate", eventId],
+    queryFn: async () => {
+      const res = await fetch(`/api/reports/arrival-rate?event_id=${encodeURIComponent(eventId)}`)
+      if (!res.ok) throw new Error("Failed to load arrival-rate report")
+      return (await res.json()).data as { stations: StationActivity[] }
+    },
+    refetchInterval: 60_000,
+  })
+
+  // §7.2 cross-desk duplicates.
+  const { data: duplicates } = useQuery({
+    queryKey: ["reports-duplicates", eventId],
+    queryFn: async () => {
+      const res = await fetch(`/api/reports/duplicates?event_id=${encodeURIComponent(eventId)}`)
+      if (!res.ok) throw new Error("Failed to load duplicate report")
+      return (await res.json()).data as DuplicateEntry[]
+    },
+  })
 
   // Export as text report
   const exportTextReport = () => {
@@ -665,6 +739,146 @@ export default function CheckinReportsPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* §7.3 Station activity */}
+      <div className="bg-card rounded-lg border overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/50">
+          <h3 className="font-semibold flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Station Activity
+          </h3>
+        </div>
+        {!stationActivity?.stations.length ? (
+          <div className="p-8 text-center text-muted-foreground">No kiosk stations on this event yet</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Station</TableHead>
+                  <TableHead>Last seen</TableHead>
+                  <TableHead className="text-right">Scans (last hour)</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {stationActivity.stations.map((s) => (
+                  <TableRow key={s.stationId}>
+                    <TableCell className="font-medium">{s.stationName}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {s.lastSeenAt ? new Date(s.lastSeenAt).toLocaleTimeString() : "Never"}
+                      {s.recentlySeen && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-emerald-600">
+                          <span className="size-1.5 rounded-full bg-emerald-500" /> Active
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">{s.lastHourCount}</TableCell>
+                    <TableCell>
+                      {s.quietWhileActive && (
+                        <span className="inline-flex items-center gap-1 text-xs text-amber-700">
+                          <AlertTriangle className="size-3.5" /> Active but very few scans
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+
+      {/* §7.1 Reconciliation, per list and per station */}
+      <div className="bg-card rounded-lg border overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/50">
+          <h3 className="font-semibold flex items-center gap-2">
+            <List className="h-4 w-4" />
+            Reconciliation, per list and per station
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            &ldquo;Eligible&rdquo; = confirmed registrations matching this list&apos;s ticket types. No stock/order
+            count exists in this schema for meals or kits, so this is the closest real denominator.
+          </p>
+        </div>
+        {!reconciliation?.length ? (
+          <div className="p-8 text-center text-muted-foreground">No check-in lists created</div>
+        ) : (
+          <div className="divide-y">
+            {reconciliation.map((row) => (
+              <div key={row.listId} className="p-4">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <p className="font-medium">{row.listName}</p>
+                  <p className="text-sm">
+                    <span className="font-semibold text-emerald-600">{row.checkedIn}</span>
+                    <span className="text-muted-foreground"> / {row.eligible} eligible ({row.percentage}%)</span>
+                  </p>
+                </div>
+                {row.byStation.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {row.byStation.map((s) => (
+                      <span key={s.station} className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                        {s.station}: {s.count}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* §7.2 Cross-desk duplicates */}
+      <div className="bg-card rounded-lg border overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/50">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Copy className="h-4 w-4" />
+            Cross-desk Duplicates
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Kiosk-caught duplicates only, for now — evidence when a count is questioned.
+          </p>
+        </div>
+        {!duplicates?.length ? (
+          <div className="p-8 text-center text-muted-foreground">No duplicates caught</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Delegate</TableHead>
+                  <TableHead>List</TableHead>
+                  <TableHead>Original</TableHead>
+                  <TableHead>Duplicate attempt</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {duplicates.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell>
+                      <p className="font-medium">{d.attendeeName}</p>
+                      <p className="text-xs text-muted-foreground">{d.registrationNumber}</p>
+                    </TableCell>
+                    <TableCell className="text-sm">{d.listName}</TableCell>
+                    <TableCell className="text-sm">
+                      {d.originalStation}
+                      {d.originalTime && (
+                        <p className="text-xs text-muted-foreground">{new Date(d.originalTime).toLocaleString()}</p>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {d.duplicateStation}
+                      <p className="text-xs text-muted-foreground">{new Date(d.duplicateTime).toLocaleString()}</p>
+                      {!d.crossDesk && <span className="text-xs text-muted-foreground italic">same desk</span>}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       {/* Export Options */}

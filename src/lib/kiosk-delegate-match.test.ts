@@ -129,3 +129,45 @@ describe("searchDelegates", () => {
     expect(searchDelegates([d], "doe")).toEqual([d])
   })
 })
+
+describe("searchDelegates", () => {
+  it("returns [] for a query under 2 characters", () => {
+    expect(searchDelegates([delegate()], "")).toEqual([])
+    expect(searchDelegates([delegate()], "j")).toEqual([])
+  })
+
+  it("returns [] when nothing matches", () => {
+    expect(searchDelegates([delegate()], "no-such-person")).toEqual([])
+  })
+
+  it("returns every delegate whose name matches, not just the first", () => {
+    const a = delegate({ id: "reg-1", attendee_name: "Jane Doe" })
+    const b = delegate({ id: "reg-2", registration_number: "REG-002", attendee_name: "Jane Smith" })
+    const results = searchDelegates([a, b], "jane")
+    expect(results.map((d) => d.id).sort()).toEqual(["reg-1", "reg-2"])
+  })
+
+  it("prioritizes registration-number matches over name matches", () => {
+    const byName = delegate({ id: "reg-1", registration_number: "REG-001", attendee_name: "5551234 Ventures Rep" })
+    const byNumber = delegate({ id: "reg-2", registration_number: "5551234" })
+    const results = searchDelegates([byName, byNumber], "5551234")
+    expect(results[0].id).toBe("reg-2")
+  })
+
+  it("never returns the same delegate twice even if multiple fields match", () => {
+    const d = delegate({ attendee_name: "9998887 Corp", registration_number: "9998887" })
+    expect(searchDelegates([d], "9998887")).toEqual([d])
+  })
+
+  it("caps results at the given limit", () => {
+    const delegates = Array.from({ length: 10 }, (_, i) =>
+      delegate({ id: `reg-${i}`, registration_number: `REG-${i}`, attendee_name: `Jane Doe ${i}` })
+    )
+    expect(searchDelegates(delegates, "jane", 3)).toHaveLength(3)
+  })
+
+  it("tolerates null phone/designation/institution without throwing", () => {
+    const d = delegate({ attendee_phone: null })
+    expect(searchDelegates([d], "doe")).toEqual([d])
+  })
+})

@@ -188,8 +188,15 @@ export function generatePrintContent(data: {
   printMode: string
   badgeTemplate: any
   eventName: string
+  // Skip the injected Google Fonts <link> -- Path B (window.print() via a
+  // hidden iframe) loads it live at print time, a real network call. The
+  // kiosk's local-first requirement (work order §0.6) means the kiosk's own
+  // call site passes true; other callers (e.g. the always-online Print
+  // Station page) are unaffected and keep the correct custom-font
+  // rendering.
+  offline?: boolean
 }): string {
-  const { registration, printSettings, printMode, badgeTemplate, eventName } = data
+  const { registration, printSettings, printMode, badgeTemplate, eventName, offline = false } = data
   const settings = printSettings || {}
   const dimensions = getPaperDimensions(settings.paper_size, settings.orientation)
   const isOverlayMode = printMode === "overlay"
@@ -226,7 +233,7 @@ export function generatePrintContent(data: {
         if (fontName) googleFonts.add(fontName.replace(/ /g, "+"))
       }
     })
-    const googleFontsLink = googleFonts.size > 0
+    const googleFontsLink = googleFonts.size > 0 && !offline
       ? `<link href="https://fonts.googleapis.com/css2?${Array.from(googleFonts).map(f => `family=${f}:wght@400;500;600;700`).join("&")}&display=swap" rel="stylesheet" />`
       : ""
 

@@ -331,6 +331,12 @@ export async function POST(
       .eq("checkin_list_id", verified_checkin_list_id)
       .eq("registration_id", registration.id)
       .is("checked_out_at", null)
+      // Bug-audit fix (2026-08): without this, a check-in the help desk
+      // reversed (a mistake, per its own confirm dialog: "this delegate can
+      // be checked in again") still read as "already checked in" here,
+      // permanently blocking the very re-scan the reversal was meant to
+      // allow.
+      .is("reversed_at", null)
       .maybeSingle()
 
     // allow_multiple_checkins is intentionally ignored here — it was a no-op
@@ -411,6 +417,12 @@ export async function POST(
       .eq("checkin_list_id", verified_checkin_list_id)
       .eq("registration_id", registration.id)
       .is("checked_out_at", null)
+      // Bug-audit fix (2026-08): without this, a check-in the help desk
+      // reversed (a mistake, per its own confirm dialog: "this delegate can
+      // be checked in again") still read as "already checked in" here,
+      // permanently blocking the very re-scan the reversal was meant to
+      // allow.
+      .is("reversed_at", null)
       .maybeSingle()
 
     if (!existingBeforeInsert) {
