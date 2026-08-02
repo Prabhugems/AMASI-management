@@ -201,8 +201,15 @@ function buildRulerVerificationJob(): Uint8Array {
   ]
   for (let inch = 0; inch <= HEIGHT_IN; inch++) {
     const y = inch * DOTS_PER_INCH
+    // Label Y is offset up slightly to vertically center it against the bar,
+    // but must never go negative -- live hardware test (2026-08) found the
+    // very first label (inch 0, y=0-8=-8) at a negative TSPL coordinate
+    // likely confused this job's command parsing, producing a 1.5x-too-long
+    // print for this job specifically while an identically-sized job sent
+    // immediately before it (no negative coordinates) printed perfectly.
+    const labelY = Math.max(0, y - 8)
     lines.push(`BAR 0,${y},${BAR_WIDTH_DOTS},3\r\n`)
-    lines.push(`TEXT ${BAR_WIDTH_DOTS + 10},${y - 8},"2",0,1,1,"${inch} in"\r\n`)
+    lines.push(`TEXT ${BAR_WIDTH_DOTS + 10},${labelY},"2",0,1,1,"${inch} in"\r\n`)
   }
   lines.push(`PRINT 1,1\r\n`)
 
