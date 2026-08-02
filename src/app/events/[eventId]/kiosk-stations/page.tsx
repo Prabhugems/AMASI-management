@@ -979,7 +979,7 @@ export default function KioskStationsPage() {
                     <span className="h-px flex-1 bg-border" />
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {group.stations.map((station) => {
                       const status = computeStationStatus(station)
                       const meta = STATUS_META[status]
