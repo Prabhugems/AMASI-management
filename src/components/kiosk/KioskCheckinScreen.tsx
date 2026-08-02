@@ -1159,7 +1159,25 @@ export function KioskCheckinScreen({
       // before this check existed -- repeat entry scans are always a
       // success, never flagged here.
       if (isCollectionListActive) {
-        const priorScans = await getScanHistoryForRegistration(listId, delegate.id)
+        const allPriorScans = await getScanHistoryForRegistration(listId, delegate.id)
+        // Bug-audit fix (2026-08): a "conflict" scan_log entry means either a
+        // genuine duplicate (the server said alreadyCheckedIn:true) OR a
+        // completely unrelated terminal business rejection (e.g. eligibility
+        // changed mid-sync, list not found) that the sync worker files under
+        // the exact same status. Treating any conflict record as "already
+        // collected" permanently blocked a legitimate re-scan on this same
+        // device once its history held even one such rejection. A "pending"
+        // entry still counts -- that's this same tablet's own not-yet-synced
+        // enqueue, exactly the local duplicate Layer 1 exists to catch.
+        const priorScans = allPriorScans.filter(
+          (s) =>
+            s.status === "pending" ||
+            s.status === "synced" ||
+            (s.status === "conflict" &&
+              typeof s.server_response === "object" &&
+              s.server_response !== null &&
+              (s.server_response as { alreadyCheckedIn?: boolean }).alreadyCheckedIn === true)
+        )
         if (priorScans.length > 0) {
           const earliest = priorScans.reduce((a, b) => (a.scanned_at < b.scanned_at ? a : b))
           setResult({
