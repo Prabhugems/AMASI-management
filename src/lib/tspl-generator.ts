@@ -225,8 +225,23 @@ export async function canvasToTspl(
 ): Promise<Uint8Array> {
   const targetWidth = getPaperWidthDots(paperSize)
 
-  const scale = targetWidth / canvas.width
-  const scaledHeight = Math.round(canvas.height * scale)
+  // Height is derived from the DECLARED label size (widthIn/heightIn), not
+  // proportionally from the captured canvas's own dimensions. Live hardware
+  // test (2026-08): a real badge printed ~1.5x longer than its declared
+  // "SIZE 4in,6in" -- a blank stretch of label before the actual (correctly
+  // colored, correctly positioned) content. Root cause: the print
+  // container html2canvas captures has no overflow:hidden of its own, so
+  // if the captured canvas comes out even slightly taller than its nominal
+  // 4x6 aspect ratio (a real risk with off-screen absolutely-positioned
+  // content), the old `scaledHeight = canvas.height * scale` carried that
+  // extra height straight into the BITMAP command as a genuinely taller
+  // image -- out of sync with what the SIZE command declares fits on one
+  // label. Forcing the target height from the paper size, and drawImage()
+  // stretching/fitting the source into that fixed box, guarantees the
+  // BITMAP command's dimensions always match the declared SIZE, regardless
+  // of any upstream capture quirks.
+  const { widthIn, heightIn } = getPaperDimensionsInches(paperSize)
+  const scaledHeight = Math.round(targetWidth * (heightIn / widthIn))
 
   const scaledCanvas = document.createElement("canvas")
   scaledCanvas.width = targetWidth
