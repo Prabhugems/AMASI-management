@@ -69,8 +69,17 @@ export async function middleware(request: NextRequest) {
   // Print pages and public program pages under any route are public
   const isPrintPage = request.nextUrl.pathname.endsWith('/print') || request.nextUrl.pathname.includes('/print/')
   const isPublicProgram = request.nextUrl.pathname.includes('/program/public')
+  // A brand-new invitee is necessarily unauthenticated -- this page must stay
+  // reachable without a session, same as every other token-based public page
+  // below, even though it lives under the /team prefix (which is otherwise a
+  // real protected admin area). Its own API route (POST
+  // /api/team/invite/[id]/accept) is already public/no-auth; this closes the
+  // matching gap on the page side, which was sending every invitee straight
+  // to /login (dropping their ?token= in the process) before they ever saw
+  // the accept flow.
+  const isAcceptInvitePage = request.nextUrl.pathname === '/team/accept-invite'
 
-  const isProtectedRoute = !isPrintPage && !isPublicProgram && protectedRoutes.some(
+  const isProtectedRoute = !isPrintPage && !isPublicProgram && !isAcceptInvitePage && protectedRoutes.some(
     (route) =>
       request.nextUrl.pathname === route ||
       request.nextUrl.pathname.startsWith(`${route}/`)
