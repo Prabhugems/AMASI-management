@@ -59,6 +59,33 @@ describe("matchDelegate", () => {
     const d = delegate({ attendee_phone: null })
     expect(matchDelegate([d], "doe")).toEqual(d)
   })
+
+  it("bug-audit fix: an exact registration-number match wins over a substring match on a different delegate, regardless of array order", () => {
+    const exactMatch = delegate({ id: "reg-1", registration_number: "AMASI1" })
+    const substringOnly = delegate({ id: "reg-2", registration_number: "AMASI11" })
+    // The colliding delegate appears FIRST in the array -- a plain .find()
+    // substring search would have wrongly returned it before this fix.
+    expect(matchDelegate([substringOnly, exactMatch], "AMASI1")).toEqual(exactMatch)
+    // And the reverse order, to confirm this isn't just luck of .find() order.
+    expect(matchDelegate([exactMatch, substringOnly], "AMASI1")).toEqual(exactMatch)
+  })
+
+  it("bug-audit fix: exact match wins even when the substring-only collision has a shorter, earlier-sorting id", () => {
+    const substringOnly = delegate({ id: "reg-1", registration_number: "AMASI100" })
+    const exactMatch = delegate({ id: "reg-2", registration_number: "AMASI1" })
+    expect(matchDelegate([substringOnly, exactMatch], "amasi1")).toEqual(exactMatch)
+  })
+
+  it("still falls back to substring matching when no exact match exists for that field", () => {
+    const d = delegate({ registration_number: "124A1001" })
+    expect(matchDelegate([d], "1001")).toEqual(d)
+  })
+
+  it("exact-match priority applies within each field independently (name field)", () => {
+    const exactName = delegate({ id: "reg-1", registration_number: "REG-A", attendee_name: "Ravi" })
+    const substringName = delegate({ id: "reg-2", registration_number: "REG-B", attendee_name: "Ravikumar" })
+    expect(matchDelegate([substringName, exactName], "ravi")).toEqual(exactName)
+  })
 })
 
 describe("searchDelegates", () => {
