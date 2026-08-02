@@ -36,7 +36,13 @@ export async function POST(
     return NextResponse.json({ error: "Registration not found" }, { status: 404 })
   }
 
-  const { user, error: authError } = await requireEventAndPermission(eventId, "checkin")
+  // Bug-audit fix (2026-08): this edits registrations.attendee_name, the
+  // exact field the general-purpose PATCH /api/registrations/[id] route
+  // gates behind the 'registrations' permission -- this route wrongly used
+  // 'checkin' instead, letting a volunteer deliberately granted check-in-
+  // only access (and no 'registrations' permission, specifically to prevent
+  // them editing attendee records) rename any delegate on the event anyway.
+  const { user, error: authError } = await requireEventAndPermission(eventId, "registrations")
   if (authError) return authError
 
   const supabase = await createAdminClient()
