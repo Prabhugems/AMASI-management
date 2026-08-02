@@ -497,16 +497,24 @@ async function completeCheckin(
   // intentionally ignored: UNIQUE(checkin_list_id, registration_id) means a
   // second insert always violates the constraint. This row's scan_id is NOT
   // backfilled -- it belongs to whatever originally created it.
+  //
+  // Bug-audit fix (2026-08): this used to filter on `.is("checked_out_at",
+  // null)`, so a delegate who'd been checked OUT (e.g. via the staff
+  // checkout flow) was invisible to this pre-check and fell through to an
+  // INSERT that always violates the UNIQUE constraint regardless -- landing
+  // in the generic 23505 handler below with a misleading "You're already
+  // checked in!" and no working path in this route to ever actually
+  // reactivate them. Now fetches ANY existing row (checked-out or not) and
+  // branches on it explicitly.
   const { data: existing } = await (supabase as any)
     .from("checkin_records")
-    .select("id, checked_in_at, station_id")
+    .select("id, checked_in_at, station_id, checked_out_at")
     .eq("registration_id", registrationId)
     .eq("checkin_list_id", checkinListId)
-    .is("checked_out_at", null)
     .limit(1)
     .maybeSingle()
 
-  if (existing) {
+  if (existing && !existing.checked_out_at) {
     await logKioskDuplicateAudit(supabase, { eventId, checkinListId, registrationId, stationId })
     return NextResponse.json({
       success: true,
@@ -524,6 +532,45 @@ async function completeCheckin(
   }
 
   const now = new Date().toISOString()
+
+  if (existing && existing.checked_out_at) {
+    // Reactivate the same row rather than inserting a second one -- the
+    // UNIQUE(checkin_list_id, registration_id) constraint means a second row
+    // for this pair can never be created. This is a genuine, fresh
+    // check-in from the delegate's perspective, so it gets the same
+    // success response a brand-new insert would, not "already checked in."
+    const { error: reactivateError } = await (supabase as any)
+      .from("checkin_records")
+      .update({
+        checked_in_at: now,
+        checked_in_by: "Self check-in (kiosk)",
+        checked_out_at: null,
+        scan_id: scanId,
+        station_id: stationId,
+      })
+      .eq("id", existing.id)
+
+    if (reactivateError) {
+      console.error("Kiosk check-in reactivation failed:", reactivateError)
+      return NextResponse.json(
+        { success: false, message: "Failed to check in. Please try again." },
+        { status: 500 }
+      )
+    }
+
+    await (supabase as any)
+      .from("registrations")
+      .update({ checked_in: true, checked_in_at: now })
+      .eq("id", registrationId)
+
+    return NextResponse.json({
+      success: true,
+      message: "Check-in successful!",
+      registration: registrationForResponse,
+      alreadyCheckedIn: false,
+      ...(timeWindowWarning && { warning: timeWindowWarning }),
+    })
+  }
 
   const { error: insertError } = await (supabase as any)
     .from("checkin_records")

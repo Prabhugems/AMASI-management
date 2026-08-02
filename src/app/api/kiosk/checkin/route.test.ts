@@ -209,6 +209,51 @@ describe("POST /api/kiosk/checkin", () => {
     expect(body.alreadyCheckedIn).toBe(true)
   })
 
+  it("bug-audit fix: reactivates a checked-out delegate instead of falling through to a doomed insert", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", {
+      data: { id: "cr-existing", checked_in_at: "2026-07-20T09:00:00Z", station_id: null, checked_out_at: "2026-07-20T09:30:00Z" },
+      error: null,
+    }) // existing-record check -- checked out
+    mock.queueResponse("checkin_records", { data: null, error: null }) // reactivation update
+    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(body.alreadyCheckedIn).toBe(false)
+    expect(body.message).toBe("Check-in successful!")
+
+    const updateCall = mock.calls.find((c) => c.table === "checkin_records" && c.method === "update")
+    expect(updateCall).toBeDefined()
+    const updatePayload = updateCall!.args[0] as { checked_out_at: unknown; scan_id: string }
+    expect(updatePayload.checked_out_at).toBeNull()
+    expect(updatePayload.scan_id).toBe(SCAN_ID)
+    // Reactivation targets the SAME row via .eq("id", ...), never a second insert.
+    expect(mock.calls.some((c) => c.table === "checkin_records" && c.method === "insert")).toBe(false)
+  })
+
+  it("500s if reactivating a checked-out delegate's row fails", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", {
+      data: { id: "cr-existing", checked_in_at: "2026-07-20T09:00:00Z", station_id: null, checked_out_at: "2026-07-20T09:30:00Z" },
+      error: null,
+    })
+    mock.queueResponse("checkin_records", { data: null, error: { message: "boom" } }) // reactivation update fails
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+
+    expect(res.status).toBe(500)
+  })
+
   it("treats a 23505 insert race as an idempotent success", async () => {
     mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
     mock.queueResponse("registrations", { data: baseRegistration(), error: null })
