@@ -913,7 +913,7 @@ export function KioskCheckinScreen({
         })
       )
 
-      const { generatePrintContent, getPaperDimensions, getBadgeRotationDegrees } = await import("@/lib/badge-render")
+      const { generatePrintContent, getPaperDimensions, getBadgeRotationDegrees, waitForRenderReady } = await import("@/lib/badge-render")
       const printContent = generatePrintContent({
         registration,
         printSettings: template.printSettings,
@@ -977,7 +977,7 @@ export function KioskCheckinScreen({
       </style>`
       container.innerHTML = scopedStyle + (bodyMatch ? bodyMatch[1] : printContent)
       document.body.appendChild(container)
-      await new Promise((resolve) => setTimeout(resolve, 400))
+      await waitForRenderReady()
 
       const html2canvas = (await import("html2canvas")).default
       const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false })
