@@ -7,6 +7,30 @@
 // html2canvas) and sends the result to a printer -- this module has no
 // printer-specific code and no network calls of its own.
 
+// Shared by every html2canvas capture site (KioskCheckinScreen.tsx,
+// print/[token]/page.tsx x2) in place of a fixed setTimeout guess before
+// capturing the rendered badge. Live hardware test (2026-08): the exact
+// same delegate, reprinted multiple times with zero content/code/cache
+// differences, alternated between a correctly-sized print and one ~1.5x
+// too long -- true non-determinism, not a stale cache (confirmed: full
+// "Clear site data" before every attempt). A fixed timeout is a guess at
+// "has layout settled yet", not a real signal, and a loaded Android tablet
+// can plausibly take longer than that guess on some runs. document.fonts.ready
+// waits for actual font loading to finish; the double rAF that follows
+// guarantees at least one full layout+paint cycle has completed afterward.
+export async function waitForRenderReady(): Promise<void> {
+  try {
+    if (typeof document !== "undefined" && document.fonts && document.fonts.ready) {
+      await document.fonts.ready
+    }
+  } catch {
+    // Not fatal -- proceed with whatever's rendered so far.
+  }
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  })
+}
+
 // Replace placeholders in text with registration data
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function replacePlaceholders(text: string, reg: any, eventName: string): string {

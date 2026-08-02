@@ -44,7 +44,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
-import { replacePlaceholders, renderElementToHtml, generatePrintContent, getPaperDimensions, getBadgeRotationDegrees } from "@/lib/badge-render"
+import { replacePlaceholders, renderElementToHtml, generatePrintContent, getPaperDimensions, getBadgeRotationDegrees, waitForRenderReady } from "@/lib/badge-render"
 
 interface PrintStation {
   id: string
@@ -1140,8 +1140,10 @@ function PrintStationKioskPage() {
       container.innerHTML = scopedStyle + (bodyMatch ? bodyMatch[1] : printContent)
       document.body.appendChild(container)
 
-      // Wait for fonts/images to load
-      await new Promise(resolve => setTimeout(resolve, 800))
+      // Wait for fonts/layout to settle -- see waitForRenderReady()'s own
+      // comment for why a fixed timeout here was found live to be a real
+      // source of non-deterministic print sizing.
+      await waitForRenderReady()
 
       // Render to canvas
       const canvas = await html2canvas(container, {
@@ -1285,8 +1287,10 @@ function PrintStationKioskPage() {
       container.innerHTML = scopedStyle + (bodyMatch ? bodyMatch[1] : printContent)
       document.body.appendChild(container)
 
-      // Wait for fonts/images to load
-      await new Promise(resolve => setTimeout(resolve, 800))
+      // Wait for fonts/layout to settle -- see waitForRenderReady()'s own
+      // comment for why a fixed timeout here was found live to be a real
+      // source of non-deterministic print sizing.
+      await waitForRenderReady()
 
       // Render to canvas
       const canvas = await html2canvas(container, {
