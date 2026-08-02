@@ -351,9 +351,9 @@ export function StationNameEditor({
       type="button"
       onClick={onStart}
       title="Rename station"
-      className="group flex items-baseline gap-1.5 text-left"
+      className="group flex w-full min-w-0 items-baseline gap-1.5 text-left"
     >
-      <span className="truncate text-sm font-semibold">{station.name}</span>
+      <span className="min-w-0 truncate text-sm font-semibold">{station.name}</span>
       <Pencil className="h-3 w-3 flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-40" />
     </button>
   )
@@ -449,7 +449,12 @@ export function StationBehaviourSummary({
     parts.push(station.auto_print_badge ? "Auto-print" : "Manual print")
     if (printStationName) parts.push(printStationName)
   }
-  return <span className="truncate text-xs text-muted-foreground">{parts.join(" · ")}</span>
+  const summary = parts.join(" · ")
+  return (
+    <span className="min-w-0 truncate text-xs text-muted-foreground" title={summary}>
+      {summary}
+    </span>
+  )
 }
 
 // Shared "New Token" + kebab menu -- identical set of actions in both views.

@@ -33,10 +33,11 @@ import {
   List,
   LayoutGrid,
   ChevronDown,
+  ChevronRight,
   X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { computeStationStatus, STATION_STATUS_LABELS } from "@/lib/kiosk-station-status"
+import { computeStationStatus, isStaleQuiet, STATION_STATUS_LABELS } from "@/lib/kiosk-station-status"
 import {
   STATUS_MEANINGS,
   stationUrl,
@@ -58,6 +59,7 @@ import {
   type KioskStation,
 } from "@/components/kiosk-admin/station-controls"
 import { AddStationWizard } from "@/components/kiosk-admin/add-station-wizard"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 export default function KioskStationsPage() {
   const params = useParams()
@@ -90,6 +92,16 @@ export default function KioskStationsPage() {
   // List/grid view toggle + bulk selection -- all client-side, operating on
   // the already-filtered/searched `stations` array. No new fetch params.
   const [view, setView] = useState<"list" | "grid">("list")
+  // List is a fixed-pixel desktop table (~1097px minimum content width,
+  // measured live: fixed columns + gaps + row padding). The page's own
+  // max-w-6xl container caps available width at ~1102px once past that
+  // breakpoint, so xl: (1280px) is the lowest viewport where the container
+  // is guaranteed to have reached that cap and the table is guaranteed to
+  // fit without horizontal scroll. Below xl:, forces Grid instead, which is
+  // already responsive down to one column.
+  // See docs/superpowers/specs/2026-08-02-kiosk-stations-responsive-layout-design.md.
+  const isDesktop = useMediaQuery("(min-width: 1280px)")
+  const effectiveView = isDesktop ? view : "grid"
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkListPickerOpen, setBulkListPickerOpen] = useState(false)
   const [bulkAssigning, setBulkAssigning] = useState(false)
@@ -168,6 +180,25 @@ export default function KioskStationsPage() {
   const dismissFirstRun = () => {
     if (typeof window !== "undefined") window.localStorage.setItem(firstRunStorageKey, "true")
     setFirstRunDismissed(true)
+  }
+
+  // Collapsed by default (independent of the dismiss-forever state above) --
+  // reduces vertical space at every width, not just mobile, once an admin
+  // has already seen the checklist once. Same per-event localStorage
+  // convention as firstRunStorageKey above, but its own key: dismissal and
+  // expand/collapse are independent axes (a not-yet-dismissed banner still
+  // starts collapsed; expanding it doesn't dismiss it).
+  const firstRunExpandedKey = `kiosk-stations-firstrun-expanded:${eventId}`
+  const [firstRunExpanded, setFirstRunExpanded] = useState(false)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    setFirstRunExpanded(window.localStorage.getItem(firstRunExpandedKey) === "true")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId])
+  const toggleFirstRunExpanded = () => {
+    const next = !firstRunExpanded
+    if (typeof window !== "undefined") window.localStorage.setItem(firstRunExpandedKey, String(next))
+    setFirstRunExpanded(next)
   }
 
   // A collection-purpose list rejects every kiosk self-check-in scan on an
@@ -570,7 +601,7 @@ export default function KioskStationsPage() {
     setBulkListPickerOpen(false)
   }
 
-  const gridCols = "28px 150px minmax(200px,1fr) 260px 190px 190px"
+  const gridCols = "28px 150px minmax(200px,1fr) 260px 190px 165px"
 
   const confirmStations = confirmState?.stations ?? []
   const confirmIsBulk = confirmStations.length > 1
@@ -580,7 +611,7 @@ export default function KioskStationsPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Monitor className="h-5 w-5" />
@@ -591,7 +622,7 @@ export default function KioskStationsPage() {
             stays signed in on its own and never needs a password again.
           </p>
         </div>
-        <Button onClick={() => setAddWizardOpen(true)}>
+        <Button className="w-full xl:w-auto" onClick={() => setAddWizardOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Station
         </Button>
@@ -623,29 +654,43 @@ export default function KioskStationsPage() {
               >
                 <X className="h-4 w-4" />
               </button>
-              <p className="pr-6 font-semibold">Setting up for an event?</p>
-              <ol className="mt-2 list-decimal space-y-1 pl-4 text-muted-foreground">
-                <li>Add one station per tablet, named after its desk</li>
-                <li>Tick the lists that desk handles</li>
-                <li>Turn on &quot;Attended&quot; if a volunteer holds it</li>
-                <li>Open the station&apos;s link on the tablet, and add it to the home screen</li>
-                <li>Print one test badge before the tablet leaves</li>
-              </ol>
-              <p className="mt-2 text-muted-foreground">
-                After that the volunteer just taps the icon — no login, no link.
-              </p>
+              <button
+                type="button"
+                onClick={toggleFirstRunExpanded}
+                aria-expanded={firstRunExpanded}
+                className="flex items-center gap-1.5 pr-6 font-semibold text-left"
+              >
+                <ChevronRight
+                  className={cn("h-3.5 w-3.5 shrink-0 transition-transform", firstRunExpanded && "rotate-90")}
+                />
+                Setting up for an event?
+              </button>
+              {firstRunExpanded && (
+                <>
+                  <ol className="mt-2 list-decimal space-y-1 pl-4 text-muted-foreground">
+                    <li>Add one station per tablet, named after its desk</li>
+                    <li>Tick the lists that desk handles</li>
+                    <li>Turn on &quot;Attended&quot; if a volunteer holds it</li>
+                    <li>Open the station&apos;s link on the tablet, and add it to the home screen</li>
+                    <li>Print one test badge before the tablet leaves</li>
+                  </ol>
+                  <p className="mt-2 text-muted-foreground">
+                    After that the volunteer just taps the icon — no login, no link.
+                  </p>
+                </>
+              )}
             </div>
           )}
           {/* Search + status filter tabs + view toggle */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex gap-1 rounded-lg bg-muted p-1">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+            <div className="flex gap-1 overflow-x-auto rounded-lg bg-muted p-1">
               {STATUS_FILTERS.map((f) => (
                 <button
                   key={f.key}
                   type="button"
                   onClick={() => setStatusFilter(f.key)}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                    "flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                     statusFilter === f.key
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -656,7 +701,7 @@ export default function KioskStationsPage() {
                 </button>
               ))}
             </div>
-            <div className="relative w-full max-w-xs">
+            <div className="relative w-full xl:max-w-xs">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
@@ -665,38 +710,40 @@ export default function KioskStationsPage() {
                 className="h-9 pl-8 text-sm"
               />
             </div>
-            <div className="ml-auto flex items-center gap-3">
+            <div className="flex items-center gap-3 xl:ml-auto">
               <div className="text-xs text-muted-foreground">
                 {visibleStations.length} of {stations.length} stations
               </div>
-              <div className="flex gap-1 rounded-lg bg-muted p-1">
-                <button
-                  type="button"
-                  title="List view"
-                  onClick={() => setView("list")}
-                  className={cn(
-                    "flex h-7 w-8 items-center justify-center rounded-md transition-colors",
-                    view === "list"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <List className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  title="Grid view"
-                  onClick={() => setView("grid")}
-                  className={cn(
-                    "flex h-7 w-8 items-center justify-center rounded-md transition-colors",
-                    view === "grid"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              {isDesktop && (
+                <div className="flex gap-1 rounded-lg bg-muted p-1">
+                  <button
+                    type="button"
+                    title="List view"
+                    onClick={() => setView("list")}
+                    className={cn(
+                      "flex h-7 w-8 items-center justify-center rounded-md transition-colors",
+                      view === "list"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Grid view"
+                    onClick={() => setView("grid")}
+                    className={cn(
+                      "flex h-7 w-8 items-center justify-center rounded-md transition-colors",
+                      view === "grid"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -787,10 +834,10 @@ export default function KioskStationsPage() {
                 Clear filters
               </Button>
             </div>
-          ) : view === "list" ? (
+          ) : effectiveView === "list" ? (
             <div className="rounded-2xl border bg-card overflow-hidden">
               <div className="overflow-x-auto">
-                <div style={{ minWidth: "1100px" }}>
+                <div>
                   <div
                     className="grid gap-4 border-b bg-muted/40 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                     style={{ gridTemplateColumns: gridCols }}
@@ -806,7 +853,7 @@ export default function KioskStationsPage() {
                     <div>Station</div>
                     <div>Check-in Lists</div>
                     <div>Behaviour</div>
-                    <div className="text-right">Actions</div>
+                    <div className="whitespace-nowrap text-right">Actions</div>
                   </div>
 
                   {groups.map((group) => (
@@ -824,6 +871,7 @@ export default function KioskStationsPage() {
                       {group.stations.map((station) => {
                         const status = computeStationStatus(station)
                         const meta = STATUS_META[status]
+                        const stale = isStaleQuiet(station)
                         const revoked = !!station.revoked_at
                         const isRenaming = renamingId === station.id
                         const selected = selectedIds.includes(station.id)
@@ -852,16 +900,21 @@ export default function KioskStationsPage() {
                               <span
                                 className={cn(
                                   "mt-1.5 h-2 w-2 flex-shrink-0 rounded-full",
-                                  meta.dot,
+                                  stale ? "bg-destructive" : meta.dot,
                                   status === "online" && "animate-pulse"
                                 )}
                               />
                               <div className="min-w-0">
                                 <div
-                                  className={cn("text-sm font-semibold leading-tight", meta.label)}
-                                  title={STATUS_MEANINGS[status]}
+                                  className={cn("text-sm font-semibold leading-tight", stale ? "text-destructive" : meta.label)}
+                                  title={
+                                    stale
+                                      ? `${STATUS_MEANINGS[status]} Unreachable for over a day — likely off or disconnected, not just asleep.`
+                                      : STATUS_MEANINGS[status]
+                                  }
                                 >
                                   {STATION_STATUS_LABELS[status]}
+                                  {stale && <span className="ml-1 font-normal text-destructive/80">· stale</span>}
                                 </div>
                                 <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                                   <Clock className="h-3 w-3 flex-shrink-0" />
@@ -874,20 +927,22 @@ export default function KioskStationsPage() {
 
                             {/* Station name + printer */}
                             <div className="min-w-0 flex flex-col gap-1">
-                              <div className="flex items-center gap-2">
-                                <StationNameEditor
-                                  station={station}
-                                  isRenaming={isRenaming}
-                                  renameDraft={renameDraft}
-                                  onDraftChange={setRenameDraft}
-                                  renaming={renaming}
-                                  onStart={() => startRename(station)}
-                                  onCancel={cancelRename}
-                                  onSave={() => saveRename(station)}
-                                />
+                              <div className="flex min-w-0 items-center gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <StationNameEditor
+                                    station={station}
+                                    isRenaming={isRenaming}
+                                    renameDraft={renameDraft}
+                                    onDraftChange={setRenameDraft}
+                                    renaming={renaming}
+                                    onStart={() => startRename(station)}
+                                    onCancel={cancelRename}
+                                    onSave={() => saveRename(station)}
+                                  />
+                                </div>
                                 <Link
                                   href={`/events/${eventId}/kiosk-stations/${station.id}`}
-                                  className="text-xs text-primary underline underline-offset-2 hover:text-primary/80"
+                                  className="shrink-0 text-xs text-primary underline underline-offset-2 hover:text-primary/80"
                                 >
                                   Manage
                                 </Link>
@@ -963,10 +1018,11 @@ export default function KioskStationsPage() {
                     <span className="h-px flex-1 bg-border" />
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {group.stations.map((station) => {
                       const status = computeStationStatus(station)
                       const meta = STATUS_META[status]
+                      const stale = isStaleQuiet(station)
                       const revoked = !!station.revoked_at
                       const isRenaming = renamingId === station.id
                       const selected = selectedIds.includes(station.id)
@@ -985,12 +1041,20 @@ export default function KioskStationsPage() {
                             <span
                               className={cn(
                                 "h-2 w-2 flex-shrink-0 rounded-full",
-                                meta.dot,
+                                stale ? "bg-destructive" : meta.dot,
                                 status === "online" && "animate-pulse"
                               )}
                             />
-                            <span className={cn("text-sm font-semibold", meta.label)} title={STATUS_MEANINGS[status]}>
+                            <span
+                              className={cn("text-sm font-semibold", stale ? "text-destructive" : meta.label)}
+                              title={
+                                stale
+                                  ? `${STATUS_MEANINGS[status]} Unreachable for over a day — likely off or disconnected, not just asleep.`
+                                  : STATUS_MEANINGS[status]
+                              }
+                            >
                               {STATION_STATUS_LABELS[status]}
+                              {stale && <span className="ml-1 font-normal text-destructive/80">· stale</span>}
                             </span>
                             <span className="ml-auto flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3 flex-shrink-0" />
