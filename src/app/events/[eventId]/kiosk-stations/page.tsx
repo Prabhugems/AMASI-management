@@ -36,7 +36,7 @@ import {
   X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { computeStationStatus, STATION_STATUS_LABELS } from "@/lib/kiosk-station-status"
+import { computeStationStatus, isStaleQuiet, STATION_STATUS_LABELS } from "@/lib/kiosk-station-status"
 import {
   STATUS_MEANINGS,
   stationUrl,
@@ -790,7 +790,7 @@ export default function KioskStationsPage() {
           ) : view === "list" ? (
             <div className="rounded-2xl border bg-card overflow-hidden">
               <div className="overflow-x-auto">
-                <div style={{ minWidth: "1100px" }}>
+                <div>
                   <div
                     className="grid gap-4 border-b bg-muted/40 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                     style={{ gridTemplateColumns: gridCols }}
@@ -806,7 +806,7 @@ export default function KioskStationsPage() {
                     <div>Station</div>
                     <div>Check-in Lists</div>
                     <div>Behaviour</div>
-                    <div className="text-right">Actions</div>
+                    <div className="whitespace-nowrap text-right">Actions</div>
                   </div>
 
                   {groups.map((group) => (
@@ -824,6 +824,7 @@ export default function KioskStationsPage() {
                       {group.stations.map((station) => {
                         const status = computeStationStatus(station)
                         const meta = STATUS_META[status]
+                        const stale = isStaleQuiet(station)
                         const revoked = !!station.revoked_at
                         const isRenaming = renamingId === station.id
                         const selected = selectedIds.includes(station.id)
@@ -852,16 +853,21 @@ export default function KioskStationsPage() {
                               <span
                                 className={cn(
                                   "mt-1.5 h-2 w-2 flex-shrink-0 rounded-full",
-                                  meta.dot,
+                                  stale ? "bg-destructive" : meta.dot,
                                   status === "online" && "animate-pulse"
                                 )}
                               />
                               <div className="min-w-0">
                                 <div
-                                  className={cn("text-sm font-semibold leading-tight", meta.label)}
-                                  title={STATUS_MEANINGS[status]}
+                                  className={cn("text-sm font-semibold leading-tight", stale ? "text-destructive" : meta.label)}
+                                  title={
+                                    stale
+                                      ? `${STATUS_MEANINGS[status]} Unreachable for over a day — likely off or disconnected, not just asleep.`
+                                      : STATUS_MEANINGS[status]
+                                  }
                                 >
                                   {STATION_STATUS_LABELS[status]}
+                                  {stale && <span className="ml-1 font-normal text-destructive/80">· stale</span>}
                                 </div>
                                 <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                                   <Clock className="h-3 w-3 flex-shrink-0" />
@@ -874,20 +880,22 @@ export default function KioskStationsPage() {
 
                             {/* Station name + printer */}
                             <div className="min-w-0 flex flex-col gap-1">
-                              <div className="flex items-center gap-2">
-                                <StationNameEditor
-                                  station={station}
-                                  isRenaming={isRenaming}
-                                  renameDraft={renameDraft}
-                                  onDraftChange={setRenameDraft}
-                                  renaming={renaming}
-                                  onStart={() => startRename(station)}
-                                  onCancel={cancelRename}
-                                  onSave={() => saveRename(station)}
-                                />
+                              <div className="flex min-w-0 items-center gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <StationNameEditor
+                                    station={station}
+                                    isRenaming={isRenaming}
+                                    renameDraft={renameDraft}
+                                    onDraftChange={setRenameDraft}
+                                    renaming={renaming}
+                                    onStart={() => startRename(station)}
+                                    onCancel={cancelRename}
+                                    onSave={() => saveRename(station)}
+                                  />
+                                </div>
                                 <Link
                                   href={`/events/${eventId}/kiosk-stations/${station.id}`}
-                                  className="text-xs text-primary underline underline-offset-2 hover:text-primary/80"
+                                  className="shrink-0 text-xs text-primary underline underline-offset-2 hover:text-primary/80"
                                 >
                                   Manage
                                 </Link>
@@ -967,6 +975,7 @@ export default function KioskStationsPage() {
                     {group.stations.map((station) => {
                       const status = computeStationStatus(station)
                       const meta = STATUS_META[status]
+                      const stale = isStaleQuiet(station)
                       const revoked = !!station.revoked_at
                       const isRenaming = renamingId === station.id
                       const selected = selectedIds.includes(station.id)
@@ -985,12 +994,20 @@ export default function KioskStationsPage() {
                             <span
                               className={cn(
                                 "h-2 w-2 flex-shrink-0 rounded-full",
-                                meta.dot,
+                                stale ? "bg-destructive" : meta.dot,
                                 status === "online" && "animate-pulse"
                               )}
                             />
-                            <span className={cn("text-sm font-semibold", meta.label)} title={STATUS_MEANINGS[status]}>
+                            <span
+                              className={cn("text-sm font-semibold", stale ? "text-destructive" : meta.label)}
+                              title={
+                                stale
+                                  ? `${STATUS_MEANINGS[status]} Unreachable for over a day — likely off or disconnected, not just asleep.`
+                                  : STATUS_MEANINGS[status]
+                              }
+                            >
                               {STATION_STATUS_LABELS[status]}
+                              {stale && <span className="ml-1 font-normal text-destructive/80">· stale</span>}
                             </span>
                             <span className="ml-auto flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3 flex-shrink-0" />
