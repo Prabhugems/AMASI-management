@@ -18,6 +18,28 @@ declare global {
 let usbDevice: any = null
 let usbEndpoint: number | null = null
 
+// Hardware-testing fix (found live, 2026-08): a page teardown that never
+// calls device.close() first (a manual browser refresh, closing the tab,
+// or previously, a plain <a href> navigation elsewhere in the app -- see
+// KioskStationShell's self-test link) leaves the OS thinking this interface
+// is still claimed by the browser, so the NEXT connection attempt -- even
+// from a completely fresh page load -- fails with "Unable to claim
+// interface" until the cable is physically unplugged and replugged.
+// `pagehide` (not `beforeunload`, which mobile Chrome doesn't reliably fire
+// and which blocks the bfcache) is the closest thing to a guaranteed
+// last-chance hook for this. Best-effort only: it cannot help the plain-
+// unplug or app-crash cases, but should be able to close the device before
+// most reload/navigation/tab-close ways this can happen.
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    if (usbDevice && usbDevice.opened) {
+      // Fire-and-forget -- the page is already being torn down, there's no
+      // way to await this, and it must never throw into an unload handler.
+      usbDevice.close().catch(() => {})
+    }
+  })
+}
+
 // Check if WebUSB is available in this browser
 export function isWebUSBSupported(): boolean {
   return typeof navigator !== "undefined" && "usb" in navigator
@@ -74,6 +96,7 @@ export async function connectUsbPrinter(): Promise<{
 
     // Find the printer interface and bulk OUT endpoint
     let foundInterface: any | null = null
+    let foundAlternate: any | null = null
     let foundEndpoint: any | null = null
 
     for (const iface of device.configuration!.interfaces) {
@@ -83,6 +106,7 @@ export async function connectUsbPrinter(): Promise<{
           for (const ep of alt.endpoints) {
             if (ep.direction === "out" && ep.type === "bulk") {
               foundInterface = iface
+              foundAlternate = alt
               foundEndpoint = ep
               break
             }
@@ -100,6 +124,7 @@ export async function connectUsbPrinter(): Promise<{
           for (const ep of alt.endpoints) {
             if (ep.direction === "out" && ep.type === "bulk") {
               foundInterface = iface
+              foundAlternate = alt
               foundEndpoint = ep
               break
             }
@@ -117,6 +142,22 @@ export async function connectUsbPrinter(): Promise<{
 
     // Claim the interface
     await device.claimInterface(foundInterface.interfaceNumber)
+
+    // Hardware-testing fix (found live, 2026-08, 4BARCODE 4B-2054TG): many
+    // USB-printer-class devices expose the data endpoints on a NON-default
+    // alternate setting (alternate 0 is often a bare "reserved" setting with
+    // no endpoints at all). claimInterface() alone leaves alternate 0 active
+    // -- it does NOT activate whichever alternate the endpoint above was
+    // actually found on. Without this, transferOut() below can appear to
+    // succeed (no thrown error) while the bytes never reach the print
+    // engine, because the endpoint being addressed doesn't belong to the
+    // interface's currently-active alternate setting. Only skip the call
+    // when the found alternate genuinely IS the default (0) -- some devices
+    // only ever expose one, and selecting it again is harmless anyway, but
+    // explicit is cheap here.
+    if (foundAlternate && foundAlternate.alternateSetting !== 0) {
+      await device.selectAlternateInterface(foundInterface.interfaceNumber, foundAlternate.alternateSetting)
+    }
 
     usbDevice = device
     usbEndpoint = foundEndpoint.endpointNumber
@@ -237,6 +278,7 @@ export async function reconnectUsbPrinter(): Promise<{
 
         // Find bulk OUT endpoint
         let foundInterface: any | null = null
+        let foundAlternate: any | null = null
         let foundEndpoint: any | null = null
 
         for (const iface of device.configuration!.interfaces) {
@@ -245,6 +287,7 @@ export async function reconnectUsbPrinter(): Promise<{
               for (const ep of alt.endpoints) {
                 if (ep.direction === "out" && ep.type === "bulk") {
                   foundInterface = iface
+                  foundAlternate = alt
                   foundEndpoint = ep
                   break
                 }
@@ -261,6 +304,7 @@ export async function reconnectUsbPrinter(): Promise<{
               for (const ep of alt.endpoints) {
                 if (ep.direction === "out" && ep.type === "bulk") {
                   foundInterface = iface
+                  foundAlternate = alt
                   foundEndpoint = ep
                   break
                 }
@@ -273,6 +317,10 @@ export async function reconnectUsbPrinter(): Promise<{
 
         if (foundInterface && foundEndpoint) {
           await device.claimInterface(foundInterface.interfaceNumber)
+          // See connectUsbPrinter() for why this is required, not optional.
+          if (foundAlternate && foundAlternate.alternateSetting !== 0) {
+            await device.selectAlternateInterface(foundInterface.interfaceNumber, foundAlternate.alternateSetting)
+          }
           usbDevice = device
           usbEndpoint = foundEndpoint.endpointNumber
           const name = device.productName || device.manufacturerName || "USB Printer"

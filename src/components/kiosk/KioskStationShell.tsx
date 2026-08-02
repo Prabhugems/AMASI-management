@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import * as Sentry from "@sentry/nextjs"
 import { ClipboardList, Printer } from "lucide-react"
 import { KioskCheckinScreen } from "./KioskCheckinScreen"
@@ -563,13 +564,22 @@ function KioskMenuScreen({
             </div>
             {/* Deliberately small and low-emphasis -- for the admin setting
                 up this tablet before it ships, never a job a volunteer would
-                mistake for a tile (work order §10). */}
-            <a
+                mistake for a tile (work order §10).
+                A real plain <a> here was a genuine hardware-testing bug
+                (found live, 2026-08): it forces a full browser page reload,
+                which tears down the WebUSB printer connection's JS session
+                without ever calling device.close() -- leaving the OS
+                thinking the interface is still claimed, so the next connect
+                attempt (on this page or back on the main screen) fails with
+                "Unable to claim interface". Link keeps this a client-side
+                transition in the same tab, so the live USB handle survives
+                the navigation. */}
+            <Link
               href={`/kiosk-station/${stationToken}/self-test`}
               className="text-xs text-muted-foreground underline hover:text-foreground"
             >
               Station self-test
-            </a>
+            </Link>
           </div>
         </div>
 
