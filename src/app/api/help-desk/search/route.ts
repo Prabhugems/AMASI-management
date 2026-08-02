@@ -19,7 +19,14 @@ export async function GET(request: NextRequest) {
   const { error: authError } = await requireEventAndPermission(eventId, "checkin")
   if (authError) return authError
 
-  const term = sanitizeSearchInput(query || "")
+  // Bug-audit fix (2026-08): sanitizeSearchInput escapes ilike wildcards
+  // (%, _) and strips quotes/semicolons, but not the comma/parenthesis
+  // characters that are structural in PostgREST's .or() filter syntax below
+  // -- see /api/kiosk/checkin's own stripping of exactly these characters
+  // for the identical reason. A delegate whose name or institution
+  // legitimately contains one (e.g. "Apollo Hospitals (Cardiology), Chennai")
+  // couldn't be found by the exact text on their badge.
+  const term = sanitizeSearchInput((query || "").replace(/[(),]/g, ""))
   if (term.trim().length < 2) {
     return NextResponse.json({ data: [] })
   }
