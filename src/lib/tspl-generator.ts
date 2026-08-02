@@ -176,22 +176,30 @@ function buildLargeDiagnosticJob(): Uint8Array {
 // compare: a small known-good one, and one at real data-volume to isolate
 // whether this printer has a structural limit at that size independent of
 // content.
-// A ruled 4x6 label: a solid tick-mark bar drawn at every 1-inch increment
-// (0 through 6), each labeled with its inch number. Built at the exact
-// paper size a real badge declares -- SIZE 4 in,6 in -- so the physical
-// distance between consecutive tick marks on the printed label IS the
-// ground truth for whatever the printer's feed/calibration actually does,
-// independent of any bitmap/dithering content. Measure with a ruler: if
-// the marks land at 0/1/2/3/4/5/6 inches apart, the printer is feeding
-// correctly for this exact command and the 1.5x issue is happening
-// somewhere else; if they're spread further apart than 1 inch each
-// (proportionally, e.g. every mark 1.5x too far from the last), that's
-// definitive proof it's the printer's own feed, not this software.
+// A ruled 4x6 label: an inch-number label printed at every 1-inch increment
+// (0 through 6). Built at the exact paper size a real badge declares --
+// SIZE 4 in,6 in -- so the physical distance between consecutive labels on
+// the printed label IS the ground truth for whatever the printer's
+// feed/calibration actually does, independent of any bitmap/dithering
+// content. Measure with a ruler: if the labels land 0/1/2/3/4/5/6 inches
+// apart, the printer is feeding correctly for this exact command and the
+// 1.5x issue is happening somewhere else; if they're spread further apart
+// than 1 inch each (proportionally), that's evidence of the printer's own
+// feed, not this software.
+//
+// TEXT-only, deliberately no BAR command: an earlier version used BAR to
+// draw a tick-mark line at each label, and printed ~1.5x too long even
+// after fixing an unrelated negative-coordinate bug in the same job (live
+// hardware test, 2026-08) -- while job 1 in the same combined test print
+// (small checkerboard + TEXT labels, no BAR at all) has always printed at
+// the correct size. BAR is the one command type in this file with zero
+// prior confirmed-working use on this printer's TSPL dialect; removing it
+// isolates whether it's the actual cause without another guess-and-reprint
+// cycle.
 function buildRulerVerificationJob(): Uint8Array {
   const DOTS_PER_INCH = 203
   const WIDTH_IN = 4
   const HEIGHT_IN = 6
-  const BAR_WIDTH_DOTS = Math.round(WIDTH_IN * DOTS_PER_INCH * 0.6) // 60% of width, easy to see it's a ruled line, not a border
 
   const lines: string[] = [
     `SIZE ${WIDTH_IN} in,${HEIGHT_IN} in\r\n`,
@@ -199,17 +207,13 @@ function buildRulerVerificationJob(): Uint8Array {
     `DIRECTION 0\r\n`,
     `CLS\r\n`,
   ]
+  // Total label height, minus a margin for the text glyph's own height so
+  // the last label's text doesn't render past the declared canvas bound the
+  // same way the removed BAR command's last tick mark did.
+  const maxY = HEIGHT_IN * DOTS_PER_INCH - 24
   for (let inch = 0; inch <= HEIGHT_IN; inch++) {
-    const y = inch * DOTS_PER_INCH
-    // Label Y is offset up slightly to vertically center it against the bar,
-    // but must never go negative -- live hardware test (2026-08) found the
-    // very first label (inch 0, y=0-8=-8) at a negative TSPL coordinate
-    // likely confused this job's command parsing, producing a 1.5x-too-long
-    // print for this job specifically while an identically-sized job sent
-    // immediately before it (no negative coordinates) printed perfectly.
-    const labelY = Math.max(0, y - 8)
-    lines.push(`BAR 0,${y},${BAR_WIDTH_DOTS},3\r\n`)
-    lines.push(`TEXT ${BAR_WIDTH_DOTS + 10},${labelY},"2",0,1,1,"${inch} in"\r\n`)
+    const y = Math.min(inch * DOTS_PER_INCH, maxY)
+    lines.push(`TEXT 10,${y},"2",0,1,1,"${inch} in"\r\n`)
   }
   lines.push(`PRINT 1,1\r\n`)
 
