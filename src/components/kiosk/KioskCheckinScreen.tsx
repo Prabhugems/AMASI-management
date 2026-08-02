@@ -60,6 +60,9 @@ import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { isNetworkFailure } from "@/lib/offline-scan-queue"
 import { resolveStationName } from "@/lib/kiosk-station-lookup-client"
 import { CATEGORY_COLORS, type ListCategory } from "@/lib/checkin-list-category"
+import { useScreenWakeLock } from "@/hooks/use-screen-wake-lock"
+import { useForceLightTheme } from "@/hooks/use-force-light-theme"
+import { BatteryStatusBadge } from "@/components/kiosk/BatteryStatusBadge"
 
 type CheckinResult = {
   success: boolean
@@ -166,6 +169,18 @@ export function KioskCheckinScreen({
   category,
 }: KioskCheckinScreenProps) {
   const supabase = createClient()
+
+  // This component's mount lifetime IS "a job is active" (KioskStationShell
+  // unmounts it entirely when returning to the menu, and the direct-URL
+  // /kiosk/[eventId]/[listId] path never shows a menu at all) -- so holding
+  // the wake lock for this component's whole lifetime, with no extra active/
+  // inactive state of its own, already implements work order §6.1 exactly
+  // ("hold while a job is active, release on the menu").
+  useScreenWakeLock()
+  // Shared kiosk tablets have no per-user theme preference and sit under
+  // bright hall lighting -- see the hook for why this overrides the site-wide
+  // dark default (work order §2.4).
+  useForceLightTheme()
 
   // Render-time / effect-gating printer type -- from the top-level SSR
   // prop (always synchronously available), NOT the offline-cached
@@ -1809,22 +1824,22 @@ export function KioskCheckinScreen({
       )
     }
     return (
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+      <div className="fixed inset-0 bg-background flex flex-col">
         {/* Header */}
-        <div className="bg-gray-800/50 border-b border-white/10 px-4 sm:px-8 py-4">
+        <div className="bg-card border-b border-border px-4 sm:px-8 py-4">
           <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
                 {event?.short_name || event?.name}
               </h1>
-              <p className="text-xs sm:text-sm text-gray-400 truncate">
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">
                 {listName}
                 {stationName && ` · ${stationName}`}
               </p>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-xs sm:text-sm text-gray-400">Auto-reset in</p>
-              <p className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
+              <p className="text-xs sm:text-sm text-muted-foreground">Auto-reset in</p>
+              <p className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums">
                 {countdown}s
               </p>
             </div>
@@ -1840,54 +1855,54 @@ export function KioskCheckinScreen({
                 <div className="mb-8 relative w-32 h-32 sm:w-40 sm:h-40 mx-auto">
                   <span className="absolute inset-0 rounded-full bg-emerald-500/30 animate-ping" />
                   <div className="relative w-full h-full rounded-full bg-emerald-500/20 outline outline-1 -outline-offset-1 outline-emerald-500/40 flex items-center justify-center">
-                    <CheckCircle2 className="h-16 w-16 sm:h-20 sm:w-20 text-emerald-300" />
+                    <CheckCircle2 className="h-16 w-16 sm:h-20 sm:w-20 text-emerald-600" />
                   </div>
                 </div>
 
-                <h1 className="text-3xl sm:text-5xl font-bold text-white mb-3">
+                <h1 className="text-3xl sm:text-5xl font-bold text-foreground mb-3">
                   Welcome, {result.registration?.attendee_name?.split(" ")[0]}!
                 </h1>
-                <p className="text-base sm:text-xl text-emerald-300 mb-2">
+                <p className="text-base sm:text-xl text-emerald-700 mb-2">
                   {result.alreadyCheckedIn ? "You're already checked in" : "Check-in successful"}
                 </p>
                 {result.warning && (
-                  <p className="text-sm text-amber-300 mb-6 max-w-md mx-auto">{result.warning}</p>
+                  <p className="text-sm text-amber-800 mb-6 max-w-md mx-auto">{result.warning}</p>
                 )}
                 {!result.warning && <div className="mb-8" />}
 
                 {/* Details — stacked-list pattern */}
-                <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg overflow-hidden mb-8 text-left">
-                  <ul className="divide-y divide-white/5">
+                <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg overflow-hidden mb-8 text-left">
+                  <ul className="divide-y divide-border">
                     <li className="flex items-center gap-x-4 px-5 py-4">
-                      <div className="size-10 flex-none rounded-full bg-white/5 outline outline-1 -outline-offset-1 outline-white/10 flex items-center justify-center text-white/60">
+                      <div className="size-10 flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
                         <User className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-400 uppercase tracking-wide">Name</p>
-                        <p className="mt-0.5 text-base sm:text-lg font-medium text-white">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Name</p>
+                        <p className="mt-0.5 text-base sm:text-lg font-medium text-foreground">
                           {result.registration?.attendee_name}
                         </p>
                       </div>
                     </li>
                     <li className="flex items-center gap-x-4 px-5 py-4">
-                      <div className="size-10 flex-none rounded-full bg-white/5 outline outline-1 -outline-offset-1 outline-white/10 flex items-center justify-center text-white/60">
+                      <div className="size-10 flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
                         <Ticket className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-400 uppercase tracking-wide">Registration</p>
-                        <p className="mt-0.5 text-base sm:text-lg font-medium text-white font-mono">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Registration</p>
+                        <p className="mt-0.5 text-base sm:text-lg font-medium text-foreground font-mono">
                           {result.registration?.registration_number}
                         </p>
                       </div>
                     </li>
                     {result.registration?.attendee_designation && (
                       <li className="flex items-center gap-x-4 px-5 py-4">
-                        <div className="size-10 flex-none rounded-full bg-white/5 outline outline-1 -outline-offset-1 outline-white/10 flex items-center justify-center text-white/60">
+                        <div className="size-10 flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
                           <Briefcase className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs text-gray-400 uppercase tracking-wide">Designation</p>
-                          <p className="mt-0.5 text-base sm:text-lg font-medium text-white">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Designation</p>
+                          <p className="mt-0.5 text-base sm:text-lg font-medium text-foreground">
                             {result.registration.attendee_designation}
                           </p>
                         </div>
@@ -1895,12 +1910,12 @@ export function KioskCheckinScreen({
                     )}
                     {result.registration?.attendee_institution && (
                       <li className="flex items-center gap-x-4 px-5 py-4">
-                        <div className="size-10 flex-none rounded-full bg-white/5 outline outline-1 -outline-offset-1 outline-white/10 flex items-center justify-center text-white/60">
+                        <div className="size-10 flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
                           <Building2 className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs text-gray-400 uppercase tracking-wide">Institution</p>
-                          <p className="mt-0.5 text-base sm:text-lg font-medium text-white">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Institution</p>
+                          <p className="mt-0.5 text-base sm:text-lg font-medium text-foreground">
                             {result.registration.attendee_institution}
                           </p>
                         </div>
@@ -1911,10 +1926,10 @@ export function KioskCheckinScreen({
 
                 {mode === "checkin_and_print" && printStatus && !printStatus.success && (
                   <div className="mb-8 rounded-lg border border-amber-500/30 bg-amber-500/10 p-5 sm:p-6 text-left">
-                    <p className="text-lg sm:text-xl font-bold text-amber-300 mb-1">
+                    <p className="text-lg sm:text-xl font-bold text-amber-800 mb-1">
                       Checked in — badge did not print
                     </p>
-                    <p className="text-sm text-amber-200/80 mb-4">
+                    <p className="text-sm text-amber-800/80 mb-4">
                       Check the printer: labels loaded, cable connected, lid closed.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3">
@@ -1930,7 +1945,7 @@ export function KioskCheckinScreen({
                       <Button
                         size="lg"
                         variant="outline"
-                        className="h-12 px-6 text-sm bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                        className="h-12 px-6 text-sm bg-transparent border-border text-foreground hover:bg-muted"
                         onClick={resetKiosk}
                       >
                         Skip and continue
@@ -1944,7 +1959,7 @@ export function KioskCheckinScreen({
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                    className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-transparent border-border text-foreground hover:bg-muted"
                     onClick={resetKiosk}
                   >
                     <RotateCcw className="h-5 w-5 mr-2" />
@@ -2003,7 +2018,7 @@ export function KioskCheckinScreen({
                       <Button
                         size="lg"
                         variant="outline"
-                        className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                        className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-transparent border-border text-foreground hover:bg-muted"
                         onClick={handleConnectPrinter}
                       >
                         Connect Printer
@@ -2032,10 +2047,10 @@ export function KioskCheckinScreen({
                   </div>
                 </div>
 
-                <h1 className="text-3xl sm:text-5xl font-bold text-white mb-3">
+                <h1 className="text-3xl sm:text-5xl font-bold text-foreground mb-3">
                   Check-in failed
                 </h1>
-                <p className="text-base sm:text-xl text-red-300 mb-8 max-w-md mx-auto">
+                <p className="text-base sm:text-xl text-red-700 mb-8 max-w-md mx-auto">
                   {result.message}
                 </p>
 
@@ -2053,12 +2068,12 @@ export function KioskCheckinScreen({
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-800/50 border-t border-white/10 px-4 sm:px-8 py-4 text-center">
-          <p className="text-xs sm:text-sm text-gray-400">
+        <div className="bg-card border-t border-border px-4 sm:px-8 py-4 text-center">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Touch anywhere or wait {countdown} seconds to check in another person
           </p>
           {printStatus && (
-            <p className={printStatus.success ? "text-xs text-emerald-400 mt-1" : "text-xs text-red-400 mt-1"}>
+            <p className={printStatus.success ? "text-xs text-emerald-700 mt-1" : "text-xs text-red-700 mt-1"}>
               {printStatus.message}
             </p>
           )}
@@ -2135,7 +2150,7 @@ export function KioskCheckinScreen({
   // ============================================================
   return (
     <div
-      className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col"
+      className="fixed inset-0 bg-background flex flex-col"
       onClick={() => inputRef.current?.focus()}
     >
       {/* Header — coloured by the active list's category (blue/violet/cyan)
@@ -2236,18 +2251,18 @@ export function KioskCheckinScreen({
             <div className="size-20 sm:size-28 mx-auto rounded-3xl bg-indigo-500/15 outline outline-1 -outline-offset-1 outline-indigo-500/30 flex items-center justify-center mb-6 text-indigo-300">
               <QrCode className="h-12 w-12 sm:h-16 sm:w-16" />
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-2">Self check-in</h2>
-            <p className="text-base sm:text-lg text-gray-400 max-w-md mx-auto">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">Self check-in</h2>
+            <p className="text-base sm:text-lg text-muted-foreground max-w-md mx-auto">
               Scan QR code or enter your name, phone, or registration number
             </p>
           </div>
 
           {/* Scan mode toggle */}
-          <div className="flex bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-xl p-1 mb-4">
+          <div className="flex bg-card outline outline-1 -outline-offset-1 outline-border rounded-xl p-1 mb-4">
             <button
               onClick={() => setScanMode("camera")}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
-                scanMode === "camera" ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
+                scanMode === "camera" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Camera className="w-5 h-5" />
@@ -2256,7 +2271,7 @@ export function KioskCheckinScreen({
             <button
               onClick={() => setScanMode("manual")}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
-                scanMode === "manual" ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
+                scanMode === "manual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Keyboard className="w-5 h-5" />
@@ -2266,7 +2281,7 @@ export function KioskCheckinScreen({
 
           {scanMode === "camera" ? (
             /* Camera viewport — action-panel surface */
-            <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-4 sm:p-5">
+            <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg p-4 sm:p-5">
               <div className="relative">
                 <div
                   id={scannerContainerId}
@@ -2317,11 +2332,11 @@ export function KioskCheckinScreen({
                   </div>
                 )}
               </div>
-              <p className="mt-4 text-center text-sm text-gray-400">
+              <p className="mt-4 text-center text-sm text-muted-foreground">
                 Point camera at your badge QR code
               </p>
               {isProcessing && (
-                <div className="mt-3 flex items-center justify-center gap-2 text-emerald-400">
+                <div className="mt-3 flex items-center justify-center gap-2 text-emerald-600">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-sm font-medium">Checking in…</span>
                 </div>
@@ -2329,7 +2344,7 @@ export function KioskCheckinScreen({
             </div>
           ) : (
             /* Manual / external-scanner input panel — action-panel surface */
-            <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-5 sm:p-6">
+            <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg p-5 sm:p-6">
               <div className="relative">
                 <Input
                   ref={inputRef}
@@ -2338,7 +2353,7 @@ export function KioskCheckinScreen({
                   value={registrationNumber}
                   onChange={handleRegChange}
                   onKeyDown={handleKeyDown}
-                  className="h-14 sm:h-16 text-base sm:text-xl text-center bg-white text-slate-900 border-0 rounded-xl placeholder:text-slate-400 pr-14"
+                  className="h-14 sm:h-16 text-base sm:text-xl text-center bg-white text-slate-900 border border-border rounded-xl placeholder:text-slate-400 pr-14"
                   autoComplete="off"
                   autoFocus
                 />
@@ -2375,24 +2390,24 @@ export function KioskCheckinScreen({
 
           {/* Instructions — action-panel cards */}
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-4 flex items-start gap-3">
-              <div className="size-10 flex-none rounded-full bg-blue-500/15 outline outline-1 -outline-offset-1 outline-blue-500/30 flex items-center justify-center text-blue-300">
+            <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg p-4 flex items-start gap-3">
+              <div className="size-10 flex-none rounded-full bg-blue-500/15 outline outline-1 -outline-offset-1 outline-blue-500/30 flex items-center justify-center text-blue-700">
                 <QrCode className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-white">Badge scanner</p>
-                <p className="mt-0.5 text-xs text-gray-400">
+                <p className="text-sm font-semibold text-foreground">Badge scanner</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   Scan your badge with the scanner at this kiosk
                 </p>
               </div>
             </div>
-            <div className="bg-gray-800/50 outline outline-1 -outline-offset-1 outline-white/10 rounded-lg p-4 flex items-start gap-3">
-              <div className="size-10 flex-none rounded-full bg-purple-500/15 outline outline-1 -outline-offset-1 outline-purple-500/30 flex items-center justify-center text-purple-300">
+            <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg p-4 flex items-start gap-3">
+              <div className="size-10 flex-none rounded-full bg-purple-500/15 outline outline-1 -outline-offset-1 outline-purple-500/30 flex items-center justify-center text-purple-700">
                 <Keyboard className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-white">Manual entry</p>
-                <p className="mt-0.5 text-xs text-gray-400">
+                <p className="text-sm font-semibold text-foreground">Manual entry</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   Type your name, phone number, or registration ID
                 </p>
               </div>
@@ -2402,38 +2417,39 @@ export function KioskCheckinScreen({
       </div>
 
       {/* Footer */}
-      <div className="bg-gray-800/50 border-t border-white/10 px-4 sm:px-8 py-4 text-center">
+      <div className="bg-card border-t border-border px-4 sm:px-8 py-4 text-center">
         {/* Persistent status strip -- so a silently-disconnected printer or
             a dead camera doesn't look identical to "working fine" on an
             unattended device. */}
         <div className="flex items-center justify-center flex-wrap gap-x-3 gap-y-1 mb-2 text-[11px]">
-          <span className={`inline-flex items-center gap-1 ${isOnline ? "text-emerald-400" : "text-amber-400"}`}>
-            <span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-400" : "bg-amber-400"}`} />
+          <span className={`inline-flex items-center gap-1 ${isOnline ? "text-emerald-700" : "text-amber-700"}`}>
+            <span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-amber-500"}`} />
             {isOnline ? "Online" : "Offline"}
           </span>
           {scanMode === "camera" && (
-            <span className={`inline-flex items-center gap-1 ${cameraActive ? "text-emerald-400" : cameraError ? "text-red-400" : "text-gray-500"}`}>
-              <span className={`size-1.5 rounded-full ${cameraActive ? "bg-emerald-400" : cameraError ? "bg-red-400" : "bg-gray-500"}`} />
+            <span className={`inline-flex items-center gap-1 ${cameraActive ? "text-emerald-700" : cameraError ? "text-red-700" : "text-muted-foreground"}`}>
+              <span className={`size-1.5 rounded-full ${cameraActive ? "bg-emerald-500" : cameraError ? "bg-red-500" : "bg-muted-foreground"}`} />
               {cameraActive ? "Camera active" : cameraError ? "Camera error" : "Camera starting…"}
             </span>
           )}
           {mode === "checkin_and_print" && (usbSupported || printerType === "browser") && (
-            <span className={`inline-flex items-center gap-1 ${(printerType === "browser" ? printerVerified : printerConnected && printerVerified) ? "text-emerald-400" : "text-red-400"}`}>
-              <span className={`size-1.5 rounded-full ${(printerType === "browser" ? printerVerified : printerConnected && printerVerified) ? "bg-emerald-400" : "bg-red-400"}`} />
+            <span className={`inline-flex items-center gap-1 ${(printerType === "browser" ? printerVerified : printerConnected && printerVerified) ? "text-emerald-700" : "text-red-700"}`}>
+              <span className={`size-1.5 rounded-full ${(printerType === "browser" ? printerVerified : printerConnected && printerVerified) ? "bg-emerald-500" : "bg-red-500"}`} />
               {(printerType === "browser" ? printerVerified : printerConnected && printerVerified) ? "Printer ready" : "Printer problem — call for help"}
             </span>
           )}
+          <BatteryStatusBadge />
         </div>
-        <p className="text-xs sm:text-sm text-gray-400">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Need help? Please contact the registration desk
         </p>
         {helpRequestId ? (
-          <p className="text-xs text-emerald-400 mt-1">Help requested — an admin has been notified.</p>
+          <p className="text-xs text-emerald-700 mt-1">Help requested — an admin has been notified.</p>
         ) : (
           <button
             onClick={handleRequestHelp}
             disabled={requestingHelp}
-            className="text-xs text-indigo-300 underline hover:text-indigo-200 mt-1 disabled:opacity-50"
+            className="text-xs text-indigo-600 underline hover:text-indigo-800 mt-1 disabled:opacity-50"
           >
             {requestingHelp ? "Sending…" : "Tap here to notify an admin"}
           </button>
@@ -2442,16 +2458,16 @@ export function KioskCheckinScreen({
           <button
             onClick={() => printBadge(lastPrintedRegistration)}
             disabled={printing}
-            className="text-xs text-indigo-300 underline hover:text-indigo-200 mt-1 disabled:opacity-50"
+            className="text-xs text-indigo-600 underline hover:text-indigo-800 mt-1 disabled:opacity-50"
           >
             {printing ? "Reprinting…" : `Reprint badge for ${lastPrintedRegistration.attendee_name}`}
           </button>
         )}
         {cacheError && (
-          <p className="text-xs text-red-400 mt-1">{cacheError}</p>
+          <p className="text-xs text-red-700 mt-1">{cacheError}</p>
         )}
         {pendingSyncCount > 0 && (
-          <p className="text-xs text-gray-500 mt-1">Syncing {pendingSyncCount} check-in{pendingSyncCount === 1 ? "" : "s"}…</p>
+          <p className="text-xs text-muted-foreground mt-1">Syncing {pendingSyncCount} check-in{pendingSyncCount === 1 ? "" : "s"}…</p>
         )}
       </div>
     </div>
@@ -2524,13 +2540,13 @@ function PrinterSetupScreen({
   onSwitchList,
 }: PrinterSetupScreenProps) {
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
-      <div className="bg-gray-800/50 border-b border-white/10 px-4 sm:px-8 py-4 sm:py-6">
+    <div className="fixed inset-0 bg-background flex flex-col">
+      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-6">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-white truncate">{eventName || "Event"}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">{eventName || "Event"}</h1>
           {stationName && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/15 px-3 py-1 text-xs sm:text-sm font-bold uppercase tracking-wide text-indigo-300 shrink-0">
-              <span className="size-1.5 rounded-full bg-indigo-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/15 px-3 py-1 text-xs sm:text-sm font-bold uppercase tracking-wide text-indigo-700 shrink-0">
+              <span className="size-1.5 rounded-full bg-indigo-500" />
               {stationName}
             </span>
           )}
@@ -2540,36 +2556,36 @@ function PrinterSetupScreen({
       <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
         <div className="max-w-md w-full">
           <div className="text-center mb-6">
-            <div className="size-20 sm:size-24 mx-auto rounded-3xl bg-indigo-500/15 outline outline-1 -outline-offset-1 outline-indigo-500/30 flex items-center justify-center mb-5 text-indigo-300">
+            <div className="size-20 sm:size-24 mx-auto rounded-3xl bg-indigo-500/15 outline outline-1 -outline-offset-1 outline-indigo-500/30 flex items-center justify-center mb-5 text-indigo-700">
               <Printer className="h-10 w-10 sm:h-12 sm:w-12" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Set up the printer</h2>
-            <p className="text-sm sm:text-base text-gray-400">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Set up the printer</h2>
+            <p className="text-sm sm:text-base text-muted-foreground">
               {`${listName} prints a badge on check-in. Connect and test it now — the delegate line can't wait while you find out it's dead.`}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-gray-800/50 p-5 sm:p-6 space-y-4">
+          <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium text-gray-300">Status</span>
+              <span className="text-sm font-medium text-foreground">Status</span>
               {checking ? (
-                <span className="inline-flex items-center gap-1.5 text-sm text-gray-400">
+                <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking…
                 </span>
               ) : printerType === "browser" ? (
-                <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${printerVerified ? "text-emerald-400" : "text-gray-400"}`}>
-                  <span className={`size-1.5 rounded-full ${printerVerified ? "bg-emerald-400" : "bg-gray-500"}`} />
+                <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${printerVerified ? "text-emerald-700" : "text-muted-foreground"}`}>
+                  <span className={`size-1.5 rounded-full ${printerVerified ? "bg-emerald-500" : "bg-muted-foreground"}`} />
                   {printerVerified ? "Verified" : "Not tested yet"}
                 </span>
               ) : (
                 <span
                   className={`inline-flex items-center gap-1.5 text-sm font-semibold ${
-                    !printerConnected ? "text-gray-400" : printerVerified ? "text-emerald-400" : "text-amber-400"
+                    !printerConnected ? "text-muted-foreground" : printerVerified ? "text-emerald-700" : "text-amber-700"
                   }`}
                 >
                   <span
                     className={`size-1.5 rounded-full ${
-                      !printerConnected ? "bg-gray-500" : printerVerified ? "bg-emerald-400" : "bg-amber-400"
+                      !printerConnected ? "bg-muted-foreground" : printerVerified ? "bg-emerald-500" : "bg-amber-500"
                     }`}
                   />
                   {!printerConnected
@@ -2582,7 +2598,7 @@ function PrinterSetupScreen({
             </div>
 
             {printerType !== "browser" && !usbSupported && !checking && (
-              <p className="text-xs text-amber-400">
+              <p className="text-xs text-amber-700">
                 This browser can&apos;t connect to a printer over USB. Use Chrome or Edge, or skip and print
                 elsewhere.
               </p>
@@ -2591,11 +2607,11 @@ function PrinterSetupScreen({
             {(printerType === "browser" || usbSupported) && (
               awaitingPrintConfirm ? (
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-300 text-center">Did a badge come out?</p>
+                  <p className="text-sm text-foreground text-center">Did a badge come out?</p>
                   <div className="grid grid-cols-2 gap-3">
                     <Button
                       variant="outline"
-                      className="h-12 bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                      className="h-12 bg-transparent border-border text-foreground hover:bg-muted"
                       onClick={() => onConfirmTestPrint(false)}
                     >
                       No
@@ -2614,7 +2630,7 @@ function PrinterSetupScreen({
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     variant="outline"
-                    className="h-12 bg-transparent border-white/15 text-white hover:bg-white/10 hover:text-white"
+                    className="h-12 bg-transparent border-border text-foreground hover:bg-muted"
                     onClick={onConnect}
                     disabled={checking}
                   >
@@ -2628,9 +2644,9 @@ function PrinterSetupScreen({
               )
             )}
 
-            {connectStatus && !connectStatus.success && <p className="text-xs text-red-400">{connectStatus.message}</p>}
+            {connectStatus && !connectStatus.success && <p className="text-xs text-red-700">{connectStatus.message}</p>}
             {testPrintStatus && (
-              <p className={testPrintStatus.success ? "text-xs text-emerald-400" : "text-xs text-red-400"}>
+              <p className={testPrintStatus.success ? "text-xs text-emerald-700" : "text-xs text-red-700"}>
                 {testPrintStatus.message}
               </p>
             )}
@@ -2641,7 +2657,7 @@ function PrinterSetupScreen({
           </Button>
 
           {contactPhone && (
-            <p className="mt-4 text-center text-xs text-gray-500">
+            <p className="mt-4 text-center text-xs text-muted-foreground">
               Printer trouble? Call {contactPhone}
             </p>
           )}
@@ -2661,26 +2677,27 @@ function PrinterSetupScreen({
         </div>
       </div>
 
-      <div className="bg-gray-800/50 border-t border-white/10 px-4 sm:px-8 py-3 text-center">
+      <div className="bg-card border-t border-border px-4 sm:px-8 py-3 text-center">
         <div className="flex items-center justify-center flex-wrap gap-x-3 gap-y-1 text-[11px]">
-          <span className={`inline-flex items-center gap-1 ${isOnline ? "text-emerald-400" : "text-amber-400"}`}>
-            <span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-400" : "bg-amber-400"}`} />
+          <span className={`inline-flex items-center gap-1 ${isOnline ? "text-emerald-700" : "text-amber-700"}`}>
+            <span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-amber-500"}`} />
             {isOnline ? "Online" : "Offline"}
           </span>
           {usbSupported && (
             <span
               className={`inline-flex items-center gap-1 ${
-                !printerConnected ? "text-gray-500" : printerVerified ? "text-emerald-400" : "text-amber-400"
+                !printerConnected ? "text-muted-foreground" : printerVerified ? "text-emerald-700" : "text-amber-700"
               }`}
             >
               <span
                 className={`size-1.5 rounded-full ${
-                  !printerConnected ? "bg-gray-500" : printerVerified ? "bg-emerald-400" : "bg-amber-400"
+                  !printerConnected ? "bg-muted-foreground" : printerVerified ? "bg-emerald-500" : "bg-amber-500"
                 }`}
               />
               {!printerConnected ? "Printer not connected" : printerVerified ? "Printer verified" : "Printer connected — not tested"}
             </span>
           )}
+          <BatteryStatusBadge />
         </div>
       </div>
     </div>
@@ -3092,7 +3109,7 @@ function CollectionReadyScreen({
                   value={registrationNumber}
                   onChange={handleRegChange}
                   onKeyDown={handleKeyDown}
-                  className="h-14 sm:h-16 text-base sm:text-xl text-center bg-white text-slate-900 border-0 rounded-xl placeholder:text-slate-400 pr-14"
+                  className="h-14 sm:h-16 text-base sm:text-xl text-center bg-white text-slate-900 border border-border rounded-xl placeholder:text-slate-400 pr-14"
                   autoComplete="off"
                   autoFocus
                 />
