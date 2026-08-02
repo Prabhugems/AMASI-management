@@ -238,6 +238,41 @@ describe("POST /api/kiosk/checkin", () => {
     expect(mock.calls.some((c) => c.table === "checkin_records" && c.method === "insert")).toBe(false)
   })
 
+  it("bug-audit follow-up: reactivates a REVERSED delegate the same way as a checked-out one", async () => {
+    mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
+    mock.queueResponse("registrations", { data: baseRegistration(), error: null })
+    mock.queueResponse("checkin_lists", { data: baseList({ ticket_type_ids: [] }), error: null })
+    mock.queueResponse("checkin_records", {
+      data: {
+        id: "cr-existing",
+        checked_in_at: "2026-07-20T09:00:00Z",
+        station_id: null,
+        checked_out_at: null,
+        reversed_at: "2026-07-20T09:15:00Z",
+      },
+      error: null,
+    }) // existing-record check -- reversed by help desk
+    mock.queueResponse("checkin_records", { data: null, error: null }) // reactivation update
+    mock.queueResponse("registrations", { data: null, error: null }) // registrations update
+
+    const { POST } = await import("./route")
+    const res = await POST(checkinRequest(baseBody()))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(body.alreadyCheckedIn).toBe(false)
+    expect(body.message).toBe("Check-in successful!")
+
+    const updateCall = mock.calls.find((c) => c.table === "checkin_records" && c.method === "update")
+    expect(updateCall).toBeDefined()
+    const updatePayload = updateCall!.args[0] as { reversed_at: unknown; reversed_by: unknown; reversal_reason: unknown }
+    expect(updatePayload.reversed_at).toBeNull()
+    expect(updatePayload.reversed_by).toBeNull()
+    expect(updatePayload.reversal_reason).toBeNull()
+    expect(mock.calls.some((c) => c.table === "checkin_records" && c.method === "insert")).toBe(false)
+  })
+
   it("500s if reactivating a checked-out delegate's row fails", async () => {
     mock.queueResponse("checkin_records", { data: null, error: null }) // scan_id lookup
     mock.queueResponse("registrations", { data: baseRegistration(), error: null })
