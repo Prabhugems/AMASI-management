@@ -97,4 +97,46 @@ describe("POST /api/verify/[token]", () => {
     expect(auditInsert).toBeDefined()
     expect((auditInsert!.args[0] as { success: boolean }).success).toBe(false)
   })
+
+  it("bug-audit fix: excludes reversed check-ins from the already-checked-in query, so a reversed record doesn't block a real re-scan", async () => {
+    mock.queueResponse("checkin_lists", { data: baseCheckinList(), error: null })
+    mock.queueResponse("registrations", {
+      data: {
+        id: REG_ID,
+        registration_number: "REG-003",
+        attendee_name: "Reversed Delegate",
+        status: "confirmed",
+        event_id: EVENT_A,
+        ticket_types: { id: "t1", name: "Delegate" },
+        events: { id: EVENT_A, name: "AMASICON" },
+      },
+      error: null,
+    })
+    // Nothing found -- the help desk reversed the prior record, so the
+    // "already checked in" lookup (which now excludes reversed_at) finds
+    // nothing and this is free to proceed as a fresh check-in.
+    mock.queueResponse("checkin_records", { data: null, error: null }) // existingRecord check
+    mock.queueResponse("checkin_records", { data: null, error: null }) // race-guard re-check
+    mock.queueResponse("checkin_records", { data: null, error: null }) // insert
+
+    const { POST } = await import("./route")
+    const res = await POST(
+      makeRequest(`http://localhost/api/verify/${SECURE_TOKEN}`, {
+        method: "POST",
+        body: { access_token: ACCESS_TOKEN, action: "check_in" },
+      }),
+      { params: Promise.resolve({ token: SECURE_TOKEN }) }
+    )
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.success).toBe(true)
+    expect(body.action).not.toBe("already_checked_in")
+
+    // Both existence checks must actually filter on reversed_at, not just
+    // checked_out_at -- this is what closes the audited gap.
+    const isCalls = mock.calls.filter((c) => c.table === "checkin_records" && c.method === "is")
+    const reversedAtCalls = isCalls.filter((c) => c.args[0] === "reversed_at" && c.args[1] === null)
+    expect(reversedAtCalls.length).toBeGreaterThanOrEqual(2)
+  })
 })
