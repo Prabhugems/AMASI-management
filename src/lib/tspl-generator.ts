@@ -55,6 +55,12 @@ function getPaperDimensionsInches(paperSize: string): { widthIn: number; heightI
 // its datasheet), while printing the identical assembled image.
 const MAX_BAND_HEIGHT_DOTS = 100
 
+function invertPackedBits(packed: Uint8Array): Uint8Array {
+  const inverted = new Uint8Array(packed.length)
+  for (let i = 0; i < packed.length; i++) inverted[i] = packed[i] ^ 0xff
+  return inverted
+}
+
 // Build a TSPL2 job that prints a raster image filling the label.
 export function buildTsplRaster(
   imageData: { data: Uint8ClampedArray; width: number; height: number },
@@ -62,19 +68,21 @@ export function buildTsplRaster(
 ): Uint8Array {
   const mono = ditherToMonochrome(imageData)
   const { data: packed, bytesPerRow } = packBits(mono, imageData.width, imageData.height)
+  const inverted = invertPackedBits(packed)
   const { widthIn, heightIn } = getPaperDimensionsInches(paperSize)
   const totalHeight = imageData.height
 
-  // Bit polarity is deliberately NOT inverted -- an earlier attempt (live
-  // hardware test, 2026-08) inverted every byte here to try to fix a real
-  // badge printing fully solid black, which didn't help. A hand-built
-  // diagnostic checkerboard (buildTsplTestPrint(), same packing convention,
-  // no inversion) then printed with correct, clean quadrants -- proving
-  // this printer's BITMAP dialect does use the same 1=black/0=white
-  // convention as ditherToMonochrome()/packBits() natively. The solid-black
-  // real-badge bug survived both a confirmed-correct print mode (overlay,
-  // transparent background) and polarity, which is what points at a size
-  // limit on the BITMAP command itself instead -- see MAX_BAND_HEIGHT_DOTS.
+  // Bit polarity IS inverted here -- reversing an earlier revert of this
+  // same fix. That revert was based on a hand-built diagnostic checkerboard
+  // printing with "clean quadrants": true, but a checkerboard is a poor
+  // polarity test -- a symmetric 2-color pattern still looks like a valid
+  // checkerboard even with black and white swapped, since the shape is
+  // identical either way. A real badge print (live hardware test, 2026-08)
+  // removed that ambiguity: perfectly formed, correctly positioned,
+  // completely readable text/QR/reg-number -- proving content and sizing
+  // are both correct -- but with a solid black background and white
+  // text/QR, the exact opposite of the intended blank-background/dark-text
+  // overlay. Inverting each packed byte (XOR 0xFF) corrects this.
   //
   // Gap = 0 assumes continuous/tear-off stock, matching print-proxy.mjs's
   // documented working state for this printer (no cutter/backfeed control).
@@ -101,7 +109,7 @@ export function buildTsplRaster(
     const bandStart = y * bytesPerRow
     const bandBytes = bandHeight * bytesPerRow
     parts.push(new Uint8Array(textToBytes(`BITMAP 0,${y},${bytesPerRow},${bandHeight},0,`)))
-    parts.push(packed.subarray(bandStart, bandStart + bandBytes))
+    parts.push(inverted.subarray(bandStart, bandStart + bandBytes))
     parts.push(new Uint8Array(textToBytes(`\r\n`)))
   }
 
