@@ -8,6 +8,8 @@ import { computeListState, minutesUntilClose, type ScheduledList } from "@/lib/k
 import { cacheStationManifest, getStationManifest, replaceDelegateCache, type StationManifest } from "@/lib/kiosk-offline-store"
 import { drainScanQueue } from "@/lib/kiosk-sync-worker"
 import { CATEGORY_COLORS } from "@/lib/checkin-list-category"
+import { useForceLightTheme } from "@/hooks/use-force-light-theme"
+import { BatteryStatusBadge } from "@/components/kiosk/BatteryStatusBadge"
 
 export interface AssignedList extends ScheduledList {
   id: string
@@ -80,6 +82,13 @@ export function KioskStationShell({
   initialLists,
   contactPhone,
 }: KioskStationShellProps) {
+  // Shared kiosk tablets have no per-user theme preference and sit under
+  // bright hall lighting -- see the hook for why this overrides the
+  // site-wide dark default (work order §2.4). Covers the menu screen; the
+  // active-job screen forces it again itself for the direct-URL path, which
+  // never mounts this shell at all.
+  useForceLightTheme()
+
   const [assignedLists, setAssignedLists] = useState<AssignedList[]>(initialLists)
   // A station with exactly one assigned USABLE list skips the menu entirely
   // -- the common case (most stations still serve one list) shouldn't cost
@@ -344,6 +353,7 @@ export function KioskStationShell({
   return (
     <KioskMenuScreen
       stationName={stationName}
+      stationToken={stationToken}
       lists={assignedLists}
       attended={attended}
       listCounts={listCounts}
@@ -405,43 +415,48 @@ function JobTile({
   mode: "checkin" | "checkin_and_print"
   onSelect: (list: AssignedList) => void
 }) {
+  // Same padding/icon/text sizing whether open or closed (only colour,
+  // opacity, and cursor differ) -- roughly a third the height of the
+  // original tile, so 6-8 jobs fit on screen without scrolling, and every
+  // tile in a mixed open/closed row is naturally the same height as its
+  // neighbour instead of the open tiles' larger padding making them taller.
   return (
     <button
       type="button"
       disabled={!open}
       onClick={() => onSelect(list)}
-      className={`flex items-center gap-5 sm:gap-6 text-left transition-transform ${
+      className={`flex items-center gap-4 text-left transition-transform ${
         open
-          ? "rounded-2xl sm:rounded-3xl bg-primary text-primary-foreground shadow-paper-lg px-6 sm:px-8 py-6 sm:py-7 hover:scale-[1.01] active:scale-[0.99]"
-          : "rounded-2xl border border-border bg-muted/60 px-5 sm:px-7 py-4 sm:py-5 opacity-70 cursor-not-allowed"
+          ? "rounded-xl sm:rounded-2xl bg-primary text-primary-foreground shadow-paper px-4 sm:px-5 py-3 sm:py-3.5 hover:scale-[1.01] active:scale-[0.99]"
+          : "rounded-xl border border-border bg-muted/60 px-4 sm:px-5 py-3 sm:py-3.5 opacity-70 cursor-not-allowed"
       }`}
     >
       <span
-        className={`flex-none rounded-full flex items-center justify-center text-white ${
-          open ? `size-16 sm:size-[76px] ${CATEGORY_COLORS[list.category].solid}` : "size-12 sm:size-[60px] bg-muted"
+        className={`flex-none rounded-full flex items-center justify-center text-white size-11 sm:size-12 ${
+          open ? CATEGORY_COLORS[list.category].solid : "bg-muted"
         }`}
       >
         {mode === "checkin_and_print" && list.prints_badge ? (
           <Printer
-            className={open ? "size-8 sm:size-9" : "size-6 sm:size-7 text-muted-foreground"}
+            className={open ? "size-5 sm:size-6" : "size-5 sm:size-6 text-muted-foreground"}
             strokeWidth={1.9}
           />
         ) : (
           <ClipboardList
-            className={open ? "size-8 sm:size-9" : "size-6 sm:size-7 text-muted-foreground"}
+            className={open ? "size-5 sm:size-6" : "size-5 sm:size-6 text-muted-foreground"}
             strokeWidth={1.9}
           />
         )}
       </span>
-      <span className="flex flex-col gap-1 min-w-0">
+      <span className="flex flex-col gap-0.5 min-w-0">
         <span
           className={`font-bold tracking-tight truncate ${
-            open ? "text-2xl sm:text-4xl" : "text-xl sm:text-3xl text-muted-foreground"
+            open ? "text-lg sm:text-2xl" : "text-base sm:text-xl text-muted-foreground"
           }`}
         >
           {list.name}
         </span>
-        <span className={open ? "text-base sm:text-lg opacity-90" : "text-sm sm:text-base text-muted-foreground/80"}>
+        <span className={open ? "text-xs sm:text-sm opacity-90" : "text-xs sm:text-sm text-muted-foreground/80"}>
           {listSubline(list, attended, now, count)}
         </span>
       </span>
@@ -451,6 +466,7 @@ function JobTile({
 
 function KioskMenuScreen({
   stationName,
+  stationToken,
   lists,
   attended,
   listCounts,
@@ -458,6 +474,7 @@ function KioskMenuScreen({
   onSelect,
 }: {
   stationName: string
+  stationToken: string
   lists: AssignedList[]
   attended: boolean
   listCounts: Record<string, number>
@@ -511,9 +528,20 @@ function KioskMenuScreen({
               What are you doing at this desk?
             </h1>
           </div>
-          <div className="flex items-center gap-2.5 px-5 py-3.5 rounded-full bg-card border border-border shadow-paper shrink-0">
-            <span className="size-3 rounded-full bg-success" />
-            <span className="text-lg font-semibold text-foreground">{timeLabel}</span>
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <div className="flex items-center gap-2.5 px-5 py-3.5 rounded-full bg-card border border-border shadow-paper">
+              <span className="size-3 rounded-full bg-success" />
+              <span className="text-lg font-semibold text-foreground">{timeLabel}</span>
+            </div>
+            {/* Deliberately small and low-emphasis -- for the admin setting
+                up this tablet before it ships, never a job a volunteer would
+                mistake for a tile (work order §10). */}
+            <a
+              href={`/kiosk-station/${stationToken}/self-test`}
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+            >
+              Station self-test
+            </a>
           </div>
         </div>
 
@@ -524,7 +552,7 @@ function KioskMenuScreen({
         )}
 
         {lists.length > 0 && useGrid && (
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-5 min-h-0 items-stretch">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 min-h-0 items-stretch content-start">
             {openLists.map((list) => (
               <JobTile
                 key={list.id}
@@ -538,7 +566,7 @@ function KioskMenuScreen({
               />
             ))}
             {closedLists.length > 0 && (
-              <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 {closedLists.map((list) => (
                   <JobTile
                     key={list.id}
@@ -557,7 +585,7 @@ function KioskMenuScreen({
         )}
 
         {lists.length > 0 && !useGrid && (
-          <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-y-auto">
+          <div className="flex-1 flex flex-col gap-3 min-h-0 overflow-y-auto">
             {lists.map((list) => (
               <JobTile
                 key={list.id}
@@ -591,6 +619,7 @@ function KioskMenuScreen({
           <span className={`size-3 rounded-full ${isOnline ? "bg-emerald-400" : "bg-amber-400"}`} />
           <span className="text-base sm:text-lg font-semibold">{isOnline ? "Online" : "Offline"}</span>
         </div>
+        <BatteryStatusBadge className="text-sidebar-muted text-sm sm:text-base shrink-0" />
       </div>
     </div>
   )
