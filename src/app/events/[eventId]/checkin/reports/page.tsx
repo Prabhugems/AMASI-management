@@ -141,6 +141,12 @@ export default function CheckinReportsPage() {
         `)
         .in("checkin_list_id", listIds)
         .is("checked_out_at", null)
+        // Bug-audit fix (2026-08): this query feeds Total/Checked-In/
+        // Remaining, the by-ticket-type and by-list breakdowns, the hourly
+        // chart, and every CSV export on this page -- all of it kept
+        // counting a help-desk-reversed check-in as attended, since only
+        // checked_out_at was excluded, never reversed_at.
+        .is("reversed_at", null)
       return (data || []) as CheckinRecord[]
     },
   })
