@@ -1466,8 +1466,24 @@ export function KioskCheckinScreen({
         clearTimeout(restartScannerTimeoutRef.current)
         restartScannerTimeoutRef.current = null
       }
+      // Live retest (2026-08) of the #153/#152 "fixes" above: neither
+      // actually closed the bug for check-ins completed via "Search by
+      // name" (or any other non-camera-decode path -- the external
+      // hardware "Badge scanner" wedge input and the burst-scan
+      // auto-submit both call handleCheckin directly too, bypassing
+      // stopScanner() entirely). Confirmed live: cameraActive stayed
+      // `true` in React state across the whole result -> auto-reset
+      // cycle, because ONLY handleQrCodeScanned's stopScanner() call ever
+      // sets it false -- this cleanup was stopping the real scanning
+      // object here without telling React state that happened. Since the
+      // sibling restart effect below only calls startScanner() when
+      // `!cameraActive`, a lying `cameraActive` permanently prevented any
+      // restart -- not a stale-video/race issue, an actual dead scanner.
+      // Sync the state to whatever this cleanup actually did to the real
+      // object, regardless of which code path set `result`.
       if (scannerRef.current && scannerRef.current.isScanning) {
         scannerRef.current.stop().catch(() => {})
+        setCameraActive(false)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
