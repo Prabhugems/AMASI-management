@@ -1437,7 +1437,20 @@ export function KioskCheckinScreen({
   // "camera" scan mode -- mirrors the print station page's identical gate.
   useEffect(() => {
     const showingPrinterSetup = mode === "checkin_and_print" && !printerSetupDone
-    if (scanMode === "camera" && !result && !showingPrinterSetup) {
+    // Live report (2026-08): after the auto-reset countdown, the scan
+    // frame reappeared with a solid black preview -- confirmed live that
+    // this was NOT a stale <video> element (the container was completely
+    // empty, zero <video> elements anywhere, despite cameraActive being
+    // true). Root cause: `result` is in this effect's deps, so it re-fired
+    // on every reset, and Html5Qrcode.getCameras() is not a pure device
+    // list -- html5-qrcode's own CameraRetriever.getCamerasFromMediaDevices
+    // calls getUserMedia({video:true}) to unlock device labels, then stops
+    // that stream once enumerateDevices() resolves. That ran concurrently,
+    // on the same render, as the *other* effect below starting the real
+    // scanning stream -- two independent getUserMedia acquisitions racing
+    // for the same camera every single reset. getCameras() only needs to
+    // run once, to populate the device list; skip it once that's done.
+    if (scanMode === "camera" && !result && !showingPrinterSetup && cameras.length === 0) {
       getCameras()
     } else if (scanMode === "manual") {
       stopScanner()
