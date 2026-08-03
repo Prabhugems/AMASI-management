@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { createOrder, generatePaymentNumber, RazorpayCredentials } from "@/lib/services/razorpay"
+import { getNextRegistrationNumber } from "@/lib/services/registration-number"
 import { DEFAULTS } from "@/lib/config"
 
 interface Attendee {
@@ -267,16 +268,23 @@ export async function POST(request: NextRequest) {
 
     // 3. Create Registrations for each attendee
     const registrations: Array<Record<string, unknown>> = []
-    const registrationInserts = attendeePricing.map(({ attendee, ticket, unitPrice, taxAmount, totalAmount: attendeeTotal }) => {
+    const registrationInserts = []
+    for (const { attendee, ticket, unitPrice, taxAmount, totalAmount: attendeeTotal } of attendeePricing) {
       const initialStatus = isFree
         ? (requiresApproval ? "pending" : "confirmed")
         : "pending"
 
-      return {
+      // Sequential (not Promise.all) so each attendee reliably gets the next
+      // number in order — the shared service's atomic lock makes concurrent
+      // calls safe too, but ordering within one group reads more naturally in sequence.
+      const registrationNumber = await getNextRegistrationNumber(supabase, event_id)
+
+      registrationInserts.push({
         event_id,
         ticket_type_id: attendee.ticket_type_id,
         buyer_id: buyerRecord.id,
         order_id: orderRecord.id,
+        registration_number: registrationNumber,
         attendee_name: attendee.attendee_name,
         attendee_email: attendee.attendee_email,
         attendee_phone: attendee.attendee_phone,
@@ -294,8 +302,8 @@ export async function POST(request: NextRequest) {
         payment_status: isFree ? "completed" : "pending",
         confirmed_at: initialStatus === "confirmed" ? new Date().toISOString() : null,
         custom_fields: attendee.custom_fields,
-      }
-    })
+      })
+    }
 
     const { data: createdRegistrations, error: regError } = await supabase
       .from("registrations")

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { getApiUser } from "@/lib/auth/api-auth"
 
 // GET - Fetch activity logs
@@ -91,7 +91,12 @@ export async function POST(request: NextRequest) {
     const userEmail = user?.email || "anonymous"
     const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Anonymous"
 
-    const { data, error } = await (supabase as any)
+    // Admin client for the insert — RLS on activity_logs only grants
+    // "authenticated", and getApiUser() can authorize callers that don't
+    // carry a Supabase session cookie, in which case the RLS insert below
+    // would silently fail even though the request itself was authorized.
+    const adminClient = await createAdminClient()
+    const { data, error } = await (adminClient as any)
       .from("activity_logs")
       .insert({
         user_id: user?.id,

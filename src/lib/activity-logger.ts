@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { getClientIp } from "@/lib/rate-limit"
 
 export type ActivityAction =
@@ -90,7 +90,11 @@ export async function logActivity(params: LogActivityParams): Promise<string | n
     if (params.ipAddress) insertData.ip_address = params.ipAddress
     if (params.userAgent) insertData.user_agent = params.userAgent
 
-    const { data, error } = await (supabase as any)
+    // Insert with the admin client, not the session-bound one used above to
+    // identify the user — cron jobs and other unauthenticated server contexts
+    // have no session, so an RLS-gated insert here silently fails every time.
+    const adminClient = await createAdminClient()
+    const { data, error } = await (adminClient as any)
       .from("activity_logs")
       .insert(insertData)
       .select("id")

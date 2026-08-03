@@ -35,11 +35,19 @@ export async function getNextRegistrationNumber(
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     // Step 1: Read current settings
-    const { data: settings } = await (supabase as any)
+    const { data: settings, error: settingsError } = await (supabase as any)
       .from("event_settings")
       .select("customize_registration_id, registration_prefix, registration_start_number, registration_suffix, current_registration_number")
       .eq("event_id", eventId)
       .maybeSingle()
+
+    if (settingsError) {
+      // A failed read must not look identical to "custom format not configured" —
+      // that ambiguity is what let a real event_settings read failure silently
+      // fall back to the random format with no trace in the logs.
+      console.error(`[REG-NUMBER] Failed to read event_settings for event ${eventId} on attempt ${attempt + 1}:`, settingsError)
+      continue
+    }
 
     const useCustomFormat = settings?.customize_registration_id === true
       || settings?.customize_registration_id === "true"
@@ -108,11 +116,16 @@ export async function getNextFacultyRegistrationNumber(
   const supabase = supabaseOrNull || await createAdminClient()
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const { data: settings } = await (supabase as any)
+    const { data: settings, error: settingsError } = await (supabase as any)
       .from("event_settings")
       .select("faculty_registration_prefix, faculty_registration_start_number, faculty_registration_suffix, current_faculty_registration_number")
       .eq("event_id", eventId)
       .maybeSingle()
+
+    if (settingsError) {
+      console.error(`[REG-NUMBER/FACULTY] Failed to read event_settings for event ${eventId} on attempt ${attempt + 1}:`, settingsError)
+      continue
+    }
 
     const prefix = (settings?.faculty_registration_prefix || "").trim()
 
