@@ -25,6 +25,13 @@ const MM_PER_INCH = 25.4
 
 export const PAPER_SIZES_IN: Record<string, PaperSizeInches> = {
   "4x6": { widthIn: 4, heightIn: 6 },
+  // A technician physically calibrated the DC421 Pro's black-mark sensor
+  // (2026-08) and recommended keeping the printable label height at 5.75in
+  // on 4x6 stock -- a small margin below the true 6in card so content never
+  // bleeds onto the next label if the mark position has any real-world
+  // slop. Distinct from "4x6": that entry stays exactly 4x6 for any station
+  // whose stock/calibration doesn't need this margin.
+  "4x5.75": { widthIn: 4, heightIn: 5.75 },
   "4x3": { widthIn: 4, heightIn: 3 },
   "3x4": { widthIn: 3, heightIn: 4 },
   "4x2": { widthIn: 4, heightIn: 2 },

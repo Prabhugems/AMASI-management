@@ -1640,6 +1640,7 @@ function PrintStationKioskPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="4x6">4x6</SelectItem>
+                    <SelectItem value="4x5.75">4x5.75 (DC421 Pro, black-mark calibrated)</SelectItem>
                     <SelectItem value="4x3">4x3</SelectItem>
                     <SelectItem value="4x2">4x2</SelectItem>
                     <SelectItem value="3x2">3x2</SelectItem>
