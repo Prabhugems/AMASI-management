@@ -1377,6 +1377,21 @@ export function KioskCheckinScreen({
           // Ignore stop errors on an already-stopped/never-started instance.
         }
       }
+      // Live report (2026-08): after a successful scan, the scan frame UI
+      // reappears but the camera preview is solid black -- while scanning
+      // itself still works (a badge held up to it still checks in). That
+      // combination means the underlying video feed is fine; what's broken
+      // is what's visually on screen. html5-qrcode does not reliably remove
+      // the <video> element a previous instance inserted into this
+      // container when stop() is called -- a well-known issue with this
+      // library -- so a second `new Html5Qrcode(scannerContainerId)` here
+      // can end up with a stale, frozen video element from the last
+      // instance still sitting in the container alongside (or in front of)
+      // the new one. Clearing the container's own DOM before creating each
+      // new instance guarantees only the current instance's video element
+      // is ever present, regardless of that library's own cleanup behavior.
+      const container = document.getElementById(scannerContainerId)
+      if (container) container.innerHTML = ""
       scannerRef.current = new Html5Qrcode(scannerContainerId)
       await scannerRef.current.start(
         selectedCameraId,
