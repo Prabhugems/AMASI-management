@@ -81,6 +81,7 @@ return NextResponse.json({ data })
 4. **Email providers**: Blastable (primary) or Resend (fallback). Check `isEmailEnabled()` before sending.
 5. **WhatsApp**: Gallabox integration. Template messages require pre-approved templates in Gallabox dashboard.
 6. **Razorpay**: Payment processing with webhook verification.
+7. **Kiosk PWA service worker hides fixes during live retest**: `/kiosk/*` and `/kiosk-station/*` register a service worker (`app-sw.js`, caches `amasi-v*`/`amasi-shell-v*`) that can keep serving a pre-fix JS bundle after a deploy even on a hard navigation. Confirmed twice now (the 2026-08 kiosk camera black-preview saga, and earlier in the printer saga) — a "the fix still doesn't work" observation on a kiosk page is not trustworthy until you've confirmed via `navigator.serviceWorker.getRegistrations()` / `caches.keys()` that you're not looking at a stale cached bundle. When retesting a kiosk fix live, unregister the service worker and delete its caches (or have the user "Clear site data") before concluding a fix failed — otherwise you will chase phantom root causes for real bugs that were already fixed.
 
 ## Check-in Model (Tito model — captured 2026-07-13)
 
