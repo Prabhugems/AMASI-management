@@ -2,14 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { logActivityFromRequest } from "@/lib/activity-logger"
-
-// Generate registration number
-function generateRegistrationNumber(): string {
-  const date = new Date()
-  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "")
-  const random = Math.random().toString(36).substring(2, 6).toUpperCase()
-  return `REG-${dateStr}-${random}`
-}
+import { getNextRegistrationNumber } from "@/lib/services/registration-number"
 
 // Validate email format
 function isValidEmail(email: string): boolean {
@@ -194,7 +187,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Create registration
-        const registrationNumber = generateRegistrationNumber()
+        const registrationNumber = await getNextRegistrationNumber(db, event_id)
         const shouldNotify = reg.notify?.toUpperCase() === 'Y'
 
         const { data: _newReg, error: regError } = await db
