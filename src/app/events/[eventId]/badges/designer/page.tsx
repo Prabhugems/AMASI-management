@@ -2613,6 +2613,27 @@ function BadgeDesignerPage() {
                   <div className="absolute left-0 right-0 h-px bg-primary/20 pointer-events-none" style={{ top: "50%", zIndex: 997 }} />
                 </>
               )}
+              {/* Safe Area guide -- design-time only, never printed. Keep
+                  logos/text inside this line so nothing sits too close to
+                  the trim edge. Inset matches the vendor's (Choose2Rent)
+                  official single-sided 4x6 template: Safe Area 3.75x5.75
+                  within a 4x6 Trim Zone, a 0.125in margin on every side --
+                  same amount as their own bleed convention. Applied
+                  uniformly here as a general guideline for any badge size,
+                  not a per-size verified spec (their double-sided/folded
+                  4x6 template has a different, larger margin due to the
+                  fold/slot area, so this is a starting guide, not a rule
+                  that applies identically to every badge product). */}
+              {!previewMode && showGrid && (
+                <div
+                  className="absolute border border-dashed border-amber-500/60 pointer-events-none"
+                  style={{ inset: 12 * zoom, zIndex: 997 }}
+                >
+                  <span className="absolute -top-5 left-0 text-[10px] font-medium text-amber-600 bg-background/80 px-1 rounded">
+                    Safe area
+                  </span>
+                </div>
+              )}
               {template.elements.sort((a, b) => a.zIndex - b.zIndex).map(renderElement)}
               {template.elements.length === 0 && !previewMode && (
                 <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
