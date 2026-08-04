@@ -95,6 +95,7 @@ import {
 import JsBarcode from "jsbarcode"
 import { cn } from "@/lib/utils"
 import QRCode from "qrcode"
+import { clampElementToCanvas } from "@/lib/badge-element-bounds"
 
 // Badge sizes
 const BADGE_SIZES: Record<string, { width: number; height: number; label: string }> = {
@@ -1619,12 +1620,14 @@ function BadgeDesignerPage() {
           selectedElementIds.forEach((id) => {
             const element = template.elements.find((el) => el.id === id)
             if (element && !element.locked) {
-              const updates: Partial<BadgeElement> = {}
-              if (e.key === "ArrowUp") updates.y = Math.max(0, element.y - step)
-              if (e.key === "ArrowDown") updates.y = element.y + step
-              if (e.key === "ArrowLeft") updates.x = Math.max(0, element.x - step)
-              if (e.key === "ArrowRight") updates.x = element.x + step
-              updateElement(id, updates)
+              let nextX = element.x
+              let nextY = element.y
+              if (e.key === "ArrowUp") nextY = element.y - step
+              if (e.key === "ArrowDown") nextY = element.y + step
+              if (e.key === "ArrowLeft") nextX = element.x - step
+              if (e.key === "ArrowRight") nextX = element.x + step
+              const clamped = clampElementToCanvas({ x: nextX, y: nextY, width: element.width, height: element.height }, badgeSize)
+              updateElement(id, { x: clamped.x, y: clamped.y })
             }
           })
         }
@@ -1633,7 +1636,7 @@ function BadgeDesignerPage() {
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [selectedElementIds, template.elements, undo, redo, copyElements, pasteElements, bringToFront, sendToBack, centerHorizontally, centerVertically, updateElement, deleteElement, duplicateElement])
+  }, [selectedElementIds, template.elements, undo, redo, copyElements, pasteElements, bringToFront, sendToBack, centerHorizontally, centerVertically, updateElement, deleteElement, duplicateElement, badgeSize])
 
   const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -2149,19 +2152,23 @@ function BadgeDesignerPage() {
         position={{ x: element.x * zoom, y: element.y * zoom }}
         onDragStop={(e, d) => {
           const { snapX, snapY } = calculateSnapGuides(element.id, d.x / zoom, d.y / zoom, element.width, element.height)
-          updateElement(element.id, { x: Math.max(0, Math.round(snapX)), y: Math.max(0, Math.round(snapY)) })
+          const clamped = clampElementToCanvas({ x: Math.round(snapX), y: Math.round(snapY), width: element.width, height: element.height }, badgeSize)
+          updateElement(element.id, { x: clamped.x, y: clamped.y })
           setSnapGuides({ horizontal: [], vertical: [] })
         }}
         onDrag={(e, d) => {
           const { guides } = calculateSnapGuides(element.id, d.x / zoom, d.y / zoom, element.width, element.height)
           setSnapGuides(guides)
         }}
-        onResizeStop={(e, direction, ref, delta, position) => updateElement(element.id, {
-          width: Math.round(parseInt(ref.style.width) / zoom),
-          height: Math.round(parseInt(ref.style.height) / zoom),
-          x: Math.max(0, Math.round(position.x / zoom)),
-          y: Math.max(0, Math.round(position.y / zoom)),
-        })}
+        onResizeStop={(e, direction, ref, delta, position) => {
+          const clamped = clampElementToCanvas({
+            x: Math.round(position.x / zoom),
+            y: Math.round(position.y / zoom),
+            width: Math.round(parseInt(ref.style.width) / zoom),
+            height: Math.round(parseInt(ref.style.height) / zoom),
+          }, badgeSize)
+          updateElement(element.id, clamped)
+        }}
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleElementSelect(element.id, e) }}
         onContextMenu={(e: React.MouseEvent) => {
           e.preventDefault(); e.stopPropagation()

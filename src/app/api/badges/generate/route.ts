@@ -5,6 +5,7 @@ import QRCode from "qrcode"
 import { logActivityFromRequest } from "@/lib/activity-logger"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
+import { resolvePdfFontFamily } from "@/lib/badge-pdf-font"
 
 export const dynamic = "force-dynamic"
 
@@ -284,6 +285,8 @@ export async function POST(request: NextRequest) {
     const pdfDoc = await PDFDocument.create()
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
     const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+    const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman)
+    const timesRomanBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold)
 
     // Fetch and embed template background image if exists
     let backgroundImage: any = null
@@ -412,7 +415,11 @@ export async function POST(request: NextRequest) {
 
           const color = hexToRgb(element.color || "#000000")
           let fontSize = (element.fontSize || 14) * scaleFactor * scale
-          const font = element.fontWeight === "bold" ? helveticaBold : helveticaFont
+          const isBold = element.fontWeight === "bold"
+          const isSerif = resolvePdfFontFamily(element.fontFamily) === "serif"
+          const font = isSerif
+            ? (isBold ? timesRomanBold : timesRomanFont)
+            : (isBold ? helveticaBold : helveticaFont)
 
           // Auto-shrink font size to fit container (ratio-based for precision)
           let textWidth = font.widthOfTextAtSize(text, fontSize)
