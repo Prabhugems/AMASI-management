@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import Link from "next/link"
 import * as Sentry from "@sentry/nextjs"
 import { ClipboardList, Printer } from "lucide-react"
@@ -425,6 +425,11 @@ function listSubline(list: AssignedList, attended: boolean, now: Date, count?: n
 // assuming specific list names. One exception: a printer icon is shown when
 // mode === "checkin_and_print" && list.prints_badge, driven by that flag
 // rather than the list's name, so it doesn't conflict with this reasoning.
+// Row height every tile clamps to -- kept in sync by eye with the fixed
+// TILE_ROW_HEIGHT_PX constant SwipePager's capacity math assumes (see that
+// comment). cqh is relative to the kiosk-root's container box (§2 of the
+// Kiosk Screen Layout Spec), so this scales with the actual device instead
+// of a fixed breakpoint.
 function JobTile({
   list,
   now,
@@ -443,51 +448,156 @@ function JobTile({
   onSelect: (list: AssignedList) => void
 }) {
   // Same padding/icon/text sizing whether open or closed (only colour,
-  // opacity, and cursor differ) -- roughly a third the height of the
-  // original tile, so 6-8 jobs fit on screen without scrolling, and every
-  // tile in a mixed open/closed row is naturally the same height as its
-  // neighbour instead of the open tiles' larger padding making them taller.
+  // opacity, and cursor differ) -- every tile in a mixed open/closed row is
+  // naturally the same height as its neighbour instead of the open tiles'
+  // larger padding making them taller. min-h clamp keeps every tile's
+  // rendered height within the range SwipePager's page-capacity math
+  // assumes (see TILE_ROW_HEIGHT_PX below).
   return (
     <button
       type="button"
       disabled={!open}
       onClick={() => onSelect(list)}
-      className={`flex items-center gap-4 text-left transition-transform ${
+      className={`flex items-center gap-[clamp(10px,2cqw,16px)] text-left transition-transform min-h-[clamp(56px,9cqh,92px)] ${
         open
-          ? "rounded-xl sm:rounded-2xl bg-primary text-primary-foreground shadow-paper px-4 sm:px-5 py-3 sm:py-3.5 hover:scale-[1.01] active:scale-[0.99]"
-          : "rounded-xl border border-border bg-muted/60 px-4 sm:px-5 py-3 sm:py-3.5 opacity-70 cursor-not-allowed"
+          ? "rounded-xl sm:rounded-2xl bg-primary text-primary-foreground shadow-paper px-[clamp(12px,2.5cqw,20px)] py-[clamp(8px,1.5cqh,14px)] hover:scale-[1.01] active:scale-[0.99]"
+          : "rounded-xl border border-border bg-muted/60 px-[clamp(12px,2.5cqw,20px)] py-[clamp(8px,1.5cqh,14px)] opacity-70 cursor-not-allowed"
       }`}
     >
       <span
-        className={`flex-none rounded-full flex items-center justify-center text-white size-11 sm:size-12 ${
+        className={`flex-none rounded-full flex items-center justify-center text-white size-[clamp(36px,6cqh,48px)] ${
           open ? CATEGORY_COLORS[list.category].solid : "bg-muted"
         }`}
       >
         {mode === "checkin_and_print" && list.prints_badge ? (
           <Printer
-            className={open ? "size-5 sm:size-6" : "size-5 sm:size-6 text-muted-foreground"}
+            className={open ? "size-[clamp(16px,3cqh,24px)]" : "size-[clamp(16px,3cqh,24px)] text-muted-foreground"}
             strokeWidth={1.9}
           />
         ) : (
           <ClipboardList
-            className={open ? "size-5 sm:size-6" : "size-5 sm:size-6 text-muted-foreground"}
+            className={open ? "size-[clamp(16px,3cqh,24px)]" : "size-[clamp(16px,3cqh,24px)] text-muted-foreground"}
             strokeWidth={1.9}
           />
         )}
       </span>
       <span className="flex flex-col gap-0.5 min-w-0">
         <span
-          className={`font-bold tracking-tight truncate ${
-            open ? "text-lg sm:text-2xl" : "text-base sm:text-xl text-muted-foreground"
+          className={`font-bold tracking-tight truncate text-[clamp(14px,3cqh,24px)] ${
+            open ? "" : "text-muted-foreground"
           }`}
         >
           {list.name}
         </span>
-        <span className={open ? "text-xs sm:text-sm opacity-90" : "text-xs sm:text-sm text-muted-foreground/80"}>
+        <span
+          className={`text-[clamp(11px,1.7cqh,14px)] ${open ? "opacity-90" : "text-muted-foreground/80"}`}
+        >
           {listSubline(list, attended, now, count)}
         </span>
       </span>
     </button>
+  )
+}
+
+// Conservative fixed estimate of a rendered JobTile's height in px, used
+// only to decide how many tiles fit on one page before the CSS above has
+// actually rendered anything (chicken-and-egg: page count is needed to
+// build the pages array in the first place). Deliberately the tile's own
+// clamp() UPPER bound, not an average -- underestimating capacity (more
+// pages, never truncated ones) is the only safe direction to be wrong in
+// this room; overestimating would clip a tile under the content region's
+// overflow-hidden.
+const TILE_ROW_HEIGHT_PX = 92
+const TILE_GAP_PX = 12
+
+// Computes how many JobTiles fit in the visible content region -- no
+// scrolling, no admin-configured screen-size picker (Kiosk Screen Layout
+// Spec §1.5) -- by measuring the actual box via ResizeObserver and
+// recomputing live on resize/orientation change. Single-column only: each
+// SwipePager page renders its tiles in one vertical stack (the list-mode
+// design this replaces was already single-column, see the `!useGrid`
+// branch below), so capacity is purely a row count, never a column
+// multiplier -- an earlier version of this function assumed a 2-column
+// grid here while the actual render stayed single-column, which
+// overestimated capacity and clipped tiles under the content region's
+// overflow-hidden instead of paginating them.
+function useTilePageCapacity() {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [capacity, setCapacity] = useState(6)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const compute = () => {
+      const rect = el.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) return
+      const rows = Math.max(1, Math.floor((rect.height + TILE_GAP_PX) / (TILE_ROW_HEIGHT_PX + TILE_GAP_PX)))
+      setCapacity(rows)
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return { ref, capacity }
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  if (size <= 0 || items.length === 0) return items.length ? [items] : []
+  const pages: T[][] = []
+  for (let i = 0; i < items.length; i += size) pages.push(items.slice(i, i + size))
+  return pages
+}
+
+// Horizontal swipe pagination via native CSS scroll-snap -- gives swipe
+// gestures, momentum, and paging for free with no gesture library (Kiosk
+// Screen Layout Spec §4). Dots, not arrows: dots communicate "there's more"
+// at a glance without needing to be a precise tap target.
+function SwipePager<T>({
+  pages,
+  renderPage,
+}: {
+  pages: T[][]
+  renderPage: (page: T[], pageIndex: number) => React.ReactNode
+}) {
+  const pagerRef = useRef<HTMLDivElement | null>(null)
+  const [activePage, setActivePage] = useState(0)
+  useEffect(() => {
+    const el = pagerRef.current
+    if (!el) return
+    const onScroll = () => {
+      setActivePage(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)))
+    }
+    el.addEventListener("scroll", onScroll, { passive: true })
+    return () => el.removeEventListener("scroll", onScroll)
+  }, [])
+  return (
+    <div className="h-full flex flex-col gap-[clamp(4px,1cqh,10px)]">
+      <div
+        ref={pagerRef}
+        className="flex-1 min-h-0 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory no-scrollbar"
+      >
+        {pages.map((page, i) => (
+          <div
+            key={i}
+            className="flex-none w-full h-full snap-start overflow-hidden flex flex-col gap-[clamp(8px,1.5cqh,16px)]"
+          >
+            {renderPage(page, i)}
+          </div>
+        ))}
+      </div>
+      {pages.length > 1 && (
+        <div className="flex-none flex items-center justify-center gap-2">
+          {pages.map((_, i) => (
+            <span
+              key={i}
+              className={`rounded-full transition-all ${
+                i === activePage ? "w-6 h-2 bg-primary" : "w-2 h-2 bg-muted-foreground/30"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -545,22 +655,30 @@ function KioskMenuScreen({
   const useGrid = lists.length > 0 && lists.length <= 4
   const timeLabel = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
 
+  // Most-used-first rule (Kiosk Screen Layout Spec §4): open (usable right
+  // now) jobs always precede closed ones, so if the full set doesn't fit on
+  // one page, it's the closed/long-tail jobs that get pushed to a swipe,
+  // never the ones a volunteer actually needs this minute.
+  const orderedLists = useMemo(() => [...openLists, ...closedLists], [openLists, closedLists])
+  const { ref: pagerContentRef, capacity } = useTilePageCapacity()
+  const pages = useMemo(() => chunk(orderedLists, capacity), [orderedLists, capacity])
+
   return (
-    <div className="fixed inset-0 bg-background flex flex-col">
-      <div className="flex-1 flex flex-col px-6 sm:px-12 py-8 sm:py-10 gap-6 sm:gap-8 min-h-0 overflow-y-auto">
+    <div className="h-dvh w-dvw overflow-hidden kiosk-scope bg-background flex flex-col [container-type:size]">
+      <div className="flex-none flex flex-col px-[clamp(16px,4cqw,48px)] pt-[clamp(16px,3cqh,40px)] pb-[clamp(8px,1.5cqh,16px)] gap-[clamp(8px,1.5cqh,16px)]">
         <div className="flex items-end justify-between gap-6 flex-wrap">
           <div className="flex flex-col gap-1.5 min-w-0">
-            <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground truncate">
+            <p className="text-[clamp(11px,1.6cqh,14px)] font-semibold uppercase tracking-widest text-muted-foreground truncate">
               {stationName}
             </p>
-            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-foreground">
+            <h1 className="text-[clamp(20px,4.4cqh,48px)] font-bold tracking-tight text-foreground">
               What are you doing at this desk?
             </h1>
           </div>
           <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <div className="flex items-center gap-2.5 px-5 py-3.5 rounded-full bg-card border border-border shadow-paper">
+            <div className="flex items-center gap-2.5 px-[clamp(12px,2cqw,20px)] py-[clamp(8px,1.5cqh,14px)] rounded-full bg-card border border-border shadow-paper">
               <span className="size-3 rounded-full bg-success" />
-              <span className="text-lg font-semibold text-foreground">{timeLabel}</span>
+              <span className="text-[clamp(13px,2cqh,18px)] font-semibold text-foreground">{timeLabel}</span>
             </div>
             {/* Deliberately small and low-emphasis -- for the admin setting
                 up this tablet before it ships, never a job a volunteer would
@@ -582,15 +700,20 @@ function KioskMenuScreen({
             </Link>
           </div>
         </div>
+      </div>
 
+      <div
+        ref={pagerContentRef}
+        className="flex-1 min-h-0 overflow-hidden px-[clamp(16px,4cqw,48px)] pb-[clamp(8px,1.5cqh,16px)]"
+      >
         {lists.length === 0 && (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="h-full flex items-center justify-center">
             <p className="text-center text-muted-foreground text-base">No lists assigned to this station yet.</p>
           </div>
         )}
 
         {lists.length > 0 && useGrid && (
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 min-h-0 items-stretch content-start">
+          <div className="h-full grid grid-cols-1 sm:grid-cols-2 gap-[clamp(8px,1.5cqh,16px)] items-stretch content-start">
             {openLists.map((list) => (
               <JobTile
                 key={list.id}
@@ -604,7 +727,7 @@ function KioskMenuScreen({
               />
             ))}
             {closedLists.length > 0 && (
-              <div className="flex flex-col gap-3 sm:gap-4">
+              <div className="flex flex-col gap-[clamp(8px,1.5cqh,16px)]">
                 {closedLists.map((list) => (
                   <JobTile
                     key={list.id}
@@ -623,39 +746,48 @@ function KioskMenuScreen({
         )}
 
         {lists.length > 0 && !useGrid && (
-          <div className="flex-1 flex flex-col gap-3 min-h-0 overflow-y-auto">
-            {lists.map((list) => (
-              <JobTile
-                key={list.id}
-                list={list}
-                now={now}
-                attended={attended}
-                open={isListUsable(list, attended, now)}
-                count={listCounts[list.id]}
-                mode={mode}
-                onSelect={onSelect}
-              />
-            ))}
-          </div>
+          <SwipePager
+            pages={pages}
+            renderPage={(page) => (
+              <>
+                {page.map((list) => (
+                  <JobTile
+                    key={list.id}
+                    list={list}
+                    now={now}
+                    attended={attended}
+                    open={isListUsable(list, attended, now)}
+                    count={listCounts[list.id]}
+                    mode={mode}
+                    onSelect={onSelect}
+                  />
+                ))}
+              </>
+            )}
+          />
         )}
       </div>
 
-      <div className="flex-none h-24 sm:h-[104px] bg-sidebar text-sidebar-foreground flex items-center gap-6 sm:gap-8 px-6 sm:px-10">
-        <div className="flex flex-col gap-0.5 w-[180px] sm:w-[220px] shrink-0">
-          <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">Station</p>
-          <p className="text-lg sm:text-xl font-semibold truncate">{stationName}</p>
+      <div className="flex-none h-[clamp(56px,11cqh,104px)] bg-sidebar text-sidebar-foreground flex items-center gap-[clamp(12px,2cqw,32px)] px-[clamp(16px,3cqw,40px)]">
+        <div className="flex flex-col gap-0.5 w-[clamp(120px,18cqw,220px)] shrink-0">
+          <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-sidebar-muted">Station</p>
+          <p className="text-[clamp(13px,2.2cqh,20px)] font-semibold truncate">{stationName}</p>
         </div>
-        <div className="flex-1 flex items-center gap-3 px-4 sm:px-5 py-2.5 rounded-xl bg-white/10 border border-white/20 min-w-0">
-          <span className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted shrink-0">List</span>
-          <span className="text-xl sm:text-2xl font-bold text-sidebar-muted truncate">No job chosen yet</span>
+        <div className="flex-1 flex items-center gap-3 px-[clamp(10px,1.8cqw,20px)] py-[clamp(6px,1.2cqh,10px)] rounded-xl bg-white/10 border border-white/20 min-w-0">
+          <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-sidebar-muted shrink-0">
+            List
+          </span>
+          <span className="text-[clamp(15px,2.6cqh,24px)] font-bold text-sidebar-muted truncate">
+            No job chosen yet
+          </span>
         </div>
         <div
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-full shrink-0 ${
+          className={`flex items-center gap-2 px-[clamp(10px,1.6cqw,16px)] py-[clamp(6px,1.2cqh,10px)] rounded-full shrink-0 ${
             isOnline ? "bg-emerald-500/20" : "bg-amber-500/20"
           }`}
         >
           <span className={`size-3 rounded-full ${isOnline ? "bg-emerald-400" : "bg-amber-400"}`} />
-          <span className="text-base sm:text-lg font-semibold">{isOnline ? "Online" : "Offline"}</span>
+          <span className="text-[clamp(13px,1.8cqh,18px)] font-semibold">{isOnline ? "Online" : "Offline"}</span>
         </div>
         <BatteryStatusBadge className="text-sidebar-muted text-sm sm:text-base shrink-0" />
       </div>

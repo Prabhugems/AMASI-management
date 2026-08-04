@@ -357,6 +357,22 @@
     background: hsl(var(--muted-foreground) / 0.4);
   }
 
+  /* Kiosk surfaces: locked-down tablet UI, not a webpage -- no tap flash,
+     no pull-to-refresh rubber-banding, no visible scrollbar on swipe pagers.
+     See Kiosk Screen Layout Spec §5. */
+  .kiosk-scope {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Paper Dashboard Transitions */
   .transition-paper {
     transition: all 300ms cubic-bezier(0.34, 1.61, 0.7, 1);

@@ -140,7 +140,7 @@ export default async function KioskStationPage({
 
 function StationLookupError() {
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
+    <div className="h-dvh w-dvw overflow-hidden kiosk-scope bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
       <div className="max-w-md text-center text-white">
         <h1 className="text-2xl font-bold mb-2">Something Went Wrong</h1>
         <p className="text-gray-400">
@@ -153,7 +153,7 @@ function StationLookupError() {
 
 function StationNotFound() {
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
+    <div className="h-dvh w-dvw overflow-hidden kiosk-scope bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
       <div className="max-w-md text-center text-white">
         <h1 className="text-2xl font-bold mb-2">Station Not Found</h1>
         <p className="text-gray-400">
@@ -166,7 +166,7 @@ function StationNotFound() {
 
 function StationListRemoved() {
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
+    <div className="h-dvh w-dvw overflow-hidden kiosk-scope bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
       <div className="max-w-md text-center text-white">
         <h1 className="text-2xl font-bold mb-2">Station Needs Reassignment</h1>
         <p className="text-gray-400">

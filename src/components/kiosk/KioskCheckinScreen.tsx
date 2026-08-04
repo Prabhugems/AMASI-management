@@ -1925,12 +1925,12 @@ export function KioskCheckinScreen({
       )
     }
     return (
-      <div className="fixed inset-0 bg-background flex flex-col">
+      <div className="h-dvh w-dvw overflow-hidden kiosk-scope bg-background flex flex-col [container-type:size]">
         {/* Header */}
-        <div className="bg-card border-b border-border px-4 sm:px-8 py-4">
+        <div className="flex-none bg-card border-b border-border px-4 sm:px-8 py-[clamp(6px,1.2cqh,16px)]">
           <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
+              <h1 className="text-[clamp(15px,2.4cqh,24px)] font-bold text-foreground truncate">
                 {event?.short_name || event?.name}
               </h1>
               <p className="text-xs sm:text-sm text-muted-foreground truncate">
@@ -1940,7 +1940,7 @@ export function KioskCheckinScreen({
             </div>
             <div className="text-right shrink-0">
               <p className="text-xs sm:text-sm text-muted-foreground">Auto-reset in</p>
-              <p className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums">
+              <p className="text-[clamp(16px,2.8cqh,30px)] font-bold text-foreground tabular-nums">
                 {countdown}s
               </p>
             </div>
@@ -1948,75 +1948,75 @@ export function KioskCheckinScreen({
         </div>
 
         {/* Result Content */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 py-8 overflow-y-auto">
-          <div className="max-w-2xl w-full text-center">
+        <div className="flex-1 min-h-0 flex items-center justify-center px-4 sm:px-8 py-[clamp(8px,2cqh,32px)] overflow-hidden">
+          <div className="max-w-2xl w-full h-full text-center flex flex-col items-center justify-center">
             {result.success ? (
               <>
                 {/* Success — ring-expand animation */}
-                <div className="mb-8 relative w-32 h-32 sm:w-40 sm:h-40 mx-auto">
+                <div className="mb-[clamp(8px,2cqh,32px)] relative size-[clamp(56px,14cqh,160px)] mx-auto shrink-0">
                   <span className="absolute inset-0 rounded-full bg-emerald-500/30 animate-ping" />
                   <div className="relative w-full h-full rounded-full bg-emerald-500/20 outline outline-1 -outline-offset-1 outline-emerald-500/40 flex items-center justify-center">
-                    <CheckCircle2 className="h-16 w-16 sm:h-20 sm:w-20 text-emerald-600" />
+                    <CheckCircle2 className="size-[clamp(28px,7cqh,80px)] text-emerald-600" />
                   </div>
                 </div>
 
-                <h1 className="text-3xl sm:text-5xl font-bold text-foreground mb-3">
+                <h1 className="text-[clamp(20px,5cqh,48px)] font-bold text-foreground mb-[clamp(4px,0.8cqh,12px)] shrink-0">
                   Welcome, {result.registration?.attendee_name?.split(" ")[0]}!
                 </h1>
-                <p className="text-base sm:text-xl text-emerald-700 mb-2">
+                <p className="text-[clamp(13px,2.2cqh,20px)] text-emerald-700 mb-[clamp(2px,0.5cqh,8px)] shrink-0">
                   {result.alreadyCheckedIn ? "You're already checked in" : "Check-in successful"}
                 </p>
                 {result.warning && (
-                  <p className="text-sm text-amber-800 mb-6 max-w-md mx-auto">{result.warning}</p>
+                  <p className="text-sm text-amber-800 mb-[clamp(6px,1.2cqh,24px)] max-w-md mx-auto shrink-0">{result.warning}</p>
                 )}
-                {!result.warning && <div className="mb-8" />}
+                {!result.warning && <div className="mb-[clamp(6px,1.2cqh,32px)] shrink-0" />}
 
                 {/* Details — stacked-list pattern */}
-                <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg overflow-hidden mb-8 text-left">
+                <div className="w-full bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg overflow-hidden mb-[clamp(6px,1.2cqh,32px)] text-left shrink min-h-0">
                   <ul className="divide-y divide-border">
-                    <li className="flex items-center gap-x-4 px-5 py-4">
-                      <div className="size-10 flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
+                    <li className="flex items-center gap-x-4 px-[clamp(10px,2cqw,20px)] py-[clamp(4px,1cqh,16px)]">
+                      <div className="size-[clamp(24px,5cqh,40px)] flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
                         <User className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs text-muted-foreground uppercase tracking-wide">Name</p>
-                        <p className="mt-0.5 text-base sm:text-lg font-medium text-foreground">
+                        <p className="mt-0.5 text-[clamp(13px,2cqh,18px)] font-medium text-foreground">
                           {result.registration?.attendee_name}
                         </p>
                       </div>
                     </li>
-                    <li className="flex items-center gap-x-4 px-5 py-4">
-                      <div className="size-10 flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
+                    <li className="flex items-center gap-x-4 px-[clamp(10px,2cqw,20px)] py-[clamp(4px,1cqh,16px)]">
+                      <div className="size-[clamp(24px,5cqh,40px)] flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
                         <Ticket className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs text-muted-foreground uppercase tracking-wide">Registration</p>
-                        <p className="mt-0.5 text-base sm:text-lg font-medium text-foreground font-mono">
+                        <p className="mt-0.5 text-[clamp(13px,2cqh,18px)] font-medium text-foreground font-mono">
                           {result.registration?.registration_number}
                         </p>
                       </div>
                     </li>
                     {result.registration?.attendee_designation && (
-                      <li className="flex items-center gap-x-4 px-5 py-4">
-                        <div className="size-10 flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
+                      <li className="flex items-center gap-x-4 px-[clamp(10px,2cqw,20px)] py-[clamp(4px,1cqh,16px)]">
+                        <div className="size-[clamp(24px,5cqh,40px)] flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
                           <Briefcase className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Designation</p>
-                          <p className="mt-0.5 text-base sm:text-lg font-medium text-foreground">
+                          <p className="mt-0.5 text-[clamp(13px,2cqh,18px)] font-medium text-foreground">
                             {result.registration.attendee_designation}
                           </p>
                         </div>
                       </li>
                     )}
                     {result.registration?.attendee_institution && (
-                      <li className="flex items-center gap-x-4 px-5 py-4">
-                        <div className="size-10 flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
+                      <li className="flex items-center gap-x-4 px-[clamp(10px,2cqw,20px)] py-[clamp(4px,1cqh,16px)]">
+                        <div className="size-[clamp(24px,5cqh,40px)] flex-none rounded-full bg-muted outline outline-1 -outline-offset-1 outline-border flex items-center justify-center text-muted-foreground">
                           <Building2 className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Institution</p>
-                          <p className="mt-0.5 text-base sm:text-lg font-medium text-foreground">
+                          <p className="mt-0.5 text-[clamp(13px,2cqh,18px)] font-medium text-foreground">
                             {result.registration.attendee_institution}
                           </p>
                         </div>
@@ -2026,7 +2026,7 @@ export function KioskCheckinScreen({
                 </div>
 
                 {mode === "checkin_and_print" && printStatus && !printStatus.success && (
-                  <div className="mb-8 rounded-lg border border-amber-500/30 bg-amber-500/10 p-5 sm:p-6 text-left">
+                  <div className="w-full mb-[clamp(6px,1.2cqh,32px)] rounded-lg border border-amber-500/30 bg-amber-500/10 p-[clamp(10px,2cqh,24px)] text-left shrink-0">
                     <p className="text-lg sm:text-xl font-bold text-amber-800 mb-1">
                       Checked in — badge did not print
                     </p>
@@ -2056,11 +2056,11 @@ export function KioskCheckinScreen({
                 )}
 
                 {/* Actions */}
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <div className="flex flex-col sm:flex-row flex-wrap gap-[clamp(6px,1cqh,12px)] justify-center shrink-0">
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-transparent border-border text-foreground hover:bg-muted"
+                    className="h-[clamp(40px,7cqh,64px)] px-[clamp(14px,2.5cqw,32px)] text-[clamp(12px,1.8cqh,16px)] bg-transparent border-border text-foreground hover:bg-muted"
                     onClick={resetKiosk}
                   >
                     <RotateCcw className="h-5 w-5 mr-2" />
@@ -2069,7 +2069,7 @@ export function KioskCheckinScreen({
                   {!emailSent ? (
                     <Button
                       size="lg"
-                      className="h-14 sm:h-16 px-6 sm:px-8 text-base"
+                      className="h-[clamp(40px,7cqh,64px)] px-[clamp(14px,2.5cqw,32px)] text-[clamp(12px,1.8cqh,16px)]"
                       onClick={handleEmailBadge}
                       disabled={sendingEmail}
                     >
@@ -2083,7 +2083,7 @@ export function KioskCheckinScreen({
                   ) : (
                     <Button
                       size="lg"
-                      className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-emerald-600 hover:bg-emerald-600 text-white"
+                      className="h-[clamp(40px,7cqh,64px)] px-[clamp(14px,2.5cqw,32px)] text-[clamp(12px,1.8cqh,16px)] bg-emerald-600 hover:bg-emerald-600 text-white"
                       disabled
                     >
                       <CheckCircle2 className="h-5 w-5 mr-2" />
@@ -2093,7 +2093,7 @@ export function KioskCheckinScreen({
                   {!whatsappSent ? (
                     <Button
                       size="lg"
-                      className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-[#25D366] hover:bg-[#1eb955] text-white"
+                      className="h-[clamp(40px,7cqh,64px)] px-[clamp(14px,2.5cqw,32px)] text-[clamp(12px,1.8cqh,16px)] bg-[#25D366] hover:bg-[#1eb955] text-white"
                       onClick={handleWhatsappBadge}
                       disabled={sendingWhatsapp}
                     >
@@ -2107,7 +2107,7 @@ export function KioskCheckinScreen({
                   ) : (
                     <Button
                       size="lg"
-                      className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-emerald-600 hover:bg-emerald-600 text-white"
+                      className="h-[clamp(40px,7cqh,64px)] px-[clamp(14px,2.5cqw,32px)] text-[clamp(12px,1.8cqh,16px)] bg-emerald-600 hover:bg-emerald-600 text-white"
                       disabled
                     >
                       <CheckCircle2 className="h-5 w-5 mr-2" />
@@ -2119,7 +2119,7 @@ export function KioskCheckinScreen({
                       <Button
                         size="lg"
                         variant="outline"
-                        className="h-14 sm:h-16 px-6 sm:px-8 text-base bg-transparent border-border text-foreground hover:bg-muted"
+                        className="h-[clamp(40px,7cqh,64px)] px-[clamp(14px,2.5cqw,32px)] text-[clamp(12px,1.8cqh,16px)] bg-transparent border-border text-foreground hover:bg-muted"
                         onClick={handleConnectPrinter}
                       >
                         Connect Printer
@@ -2127,7 +2127,7 @@ export function KioskCheckinScreen({
                     ) : (
                       <Button
                         size="lg"
-                        className="h-14 sm:h-16 px-6 sm:px-8 text-base"
+                        className="h-[clamp(40px,7cqh,64px)] px-[clamp(14px,2.5cqw,32px)] text-[clamp(12px,1.8cqh,16px)]"
                         onClick={handlePrintButtonClick}
                         disabled={printing}
                       >
@@ -2141,23 +2141,23 @@ export function KioskCheckinScreen({
             ) : (
               <>
                 {/* Error — ring-expand animation */}
-                <div className="mb-8 relative w-32 h-32 sm:w-40 sm:h-40 mx-auto">
+                <div className="mb-[clamp(8px,2cqh,32px)] relative size-[clamp(56px,14cqh,160px)] mx-auto shrink-0">
                   <span className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" />
                   <div className="relative w-full h-full rounded-full bg-red-500/20 outline outline-1 -outline-offset-1 outline-red-500/40 flex items-center justify-center">
-                    <AlertCircle className="h-16 w-16 sm:h-20 sm:w-20 text-red-300" />
+                    <AlertCircle className="size-[clamp(28px,7cqh,80px)] text-red-300" />
                   </div>
                 </div>
 
-                <h1 className="text-3xl sm:text-5xl font-bold text-foreground mb-3">
+                <h1 className="text-[clamp(20px,5cqh,48px)] font-bold text-foreground mb-[clamp(4px,0.8cqh,12px)] shrink-0">
                   Check-in failed
                 </h1>
-                <p className="text-base sm:text-xl text-red-700 mb-8 max-w-md mx-auto">
+                <p className="text-[clamp(13px,2.2cqh,20px)] text-red-700 mb-[clamp(6px,1.6cqh,32px)] max-w-md mx-auto shrink-0">
                   {result.message}
                 </p>
 
                 <Button
                   size="lg"
-                  className="h-14 sm:h-16 px-8 sm:px-12 text-base"
+                  className="h-[clamp(40px,7cqh,64px)] px-[clamp(20px,4cqw,48px)] text-[clamp(12px,1.8cqh,16px)] shrink-0"
                   onClick={resetKiosk}
                 >
                   <RotateCcw className="h-5 w-5 mr-2" />
@@ -2169,7 +2169,7 @@ export function KioskCheckinScreen({
         </div>
 
         {/* Footer */}
-        <div className="bg-card border-t border-border px-4 sm:px-8 py-4 text-center">
+        <div className="flex-none bg-card border-t border-border px-4 sm:px-8 py-[clamp(4px,1cqh,16px)] text-center">
           <p className="text-xs sm:text-sm text-muted-foreground">
             Touch anywhere or wait {countdown} seconds to check in another person
           </p>
@@ -2268,14 +2268,14 @@ export function KioskCheckinScreen({
   // ============================================================
   return (
     <div
-      className="fixed inset-0 bg-background flex flex-col"
+      className="h-dvh w-dvw overflow-hidden kiosk-scope bg-background flex flex-col [container-type:size]"
       onClick={() => inputRef.current?.focus()}
     >
       {/* Header — coloured by the active list's category (blue/violet/cyan)
           so the job is identifiable from 2 metres, replacing the previous
           neutral grey bar. Falls back to the neutral grey only if category
           is somehow unset (should not happen once every caller supplies it). */}
-      <div className={`${category ? CATEGORY_COLORS[category].header : "bg-gray-800/50"} border-b border-white/10 px-4 sm:px-8 py-4 sm:py-6 relative`}>
+      <div className={`flex-none ${category ? CATEGORY_COLORS[category].header : "bg-gray-800/50"} border-b border-white/10 px-4 sm:px-8 py-[clamp(6px,1.2cqh,24px)] relative`}>
         <button
           onClick={toggleFullscreen}
           className="absolute top-2 right-2 sm:top-3 sm:right-3 p-2 rounded-full text-gray-200 hover:text-white hover:bg-white/10 transition-colors"
@@ -2285,7 +2285,7 @@ export function KioskCheckinScreen({
         </button>
         <div className="max-w-4xl mx-auto flex items-start sm:items-center justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white truncate">
+            <h1 className="text-[clamp(16px,2.6cqh,30px)] font-bold text-white truncate">
               {event?.short_name || event?.name || "Event"}
             </h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs sm:text-sm text-white/70">
@@ -2362,24 +2362,24 @@ export function KioskCheckinScreen({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-2xl w-full">
+      <div className="flex-1 min-h-0 flex items-center justify-center p-4 sm:p-8 overflow-hidden">
+        <div className="max-w-2xl w-full h-full flex flex-col justify-center">
           {/* Hero icon + headline */}
-          <div className="text-center mb-8">
-            <div className="size-20 sm:size-28 mx-auto rounded-3xl bg-indigo-500/15 outline outline-1 -outline-offset-1 outline-indigo-500/30 flex items-center justify-center mb-6 text-indigo-300">
-              <QrCode className="h-12 w-12 sm:h-16 sm:w-16" />
+          <div className="text-center mb-[clamp(6px,1.6cqh,24px)] shrink-0">
+            <div className="size-[clamp(40px,10cqh,96px)] mx-auto rounded-3xl bg-indigo-500/15 outline outline-1 -outline-offset-1 outline-indigo-500/30 flex items-center justify-center mb-[clamp(4px,1cqh,20px)] text-indigo-300">
+              <QrCode className="size-[clamp(22px,5cqh,48px)]" />
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">Self check-in</h2>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-md mx-auto">
+            <h2 className="text-[clamp(18px,3.6cqh,36px)] font-bold text-foreground mb-[clamp(2px,0.5cqh,8px)]">Self check-in</h2>
+            <p className="text-[clamp(12px,1.8cqh,17px)] text-muted-foreground max-w-md mx-auto">
               Scan QR code or enter your name, phone, or registration number
             </p>
           </div>
 
           {/* Scan mode toggle */}
-          <div className="flex bg-card outline outline-1 -outline-offset-1 outline-border rounded-xl p-1 mb-4">
+          <div className="flex bg-card outline outline-1 -outline-offset-1 outline-border rounded-xl p-1 mb-[clamp(6px,1.2cqh,16px)] shrink-0">
             <button
               onClick={() => setScanMode("camera")}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-[clamp(6px,1.2cqh,12px)] rounded-lg font-medium transition-all ${
                 scanMode === "camera" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -2388,7 +2388,7 @@ export function KioskCheckinScreen({
             </button>
             <button
               onClick={() => setScanMode("manual")}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-[clamp(6px,1.2cqh,12px)] rounded-lg font-medium transition-all ${
                 scanMode === "manual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -2399,11 +2399,11 @@ export function KioskCheckinScreen({
 
           {scanMode === "camera" ? (
             /* Camera viewport — action-panel surface */
-            <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg p-4 sm:p-5">
+            <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg p-4 sm:p-5 shrink min-h-0 overflow-hidden">
               <div className="relative">
                 <div
                   id={scannerContainerId}
-                  className="w-full aspect-square max-w-sm mx-auto rounded-xl overflow-hidden bg-black"
+                  className="w-full aspect-square max-w-[clamp(160px,32cqh,384px)] mx-auto rounded-xl overflow-hidden bg-black"
                 />
                 {cameraActive && (
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
@@ -2462,7 +2462,7 @@ export function KioskCheckinScreen({
             </div>
           ) : (
             /* Manual / external-scanner input panel — action-panel surface */
-            <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg p-5 sm:p-6">
+            <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg p-[clamp(12px,2.4cqh,24px)] shrink min-h-0 overflow-hidden">
               <div className="relative">
                 <Input
                   ref={inputRef}
@@ -2471,7 +2471,7 @@ export function KioskCheckinScreen({
                   value={registrationNumber}
                   onChange={handleRegChange}
                   onKeyDown={handleKeyDown}
-                  className="h-14 sm:h-16 text-base sm:text-xl text-center bg-white text-slate-900 border border-border rounded-xl placeholder:text-slate-400 pr-14"
+                  className="h-[clamp(44px,7cqh,64px)] text-[clamp(13px,2cqh,20px)] text-center bg-white text-slate-900 border border-border rounded-xl placeholder:text-slate-400 pr-14"
                   autoComplete="off"
                   autoFocus
                 />
@@ -2480,7 +2480,7 @@ export function KioskCheckinScreen({
 
               <Button
                 size="lg"
-                className="w-full h-14 sm:h-16 mt-4 text-base sm:text-xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl"
+                className="w-full h-[clamp(44px,7cqh,64px)] mt-[clamp(6px,1.2cqh,16px)] text-[clamp(13px,2cqh,20px)] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl"
                 onClick={() => handleCheckin()}
                 disabled={isProcessing || !cacheReady || !registrationNumber.trim()}
               >
@@ -2506,8 +2506,12 @@ export function KioskCheckinScreen({
             </div>
           )}
 
-          {/* Instructions — action-panel cards */}
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Instructions — action-panel cards. Hidden on the shortest
+              viewports (very small cqh) -- purely explanatory, redundant
+              with the hero copy above, and the first content this room can
+              afford to drop before anything the volunteer actually needs
+              to act on. */}
+          <div className="hidden [@media(min-height:520px)]:grid mt-[clamp(6px,1.2cqh,24px)] grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
             <div className="bg-card outline outline-1 -outline-offset-1 outline-border rounded-lg p-4 flex items-start gap-3">
               <div className="size-10 flex-none rounded-full bg-blue-500/15 outline outline-1 -outline-offset-1 outline-blue-500/30 flex items-center justify-center text-blue-700">
                 <QrCode className="h-5 w-5" />
@@ -2540,7 +2544,7 @@ export function KioskCheckinScreen({
               the right person, then proceeds through the exact same
               handleCheckin path a scan uses (registration_number override,
               so matchDelegate resolves to precisely this person). */}
-          <div className="mt-4 text-center">
+          <div className="mt-[clamp(4px,1cqh,16px)] text-center shrink-0">
             {!nameSearchOpen ? (
               <button
                 onClick={() => setNameSearchOpen(true)}
@@ -2577,7 +2581,7 @@ export function KioskCheckinScreen({
                 {nameSearchQuery.trim().length >= 2 && (() => {
                   const results = searchDelegates(delegatesRef.current, nameSearchQuery)
                   return (
-                    <div className="mt-3 space-y-1.5 max-h-64 overflow-y-auto">
+                    <div className="mt-3 space-y-1.5 max-h-[clamp(120px,30cqh,320px)] overflow-y-auto scrollbar-thin">
                       {results.map((d) => (
                         <button
                           key={d.id}
@@ -2610,7 +2614,7 @@ export function KioskCheckinScreen({
       </div>
 
       {/* Footer */}
-      <div className="bg-card border-t border-border px-4 sm:px-8 py-4 text-center">
+      <div className="flex-none bg-card border-t border-border px-4 sm:px-8 py-[clamp(4px,1cqh,16px)] text-center">
         {/* Persistent status strip -- so a silently-disconnected printer or
             a dead camera doesn't look identical to "working fine" on an
             unattended device. */}
@@ -2733,8 +2737,8 @@ function PrinterSetupScreen({
   onSwitchList,
 }: PrinterSetupScreenProps) {
   return (
-    <div className="fixed inset-0 bg-background flex flex-col">
-      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-6">
+    <div className="h-dvh w-dvw overflow-hidden kiosk-scope bg-background flex flex-col [container-type:size]">
+      <div className="flex-none bg-card border-b border-border px-4 sm:px-8 py-[clamp(6px,1.4cqh,24px)]">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
           <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">{eventName || "Event"}</h1>
           {stationName && (
@@ -2746,13 +2750,13 @@ function PrinterSetupScreen({
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-6">
-            <div className="size-20 sm:size-24 mx-auto rounded-3xl bg-indigo-500/15 outline outline-1 -outline-offset-1 outline-indigo-500/30 flex items-center justify-center mb-5 text-indigo-700">
-              <Printer className="h-10 w-10 sm:h-12 sm:w-12" />
+      <div className="flex-1 min-h-0 flex items-center justify-center p-4 sm:p-8 overflow-hidden">
+        <div className="max-w-md w-full max-h-full overflow-y-auto scrollbar-thin">
+          <div className="text-center mb-[clamp(6px,1.5cqh,24px)]">
+            <div className="size-[clamp(44px,9cqh,96px)] mx-auto rounded-3xl bg-indigo-500/15 outline outline-1 -outline-offset-1 outline-indigo-500/30 flex items-center justify-center mb-[clamp(6px,1.2cqh,20px)] text-indigo-700">
+              <Printer className="size-[clamp(22px,4.5cqh,48px)]" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Set up the printer</h2>
+            <h2 className="text-[clamp(18px,3.4cqh,30px)] font-bold text-foreground mb-2">Set up the printer</h2>
             <p className="text-sm sm:text-base text-muted-foreground">
               {`${listName} prints a badge on check-in. Connect and test it now — the delegate line can't wait while you find out it's dead.`}
             </p>
@@ -2870,7 +2874,7 @@ function PrinterSetupScreen({
         </div>
       </div>
 
-      <div className="bg-card border-t border-border px-4 sm:px-8 py-3 text-center">
+      <div className="flex-none bg-card border-t border-border px-4 sm:px-8 py-[clamp(4px,1cqh,12px)] text-center">
         <div className="flex items-center justify-center flex-wrap gap-x-3 gap-y-1 text-[11px]">
           <span className={`inline-flex items-center gap-1 ${isOnline ? "text-emerald-700" : "text-amber-700"}`}>
             <span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-amber-500"}`} />
@@ -2962,7 +2966,7 @@ function DuplicateWarningScreen({
   const firstName = attendeeName.split(" ")[0] || attendeeName
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-warning text-warning-foreground">
+    <div className="h-dvh w-dvw overflow-hidden kiosk-scope flex flex-col bg-warning text-warning-foreground [container-type:size]">
       {/* Hazard-stripe bar -- no Tailwind utility for a repeating diagonal
           gradient, so this is the one deliberate inline-style exception in
           this file. */}
@@ -2974,14 +2978,14 @@ function DuplicateWarningScreen({
         }}
       />
 
-      <div className="flex-1 flex flex-col gap-5 px-8 sm:px-14 py-8 min-h-0">
-        <div className="flex items-center gap-5 sm:gap-6">
-          <AlertTriangle className="h-16 w-16 sm:h-20 sm:w-20 flex-none" strokeWidth={2.3} />
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-[clamp(8px,1.6cqh,20px)] px-8 sm:px-14 py-[clamp(8px,1.6cqh,32px)]">
+        <div className="flex items-center gap-5 sm:gap-6 shrink-0">
+          <AlertTriangle className="size-[clamp(36px,9cqh,80px)] flex-none" strokeWidth={2.3} />
           <div className="flex flex-col gap-0.5 min-w-0">
-            <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-none">
+            <h1 className="text-[clamp(22px,7cqh,60px)] font-bold tracking-tight leading-none">
               ALREADY HAD {listName.toUpperCase()}
             </h1>
-            <p className="text-xl sm:text-2xl font-semibold">Do not give this again.</p>
+            <p className="text-[clamp(14px,2.4cqh,24px)] font-semibold">Do not give this again.</p>
           </div>
         </div>
 
@@ -2990,22 +2994,22 @@ function DuplicateWarningScreen({
             <p className="text-sm sm:text-base font-bold uppercase tracking-widest opacity-70">
               Same delegate
             </p>
-            <p className="text-5xl sm:text-7xl font-bold leading-none text-balance break-words">
+            <p className="text-[clamp(28px,10cqh,72px)] font-bold leading-none text-balance break-words">
               {attendeeName || firstName}
             </p>
-            <p className="text-xl sm:text-2xl font-medium opacity-80">
+            <p className="text-[clamp(14px,2.4cqh,24px)] font-medium opacity-80">
               Delegate · {registrationNumber}
             </p>
           </div>
 
-          <div className="flex-1 bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-paper-lg p-6 sm:p-8 flex flex-col justify-center gap-4">
+          <div className="flex-1 bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-paper-lg p-[clamp(12px,2.4cqh,32px)] flex flex-col justify-center gap-[clamp(6px,1.2cqh,16px)] min-h-0 overflow-hidden">
             <p className="text-sm sm:text-base font-bold uppercase tracking-widest text-slate-500">
               Already given
             </p>
             <div className="flex flex-col gap-3.5">
               <div className="flex items-baseline gap-3.5">
                 <span className="text-base sm:text-lg w-20 sm:w-24 flex-none text-slate-500">When</span>
-                <span className="text-2xl sm:text-3xl font-bold">
+                <span className="text-[clamp(16px,3cqh,30px)] font-bold">
                   {duplicateCheckedInAt
                     ? new Date(duplicateCheckedInAt).toLocaleString([], { hour: "numeric", minute: "2-digit" })
                     : "earlier today"}
@@ -3013,7 +3017,7 @@ function DuplicateWarningScreen({
               </div>
               <div className="flex items-baseline gap-3.5">
                 <span className="text-base sm:text-lg w-20 sm:w-24 flex-none text-slate-500">Where</span>
-                <span className="text-2xl sm:text-3xl font-bold">
+                <span className="text-[clamp(16px,3cqh,30px)] font-bold">
                   {duplicateStationName || "another station"}
                 </span>
               </div>
@@ -3025,7 +3029,7 @@ function DuplicateWarningScreen({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-6">
+        <div className="flex items-center justify-between gap-6 shrink-0">
           <div className="flex flex-col gap-2.5 flex-1">
             <p className="text-lg sm:text-xl font-bold">
               Back to scanning in {countdown}s
@@ -3043,18 +3047,18 @@ function DuplicateWarningScreen({
         </div>
       </div>
 
-      <div className="flex-none h-24 sm:h-[104px] bg-sidebar text-sidebar-foreground flex items-center gap-6 sm:gap-8 px-6 sm:px-10">
-        <div className="flex flex-col gap-0.5 w-[180px] sm:w-[220px] shrink-0">
+      <div className="flex-none h-[clamp(56px,11cqh,104px)] bg-sidebar text-sidebar-foreground flex items-center gap-[clamp(12px,2cqw,32px)] px-[clamp(16px,3cqw,40px)]">
+        <div className="flex flex-col gap-0.5 w-[clamp(120px,18cqw,220px)] shrink-0">
           <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">Station</p>
-          <p className="text-lg sm:text-xl font-semibold truncate">{stationName || "—"}</p>
+          <p className="text-[clamp(13px,2.2cqh,20px)] font-semibold truncate">{stationName || "—"}</p>
         </div>
-        <div className="flex-1 flex items-center gap-3 px-4 sm:px-5 py-2.5 rounded-xl bg-white/10 border border-white/20 min-w-0">
+        <div className="flex-1 flex items-center gap-3 px-[clamp(10px,1.8cqw,20px)] py-[clamp(6px,1.2cqh,10px)] rounded-xl bg-white/10 border border-white/20 min-w-0">
           <span className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted shrink-0">List</span>
-          <span className="text-xl sm:text-2xl font-bold truncate">{listName}</span>
+          <span className="text-[clamp(15px,2.6cqh,24px)] font-bold truncate">{listName}</span>
         </div>
         <div className="flex flex-col gap-0.5 text-right shrink-0">
           <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">Waiting to send</p>
-          <p className="text-lg sm:text-xl font-semibold">
+          <p className="text-[clamp(13px,2.2cqh,20px)] font-semibold">
             {pendingSyncCount} scan{pendingSyncCount === 1 ? "" : "s"}
           </p>
         </div>
@@ -3083,18 +3087,18 @@ function KioskStationFooter({
   isOnline: boolean
 }) {
   return (
-    <div className="flex-none h-24 sm:h-[104px] bg-sidebar text-sidebar-foreground flex items-center gap-6 sm:gap-8 px-6 sm:px-10">
-      <div className="flex flex-col gap-0.5 w-[180px] sm:w-[220px] shrink-0">
+    <div className="flex-none h-[clamp(56px,11cqh,104px)] bg-sidebar text-sidebar-foreground flex items-center gap-[clamp(12px,2cqw,32px)] px-[clamp(16px,3cqw,40px)]">
+      <div className="flex flex-col gap-0.5 w-[clamp(120px,18cqw,220px)] shrink-0">
         <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">Station</p>
-        <p className="text-lg sm:text-xl font-semibold truncate">{stationName || "—"}</p>
+        <p className="text-[clamp(13px,2.2cqh,20px)] font-semibold truncate">{stationName || "—"}</p>
       </div>
-      <div className="flex-1 flex items-center gap-3 px-4 sm:px-5 py-2.5 rounded-xl bg-white/10 border border-white/20 min-w-0">
+      <div className="flex-1 flex items-center gap-3 px-[clamp(10px,1.8cqw,20px)] py-[clamp(6px,1.2cqh,10px)] rounded-xl bg-white/10 border border-white/20 min-w-0">
         <span className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted shrink-0">List</span>
-        <span className="text-xl sm:text-2xl font-bold truncate">{listName}</span>
+        <span className="text-[clamp(15px,2.6cqh,24px)] font-bold truncate">{listName}</span>
       </div>
       <div className="flex flex-col gap-0.5 text-right shrink-0">
         <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">Waiting to send</p>
-        <p className="text-lg sm:text-xl font-semibold">
+        <p className="text-[clamp(13px,2.2cqh,20px)] font-semibold">
           {pendingSyncCount} scan{pendingSyncCount === 1 ? "" : "s"}
         </p>
       </div>
@@ -3177,14 +3181,14 @@ function CollectionReadyScreen({
   const [nameSearchQuery, setNameSearchQuery] = useState("")
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-background" onClick={() => inputRef.current?.focus()}>
+    <div className="h-dvh w-dvw overflow-hidden kiosk-scope flex flex-col bg-background [container-type:size]" onClick={() => inputRef.current?.focus()}>
       {/* Header */}
-      <div className="flex-none bg-primary text-primary-foreground px-6 sm:px-12 py-5 sm:py-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+      <div className="flex-none bg-primary text-primary-foreground px-6 sm:px-12 py-[clamp(8px,1.6cqh,24px)] flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <div className="flex items-baseline gap-3 sm:gap-4 min-w-0">
           <span className="text-xs sm:text-sm font-semibold uppercase tracking-widest opacity-80 shrink-0">
             You are scanning for
           </span>
-          <span className="text-2xl sm:text-4xl font-bold tracking-tight truncate">{listName}</span>
+          <span className="text-[clamp(18px,3.6cqh,36px)] font-bold tracking-tight truncate">{listName}</span>
         </div>
         {listClosesAt && (
           <span className="text-base sm:text-xl font-medium opacity-90 shrink-0">
@@ -3194,28 +3198,28 @@ function CollectionReadyScreen({
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-5 sm:gap-6 px-4 sm:px-8 py-6 min-h-0 overflow-y-auto">
-        <div className="size-28 sm:size-40 rounded-full bg-primary-10 flex items-center justify-center text-primary">
-          <QrCode className="h-12 w-12 sm:h-16 sm:w-16" />
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col items-center justify-center gap-[clamp(6px,1.4cqh,24px)] px-4 sm:px-8 py-[clamp(6px,1.4cqh,24px)]">
+        <div className="size-[clamp(48px,10cqh,160px)] rounded-full bg-primary-10 flex items-center justify-center text-primary shrink-0">
+          <QrCode className="size-[clamp(24px,5cqh,64px)]" />
         </div>
-        <h1 className="text-3xl sm:text-5xl font-bold text-foreground text-center">Scan the badge</h1>
-        <p className="text-base sm:text-xl text-muted-foreground text-center max-w-xl">
+        <h1 className="text-[clamp(20px,4.4cqh,48px)] font-bold text-foreground text-center shrink-0">Scan the badge</h1>
+        <p className="text-[clamp(12px,1.8cqh,20px)] text-muted-foreground text-center max-w-xl shrink-0">
           Hold the scanner over the barcode. You don&apos;t have to type anything.
         </p>
-        <div className="flex items-center gap-3 px-5 py-3 rounded-full bg-card border border-border">
+        <div className="flex items-center gap-3 px-5 py-[clamp(6px,1.2cqh,12px)] rounded-full bg-card border border-border shrink-0">
           <span className="size-3 rounded-full bg-success animate-pulse" />
           <span className="text-sm sm:text-base font-medium text-muted-foreground">
             Scanner connected · {lastScanLabel}
           </span>
         </div>
 
-        <div className="w-full max-w-2xl mt-2">
+        <div className="w-full max-w-2xl mt-2 shrink min-h-0 overflow-hidden flex flex-col">
           {/* Scan mode toggle -- same state/handlers as the self-service screen,
               restyled for a light background */}
-          <div className="flex bg-muted border border-border rounded-xl p-1 mb-4">
+          <div className="flex bg-muted border border-border rounded-xl p-1 mb-[clamp(6px,1.2cqh,16px)] shrink-0">
             <button
               onClick={() => setScanMode("camera")}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-[clamp(6px,1.2cqh,12px)] rounded-lg font-medium transition-all ${
                 scanMode === "camera" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -3224,7 +3228,7 @@ function CollectionReadyScreen({
             </button>
             <button
               onClick={() => setScanMode("manual")}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-[clamp(6px,1.2cqh,12px)] rounded-lg font-medium transition-all ${
                 scanMode === "manual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -3236,11 +3240,11 @@ function CollectionReadyScreen({
           {scanMode === "camera" ? (
             /* Camera viewport -- identical functionality to the self-service
                screen's camera branch, restyled for a light background */
-            <div className="bg-card border border-border rounded-lg p-4 sm:p-5">
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-5 shrink min-h-0 overflow-hidden">
               <div className="relative">
                 <div
                   id={scannerContainerId}
-                  className="w-full aspect-square max-w-sm mx-auto rounded-xl overflow-hidden bg-black"
+                  className="w-full aspect-square max-w-[clamp(160px,32cqh,384px)] mx-auto rounded-xl overflow-hidden bg-black"
                 />
                 {cameraActive && (
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
@@ -3300,7 +3304,7 @@ function CollectionReadyScreen({
           ) : (
             /* Manual / external-scanner input -- identical functionality to
                the self-service screen's manual branch */
-            <div className="bg-card border border-border rounded-lg p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-card border border-border rounded-lg p-[clamp(12px,2.4cqh,24px)] shrink min-h-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="relative">
                 <Input
                   ref={inputRef}
@@ -3309,7 +3313,7 @@ function CollectionReadyScreen({
                   value={registrationNumber}
                   onChange={handleRegChange}
                   onKeyDown={handleKeyDown}
-                  className="h-14 sm:h-16 text-base sm:text-xl text-center bg-white text-slate-900 border border-border rounded-xl placeholder:text-slate-400 pr-14"
+                  className="h-[clamp(44px,7cqh,64px)] text-[clamp(13px,2cqh,20px)] text-center bg-white text-slate-900 border border-border rounded-xl placeholder:text-slate-400 pr-14"
                   autoComplete="off"
                   autoFocus
                 />
@@ -3318,7 +3322,7 @@ function CollectionReadyScreen({
 
               <Button
                 size="lg"
-                className="w-full h-14 sm:h-16 mt-4 text-base sm:text-xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl"
+                className="w-full h-[clamp(44px,7cqh,64px)] mt-[clamp(6px,1.2cqh,16px)] text-[clamp(13px,2cqh,20px)] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl"
                 onClick={() => handleCheckin()}
                 disabled={isProcessing || !cacheReady || !registrationNumber.trim()}
               >
@@ -3348,7 +3352,7 @@ function CollectionReadyScreen({
           {/* Name search -- same offline-only roster lookup as the
               self-service screen (work order §5), secondary to the
               scanner/manual entry above. */}
-          <div className="mt-4 text-center" onClick={(e) => e.stopPropagation()}>
+          <div className="mt-[clamp(4px,1cqh,16px)] text-center shrink-0" onClick={(e) => e.stopPropagation()}>
             {!nameSearchOpen ? (
               <button
                 onClick={() => setNameSearchOpen(true)}
@@ -3385,7 +3389,7 @@ function CollectionReadyScreen({
                 {nameSearchQuery.trim().length >= 2 && (() => {
                   const results = searchDelegates(delegatesRef.current, nameSearchQuery)
                   return (
-                    <div className="mt-3 space-y-1.5 max-h-64 overflow-y-auto">
+                    <div className="mt-3 space-y-1.5 max-h-[clamp(120px,30cqh,320px)] overflow-y-auto scrollbar-thin">
                       {results.map((d) => (
                         <button
                           key={d.id}
@@ -3469,25 +3473,25 @@ function CollectionSuccessScreen({
   isOnline,
 }: CollectionSuccessScreenProps) {
   return (
-    <div className="fixed inset-0 flex flex-col bg-success text-success-foreground">
-      <div className="flex-1 flex flex-col px-6 sm:px-14 py-8 sm:py-11 gap-2 min-h-0">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="h-dvh w-dvw overflow-hidden kiosk-scope flex flex-col bg-success text-success-foreground [container-type:size]">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col px-6 sm:px-14 py-[clamp(8px,1.8cqh,44px)] gap-[clamp(4px,0.8cqh,8px)]">
+        <div className="flex items-center justify-between gap-4 flex-wrap shrink-0">
           <div className="flex items-center gap-4 sm:gap-5 min-w-0">
-            <CheckCircle2 className="h-14 w-14 sm:h-20 sm:w-20 flex-none" strokeWidth={2.2} />
-            <h1 className="text-3xl sm:text-6xl font-bold tracking-wide truncate">
+            <CheckCircle2 className="size-[clamp(36px,9cqh,80px)] flex-none" strokeWidth={2.2} />
+            <h1 className="text-[clamp(20px,7cqh,60px)] font-bold tracking-wide truncate">
               {listName.toUpperCase()} GIVEN
             </h1>
           </div>
-          <span className="px-5 sm:px-6 py-3 sm:py-3.5 rounded-full bg-white/20 text-lg sm:text-2xl font-semibold shrink-0">
+          <span className="px-5 sm:px-6 py-3 sm:py-3.5 rounded-full bg-white/20 text-[clamp(13px,2.4cqh,24px)] font-semibold shrink-0">
             First time today
           </span>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center gap-4 sm:gap-5 min-h-0">
-          <p className="text-5xl sm:text-8xl font-bold leading-none tracking-tight text-balance break-words">
+        <div className="flex-1 flex flex-col justify-center gap-[clamp(6px,1.4cqh,20px)] min-h-0">
+          <p className="text-[clamp(28px,10cqh,96px)] font-bold leading-none tracking-tight text-balance break-words">
             {attendeeName || "Delegate"}
           </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-lg sm:text-3xl font-medium opacity-95">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[clamp(14px,3cqh,30px)] font-medium opacity-95">
             <span>Delegate · {registrationNumber}</span>
             {attendeeInstitution && (
               <>
@@ -3498,7 +3502,7 @@ function CollectionSuccessScreen({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-6 flex-wrap">
+        <div className="flex items-center justify-between gap-6 flex-wrap shrink-0">
           <div className="flex flex-col gap-2.5 flex-1 min-w-[220px]">
             <p className="text-lg sm:text-xl font-semibold opacity-90">
               Back to scanning in {countdown} seconds
@@ -3550,18 +3554,18 @@ function NotOnListScreen({
   isOnline,
 }: NotOnListScreenProps) {
   return (
-    <div className="fixed inset-0 flex flex-col bg-destructive text-destructive-foreground">
-      <div className="flex-1 flex flex-col gap-5 px-8 sm:px-14 py-8 sm:py-11 min-h-0">
-        <div className="flex items-center gap-5 sm:gap-6">
-          <XCircle className="h-16 w-16 sm:h-20 sm:w-20 flex-none" strokeWidth={2.3} />
-          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-none text-balance">
+    <div className="h-dvh w-dvw overflow-hidden kiosk-scope flex flex-col bg-destructive text-destructive-foreground [container-type:size]">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-[clamp(6px,1.4cqh,20px)] px-8 sm:px-14 py-[clamp(8px,1.8cqh,44px)]">
+        <div className="flex items-center gap-5 sm:gap-6 shrink-0">
+          <XCircle className="size-[clamp(36px,9cqh,80px)] flex-none" strokeWidth={2.3} />
+          <h1 className="text-[clamp(22px,7cqh,60px)] font-bold tracking-tight leading-none text-balance">
             NOT ON THE {listName.toUpperCase()} LIST
           </h1>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center gap-5 sm:gap-6 min-h-0">
-          <p className="text-6xl sm:text-8xl font-bold leading-none tracking-tight">Please see staff</p>
-          <p className="text-xl sm:text-3xl font-medium opacity-95 max-w-3xl text-balance">
+        <div className="flex-1 flex flex-col justify-center gap-[clamp(6px,1.4cqh,24px)] min-h-0">
+          <p className="text-[clamp(32px,11cqh,96px)] font-bold leading-none tracking-tight">Please see staff</p>
+          <p className="text-[clamp(15px,3cqh,30px)] font-medium opacity-95 max-w-3xl text-balance">
             Walk them to the help desk. Don&apos;t hand anything over, and don&apos;t scan again.
           </p>
           {scannedCode && (
@@ -3574,7 +3578,7 @@ function NotOnListScreen({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-6 flex-wrap">
+        <div className="flex items-center justify-between gap-6 flex-wrap shrink-0">
           <div className="flex flex-col gap-2.5 flex-1 min-w-[220px]">
             <p className="text-lg sm:text-xl font-semibold opacity-90">
               Back to scanning in {countdown}s
