@@ -46,10 +46,8 @@ export function replacePlaceholders(
 
   if (event?.start_date && event?.end_date) {
     const start = new Date(event.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
-    const endDateObj = new Date(event.end_date)
-    const endDay = endDateObj.toLocaleDateString("en-IN", { day: "numeric", month: "short" })
-    const year = endDateObj.toLocaleDateString("en-IN", { year: "numeric" })
-    result = result.replace(/\{\{event_date\}\}/g, `${start} - ${endDay}, ${year}`)
+    const end = new Date(event.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    result = result.replace(/\{\{event_date\}\}/g, `${start} - ${end}`)
   } else {
     result = result.replace(/\{\{event_date\}\}/g, "Event Date")
   }
