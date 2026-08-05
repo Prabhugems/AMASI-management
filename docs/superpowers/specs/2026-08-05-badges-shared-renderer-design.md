@@ -56,21 +56,46 @@ already set by `src/lib/badge-element-bounds.ts` and
   unexported inside `designer/page.tsx`; moved here so Templates, Generate,
   and Designer can all import the same shapes instead of redeclaring them.
 - **`src/components/badges/badge-element-view.tsx`** —
-  `<BadgeElementView element mode registration? event? />`. A pure function
-  of its props to visual output for **one** element (text, qr_code, image,
-  shape, line, barcode, photo). No drag, no resize, no selection state — it
-  renders the element's content at 100% of its positioned container.
+  `<BadgeElementView element mode registration? event? scale? />`. A pure
+  function of its props to visual output for **one** element (text, qr_code,
+  image, shape, line, barcode, photo). No drag, no resize, no selection
+  state — it renders the element's content at `scale` (default `1`),
+  multiplied into font size / QR size / barcode size internally, exactly
+  matching Designer's current `zoom`-multiplication mechanism (see Section
+  2a below for why this is a prop rather than a CSS transform).
 - **`src/components/badges/badge-canvas.tsx`** —
-  `<BadgeCanvas template mode registration? event? />`. Composes the
+  `<BadgeCanvas template mode registration? event? scale? />`. Composes the
   background (color or image) and every element sorted by `zIndex`, each
   absolutely positioned per its own `x/y/width/height/zIndex/opacity/rotation`
   (positioning is generic across element types, so `BadgeCanvas` owns it —
-  `BadgeElementView` only renders the type-specific content inside).
-  Renders at the template's **native pixel size**; it takes no zoom/scale
-  prop. Every consumer wraps it in `transform: scale(k)` /
-  `transform-origin: top left` themselves, where
-  `k = boxWidth / template.width` — exactly as the full brief's own notes
-  specify.
+  `BadgeElementView` only renders the type-specific content inside). Every
+  position/size value is multiplied by `scale` the same way `BadgeElementView`
+  multiplies its own internal measurements.
+
+### 2a. Why `scale` is a prop, not a CSS transform
+
+The full brief's handoff notes describe wrapping a fixed-size preview box in
+`transform: scale(k)`. That's the right mechanism for a **new** consumer
+(Template cards) with no existing zoom implementation to reconcile. It is
+**not** how Designer's zoom works today: Designer multiplies every
+measurement — element `x/y/width/height`, font size, QR/barcode size, `<Rnd>`
+position/size, snap guides, rulers, grid spacing — by a `zoom` variable,
+roughly 20+ call sites. Forcing Designer onto a CSS-transform model would
+require reworking `react-rnd`'s drag/resize math (`react-rnd` has its own
+`scale` prop specifically to correct mouse-delta math under an ancestor's
+CSS transform — a different, incompatible mechanism from what Designer does
+today), snap guides, and rulers — a real change to Designer's interaction
+model, not the mechanical, zero-behavior-drift extraction this sub-project
+is scoped as.
+
+Decision (confirmed): `BadgeElementView`/`BadgeCanvas` take a `scale` prop,
+multiplied internally into every measurement exactly like today's `zoom`
+multiplication. Designer passes its existing `zoom` state straight through —
+its drag/resize/snap/ruler code is untouched by this sub-project. Later
+consumers (Template cards, Generate's live preview) compute their own
+`k = boxWidth / template.width` and pass it as `scale` — same prop, same
+component, same "one renderer" guarantee, without mandating any particular
+CSS mechanism on the consumer side.
 
 Designer keeps its own `<Rnd>` wrapping, drag/resize handlers, selection
 outlines, and context menus — none of that moves. Because it needs
