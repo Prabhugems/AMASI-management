@@ -5,8 +5,24 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  // Skip auth if Supabase is not configured (for development)
-  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('placeholder')) {
+  const supabaseConfigured = Boolean(
+    supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('placeholder')
+  )
+
+  // Missing Supabase config skips auth in DEVELOPMENT ONLY.
+  //
+  // This used to short-circuit in every environment, so a deploy missing
+  // NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY served every
+  // protected page to everyone, silently. That is not hypothetical here: this
+  // repo deploys to several tenant Vercel projects (essurg-2026, cos-2026, …),
+  // each with its own environment variables, so one missed variable on one
+  // project was enough — and the failure mode was an open admin dashboard
+  // rather than an error anyone would notice.
+  //
+  // In production the request now continues with `user` left null, so the
+  // existing protected-route check below redirects to /login while public and
+  // token-based routes keep working. Fail closed, without taking the site down.
+  if (!supabaseConfigured && process.env.NODE_ENV !== 'production') {
     return NextResponse.next()
   }
 
@@ -14,9 +30,9 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
-  const supabase = createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
+  const supabase = supabaseConfigured ? createServerClient(
+    supabaseUrl!,
+    supabaseAnonKey!,
     {
       cookies: {
         getAll() {
@@ -35,15 +51,23 @@ export async function middleware(request: NextRequest) {
         },
       },
     }
-  )
+  ) : null
 
   // Do not run code between createServerClient and
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // `user` stays null when Supabase is unconfigured in production — that is the
+  // fail-closed path described above, not an error state to swallow.
+  let user = null
+  if (supabase) {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } else {
+    console.error(
+      '[middleware] Supabase env vars missing in production — every request is being treated as unauthenticated'
+    )
+  }
 
   // Protected routes - redirect to login if not authenticated
   const protectedRoutes = [
