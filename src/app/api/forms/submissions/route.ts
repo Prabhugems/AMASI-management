@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { requireEventAccess } from "@/lib/auth/api-auth"
+import { signFormUploadUrlsDeep } from "@/lib/storage-url"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -70,8 +71,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Sign any form-uploads URLs nested in responses, at the API boundary, so
+    // the admin UI keeps rendering whatever it already renders. One batched
+    // round trip for the whole page. See src/lib/storage-url.ts.
+    const signedSubmissions = await signFormUploadUrlsDeep(submissions)
+
     return NextResponse.json({
-      data: submissions,
+      data: signedSubmissions,
       total: count || 0,
       page,
       limit,

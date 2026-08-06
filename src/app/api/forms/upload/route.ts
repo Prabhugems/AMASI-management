@@ -83,8 +83,13 @@ export async function POST(request: NextRequest) {
       // If bucket doesn't exist, try to create it
       if (error.message?.includes("Bucket not found")) {
         // Create the bucket
+        // public: false — this bucket holds documents uploaded through public
+        // registration and membership forms (MCI certificates, pass
+        // certificates, payment screenshots). Creating it public is what put
+        // 423 of them behind unauthenticated URLs. Reads are signed at the API
+        // boundary instead (src/lib/storage-url.ts).
         const { error: bucketError } = await supabase.storage.createBucket("form-uploads", {
-          public: true,
+          public: false,
           fileSizeLimit: 52428800, // 50MB
         })
 

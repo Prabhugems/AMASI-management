@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
+import { signFormUploadUrlsDeep } from "@/lib/storage-url"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
@@ -27,7 +28,8 @@ export async function GET(
       return NextResponse.json({ error: "Submission not found" }, { status: 404 })
     }
 
-    return NextResponse.json(submission)
+    // Sign form-uploads URLs nested in responses (see src/lib/storage-url.ts).
+    return NextResponse.json(await signFormUploadUrlsDeep(submission))
   } catch (error) {
     console.error("Error fetching submission:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
