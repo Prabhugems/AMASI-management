@@ -527,7 +527,7 @@ export default function DelegateViewPage() {
 
             <div className="flex items-center gap-3">
               <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" asChild>
-                <a href={`/events/${eventId}/program/print`} target="_blank">
+                <a href={`/events/${eventId}/program/print`} target="_blank" rel="noopener noreferrer">
                   <Download className="h-4 w-4 mr-2" />
                   Download PDF
                 </a>

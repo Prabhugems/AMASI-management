@@ -319,7 +319,7 @@ export default function EventFormsPage() {
                     </DropdownMenuItem>
                     {form.status === "published" && (
                       <DropdownMenuItem asChild>
-                        <a href={`/f/${form.slug}`} target="_blank" rel="noopener">
+                        <a href={`/f/${form.slug}`} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="w-4 h-4 mr-2" />
                           View Live
                         </a>

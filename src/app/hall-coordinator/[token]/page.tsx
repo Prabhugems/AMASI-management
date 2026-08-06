@@ -1048,6 +1048,7 @@ export default function HallControlDashboard() {
                             <a
                               href={`https://wa.me/${speaker.phone.replace(/\D/g, "")}?text=Hi ${speaker.name}`}
                               target="_blank"
+                              rel="noopener noreferrer"
                               className="p-2 bg-[#25D366] rounded-xl text-white hover:bg-[#128C7E] transition-colors"
                             >
                               <MessageCircle className="h-5 w-5" />
@@ -1169,7 +1170,7 @@ export default function HallControlDashboard() {
                         <a href={`tel:${contact.phone}`} className="p-2 bg-green-500 rounded-xl text-white">
                           <Phone className="h-5 w-5" />
                         </a>
-                        <a href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`} target="_blank" className="p-2 bg-[#25D366] rounded-xl text-white">
+                        <a href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-[#25D366] rounded-xl text-white">
                           <MessageCircle className="h-5 w-5" />
                         </a>
                       </div>
@@ -1196,7 +1197,7 @@ export default function HallControlDashboard() {
                         <a href={`tel:${speaker.phone}`} className="p-2 bg-green-500 rounded-xl text-white">
                           <Phone className="h-4 w-4" />
                         </a>
-                        <a href={`https://wa.me/${speaker.phone.replace(/\D/g, "")}`} target="_blank" className="p-2 bg-[#25D366] rounded-xl text-white">
+                        <a href={`https://wa.me/${speaker.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-[#25D366] rounded-xl text-white">
                           <MessageCircle className="h-4 w-4" />
                         </a>
                       </div>
