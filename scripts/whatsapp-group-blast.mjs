@@ -28,6 +28,17 @@ const args = process.argv.slice(2)
 const SEND_EMAILS = args.includes("--send")
 const DB_ONLY = args.includes("--db-only")
 
+// Read once, at startup, before anything is sent. This previously defaulted to
+// a live Blastable sending key hardcoded in the file — in a public repo. The
+// check has to live here rather than inside the send loop: that loop wraps each
+// recipient in try/catch, so a throw down there would be swallowed and counted
+// as N individual failures instead of stopping the blast.
+const BLASTABLE_API_KEY = process.env.BLASTABLE_API_KEY?.trim()
+if (SEND_EMAILS && !BLASTABLE_API_KEY) {
+  console.error("BLASTABLE_API_KEY is not set. Run: node --env-file=.env.local scripts/whatsapp-group-blast.mjs --send")
+  process.exit(1)
+}
+
 async function main() {
   console.log("=== 122 FMAS WhatsApp Group Setup ===\n")
 
@@ -133,8 +144,8 @@ AMASI Team`
       const emailHtml = buildEmailHtml(eventName, reg.attendee_email, message)
 
       try {
-        // Use Blastable API directly (same as the app's email.ts)
-        const BLASTABLE_API_KEY = process.env.BLASTABLE_API_KEY || "6e957a3c-3450-4ea2-854a-39d26e2e6529"
+        // Use Blastable API directly (same as the app's email.ts).
+        // Validated once at startup — see BLASTABLE_API_KEY above.
 
         const res = await fetch("https://api.blastable.io/v1/email/send", {
           method: "POST",
