@@ -31,3 +31,32 @@ ignore:
   # env(...) form, so there is nothing to leak here.
   - paths: ["supabase/config.toml"]
     reason: "matches Supabase's own boilerplate 'DO NOT commit ...' comments; values already use env() substitution"
+
+  # R-BFD19 / R-518DD / R-7729E — "Definition for rule '<x>' was not found".
+  #
+  # These ~500 findings are NOT code. Every flagged line is an eslint-disable
+  # comment. There is no input, no sink, and nothing to exploit — the "finding"
+  # is that ESLint could not resolve the rule NAMED IN THE COMMENT.
+  #
+  # That is a property of the scanner's environment, not this repo, and it was
+  # tested rather than assumed. On 2026-08-06 the ESLint setup here was
+  # modernised specifically to see whether it was the cause: eslint 8 -> 9,
+  # .eslintrc.json -> flat config, and eslint-config-next moved from 14.2.21
+  # (two majors behind) to ~16.2.12, making every referenced plugin resolve
+  # explicitly instead of transitively. Locally the rules resolve and report
+  # real violations. The Rafter count moved by exactly ZERO across that change
+  # (515 -> 498, and the 17 were dead directives deleted in the same pass, not
+  # rules resolving). Conclusion: the scanner runs its own ESLint without
+  # installing this project's dependencies, so no change here can affect it.
+  #
+  # The only way to remove the comments themselves is to fix the underlying
+  # `any` types. There are 2,753 of them repo-wide. That is a typing project,
+  # not a security fix, and is tracked separately.
+  - paths: ["src/**", "scripts/**"]
+    rules:
+      - "@typescript-eslint/no-explicit-any"
+      - "@next/next/no-img-element"
+      - "jsx-a11y/media-has-caption"
+      - "@typescript-eslint/no-require-imports"
+    reason: "scanner-side ESLint plugin resolution; flagged lines are eslint-disable comments, not code (verified 2026-08-06)"
+
