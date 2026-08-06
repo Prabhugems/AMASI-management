@@ -17,7 +17,9 @@
 import http from "node:http"
 import https from "node:https"
 import crypto from "node:crypto"
-import { execSync, execFileSync, exec } from "node:child_process"
+// No `exec` import: every subprocess in this file now goes through the
+// execFile family, so no command string is ever handed to a shell.
+import { execSync, execFileSync, execFile } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
@@ -53,6 +55,13 @@ const FOURBARCODE_FILTER = `/Library/Printers/4BARCODE/bin/rastertosnailtspl-mac
 // EEPROM. Until then we run tear-off (one label per print, hand-tear).
 // Flip this to `/4BARCODE|4B-/i.test(printer) && fs.existsSync(...)`
 // to re-enable the injection branch below.
+//
+// BEFORE RE-ENABLING: that branch references CUTTER_OFFSET_DOTS, which is not
+// defined anywhere in this file and never has been — it would throw
+// ReferenceError on the first print. The value is the print-head-to-cutter
+// distance in dots and has to be measured for the specific printer, so it is
+// deliberately not guessed here. This is also proof the branch has never
+// executed.
 const usesBackfeedInjection = () => false
 void FOURBARCODE_FILTER
 
@@ -303,57 +312,83 @@ const handler = async (req, res) => {
           try { fs.unlinkSync(tsplFile) } catch {}
         }
 
-        // NOTE: this whole branch is parked — usesBackfeedInjection() returns
-        // false unconditionally (see the comment at its definition, which
-        // records how to re-enable it). Its three exec() calls use shell
-        // redirection (`> file 2>/dev/null`) and an env-var prefix, so
-        // converting them to execFile means restructuring code nobody runs.
-        // Left as-is deliberately: `printer` is validated against lpstat and
-        // `optStr` derives from the validated optArgs, so nothing
-        // caller-controlled reaches the shell unchecked.
-        const rasterCmd = `cupsfilter -p "${ppdPath}" -m application/vnd.cups-raster "${pdfFile}" > "${rasterFile}" 2>/dev/null`
+        // This branch is parked — usesBackfeedInjection() returns false
+        // unconditionally (its definition records how to re-enable it). It uses
+        // execFile rather than exec anyway, so whoever turns it back on
+        // inherits a shell-free pipeline instead of having to re-audit one.
+        //
+        // The shell features it previously relied on map directly:
+        //   `> file`       -> capture stdout as a Buffer and write it
+        //   `2>/dev/null`  -> execFile's stderr is simply not read
+        //   `PPD=... cmd`  -> the `env` option
+        // maxBuffer is raised because a 4x6 raster runs to several MB and the
+        // 1 MB default would silently truncate it.
+        const BUF = { encoding: "buffer", maxBuffer: 64 * 1024 * 1024 }
 
-        exec(rasterCmd, (rasterErr) => {
-          if (rasterErr || !fs.existsSync(rasterFile) || fs.statSync(rasterFile).size === 0) {
-            cleanupExtra()
-            return sendErr("pdf→raster", rasterErr ? rasterErr.message : "empty raster")
-          }
+        // Steps are declared in reverse call order so each is defined before
+        // the step that invokes it — no forward references.
 
-          const filterCmd =
-            `PPD="${ppdPath}" "${FOURBARCODE_FILTER}" 1 user "badge" 1 "${optStr}" ` +
-            `"${rasterFile}" > "${tsplFile}" 2>/dev/null`
+        // 3. Injected TSPL -> printer, raw.
+        const sendRaw = () => {
+          // Driver emits SET CUTTER ON which makes the printer feed
+          // ~3.5 in past the print head before auto-cutting, wasting one
+          // label per print (output = 9.5" for a 6" label). We disable
+          // the driver's auto-cut and do FEED→CUT→BACKFEED manually so
+          // the cut lands on the label boundary and the next label is
+          // restored at the print head. latin1 is byte-safe for the
+          // binary bitmap payload that follows the ASCII preamble.
+          let tspl = fs.readFileSync(tsplFile, "latin1")
+          tspl = tspl.replace(/SET CUTTER ON\r?\n/, "SET CUTTER OFF\r\n")
+          tspl = tspl.replace(
+            /(PRINT 1,1\r?\n?)$/,
+            `$1FEED ${CUTTER_OFFSET_DOTS}\r\nCUT\r\nBACKFEED ${CUTTER_OFFSET_DOTS}\r\n`,
+          )
+          fs.writeFileSync(tsplFile, tspl, "latin1")
 
-          exec(filterCmd, (filterErr) => {
-            try { fs.unlinkSync(rasterFile) } catch {}
-            if (filterErr || !fs.existsSync(tsplFile) || fs.statSync(tsplFile).size === 0) {
-              try { fs.unlinkSync(tsplFile) } catch {}
-              return sendErr("raster→tspl", filterErr ? filterErr.message : "empty TSPL")
-            }
-
-            // Driver emits SET CUTTER ON which makes the printer feed
-            // ~3.5 in past the print head before auto-cutting, wasting one
-            // label per print (output = 9.5" for a 6" label). We disable
-            // the driver's auto-cut and do FEED→CUT→BACKFEED manually so
-            // the cut lands on the label boundary and the next label is
-            // restored at the print head. latin1 is byte-safe for the
-            // binary bitmap payload that follows the ASCII preamble.
-            let tspl = fs.readFileSync(tsplFile, "latin1")
-            tspl = tspl.replace(/SET CUTTER ON\r?\n/, "SET CUTTER OFF\r\n")
-            tspl = tspl.replace(
-              /(PRINT 1,1\r?\n?)$/,
-              `$1FEED ${CUTTER_OFFSET_DOTS}\r\nCUT\r\nBACKFEED ${CUTTER_OFFSET_DOTS}\r\n`,
-            )
-            fs.writeFileSync(tsplFile, tspl, "latin1")
-
-            const rawCmd = `lp -d ${printer} -o raw "${tsplFile}"`
-            exec(rawCmd, (lpErr, stdout) => {
-              try { fs.unlinkSync(tsplFile) } catch {}
-              if (lpErr) return sendErr("lp raw", lpErr.message)
-              const jobMatch = stdout.match(/request id is (\S+)/)
-              sendOk(jobMatch ? jobMatch[1] : null, stdout)
-            })
+          execFile("lp", ["-d", printer, "-o", "raw", tsplFile], (lpErr, stdout) => {
+            try { fs.unlinkSync(tsplFile) } catch {}
+            if (lpErr) return sendErr("lp raw", lpErr.message)
+            const jobMatch = String(stdout).match(/request id is (\S+)/)
+            sendOk(jobMatch ? jobMatch[1] : null, String(stdout))
           })
-        })
+        }
+
+        // 2. Raster -> TSPL via the 4BARCODE CUPS filter.
+        const runFilter = () => {
+          execFile(
+            FOURBARCODE_FILTER,
+            ["1", "user", "badge", "1", optStr, rasterFile],
+            { ...BUF, env: { ...process.env, PPD: ppdPath } },
+            (filterErr, filterOut) => {
+              try {
+                if (filterOut && filterOut.length) fs.writeFileSync(tsplFile, filterOut)
+              } catch {}
+              try { fs.unlinkSync(rasterFile) } catch {}
+              if (filterErr || !fs.existsSync(tsplFile) || fs.statSync(tsplFile).size === 0) {
+                try { fs.unlinkSync(tsplFile) } catch {}
+                return sendErr("raster→tspl", filterErr ? filterErr.message : "empty TSPL")
+              }
+              sendRaw()
+            },
+          )
+        }
+
+        // 1. PDF -> CUPS raster.
+        execFile(
+          "cupsfilter",
+          ["-p", ppdPath, "-m", "application/vnd.cups-raster", pdfFile],
+          BUF,
+          (rasterErr, rasterOut) => {
+            try {
+              if (rasterOut && rasterOut.length) fs.writeFileSync(rasterFile, rasterOut)
+            } catch {}
+            if (rasterErr || !fs.existsSync(rasterFile) || fs.statSync(rasterFile).size === 0) {
+              cleanupExtra()
+              return sendErr("pdf→raster", rasterErr ? rasterErr.message : "empty raster")
+            }
+            runFilter()
+          },
+        )
         return
       }
 
