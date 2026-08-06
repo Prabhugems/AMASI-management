@@ -168,14 +168,33 @@ function getDb(): Promise<IDBPDatabase> {
 // `scan_id` -- a single implementation, not two duplicated ones, exported so
 // src/app/kiosk/[eventId]/[listId]/page.tsx can use the exact same fallback.
 export function newId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID()
+  // Held in a local rather than testing `"randomUUID" in crypto` inline: that
+  // form narrows the global to `never` below, since the DOM lib declares
+  // randomUUID as always present on Crypto.
+  const c: Crypto | undefined = typeof crypto !== "undefined" ? crypto : undefined
+
+  if (c && typeof c.randomUUID === "function") {
+    return c.randomUUID()
   }
   // Fallback for browsers without crypto.randomUUID -- must still be
   // UUID-shaped: scan_id is validated server-side (Stage 2) and a
   // malformed fallback here would 400 every scan on this device.
+  //
+  // Prefer crypto.getRandomValues over Math.random. randomUUID is
+  // secure-context-only, which is the whole reason this branch exists, but
+  // getRandomValues is far more widely available -- so in practice almost
+  // every device reaching here still gets CSPRNG bytes. Math.random remains
+  // only as a last resort, because returning a malformed id would break
+  // scanning outright.
+  const bytes = new Uint8Array(32)
+  if (c && typeof c.getRandomValues === "function") {
+    c.getRandomValues(bytes)
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = (Math.random() * 256) | 0
+  }
+  let next = 0
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
+    const r = bytes[next++] & 0x0f
     const v = c === "x" ? r : (r & 0x3) | 0x8
     return v.toString(16)
   })
