@@ -73,7 +73,6 @@ export async function GET(
     }
 
     // Transform abstracts to flatten slot data and filter to only scheduled ones
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const scheduledAbstracts = (abstracts || [])
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((a: any) => a.slot && a.slot.length > 0)

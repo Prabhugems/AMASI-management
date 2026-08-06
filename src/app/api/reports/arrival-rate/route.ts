@@ -57,7 +57,6 @@ export async function GET(request: NextRequest) {
 
   // Bucket by station + local hour (e.g. "2026-08-27 09:00").
   const buckets = new Map<string, number>()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const row of checkins || []) {
     const d = new Date(row.checked_in_at)
     const hourKey = `${d.toISOString().slice(0, 13)}:00`
@@ -72,9 +71,7 @@ export async function GET(request: NextRequest) {
   hourly.sort((a, b) => a.hour.localeCompare(b.hour) || a.stationName.localeCompare(b.stationName))
 
   const oneHourAgo = Date.now() - 60 * 60 * 1000
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const lastHourCountByStation = new Map<string, number>()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const row of checkins || []) {
     if (new Date(row.checked_in_at).getTime() >= oneHourAgo) {
       lastHourCountByStation.set(row.station_id, (lastHourCountByStation.get(row.station_id) || 0) + 1)

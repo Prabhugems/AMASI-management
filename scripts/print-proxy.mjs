@@ -244,12 +244,19 @@ const handler = async (req, res) => {
     // 4x6 PDF (old --headless hardcodes Letter, splitting the badge across
     // multiple labels). --no-pdf-header-footer drops the default
     // date/title bar.
-    const chromeCmd =
-      `"${CHROME_BIN}" --headless=new --disable-gpu --no-sandbox ` +
-      `--no-pdf-header-footer --virtual-time-budget=2000 ` +
-      `--print-to-pdf="${pdfFile}" "file://${htmlFile}"`
+    // execFile, not exec: no shell, so paths containing spaces or shell
+    // metacharacters cannot be reinterpreted. Each flag is its own argv token.
+    const chromeArgs = [
+      "--headless=new",
+      "--disable-gpu",
+      "--no-sandbox",
+      "--no-pdf-header-footer",
+      "--virtual-time-budget=2000",
+      `--print-to-pdf=${pdfFile}`,
+      `file://${htmlFile}`,
+    ]
 
-    exec(chromeCmd, (chromeErr) => {
+    execFile(CHROME_BIN, chromeArgs, (chromeErr) => {
       if (chromeErr || !fs.existsSync(pdfFile) || fs.statSync(pdfFile).size === 0) {
         cleanup()
         const msg = chromeErr ? chromeErr.message : "Chrome produced an empty PDF"
@@ -259,11 +266,18 @@ const handler = async (req, res) => {
         return
       }
 
-      const opts = []
-      if (paperSize) opts.push(`-o media=${paperSize}`)
-      if (copies > 1) opts.push(`-n ${copies}`)
-      if (labelMark) opts.push("-o PaperType=LabelMark")
-      if (autoCut) opts.push("-o PostAction=Cut")
+      // Flat argv, one token per element, so lp can be invoked via execFile
+      // with no shell at all. Values are already validated above; this removes
+      // the shell as a layer entirely rather than relying on that validation.
+      const optArgs = []
+      if (paperSize) optArgs.push("-o", `media=${paperSize}`)
+      if (copies > 1) optArgs.push("-n", String(copies))
+      if (labelMark) optArgs.push("-o", "PaperType=LabelMark")
+      if (autoCut) optArgs.push("-o", "PostAction=Cut")
+
+      // The 4BARCODE filter (dead branch below) wants the -o VALUES only,
+      // space-joined — i.e. every token that follows a "-o".
+      const optStr = optArgs.filter((_, i) => optArgs[i - 1] === "-o").join(" ")
 
       const sendOk = (jobId, stdout) => {
         cleanup()
@@ -289,7 +303,14 @@ const handler = async (req, res) => {
           try { fs.unlinkSync(tsplFile) } catch {}
         }
 
-        const optStr = opts.map((o) => o.replace(/^-o\s+/, "")).join(" ")
+        // NOTE: this whole branch is parked — usesBackfeedInjection() returns
+        // false unconditionally (see the comment at its definition, which
+        // records how to re-enable it). Its three exec() calls use shell
+        // redirection (`> file 2>/dev/null`) and an env-var prefix, so
+        // converting them to execFile means restructuring code nobody runs.
+        // Left as-is deliberately: `printer` is validated against lpstat and
+        // `optStr` derives from the validated optArgs, so nothing
+        // caller-controlled reaches the shell unchecked.
         const rasterCmd = `cupsfilter -p "${ppdPath}" -m application/vnd.cups-raster "${pdfFile}" > "${rasterFile}" 2>/dev/null`
 
         exec(rasterCmd, (rasterErr) => {
@@ -337,8 +358,7 @@ const handler = async (req, res) => {
       }
 
       // 2b) Standard path: PDF straight to lp (driver does rasterization).
-      const lpCmd = `lp -d ${printer} ${opts.join(" ")} "${pdfFile}"`
-      exec(lpCmd, (lpErr, stdout) => {
+      execFile("lp", ["-d", printer, ...optArgs, pdfFile], (lpErr, stdout) => {
         if (lpErr) return sendErr("lp", lpErr.message)
         const jobMatch = stdout.match(/request id is (\S+)/)
         sendOk(jobMatch ? jobMatch[1] : null, stdout)

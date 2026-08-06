@@ -224,7 +224,6 @@ async function handleAuditExport(searchParams: URLSearchParams) {
   }
 
   // Build a quick lookup for team member names by email
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allEmails = new Set<string>()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const log of (logs || []) as any[]) {

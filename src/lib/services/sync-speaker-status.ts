@@ -11,7 +11,6 @@
 
 type SyncableStatus = "confirmed" | "declined" | "cancelled"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function syncSpeakerStatus(
   db: any,
   eventId: string,

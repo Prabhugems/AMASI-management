@@ -234,7 +234,6 @@ export function getBadgeRotationDegrees(settings: any, printMode: string): numbe
   return (settings || {}).rotation ?? (isOverlayMode ? 0 : 180)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function generatePrintContent(data: {
   registration: any
   printSettings: any
