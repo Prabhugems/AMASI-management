@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -99,11 +99,14 @@ export default function PresenterCheckinPage() {
   const [notes, setNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    fetchAbstracts()
-  }, [eventId, filterDate])
-
-  const fetchAbstracts = async () => {
+  // Defined before the effect on purpose: a dependency array is evaluated
+  // during render, so an effect listing `fetchAbstracts` while sitting above
+  // this `const` would hit the temporal dead zone and throw.
+  //
+  // filterDate IS a real dependency here, unlike filterStatus in the sibling
+  // committee page — it goes into the query string, so the fetch genuinely
+  // changes with it.
+  const fetchAbstracts = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch(
@@ -112,14 +115,23 @@ export default function PresenterCheckinPage() {
       if (!res.ok) throw new Error("Failed to fetch")
       const data = await res.json()
       setAbstracts(data.abstracts || [])
-      setStats(data.stats || stats)
+      // Functional update rather than `data.stats || stats`. Reading `stats`
+      // from the closure was a stale read, and it would also have forced
+      // `stats` into this dependency list — every fetch calls setStats, which
+      // would give the callback a new identity, re-running the effect below
+      // and looping forever.
+      setStats((prev) => data.stats || prev)
     } catch (error) {
       console.error("Error fetching abstracts:", error)
       toast.error("Failed to load presenter list")
     } finally {
       setLoading(false)
     }
-  }
+  }, [eventId, filterDate])
+
+  useEffect(() => {
+    fetchAbstracts()
+  }, [fetchAbstracts])
 
   const handleCheckin = async () => {
     if (!selectedAbstract) return

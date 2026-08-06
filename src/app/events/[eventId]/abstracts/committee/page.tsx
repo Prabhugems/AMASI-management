@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -113,25 +113,38 @@ export default function CommitteeDecisionPage() {
   const [sendNotification, setSendNotification] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    fetchAbstracts()
-  }, [eventId, filterStatus])
-
-  const fetchAbstracts = async () => {
+  // Defined before the effect on purpose: a dependency array is evaluated
+  // during render, so an effect listing `fetchAbstracts` while sitting above
+  // this `const` would hit the temporal dead zone and throw.
+  const fetchAbstracts = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch(`/api/events/${eventId}/abstracts/committee-queue`)
       if (!res.ok) throw new Error("Failed to fetch")
       const data = await res.json()
       setAbstracts(data.abstracts || [])
-      setStats(data.stats || stats)
+      // Functional update rather than `data.stats || stats`. Reading `stats`
+      // from the closure was a stale read, and it would also have forced
+      // `stats` into this dependency list — every fetch calls setStats, which
+      // would give the callback a new identity, re-running the effect below
+      // and looping forever.
+      setStats((prev) => data.stats || prev)
     } catch (error) {
       console.error("Error fetching abstracts:", error)
       toast.error("Failed to load abstracts")
     } finally {
       setLoading(false)
     }
-  }
+  }, [eventId])
+
+  // filterStatus is deliberately NOT a dependency. The committee-queue endpoint
+  // takes no status parameter — filtering happens client-side further down this
+  // file — so the previous [eventId, filterStatus] array refetched the same
+  // payload every time the tab changed. Dropping it removes a wasted round trip
+  // per tab switch; the rendered list is unaffected.
+  useEffect(() => {
+    fetchAbstracts()
+  }, [fetchAbstracts])
 
   const handleDecision = async () => {
     if (!selectedAbstract || !decision) return
