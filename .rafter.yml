@@ -7,6 +7,17 @@ version: "1"
 # same. Suppressed findings are still recoverable: they appear in the `_suppressed`
 # field of `rafter secrets --format json` and in `suppressed.json` for remote scans.
 
+scan:
+  # Build output, never source. `rafter secrets .` walks the working tree, so a
+  # local `next build` leaves ~10 "Generic API Key" hits in .next manifests and
+  # cache files — Next's own build IDs and action hashes, not credentials. These
+  # are gitignored (.gitignore:13) so the remote scan never sees them; excluding
+  # them keeps the local scan usable as a pre-commit check.
+  exclude_paths:
+    - ".next/"
+    - "node_modules/"
+    - "coverage/"
+
 ignore:
   # npm lockfile `integrity` values are base64 sha512 digests. Three of them happen
   # to contain the substrings "aWs+", "AWSb" and "awsi", which trips the AWS key
@@ -21,9 +32,21 @@ ignore:
   # Airtable URL. Real Airtable credentials are personal access tokens prefixed
   # "pat". Scoped to this one file so a genuine token committed elsewhere still
   # trips the rule.
-  - paths: ["src/lib/services/fillout-sync.ts"]
+  # Proven, not asserted: POSTing the flagged string to the Airtable API as a
+  # Bearer token returns 401 — it cannot authenticate, so it is not a
+  # credential. `app…` is a base ID and `tbl…` a table ID; they are the
+  # addressing scheme and appear in ordinary share URLs (there is one in
+  # scripts/whatsapp-group-blast.mjs). Real Airtable credentials are `pat`-
+  # prefixed personal access tokens, which this rule should still catch
+  # anywhere else.
+  #
+  # Path is a GLOB, not the exact filename it used to be. An exact path did not
+  # match on the remote scan and this finding kept reappearing, while the
+  # `src/**` entry further down suppressed ~500 findings successfully — so the
+  # matcher wants a pattern.
+  - paths: ["**/fillout-sync.ts", "src/lib/services/fillout-sync.ts"]
     rules: ["airtable-api-key"]
-    reason: "Airtable base/table IDs, not API keys — real Airtable tokens are pat-prefixed"
+    reason: "Airtable base/table IDs, not API keys — verified they return 401 when used as a token; real tokens are pat-prefixed"
 
   # The Supabase config template ships commented guidance reading "DO NOT commit
   # your Twilio auth token to git. Use environment variable substitution instead:".
