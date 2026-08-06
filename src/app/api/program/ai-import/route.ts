@@ -851,7 +851,11 @@ export async function POST(request: NextRequest) {
     const parseFacultyText = (text: string | null): Array<{name: string, email: string | null, phone: string | null}> => {
       if (!text) return []
       return text.split(' | ').map(part => {
-        const match = part.match(/^([^(]+)\s*(?:\(([^,]*),?\s*([^)]*)\))?$/)
+        // Same fix as program/sync-assignments: the `\s*` after ([^(]+)
+        // overlapped with it (both match whitespace), forcing the engine to try
+        // every split of a whitespace run — quadratic. Captures are identical
+        // once .trim() below is applied.
+        const match = part.match(/^([^(]+)(?:\(([^,]*),?\s*([^)]*)\))?$/)
         if (match) {
           return {
             name: match[1].trim(),
