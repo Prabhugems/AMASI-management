@@ -1,0 +1,26 @@
+-- APPLIED 2026-08-06 via Supabase MCP. See CLAUDE.md migration history.
+--
+-- A02: event-assets was publicly LISTABLE, not merely publicly readable. With
+-- the publishable key an anonymous caller could enumerate the top level and
+-- recurse, then fetch every object with no credentials at all.
+--
+-- The bucket mixes public assets with private ones. Alongside 46 badge and
+-- certificate template files it holds travel-tickets/ (passenger names, PNRs,
+-- and at least one HUMAN-GUESSABLE filename rather than the UUID paths used
+-- elsewhere), speaker-docs/ (ID documents and flight preferences uploaded via
+-- the token-based speaker portal -- see src/components/travel-form.tsx), and
+-- tickets/.
+--
+-- Listing goes through RLS on storage.objects; reads of a public bucket via
+-- /object/public/<path> do not. Dropping this SELECT policy stops enumeration
+-- while every existing public URL keeps working. Verified after applying:
+-- anonymous list returns 0 entries at the top level and under travel-tickets/,
+-- and real certificate-template files still return 200 image/png with no
+-- credentials, so the designers are unaffected. Nothing in the codebase calls
+-- storage .list() -- checked before dropping.
+--
+-- CONTAINMENT, NOT THE FULL FIX: the private folders still resolve for anyone
+-- who knows or guesses a URL. Splitting them into a private bucket with signed
+-- URLs is the real remedy, tracked separately.
+
+DROP POLICY IF EXISTS "Public read access for event-assets" ON storage.objects;
