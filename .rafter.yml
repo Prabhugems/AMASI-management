@@ -1,0 +1,33 @@
+version: "1"
+
+# Rafter policy for this repo.
+#
+# Every entry below is a VERIFIED false positive — each was traced to the actual
+# source line before being suppressed. Do not add an entry here without doing the
+# same. Suppressed findings are still recoverable: they appear in the `_suppressed`
+# field of `rafter secrets --format json` and in `suppressed.json` for remote scans.
+
+ignore:
+  # npm lockfile `integrity` values are base64 sha512 digests. Three of them happen
+  # to contain the substrings "aWs+", "AWSb" and "awsi", which trips the AWS key
+  # pattern. Verified at package-lock.json lines 952, 2141 and 12444 — all three are
+  # `"integrity": "sha512-..."` fields, not credentials.
+  - paths: ["package-lock.json"]
+    rules: ["AWS Secret Access Key", "AWS Access Key"]
+    reason: "npm integrity sha512 digests matching the AWS key pattern by coincidence"
+
+  # DEFAULT_AIRTABLE_BASE_ID ("app7...") and DEFAULT_AIRTABLE_TABLE_ID ("tbl9...")
+  # are Airtable *object identifiers*, not credentials — they appear in every
+  # Airtable URL. Real Airtable credentials are personal access tokens prefixed
+  # "pat". Scoped to this one file so a genuine token committed elsewhere still
+  # trips the rule.
+  - paths: ["src/lib/services/fillout-sync.ts"]
+    rules: ["airtable-api-key"]
+    reason: "Airtable base/table IDs, not API keys — real Airtable tokens are pat-prefixed"
+
+  # The Supabase config template ships commented guidance reading "DO NOT commit
+  # your Twilio auth token to git. Use environment variable substitution instead:".
+  # The scanner matches that advice text. The adjacent values already use the
+  # env(...) form, so there is nothing to leak here.
+  - paths: ["supabase/config.toml"]
+    reason: "matches Supabase's own boilerplate 'DO NOT commit ...' comments; values already use env() substitution"

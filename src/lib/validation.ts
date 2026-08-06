@@ -72,10 +72,17 @@ export function validateUUIDArray(ids: unknown, maxLength = 100): { valid: boole
 
 /**
  * Sanitize string input (remove potential XSS/injection characters)
+ *
+ * NOT a substitute for real sanitization: blocklist regexes like these are
+ * defeated by nesting (`<scr<script>ipt>` leaves `<script>` behind once the
+ * inner match is removed). Use DOMPurify for anything rendered as HTML. This
+ * helper is currently unused — prefer deleting it over growing new callers.
  */
 export function sanitizeString(input: string, maxLength = 500): string {
   return input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
+    // Lazy `[\s\S]*?` instead of the nested `[^<]*(?:(?!</script>)<[^<]*)*`
+    // quantifiers, which backtrack catastrophically on unclosed <script.
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '') // Remove script tags
     .replace(/javascript:/gi, '') // Remove javascript: protocol
     .replace(/on\w+\s*=/gi, '') // Remove event handlers
     .substring(0, maxLength)

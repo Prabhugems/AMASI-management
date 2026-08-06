@@ -39,6 +39,17 @@ const DEFAULT_ALLOWED_TAGS = [
   "div",
 ]
 
+// URL schemes permitted in href/src. Allowlist, not denylist: a
+// `startsWith("javascript:")` check misses `JavaScript:`, a leading tab or
+// newline, and `vbscript:`, all of which browsers still execute.
+const SAFE_URL = /^(?:https?:|mailto:|tel:|[/#?]|$)/i
+
+// Browsers ignore control characters and whitespace inside a URL, so strip them
+// before testing the scheme.
+function isSafeUrl(url: string): boolean {
+  return SAFE_URL.test(url.replace(/[\u0000-\u0020]/g, ""))
+}
+
 // Allowed attributes per tag
 const ALLOWED_ATTRIBUTES: Record<string, string[]> = {
   a: ["href", "target", "rel"],
@@ -112,11 +123,14 @@ export function MarkdownDisplay({
 function parseMarkdown(text: string): string {
   let html = text
 
-  // Escape HTML
+  // Escape HTML. `"` matters as much as `<`: the link rule below drops the
+  // captured URL straight into href="...", so an unescaped quote closes the
+  // attribute and lets the rest of the URL become new attributes.
   html = html
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
 
   // Headers
   html = html.replace(/^### (.*$)/gim, "<h3>$1</h3>")
@@ -140,10 +154,14 @@ function parseMarkdown(text: string): string {
   // Inline code
   html = html.replace(/`(.*?)`/gim, "<code>$1</code>")
 
-  // Links
+  // Links. An unsafe scheme (javascript:, data:, vbscript:) renders as plain
+  // text rather than a live link.
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/gim,
-    '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+    (match, label, url) =>
+      isSafeUrl(url)
+        ? `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`
+        : label
   )
 
   // Unordered lists
@@ -202,7 +220,7 @@ function sanitizeHtml(html: string, allowedTags: string[]): string {
           // Sanitize href attributes
           if (tagName === "a") {
             const href = element.getAttribute("href") || ""
-            if (href.startsWith("javascript:") || href.startsWith("data:")) {
+            if (!isSafeUrl(href)) {
               element.removeAttribute("href")
             }
             // Add security attributes
@@ -237,11 +255,13 @@ export function PlainTextDisplay({
   const formattedContent = React.useMemo(() => {
     let text = content
 
-    // Escape HTML
+    // Escape HTML, including `"` — the linkify rule below interpolates the
+    // matched URL into href="...", and [^\s<]+ happily matches a quote.
     text = text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
 
     // Linkify URLs
     if (linkify) {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import DOMPurify from "dompurify"
 import { useParams } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
@@ -522,7 +523,11 @@ export default function AbstractEmailTemplatesPage() {
             </div>
             <div
               className="p-4 bg-white"
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml, {
+                ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'div', 'span', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'img', 'hr'],
+                ALLOWED_ATTR: ['href', 'src', 'alt', 'style', 'class', 'target', 'width', 'height', 'align', 'valign', 'border', 'cellpadding', 'cellspacing'],
+                ALLOW_DATA_ATTR: false,
+              }) }}
             />
           </div>
         </DialogContent>

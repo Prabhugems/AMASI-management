@@ -2,9 +2,11 @@ import { createClient } from "@supabase/supabase-js"
 import * as XLSX from "xlsx"
 import * as fs from "fs"
 
-// Hardcoded for script execution
 const supabaseUrl = "https://jmdwxymbgxwdsmcwbahp.supabase.co"
-const supabaseServiceKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHd4eW1iZ3h3ZHNtY3diYWhwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzAxMTA1NSwiZXhwIjoyMDgyNTg3MDU1fQ.rvk94RhIk7lcDonsR_dWdPL7rEzmn91tdXLChDg9b4Y"
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+if (!supabaseServiceKey) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set. Run with .env.local loaded, e.g. node --env-file=.env.local")
+}
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 

@@ -13,7 +13,10 @@
 import { createClient } from "@supabase/supabase-js"
 
 const SUPABASE_URL = "https://jmdwxymbgxwdsmcwbahp.supabase.co"
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHd4eW1iZ3h3ZHNtY3diYWhwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzAxMTA1NSwiZXhwIjoyMDgyNTg3MDU1fQ.rvk94RhIk7lcDonsR_dWdPL7rEzmn91tdXLChDg9b4Y"
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+if (!SUPABASE_KEY) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set. Run: node --env-file=.env.local scripts/whatsapp-group-blast.mjs")
+}
 
 const EVENT_ID = "9f1e659b-6809-4502-b3c1-b0a98175e813"
 const WHATSAPP_URL = "https://chat.whatsapp.com/IxkpXWB3Y0p0JSGmwZlgGs"
