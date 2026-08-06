@@ -180,18 +180,24 @@ The priority is **zero behavior drift**, not a rewrite:
 
 ## 6. Deliverable checklist for this sub-project
 
-- [ ] `src/lib/badge-template-types.ts` created; Designer imports its types
+- [x] `src/lib/badge-template-types.ts` created; Designer imports its types
       from here instead of declaring them inline.
-- [ ] `src/components/badges/badge-element-view.tsx` and
+- [x] `src/components/badges/badge-element-view.tsx` and
       `src/components/badges/badge-canvas.tsx` created.
 - [ ] Designer refactored to use `<BadgeElementView>` (wrapped in its
       existing `<Rnd>`) with no behavior change, verified manually in the
       dev server per Section 4.
-- [ ] Playfair Display scoped-loaded for the Badges module; green-discipline
+      *(Code refactor is complete and confirmed via static review — see
+      Task 5 and Task 8 reports — but the live manual dev-server
+      verification this item requires has not been completed in either
+      session: no authenticated browser session against real event/
+      registration data was available. Left unchecked for that reason;
+      tracked as a DONE_WITH_CONCERNS gap, not a suspected regression.)*
+- [x] Playfair Display scoped-loaded for the Badges module; green-discipline
       tokens added to `tailwind.config.ts`. Neither applied to any screen's
       visual redesign yet — that happens in the sub-projects that consume
       them (Overview, Templates, Generate, Designer restyle).
-- [ ] `badge-render.ts` and `badges/generate/route.ts` unchanged.
-- [ ] `tsc --noEmit` and `eslint` clean; `vitest run` still green (no new
+- [x] `badge-render.ts` and `badges/generate/route.ts` unchanged.
+- [x] `tsc --noEmit` and `eslint` clean; `vitest run` still green (no new
       unit tests expected here per Section 4 — this is a JSX extraction, not
       new pure logic).
