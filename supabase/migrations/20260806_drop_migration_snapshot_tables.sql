@@ -1,32 +1,27 @@
--- ⚠️ NOT A MIGRATION. Deliberately kept out of supabase/migrations/ so that
--- `supabase db push` can never execute it. Run by hand, once, after the checks
--- below pass.
+-- APPLIED 2026-08-06 via Supabase MCP. See CLAUDE.md migration history.
 --
--- PURPOSE: permanently delete the 29 one-off snapshot/backfill tables created
--- during the out-of-band migration work of May–July 2026. The companion
--- migration (supabase/migrations/20260806_enable_rls_on_unprotected_public_tables.sql)
--- gates them behind RLS; this removes them outright, which is the real fix —
--- copies of member and registration PII that nothing reads should not exist.
+-- Drops the 30 one-off snapshot/backfill tables created directly in the SQL
+-- editor during the out-of-band migration work of May-July 2026. They held
+-- copies of member and registration PII -- 76,746 rows -- that nothing reads.
+-- 20260806_enable_rls_on_unprotected_public_tables gated them; this removes
+-- them, which is the actual fix.
 --
--- IRREVERSIBLE. These tables were snapshots taken *before* destructive
--- backfills, so they are the only record of some pre-backfill state. Once
--- dropped, a "what did this row look like before the 24 June reconcile?"
--- question can no longer be answered.
+-- Preconditions verified, not assumed:
+--   * Zero references in AMASI-management or amasi-membership. The only greps
+--     that hit were generated database.types.ts, CLAUDE.md prose, and the RLS
+--     migration itself.
+--   * amasi-membership shares this database, so it was cloned and checked
+--     directly rather than inferred.
+--   * All 30 confirmed rowsecurity=true beforehand.
 --
--- BEFORE RUNNING, ALL THREE MUST HOLD:
---   1. Nothing in the `amasi-membership` sibling repo queries any name below.
---      This database is shared (see CLAUDE.md); absence from THIS repo proves
---      nothing. grep that repo.
---   2. You have a current database backup, or have exported anything you might
---      still want (`\copy <table> TO 'file.csv' CSV HEADER`).
---   3. The backfills these snapshot are confirmed settled — no open question
---      about whether one needs reverting.
+-- members_nicobar_fix_2026_05_21_snapshot (750 rows) is included although it
+-- was not in the original exposure set: it already had RLS on so it never
+-- surfaced in the security advisor, but it is the same class of artifact.
 --
--- Deliberately NOT in this list, because they look live rather than disposable:
---   announcements, directory_access_log, profile_edit_log
--- Those keep RLS as their protection.
-
-BEGIN;
+-- NOTE: the earlier RLS migration still names these tables. It is left as the
+-- historical record of what was applied. A from-scratch `supabase db push`
+-- would fail on it -- but that pipeline is already broken by the 63-version
+-- drift documented in CLAUDE.md, and fixing it is the post-AMASICON project.
 
 DROP TABLE IF EXISTS asi_reconcile_2026_06_24_snapshot;
 DROP TABLE IF EXISTS backfill_app_member_id_2026_05_20_snapshot;
@@ -44,6 +39,7 @@ DROP TABLE IF EXISTS lm_downgrade2_2026_06_24_snapshot;
 DROP TABLE IF EXISTS lm_downgrade_2026_06_24_snapshot;
 DROP TABLE IF EXISTS members_asi_backfill_2026_06_26;
 DROP TABLE IF EXISTS members_middle_name_dup_2026_06_30_snapshot;
+DROP TABLE IF EXISTS members_nicobar_fix_2026_05_21_snapshot;
 DROP TABLE IF EXISTS membership_payments_nonmembership_cleanup_2026_06_29;
 DROP TABLE IF EXISTS registrations_126_marksheet_pre_2026_07_02_snapshot;
 DROP TABLE IF EXISTS registrations_127_accom_2026_06_30_snapshot;
@@ -57,8 +53,3 @@ DROP TABLE IF EXISTS registrations_127_travel_details2_2026_06_30_snapshot;
 DROP TABLE IF EXISTS registrations_127_travel_details_2026_06_30_snapshot;
 DROP TABLE IF EXISTS registrations_127_travel_origin_2026_06_30_snapshot;
 DROP TABLE IF EXISTS sessions_127_pre_final_snapshot_2026_06_29;
-
--- Inspect the result, then COMMIT. ROLLBACK if anything looks wrong.
--- COMMIT;
-
-ROLLBACK;
