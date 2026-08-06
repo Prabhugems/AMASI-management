@@ -34,7 +34,6 @@ function humanizeSettingKey(key: string): string {
   return labels[key] || key
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // GET /api/event-settings?event_id=xxx - Get event settings

@@ -20,7 +20,6 @@ export async function GET(
   if (authError) return authError
 
   const supabase = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('faculty_assignments')
     .select(`
@@ -94,7 +93,6 @@ export async function PATCH(
   }
 
   const supabase = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('faculty_assignments')
     .update(update)
@@ -134,7 +132,6 @@ export async function DELETE(
   // Confirm the row exists for this event before deleting; Postgrest's
   // delete() does not return the affected row count in a way we can rely on,
   // so we scope the existence check by eventId and 404 if not found.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existing, error: lookupError } = await (supabase as any)
     .from('faculty_assignments')
     .select('id')
@@ -150,7 +147,6 @@ export async function DELETE(
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('faculty_assignments')
     .delete()

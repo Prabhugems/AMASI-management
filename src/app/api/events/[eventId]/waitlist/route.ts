@@ -15,7 +15,6 @@ export async function GET(
     const status = searchParams.get("status")
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     let query = db

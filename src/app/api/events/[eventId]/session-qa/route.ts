@@ -21,7 +21,6 @@ export async function GET(
   try {
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase as any)
       .from("session_qa")
       .select(
@@ -83,7 +82,6 @@ export async function PATCH(
     const supabase = await createAdminClient()
 
     if (action === "delete") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from("session_qa")
         .delete()
@@ -117,7 +115,6 @@ export async function PATCH(
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from("session_qa")
       .update(update)

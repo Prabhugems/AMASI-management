@@ -72,7 +72,6 @@ export async function GET(
     const supabase = await createAdminClient()
 
     // Load all sessions for the event
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: sessionsData, error: sessionsError } = await (supabase as any)
       .from('sessions')
       .select('id, event_id, session_name, session_date, start_time, end_time, hall, specialty_track')
@@ -88,7 +87,6 @@ export async function GET(
     const sessions = (sessionsData ?? []) as SessionRow[]
 
     // Load all session_cme rows for the event
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: cmeData, error: cmeError } = await (supabase as any)
       .from('session_cme')
       .select('*')
@@ -163,7 +161,6 @@ export async function PUT(
 
     // Validate all sessions belong to the event
     const sessionIds = rows.map((r) => r.session_id)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: ownedSessions } = await (supabase as any)
       .from('sessions')
       .select('id')
@@ -198,7 +195,6 @@ export async function PUT(
       return row
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from('session_cme')
       .upsert(payload, { onConflict: 'session_id' })

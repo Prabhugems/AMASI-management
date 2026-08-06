@@ -81,7 +81,6 @@ export async function GET() {
     }
 
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClient as any
 
     // Fetch team_members record and users record in parallel

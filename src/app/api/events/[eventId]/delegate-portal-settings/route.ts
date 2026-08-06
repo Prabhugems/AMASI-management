@@ -36,7 +36,6 @@ export async function GET(
 
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: event, error } = await (supabase as any)
       .from("events")
       .select("settings")
@@ -103,7 +102,6 @@ export async function POST(
     const supabase = await createAdminClient()
 
     // Fetch current settings
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: event, error: fetchError } = await (supabase as any)
       .from("events")
       .select("settings")
@@ -124,7 +122,6 @@ export async function POST(
       whatsapp_group_url: incoming.whatsapp_group_url ?? currentSettings.whatsapp_group_url ?? "",
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase as any)
       .from("events")
       .update({

@@ -34,7 +34,6 @@ export async function notifyWaitlist(
     }
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // 1. Find the first waitlisted person (FIFO by created_at) who hasn't been notified

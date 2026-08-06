@@ -15,7 +15,6 @@ export async function POST(
   const { id } = await params
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error: findErr } = await (supabase as any)
     .from("kiosk_stations")
     .select("id, event_id")
@@ -31,7 +30,6 @@ export async function POST(
 
   const access_token = newStationToken()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("kiosk_stations")
     .update({
@@ -60,7 +58,6 @@ export async function DELETE(
   const { id } = await params
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error: findErr } = await (supabase as any)
     .from("kiosk_stations")
     .select("event_id")
@@ -74,7 +71,6 @@ export async function DELETE(
   const { error: authError } = await requireEventAndPermission(station.event_id, "checkin")
   if (authError) return authError
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from("kiosk_stations")
     .update({ revoked_at: new Date().toISOString(), updated_at: new Date().toISOString() })

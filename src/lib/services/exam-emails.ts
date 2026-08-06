@@ -131,7 +131,6 @@ export interface EmailBatchResult {
  * they resolve (membership found, or someone intervenes manually).
  */
 export async function sendWithheldNotifications(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: any,
   eventId: string,
   opts: { registrationIds?: string[]; includeReminders?: boolean; reminderIntervalDays?: number } = {}
@@ -158,7 +157,6 @@ export async function sendWithheldNotifications(
     return new Date(lastSent).getTime() <= reminderCutoff
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const eligible = (regs || []).filter((r: any) => r.attendee_email && isDue(r))
   const skipped = (regs || []).filter((r: any) => !r.attendee_email).length
   const alreadySent = (regs || []).length - eligible.length - skipped
@@ -197,7 +195,6 @@ export async function sendWithheldNotifications(
  * admin, not something this can create.
  */
 export async function sendPassNotifications(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: any,
   eventId: string,
   registrationIds?: string[]
@@ -219,7 +216,6 @@ export async function sendPassNotifications(
 
   // Retry Airtable sync for registrations missing fillout_link
   const missingLink = (regs || []).filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (r: any) => r.convocation_number && r.attendee_email && !r.exam_marks?.fillout_link && !r.exam_marks?.email_sent_pass
   )
   let synced = 0
@@ -244,11 +240,9 @@ export async function sendPassNotifications(
   }
 
   const eligible = (regs || []).filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (r: any) => r.convocation_number && r.exam_marks?.fillout_link && r.attendee_email && !r.exam_marks?.email_sent_pass
   )
   const skipped = (regs || []).filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (r: any) => !r.convocation_number || !r.exam_marks?.fillout_link || !r.attendee_email
   ).length
 

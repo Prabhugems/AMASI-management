@@ -50,7 +50,6 @@ export async function POST(request: NextRequest) {
     // provider_message_id, whose status hasn't progressed to 'read' or 'failed'
     // yet. Newest first so an admin polling after a blast sees recent ones
     // refreshed first if we hit the cap.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: rows, error: fetchError } = await (supabase as any)
       .from("message_logs")
       .select("id, provider_message_id, status, delivered_at, read_at, failed_at")
@@ -131,7 +130,6 @@ export async function POST(request: NextRequest) {
 
       if (Object.keys(updates).length === 0) continue
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: updateError } = await (supabase as any)
         .from("message_logs")
         .update(updates)

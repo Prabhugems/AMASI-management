@@ -61,7 +61,6 @@ export async function claimIdempotency(
   if (!key) return NO_OP_LEADER
 
   const supabase = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
   const requestHash = hashBody(requestBody)
 

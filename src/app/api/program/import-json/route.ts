@@ -13,7 +13,6 @@ type EventSettings = {
 
 // Generate custom registration number based on event settings
 async function generateRegistrationNumber(supabase: Awaited<ReturnType<typeof createAdminClient>>, eventId: string): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   // Try to get event settings - use maybeSingle since settings might not exist yet
   const { data: settingsData } = await db
@@ -74,7 +73,6 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Helper to normalize faculty name and extract title

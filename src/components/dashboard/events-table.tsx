@@ -331,7 +331,6 @@ export function EventsTable() {
     staleTime: 2 * 60 * 1000,
   })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const displayEvents: any[] = events || []
 
   return (

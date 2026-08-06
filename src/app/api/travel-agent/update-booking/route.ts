@@ -9,7 +9,6 @@ export async function POST(request: NextRequest) {
     if (authError) return authError
 
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
     const body = await request.json()
     const { registration_id, event_id, booking } = body

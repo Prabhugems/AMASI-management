@@ -31,7 +31,6 @@ export async function PATCH(
     }
 
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClient as any
 
     const { data: token, error: updateError } = await supabase
@@ -83,7 +82,6 @@ export async function DELETE(
     const { id } = await params
 
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClient as any
 
     const { error: deleteError } = await supabase

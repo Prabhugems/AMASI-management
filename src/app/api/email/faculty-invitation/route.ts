@@ -59,7 +59,6 @@ async function sendFacultyInvitation(data: FacultyInvitationData): Promise<{ suc
   }
 
   const supabase = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
 
   // Get assignment details

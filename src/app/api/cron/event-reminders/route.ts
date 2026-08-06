@@ -4,7 +4,6 @@ import { sendEmail } from "@/lib/email"
 import { COMPANY_CONFIG } from "@/lib/config"
 import { logCronRun } from "@/lib/services/cron-logger"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 type ReminderType = "7_days" | "1_day" | "day_of"

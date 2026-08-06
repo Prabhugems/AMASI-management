@@ -2,7 +2,6 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // GET /api/abstracts/[id]/review - Get reviews for an abstract

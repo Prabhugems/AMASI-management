@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   try {
     const supabaseServerClient = await createServerSupabaseClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseServerClient as any
 
     // Verify the requesting user is authenticated
@@ -14,7 +13,6 @@ export async function GET() {
     }
 
     const adminClientRaw = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adminClient = adminClientRaw as any
 
     // Fetch team members and auth users in parallel
@@ -48,7 +46,6 @@ export async function GET() {
     }
 
     // Fetch last_active_at from users table
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const emails = (teamMembers || []).map((m: any) => m.email.toLowerCase())
     const { data: usersData } = await adminClient
       .from('users')
@@ -65,7 +62,6 @@ export async function GET() {
     }
 
     // Merge data
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const members = (teamMembers || []).map((member: any) => {
       const emailKey = member.email.toLowerCase()
       const auth = authMap.get(emailKey)

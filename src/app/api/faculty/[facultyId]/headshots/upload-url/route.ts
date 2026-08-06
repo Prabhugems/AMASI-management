@@ -47,7 +47,6 @@ export async function POST(
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: faculty } = await (supabase as any)
     .from('faculty')
     .select('id')
@@ -76,7 +75,6 @@ export async function POST(
   const suffix = Math.random().toString(36).slice(2, 8)
   const path = `faculty/${facultyId}/${Date.now()}-${suffix}.${ext}`
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any).storage
     .from(BUCKET)
     .createSignedUploadUrl(path)
@@ -86,7 +84,6 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to create upload URL' }, { status: 500 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: urlData } = (supabase as any).storage.from(BUCKET).getPublicUrl(path)
 
   return NextResponse.json({

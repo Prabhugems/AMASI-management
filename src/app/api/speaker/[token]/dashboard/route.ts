@@ -6,7 +6,6 @@ function maskToken(token: string): string {
   return `${token.slice(0, 6)}...`
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function resolveSpeakerToken(supabase: any, token: string) {
   const { data: tokenRow } = await supabase
     .from('faculty_assignments')
@@ -32,7 +31,6 @@ export async function GET(
     }
 
     // Find sibling assignments by (event_id, faculty_email) — same as other speaker routes.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let assignmentsQuery = (supabase as any)
       .from('faculty_assignments')
       .select('id, event_id, session_id, faculty_id, faculty_name, faculty_email, role, topic_title, session_name, session_date, start_time, end_time, hall, status')
@@ -48,7 +46,6 @@ export async function GET(
       .order('session_date', { ascending: true })
       .order('start_time', { ascending: true })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const assignments = (assignmentsRaw ?? []) as any[]
     const siblingIds: string[] = assignments.map((a) => a.id)
     const siblingSessionIds: string[] = Array.from(
@@ -56,7 +53,6 @@ export async function GET(
     )
 
     // Event info (name + end_date)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: eventRow } = await (supabase as any)
       .from('events')
       .select('id, name, start_date, end_date')
@@ -67,7 +63,6 @@ export async function GET(
     const is_post_event = eventEndDate ? new Date(eventEndDate) < new Date() : false
 
     // Feedback: where session_speaker_id IN siblings OR (session_id IN sibling_sessions AND session_speaker_id IS NULL)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let feedbackRows: any[] = []
     if (siblingIds.length > 0 || siblingSessionIds.length > 0) {
       const orParts: string[] = []
@@ -77,7 +72,6 @@ export async function GET(
       if (siblingSessionIds.length > 0) {
         orParts.push(`and(session_id.in.(${siblingSessionIds.join(',')}),session_speaker_id.is.null)`)
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: fb } = await (supabase as any)
         .from('session_feedback')
         .select('id, session_id, session_speaker_id, rating_overall, rating_content, rating_delivery, comments, created_at')
@@ -86,7 +80,6 @@ export async function GET(
     }
 
     // Q&A (published only): where session_speaker_id IN siblings OR session_id IN sibling_sessions
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let qaRows: any[] = []
     if (siblingIds.length > 0 || siblingSessionIds.length > 0) {
       const orParts: string[] = []
@@ -96,7 +89,6 @@ export async function GET(
       if (siblingSessionIds.length > 0) {
         orParts.push(`session_id.in.(${siblingSessionIds.join(',')})`)
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: qa } = await (supabase as any)
         .from('session_qa')
         .select('id, session_id, session_speaker_id, question, answer, is_published, upvotes, asked_at')
@@ -107,10 +99,8 @@ export async function GET(
     }
 
     // Attendance: where session_speaker_id IN siblings
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let attendanceRows: any[] = []
     if (siblingIds.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: att } = await (supabase as any)
         .from('session_attendance_speaker')
         .select('id, session_speaker_id, checked_in_at, arrived_late, no_show')
@@ -119,10 +109,8 @@ export async function GET(
     }
 
     // CME: where session_id IN sibling_sessions
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let cmeRows: any[] = []
     if (siblingSessionIds.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: cme } = await (supabase as any)
         .from('session_cme')
         .select('id, session_id, cme_credits')
@@ -133,7 +121,6 @@ export async function GET(
     // Honorarium
     let honorarium: { amount: number; currency: string; status: string; paid_at?: string | null } | null = null
     if (tokenRow.faculty_id) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: efRow } = await (supabase as any)
         .from('event_faculty')
         .select('honorarium_amount, honorarium_status, honorarium_currency, honorarium_paid_at')
@@ -151,10 +138,8 @@ export async function GET(
     }
 
     // Content counts per assignment
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let contentRows: any[] = []
     if (siblingIds.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: cr } = await (supabase as any)
         .from('speaker_content')
         .select('id, faculty_assignment_id')

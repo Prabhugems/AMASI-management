@@ -17,7 +17,6 @@ export async function GET() {
     }
 
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClient as any
 
     const { data: tokens, error } = await supabase
@@ -68,7 +67,6 @@ export async function POST(request: NextRequest) {
     }
 
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClient as any
 
     const { data: token, error: insertError } = await supabase

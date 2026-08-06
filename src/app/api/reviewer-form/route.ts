@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // GET /api/reviewer-form?token=xxx - Get reviewer by form token

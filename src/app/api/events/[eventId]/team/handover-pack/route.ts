@@ -20,7 +20,6 @@ export async function GET(
 
   const { eventId } = await params
   const supabaseClient = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = supabaseClient as any
 
   // 1. Fetch event details

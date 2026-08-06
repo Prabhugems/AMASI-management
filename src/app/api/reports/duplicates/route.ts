@@ -29,7 +29,6 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: duplicateRows, error } = await (supabase as any)
     .from("checkin_audit_log")
     .select(
@@ -48,17 +47,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: [] })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: stations } = await (supabase as any).from("kiosk_stations").select("id, name").eq("event_id", eventId)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stationNameById = new Map<string, string>((stations || []).map((s: any) => [s.id, s.name]))
 
   // For each duplicate attempt, find the ORIGINAL (currently-active) check-in
   // for the same registration+list, to show "both stations, both times".
   const results = await Promise.all(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     duplicateRows.map(async (row: any) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: original } = await (supabase as any)
         .from("checkin_records")
         .select("station_id, checked_in_at")

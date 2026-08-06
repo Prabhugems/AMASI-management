@@ -47,7 +47,6 @@ export async function POST(
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: current } = await (supabase as any)
     .from("registrations")
     .select("attendee_name")
@@ -56,7 +55,6 @@ export async function POST(
 
   const oldName = current?.attendee_name ?? null
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: updateError } = await (supabase as any)
     .from("registrations")
     .update({ attendee_name: newName })
@@ -68,7 +66,6 @@ export async function POST(
 
   const performedBy = user!.name || user!.email || user!.id
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("checkin_audit_log").insert({
     event_id: eventId,
     registration_id: id,

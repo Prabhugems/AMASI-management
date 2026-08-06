@@ -17,7 +17,6 @@ export async function POST(
     const { id } = await params
 
     const adminClientRaw = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClientRaw as any
 
     // Fetch the invitation

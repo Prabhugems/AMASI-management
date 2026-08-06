@@ -4,7 +4,6 @@ import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
 async function lookupEventId(id: string): Promise<string | null> {
   const client = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = client as any
   const { data } = await supabase
     .from("discount_codes")
@@ -52,7 +51,6 @@ export async function PATCH(
     }
 
     const client = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = client as any
     const { data, error } = await supabase
       .from("discount_codes")
@@ -93,7 +91,6 @@ export async function DELETE(
     if (authError) return authError
 
     const client = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = client as any
     const { error } = await supabase
       .from("discount_codes")

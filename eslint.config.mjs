@@ -40,6 +40,25 @@ export default [
   ...nextTypescript,
   {
     rules: {
+      // OFF, deliberately, 2026-08-06 — a maintainer decision, recorded here
+      // rather than left implicit.
+      //
+      // The rule was nominally "on" but enforcing nothing: `npm run lint` had
+      // been broken for months (it ran `next lint`, removed in Next 16), the
+      // codebase carries 2,753 violations, and ~500 `eslint-disable` comments
+      // existed purely to paper over it site by site. Config now matches
+      // reality, and those ~500 comments were deleted in the same commit.
+      //
+      // This is NOT a security control — `any` weakens type checking, it does
+      // not create an injection, authz or crypto issue. `strict` and
+      // `noImplicitAny` in tsconfig.json are untouched and still enforced.
+      //
+      // TO RE-ENABLE when someone takes on the typing work: flip this to
+      // "error" and expect ~2,753 findings. Prefer doing it per-directory
+      // (an `files: ["src/lib/**"]` block) so it can be paid down
+      // incrementally instead of in one unreviewable sweep.
+      "@typescript-eslint/no-explicit-any": "off",
+
       // Carried over verbatim from .eslintrc.json.
       "@typescript-eslint/no-unused-vars": [
         "warn",

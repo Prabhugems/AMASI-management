@@ -2,7 +2,6 @@ import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { requireFormAccess } from "@/lib/auth/api-auth"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // POST /api/forms/[formId]/publish - Publish a form

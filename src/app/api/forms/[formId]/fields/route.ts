@@ -2,7 +2,6 @@ import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/se
 import { NextRequest, NextResponse } from "next/server"
 import { requireFormAccess } from "@/lib/auth/api-auth"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // GET /api/forms/[formId]/fields - Get all fields for a form

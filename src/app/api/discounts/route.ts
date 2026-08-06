@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
     if (authError) return authError
 
     const client = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = client as any
 
     const { data, error } = await supabase
@@ -69,7 +68,6 @@ export async function POST(request: NextRequest) {
     if (authError) return authError
 
     const client = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = client as any
 
     const { data, error } = await supabase

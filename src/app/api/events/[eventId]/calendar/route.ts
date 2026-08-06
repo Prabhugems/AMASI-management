@@ -57,7 +57,6 @@ export async function GET(
 ) {
   const { eventId } = await params
   const supabaseClient = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = supabaseClient as any
   const searchParams = request.nextUrl.searchParams
   const speakerEmail = searchParams.get("speaker") // Optional: filter by speaker email

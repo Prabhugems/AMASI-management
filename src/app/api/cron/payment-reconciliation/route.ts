@@ -134,7 +134,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = (await createAdminClient()) as any
 
     // Time window: last 24 hours

@@ -15,7 +15,6 @@ export async function GET(
   try {
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: disclosure, error: lookupError } = await (supabase as any)
       .from('speaker_disclosures')
       .select('id, event_id, pdf_storage_path')

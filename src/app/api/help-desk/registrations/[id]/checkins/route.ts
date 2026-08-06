@@ -28,7 +28,6 @@ export async function GET(
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("checkin_records")
     .select(
@@ -83,7 +82,6 @@ export async function POST(
   // Guard: the list must belong to the same event as the registration --
   // otherwise this would silently create a check-in against an unrelated
   // event's list.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: list } = await (supabase as any)
     .from("checkin_lists")
     .select("id, event_id, name")
@@ -96,7 +94,6 @@ export async function POST(
 
   const performedBy = user!.name || user!.email || user!.id
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existing } = await (supabase as any)
     .from("checkin_records")
     .select("id, checked_out_at, reversed_at")
@@ -124,7 +121,6 @@ export async function POST(
   let recordId = existing?.id as string | undefined
 
   if (existing) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase as any)
       .from("checkin_records")
       .update({
@@ -142,7 +138,6 @@ export async function POST(
       return NextResponse.json({ error: "Failed to check in" }, { status: 500 })
     }
   } else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: inserted, error: insertError } = await (supabase as any)
       .from("checkin_records")
       .insert({
@@ -160,7 +155,6 @@ export async function POST(
     recordId = inserted?.id
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("checkin_audit_log").insert({
     event_id: eventId,
     checkin_list_id: checkinListId,

@@ -10,7 +10,6 @@ export async function PATCH(
     const { id } = await params
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Fetch assignment to get event_id for permission check
@@ -55,7 +54,6 @@ export async function GET(
     const { id } = await params
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { data, error } = await db

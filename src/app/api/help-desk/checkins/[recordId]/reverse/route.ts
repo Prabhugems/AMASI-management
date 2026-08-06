@@ -27,7 +27,6 @@ export async function POST(
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: record, error: lookupError } = await (supabase as any)
     .from("checkin_records")
     .select("id, registration_id, checkin_list_id, reversed_at, checkin_lists (event_id)")
@@ -52,7 +51,6 @@ export async function POST(
 
   const performedBy = user!.name || user!.email || user!.id
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: updateError } = await (supabase as any)
     .from("checkin_records")
     .update({
@@ -66,7 +64,6 @@ export async function POST(
     return NextResponse.json({ error: "Failed to reverse the check-in" }, { status: 500 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("checkin_audit_log").insert({
     event_id: eventId,
     checkin_list_id: record.checkin_list_id,

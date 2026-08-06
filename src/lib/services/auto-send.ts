@@ -25,7 +25,6 @@ interface TriggerContext {
 
 // Get templates that should be auto-sent for a trigger
 async function getAutoSendTemplates(eventId: string, triggerType: TriggerType, triggerValue?: number) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
 
   let query = supabase
@@ -81,7 +80,6 @@ async function logMessage(
   providerMessageId?: string,
   errorMessage?: string
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
 
   const { error: logErr } = await supabase.from("message_logs").insert({

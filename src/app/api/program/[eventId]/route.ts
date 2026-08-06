@@ -12,7 +12,6 @@ export async function GET(
     const supabase = await createAdminClient()
 
     // Get event details
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: event, error: eventError } = await (supabase as any)
       .from("events")
       .select("id, name, short_name, start_date, end_date, venue, city")
@@ -24,7 +23,6 @@ export async function GET(
     }
 
     // Check if program is published
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: settings } = await (supabase as any)
       .from("abstract_settings")
       .select("program_published, program_published_at")
@@ -44,7 +42,6 @@ export async function GET(
     }
 
     // Get accepted abstracts with their presentation slots
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: abstracts, error: abstractsError } = await (supabase as any)
       .from("abstracts")
       .select(`
@@ -74,9 +71,7 @@ export async function GET(
 
     // Transform abstracts to flatten slot data and filter to only scheduled ones
     const scheduledAbstracts = (abstracts || [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((a: any) => a.slot && a.slot.length > 0)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((a: any) => {
         const slot = a.slot[0] // Get first slot (primary)
         return {
@@ -97,7 +92,6 @@ export async function GET(
         }
       })
       // Sort by date, time, then order
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .sort((a: any, b: any) => {
         if (a.scheduled_date !== b.scheduled_date) {
           return (a.scheduled_date || "").localeCompare(b.scheduled_date || "")

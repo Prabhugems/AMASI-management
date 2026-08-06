@@ -66,7 +66,6 @@ export function getRequiredAppUrl(): string {
  *     .eq("status", "active")
  *     .order("start_date")
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function selectEventsForTenant(supabase: any, columns: string = "*") {
   // `any` on `supabase` is deliberate: most callers cast `createAdminClient()`
   // result to `any` already (the codebase's existing convention — see the

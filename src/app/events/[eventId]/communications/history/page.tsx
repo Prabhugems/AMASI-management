@@ -87,7 +87,6 @@ export default function HistoryPage() {
   const { data: logsData, isLoading, refetch } = useQuery({
     queryKey: ["message-logs", eventId, channelFilter, statusFilter, page],
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let query = (supabase as any)
         .from("message_logs")
         .select("*", { count: "exact" })
@@ -116,7 +115,6 @@ export default function HistoryPage() {
     queryKey: ["message-logs-stats", eventId, channelFilter],
     queryFn: async () => {
       const base = () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let q = (supabase as any)
           .from("message_logs")
           .select("*", { count: "exact", head: true })
@@ -200,7 +198,6 @@ export default function HistoryPage() {
   // paginated, but an admin running a bulk audit expects the CSV to cover the
   // full filtered set.
   const exportCSV = async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase as any)
       .from("message_logs")
       .select("created_at,channel,recipient,recipient_name,subject,status,provider")

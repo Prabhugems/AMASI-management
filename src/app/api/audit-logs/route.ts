@@ -36,7 +36,6 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0', 10)
 
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (adminClient as any)
       .from('team_activity_logs')
       .select('*', { count: 'exact' })

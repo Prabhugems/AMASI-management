@@ -2,7 +2,6 @@ import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // GET /api/forms/submissions/[id] - Get a specific submission

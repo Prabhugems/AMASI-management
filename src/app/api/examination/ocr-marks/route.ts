@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
 import { createAdminClient } from "@/lib/supabase/server"
-import { getAnthropicClient, isAIEnabled } from "@/lib/services/ai"
+import { getAnthropicClient, isAIEnabled, UNTRUSTED_CONTENT_RULE } from "@/lib/services/ai"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -36,7 +36,6 @@ export async function POST(request: NextRequest) {
 
     // Load exam settings for this event
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
     const { data: eventData } = await db
       .from("events")
@@ -76,7 +75,8 @@ export async function POST(request: NextRequest) {
       .map((c) => `  - "${c.key}" (label "${c.label}", integer 0..${c.max})`)
       .join("\n")
 
-    const prompt = `You are extracting handwritten marks from a scoring sheet table photograph.
+    const prompt = `${UNTRUSTED_CONTENT_RULE}
+You are extracting handwritten marks from a scoring sheet table photograph.
 
 The table contains these columns in order:
 - # (row number)

@@ -22,7 +22,6 @@
 import { sendEmail } from "@/lib/email"
 import { renderEmailTemplate, type TemplateType, type TemplateVariables } from "@/lib/email-templates"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = any
 
 export type AbstractNotifyInput = {

@@ -12,7 +12,6 @@ export async function GET(
 
     const { eventId } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Get all meal plans for this event
@@ -48,7 +47,6 @@ export async function GET(
       byMeal[reg.meal_plan_id][pref] = (byMeal[reg.meal_plan_id][pref] || 0) + 1
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const meals = mealPlans.map((m: any) => ({
       ...m,
       dietary: byMeal[m.id] || {},

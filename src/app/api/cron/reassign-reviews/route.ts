@@ -3,7 +3,6 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { reassignPending } from "@/app/api/abstract-reviewers/[eventId]/assign/route"
 import { logCronRun } from "@/lib/services/cron-logger"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 export async function GET(request: Request) {

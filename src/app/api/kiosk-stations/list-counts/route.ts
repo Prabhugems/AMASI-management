@@ -22,7 +22,6 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: lists, error: listsErr } = await (supabase as any)
     .from("checkin_lists")
     .select("id")
@@ -35,7 +34,6 @@ export async function GET(request: NextRequest) {
   const counts: Record<string, number> = {}
   await Promise.all(
     ((lists || []) as { id: string }[]).map(async ({ id: listId }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { count, error } = await (supabase as any)
         .from("checkin_records")
         .select("id", { count: "exact", head: true })

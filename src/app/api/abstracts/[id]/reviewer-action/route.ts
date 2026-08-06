@@ -527,9 +527,7 @@ export async function PUT(
 // ---------------------------------------------------------------------------
 
 type BroadcastInput = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   abstract: any
   committeeMembers: Array<{ email: string; name: string | null }>
   hasRealCommittee: boolean

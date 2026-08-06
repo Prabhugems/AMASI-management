@@ -9,7 +9,6 @@ function maskToken(token: string): string {
   return `${token.slice(0, 6)}...`
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function resolveSpeakerToken(supabase: any, token: string) {
   const { data: tokenRow } = await supabase
     .from('faculty_assignments')
@@ -36,7 +35,6 @@ export async function GET(
 
     // Find all sibling assignments for the same speaker in the same event.
     // Match by email when available, otherwise fall back to name.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let assignmentsQuery = (supabase as any)
       .from('faculty_assignments')
       .select('id, event_id, session_id, faculty_id, faculty_name, faculty_email, role, topic_title, session_name, session_date, start_time, end_time, hall, status')
@@ -52,13 +50,11 @@ export async function GET(
       .order('session_date', { ascending: true })
       .order('start_time', { ascending: true })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const assignments = (assignmentsRaw ?? []) as any[]
     const siblingIds = assignments.map((a) => a.id)
 
     let content: unknown[] = []
     if (siblingIds.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: contentRows } = await (supabase as any)
         .from('speaker_content')
         .select('*')
@@ -69,7 +65,6 @@ export async function GET(
       content = contentRows ?? []
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: settings } = await (supabase as any)
       .from('event_settings')
       .select('speaker_content_deadline')
@@ -150,7 +145,6 @@ export async function POST(
     }
 
     // Ownership check: the target assignment must belong to the same speaker.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let siblingsQuery = (supabase as any)
       .from('faculty_assignments')
       .select('id')
@@ -161,7 +155,6 @@ export async function POST(
       siblingsQuery = siblingsQuery.eq('faculty_name', tokenRow.faculty_name)
     }
     const { data: siblings } = await siblingsQuery
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const siblingIds = ((siblings ?? []) as any[]).map((r) => r.id)
     if (!siblingIds.includes(faculty_assignment_id)) {
       console.error('speaker content POST forbidden:', {
@@ -172,7 +165,6 @@ export async function POST(
     }
 
     // Deadline check.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: settings } = await (supabase as any)
       .from('event_settings')
       .select('speaker_content_deadline')
@@ -196,7 +188,6 @@ export async function POST(
     }
 
     // Look up existing current row to determine version + action_type.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: prev } = await (supabase as any)
       .from('speaker_content')
       .select('id, version')
@@ -211,7 +202,6 @@ export async function POST(
       newVersion = (prev.version ?? 1) + 1
       actionType = 'replaced_content'
       // Supersede the previous current row.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: supersedeError } = await (supabase as any)
         .from('speaker_content')
         .update({ is_current: false, superseded_at: new Date().toISOString() })
@@ -245,7 +235,6 @@ export async function POST(
       uploaded_by_email: tokenRow.faculty_email ?? null,
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: newRow, error: insertError } = await (supabase as any)
       .from('speaker_content')
       .insert(insertPayload)
@@ -267,7 +256,6 @@ export async function POST(
       || null
     const userAgent = request.headers.get('user-agent') || null
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from('speaker_portal_actions')
       .insert({

@@ -31,7 +31,6 @@ export default async function KioskStationPage({
   const { token } = await params
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error } = await (supabase as any)
     .from("kiosk_stations")
     .select("id, name, event_id, mode, print_station_id, auto_print_badge, revoked_at, attended")
@@ -58,14 +57,12 @@ export default async function KioskStationPage({
   // volunteer who can't fix a printer problem knows who to call (spec
   // §4: "the volunteer cannot fix a wrong setting and needs to know who to
   // call").
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: eventRow } = await (supabase as any)
     .from("events")
     .select("contact_phone")
     .eq("id", station.event_id)
     .maybeSingle()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: joinRows } = await (supabase as any)
     .from("kiosk_station_lists")
     .select("checkin_list_id")
@@ -94,14 +91,11 @@ export default async function KioskStationPage({
     return <StationListRemoved />
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let printSettings: any = null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let badgeTemplate: any = null
   let printMode: string | undefined
 
   if (station.mode === "checkin_and_print" && station.print_station_id) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: printStation } = await (supabase as any)
       .from("print_stations")
       .select("print_settings, print_mode, badge_templates (id, name, template_data)")
@@ -113,7 +107,6 @@ export default async function KioskStationPage({
   }
 
   // Best-effort presence touch -- never blocks rendering on failure.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any)
     .from("kiosk_stations")
     .update({ last_seen_at: new Date().toISOString() })

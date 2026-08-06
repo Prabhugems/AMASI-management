@@ -12,7 +12,6 @@ export async function GET(
   try {
     const { token } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Fetch assignment by token to get faculty info
@@ -109,7 +108,6 @@ export async function POST(
     const { responses, globalResponse, notes } = body
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Fetch assignment by token to get faculty info
@@ -337,7 +335,6 @@ export async function PUT(
     const { needs_travel, travel_details, travel_id, flight_preference_images } = body
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Validate token → find assignment

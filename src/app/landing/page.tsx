@@ -10,7 +10,6 @@ async function getTamilconTickets() {
     .maybeSingle()
   if (eventError) console.error("[landing] event lookup failed", eventError)
   if (!event) return []
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: tickets, error } = await (supabase as any)
     .from("ticket_types")
     .select("id, name, price")

@@ -161,7 +161,6 @@ export default function PublicPageSettingsPage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const currentSettings = event?.settings || {}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from("events")
         .update({

@@ -130,7 +130,6 @@ export async function POST(
     const { error: authError } = await requireEventAndPermission(eventId, 'program')
     if (authError) return authError
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Fetch all sessions for this event (include both _text and plain name columns)

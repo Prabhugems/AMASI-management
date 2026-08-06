@@ -28,7 +28,6 @@ export async function GET(
     }
 
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClient as any
 
     // 1. Fetch the team member

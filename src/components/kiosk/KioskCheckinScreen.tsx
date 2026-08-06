@@ -124,9 +124,7 @@ interface KioskCheckinScreenProps {
   mode?: "checkin" | "checkin_and_print"
   autoPrintBadge?: boolean
   printStationId?: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   badgeTemplate?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   printSettings?: any
   // print_stations.print_mode ("label" | "overlay" | "full_badge") -- the
   // linked Print Station's configured mode, cached alongside the template
@@ -875,7 +873,6 @@ export function KioskCheckinScreen({
       // time. Drop the image for that element instead; the rest of the
       // badge still prints.
       const resolvedElements = await Promise.all(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         elements.map(async (el: any) => {
           if (el.type === "image" || el.type === "photo") {
             if (el.imageUrl && template.imageDataUrls[el.imageUrl]) {

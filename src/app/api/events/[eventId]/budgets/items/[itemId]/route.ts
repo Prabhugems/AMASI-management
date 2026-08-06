@@ -14,7 +14,6 @@ export async function PATCH(
     const body = await request.json()
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { data, error } = await db
@@ -52,7 +51,6 @@ export async function DELETE(
 
     const { itemId } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { error } = await db

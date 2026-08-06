@@ -7,7 +7,6 @@ export async function GET() {
   const { error: authError } = await requireSuperAdmin()
   if (authError) return authError
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 

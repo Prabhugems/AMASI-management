@@ -50,9 +50,7 @@ export interface ScanLogEntry {
 }
 
 export interface CachedPrintTemplate {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   badgeTemplate: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   printSettings: any
   printStationId: string
   // Every element with an imageUrl in badgeTemplate.elements has that URL

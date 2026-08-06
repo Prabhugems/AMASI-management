@@ -27,7 +27,6 @@ export async function GET(
   try {
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from('event_faculty')
       .select(`
@@ -48,7 +47,6 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to load honoraria' }, { status: 500 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sorted = ((data ?? []) as any[]).slice().sort((a, b) => {
       const an = (a?.faculty?.name ?? '').toLowerCase()
       const bn = (b?.faculty?.name ?? '').toLowerCase()
@@ -114,7 +112,6 @@ export async function POST(
     const supabase = await createAdminClient()
 
     // Fetch the candidate rows scoped to this event
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: candidateRows, error: fetchError } = await (supabase as any)
       .from('event_faculty')
       .select('id, honorarium_status, honorarium_amount, honorarium_currency')
@@ -126,7 +123,6 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to load target rows' }, { status: 500 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rows = (candidateRows ?? []) as any[]
 
     if (action === 'approve') {
@@ -136,7 +132,6 @@ export async function POST(
         return NextResponse.json({ data: [], updated_count: 0 })
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const update: Record<string, any> = {
         honorarium_status: 'approved' satisfies HonorariumStatus,
       }
@@ -147,7 +142,6 @@ export async function POST(
         update.honorarium_currency = payload.currency.trim().toUpperCase()
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: updated, error: updateError } = await (supabase as any)
         .from('event_faculty')
         .update(update)
@@ -176,7 +170,6 @@ export async function POST(
       ? payload.honorarium_paid_date.trim()
       : new Date().toISOString().slice(0, 10) // DATE column → YYYY-MM-DD
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const update: Record<string, any> = {
       honorarium_status: 'paid' satisfies HonorariumStatus,
       honorarium_paid_date: paidDate,
@@ -191,7 +184,6 @@ export async function POST(
       update.tds_deducted = payload.tds_deducted
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: updated, error: updateError } = await (supabase as any)
       .from('event_faculty')
       .update(update)

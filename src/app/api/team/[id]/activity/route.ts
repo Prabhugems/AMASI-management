@@ -27,7 +27,6 @@ export async function GET(
     const offset = parseInt(searchParams.get('offset') || '0', 10)
 
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClient as any
 
     // First, look up the team member to get their user_id (actor_id match)

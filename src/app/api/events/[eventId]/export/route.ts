@@ -38,7 +38,6 @@ export async function GET(
   if (authError) return authError
 
   const supabaseClient = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = supabaseClient as any
   const searchParams = request.nextUrl.searchParams
   const type = searchParams.get("type") || "travel" // travel, registrations, sessions, attendance

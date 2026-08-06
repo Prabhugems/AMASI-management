@@ -20,11 +20,9 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: lists } = await (supabase as any).from("checkin_lists").select("id").eq("event_id", eventId)
   const listIds = (lists || []).map((l: { id: string }) => l.id)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: stations } = await (supabase as any)
     .from("kiosk_stations")
     .select("id, name, last_seen_at, revoked_at")
@@ -39,7 +37,6 @@ export async function GET(request: NextRequest) {
   // mis-scanned (later reversed by help desk) showed inflated activity here,
   // masking a station that may actually be struggling with real, valid
   // throughput -- the exact signal this report exists to surface.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: checkins, error } = await (supabase as any)
     .from("checkin_records")
     .select("station_id, checked_in_at")
@@ -52,7 +49,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to load arrival-rate data" }, { status: 500 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stationNameById = new Map<string, string>(stations.map((s: any) => [s.id, s.name]))
 
   // Bucket by station + local hour (e.g. "2026-08-27 09:00").
@@ -80,9 +76,7 @@ export async function GET(request: NextRequest) {
 
   const fifteenMinAgo = Date.now() - 15 * 60 * 1000
   const stationSummaries = stations
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .filter((s: any) => !s.revoked_at)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((s: any) => {
       const recentlySeen = s.last_seen_at ? new Date(s.last_seen_at).getTime() >= fifteenMinAgo : false
       const lastHourCount = lastHourCountByStation.get(s.id) || 0

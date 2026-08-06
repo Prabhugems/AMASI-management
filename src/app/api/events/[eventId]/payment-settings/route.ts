@@ -14,7 +14,6 @@ export async function PUT(
     if (authError) return authError
 
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
     const body = await request.json()
     const {
@@ -79,7 +78,6 @@ export async function GET(
     if (authError) return authError
 
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
 
     const { data, error } = await supabase

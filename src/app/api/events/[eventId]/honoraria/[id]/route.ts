@@ -43,7 +43,6 @@ export async function GET(
   try {
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from('event_faculty')
       .select(`
@@ -99,7 +98,6 @@ export async function PATCH(
   }
 
   // Whitelist
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const update: Record<string, any> = {}
   for (const key of PATCHABLE_FIELDS) {
     if (key in body) {
@@ -144,7 +142,6 @@ export async function PATCH(
 
     // Detect whether `notes` column exists; if not, drop silently.
     if ('notes' in update) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const probe = await (supabase as any)
         .from('event_faculty')
         .select('notes')
@@ -155,7 +152,6 @@ export async function PATCH(
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from('event_faculty')
       .update(update)

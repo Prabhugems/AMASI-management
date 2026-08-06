@@ -33,9 +33,7 @@ interface KioskStationShellProps {
   // screen that can only ever fail.
   attended: boolean
   printStationId?: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   badgeTemplate?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   printSettings?: any
   printMode?: string
   autoPrintBadge: boolean
@@ -201,7 +199,6 @@ export function KioskStationShell({
           if (!res.ok) continue
           const data = (await res.json()) as { delegates: unknown[] }
           if (cancelled) return
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await replaceDelegateCache(list.id, data.delegates as any)
         } catch {
           // Offline/transient -- that list's existing cached roster (if any)

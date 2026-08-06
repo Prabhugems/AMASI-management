@@ -9,7 +9,6 @@ export type AmasiMember = {
   phone: string | null
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = any
 
 export async function lookupAmasiMember(

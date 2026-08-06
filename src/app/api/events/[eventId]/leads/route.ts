@@ -23,7 +23,6 @@ export async function GET(
     const sortOrder = searchParams.get("sort_order") || "desc"
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     let query = db
@@ -82,7 +81,6 @@ export async function POST(
     }
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { data: existing } = await db

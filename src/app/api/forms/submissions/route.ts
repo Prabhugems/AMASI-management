@@ -4,7 +4,6 @@ import { headers } from "next/headers"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
 import { requireEventAccess } from "@/lib/auth/api-auth"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // GET /api/forms/submissions - Get submissions (with form_id filter)
@@ -97,7 +96,6 @@ export async function POST(request: NextRequest) {
 
   try {
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
 
     const body = await request.json()

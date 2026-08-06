@@ -12,7 +12,6 @@ export async function GET(
 
     const { eventId, id } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { data, error } = await db
@@ -49,10 +48,8 @@ export async function PATCH(
     const body = await request.json()
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: Record<string, any> = {
       ...body,
       updated_at: new Date().toISOString(),
@@ -96,7 +93,6 @@ export async function DELETE(
 
     const { eventId, id } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { error } = await db

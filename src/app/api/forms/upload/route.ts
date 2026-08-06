@@ -21,7 +21,6 @@ export async function POST(request: NextRequest) {
     // Use service role key for storage uploads (allows bypassing RLS)
     // Auth is optional — public registration forms need file uploads too
     // Rate limiting (above) protects against abuse
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = (await createAdminClient()) as any
 
     const formData = await request.formData()

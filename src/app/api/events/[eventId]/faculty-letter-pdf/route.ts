@@ -93,7 +93,6 @@ export async function POST(
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = (await createAdminClient()) as any
 
     const { data: event, error: eventError } = await supabase

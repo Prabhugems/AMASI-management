@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Fetch the form (must be published)

@@ -16,7 +16,6 @@ export default async function StationSelfTestPage({
   const { token } = await params
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error } = await (supabase as any)
     .from("kiosk_stations")
     .select("id, name, event_id, mode, print_station_id, revoked_at")
@@ -32,12 +31,10 @@ export default async function StationSelfTestPage({
     return <ErrorScreen message="This station link isn't valid or has been revoked." />
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let printSettings: any = null
   let printerType: "usb" | "browser" = "usb"
 
   if (station.mode === "checkin_and_print" && station.print_station_id) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: printStation } = await (supabase as any)
       .from("print_stations")
       .select("print_settings")
@@ -47,14 +44,12 @@ export default async function StationSelfTestPage({
     printerType = printSettings?.printer_type === "browser" ? "browser" : "usb"
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: joinRows } = await (supabase as any)
     .from("kiosk_station_lists")
     .select("checkin_list_id, checkin_lists (id, name)")
     .eq("station_id", station.id)
 
   const lists = (joinRows || [])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((r: any) => r.checkin_lists)
     .filter((l: unknown): l is { id: string; name: string } => Boolean(l))
 

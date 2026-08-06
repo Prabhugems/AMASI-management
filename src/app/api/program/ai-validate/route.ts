@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit"
-import { getAnthropicClient, isAIEnabled } from "@/lib/services/ai"
+import { getAnthropicClient, isAIEnabled, UNTRUSTED_CONTENT_RULE } from "@/lib/services/ai"
 
 type SessionInput = {
   session_name: string
@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `You are a medical conference schedule validator. Analyze this program schedule and identify issues.
+          content: `${UNTRUSTED_CONTENT_RULE}
+You are a medical conference schedule validator. Analyze this program schedule and identify issues.
 
 Look for:
 1. AM/PM confusion: sessions scheduled at unlikely times (e.g., Tea Break at 22:40 instead of 10:40, lectures at 23:00 instead of 11:00). Medical conferences typically run 07:00-20:00.

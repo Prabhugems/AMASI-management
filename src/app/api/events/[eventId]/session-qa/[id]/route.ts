@@ -54,7 +54,6 @@ export async function PATCH(
   try {
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from("session_qa")
       .update(update)
@@ -90,7 +89,6 @@ export async function DELETE(
   try {
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
       .from("session_qa")
       .delete()

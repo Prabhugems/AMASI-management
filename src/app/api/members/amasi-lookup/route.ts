@@ -27,7 +27,6 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
 
     // Query `members` directly (not the view) so we can surface the richer

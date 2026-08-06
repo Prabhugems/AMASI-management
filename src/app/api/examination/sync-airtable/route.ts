@@ -15,7 +15,6 @@ export async function POST(request: NextRequest) {
     if (accessError) return accessError
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { data: regsWithConv } = await db
@@ -25,7 +24,6 @@ export async function POST(request: NextRequest) {
       .in("exam_result", ["pass", "without_exam"])
       .not("convocation_number", "is", null)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const noFillout = (regsWithConv || []).filter((r: any) => !r.exam_marks?.fillout_link)
 
     let created = 0

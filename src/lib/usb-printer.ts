@@ -3,7 +3,6 @@
 // WebUSB is supported on Chrome for Android, Chrome desktop, and Edge.
 
 // WebUSB type declarations (not in default TS lib)
-/* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
   interface Navigator {
     usb: {

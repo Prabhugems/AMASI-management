@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any).from("print_jobs").insert({
     print_station_id: printStationId,
     registration_id: registrationId,

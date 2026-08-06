@@ -158,7 +158,6 @@ export default function DiscountsPage() {
 
   const toggleEnabled = useMutation({
     mutationFn: async (next: boolean) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from("events")
         .update({ discount_enabled: next })

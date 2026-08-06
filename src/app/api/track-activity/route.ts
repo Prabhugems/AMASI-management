@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server'
 export async function POST() {
   try {
     const supabaseServerClient = await createServerSupabaseClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseServerClient as any
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -13,7 +12,6 @@ export async function POST() {
     }
 
     const adminClientRaw = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adminClient = adminClientRaw as any
 
     await adminClient

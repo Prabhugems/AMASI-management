@@ -20,7 +20,6 @@ export async function logTeamAction(params: LogTeamActionParams): Promise<void> 
   try {
     const adminClient = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (adminClient as any)
       .from('team_activity_logs')
       .insert({

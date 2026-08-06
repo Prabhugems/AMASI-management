@@ -12,7 +12,6 @@ function escapeCsvField(value: string): string {
 /**
  * Summarise the JSONB metadata into a short human-readable string.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function summariseMetadata(metadata: any): string {
   if (!metadata || typeof metadata !== 'object') return ''
   const parts: string[] = []
@@ -82,7 +81,6 @@ export async function GET(request: NextRequest) {
     }
 
     const adminClientRaw = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adminClient = adminClientRaw as any
 
     // Fetch team members, auth users, and activity data in parallel
@@ -113,7 +111,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch last_active_at from users table
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const emails = (teamMembers || []).map((m: any) => m.email.toLowerCase())
     const { data: usersData } = await adminClient
       .from('users')
@@ -131,7 +128,6 @@ export async function GET(request: NextRequest) {
     const columns = ['Name', 'Email', 'Phone', 'Role', 'Permissions', 'Event Count', 'Status', 'Created At', 'Last Active']
     const csvRows: string[] = [columns.join(',')]
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const member of (teamMembers || []) as any[]) {
       const emailKey = member.email.toLowerCase()
       const lastActive = activeMap.get(emailKey) || authMap.get(emailKey) || ''
@@ -195,7 +191,6 @@ async function handleAuditExport(searchParams: URLSearchParams) {
   const actionType = searchParams.get('action_type')
 
   const adminClient = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (adminClient as any)
     .from('team_activity_logs')
     .select('*')
@@ -225,7 +220,6 @@ async function handleAuditExport(searchParams: URLSearchParams) {
 
   // Build a quick lookup for team member names by email
   const allEmails = new Set<string>()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const log of (logs || []) as any[]) {
     if (log.actor_email) allEmails.add(log.actor_email.toLowerCase())
     if (log.target_email) allEmails.add(log.target_email.toLowerCase())
@@ -234,12 +228,10 @@ async function handleAuditExport(searchParams: URLSearchParams) {
   const emailArr = Array.from(allEmails)
   const nameMap = new Map<string, string>()
   if (emailArr.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: members } = await (adminClient as any)
       .from('team_members')
       .select('email, name')
       .in('email', emailArr)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const m of (members || []) as any[]) {
       if (m.email) nameMap.set(m.email.toLowerCase(), m.name || '')
     }
@@ -258,7 +250,6 @@ async function handleAuditExport(searchParams: URLSearchParams) {
   ]
   const csvRows: string[] = [columns.join(',')]
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const log of (logs || []) as any[]) {
     const timestamp = log.created_at
       ? new Date(log.created_at).toISOString().replace('T', ' ').slice(0, 19)

@@ -27,7 +27,6 @@ export async function GET(
 ) {
   const { registrationId } = await params
   const supabaseClient = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = supabaseClient as any
 
   try {

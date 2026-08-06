@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing token" }, { status: 400 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adminClient = (await createAdminClient()) as any
 
     // Verify the token and get the user

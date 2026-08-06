@@ -12,7 +12,6 @@ export async function GET(
 
     const { id } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { data, error } = await db
@@ -44,7 +43,6 @@ export async function POST(
 
     const { eventId, id } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Get all confirmed registrations for this event

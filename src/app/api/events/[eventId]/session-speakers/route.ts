@@ -24,7 +24,6 @@ export async function GET(
   const status = url.searchParams.get('status')
 
   const supabase = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
     .from('faculty_assignments')
     .select(`
@@ -114,7 +113,6 @@ export async function POST(
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: session } = await (supabase as any)
     .from('sessions')
     .select('id, event_id, session_name, session_date, start_time, end_time, hall')
@@ -129,7 +127,6 @@ export async function POST(
   // Race-prone for concurrent inserts; acceptable at Phase 1 single-admin scale.
   let displayOrder = typeof body.display_order === 'number' ? body.display_order : null
   if (displayOrder === null) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: maxRow } = await (supabase as any)
       .from('faculty_assignments')
       .select('display_order')
@@ -140,7 +137,6 @@ export async function POST(
     displayOrder = maxRow ? (maxRow.display_order as number) + 1 : 0
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('faculty_assignments')
     .insert({
