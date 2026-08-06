@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
   if (authError) return authError
 
   const supabase = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("kiosk_stations")
     .select("id, event_id, name, mode, print_station_id, auto_print_badge, attended, last_seen_at, revoked_at, created_at")
@@ -84,7 +83,6 @@ export async function POST(request: NextRequest) {
 
   // Every requested list must belong to this event -- a station bound to a
   // list from a different event would be a real authorization hole.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: lists } = await (supabase as any)
     .from("checkin_lists")
     .select("id, event_id")
@@ -96,7 +94,6 @@ export async function POST(request: NextRequest) {
   }
 
   if (mode === "checkin_and_print") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: printStation } = await (supabase as any)
       .from("print_stations")
       .select("id, event_id, print_settings")
@@ -113,7 +110,6 @@ export async function POST(request: NextRequest) {
 
   const access_token = newStationToken()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error } = await (supabase as any)
     .from("kiosk_stations")
     .insert({
@@ -135,7 +131,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to create kiosk station." }, { status: 500 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: joinError } = await (supabase as any)
     .from("kiosk_station_lists")
     .insert(listIds.map((checkin_list_id) => ({ station_id: station.id, checkin_list_id })))

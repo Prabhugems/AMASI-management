@@ -321,7 +321,6 @@ export default function MarksheetPage() {
 
         const from = page * ROWS_PER_PAGE + 1
         const to = Math.min((page + 1) * ROWS_PER_PAGE, allRows.length)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const finalY = (doc as any).lastAutoTable?.finalY || 240
 
         doc.setFontSize(8)
@@ -389,7 +388,6 @@ export default function MarksheetPage() {
 
         const from = page * ROWS_PER_PAGE + 1
         const to = Math.min((page + 1) * ROWS_PER_PAGE, allRows.length)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const finalY = (doc as any).lastAutoTable?.finalY || 240
 
         doc.setFontSize(8)

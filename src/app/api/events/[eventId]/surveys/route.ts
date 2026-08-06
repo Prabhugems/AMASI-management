@@ -12,7 +12,6 @@ export async function GET(
 
     const { eventId } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Get forms that are surveys or feedback for this event
@@ -29,7 +28,6 @@ export async function GET(
     }
 
     // Add submission count to each form
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const surveysWithCounts = (forms || []).map((form: any) => ({
       ...form,
       submission_count: form.form_submissions?.length || 0,
@@ -61,7 +59,6 @@ export async function POST(
     }
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { data, error } = await db

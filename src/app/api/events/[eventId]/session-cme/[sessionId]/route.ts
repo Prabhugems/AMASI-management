@@ -57,7 +57,6 @@ export async function PATCH(
     const supabase = await createAdminClient()
 
     // Validate session belongs to event
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: session } = await (supabase as any)
       .from('sessions')
       .select('id, event_id')
@@ -86,7 +85,6 @@ export async function PATCH(
     if (body.quiz_form_id !== undefined) payload.quiz_form_id = body.quiz_form_id || null
     if (body.notes !== undefined) payload.notes = body.notes || null
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from('session_cme')
       .upsert(payload, { onConflict: 'session_id' })
@@ -119,7 +117,6 @@ export async function DELETE(
     const supabase = await createAdminClient()
 
     // Validate session belongs to event
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: session } = await (supabase as any)
       .from('sessions')
       .select('id, event_id')
@@ -130,7 +127,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Session not found for this event' }, { status: 404 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
       .from('session_cme')
       .delete()

@@ -18,7 +18,6 @@ export async function GET(
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error: findErr } = await (supabase as any)
     .from("kiosk_stations")
     .select("id, event_id, name, mode, print_station_id, auto_print_badge, attended, last_seen_at, revoked_at, created_at")
@@ -35,7 +34,6 @@ export async function GET(
   const { error: authError } = await requireEventAndPermission(station.event_id, "checkin")
   if (authError) return authError
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: listRows, error: listErr } = await (supabase as any)
     .from("kiosk_station_lists")
     .select("checkin_list_id")
@@ -60,7 +58,6 @@ export async function PATCH(
   const { id } = await params
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error: findErr } = await (supabase as any)
     .from("kiosk_stations")
     .select("id, event_id")
@@ -84,7 +81,6 @@ export async function PATCH(
     if (!isValidUUID(body.print_station_id)) {
       return NextResponse.json({ error: "Invalid print station." }, { status: 400 })
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: printStation } = await (supabase as any)
       .from("print_stations")
       .select("id, event_id, print_settings")
@@ -119,7 +115,6 @@ export async function PATCH(
     if (requested.length === 0 || !requested.every(isValidUUID)) {
       return NextResponse.json({ error: "At least one check-in list must be selected." }, { status: 400 })
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: lists } = await (supabase as any).from("checkin_lists").select("id, event_id").in("id", requested)
     const foundIds = new Set((lists || []).map((l: any) => l.id))
     if (requested.some((rid) => !foundIds.has(rid)) || (lists || []).some((l: any) => l.event_id !== station.event_id)) {
@@ -128,7 +123,6 @@ export async function PATCH(
     requestedListIds = requested
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("kiosk_stations")
     .update(updates)
@@ -150,7 +144,6 @@ export async function PATCH(
     // being dropped once that insert has succeeded. If the insert fails, no
     // delete has happened yet, so the station still has its ORIGINAL
     // assignments intact.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existingRows, error: existingError } = await (supabase as any)
       .from("kiosk_station_lists")
       .select("checkin_list_id")
@@ -158,13 +151,11 @@ export async function PATCH(
     if (existingError) {
       return NextResponse.json({ error: "Station updated but failed to reassign lists." }, { status: 500 })
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingListIds = ((existingRows || []) as any[]).map((r) => r.checkin_list_id as string)
     const toAdd = requestedListIds.filter((lid) => !existingListIds.includes(lid))
     const toRemove = existingListIds.filter((lid) => !requestedListIds!.includes(lid))
 
     if (toAdd.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: insertError } = await (supabase as any)
         .from("kiosk_station_lists")
         .insert(toAdd.map((checkin_list_id) => ({ station_id: id, checkin_list_id })))
@@ -174,7 +165,6 @@ export async function PATCH(
     }
 
     if (toRemove.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: deleteError } = await (supabase as any)
         .from("kiosk_station_lists")
         .delete()
@@ -200,7 +190,6 @@ export async function DELETE(
   const { id } = await params
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error: findErr } = await (supabase as any)
     .from("kiosk_stations")
     .select("id, event_id")
@@ -214,7 +203,6 @@ export async function DELETE(
   const { error: authError } = await requireEventAndPermission(station.event_id, "checkin")
   if (authError) return authError
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any).from("kiosk_stations").delete().eq("id", id)
 
   if (error) {

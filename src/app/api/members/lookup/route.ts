@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     return rateLimitExceededResponse(rateLimit)
   }
   const supabaseClient = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = supabaseClient as any
   try {
     const { searchParams } = new URL(request.url)

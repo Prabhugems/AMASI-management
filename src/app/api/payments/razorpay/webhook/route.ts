@@ -46,7 +46,6 @@ interface WebhookPayload {
 /**
  * Get event-specific webhook secret or fall back to default
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getWebhookSecret(supabase: any, orderId: string): Promise<string | null> {
   const { data: payment } = await supabase
     .from("payments")

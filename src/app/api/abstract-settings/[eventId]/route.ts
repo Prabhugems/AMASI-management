@@ -2,7 +2,6 @@ import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/se
 import { NextRequest, NextResponse } from "next/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // GET /api/abstract-settings/[eventId] - Get settings for an event

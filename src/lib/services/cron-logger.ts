@@ -10,7 +10,6 @@ export type CronRunHandle = {
 // logging insert fails, we still return a handle whose ok/err become no-ops so
 // the cron job itself can complete and return its normal response.
 export async function logCronRun(job: string): Promise<CronRunHandle> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let db: any
   try {
     db = await createAdminClient()

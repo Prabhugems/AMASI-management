@@ -7,7 +7,6 @@ const EVENT_ID = "11111111-1111-1111-1111-111111111111"
 const LIST_ID = "22222222-2222-2222-2222-222222222222"
 
 let mock: ReturnType<typeof createSupabaseMock>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let requireEventAndPermissionMock: any
 
 vi.mock("@/lib/supabase/server", () => ({

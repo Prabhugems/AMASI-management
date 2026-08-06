@@ -6,7 +6,6 @@ function maskToken(token: string): string {
   return `${token.slice(0, 6)}...`
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function resolveSpeakerToken(supabase: any, token: string) {
   const { data: tokenRow } = await supabase
     .from('faculty_assignments')
@@ -32,7 +31,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid token' }, { status: 404 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: contentRow } = await (supabase as any)
       .from('speaker_content')
       .select('id, faculty_assignment_id, event_id, content_type, is_current')
@@ -44,7 +42,6 @@ export async function DELETE(
     }
 
     // Ownership check via sibling assignments.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let siblingsQuery = (supabase as any)
       .from('faculty_assignments')
       .select('id')
@@ -55,7 +52,6 @@ export async function DELETE(
       siblingsQuery = siblingsQuery.eq('faculty_name', tokenRow.faculty_name)
     }
     const { data: siblings } = await siblingsQuery
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const siblingIds = ((siblings ?? []) as any[]).map((r) => r.id)
     if (!siblingIds.includes(contentRow.faculty_assignment_id)) {
       console.error('speaker content DELETE forbidden:', {
@@ -66,7 +62,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase as any)
       .from('speaker_content')
       .update({ is_current: false, superseded_at: new Date().toISOString() })
@@ -86,7 +81,6 @@ export async function DELETE(
       || null
     const userAgent = request.headers.get('user-agent') || null
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from('speaker_portal_actions')
       .insert({

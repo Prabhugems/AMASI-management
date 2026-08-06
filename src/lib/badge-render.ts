@@ -34,7 +34,6 @@ export async function waitForRenderReady(): Promise<void> {
 }
 
 // Replace placeholders in text with registration data
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function replacePlaceholders(text: string, reg: any, eventName: string): string {
   if (!text) return ""
   let result = text
@@ -63,7 +62,6 @@ export function replacePlaceholders(text: string, reg: any, eventName: string): 
 }
 
 // Render a single badge element to HTML
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function renderElementToHtml(element: any, registration: any, eventName: string): string {
   const content = replacePlaceholders(element.content || "", registration, eventName)
   const rotation = element.rotation || 0
@@ -226,7 +224,6 @@ export function getPaperDimensions(paperSize: string, orientation: string): { wi
 // this, so print_settings.rotation had zero effect on any canvas-based
 // print, ever, regardless of what an admin set it to. Exporting the same
 // computation used below lets each call site put the transform back.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getBadgeRotationDegrees(settings: any, printMode: string): number {
   const isOverlayMode = printMode === "overlay"
   // Overlay mode: NO rotation (pre-printed stock orientation is fixed)

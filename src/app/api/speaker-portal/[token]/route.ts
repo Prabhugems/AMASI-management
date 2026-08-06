@@ -8,7 +8,6 @@ export async function GET(
   try {
     const { token } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Find registration by portal_token in custom_fields
@@ -64,7 +63,6 @@ export async function POST(
     const { bio_text, photo_url, presentation_url } = body
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Find registration by portal_token

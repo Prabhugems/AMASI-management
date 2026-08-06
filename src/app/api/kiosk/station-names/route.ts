@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Station not found." }, { status: 404 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: stations, error } = await (supabase as any)
     .from("kiosk_stations")
     .select("id, name")

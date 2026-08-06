@@ -31,7 +31,6 @@ export async function PATCH(
 
     // Use admin client to bypass RLS
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClient as any
 
     // Fetch existing member
@@ -90,7 +89,6 @@ export async function PATCH(
     }
 
     // Build update object with only provided fields
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updates: Record<string, any> = {}
     if (name !== undefined) updates.name = name.trim()
     if (role !== undefined) updates.role = role
@@ -143,14 +141,12 @@ export async function PATCH(
               acc[key] = existing[key]
             }
             return acc
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           }, {} as Record<string, any>),
           new_values: Object.keys(updates).reduce((acc, key) => {
             if (key !== 'updated_at') {
               acc[key] = updates[key]
             }
             return acc
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           }, {} as Record<string, any>),
         },
       })
@@ -319,7 +315,6 @@ export async function DELETE(
 
     // Use admin client to bypass RLS
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClient as any
 
     // Fetch existing member before deleting (for logging)

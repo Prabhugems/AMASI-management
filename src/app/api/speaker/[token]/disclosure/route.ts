@@ -6,7 +6,6 @@ function maskToken(token: string): string {
   return `${token.slice(0, 6)}...`
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function resolveSpeakerToken(supabase: any, token: string) {
   const { data: tokenRow } = await supabase
     .from('faculty_assignments')
@@ -49,14 +48,12 @@ export async function GET(
       })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: facultyRow } = await (supabase as any)
       .from('faculty')
       .select('id, name, email')
       .eq('id', tokenRow.faculty_id)
       .maybeSingle()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: disclosure } = await (supabase as any)
       .from('speaker_disclosures')
       .select('*')
@@ -140,7 +137,6 @@ export async function POST(
     }
 
     // Look up existing current disclosure to compute new version.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: prev } = await (supabase as any)
       .from('speaker_disclosures')
       .select('id, version')
@@ -160,7 +156,6 @@ export async function POST(
     // so the partial unique index on (faculty_id, event_id) WHERE is_current
     // doesn't conflict. superseded_by will be patched after insert.
     if (prev) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: supersedeError } = await (supabase as any)
         .from('speaker_disclosures')
         .update({
@@ -200,7 +195,6 @@ export async function POST(
       is_current: true,
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: newRow, error: insertError } = await (supabase as any)
       .from('speaker_disclosures')
       .insert(insertPayload)
@@ -217,7 +211,6 @@ export async function POST(
 
     // Step 3: backfill superseded_by on the previous row now that we have new id.
     if (prev) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any)
         .from('speaker_disclosures')
         .update({ superseded_by: newRow.id })
@@ -226,7 +219,6 @@ export async function POST(
 
     // Log portal action (best-effort).
     const userAgent = request.headers.get('user-agent') || null
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from('speaker_portal_actions')
       .insert({

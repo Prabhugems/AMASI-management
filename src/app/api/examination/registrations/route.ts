@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
     if (accessError) return accessError
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Fetch event settings and ticket types in parallel
@@ -117,7 +116,6 @@ export async function PATCH(request: NextRequest) {
     }
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Check for duplicate convocation number before saving

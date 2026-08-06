@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient()
 
     // Fetch existing abstracts for this event
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase as any)
       .from("abstracts")
       .select("id, abstract_number, title, abstract_text, presenting_author_name, status")

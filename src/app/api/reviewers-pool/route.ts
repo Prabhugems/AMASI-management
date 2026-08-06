@@ -34,7 +34,6 @@ function getReviewerFormEmail(name: string, formUrl: string): string {
   `
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // Helper to normalize names for duplicate detection

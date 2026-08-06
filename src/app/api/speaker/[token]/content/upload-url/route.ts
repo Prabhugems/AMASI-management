@@ -35,7 +35,6 @@ function maskToken(token: string): string {
   return `${token.slice(0, 6)}...`
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function resolveSpeakerToken(supabase: any, token: string) {
   const { data: tokenRow } = await supabase
     .from('faculty_assignments')
@@ -111,7 +110,6 @@ export async function POST(
     }
 
     // Ownership check.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let siblingsQuery = (supabase as any)
       .from('faculty_assignments')
       .select('id')
@@ -122,7 +120,6 @@ export async function POST(
       siblingsQuery = siblingsQuery.eq('faculty_name', tokenRow.faculty_name)
     }
     const { data: siblings } = await siblingsQuery
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const siblingIds = ((siblings ?? []) as any[]).map((r) => r.id)
     if (!siblingIds.includes(faculty_assignment_id)) {
       console.error('speaker content upload-url forbidden:', {
@@ -133,7 +130,6 @@ export async function POST(
     }
 
     // Deadline check.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: settings } = await (supabase as any)
       .from('event_settings')
       .select('speaker_content_deadline')
@@ -147,7 +143,6 @@ export async function POST(
     const randomSuffix = Math.random().toString(36).slice(2, 8)
     const path = `events/${tokenRow.event_id}/${faculty_assignment_id}/${content_type}/${Date.now()}-${randomSuffix}.${rawExt}`
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any).storage
       .from(BUCKET)
       .createSignedUploadUrl(path)
@@ -161,7 +156,6 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to create upload URL' }, { status: 500 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: urlData } = (supabase as any).storage.from(BUCKET).getPublicUrl(path)
 
     return NextResponse.json({

@@ -89,7 +89,6 @@ export async function GET(
   let email = searchParams.get("email")
   const token = searchParams.get("token")
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
 
   // Token resolution: pull email from the registration matching the portal token.
@@ -223,7 +222,6 @@ export async function GET(
     bodyStyles: { fillColor: [255, 255, 255] },
   })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const afterTableY = ((doc as any).lastAutoTable?.finalY ?? y) + 18
   const sigW = 38, sigH = 22
   const sigX = pageW - margin - sigW

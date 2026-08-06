@@ -56,7 +56,6 @@ export async function GET(
   try {
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let fbQuery = (supabase as any)
       .from("session_feedback")
       .select(
@@ -84,7 +83,6 @@ export async function GET(
 
     let sessions: SessionRow[] = []
     if (sessionIds.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: sessionsData } = await (supabase as any)
         .from("sessions")
         .select("id, session_name, session_date, hall")

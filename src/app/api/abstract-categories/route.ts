@@ -2,7 +2,6 @@ import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/se
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
 import { NextRequest, NextResponse } from "next/server"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // GET /api/abstract-categories?event_id=xxx - List categories for an event

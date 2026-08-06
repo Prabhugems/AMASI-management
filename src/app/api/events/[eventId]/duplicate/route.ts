@@ -15,7 +15,6 @@ export async function POST(
   if (authError) return authError
 
   const supabaseClient = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = supabaseClient as any
   try {
     const { eventId } = await params

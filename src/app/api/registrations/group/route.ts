@@ -43,7 +43,6 @@ function generateOrderNumber(): string {
 export async function POST(request: NextRequest) {
   try {
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
     const body: GroupRegistrationRequest = await request.json()
     const { event_id, buyer, attendees, discount_code, payment_method = "free" } = body
@@ -93,7 +92,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Create ticket lookup map
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ticketMap = new Map<string, any>(ticketTypes.map((t: any) => [t.id, t]))
 
     // Validate all tickets exist and are active
@@ -472,7 +470,6 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
     const { searchParams } = new URL(request.url)
     const orderId = searchParams.get("order_id")

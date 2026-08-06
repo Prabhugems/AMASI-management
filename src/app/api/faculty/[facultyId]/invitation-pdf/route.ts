@@ -75,7 +75,6 @@ export async function GET(
   const { error: authError } = await requireEventAndPermission(eventId, 'speakers')
   if (authError) return authError
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
 
   try {
@@ -294,7 +293,6 @@ export async function GET(
     const rowHeight = 7
     let totalContentHeight = 0
     for (let i = 0; i < assignments.length; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const a = assignments[i] as any
       let rows = 2 // Role + Session always
       if (a.topic_title) rows++
@@ -336,7 +334,6 @@ export async function GET(
     doc.setFontSize(9.5)
 
     for (let i = 0; i < assignments.length; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const a = assignments[i] as any
       const roleLabel = a.role.charAt(0).toUpperCase() + a.role.slice(1)
 

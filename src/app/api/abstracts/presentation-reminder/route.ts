@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient()
 
     // Fetch abstract details
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: abstract, error: abstractError } = await (supabase as any)
       .from("abstracts")
       .select(`
@@ -89,7 +88,6 @@ export async function POST(request: NextRequest) {
       })
 
       // Log the reminder
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any)
         .from("abstract_notifications")
         .insert({

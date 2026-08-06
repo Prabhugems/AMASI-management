@@ -20,7 +20,6 @@ export async function POST(
     }
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Get the survey form
@@ -63,7 +62,6 @@ export async function POST(
     )
 
     // Filter out attendees who already responded
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const toSend = (registrations as any[]).filter(
       (r) => r.attendee_email && !submittedEmails.has(r.attendee_email.toLowerCase())
     )

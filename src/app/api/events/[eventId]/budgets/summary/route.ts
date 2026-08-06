@@ -12,7 +12,6 @@ export async function GET(
 
     const { eventId } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Fetch registration income (completed payments)
@@ -49,7 +48,6 @@ export async function GET(
     let totalEstimated = 0
     let totalActual = 0
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const budget of (budgets || []) as any[]) {
       const cat = budget.category || "miscellaneous"
       if (!byCategory[cat]) {
@@ -60,7 +58,6 @@ export async function GET(
 
       // Sum actual from budget items where status is paid
       const itemsTotal = (budget.budget_items || []).reduce(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (sum: number, item: any) => {
           const itemAmount = (Number(item.amount) || 0) * (Number(item.quantity) || 1)
           return sum + (item.status === "paid" ? itemAmount : 0)

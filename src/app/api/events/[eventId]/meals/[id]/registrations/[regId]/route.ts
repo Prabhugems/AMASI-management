@@ -14,10 +14,8 @@ export async function PATCH(
     const body = await request.json()
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: Record<string, any> = { ...body }
 
     // Set checked_in_at when status changes to checked_in
@@ -57,7 +55,6 @@ export async function DELETE(
 
     const { regId } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { error } = await db

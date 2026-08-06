@@ -42,7 +42,6 @@ export async function GET(
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('faculty')
     .select('*')
@@ -141,7 +140,6 @@ export async function PATCH(
   }
 
   if (typeof update.email === 'string') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: clash } = await (supabase as any)
       .from('faculty')
       .select('id')
@@ -153,7 +151,6 @@ export async function PATCH(
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('faculty')
     .update(update)

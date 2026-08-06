@@ -30,7 +30,6 @@ export async function POST(
   const supabase = await createAdminClient()
 
   // Verify all rows belong to this event+session before reordering.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existing, error: fetchError } = await (supabase as any)
     .from('faculty_assignments')
     .select('id')
@@ -60,7 +59,6 @@ export async function POST(
   const errors: string[] = []
   for (let i = 0; i < body.ordered_ids.length; i++) {
     const id = body.ordered_ids[i]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
       .from('faculty_assignments')
       .update({ display_order: i })

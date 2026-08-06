@@ -13,7 +13,6 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
     const { searchParams } = new URL(req.url)
     const query = searchParams.get("q")?.trim()

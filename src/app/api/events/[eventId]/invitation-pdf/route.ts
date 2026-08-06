@@ -71,7 +71,6 @@ export async function GET(
   const speakerName = searchParams.get("name")
   const speakerEmail = searchParams.get("email")
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
 
   try {

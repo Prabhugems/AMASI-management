@@ -37,7 +37,6 @@ export async function GET(
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: station, error: findErr } = await (supabase as any)
     .from("kiosk_stations")
     .select("id, event_id")
@@ -54,7 +53,6 @@ export async function GET(
   const { error: authError } = await requireEventAndPermission(station.event_id, "checkin")
   if (authError) return authError
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: checkins, error: checkinsErr } = await (supabase as any)
     .from("checkin_records")
     .select("checked_in_at, registrations (attendee_name, registration_number), checkin_lists (name)")
@@ -66,7 +64,6 @@ export async function GET(
     return NextResponse.json({ error: "Failed to load check-ins." }, { status: 500 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: auditRows, error: auditErr } = await (supabase as any)
     .from("checkin_audit_log")
     .select("created_at, device_info, registrations (attendee_name, registration_number), checkin_lists (name)")

@@ -21,7 +21,6 @@ export async function GET(
   try {
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: session, error: sessionError } = await (supabase as any)
       .from("sessions")
       .select("id, session_name, session_date, start_time, end_time, hall, event_id")
@@ -37,7 +36,6 @@ export async function GET(
       return NextResponse.json({ error: "Session not found" }, { status: 404 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: speakers } = await (supabase as any)
       .from("faculty_assignments")
       .select("id, faculty_name, role")
@@ -133,7 +131,6 @@ export async function POST(
   try {
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: session } = await (supabase as any)
       .from("sessions")
       .select("id, event_id")
@@ -145,7 +142,6 @@ export async function POST(
     }
 
     if (sessionSpeakerId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: assignment } = await (supabase as any)
         .from("faculty_assignments")
         .select("id, session_id")
@@ -164,7 +160,6 @@ export async function POST(
       request.headers.get("x-real-ip") ||
       null
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: feedback, error: feedbackError } = await (supabase as any)
       .from("session_feedback")
       .insert({
@@ -196,7 +191,6 @@ export async function POST(
     let qaId: string | undefined
     if (question) {
       const askedByName = respondentEmail || "Anonymous"
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: qaRow, error: qaError } = await (supabase as any)
         .from("session_qa")
         .insert({

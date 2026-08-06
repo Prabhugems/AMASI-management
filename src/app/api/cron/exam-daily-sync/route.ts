@@ -28,7 +28,6 @@ export async function GET(request: Request) {
   const run = await logCronRun("exam-daily-sync")
   try {
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const results = {

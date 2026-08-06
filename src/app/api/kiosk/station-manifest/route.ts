@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Station not found." }, { status: 404 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: joinRows, error: joinError } = await (supabase as any)
     .from("kiosk_station_lists")
     .select("checkin_list_id")
@@ -52,7 +51,6 @@ export async function GET(request: NextRequest) {
 
   let lists: any[] = []
   if (listIds.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error: listsError } = await (supabase as any)
       .from("checkin_lists")
       .select("id, name, list_purpose, category, prints_badge, kiosk_opens_at, kiosk_closes_at, kiosk_force_state")
@@ -65,7 +63,6 @@ export async function GET(request: NextRequest) {
     lists = data || []
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stationRow = station as any
   return NextResponse.json({
     station_name: stationRow.name,

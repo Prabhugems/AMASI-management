@@ -39,7 +39,6 @@ export async function POST(request: NextRequest) {
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null
     const userAgent = request.headers.get('user-agent') || null
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(supabase as any)
       .from('team_access_logs')
       .insert({
@@ -78,7 +77,6 @@ export async function GET(request: NextRequest) {
   const supabase = await createAdminClient()
 
   // Build filtered query for paginated results
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
     .from('team_access_logs')
     .select('*', { count: 'exact' })
@@ -100,7 +98,6 @@ export async function GET(request: NextRequest) {
   }
 
   // Build summary stats with same filters (except pagination)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let statsQuery = (supabase as any)
     .from('team_access_logs')
     .select('module, user_id')

@@ -58,7 +58,6 @@ const REGISTRATION_SELECT = `
 `
 
 async function fetchTenantData(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   tenant: Tenant,
   query: string,
@@ -104,7 +103,6 @@ async function fetchTenantData(
     return { registrations: [], pendingPayments: [] as any[] }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const registrationIds = registrations.map((r: any) => r.id)
 
   const { data: activeCheckins } = await supabase
@@ -150,7 +148,6 @@ async function fetchTenantData(
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formatted = registrations.map((registration: any) => ({
     id: `${tenant}:${registration.id}`,
     _tenant: tenant,

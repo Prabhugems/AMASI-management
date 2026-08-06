@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = email.trim().toLowerCase()
 
     const adminClientRaw = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClientRaw as any
 
     // Check if email already exists in team_members
@@ -184,7 +183,6 @@ export async function GET() {
     }
 
     const adminClientRaw = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClientRaw as any
 
     const { data: invitations, error } = await supabase

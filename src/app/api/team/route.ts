@@ -33,7 +33,6 @@ export async function POST(request: NextRequest) {
 
     // Use admin client to bypass RLS
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClient as any
 
     // Check for duplicate email

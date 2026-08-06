@@ -36,7 +36,6 @@ export async function GET() {
     }
 
     // Get active events (not completed/cancelled)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let eventsQuery = (supabase as any)
       .from("events")
       .select("id, name, short_name, start_date, end_date, status")
@@ -52,7 +51,6 @@ export async function GET() {
       return NextResponse.json({ notifications: [], unread_count: 0 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const eventIds = events.map((e: any) => e.id)
 
     // Run all notification queries in parallel
@@ -65,7 +63,6 @@ export async function GET() {
       ticketTypesResult,
     ] = await Promise.all([
       // 2. Pending payments - registrations with payment_status='pending' older than 24 hours
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any)
         .from("registrations")
         .select("id, event_id, created_at", { count: "exact", head: true })
@@ -75,7 +72,6 @@ export async function GET() {
         .lt("created_at", twentyFourHoursAgo),
 
       // 3. New registrations in last 24 hours
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any)
         .from("registrations")
         .select("id, event_id", { count: "exact", head: true })
@@ -84,7 +80,6 @@ export async function GET() {
         .gte("created_at", twentyFourHoursAgo),
 
       // 4. Failed emails in last 7 days
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any)
         .from("email_logs")
         .select("id", { count: "exact", head: true })
@@ -93,7 +88,6 @@ export async function GET() {
         .gte("sent_at", new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()),
 
       // 5. Ticket types with quantity tracking
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any)
         .from("ticket_types")
         .select("id, name, event_id, quantity_total, quantity_sold, status")
@@ -180,7 +174,6 @@ export async function GET() {
       if (!ticket.quantity_total || ticket.quantity_total === 0) continue
       const soldPercent = Math.round(((ticket.quantity_sold || 0) / ticket.quantity_total) * 100)
       if (soldPercent >= 80) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const event = events.find((e: any) => e.id === ticket.event_id)
         const eventName = event?.short_name || event?.name || ""
         const remaining = ticket.quantity_total - (ticket.quantity_sold || 0)
@@ -204,7 +197,6 @@ export async function GET() {
       notifications,
       unread_count: notifications.length,
     })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("Notifications API error:", error)
     return NextResponse.json({ error: "Failed to fetch notifications" }, { status: 500 })

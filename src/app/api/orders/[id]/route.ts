@@ -12,7 +12,6 @@ export async function DELETE(
     if (authError) return authError
 
     const supabaseAdminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabaseAdmin = supabaseAdminClient as any
     const { id } = await params
     console.log(`[DELETE ORDER] Deleting order: ${id}`)
@@ -102,7 +101,6 @@ export async function GET(
     if (authError) return authError
 
     const supabaseAdminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabaseAdmin = supabaseAdminClient as any
     const { id } = await params
 

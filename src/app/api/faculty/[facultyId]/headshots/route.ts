@@ -28,7 +28,6 @@ type Headshot = {
 }
 
 async function loadHeadshots(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   facultyId: string
 ): Promise<Headshot[] | { error: NextResponse }> {
@@ -97,7 +96,6 @@ export async function POST(
   if (!filename) {
     return NextResponse.json({ error: 'url does not contain a valid object path' }, { status: 400 })
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: listing, error: listError } = await (supabase as any).storage
     .from(BUCKET)
     .list(`faculty/${facultyId}`, { search: filename })
@@ -105,7 +103,6 @@ export async function POST(
     console.error('Faculty headshot storage list error:', { facultyId, error: listError })
     return NextResponse.json({ error: 'Failed to verify storage object' }, { status: 500 })
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const found = (listing ?? []).some((o: any) => o.name === filename)
   if (!found) {
     return NextResponse.json(
@@ -144,7 +141,6 @@ export async function POST(
   }
   next.push(newEntry)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('faculty')
     .update({ headshot_urls: next })
@@ -200,7 +196,6 @@ export async function PATCH(
     next = next.map((h) => (h.url === body.url ? { ...h, label: body.label } : h))
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('faculty')
     .update({ headshot_urls: next })
@@ -249,12 +244,10 @@ export async function DELETE(
   if (isOwnedHeadshotUrl(url, facultyId)) {
     const path = url.match(/\/storage\/v1\/object\/public\/speaker-headshots\/(.+)$/)?.[1]
     if (path) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any).storage.from(BUCKET).remove([path])
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('faculty')
     .update({ headshot_urls: next })

@@ -22,7 +22,6 @@ export async function GET(request: Request) {
   const run = await logCronRun("team-review-check")
   try {
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Find active members not already flagged whose last review was > 90 days ago

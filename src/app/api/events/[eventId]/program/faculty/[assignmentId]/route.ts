@@ -30,7 +30,6 @@ export async function PATCH(
     }
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Update the assignment status
@@ -107,7 +106,6 @@ export async function DELETE(
     if (authError) return authError
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { error } = await db

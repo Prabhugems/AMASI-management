@@ -20,7 +20,6 @@ export async function verifyAmasiMembership(
   identifier: { email?: string; amasiNumber?: number; phone?: number }
 ): Promise<VerifyResult> {
   const supabase = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
 
   let query = db

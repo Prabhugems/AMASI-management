@@ -218,7 +218,6 @@ export async function POST(request: NextRequest) {
       : `${appUrl}/auth/callback`
 
     // Generate magic link using Supabase Admin API
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let adminClient: any
     try {
       adminClient = await createAdminClient()

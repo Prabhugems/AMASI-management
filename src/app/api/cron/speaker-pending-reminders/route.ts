@@ -21,7 +21,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: "Gallabox not configured", sent: 0 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = (await createAdminClient()) as any
     const today = new Date().toISOString().split("T")[0]
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://collegeofmas.org.in").trim()

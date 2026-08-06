@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
 import { signFormUploadUrlsDeep } from "@/lib/storage-url"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // GET /api/forms/submissions/[id] - Get a specific submission

@@ -12,7 +12,6 @@ export async function GET(
 
     const { eventId } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     // Total confirmed attendees
@@ -30,7 +29,6 @@ export async function GET(
       .in("form_type", ["survey", "feedback"])
 
     // Get submission counts per survey
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rates = await Promise.all((surveys || []).map(async (survey: any) => {
       const { count } = await db
         .from("form_submissions")

@@ -4,7 +4,6 @@ import { claimIdempotency } from "@/lib/idempotency"
 import { canTransition, isAbstractStatus, type AbstractStatus } from "@/lib/abstracts/transitions"
 import { NextRequest, NextResponse } from "next/server"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any
 
 // Initial-decision vocabulary. "redirected" is a meta-action that lands as

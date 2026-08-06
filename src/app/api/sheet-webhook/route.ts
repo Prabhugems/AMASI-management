@@ -62,7 +62,6 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
 
   const summary =

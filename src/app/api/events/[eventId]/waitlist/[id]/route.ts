@@ -14,10 +14,8 @@ export async function PATCH(
     const body = await request.json()
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: Record<string, any> = { ...body }
 
     if (body.status === "notified" && !body.notified_at) {
@@ -57,7 +55,6 @@ export async function DELETE(
 
     const { eventId, id } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { error } = await db

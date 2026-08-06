@@ -9,7 +9,6 @@ export async function GET(
 ) {
   try {
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
     const { eventId } = await params
 
@@ -172,7 +171,6 @@ export async function POST(
 ) {
   try {
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
     const { eventId } = await params
 

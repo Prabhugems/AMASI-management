@@ -18,7 +18,6 @@ export interface KioskStationRow {
 }
 
 export async function resolveStationByToken(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   stationToken: string
 ): Promise<{ station: KioskStationRow | null; error: unknown }> {
@@ -31,7 +30,6 @@ export async function resolveStationByToken(
 }
 
 export async function stationServesList(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   stationId: string,
   checkinListId: string

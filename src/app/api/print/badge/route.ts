@@ -6,7 +6,6 @@ import net from "net"
 export async function POST(request: NextRequest) {
   try {
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
     const body = await request.json()
     const { code, printer_ip, printer_port = 9100 } = body

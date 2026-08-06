@@ -16,7 +16,6 @@ export async function GET(
   try {
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: assignedRaw, error: assignedError } = await (supabase as any)
       .from('event_faculty')
       .select(`
@@ -30,7 +29,6 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to load disclosures' }, { status: 500 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const assigned = (assignedRaw ?? []) as any[]
 
     // Dedupe by faculty_id (event_faculty should be 1:1 but guard anyway).
@@ -60,10 +58,8 @@ export async function GET(
 
     const facultyIds = Array.from(facultyMap.keys())
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let disclosureRows: any[] = []
     if (facultyIds.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: discRaw, error: discError } = await (supabase as any)
         .from('speaker_disclosures')
         .select('*')
@@ -77,7 +73,6 @@ export async function GET(
       disclosureRows = discRaw ?? []
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const disclosureByFaculty = new Map<string, any>()
     for (const d of disclosureRows) {
       disclosureByFaculty.set(d.faculty_id, d)

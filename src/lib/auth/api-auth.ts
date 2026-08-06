@@ -72,7 +72,6 @@ export async function getApiUser(): Promise<AuthResult> {
     const adminClient = await createAdminClient()
 
     // Check if this user is an active team member (invited)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let { data: teamMember } = await (adminClient as any)
       .from('team_members')
       .select('id, name, role, email, user_id')
@@ -82,7 +81,6 @@ export async function getApiUser(): Promise<AuthResult> {
 
     // Fallback: if email lookup fails, try by user_id (handles auth email changes)
     if (!teamMember && authUser.id) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: memberByUserId } = await (adminClient as any)
         .from('team_members')
         .select('id, name, role, email, user_id')
@@ -95,7 +93,6 @@ export async function getApiUser(): Promise<AuthResult> {
 
         // Sync email: auth email changed, update team_members to match
         if (authUser.email && memberByUserId.email.toLowerCase() !== authUser.email.toLowerCase()) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (adminClient as any)
             .from('team_members')
             .update({ email: authUser.email.toLowerCase() })
@@ -131,7 +128,6 @@ export async function getApiUser(): Promise<AuthResult> {
 
     const platformRole = mapTeamRoleToPlatformRole(teamMember.role)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: newProfile, error: createError } = await (adminClient as any)
       .from('users')
       .insert({
@@ -177,7 +173,6 @@ export async function getApiUser(): Promise<AuthResult> {
   // Auto-link unlinked team_members records by matching email
   try {
     const linkClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (linkClient as any)
       .from('team_members')
       .update({ user_id: authUser.id })
@@ -190,7 +185,6 @@ export async function getApiUser(): Promise<AuthResult> {
   // Sync email if auth email changed (for already-linked team members)
   try {
     const syncClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: linkedMember } = await (syncClient as any)
       .from('team_members')
       .select('id, email')
@@ -199,7 +193,6 @@ export async function getApiUser(): Promise<AuthResult> {
       .maybeSingle()
 
     if (linkedMember && authUser.email && linkedMember.email.toLowerCase() !== authUser.email.toLowerCase()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (syncClient as any)
         .from('team_members')
         .update({ email: authUser.email.toLowerCase() })
@@ -335,7 +328,6 @@ export async function requireEventAccess(eventId: string): Promise<AuthResult> {
   const adminClient = await createAdminClient()
 
   // Check event ownership
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: event } = await (adminClient as any)
     .from('events')
     .select('id, created_by')
@@ -407,7 +399,6 @@ export async function requireFormAccess(formId: string): Promise<AuthResult> {
 
   const adminClient = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: form } = await (adminClient as any)
     .from('forms')
     .select('id, event_id, created_by')
@@ -481,7 +472,6 @@ export async function requireEventAndPermission(
   const adminClient = await createAdminClient()
 
   // Check event ownership
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: event } = await (adminClient as any)
     .from('events')
     .select('id, created_by')
@@ -549,7 +539,6 @@ export async function requireEventAndPermission(
 export async function getEventIdFromRegistration(registrationId: string): Promise<string | null> {
   const adminClient = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (adminClient as any)
     .from('registrations')
     .select('event_id')
@@ -581,7 +570,6 @@ export async function getDeviceToken(): Promise<{ module: string; event_ids: str
     }
 
     const adminClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClient as any
 
     const { data: deviceToken, error } = await supabase

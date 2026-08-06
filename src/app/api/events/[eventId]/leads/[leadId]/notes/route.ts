@@ -11,7 +11,6 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     const { leadId } = await params
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { data, error } = await db
@@ -51,7 +50,6 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const { data, error } = await db

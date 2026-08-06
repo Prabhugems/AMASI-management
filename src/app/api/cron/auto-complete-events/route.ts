@@ -12,7 +12,6 @@ export async function GET(request: Request) {
 
   const run = await logCronRun("auto-complete-events")
   try {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createAdminClient()) as any
   const today = new Date().toISOString().split("T")[0]
 

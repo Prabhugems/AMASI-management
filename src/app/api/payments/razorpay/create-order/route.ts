@@ -15,7 +15,6 @@ const DUPLICATE_WINDOW_MS = 5 * 60 * 1000
 export async function POST(request: NextRequest) {
   try {
     const supabaseClient = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = supabaseClient as any
     const body = await request.json()
     const {

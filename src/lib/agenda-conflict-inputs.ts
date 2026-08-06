@@ -12,7 +12,6 @@ export interface ConflictInputs {
   halls: HallCapacity[]
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function fetchConflictInputs(supabase: any, eventId: string): Promise<ConflictInputs> {
   const [sessionsResult, assignmentsResult, hallsResult, checkinCountsResult] = await Promise.all([
     supabase

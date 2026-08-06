@@ -50,7 +50,6 @@ export async function POST(request: NextRequest) {
     }
 
     const adminClientRaw = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = adminClientRaw as any
 
     const appUrl = getRequiredAppUrl()

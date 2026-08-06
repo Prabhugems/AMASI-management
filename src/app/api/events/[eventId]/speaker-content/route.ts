@@ -32,7 +32,6 @@ export async function GET(
   try {
     const supabase = await createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase as any)
       .from('speaker_content')
       .select(`

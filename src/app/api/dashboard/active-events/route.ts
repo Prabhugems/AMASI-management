@@ -29,7 +29,6 @@ export async function GET() {
     return NextResponse.json([])
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const eventIds = events.map((e: any) => e.id)
 
   // Fetch faculty assignment counts per event grouped by status
@@ -41,7 +40,6 @@ export async function GET() {
 
   // Aggregate faculty counts
   const facultyCounts: Record<string, { confirmed: number; pending: number; declined: number }> = {}
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const a of (assignments || []) as any[]) {
     if (!facultyCounts[a.event_id]) facultyCounts[a.event_id] = { confirmed: 0, pending: 0, declined: 0 }
     if (a.status === "confirmed") facultyCounts[a.event_id].confirmed++
@@ -49,7 +47,6 @@ export async function GET() {
     else if (a.status === "declined") facultyCounts[a.event_id].declined++
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = events.map((event: any) => {
     const fc = facultyCounts[event.id] || { confirmed: 0, pending: 0, declined: 0 }
     const totalFaculty = fc.confirmed + fc.pending + fc.declined

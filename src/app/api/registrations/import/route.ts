@@ -31,7 +31,6 @@ interface ImportRegistration {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any
 
     const body = await request.json()
@@ -329,7 +328,6 @@ export async function GET(request: NextRequest) {
   if (authError) return authError
 
   const supabase = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   const format = searchParams.get("format") // 'json' or 'csv'
 

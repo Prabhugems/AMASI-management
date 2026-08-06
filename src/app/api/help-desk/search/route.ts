@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createAdminClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("registrations")
     .select(
