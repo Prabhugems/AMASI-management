@@ -2,7 +2,10 @@ import { createReadStream } from "fs";
 import { parse } from "csv-parse";
 
 const SUPABASE_URL = "https://jmdwxymbgxwdsmcwbahp.supabase.co";
-const SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHd4eW1iZ3h3ZHNtY3diYWhwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzAxMTA1NSwiZXhwIjoyMDgyNTg3MDU1fQ.rvk94RhIk7lcDonsR_dWdPL7rEzmn91tdXLChDg9b4Y";
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+if (!SERVICE_ROLE_KEY) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set. Run: node --env-file=.env.local scripts/import-members.mjs");
+}
 
 const CSV_PATH = "/Users/prabhubalasubramaniam/Downloads/AMASI Membership Application Report (3).csv";
 
