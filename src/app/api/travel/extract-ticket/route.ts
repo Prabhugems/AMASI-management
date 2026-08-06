@@ -5,9 +5,13 @@ import { requireAdmin } from "@/lib/auth/api-auth"
 
 // Parse PDF and extract text using pdf-parse v1
 async function parsePDF(buffer: Buffer): Promise<{ text: string }> {
-  // Use require to avoid pdf-parse test data loading issue
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse/lib/pdf-parse")
+  // Deep-import pdf-parse/lib/pdf-parse rather than the package root: the
+  // root index.js runs debug code that reads a test PDF off disk and throws
+  // when it is absent. Dynamic import is the ESM equivalent of the require()
+  // that used to be here, keeping that workaround while dropping the CJS call
+  // (and the eslint-disable it needed). pdf-parse is CJS, so the callable
+  // lives on .default under Node's interop.
+  const pdfParse = (await import("pdf-parse/lib/pdf-parse")).default
   const result = await pdfParse(buffer)
   return { text: result.text }
 }
@@ -175,7 +179,7 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
   console.log("Seats found:", filteredSeats)
 
   // Find all airport codes with times: "CCU 10:50 hrs" or "PAT\n12:00 hrs"
-  const airportTimePattern = /\b(DEL|BOM|BLR|MAA|CCU|HYD|PAT|AMD|COK|GOI|PNQ|JAI|LKO|GAU|IXB|VNS|BBI|IXR|RPR|IDR)\s*\n?\s*(\d{1,2}):(\d{2})\s*(hrs|am|pm)?/gi
+  const airportTimePattern = /\b(DEL|BOM|BLR|MAA|CCU|HYD|PAT|AMD|COK|GOI|PNQ|JAI|LKO|GAU|IXB|VNS|BBI|IXR|RPR|IDR)\s*(\d{1,2}):(\d{2})\s*(hrs|am|pm)?/gi
   const airportTimes: Array<{ airport: string; time: string; index: number }> = []
   let match
   while ((match = airportTimePattern.exec(normalized)) !== null) {
@@ -210,7 +214,7 @@ async function extractAllJourneys(text: string): Promise<Journey[]> {
 
   // Find all route patterns like "City1 - City2" with dates
   // Pattern 1: "Kolkata-Bhubaneswar\nSat, 28 Mar 2026" (route + date on same/next line)
-  const routeRegex = /([A-Za-z]+)\s*[-–]\s*([A-Za-z]+)\s*\n?\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s*(\d{1,2})\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(\d{4})?/gi
+  const routeRegex = /([A-Za-z]+)\s*[-–]\s*([A-Za-z]+)\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s*(\d{1,2})\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(\d{4})?/gi
   const routes: Array<{ index: number; city1: string; city2: string; date: string; depAirport: string; arrAirport: string }> = []
   const foundRouteKeys = new Set<string>()
 
@@ -578,7 +582,7 @@ function extractFlightDetails(text: string): ExtractedFlightDetails {
   // These are more reliable than airport code order in multi-journey PDFs
   const _cityNames = Object.values(AIRPORT_CODES).map(c => c.toLowerCase())
   const routePatterns = [
-    /BOOKING\s*DETAILS\s*\n?\s*([A-Za-z]+)\s*[-–]\s*([A-Za-z]+)/i,
+    /BOOKING\s*DETAILS\s*([A-Za-z]+)\s*[-–]\s*([A-Za-z]+)/i,
     /([A-Za-z]+)\s*[-–]\s*([A-Za-z]+)\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i,
     /journey\s+on\s+([A-Za-z]+)\s*[-–]\s*([A-Za-z]+)/i,
   ]
