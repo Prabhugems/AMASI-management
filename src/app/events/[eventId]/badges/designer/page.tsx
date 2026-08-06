@@ -92,11 +92,12 @@ import {
   Package,
   AlertTriangle,
 } from "lucide-react"
-import JsBarcode from "jsbarcode"
 import { cn } from "@/lib/utils"
-import QRCode from "qrcode"
 import { clampElementToCanvas } from "@/lib/badge-element-bounds"
 import { BADGE_SIZES, type BadgeElement, type BadgeTemplate } from "@/lib/badge-template-types"
+import { BadgeCanvas } from "@/components/badges/badge-canvas"
+import { BadgeElementView } from "@/components/badges/badge-element-view"
+import type { BadgeEventLike } from "@/lib/badge-placeholders"
 
 // Predefined fields with Lucide icons
 const PREDEFINED_FIELDS: { key: string; label: string; icon: any; placeholder: string; defaultSize: { w: number; h: number }; fontSize: number; fontWeight: "normal" | "bold" }[] = [
@@ -1254,42 +1255,6 @@ function BadgeDesignerPage() {
     }
   }, [])
 
-  const replacePlaceholders = useCallback((text: string, registration?: any) => {
-    if (!text) return ""
-    let result = text
-    result = result.replace(/\{\{name\}\}/g, registration?.attendee_name || "John Doe")
-    result = result.replace(/\{\{registration_number\}\}/g, registration?.registration_number || "REG001")
-    result = result.replace(/\{\{ticket_type\}\}/g, registration?.ticket_types?.name || "Delegate")
-    result = result.replace(/\{\{email\}\}/g, registration?.attendee_email || "email@example.com")
-    result = result.replace(/\{\{phone\}\}/g, registration?.attendee_phone || "+91 9876543210")
-    result = result.replace(/\{\{institution\}\}/g, registration?.attendee_institution || "Institution")
-    result = result.replace(/\{\{designation\}\}/g, registration?.attendee_designation || "Designation")
-    result = result.replace(/\{\{event_name\}\}/g, event?.name || "Event Name")
-
-    // Addons - comma-separated list of purchased addon names
-    const addonNames = (registration?.registration_addons || [])
-      .map((ra: any) => ra.addons?.name)
-      .filter(Boolean)
-      .join(", ")
-    result = result.replace(/\{\{addons\}\}/g, addonNames || "")
-
-    // Check-in token and URL (used for QR codes)
-    const checkinToken = registration?.checkin_token || registration?.registration_number || "TOKEN"
-    result = result.replace(/\{\{checkin_token\}\}/g, checkinToken)
-    const baseUrl = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "")
-    result = result.replace(/\{\{checkin_url\}\}/g, `${baseUrl}/v/${checkinToken}`)
-    result = result.replace(/\{\{verify_url\}\}/g, `${baseUrl}/v/${checkinToken}`)
-
-    if (event?.start_date && event?.end_date) {
-      const start = new Date(event.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
-      const end = new Date(event.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-      result = result.replace(/\{\{event_date\}\}/g, `${start} - ${end}`)
-    } else {
-      result = result.replace(/\{\{event_date\}\}/g, "Event Date")
-    }
-    return result
-  }, [event])
-
   const updateElement = useCallback((elementId: string, updates: Partial<BadgeElement>) => {
     setTemplate((prev) => ({
       ...prev,
@@ -1944,144 +1909,9 @@ function BadgeDesignerPage() {
     }
   }
 
-  const applyTextCase = (text: string, textCase?: string) => {
-    if (!text) return text
-    switch (textCase) {
-      case "uppercase": return text.toUpperCase()
-      case "lowercase": return text.toLowerCase()
-      case "capitalize": return text.toLowerCase().replace(/(?:^|[\s.])([a-z])/g, (match) => match.toUpperCase())
-      default: return text
-    }
-  }
-
   const renderElement = (element: BadgeElement) => {
     const isSelected = selectedElementIds.includes(element.id)
-    const rawContent = previewMode ? replacePlaceholders(element.content || "", currentRegistration) : element.content || ""
-    const content = element.type === "text" ? applyTextCase(rawContent, element.textCase) : rawContent
     const rotation = element.rotation || 0
-
-    // Get gradient background style
-    const getGradientStyle = (el: BadgeElement): string | undefined => {
-      if (el.gradient?.enabled && el.gradient.colors.length >= 2) {
-        if (el.gradient.type === "radial") {
-          return `radial-gradient(circle, ${el.gradient.colors.join(", ")})`
-        }
-        return `linear-gradient(${el.gradient.angle || 0}deg, ${el.gradient.colors.join(", ")})`
-      }
-      return undefined
-    }
-
-    const elementContent = () => {
-      if (element.type === "qr_code") {
-        return <QRCodePreview value={previewMode ? replacePlaceholders(element.content || "", currentRegistration) : "PREVIEW-QR"} size={Math.min(element.width, element.height) * zoom} />
-      }
-      if (element.type === "barcode") {
-        return <BarcodePreview value={previewMode ? replacePlaceholders(element.content || "", currentRegistration) : "PREVIEW123"} format={element.barcodeFormat || "CODE128"} width={element.width * zoom} height={element.height * zoom} />
-      }
-      if (element.type === "photo") {
-        return element.imageUrl ? (
-          <img src={element.imageUrl} alt="" className="w-full h-full object-cover" style={{ borderRadius: element.borderRadius || 0, borderWidth: element.borderWidth || 0, borderColor: element.borderColor || "transparent", borderStyle: "solid" }} />
-        ) : (
-          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300" style={{ borderRadius: element.borderRadius || 0 }}>
-            <UserCircle className="h-8 w-8" />
-          </div>
-        )
-      }
-      if (element.type === "shape") {
-        const gradientBg = getGradientStyle(element)
-        if (element.shapeType === "triangle") {
-          return (
-            <div className="w-full h-full flex items-center justify-center">
-              <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
-                <polygon points="50,0 100,100 0,100" fill={element.backgroundColor || "#e5e7eb"} />
-              </svg>
-            </div>
-          )
-        }
-        if (element.shapeType === "circle") {
-          return (
-            <div className="w-full h-full rounded-full" style={{
-              backgroundColor: gradientBg ? undefined : (element.backgroundColor || "#e5e7eb"),
-              backgroundImage: gradientBg,
-              borderWidth: element.borderWidth || 0,
-              borderColor: element.borderColor || "transparent",
-              borderStyle: "solid",
-            }} />
-          )
-        }
-        return (
-          <div className="w-full h-full" style={{
-            backgroundColor: gradientBg ? undefined : (element.backgroundColor || "#e5e7eb"),
-            backgroundImage: gradientBg,
-            borderRadius: element.borderRadius || 0,
-            borderWidth: element.borderWidth || 0,
-            borderColor: element.borderColor || "transparent",
-            borderStyle: "solid",
-          }} />
-        )
-      }
-      if (element.type === "image") {
-        return element.imageUrl ? (
-          <img src={element.imageUrl} alt="" className="w-full h-full object-contain" />
-        ) : (
-          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300 rounded">
-            <ImageIcon className="h-6 w-6" />
-          </div>
-        )
-      }
-      if (element.type === "line") {
-        return (
-          <div className="w-full flex items-center justify-center" style={{ height: element.height * zoom }}>
-            <div className="w-full" style={{
-              height: Math.max(1, element.height) * zoom,
-              backgroundColor: element.color || "#000000",
-              backgroundImage: element.lineStyle !== "solid"
-                ? `repeating-linear-gradient(90deg, ${element.color || "#000000"} 0px, ${element.color || "#000000"} ${element.lineStyle === "dashed" ? "8px" : "2px"}, transparent ${element.lineStyle === "dashed" ? "8px" : "2px"}, transparent ${element.lineStyle === "dashed" ? "12px" : "4px"})`
-                : "none",
-            }} />
-          </div>
-        )
-      }
-      const shadowStyle = element.shadowEnabled ? `${element.shadowOffsetX || 2}px ${element.shadowOffsetY || 2}px ${element.shadowBlur || 4}px ${element.shadowColor || "rgba(0,0,0,0.3)"}` : "none"
-      return (
-        <div className="w-full h-full flex items-center overflow-hidden whitespace-pre-wrap" style={{
-          fontSize: (element.fontSize || 14) * zoom,
-          fontFamily: element.fontFamily || "Arial, sans-serif",
-          fontWeight: element.fontWeight || "normal",
-          fontStyle: element.fontStyle || "normal",
-          color: element.color || "#000000",
-          textAlign: element.align || "left",
-          justifyContent: element.align === "center" ? "center" : element.align === "right" ? "flex-end" : "flex-start",
-          backgroundColor: element.backgroundColor || "transparent",
-          lineHeight: element.lineHeight || 1.3,
-          letterSpacing: element.letterSpacing ? `${element.letterSpacing}px` : "normal",
-          textShadow: shadowStyle,
-          borderWidth: element.borderWidth || 0,
-          borderColor: element.borderColor || "transparent",
-          borderStyle: element.borderWidth ? "solid" : "none",
-          borderRadius: element.borderRadius || 0,
-        }}>
-          {content}
-        </div>
-      )
-    }
-
-    if (previewMode) {
-      return (
-        <div key={element.id} className="absolute" style={{
-          left: element.x * zoom,
-          top: element.y * zoom,
-          width: element.width * zoom,
-          height: element.height * zoom,
-          zIndex: element.zIndex,
-          opacity: (element.opacity ?? 100) / 100,
-          transform: rotation ? `rotate(${rotation}deg)` : undefined,
-          transformOrigin: "center center",
-        }}>
-          {elementContent()}
-        </div>
-      )
-    }
 
     return (
       <Rnd
@@ -2119,7 +1949,7 @@ function BadgeDesignerPage() {
         enableResizing={isSelected && !element.locked}
         disableDragging={element.locked}
       >
-        {elementContent()}
+        <BadgeElementView element={element} mode="placeholder" scale={zoom} />
         {element.locked && <div className="absolute top-1 right-1 bg-black/60 rounded p-0.5"><Lock className="h-3 w-3 text-white" /></div>}
       </Rnd>
     )
@@ -2527,10 +2357,10 @@ function BadgeDesignerPage() {
               style={{
                 width: badgeSize.width * zoom,
                 height: badgeSize.height * zoom,
-                backgroundColor: template.backgroundColor,
+                ...(!previewMode && { backgroundColor: template.backgroundColor }),
               }}
             >
-              {template.backgroundImageUrl && (
+              {!previewMode && template.backgroundImageUrl && (
                 <img src={template.backgroundImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none" style={{ zIndex: 0 }} />
               )}
               {showGrid && !previewMode && (
@@ -2579,7 +2409,17 @@ function BadgeDesignerPage() {
                   </span>
                 </div>
               )}
-              {template.elements.sort((a, b) => a.zIndex - b.zIndex).map(renderElement)}
+              {previewMode ? (
+                <BadgeCanvas
+                  template={template}
+                  mode="live"
+                  registration={currentRegistration}
+                  event={(event ?? undefined) as BadgeEventLike | undefined}
+                  scale={zoom}
+                />
+              ) : (
+                template.elements.sort((a, b) => a.zIndex - b.zIndex).map(renderElement)
+              )}
               {template.elements.length === 0 && !previewMode && (
                 <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                   <div className="text-center">
@@ -3237,40 +3077,6 @@ function BadgeDesignerPage() {
           </div>
         )
       })()}
-    </div>
-  )
-}
-
-function QRCodePreview({ value, size }: { value: string; size: number }) {
-  const [qrUrl, setQrUrl] = useState("")
-  useEffect(() => {
-    QRCode.toDataURL(value || "PREVIEW", { width: size * 2, margin: 1, errorCorrectionLevel: "M" }).then(setQrUrl).catch(() => {})
-  }, [value, size])
-  if (!qrUrl) return <div className="w-full h-full bg-muted flex items-center justify-center rounded"><QrCode className="h-6 w-6 text-muted-foreground" /></div>
-  return <img src={qrUrl} alt="QR" className="w-full h-full object-contain" />
-}
-
-function BarcodePreview({ value, format, width, height }: { value: string; format: string; width: number; height: number }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    if (canvasRef.current && value) {
-      try {
-        JsBarcode(canvasRef.current, value, {
-          format: format as any,
-          width: 2,
-          height: Math.max(30, height - 20),
-          displayValue: true,
-          fontSize: 12,
-          margin: 5,
-        })
-      } catch (e) {
-        // Invalid barcode value
-      }
-    }
-  }, [value, format, height])
-  return (
-    <div className="w-full h-full flex items-center justify-center bg-white">
-      <canvas ref={canvasRef} style={{ maxWidth: "100%", maxHeight: "100%" }} />
     </div>
   )
 }
