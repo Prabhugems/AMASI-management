@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import { requireEventAccess } from "@/lib/auth/api-auth"
 
 // POST /api/analytics/leads - Capture a lead
 export async function POST(request: NextRequest) {
@@ -123,6 +124,22 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // This handler was reachable with no credentials at all and returned
+    // `select("*")` from event_leads — email, name, phone and notes for every
+    // lead on an event, to anyone who knew an event_id. Middleware does not
+    // protect /api (its protectedRoutes list holds page prefixes only), so an
+    // API route is unauthenticated unless it says otherwise, and this one did
+    // not. The sibling GET /api/events/[eventId]/leads, serving the same table,
+    // has always required auth.
+    //
+    // Event-scoped rather than requireAdmin() so event admins keep access to
+    // their own event's leads, matching how the kiosk-station routes gate.
+    //
+    // POST below stays public on purpose: it is the "notify me" capture called
+    // from public event pages.
+    const { error: authError } = await requireEventAccess(eventId)
+    if (authError) return authError
+
     let query = (supabase as any)
       .from("event_leads")
       .select("*", { count: "exact" })
@@ -165,6 +182,29 @@ export async function PATCH(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Was an unauthenticated WRITE: anyone could rewrite any lead's status,
+    // notes and registration_id given only a lead_id. Same root cause as the
+    // GET above — middleware does not gate /api, so a route is open unless it
+    // gates itself.
+    //
+    // PATCH carries no event_id, so the owning event is resolved first and then
+    // access is checked against it. That keeps the same event-scoped model as
+    // GET instead of falling back to a blanket requireAdmin(), which would lock
+    // event admins out of their own leads. The lookup selects one column and
+    // reveals nothing beyond whether the id exists.
+    const { data: leadRow } = await (supabase as any)
+      .from("event_leads")
+      .select("event_id")
+      .eq("id", lead_id)
+      .maybeSingle()
+
+    if (!leadRow) {
+      return NextResponse.json({ error: "Lead not found" }, { status: 404 })
+    }
+
+    const { error: authError } = await requireEventAccess(leadRow.event_id)
+    if (authError) return authError
 
     const updateData: any = { updated_at: new Date().toISOString() }
     if (status) updateData.status = status
