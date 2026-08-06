@@ -25,7 +25,6 @@ function generateFallbackNumber(): string {
  * @param eventId - The event ID to generate a registration number for
  * @param maxRetries - Maximum number of retries on optimistic lock conflict (default 5)
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getNextRegistrationNumber(
   supabaseOrNull: any,
   eventId: string,
@@ -107,7 +106,6 @@ export async function getNextRegistrationNumber(
  * `getNextRegistrationNumber` so events that don't separate faculty numbering
  * keep working unchanged.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getNextFacultyRegistrationNumber(
   supabaseOrNull: any,
   eventId: string,

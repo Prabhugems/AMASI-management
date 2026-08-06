@@ -862,7 +862,6 @@ export function KioskCheckinScreen({
       }
 
       const badgeTemplate = template.badgeTemplate
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const elements = badgeTemplate?.template_data?.elements || []
       // Substitute cached data URLs for remote imageUrls, and pre-generate
       // QR codes -- both must happen before rendering, since neither can

@@ -66,7 +66,6 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 export async function updateUserProfile(userId: string, updates: UserProfileUpdate) {
   const supabase = createClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase
     .from('users') as any)
     .update(updates)

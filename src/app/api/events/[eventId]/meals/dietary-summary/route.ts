@@ -35,7 +35,6 @@ export async function GET(
 
     // Aggregate dietary preferences
     const totals: Record<string, number> = {}
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const byMeal: Record<string, Record<string, number>> = {}
 
     for (const reg of (registrations || [])) {

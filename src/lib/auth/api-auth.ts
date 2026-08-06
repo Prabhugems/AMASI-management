@@ -287,7 +287,6 @@ export async function requireSuperAdmin(): Promise<AuthResult> {
  * client (by email) and keeps server and client access decisions consistent.
  * Prefers a user_id-linked row when more than one matches.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getActiveTeamMember(
   adminClient: any,
   user: AuthUser,

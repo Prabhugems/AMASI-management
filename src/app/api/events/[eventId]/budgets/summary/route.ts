@@ -22,7 +22,6 @@ export async function GET(
       .eq("event_id", eventId)
       .eq("status", "completed")
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const registrationIncome = (payments || []).reduce(
       (sum: number, p: any) => sum + (Number(p.amount) || 0),
       0
@@ -46,7 +45,6 @@ export async function GET(
       .eq("event_id", eventId)
 
     // Calculate expenses by category
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const byCategory: Record<string, { estimated: number; actual: number }> = {}
     let totalEstimated = 0
     let totalActual = 0

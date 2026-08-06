@@ -436,7 +436,6 @@ export default function StaffCheckinPage() {
     // was checked in moments earlier — silently inviting a confused re-tap.
     const isRecentDup = source !== "list" && lastSeen !== undefined && now - lastSeen < RECENT_SCAN_DEDUP_MS
     if (debugMode) {
-      // eslint-disable-next-line no-console
       console.log("[SCAN_TELEMETRY]", JSON.stringify({
         token, now, source,
         msSinceLast: lastSeen !== undefined ? now - lastSeen : null,

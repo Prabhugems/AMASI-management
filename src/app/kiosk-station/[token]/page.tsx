@@ -73,7 +73,6 @@ export default async function KioskStationPage({
 
   const listIds = (joinRows || []).map((r: any) => r.checkin_list_id)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: lists, error: listsError } = listIds.length > 0
     ? await (supabase as any)
         .from("checkin_lists")

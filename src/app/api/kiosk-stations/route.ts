@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
 
   const stations = data || []
   const stationIds = stations.map((s: any) => s.id)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: joinRows } = stationIds.length > 0
     ? await (supabase as any).from("kiosk_station_lists").select("station_id, checkin_list_id").in("station_id", stationIds)
     : { data: [] }
