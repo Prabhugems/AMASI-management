@@ -628,7 +628,7 @@ async function lookupFromAviationStack(
   _date?: string
 ): Promise<FlightInfo | null> {
   const [airlineCode, flightNum] = flightNumber.split("-")
-  const url = `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${airlineCode}${flightNum}&limit=1`
+  const url = `https://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${airlineCode}${flightNum}&limit=1`
 
   const response = await fetch(url)
   const data = await response.json()
