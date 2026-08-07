@@ -42,14 +42,29 @@ export interface OpenSlotSession {
   moderators_text?: string | null
 }
 
+/** A talk inside a block. Blocks with no talks (LUNCH, breaks) simply have none. */
+export interface OpenSlotTalk {
+  id: string
+  session_id: string
+  title: string | null
+  start_time: string | null
+  display_order?: number | null
+}
+
+/**
+ * A requirement hangs off whichever level owns the role: a chairperson belongs
+ * to the block (`talk_id` null), a speaker or panellist to a talk.
+ */
 export interface RoleRequirementRow {
   session_id: string
+  talk_id?: string | null
   role: FacultyRole
   required_count: number
 }
 
 export interface AssignmentRow {
   session_id: string | null
+  talk_id?: string | null
   role: string
   status: string | null
 }
@@ -69,11 +84,17 @@ export type SlotState = "open" | "unverified"
 
 export interface OpenSlot {
   session_id: string
+  /** The block's name — "GALL BLADDER". */
   session_name: string
+  /** Set when the gap is inside a talk; null when the role belongs to the block. */
+  talk_id: string | null
+  /** The talk's title — "Bile Duct Injury in 2025". Null for a block-level role. */
+  talk_title: string | null
   session_date: string | null
+  /** The talk's own start time when it has one, otherwise the block's. */
   start_time: string | null
   hall_id: string | null
-  /** Rendered as "Hall A · Screen 2" when the hall is nested. */
+  /** Rendered as "Hall A › Screen 2" when the hall is nested. */
   hall_label: string | null
   role: FacultyRole
   role_label: string
@@ -109,23 +130,40 @@ function hasFacultyText(s: OpenSlotSession): boolean {
   ].some((v) => typeof v === "string" && v.trim() !== "")
 }
 
+/**
+ * A requirement and an assignment must be counted at the same grain, or a
+ * block-level chair would be cancelled out by a talk-level speaker. `null` and
+ * `undefined` both mean "block level".
+ */
+function grainKey(sessionId: string, talkId: string | null | undefined, role: string): string {
+  return `${sessionId}::${talkId ?? ""}::${role}`
+}
+
 export function getOpenSlots(input: {
   sessions: readonly OpenSlotSession[]
   requirements: readonly RoleRequirementRow[]
   assignments: readonly AssignmentRow[]
+  talks?: readonly OpenSlotTalk[]
   halls?: readonly HallRef[]
 }): OpenSlot[] {
   const sessionsById = new Map(input.sessions.map((s) => [s.id, s]))
+  const talksById = new Map((input.talks ?? []).map((t) => [t.id, t]))
   const hallLabels = buildHallLabels(input.halls ?? [])
 
-  // (session_id, role) -> how many people currently occupy it
+  // (session, talk, role) -> how many people currently occupy it
   const filled = new Map<string, number>()
   for (const a of input.assignments) {
     if (!a.session_id) continue // 58 live rows are orphaned
     if (!occupiesSlot(a)) continue
-    const key = `${a.session_id}::${a.role}`
+    const key = grainKey(a.session_id, a.talk_id, a.role)
     filled.set(key, (filled.get(key) ?? 0) + 1)
   }
+
+  // Reconciliation is judged per BLOCK, not per talk: leftover free text sits on
+  // the session's columns and says nothing about which talk it belongs to.
+  const sessionsWithAnyAssignment = new Set(
+    input.assignments.map((a) => a.session_id).filter((id): id is string => !!id)
+  )
 
   const slots: OpenSlot[] = []
 
@@ -133,25 +171,34 @@ export function getOpenSlots(input: {
     const session = sessionsById.get(req.session_id)
     if (!session) continue // requirement for a session outside this event
 
-    const filledCount = filled.get(`${req.session_id}::${req.role}`) ?? 0
+    // A talk-level requirement whose talk is missing is dropped rather than
+    // silently reported at block level, which would double-count the block.
+    const talk = req.talk_id ? talksById.get(req.talk_id) : undefined
+    if (req.talk_id && !talk) continue
+
+    const filledCount = filled.get(grainKey(req.session_id, req.talk_id, req.role)) ?? 0
     const openCount = req.required_count - filledCount
     if (openCount <= 0) continue
 
-    // Any assignment row at all for this session means somebody has already
+    // Any assignment row at all for this block means somebody has already
     // reconciled it; the leftover text is then just a stale duplicate, not an
-    // unreviewed roster. Only a session with NO assignments and SOME text is
+    // unreviewed roster. Only a block with NO assignments and SOME text is
     // genuinely unverified.
-    const sessionHasAnyAssignment = input.assignments.some(
-      (a) => a.session_id === req.session_id
-    )
     const state: SlotState =
-      !sessionHasAnyAssignment && hasFacultyText(session) ? "unverified" : "open"
+      !sessionsWithAnyAssignment.has(req.session_id) && hasFacultyText(session)
+        ? "unverified"
+        : "open"
 
     slots.push({
       session_id: session.id,
       session_name: session.session_name,
+      talk_id: talk?.id ?? null,
+      talk_title: talk?.title ?? null,
       session_date: session.session_date,
-      start_time: session.start_time,
+      // A talk's own time wins when it has one — the list is sorted soonest
+      // first, and a talk at 16:00 inside a block starting at 09:30 belongs at
+      // 16:00, not at the top of the day.
+      start_time: talk?.start_time ?? session.start_time,
       hall_id: session.hall_id,
       hall_label: session.hall_id ? hallLabels.get(session.hall_id) ?? null : null,
       role: req.role,
@@ -173,6 +220,10 @@ export function getOpenSlots(input: {
     const bt = b.start_time ?? "99:99"
     if (at !== bt) return at.localeCompare(bt)
     if (a.session_name !== b.session_name) return a.session_name.localeCompare(b.session_name)
+    // Block-level roles (the chair) before the talks they preside over.
+    const at2 = a.talk_title ?? ""
+    const bt2 = b.talk_title ?? ""
+    if (at2 !== bt2) return at2.localeCompare(bt2)
     return a.role.localeCompare(b.role)
   })
 }

@@ -6,6 +6,7 @@ import {
   summariseOpenSlots,
   type AssignmentRow,
   type OpenSlotSession,
+  type OpenSlotTalk,
   type RoleRequirementRow,
 } from "./agenda-open-slots"
 
@@ -173,6 +174,137 @@ describe("the 1,242-session trap", () => {
       assignments: [],
     })
     expect(slots[0].state).toBe("open")
+  })
+})
+
+describe("two-level agenda — blocks and talks", () => {
+  const block = session({ id: "b1", session_name: "GALL BLADDER", start_time: "09:30" })
+  const talk = (id: string, over: Partial<OpenSlotTalk> = {}): OpenSlotTalk => ({
+    id,
+    session_id: "b1",
+    title: `Talk ${id}`,
+    start_time: null,
+    ...over,
+  })
+
+  it("counts a block-level chair separately from a talk-level speaker", () => {
+    // Same session, same count if the grain were ignored — the chair would be
+    // cancelled out by the speaker.
+    const slots = getOpenSlots({
+      sessions: [block],
+      talks: [talk("t1")],
+      requirements: [
+        { session_id: "b1", role: "chairperson", required_count: 1 },
+        { session_id: "b1", talk_id: "t1", role: "speaker", required_count: 1 },
+      ],
+      assignments: [{ session_id: "b1", talk_id: "t1", role: "speaker", status: "pending" }],
+    })
+    expect(slots).toHaveLength(1)
+    expect(slots[0]).toMatchObject({ role: "chairperson", talk_id: null, talk_title: null })
+  })
+
+  it("does not let a block-level assignment fill a talk-level slot", () => {
+    const slots = getOpenSlots({
+      sessions: [block],
+      talks: [talk("t1")],
+      requirements: [{ session_id: "b1", talk_id: "t1", role: "speaker", required_count: 1 }],
+      assignments: [{ session_id: "b1", talk_id: null, role: "speaker", status: "pending" }],
+    })
+    expect(slots[0].open_count).toBe(1)
+  })
+
+  it("keeps two talks in one block independent", () => {
+    const slots = getOpenSlots({
+      sessions: [block],
+      talks: [talk("t1"), talk("t2")],
+      requirements: [
+        { session_id: "b1", talk_id: "t1", role: "speaker", required_count: 1 },
+        { session_id: "b1", talk_id: "t2", role: "speaker", required_count: 1 },
+      ],
+      assignments: [{ session_id: "b1", talk_id: "t1", role: "speaker", status: "pending" }],
+    })
+    expect(slots.map((s) => s.talk_id)).toEqual(["t2"])
+  })
+
+  it("carries block and talk names for the row label", () => {
+    const slots = getOpenSlots({
+      sessions: [block],
+      talks: [talk("t1", { title: "Bile Duct Injury in 2025" })],
+      requirements: [{ session_id: "b1", talk_id: "t1", role: "panelist", required_count: 6 }],
+      assignments: [],
+    })
+    expect(slots[0]).toMatchObject({
+      session_name: "GALL BLADDER",
+      talk_title: "Bile Duct Injury in 2025",
+      open_count: 6,
+    })
+  })
+
+  it("reports empty panellist seats as a count, not one row each", () => {
+    // The design shows "2 panellist seats open" on a single row.
+    const slots = getOpenSlots({
+      sessions: [block],
+      talks: [talk("t1")],
+      requirements: [{ session_id: "b1", talk_id: "t1", role: "panelist", required_count: 6 }],
+      assignments: Array.from({ length: 4 }, () => ({
+        session_id: "b1",
+        talk_id: "t1",
+        role: "panelist",
+        status: "pending",
+      })),
+    })
+    expect(slots).toHaveLength(1)
+    expect(slots[0].open_count).toBe(2)
+  })
+
+  it("sorts a talk by its own time, not its block's", () => {
+    // A talk at 16:00 inside a 09:30 block belongs at 16:00 in the to-do list.
+    const slots = getOpenSlots({
+      sessions: [
+        block,
+        session({ id: "b2", session_name: "HERNIA", start_time: "14:00" }),
+      ],
+      talks: [talk("t1", { start_time: "16:00" })],
+      requirements: [
+        { session_id: "b1", talk_id: "t1", role: "speaker", required_count: 1 },
+        { session_id: "b2", role: "chairperson", required_count: 1 },
+      ],
+      assignments: [],
+    })
+    expect(slots.map((s) => s.session_id)).toEqual(["b2", "b1"])
+  })
+
+  it("falls back to the block's time when a talk is unscheduled", () => {
+    const slots = getOpenSlots({
+      sessions: [block],
+      talks: [talk("t1", { start_time: null })],
+      requirements: [{ session_id: "b1", talk_id: "t1", role: "speaker", required_count: 1 }],
+      assignments: [],
+    })
+    expect(slots[0].start_time).toBe("09:30")
+  })
+
+  it("drops a requirement whose talk is missing rather than reporting it on the block", () => {
+    // Reporting it at block level would double-count the block's own roles.
+    const slots = getOpenSlots({
+      sessions: [block],
+      talks: [],
+      requirements: [{ session_id: "b1", talk_id: "gone", role: "speaker", required_count: 1 }],
+      assignments: [],
+    })
+    expect(slots).toEqual([])
+  })
+
+  it("judges unverified per block, so leftover text taints every talk in it", () => {
+    // The free text sits on the session's columns and says nothing about which
+    // talk it belongs to, so the whole block is unreconciled.
+    const slots = getOpenSlots({
+      sessions: [session({ id: "b1", speakers: "Dr. Anitha Ravindran" })],
+      talks: [{ id: "t1", session_id: "b1", title: "Talk 1", start_time: null }],
+      requirements: [{ session_id: "b1", talk_id: "t1", role: "speaker", required_count: 1 }],
+      assignments: [],
+    })
+    expect(slots[0].state).toBe("unverified")
   })
 })
 
