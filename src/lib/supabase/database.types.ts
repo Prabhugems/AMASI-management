@@ -5967,6 +5967,7 @@ export type Database = {
           session_name: string | null
           start_time: string | null
           status: string | null
+          talk_id: string | null
           topic_description: string | null
           topic_title: string | null
           updated_at: string | null
@@ -5995,6 +5996,7 @@ export type Database = {
           session_name?: string | null
           start_time?: string | null
           status?: string | null
+          talk_id?: string | null
           topic_description?: string | null
           topic_title?: string | null
           updated_at?: string | null
@@ -6023,6 +6025,7 @@ export type Database = {
           session_name?: string | null
           start_time?: string | null
           status?: string | null
+          talk_id?: string | null
           topic_description?: string | null
           topic_title?: string | null
           updated_at?: string | null
@@ -6061,6 +6064,13 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_assignments_talk_id_fkey"
+            columns: ["talk_id"]
+            isOneToOne: false
+            referencedRelation: "talks"
             referencedColumns: ["id"]
           },
         ]
@@ -10166,6 +10176,54 @@ export type Database = {
           },
         ]
       }
+      session_role_requirements: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          required_count: number
+          role: string
+          session_id: string
+          talk_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          required_count?: number
+          role: string
+          session_id: string
+          talk_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          required_count?: number
+          role?: string
+          session_id?: string
+          talk_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_role_requirements_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_role_requirements_talk_id_fkey"
+            columns: ["talk_id"]
+            isOneToOne: false
+            referencedRelation: "talks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           audience_count: number | null
@@ -11113,6 +11171,66 @@ export type Database = {
             columns: ["merged_into"]
             isOneToOne: false
             referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      talks: {
+        Row: {
+          created_at: string
+          display_order: number
+          duration_minutes: number | null
+          end_time: string | null
+          event_id: string
+          id: string
+          notes: string | null
+          session_id: string
+          start_time: string | null
+          talk_type: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          duration_minutes?: number | null
+          end_time?: string | null
+          event_id: string
+          id?: string
+          notes?: string | null
+          session_id: string
+          start_time?: string | null
+          talk_type?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          duration_minutes?: number | null
+          end_time?: string | null
+          event_id?: string
+          id?: string
+          notes?: string | null
+          session_id?: string
+          start_time?: string | null
+          talk_type?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "talks_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "talks_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
         ]
