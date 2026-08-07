@@ -4,6 +4,7 @@ import { webhookSpeakerResponded, webhookTravelSubmitted } from "@/lib/webhooks"
 import { syncSpeakerStatus } from "@/lib/services/sync-speaker-status"
 import { getNextFacultyRegistrationNumber } from "@/lib/services/registration-number"
 import { DEFAULTS } from "@/lib/config"
+import { matchFacultySessions, presentingSessionIds } from "@/lib/faculty-session-match"
 
 // Helper: resolve token to either a portal_token registration or an invitation_token assignment
 async function resolveToken(db: any, token: string): Promise<{
@@ -176,26 +177,16 @@ export async function GET(
         .then(() => {})
         .catch((err: any) => console.error("Failed to update portal view tracking:", err))
 
-      // Find sessions via faculty_assignments table (most reliable)
-      const speakerEmail = registration.attendee_email?.toLowerCase()
-      const speakerName = registration.attendee_name?.trim()
-
-      const stripTitle = (name: string) =>
-        name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim()
-      const speakerNameStripped = speakerName ? stripTitle(speakerName).toLowerCase() : ""
-
+      // Sessions this person is assigned to PRESENT. The role tagging is what
+      // keeps a session they merely chair out of this list — the 127 FMAS bug,
+      // where a chairperson of a 3-talk block saw all 3 talks as their own.
+      // Matching lives in src/lib/faculty-session-match.ts and is shared with
+      // the bulk invitation sender; do not reimplement it here.
       const { data: assignments } = await db
         .from("faculty_assignments")
-        .select("session_id")
+        .select("session_id, faculty_email, faculty_name, role")
         .eq("event_id", registration.event_id)
-        .eq("role", "speaker")
-        .ilike("faculty_email", speakerEmail || "")
 
-      const assignedSessionIds = new Set(
-        (assignments || []).map((a: any) => a.session_id).filter(Boolean)
-      )
-
-      // Get all sessions for this event
       const { data: sessions } = await db
         .from("sessions")
         .select("id, session_name, session_date, start_time, end_time, hall, description, specialty_track, speakers, chairpersons, moderators, speakers_text, chairpersons_text, moderators_text")
@@ -203,29 +194,15 @@ export async function GET(
         .order("session_date")
         .order("start_time")
 
-      // Filter sessions where THIS person is a SPEAKER (i.e. assigned to present).
-      // IMPORTANT: only ever match the `speakers` column — never `chairpersons` or
-      // `moderators`. Matching those caused sessions a faculty member merely chairs
-      // to be listed under "Sessions you are assigned to present" (127 FMAS bug:
-      // e.g. a chairperson of a 3-talk block saw all 3 talks as their own).
-      const speakerSessions = (sessions || []).filter((session: any) => {
-        if (assignedSessionIds.has(session.id)) return true
-
-        // Email match is unambiguous — allow it on the speaker text + description.
-        if (speakerEmail) {
-          if (session.speakers_text && session.speakers_text.toLowerCase().includes(speakerEmail)) return true
-          if (session.description && session.description.toLowerCase().includes(speakerEmail)) return true
-        }
-
-        // Name match is restricted to the speakers field only.
-        if (speakerNameStripped && session.speakers) {
-          const speakersLower = session.speakers.toLowerCase()
-          if (speakersLower.includes(speakerNameStripped)) return true
-          if (speakerName && speakersLower.includes(speakerName.toLowerCase())) return true
-        }
-
-        return false
+      const matches = matchFacultySessions(sessions || [], assignments || [], {
+        email: registration.attendee_email,
+        name: registration.attendee_name,
       })
+      const presenting = presentingSessionIds(matches)
+
+      const speakerSessions = (sessions || []).filter((session: any) =>
+        presenting.has(session.id)
+      )
 
       const cleanSessions = speakerSessions.map(({ speakers, chairpersons, moderators, speakers_text, chairpersons_text, moderators_text, ...rest }: any) => rest)
 
