@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages"
 
 // Talks — the second level of the agenda. A talk always belongs to a session
 // block, and its event_id is derived from that block rather than taken from the
@@ -42,9 +43,13 @@ export async function GET(
 
   if (sessionId) query = query.eq("session_id", sessionId)
 
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: "Failed to fetch talks" }, { status: 500 })
-  return NextResponse.json({ data: data ?? [] })
+  // Paged: talks outnumber blocks several times over, so an event large enough
+  // to matter crosses PostgREST's 1,000-row cap well before its block count does.
+  try {
+    return NextResponse.json({ data: await fetchAllPages(query) })
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch talks" }, { status: 500 })
+  }
 }
 
 export async function POST(

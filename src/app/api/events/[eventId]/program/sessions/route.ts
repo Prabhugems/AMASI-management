@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages"
 import { defaultRosterFor } from "@/lib/agenda-roles"
 
 // Creating a session block.
@@ -49,9 +50,14 @@ export async function GET(
 
   if (date) query = query.eq("session_date", date)
 
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: "Failed to fetch sessions" }, { status: 500 })
-  return NextResponse.json({ data: data ?? [] })
+  // Paged: one archived event holds 1,195 sessions, so an unpaged read would
+  // silently return 1,000 and the Session Builder would render a programme
+  // missing 195 blocks with no indication anything was dropped.
+  try {
+    return NextResponse.json({ data: await fetchAllPages(query) })
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch sessions" }, { status: 500 })
+  }
 }
 
 export async function POST(

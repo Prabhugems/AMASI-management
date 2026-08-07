@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireEventAndPermission } from "@/lib/auth/api-auth"
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages"
 import { FACULTY_ROLES } from "@/lib/agenda-roles"
 
 // Role requirements — what a block or a talk NEEDS, per role.
@@ -45,17 +46,23 @@ export async function GET(
 
   // session_role_requirements has no event_id of its own -- it hangs off the
   // session -- so scope through the event's sessions rather than trusting a
-  // caller-supplied id.
-  const { data: sessions } = await supabase.from("sessions").select("id").eq("event_id", eventId)
-  const sessionIds = ((sessions ?? []) as Array<{ id: string }>).map((s) => s.id)
-  if (sessionIds.length === 0) return NextResponse.json({ data: [] })
+  // caller-supplied id. Both reads are paged: the session list alone reaches
+  // 1,195 on one archived event, and requirements outnumber sessions because
+  // every talk carries its own.
+  try {
+    const sessions = await fetchAllPages<{ id: string }>(
+      supabase.from("sessions").select("id").eq("event_id", eventId)
+    )
+    const sessionIds = sessions.map((s) => s.id)
+    if (sessionIds.length === 0) return NextResponse.json({ data: [] })
 
-  let query = supabase.from("session_role_requirements").select("*").in("session_id", sessionIds)
-  if (sessionId) query = query.eq("session_id", sessionId)
+    let query = supabase.from("session_role_requirements").select("*").in("session_id", sessionIds)
+    if (sessionId) query = query.eq("session_id", sessionId)
 
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: "Failed to fetch role requirements" }, { status: 500 })
-  return NextResponse.json({ data: data ?? [] })
+    return NextResponse.json({ data: await fetchAllPages(query) })
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch role requirements" }, { status: 500 })
+  }
 }
 
 /** Replace the whole requirement set for one block or one talk. */
