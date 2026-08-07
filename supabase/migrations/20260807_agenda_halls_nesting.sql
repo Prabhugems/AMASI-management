@@ -44,6 +44,26 @@ comment on column halls.parent_id is
 comment on column halls.kind is
   'hall = a physical room; screen = a projection area inside one. Every pre-existing row defaults to hall, so this migration changes no behaviour on its own.';
 
+-- Removing a hall must be possible even when sessions are placed in it.
+--
+-- The Venue Overview mock asks once ("Remove Hall C and its screens?") and warns
+-- that "Sessions already placed there will need a new location" -- i.e. the
+-- sessions survive and lose their location. Both FKs are NO ACTION today
+-- (confirmed live 2026-08-07 via referential_constraints), so that delete would
+-- instead fail outright with a foreign-key violation on any hall that is in use
+-- -- which is 2,360 of 2,490 sessions. SET NULL makes the schema agree with the
+-- interaction the design specifies.
+--
+-- Deliberately SET NULL and not CASCADE: cascading would delete the sessions
+-- along with the room, which is never what removing a room means.
+alter table sessions drop constraint if exists sessions_hall_id_fkey;
+alter table sessions add constraint sessions_hall_id_fkey
+  foreign key (hall_id) references halls(id) on delete set null;
+
+alter table hall_coordinators drop constraint if exists hall_coordinators_hall_id_fkey;
+alter table hall_coordinators add constraint hall_coordinators_hall_id_fkey
+  foreign key (hall_id) references halls(id) on delete set null;
+
 -- Existing 34 rows all become kind='hall', parent_id=null -- i.e. exactly what
 -- they already are. No backfill script needed and no session relinking: a
 -- session keeps pointing at the same halls.id it always did.

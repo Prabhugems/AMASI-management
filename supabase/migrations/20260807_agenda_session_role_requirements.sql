@@ -9,6 +9,33 @@
 --
 -- Additive only -- do NOT apply until explicit user go-ahead (see CLAUDE.md's
 -- migration pipeline section).
+--
+-- ##########################################################################
+-- DO NOT APPLY THIS FILE AS WRITTEN. It encodes the FLAT agenda model, which
+-- was superseded on 2026-08-07 when the two-level design (a block holds its
+-- talks -- "Session Builder.html" states 2a-2g) was chosen.
+--
+-- Under the two-level model a role requirement hangs off whichever level owns
+-- it: a chairperson belongs to the BLOCK, while a speaker, moderator or
+-- panellist belongs to a TALK inside it. Before this is applied it must gain:
+--
+--   talk_id uuid references talks(id) on delete cascade   -- nullable
+--
+-- and the `unique (session_id, role)` below must be replaced by two partial
+-- unique indexes, because Postgres treats NULLs as distinct and a plain
+-- composite unique would let the same block-level role be declared twice:
+--
+--   create unique index session_role_requirements_block_key
+--     on session_role_requirements (session_id, role) where talk_id is null;
+--   create unique index session_role_requirements_talk_key
+--     on session_role_requirements (talk_id, role) where talk_id is not null;
+--
+-- That change is blocked on the `talks` table existing (Phase 1, remainder).
+-- Keeping one table across both grains means the Open Slots query in
+-- src/lib/agenda-open-slots.ts stays a single query rather than a union.
+--
+-- Nothing has been applied, so this is a design revision, not a correction.
+-- ##########################################################################
 
 create table if not exists session_role_requirements (
   id uuid primary key default gen_random_uuid(),
