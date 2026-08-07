@@ -43,9 +43,13 @@ const sidebarItems: SidebarItem[] = [
   { title: "Dashboard", href: "", icon: LayoutDashboard },
   { title: "Confirmations", href: "/confirmations", icon: UserCheck },
   { title: "Schedule", href: "/schedule", icon: Calendar },
+  // The two-level agenda (blocks and talks). Sits alongside Schedule rather
+  // than replacing it: Schedule is in live use for AMASICON 2026, and this is
+  // unexercised until someone has driven it against real data.
+  { title: "Session Builder", href: "/builder", icon: CalendarDays },
   { title: "Sessions", href: "/sessions", icon: Presentation },
   { title: "Tracks", href: "/tracks", icon: Layers },
-  { title: "Halls", href: "/halls", icon: Building2 },
+  { title: "Venue Overview", href: "/halls", icon: Building2 },
   { title: "Coordinators", href: "/coordinators", icon: UserCheck },
   { title: "Speakers", href: "/speakers", icon: Users, external: true },
   { title: "Import", href: "/import", icon: Upload },

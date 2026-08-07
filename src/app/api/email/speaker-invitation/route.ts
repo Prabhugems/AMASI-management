@@ -6,6 +6,12 @@ import { escapeHtml } from "@/lib/string-utils"
 import { isGallaboxEnabled, sendGallaboxTemplate } from "@/lib/gallabox"
 import { COMPANY_CONFIG } from "@/lib/config"
 import { getApiUser } from "@/lib/auth/api-auth"
+import {
+  describeRole,
+  matchFacultySessions,
+  primaryRoleBySession,
+  type FacultyRole,
+} from "@/lib/faculty-session-match"
 
 const PRODUCTION_URL = process.env.NEXT_PUBLIC_APP_URL || ""
 
@@ -29,6 +35,13 @@ interface SpeakerInvitationData {
     start_time: string
     end_time: string
     hall?: string
+    /**
+     * The role this person holds in THIS session. Never omit it when it is
+     * known: an unlabelled session list is what made the 127 FMAS bug
+     * invisible -- a chairperson saw every talk in their block and had no way
+     * to tell they were not presenting them.
+     */
+    role?: FacultyRole | null
   }>
 }
 
@@ -98,7 +111,7 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
         <thead>
           <tr style="background-color: #f3f4f6;">
             <th style="padding: 12px 10px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Date & Time</th>
-            <th style="padding: 12px 10px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Topic</th>
+            <th style="padding: 12px 10px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Session</th>
             <th style="padding: 12px 10px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Hall</th>
           </tr>
         </thead>
@@ -109,8 +122,11 @@ async function sendSpeakerInvitation(data: SpeakerInvitationData): Promise<{ suc
                 <div style="font-weight: 600; color: #1f2937;">${formatDate(session.session_date)}</div>
                 <div style="color: #6b7280; font-size: 13px;">${formatTime(session.start_time)} - ${formatTime(session.end_time)}</div>
               </td>
-              <td style="padding: 12px 10px; border-bottom: 1px solid #e5e7eb; color: #1f2937;">${escapeHtml(session.session_name || "")}</td>
-              <td style="padding: 12px 10px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 13px;">${escapeHtml(session.hall || "-")}</td>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #e5e7eb; color: #1f2937; vertical-align: top;">
+                <div style="font-size: 12px; font-weight: 600; color: #4f46e5; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px;">${escapeHtml(describeRole(session.role ?? null))}</div>
+                <div>${escapeHtml(session.session_name || "")}</div>
+              </td>
+              <td style="padding: 12px 10px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 13px; vertical-align: top;">${escapeHtml(session.hall || "-")}</td>
             </tr>
           `).join("")}
         </tbody>
@@ -422,25 +438,14 @@ export async function PUT(request: NextRequest) {
       .order("session_date")
       .order("start_time")
 
-    // Get faculty assignments for reliable matching
+    // Get faculty assignments for reliable matching. `role` is selected because
+    // the invitation must say what each person is actually doing in a session.
     const { data: allAssignments } = await (supabase as any)
       .from("faculty_assignments")
-      .select("session_id, faculty_email, faculty_name")
+      .select("session_id, faculty_email, faculty_name, role")
       .eq("event_id", event_id)
 
-    // Build assignment lookup by email
-    const assignmentsByEmail = new Map<string, Set<string>>()
-    ;(allAssignments || []).forEach((a: any) => {
-      if (a.faculty_email) {
-        const email = a.faculty_email.toLowerCase()
-        if (!assignmentsByEmail.has(email)) assignmentsByEmail.set(email, new Set())
-        assignmentsByEmail.get(email)!.add(a.session_id)
-      }
-    })
-
-    // Strip title for name matching
-    const stripTitle = (name: string) =>
-      name.replace(/^(dr\.?|prof\.?|mr\.?|mrs\.?|ms\.?|shri\.?)\s+/i, "").trim()
+    const sessionsById = new Map<string, any>((sessions || []).map((s: any) => [s.id, s]))
 
     const results = {
       sent: 0,
@@ -478,41 +483,22 @@ export async function PUT(request: NextRequest) {
         continue
       }
 
-      const speakerEmail = reg.attendee_email?.toLowerCase()
-      const speakerName = reg.attendee_name?.trim()
-      const speakerNameStripped = speakerName ? stripTitle(speakerName).toLowerCase() : ""
-
-      // Get assigned session IDs from faculty_assignments
-      const assignedSessionIds = assignmentsByEmail.get(speakerEmail) || new Set()
-
-      // Find sessions for this speaker using multiple strategies
-      const speakerSessions = (sessions || []).filter((s: any) => {
-        // Strategy 1: faculty_assignments
-        if (assignedSessionIds.has(s.id)) return true
-
-        // Strategy 2: Email in speakers_text/chairpersons_text/moderators_text
-        const textFields = [s.speakers_text, s.chairpersons_text, s.moderators_text]
-        for (const text of textFields) {
-          if (text && speakerEmail && text.toLowerCase().includes(speakerEmail)) return true
-        }
-
-        // Strategy 3: Email in description
-        if (s.description && speakerEmail && s.description.toLowerCase().includes(speakerEmail)) return true
-
-        // Strategy 4: Name matching (title-stripped)
-        if (speakerNameStripped) {
-          const nameFields = [s.description, s.speakers, s.chairpersons, s.moderators]
-          for (const field of nameFields) {
-            if (field) {
-              const fieldLower = field.toLowerCase()
-              if (fieldLower.includes(speakerNameStripped)) return true
-              if (speakerName && fieldLower.includes(speakerName.toLowerCase())) return true
-            }
-          }
-        }
-
-        return false
+      // Match this person to their sessions AND to the role they hold in each.
+      // Shared with `/api/speaker/[token]` -- see src/lib/faculty-session-match.ts
+      // for why this must never be reimplemented inline again.
+      const matches = matchFacultySessions(sessions || [], allAssignments || [], {
+        email: reg.attendee_email,
+        name: reg.attendee_name,
       })
+
+      const roleBySession = primaryRoleBySession(matches)
+      const speakerSessions = [...roleBySession.keys()]
+        .map((id) => sessionsById.get(id))
+        .filter(Boolean)
+        .sort((a: any, b: any) =>
+          (a.session_date || "").localeCompare(b.session_date || "") ||
+          (a.start_time || "").localeCompare(b.start_time || "")
+        )
 
       // Rate limit delay (Resend allows 2 req/sec)
       if (results.sent > 0 || results.failed > 0) {
@@ -536,6 +522,7 @@ export async function PUT(request: NextRequest) {
           start_time: s.start_time,
           end_time: s.end_time,
           hall: s.hall,
+          role: roleBySession.get(s.id) ?? null,
         })),
       })
 
