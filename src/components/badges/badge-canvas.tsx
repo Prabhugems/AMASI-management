@@ -13,7 +13,7 @@ export interface BadgeCanvasProps {
 }
 
 export function BadgeCanvas({ template, mode, registration, event, scale = 1 }: BadgeCanvasProps) {
-  const size = BADGE_SIZES[template.size]
+  const size = BADGE_SIZES[template.size] || BADGE_SIZES["4x3"]
   return (
     <div className="relative" style={{
       width: size.width * scale,

@@ -38,7 +38,7 @@ export function replacePlaceholders(
     .join(", ")
   result = result.replace(/\{\{addons\}\}/g, addonNames || "")
 
-  const checkinToken = registration?.checkin_token || registration?.registration_number || "TOKEN"
+  const checkinToken = registration?.checkin_token || "TOKEN"
   result = result.replace(/\{\{checkin_token\}\}/g, checkinToken)
   const baseUrl = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "")
   result = result.replace(/\{\{checkin_url\}\}/g, `${baseUrl}/v/${checkinToken}`)
