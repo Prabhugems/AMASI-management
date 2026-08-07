@@ -16,21 +16,11 @@
 // labels each one.
 
 import { escapeRegex } from "./string-utils"
+import { isFacultyRole, PRESENTING_ROLES, type FacultyRole } from "./agenda-roles"
 
-export const FACULTY_ROLES = [
-  "speaker",
-  "chairperson",
-  "moderator",
-  "panelist",
-  "keynote",
-  "discussant",
-] as const
-
-export type FacultyRole = (typeof FACULTY_ROLES)[number]
-
-export function isFacultyRole(value: unknown): value is FacultyRole {
-  return typeof value === "string" && (FACULTY_ROLES as readonly string[]).includes(value)
-}
+// The role vocabulary lives in ./agenda-roles -- one list, imported everywhere.
+// Re-exported here so existing importers of this module keep working.
+export { FACULTY_ROLES, isFacultyRole, describeRole, type FacultyRole } from "./agenda-roles"
 
 /** Only the session columns matching needs. Extra columns are ignored. */
 export interface MatchableSession {
@@ -222,9 +212,6 @@ export function sessionIdsForRole(
   return new Set(matches.filter((m) => m.role === role).map((m) => m.session_id))
 }
 
-/** Roles that mean "this person is on their feet delivering content". */
-const PRESENTING_ROLES: ReadonlySet<FacultyRole> = new Set(["speaker", "keynote"])
-
 /**
  * Sessions to show under "sessions you are assigned to present".
  *
@@ -298,22 +285,3 @@ export function primaryRoleBySession(
   return out
 }
 
-/** Human-readable phrasing for an invitation email or portal. */
-export function describeRole(role: FacultyRole | null): string {
-  switch (role) {
-    case "speaker":
-      return "You are presenting"
-    case "keynote":
-      return "You are delivering the keynote"
-    case "chairperson":
-      return "You are chairing"
-    case "moderator":
-      return "You are moderating"
-    case "panelist":
-      return "You are on the panel"
-    case "discussant":
-      return "You are the discussant"
-    default:
-      return "You are taking part"
-  }
-}
