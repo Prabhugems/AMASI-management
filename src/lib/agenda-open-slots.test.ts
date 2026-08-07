@@ -182,7 +182,7 @@ describe("hall labels", () => {
       { id: "h1", name: "Hall A", parent_id: null },
       { id: "sc1", name: "Screen 2", parent_id: "h1" },
     ])
-    expect(labels.get("sc1")).toBe("Hall A · Screen 2")
+    expect(labels.get("sc1")).toBe("Hall A › Screen 2")
     expect(labels.get("h1")).toBe("Hall A")
   })
 
@@ -196,7 +196,7 @@ describe("hall labels", () => {
         { id: "sc1", name: "Screen 2", parent_id: "h1" },
       ],
     })
-    expect(slots[0].hall_label).toBe("Hall A · Screen 2")
+    expect(slots[0].hall_label).toBe("Hall A › Screen 2")
   })
 
   it("leaves the label null for an unscheduled session", () => {

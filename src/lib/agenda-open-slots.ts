@@ -20,6 +20,11 @@
 // the wrong person is worse than showing a coordinator a short review queue.
 
 import { ROLE_LABELS, type FacultyRole } from "./agenda-roles"
+import { buildHallLabels } from "./venue-tree"
+
+// Label formatting lives in ./venue-tree -- one owner for "Hall A › Screen 2",
+// shared with the location picker and the Session Builder.
+export { buildHallLabels } from "./venue-tree"
 
 export interface OpenSlotSession {
   id: string
@@ -102,17 +107,6 @@ function hasFacultyText(s: OpenSlotSession): boolean {
     s.chairpersons_text,
     s.moderators_text,
   ].some((v) => typeof v === "string" && v.trim() !== "")
-}
-
-/** "Hall A · Screen 2" for a nested hall, "Hall A" for a flat one. */
-export function buildHallLabels(halls: readonly HallRef[]): Map<string, string> {
-  const byId = new Map(halls.map((h) => [h.id, h]))
-  const out = new Map<string, string>()
-  for (const h of halls) {
-    const parent = h.parent_id ? byId.get(h.parent_id) : undefined
-    out.set(h.id, parent ? `${parent.name} · ${h.name}` : h.name)
-  }
-  return out
 }
 
 export function getOpenSlots(input: {

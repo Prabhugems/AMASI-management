@@ -40,8 +40,22 @@ export interface VenueHall {
   label: string
 }
 
-/** How the mock separates a hall from its screen: "Hall A · Screen 2". */
-export const VENUE_LABEL_SEPARATOR = " · "
+/**
+ * Hall from screen: "Hall A › Screen 2".
+ *
+ * The designs are not unanimous -- the Venue Setup flow uses both -- but the
+ * two newest screens (Session Builder, Open Slots) use "›" exclusively, 10
+ * occurrences to 0, so that wins. Kept as a constant because it appears in the
+ * location picker, the Session Builder header and every Open Slots row, and
+ * they must never drift apart.
+ */
+export const VENUE_LABEL_SEPARATOR = " › "
+
+/**
+ * Between counts: "3 halls · 3 screens". A different thing from the label
+ * separator above, and a middot in every mock that shows it.
+ */
+export const VENUE_COUNT_SEPARATOR = " · "
 
 function orderOf(row: VenueRow): number {
   return typeof row.display_order === "number" ? row.display_order : 0
@@ -136,12 +150,28 @@ export function toLocationOptions(halls: readonly VenueHall[]): Array<LocationOp
   return out
 }
 
+/**
+ * Flat id -> display label map: "Hall A › Screen 2" for a screen, "Hall A" for
+ * a hall. The single owner of that format -- Open Slots, the Session Builder
+ * header and the location picker all resolve labels through here so they cannot
+ * drift apart.
+ */
+export function buildHallLabels(rows: readonly VenueRow[]): Map<string, string> {
+  const byId = new Map(rows.map((r) => [r.id, r]))
+  const out = new Map<string, string>()
+  for (const r of rows) {
+    const parent = r.parent_id ? byId.get(r.parent_id) : undefined
+    out.set(r.id, parent ? `${parent.name}${VENUE_LABEL_SEPARATOR}${r.name}` : r.name)
+  }
+  return out
+}
+
 /** "3 halls · 3 screens" -- the Venue Overview header count. */
 export function describeVenue(halls: readonly VenueHall[]): string {
   const screenCount = halls.reduce((n, h) => n + h.screens.length, 0)
   const hallPart = `${halls.length} hall${halls.length === 1 ? "" : "s"}`
   if (screenCount === 0) return hallPart
-  return `${hallPart}${VENUE_LABEL_SEPARATOR}${screenCount} screen${screenCount === 1 ? "" : "s"}`
+  return `${hallPart}${VENUE_COUNT_SEPARATOR}${screenCount} screen${screenCount === 1 ? "" : "s"}`
 }
 
 // ---------------------------------------------------------------------------

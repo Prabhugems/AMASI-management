@@ -43,7 +43,7 @@ describe("buildVenueTree", () => {
 
   it("labels a screen the way the location picker shows it", () => {
     const tree = buildVenueTree([hall("h1", "Hall A"), screen("s1", "Screen 2", "h1")])
-    expect(tree[0].screens[0].label).toBe("Hall A · Screen 2")
+    expect(tree[0].screens[0].label).toBe("Hall A › Screen 2")
     expect(tree[0].label).toBe("Hall A")
   })
 
@@ -104,8 +104,8 @@ describe("toLocationOptions", () => {
     )
     expect(opts.map((o) => [o.label, o.depth, o.selectable])).toEqual([
       ["Hall B", 0, false],
-      ["Hall B · Screen 1", 1, true],
-      ["Hall B · Screen 2", 1, true],
+      ["Hall B › Screen 1", 1, true],
+      ["Hall B › Screen 2", 1, true],
     ])
   })
 

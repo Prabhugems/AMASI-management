@@ -36,6 +36,7 @@ import {
   nextDisplayOrder,
   toLocationOptions,
   validateVenueDraft,
+  VENUE_LABEL_SEPARATOR,
   type VenueHall,
   type VenueRow,
 } from "@/lib/venue-tree"
@@ -482,7 +483,7 @@ export default function VenueOverviewPage() {
                   !o.selectable && "text-xs font-medium uppercase tracking-wide text-muted-foreground"
                 )}
               >
-                {o.depth === 1 ? o.label.split(" · ").pop() : o.label}
+                {o.depth === 1 ? o.label.split(VENUE_LABEL_SEPARATOR).pop() : o.label}
               </div>
             ))}
           </div>
