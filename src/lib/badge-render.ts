@@ -61,9 +61,28 @@ export function replacePlaceholders(text: string, reg: any, eventName: string): 
   return result
 }
 
+// Escapes text before it's interpolated into an HTML string. Registration
+// fields (name, institution, etc.) come from public self-registration with
+// no server-side HTML stripping, so every value reaching innerHTML/
+// document.write here must be escaped at this boundary -- see the incident
+// this closed: a delegate could set attendee_name to `<img onerror=...>`
+// and have it execute in whichever browser next printed their badge.
+function escapeHtml(text: string): string {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
 // Render a single badge element to HTML
 export function renderElementToHtml(element: any, registration: any, eventName: string): string {
-  const content = replacePlaceholders(element.content || "", registration, eventName)
+  // Raw (unescaped) — used for the qr_code branch below, where `content` is
+  // encoded as QR/barcode data, not rendered as HTML text, and must stay
+  // exactly as typed for scanning/verification to work.
+  const rawContent = replacePlaceholders(element.content || "", registration, eventName)
+  const content = escapeHtml(rawContent)
   const rotation = element.rotation || 0
   const opacity = (element.opacity ?? 100) / 100
 
@@ -292,7 +311,7 @@ export function generatePrintContent(data: {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Print Badge - ${registration.attendee_name}</title>
+        <title>Print Badge - ${escapeHtml(registration.attendee_name || "")}</title>
         ${googleFontsLink}
         <style>
           @page {

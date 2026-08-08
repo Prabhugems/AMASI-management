@@ -221,7 +221,7 @@ describe("replacePlaceholders", () => {
       undefined,
       { start_date: "2026-02-12T12:00:00Z", end_date: "2026-02-15T12:00:00Z" }
     )
-    expect(result).toBe("12 Feb - 15 Feb, 2026")
+    expect(result).toBe("12 Feb - 15 Feb 2026")
   })
 
   it("falls back to a placeholder label when the event has no dates", () => {

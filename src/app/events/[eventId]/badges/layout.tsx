@@ -164,6 +164,10 @@ export default function BadgesLayout({ children }: { children: React.ReactNode }
   if (!permissionsLoading && !userPermissions?.hasAccess) {
     return (
       <div className="flex h-[calc(100vh-6rem)] items-center justify-center">
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap"
+        />
         <div className="text-center max-w-md">
           <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
@@ -183,6 +187,10 @@ export default function BadgesLayout({ children }: { children: React.ReactNode }
   if (userPermissions?.isTeamUser) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap"
+        />
         <header className="h-14 border-b bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <Link href={`/events/${eventId}`} className="flex items-center gap-2 text-slate-300 hover:text-white text-sm">
@@ -233,6 +241,10 @@ export default function BadgesLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] -mx-4 sm:-mx-6 -mb-4 sm:-mb-6">
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap"
+      />
       {/* Desktop: vertical sidebar */}
       <div className="hidden lg:flex w-56 border-r bg-muted/30 flex-col flex-shrink-0">
         <Link href={`/events/${eventId}`} className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground border-b">
