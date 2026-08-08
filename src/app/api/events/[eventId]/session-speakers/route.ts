@@ -56,7 +56,13 @@ export async function GET(
 }
 
 // POST /api/events/[eventId]/session-speakers
-// Body: { session_id, faculty_id?, faculty_name, faculty_email?, role, topic_title?, topic_description?, display_order?, status? }
+// Body: { session_id, talk_id?, faculty_id?, faculty_name, faculty_email?, role, topic_title?, topic_description?, display_order?, status? }
+//
+// `talk_id` attaches the person to a talk inside the block rather than to the
+// block as a whole — a speaker belongs to their talk, a chairperson to the
+// block. session_id is always set either way, so existing queries that ask
+// "who is in this block?" (the invitation email, the speaker portal) keep
+// working and now correctly include talk speakers.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
@@ -123,6 +129,24 @@ export async function POST(
     return NextResponse.json({ error: 'Session not found for this event' }, { status: 404 })
   }
 
+  // A talk-level assignment must name a talk that belongs to THIS block, not
+  // merely to this event — otherwise a speaker could be attached to a talk in
+  // a different session.
+  const talkId = (body.talk_id as string | undefined) || null
+  let talkTitle: string | null = null
+  if (talkId) {
+    const { data: talk } = await (supabase as any)
+      .from('talks')
+      .select('id, session_id, event_id, title')
+      .eq('id', talkId)
+      .maybeSingle()
+
+    if (!talk || talk.event_id !== eventId || talk.session_id !== sessionId) {
+      return NextResponse.json({ error: 'Talk not found for this session' }, { status: 404 })
+    }
+    talkTitle = talk.title ?? null
+  }
+
   // If display_order not provided, append at end.
   // Race-prone for concurrent inserts; acceptable at Phase 1 single-admin scale.
   let displayOrder = typeof body.display_order === 'number' ? body.display_order : null
@@ -142,12 +166,17 @@ export async function POST(
     .insert({
       event_id: eventId,
       session_id: sessionId,
+      talk_id: talkId,
       faculty_id: facultyId || null,
       faculty_name: facultyName,
       faculty_email: facultyEmail,
       faculty_phone: (body.faculty_phone as string | undefined)?.trim() || null,
       role,
-      topic_title: (body.topic_title as string | undefined)?.trim() || null,
+      // Default the topic to the talk's own title, so a speaker's invitation
+      // names what they are actually presenting rather than the whole block.
+      // Getting this wrong is what told chairpersons they present every talk.
+      topic_title:
+        (body.topic_title as string | undefined)?.trim() || talkTitle || null,
       topic_description: (body.topic_description as string | undefined)?.trim() || null,
       session_date: session.session_date,
       start_time: session.start_time,
