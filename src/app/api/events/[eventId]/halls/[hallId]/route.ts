@@ -42,7 +42,17 @@ export async function PATCH(
     .select("*")
     .single()
 
-  if (error) return NextResponse.json({ error: "Failed to update hall" }, { status: 500 })
+  if (error) {
+    // Renaming a room onto a sibling's name. The unique indexes in
+    // 20260808_halls_unique_name.sql catch this regardless of client.
+    if ((error as { code?: string }).code === "23505") {
+      return NextResponse.json(
+        { error: `Another room here is already called ${parsed.data.name}.` },
+        { status: 409 }
+      )
+    }
+    return NextResponse.json({ error: "Failed to update hall" }, { status: 500 })
+  }
   if (!data) return NextResponse.json({ error: "Hall not found" }, { status: 404 })
   return NextResponse.json({ data })
 }
