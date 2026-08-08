@@ -21,6 +21,7 @@ export interface FacultyAssignmentRow {
 
 export type ConflictType =
   | "hall_double_booking"
+  | "parallel_use"
   | "faculty_double_booking"
   | "no_speaker"
   | "unconfirmed_speaker"
@@ -52,23 +53,124 @@ function sessionsOverlap(a: ConflictSession, b: ConflictSession): boolean {
   return Math.max(aStart, bStart) < Math.min(aEnd, bEnd)
 }
 
-export function findHallDoubleBookings(sessions: ConflictSession[]): Conflict[] {
+/** Enough of a hall to know where it sits in the venue tree. */
+export interface HallRef {
+  id: string
+  name?: string | null
+  parent_id?: string | null
+}
+
+/**
+ * Do two sessions compete for the same physical space?
+ *
+ * Not simply "same hall_id", because a hall can be split into screens:
+ *   same location                      -> yes
+ *   two different screens of one hall  -> NO, that is what screens are for
+ *   the parent hall and one of its own screens -> yes, the room is taken
+ */
+function sharesSpace(
+  a: ConflictSession,
+  b: ConflictSession,
+  parentOf: Map<string, string | null>
+): boolean {
+  if (!a.hall_id || !b.hall_id) return false
+  if (a.hall_id === b.hall_id) return true
+  return parentOf.get(a.hall_id) === b.hall_id || parentOf.get(b.hall_id) === a.hall_id
+}
+
+/**
+ * Clashes over physical space.
+ *
+ * WHY THIS IS NOT "ANY TWO OVERLAPPING SESSIONS IN ONE HALL"
+ *
+ * That rule reported 174 blocking clashes on AMASICON 2026 and every one but
+ * three was wrong. HALL 2 runs a hands-on workshop: "Lap TAPP", "IPOM Plus",
+ * "Proctology-Laser" and three more, all 09:00-11:00 on 28 Aug, delegates
+ * rotating between stations. The hall is not double-booked; it is being used
+ * exactly as designed. And because blocking conflicts gate submit-for-approval,
+ * that programme could never have been submitted.
+ *
+ * The data separates the two cases cleanly: of those 174 pairs, 171 shared an
+ * IDENTICAL start and end, and 3 overlapped only partially. Sessions given the
+ * very same slot in the same room are a deliberate parallel block. Sessions
+ * that merely run into each other are the shape a scheduling mistake takes —
+ * the three real ones here are talks starting at 15:30 while the Presidential
+ * Oration runs to 15:40 in the same hall.
+ *
+ * So:
+ *   identical times, same location -> ONE `parallel_use` warning for the group,
+ *                                     naming it, suggesting screens if it was
+ *                                     not intended. Never blocking.
+ *   partial overlap                -> `hall_double_booking`, blocking.
+ *
+ * Reporting the parallel case once per group rather than once per pair also
+ * turns 171 findings into 1: six stations produce fifteen pairs, and fifteen
+ * copies of the same fact is not information.
+ */
+export function findHallDoubleBookings(
+  sessions: ConflictSession[],
+  halls: readonly HallRef[] = []
+): Conflict[] {
+  const parentOf = new Map<string, string | null>(
+    halls.map((h) => [h.id, h.parent_id ?? null])
+  )
+  const hallName = new Map<string, string>(
+    halls.filter((h) => h.name).map((h) => [h.id, h.name as string])
+  )
+
+  const withHall = sessions.filter((s) => s.hall_id && s.session_date)
   const conflicts: Conflict[] = []
-  const withHall = sessions.filter((s) => s.hall_id)
+
+  // 1. Groups sharing one exact slot in one location — parallel by design.
+  const slots = new Map<string, ConflictSession[]>()
+  for (const s of withHall) {
+    if (!s.start_time || !s.end_time) continue
+    const key = `${s.hall_id}::${s.session_date}::${s.start_time}::${s.end_time}`
+    slots.set(key, [...(slots.get(key) ?? []), s])
+  }
+
+  const inParallelGroup = new Set<string>()
+  for (const group of slots.values()) {
+    if (group.length < 2) continue
+    for (const s of group) inParallelGroup.add(s.id)
+    const first = group[0]
+    const where = hallName.get(first.hall_id!) ?? "the same hall"
+    conflicts.push({
+      type: "parallel_use",
+      severity: "warning",
+      session_ids: group.map((s) => s.id),
+      message:
+        `${group.length} sessions run at the same time in ${where} ` +
+        `(${first.start_time?.slice(0, 5)}–${first.end_time?.slice(0, 5)}). ` +
+        `If they run in parallel that is fine — give each one its own screen to make it explicit.`,
+    })
+  }
+
+  // 2. Everything else that competes for the same space — a real clash.
   for (let i = 0; i < withHall.length; i++) {
     for (let j = i + 1; j < withHall.length; j++) {
       const a = withHall[i]
       const b = withHall[j]
-      if (a.hall_id !== b.hall_id) continue
+      if (!sharesSpace(a, b, parentOf)) continue
       if (!sessionsOverlap(a, b)) continue
+
+      // Already reported once, as a group.
+      const sameSlot =
+        a.hall_id === b.hall_id && a.start_time === b.start_time && a.end_time === b.end_time
+      if (sameSlot && inParallelGroup.has(a.id) && inParallelGroup.has(b.id)) continue
+
       conflicts.push({
         type: "hall_double_booking",
         severity: "blocking",
         session_ids: [a.id, b.id],
-        message: `"${a.session_name}" and "${b.session_name}" overlap in the same hall`,
+        message:
+          a.hall_id === b.hall_id
+            ? `"${a.session_name}" and "${b.session_name}" overlap in the same hall`
+            : `"${a.session_name}" and "${b.session_name}" overlap — one is in a hall, the other on a screen inside it`,
       })
     }
   }
+
   return conflicts
 }
 
@@ -142,6 +244,9 @@ export function findUnconfirmedSpeakers(
 export interface HallCapacity {
   id: string
   capacity: number | null
+  /** Set on a screen, naming the hall that contains it. */
+  parent_id?: string | null
+  name?: string | null
 }
 
 export function findOverCapacitySessions(
@@ -180,7 +285,7 @@ export function getAllConflicts(input: {
   halls: HallCapacity[]
 }): { conflicts: Conflict[]; blockingCount: number; warningCount: number } {
   const conflicts = [
-    ...findHallDoubleBookings(input.sessions),
+    ...findHallDoubleBookings(input.sessions, input.halls),
     ...findFacultyDoubleBookings(input.sessions, input.assignments),
     ...findUnassignedSessions(input.sessions, input.assignments),
     ...findUnconfirmedSpeakers(input.sessions, input.assignments),

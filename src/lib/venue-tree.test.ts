@@ -148,17 +148,26 @@ describe("validateVenueDraft", () => {
     )
   })
 
-  it("warns on a duplicate hall name without blocking it", () => {
-    // "A warning, not a wall — with the fix offered right there."
+  it("blocks a duplicate hall name outright", () => {
+    // Two "Hall A"s are indistinguishable to a delegate reading a programme,
+    // and to the location picker, which lists rooms by name — a session can be
+    // placed in the wrong one of two identical options and nobody can see it.
+    // The design's "a warning, not a wall" is deliberately superseded.
     const issues = validateVenueDraft({ name: "Hall A" }, venue)
     expect(issues).toHaveLength(1)
     expect(issues[0]).toMatchObject({
       code: "duplicate_name",
-      severity: "warning",
+      severity: "blocking",
       conflictsWith: "h1",
     })
+    // Still offers the fix, so the block is actionable rather than a dead end.
     expect(issues[0].message).toContain("edit the existing one instead")
-    expect(canSaveVenueDraft(issues)).toBe(true)
+    expect(canSaveVenueDraft(issues)).toBe(false)
+  })
+
+  it("blocks a duplicate screen name within the same hall", () => {
+    const issues = validateVenueDraft({ name: "Screen 1", parent_id: "h2", kind: "screen" }, venue)
+    expect(canSaveVenueDraft(issues)).toBe(false)
   })
 
   it("ignores case and spacing when detecting a duplicate", () => {

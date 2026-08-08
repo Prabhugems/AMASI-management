@@ -254,12 +254,21 @@ export function validateVenueDraft(draft: VenueDraft, existing: readonly VenueRo
         normaliseName(r.name) === target
     )
     if (clash) {
+      // BLOCKING, not a warning.
+      //
+      // The Venue Overview design called this "a warning, not a wall". That is
+      // superseded: two rooms with the same name are indistinguishable to a
+      // delegate reading a programme, and to the Session Builder's location
+      // picker, which lists rooms by name — so a session can be placed in the
+      // wrong one of two identical options and nobody can see the mistake.
+      // Also enforced by unique indexes in 20260808_halls_unique_name.sql, so
+      // this cannot be bypassed by calling the API directly.
       issues.push({
         code: "duplicate_name",
-        severity: "warning",
+        severity: "blocking",
         conflictsWith: clash.id,
         message: siblingParent
-          ? `This hall already has a ${clash.name}.`
+          ? `This hall already has a ${clash.name}. Use a different name, or edit the existing one instead.`
           : `You already have a ${clash.name}. Use a different name, or edit the existing one instead.`,
       })
     }

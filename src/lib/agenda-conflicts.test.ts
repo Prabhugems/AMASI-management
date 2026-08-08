@@ -45,6 +45,80 @@ describe("findHallDoubleBookings", () => {
     expect(findHallDoubleBookings([s1, s2])).toHaveLength(0)
   })
 
+  it("does not block a hall running parallel stations", () => {
+    // AMASICON 2026, HALL 2, 28 Aug: six hands-on stations all 09:00-11:00
+    // with delegates rotating between them. The old rule called that fifteen
+    // blocking clashes and made the programme unsubmittable.
+    const stations = ["Lap TAPP", "IPOM Plus", "Proctology-Laser", "Lap Sleeve"].map((n, i) =>
+      session({ id: `st${i}`, session_name: n, start_time: "09:00", end_time: "11:00", hall_id: "hall-2" })
+    )
+    const out = findHallDoubleBookings(stations, [{ id: "hall-2", name: "HALL 2" }])
+
+    expect(out.filter((c) => c.severity === "blocking")).toHaveLength(0)
+    // Six stations make fifteen pairs; fifteen copies of one fact is not
+    // information, so it is reported once for the group.
+    expect(out).toHaveLength(1)
+    expect(out[0]).toMatchObject({ type: "parallel_use", severity: "warning" })
+    expect(out[0].session_ids).toHaveLength(4)
+    expect(out[0].message).toContain("HALL 2")
+    expect(out[0].message).toContain("own screen")
+  })
+
+  it("still blocks a partial overlap, which is what a real mistake looks like", () => {
+    // The three genuine ones on AMASICON: a talk starting 15:30 while the
+    // Presidential Oration runs to 15:40 in the same hall.
+    const out = findHallDoubleBookings(
+      [
+        session({ id: "oration", session_name: "Presidential Oration", start_time: "15:00", end_time: "15:40", hall_id: "hall-1" }),
+        session({ id: "talk", session_name: "Lap whole layer chole", start_time: "15:30", end_time: "15:45", hall_id: "hall-1" }),
+      ],
+      [{ id: "hall-1", name: "HALL 1" }]
+    )
+    expect(out).toHaveLength(1)
+    expect(out[0]).toMatchObject({ type: "hall_double_booking", severity: "blocking" })
+  })
+
+  it("does not clash two different screens of the same hall", () => {
+    // The whole point of screens.
+    const out = findHallDoubleBookings(
+      [
+        session({ id: "a", start_time: "09:00", end_time: "10:00", hall_id: "screen-1" }),
+        session({ id: "b", start_time: "09:00", end_time: "10:00", hall_id: "screen-2" }),
+      ],
+      [
+        { id: "hall-a", name: "Hall A" },
+        { id: "screen-1", name: "Screen 1", parent_id: "hall-a" },
+        { id: "screen-2", name: "Screen 2", parent_id: "hall-a" },
+      ]
+    )
+    expect(out).toEqual([])
+  })
+
+  it("blocks a session in a hall against one on a screen inside it", () => {
+    // The room as a whole is taken, so a screen inside it cannot also be used.
+    const out = findHallDoubleBookings(
+      [
+        session({ id: "whole", session_name: "Plenary", start_time: "09:00", end_time: "10:00", hall_id: "hall-a" }),
+        session({ id: "part", session_name: "Workshop", start_time: "09:30", end_time: "10:30", hall_id: "screen-1" }),
+      ],
+      [
+        { id: "hall-a", name: "Hall A" },
+        { id: "screen-1", name: "Screen 1", parent_id: "hall-a" },
+      ]
+    )
+    expect(out).toHaveLength(1)
+    expect(out[0].severity).toBe("blocking")
+    expect(out[0].message).toContain("screen inside it")
+  })
+
+  it("names the hall generically when no hall list is supplied", () => {
+    const out = findHallDoubleBookings([
+      session({ id: "a", start_time: "09:00", end_time: "10:00", hall_id: "h" }),
+      session({ id: "b", start_time: "09:00", end_time: "10:00", hall_id: "h" }),
+    ])
+    expect(out[0].message).toContain("the same hall")
+  })
+
   it("ignores sessions with no hall_id", () => {
     const s1 = session({ id: "s1", hall_id: null })
     const s2 = session({ id: "s2", hall_id: null })

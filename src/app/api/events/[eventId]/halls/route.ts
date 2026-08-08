@@ -64,6 +64,38 @@ async function validateParent(
   return null
 }
 
+/**
+ * A room sharing a name with one of its siblings, if any.
+ *
+ * Two "Hall A"s in one event are indistinguishable to a delegate and to the
+ * Session Builder's location picker, which lists rooms by name. Scoped to
+ * siblings so "Screen 1" under two different halls stays legal — that reads as
+ * "Hall A › Screen 1", which is unambiguous.
+ *
+ * Compared case- and whitespace-insensitively, matching the unique indexes in
+ * 20260808_halls_unique_name.sql. Those indexes are the real guarantee; this
+ * exists so the caller gets a message naming the room it collided with.
+ */
+async function findDuplicateName(
+  supabase: any,
+  eventId: string,
+  parentId: string | null,
+  name: string
+): Promise<{ id: string; name: string } | null> {
+  const normalise = (v: string) => v.trim().toLowerCase().replace(/\s+/g, " ")
+
+  let query = supabase.from("halls").select("id, name").eq("event_id", eventId)
+  query = parentId ? query.eq("parent_id", parentId) : query.is("parent_id", null)
+
+  const { data } = await query
+  const target = normalise(name)
+  return (
+    ((data ?? []) as Array<{ id: string; name: string }>).find(
+      (h) => normalise(h.name) === target
+    ) ?? null
+  )
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
@@ -104,12 +136,32 @@ export async function POST(
     if (parentError) return parentError
   }
 
+  const duplicate = await findDuplicateName(supabase, eventId, parent_id ?? null, rest.name)
+  if (duplicate) {
+    return NextResponse.json(
+      {
+        error: parent_id
+          ? `This hall already has a ${duplicate.name}.`
+          : `You already have a ${duplicate.name}.`,
+        conflictsWith: duplicate.id,
+      },
+      { status: 409 }
+    )
+  }
+
   const { data, error } = await supabase
     .from("halls")
     .insert({ event_id: eventId, parent_id: parent_id ?? null, kind: resolvedKind, ...rest })
     .select("*")
     .single()
 
-  if (error) return NextResponse.json({ error: "Failed to create hall" }, { status: 500 })
+  if (error) {
+    // The unique index is the real authority; the check above is only there to
+    // return a useful message. A race between the two lands here.
+    if ((error as { code?: string }).code === "23505") {
+      return NextResponse.json({ error: `You already have a ${rest.name}.` }, { status: 409 })
+    }
+    return NextResponse.json({ error: "Failed to create hall" }, { status: 500 })
+  }
   return NextResponse.json({ data }, { status: 201 })
 }

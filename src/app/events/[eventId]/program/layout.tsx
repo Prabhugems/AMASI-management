@@ -37,30 +37,85 @@ type SidebarItem = {
   href: string
   icon: any
   external?: boolean
+  /** Which live count, if any, appears beside this item. */
+  badge?: "conflicts" | "unconfirmed"
 }
 
-const sidebarItems: SidebarItem[] = [
-  { title: "Dashboard", href: "", icon: LayoutDashboard },
-  { title: "Confirmations", href: "/confirmations", icon: UserCheck },
-  { title: "Schedule", href: "/schedule", icon: Calendar },
-  // The two-level agenda (blocks and talks). Sits alongside Schedule rather
-  // than replacing it: Schedule is in live use for AMASICON 2026, and this is
-  // unexercised until someone has driven it against real data.
-  { title: "Session Builder", href: "/builder", icon: CalendarDays },
-  { title: "Sessions", href: "/sessions", icon: Presentation },
-  { title: "Tracks", href: "/tracks", icon: Layers },
-  { title: "Venue Overview", href: "/halls", icon: Building2 },
-  { title: "Coordinators", href: "/coordinators", icon: UserCheck },
-  { title: "Speakers", href: "/speakers", icon: Users, external: true },
-  { title: "Import", href: "/import", icon: Upload },
-  { title: "Conflicts", href: "/conflicts", icon: AlertTriangle },
-  { title: "Changes", href: "/changes", icon: RefreshCw },
-  { title: "Print", href: "/print", icon: Printer },
-  { title: "Public View", href: "/public", icon: Globe },
-  { title: "Delegate View", href: "/delegate", icon: Calendar },
-  { title: "Settings", href: "/settings", icon: Settings },
-  { title: "Guide", href: "/guide", icon: BookOpen },
+type SidebarSection = { id: string; title: string; items: SidebarItem[] }
+
+// Grouped rather than a flat list of seventeen. The items are unchanged — the
+// same seventeen destinations — but a wall of seventeen gives no sense of what
+// belongs with what, and a coordinator scans it every time instead of reading
+// it once. Six groups of two to five is scannable.
+//
+// The order follows how an event is actually built: describe the content, then
+// the people, then reconcile the data, then publish it.
+const sidebarSections: SidebarSection[] = [
+  {
+    id: "overview",
+    title: "Overview",
+    items: [{ title: "Dashboard", href: "", icon: LayoutDashboard }],
+  },
+  {
+    id: "content",
+    title: "Content",
+    items: [
+      { title: "Venue Overview", href: "/halls", icon: Building2 },
+      { title: "Schedule", href: "/schedule", icon: Calendar },
+      // The two-level agenda (blocks and talks). Sits alongside Schedule rather
+      // than replacing it: Schedule is in live use for AMASICON 2026.
+      { title: "Session Builder", href: "/builder", icon: CalendarDays },
+      { title: "Sessions", href: "/sessions", icon: Presentation },
+      { title: "Tracks", href: "/tracks", icon: Layers },
+    ],
+  },
+  {
+    id: "people",
+    title: "People",
+    items: [
+      { title: "Speakers", href: "/speakers", icon: Users, external: true },
+      { title: "Coordinators", href: "/coordinators", icon: UserCheck },
+      { title: "Confirmations", href: "/confirmations", icon: UserCheck, badge: "unconfirmed" },
+    ],
+  },
+  {
+    id: "dataops",
+    title: "Data Ops",
+    items: [
+      { title: "Import", href: "/import", icon: Upload },
+      // No badge here yet, deliberately. findHallDoubleBookings treats any two
+      // overlapping sessions in one hall as a blocking clash, which reports 174
+      // on AMASICON 2026 — and every one is a false positive: HALL 2 runs
+      // parallel hands-on stations (Lap TAPP, IPOM Plus, Proctology-Laser…)
+      // 09:00-11:00 by design. A badge reading 174 that cannot be cleared
+      // teaches people to ignore badges. It returns once parallel stations are
+      // modelled as screens under their hall, which is what halls.parent_id
+      // exists for.
+      { title: "Conflicts", href: "/conflicts", icon: AlertTriangle },
+      { title: "Changes", href: "/changes", icon: RefreshCw },
+    ],
+  },
+  {
+    id: "output",
+    title: "Output",
+    items: [
+      { title: "Print", href: "/print", icon: Printer },
+      { title: "Public View", href: "/public", icon: Globe },
+      { title: "Delegate View", href: "/delegate", icon: Calendar },
+    ],
+  },
+  {
+    id: "system",
+    title: "System",
+    items: [
+      { title: "Settings", href: "/settings", icon: Settings },
+      { title: "Guide", href: "/guide", icon: BookOpen },
+    ],
+  },
 ]
+
+/** Flat view, for the mobile sheet and for resolving the active item. */
+const sidebarItems: SidebarItem[] = sidebarSections.flatMap((s) => s.items)
 
 export default function ProgramLayout({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -147,6 +202,19 @@ export default function ProgramLayout({ children }: { children: React.ReactNode 
     refetchOnMount: "always",
   })
 
+  // Live badge counts. Only two, and only where the meaning is unambiguous —
+  // see the counts route. Failures resolve to zero, which hides the badge
+  // rather than breaking navigation.
+  const { data: counts } = useQuery({
+    queryKey: ["program-counts", eventId],
+    queryFn: async () => {
+      const res = await fetch(`/api/events/${eventId}/program/counts`)
+      if (!res.ok) return { conflicts: 0, unconfirmed: 0 }
+      return (await res.json()).data as { conflicts: number; unconfirmed: number }
+    },
+    staleTime: 60_000,
+  })
+
   const isActive = (href: string) => {
     const fullPath = `${basePath}${href}`
     if (href === "") return pathname === basePath
@@ -169,31 +237,66 @@ export default function ProgramLayout({ children }: { children: React.ReactNode 
     return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
   }
 
-  const renderNavigation = () => (
+  const navLink = (item: SidebarItem, onNavigate?: () => void) => {
+    const Icon = item.icon
+    const fullHref = item.external ? `/events/${eventId}${item.href}` : `${basePath}${item.href}`
+    const active = item.external
+      ? pathname.startsWith(`/events/${eventId}${item.href}`)
+      : isActive(item.href)
+    const count = item.badge ? (counts?.[item.badge] ?? 0) : 0
+
+    return (
+      <Link
+        key={item.href}
+        href={fullHref}
+        onClick={onNavigate}
+        className={cn(
+          "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+          active
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="truncate">{item.title}</span>
+        {count > 0 && (
+          <span
+            className={cn(
+              "ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+              active
+                ? "bg-primary-foreground/20 text-primary-foreground"
+                : item.badge === "conflicts"
+                  // Blocking clashes are red because they stop a programme
+                  // being published; a chase list is amber because it is
+                  // ordinary work in progress.
+                  ? "bg-destructive/15 text-destructive"
+                  : "bg-amber-500/15 text-amber-600 dark:text-amber-500"
+            )}
+          >
+            {count > 99 ? "99+" : count}
+          </span>
+        )}
+      </Link>
+    )
+  }
+
+  const renderNavigation = (onNavigate?: () => void) => (
     <>
       {permissionsLoading ? (
         <div className="flex items-center justify-center py-4">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        sidebarItems.map((item) => {
-          const Icon = item.icon
-          const fullHref = item.external ? `/events/${eventId}${item.href}` : `${basePath}${item.href}`
-          const active = item.external ? pathname.startsWith(`/events/${eventId}${item.href}`) : isActive(item.href)
-          return (
-            <Link
-              key={item.href}
-              href={fullHref}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {item.title}
-            </Link>
-          )
-        })
+        sidebarSections.map((section) => (
+          <div key={section.id} className="pb-1">
+            <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              {section.title}
+            </div>
+            <div className="space-y-0.5">
+              {section.items.map((item) => navLink(item, onNavigate))}
+            </div>
+          </div>
+        ))
       )}
     </>
   )
@@ -204,7 +307,7 @@ export default function ProgramLayout({ children }: { children: React.ReactNode 
         <div className="text-center">
           <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-          <p className="text-muted-foreground mb-4">You don't have permission to access Program.</p>
+          <p className="text-muted-foreground mb-4">You don&apos;t have permission to access Program.</p>
           <Link href={`/events/${eventId}`} className="text-primary hover:underline">← Back to Dashboard</Link>
         </div>
       </div>
@@ -301,27 +404,10 @@ export default function ProgramLayout({ children }: { children: React.ReactNode 
             )}>
               <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto my-3" />
               <div className="px-4 pb-2 font-semibold text-lg border-b">Program</div>
-              <nav className="p-2 space-y-1">
-                {sidebarItems.map((item) => {
-                  const Icon = item.icon
-                  const fullHref = item.external ? `/events/${eventId}${item.href}` : `${basePath}${item.href}`
-                  const active = item.external ? pathname.startsWith(`/events/${eventId}${item.href}`) : isActive(item.href)
-                  return (
-                    <Link
-                      key={item.href}
-                      href={fullHref}
-                      onClick={() => setMobileNavOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-3 text-sm rounded-md transition-colors",
-                        active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.title}
-                    </Link>
-                  )
-                })}
-              </nav>
+              {/* Same renderer as the desktop sidebar. It previously kept its
+                  own copy of the list, which is how the two drift apart — the
+                  Session Builder was missing from one of them for a while. */}
+              <nav className="space-y-1 p-2">{renderNavigation(() => setMobileNavOpen(false))}</nav>
             </div>
           </>
         )

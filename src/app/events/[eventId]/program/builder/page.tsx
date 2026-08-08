@@ -1,26 +1,27 @@
 "use client"
 
-// Session Builder — the two-level agenda. A block holds its talks.
+// Session Builder — a programme is a grid of rows, not a stack of forms.
 //
-// A new route rather than a rewrite of program/schedule: that page is in live
-// use for AMASICON 2026, and this one depends on `talks`, which only became a
-// real table today. Both coexist until this is verified against real data, then
-// the old one is retired deliberately.
+// Shaped after the spreadsheet coordinators actually keep: a block with a chair
+// at the top, then rows of `time | topic | faculty`, contiguous times, some
+// rows deliberately empty (Discussion, LUNCH). Entering that should feel like
+// filling in the sheet.
 //
-// Scope boundary, drawn by the design's own copy. State 1a: "Who does this
-// session need? Set the roles you'll be inviting faculty into." So the Builder
-// DECLARES what a block and its talks need; Open Slots and Invitations do the
-// FILLING. Fill status is shown here ("Moderator 1 of 1 filled") but this is
-// not where you pick the person.
+// Two corrections from live use are baked in here:
 //
-// Time problems are warnings, never blocks — state 2g, "2 warnings — you can
-// still save". A real programme is edited out of order.
+//   1. FACULTY BELONGS IN THE ROW. Assignment was originally scoped out of this
+//      screen — declare roles here, fill them in Open Slots. Against a real
+//      sheet that is wrong: the coordinator already knows who is speaking, and
+//      sending them elsewhere to attach the person is the friction.
 //
-// Every sub-component lives at module scope rather than inside the page. A
-// component defined during render is a NEW component type on every render, so
-// React unmounts and remounts it — which for the stateful forms below means
-// whatever the coordinator was typing is discarded the moment any query
-// refetches in the background.
+//   2. DAYS COME FROM THE EVENT, not from the dates blocks happen to carry.
+//      Deriving them from the data left a new event with no tabs and no default
+//      date, silently accepted a block dated outside the event, and then hid it
+//      behind a phantom tab. See src/lib/session-builder-days.ts.
+//
+// Every sub-component sits at module scope: one defined during render is a new
+// component type each time, so React remounts it and discards whatever is being
+// typed the moment a background query refetches.
 
 import { useState, useMemo } from "react"
 import { useParams } from "next/navigation"
@@ -40,132 +41,395 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { FacultyPicker, type PickedFaculty } from "@/components/program/faculty-picker"
+import { ROLE_LABELS, defaultRosterFor, type FacultyRole } from "@/lib/agenda-roles"
 import {
-  FACULTY_ROLES,
-  ROLE_LABELS,
-  defaultRosterFor,
-  type FacultyRole,
-} from "@/lib/agenda-roles"
-import {
-  describeBlockSummary,
-  describeRollup,
   describeTimeIssues,
   describeUnscheduled,
   findUnscheduledRanges,
-  rollupBlockRoles,
   sortTalks,
   validateBlockTimes,
-  type BuilderAssignment,
   type BuilderBlock,
-  type BuilderRequirement,
   type BuilderTalk,
 } from "@/lib/session-builder"
+import {
+  buildDays,
+  defaultDay,
+  describeOutOfRange,
+  type BuilderDay,
+} from "@/lib/session-builder-days"
+import {
+  buildTimeline,
+  computeFit,
+  describeFit,
+  distributeEvenly,
+  durationOf,
+  setDuration,
+  type Retimed,
+  type TimelineSegment,
+} from "@/lib/session-timeline"
 import { buildVenueTree, toLocationOptions, type VenueRow } from "@/lib/venue-tree"
 
-type Block = BuilderBlock & {
-  session_type: string | null
-  hall_id: string | null
+type Block = BuilderBlock & { session_type: string | null; hall_id: string | null }
+
+type Assignment = {
+  id: string
+  session_id: string | null
+  talk_id: string | null
+  faculty_id: string | null
+  faculty_name: string
+  role: string
 }
 
 type LocationOption = ReturnType<typeof toLocationOptions>[number]
 
-type RoleDraft = { role: FacultyRole; required_count: number }
-
-const TALK_TYPES = [
-  { value: "talk", label: "Talk" },
-  { value: "panel", label: "Panel" },
-  { value: "discussion", label: "Open discussion" },
-  { value: "video", label: "Video" },
-  { value: "break", label: "Break" },
-] as const
-
-// Stable identities. `?? []` inside the component body would mint a new array
-// every render, so every useMemo keyed on it would recompute forever.
 const NO_BLOCKS: Block[] = []
 const NO_TALKS: BuilderTalk[] = []
-const NO_REQS: BuilderRequirement[] = []
-const NO_ASSIGNMENTS: BuilderAssignment[] = []
+const NO_ASSIGNMENTS: Assignment[] = []
 const NO_HALLS: VenueRow[] = []
+// Stable identity: an object literal fallback would be new on every render and
+// would make the day tabs recompute forever.
+const NO_WINDOW = { start_date: null, end_date: null }
 
-const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : "--:--")
-const timeValue = (t: string | null | undefined) => (t ? t.slice(0, 5) : "")
+const TALK_TYPES = [
+  { value: "talk", label: "Talk", role: "speaker" as FacultyRole },
+  { value: "panel", label: "Panel", role: "moderator" as FacultyRole },
+  { value: "discussion", label: "Discussion", role: "discussant" as FacultyRole },
+  { value: "video", label: "Video", role: "speaker" as FacultyRole },
+  { value: "break", label: "Break", role: "speaker" as FacultyRole },
+] as const
+
+const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : "")
+/** The role a row's faculty cell assigns, given the row's type. */
+const roleForType = (t: string | null | undefined): FacultyRole =>
+  TALK_TYPES.find((x) => x.value === (t ?? "talk"))?.role ?? "speaker"
 
 // ---------------------------------------------------------------------------
 
-function RoleEditor({
-  sessionId,
-  talkId,
-  requirements,
-  assignments,
-  onSave,
-}: {
-  sessionId: string
-  talkId: string | null
-  requirements: BuilderRequirement[]
-  assignments: BuilderAssignment[]
-  onSave: (v: { session_id: string; talk_id: string | null; requirements: RoleDraft[] }) => void
-}) {
-  const mine = requirements.filter(
-    (r) => r.session_id === sessionId && (r.talk_id ?? null) === talkId
-  )
-  const fills = rollupBlockRoles(sessionId, requirements, assignments).byTalk.get(talkId) ?? []
-
-  const setCount = (role: FacultyRole, count: number) => {
-    const next: RoleDraft[] = mine
-      .filter((r) => r.role !== role)
-      .map((r) => ({ role: r.role, required_count: r.required_count }))
-    if (count > 0) next.push({ role, required_count: count })
-    onSave({ session_id: sessionId, talk_id: talkId, requirements: next })
-  }
+/**
+ * The session as a proportional bar.
+ *
+ * The point of it is the things a table cannot show: a gap reads as a hole, a
+ * long talk reads as a wide block, and an overrun spills past the end. A
+ * coordinator sees the shape of the day without reading twenty pairs of clock
+ * times.
+ */
+function TimelineBar({ segments }: { segments: TimelineSegment[] }) {
+  if (segments.length === 0) return null
 
   return (
-    <div className="space-y-2">
-      {mine.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          No roles set — this {talkId ? "talk" : "block"} won&apos;t show up in Open Slots until you
-          add at least one.
-        </p>
-      ) : (
-        fills.map((f) => (
-          <div key={f.role} className="flex items-center gap-2 text-sm">
-            <span className="w-24 shrink-0 font-medium">{f.role_label}</span>
-            <span
-              className={cn(
-                "text-xs",
-                f.filled >= f.required ? "text-emerald-600" : "text-amber-600"
-              )}
-            >
-              {f.filled} of {f.required} filled
-            </span>
-            <Input
-              key={`${f.role}-${f.required}`}
-              type="number"
-              min={0}
-              max={50}
-              defaultValue={f.required}
-              onBlur={(e) => {
-                const n = Number(e.target.value)
-                if (Number.isFinite(n) && n >= 0 && n !== f.required) setCount(f.role, n)
-              }}
-              className="ml-auto h-7 w-16 text-xs"
-              aria-label={`How many ${f.role_label}`}
-            />
-          </div>
-        ))
-      )}
-      <div className="flex flex-wrap gap-1.5 pt-1">
-        {FACULTY_ROLES.filter((r) => !mine.some((m) => m.role === r)).map((role) => (
-          <button
-            key={role}
-            type="button"
-            onClick={() => setCount(role, 1)}
-            className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:border-primary hover:text-foreground"
-          >
-            <Plus className="mr-1 inline h-3 w-3" />
-            {ROLE_LABELS[role].one}
-          </button>
+    <div className="flex h-6 w-full overflow-hidden rounded-md border bg-muted/40">
+      {segments
+        .filter((s) => s.kind !== "overflow")
+        .map((s, i) => (
+          <div
+            key={`${s.kind}-${s.id ?? i}`}
+            title={`${s.label} · ${s.start}–${s.end} (${s.minutes}m)`}
+            style={{ width: `${s.widthPct}%` }}
+            className={cn(
+              "min-w-[2px] border-r border-background/60 last:border-r-0",
+              s.kind === "talk" && "bg-primary/70",
+              s.kind === "break" && "bg-muted-foreground/40",
+              // A gap is left visibly empty rather than filled — the hole IS
+              // the message.
+              s.kind === "gap" && "bg-transparent"
+            )}
+          />
         ))}
+    </div>
+  )
+}
+
+function TalkRow({
+  talk,
+  people,
+  warnings,
+  saving,
+  onPatch,
+  onDelete,
+  onAssign,
+  onUnassign,
+  onDuration,
+}: {
+  talk: BuilderTalk
+  people: Assignment[]
+  warnings: string[]
+  saving: boolean
+  onPatch: (patch: Partial<BuilderTalk>) => void
+  onDelete: () => void
+  onAssign: (picked: PickedFaculty) => void
+  onUnassign: (assignmentId: string) => void
+  onDuration: (minutes: number) => void
+}) {
+  const isBreak = talk.talk_type === "break"
+  const primary = people[0]
+  const mins = durationOf(talk)
+
+  return (
+    <div className="group border-b last:border-b-0">
+      <div className="grid items-center gap-2 px-3 py-1.5 sm:grid-cols-[76px_64px_60px_1fr_200px_92px_28px]">
+        <Input
+          type="time"
+          defaultValue={hhmm(talk.start_time)}
+          onBlur={(e) => e.target.value !== hhmm(talk.start_time) && onPatch({ start_time: e.target.value || null })}
+          className="h-8 text-xs tabular-nums"
+          aria-label="Start time"
+        />
+        {/*
+          Duration, not an end time. "Twenty minutes" is how a programme is
+          thought about; "09:30 to 09:50" is arithmetic the coordinator should
+          not be doing twenty times a session. Changing it ripples the rest.
+        */}
+        <Input
+          key={`dur-${talk.id}-${mins ?? ""}`}
+          type="number"
+          min={1}
+          max={600}
+          defaultValue={mins ?? ""}
+          onBlur={(e) => {
+            const v = Number(e.target.value)
+            if (Number.isFinite(v) && v > 0 && v !== mins) onDuration(v)
+          }}
+          placeholder="min"
+          className="h-8 text-xs tabular-nums"
+          aria-label="Duration in minutes"
+        />
+        <span className="text-xs tabular-nums text-muted-foreground">{hhmm(talk.end_time) || "--:--"}</span>
+        <Input
+          defaultValue={talk.title ?? ""}
+          onBlur={(e) => e.target.value !== (talk.title ?? "") && onPatch({ title: e.target.value || null })}
+          placeholder="Topic"
+          className="h-8 text-xs"
+          aria-label="Topic"
+        />
+
+        {/* A break or discussion legitimately has nobody — that is not a gap. */}
+        {isBreak ? (
+          <span className="text-xs text-muted-foreground">—</span>
+        ) : (
+          <FacultyPicker
+            value={primary?.faculty_name ?? null}
+            linked={!!primary?.faculty_id}
+            placeholder={ROLE_LABELS[roleForType(talk.talk_type)].one}
+            onPick={onAssign}
+            onClear={primary ? () => onUnassign(primary.id) : undefined}
+            disabled={saving}
+          />
+        )}
+
+        <select
+          value={talk.talk_type ?? "talk"}
+          onChange={(e) => onPatch({ talk_type: e.target.value })}
+          className="h-8 rounded-md border bg-background px-1.5 text-xs"
+          aria-label="Row type"
+        >
+          {TALK_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          onClick={onDelete}
+          className="opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+          aria-label="Remove row"
+        >
+          <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+        </button>
       </div>
+
+      {/* A panel carries more than one person; the extras list under the row. */}
+      {people.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 px-3 pb-1.5 pl-[212px]">
+          {people.slice(1).map((p) => (
+            <span
+              key={p.id}
+              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px]"
+            >
+              {p.faculty_name}
+              <button type="button" onClick={() => onUnassign(p.id)} aria-label={`Remove ${p.faculty_name}`}>
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {warnings.map((w) => (
+        <p key={w} className="flex items-start gap-1.5 px-3 pb-1.5 pl-[212px] text-[11px] text-amber-600 dark:text-amber-500">
+          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+          {w}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+function BlockCard({
+  block,
+  talks,
+  assignments,
+  locationLabel,
+  outOfRange,
+  isOpen,
+  saving,
+  onToggle,
+  onEditBlock,
+  onAddRow,
+  onPatchTalk,
+  onDeleteTalk,
+  onAssign,
+  onUnassign,
+  onDuration,
+  onDistribute,
+}: {
+  block: Block
+  talks: BuilderTalk[]
+  assignments: Assignment[]
+  locationLabel: Map<string, string>
+  outOfRange: string
+  isOpen: boolean
+  saving: boolean
+  onToggle: () => void
+  onEditBlock: () => void
+  onAddRow: () => void
+  onPatchTalk: (talkId: string, patch: Partial<BuilderTalk>) => void
+  onDeleteTalk: (talkId: string) => void
+  onAssign: (talkId: string | null, role: FacultyRole, picked: PickedFaculty) => void
+  onUnassign: (assignmentId: string) => void
+  onDuration: (talkId: string, minutes: number) => void
+  onDistribute: () => void
+}) {
+  const issues = validateBlockTimes(block, talks)
+  const fit = computeFit(block, talks)
+  const timeline = buildTimeline(block, talks, (t) => t.title || "Untitled")
+  const unscheduled = describeUnscheduled(findUnscheduledRanges(block, talks))
+  const chairs = assignments.filter((a) => a.talk_id === null && a.role === "chairperson")
+  const staffed = talks.filter((t) => assignments.some((a) => a.talk_id === t.id)).length
+  const needsPerson = talks.filter((t) => t.talk_type !== "break").length
+
+  return (
+    <div className={cn("rounded-xl border bg-card", outOfRange && "border-amber-500/50")}>
+      <div className="flex items-start gap-3 p-3">
+        <button type="button" onClick={onToggle} className="mt-0.5" aria-label="Expand block">
+          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        <div className="w-20 shrink-0 text-xs tabular-nums text-muted-foreground">
+          {hhmm(block.start_time) || "--:--"}
+          <div>– {hhmm(block.end_time) || "--:--"}</div>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-medium">{block.session_name}</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+            {block.hall_id && (
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {locationLabel.get(block.hall_id) ?? "Unknown location"}
+              </span>
+            )}
+            <span>
+              {talks.length} row{talks.length === 1 ? "" : "s"}
+              {needsPerson > 0 && ` · ${staffed}/${needsPerson} with faculty`}
+            </span>
+            {chairs.length > 0 && <span>Chair: {chairs.map((c) => c.faculty_name).join(", ")}</span>}
+          </div>
+          {outOfRange && (
+            <p className="mt-1 flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-500">
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+              {outOfRange}
+            </p>
+          )}
+        </div>
+        <Button variant="ghost" size="sm" className="h-7 shrink-0 text-xs" onClick={onEditBlock}>
+          Edit
+        </Button>
+      </div>
+
+      {isOpen && (
+        <div className="border-t">
+          {timeline.length > 0 && (
+            <div className="space-y-1.5 px-3 pt-3">
+              <TimelineBar segments={timeline} />
+              <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-muted-foreground">
+                <span>{describeFit(fit)}</span>
+                {talks.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={onDistribute}
+                    className="ml-auto font-medium text-primary hover:underline"
+                  >
+                    Space rows evenly
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-2 px-3 py-2">
+            <span className="text-xs font-medium text-muted-foreground">Chair</span>
+            <div className="w-56">
+              <FacultyPicker
+                value={chairs[0]?.faculty_name ?? null}
+                linked={!!chairs[0]?.faculty_id}
+                placeholder="Add chairperson"
+                onPick={(p) => onAssign(null, "chairperson", p)}
+                onClear={chairs[0] ? () => onUnassign(chairs[0].id) : undefined}
+                disabled={saving}
+              />
+            </div>
+          </div>
+
+          {talks.length > 0 && (
+            <div className="hidden border-y bg-muted/40 px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[76px_64px_60px_1fr_200px_92px_28px] sm:gap-2">
+              <span>Start</span>
+              <span>Mins</span>
+              <span>Ends</span>
+              <span>Topic</span>
+              <span>Faculty</span>
+              <span>Type</span>
+              <span />
+            </div>
+          )}
+
+          {talks.map((t) => (
+            <TalkRow
+              key={t.id}
+              talk={t}
+              people={assignments.filter((a) => a.talk_id === t.id)}
+              warnings={issues.filter((i) => i.talk_id === t.id).map((i) => i.message)}
+              saving={saving}
+              onPatch={(patch) => onPatchTalk(t.id, patch)}
+              onDelete={() => onDeleteTalk(t.id)}
+              onAssign={(p) => onAssign(t.id, roleForType(t.talk_type), p)}
+              onUnassign={onUnassign}
+              onDuration={(m) => onDuration(t.id, m)}
+            />
+          ))}
+
+          <div className="flex flex-wrap items-center gap-3 px-3 py-2">
+            <button
+              type="button"
+              onClick={onAddRow}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add row
+            </button>
+            {unscheduled && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {unscheduled}
+              </span>
+            )}
+            {describeTimeIssues(issues) && (
+              <span className="ml-auto text-xs text-amber-600 dark:text-amber-500">
+                {describeTimeIssues(issues)}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -188,443 +452,92 @@ function BlockForm({
   const [form, setForm] = useState({
     session_name: block?.session_name ?? "",
     session_date: block?.session_date ?? defaultDate ?? "",
-    start_time: timeValue(block?.start_time),
-    end_time: timeValue(block?.end_time),
+    start_time: hhmm(block?.start_time),
+    end_time: hhmm(block?.end_time),
     session_type: block?.session_type ?? "",
     hall_id: block?.hall_id ?? "",
   })
   const [tried, setTried] = useState(false)
 
   const nameMissing = form.session_name.trim() === ""
-  const endBeforeStart =
-    form.start_time !== "" && form.end_time !== "" && form.end_time <= form.start_time
-  const problems = [nameMissing, endBeforeStart].filter(Boolean).length
-
   const roster = defaultRosterFor(form.session_type)
 
   return (
     <div className="rounded-xl border border-primary/40 bg-muted/30 p-4">
-      <div className="mb-3 text-sm font-semibold">
-        {block ? "Edit session block" : "Add a session block"}
-      </div>
-
+      <div className="mb-3 text-sm font-semibold">{block ? "Edit session" : "Add a session"}</div>
       <div className="space-y-3">
         <div>
-          <label htmlFor="block-name" className="text-xs font-medium text-muted-foreground">
-            Block name
-          </label>
+          <label htmlFor="bn" className="text-xs font-medium text-muted-foreground">Session name</label>
           <Input
-            id="block-name"
+            id="bn"
             value={form.session_name}
             onChange={(e) => setForm({ ...form, session_name: e.target.value })}
-            placeholder="e.g. GALL BLADDER"
+            placeholder="e.g. Session 1 — Ventral Hernia"
             className={cn("mt-1", tried && nameMissing && "border-destructive")}
           />
           {tried && nameMissing && (
             <p className="mt-1 text-xs text-destructive">Give the session a name before saving</p>
           )}
         </div>
-
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label htmlFor="block-day" className="text-xs font-medium text-muted-foreground">
-              Day
-            </label>
-            <Input
-              id="block-day"
-              type="date"
-              value={form.session_date}
-              onChange={(e) => setForm({ ...form, session_date: e.target.value })}
-              className="mt-1"
-            />
+            <label htmlFor="bd" className="text-xs font-medium text-muted-foreground">Day</label>
+            <Input id="bd" type="date" value={form.session_date}
+              onChange={(e) => setForm({ ...form, session_date: e.target.value })} className="mt-1" />
           </div>
           <div>
-            <label htmlFor="block-start" className="text-xs font-medium text-muted-foreground">
-              Start
-            </label>
-            <Input
-              id="block-start"
-              type="time"
-              value={form.start_time}
-              onChange={(e) => setForm({ ...form, start_time: e.target.value })}
-              className="mt-1"
-            />
+            <label htmlFor="bs" className="text-xs font-medium text-muted-foreground">Start</label>
+            <Input id="bs" type="time" value={form.start_time}
+              onChange={(e) => setForm({ ...form, start_time: e.target.value })} className="mt-1" />
           </div>
           <div>
-            <label htmlFor="block-end" className="text-xs font-medium text-muted-foreground">
-              End
-            </label>
-            <Input
-              id="block-end"
-              type="time"
-              value={form.end_time}
-              onChange={(e) => setForm({ ...form, end_time: e.target.value })}
-              className={cn("mt-1", tried && endBeforeStart && "border-destructive")}
-            />
-            {tried && endBeforeStart && (
-              <p className="mt-1 text-xs text-destructive">
-                End time should be after the start time
-              </p>
-            )}
+            <label htmlFor="be" className="text-xs font-medium text-muted-foreground">End</label>
+            <Input id="be" type="time" value={form.end_time}
+              onChange={(e) => setForm({ ...form, end_time: e.target.value })} className="mt-1" />
           </div>
         </div>
-
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label htmlFor="block-location" className="text-xs font-medium text-muted-foreground">
-              Location
-            </label>
-            <select
-              id="block-location"
-              value={form.hall_id}
+            <label htmlFor="bl" className="text-xs font-medium text-muted-foreground">Location</label>
+            <select id="bl" value={form.hall_id}
               onChange={(e) => setForm({ ...form, hall_id: e.target.value })}
-              className="mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm"
-            >
-              <option value="">No location yet — you can add one later</option>
+              className="mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm">
+              <option value="">No location yet</option>
               {locations.map((o) => (
                 <option key={o.id} value={o.id} disabled={!o.selectable}>
-                  {o.depth === 1 ? `    ${o.label}` : o.label}
+                  {o.depth === 1 ? `    ${o.label}` : o.label}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label htmlFor="block-type" className="text-xs font-medium text-muted-foreground">
+            <label htmlFor="bt" className="text-xs font-medium text-muted-foreground">
               Type <span className="font-normal">— sets the starting roster</span>
             </label>
-            <Input
-              id="block-type"
-              value={form.session_type}
+            <Input id="bt" value={form.session_type}
               onChange={(e) => setForm({ ...form, session_type: e.target.value })}
-              placeholder="e.g. symposium"
-              className="mt-1"
-            />
+              placeholder="e.g. symposium" className="mt-1" />
             {!block && roster.length > 0 && (
               <p className="mt-1 text-xs text-muted-foreground">
-                Will start with{" "}
-                {roster.map((r) => `${r.required_count} ${ROLE_LABELS[r.role].one}`).join(", ")}
+                Will start with {roster.map((r) => `${r.required_count} ${ROLE_LABELS[r.role].one}`).join(", ")}
               </p>
             )}
           </div>
         </div>
       </div>
-
       <div className="mt-4 flex items-center gap-3">
-        <Button
-          size="sm"
-          disabled={saving}
-          onClick={() => {
-            setTried(true)
-            if (problems > 0) return
-            onSave({ ...form, id: block?.id })
-          }}
-        >
+        <Button size="sm" disabled={saving} onClick={() => {
+          setTried(true)
+          if (nameMissing) return
+          onSave({ ...form, id: block?.id })
+        }}>
           {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-          Save block
+          Save session
         </Button>
-        <button
-          type="button"
-          className="text-sm text-muted-foreground hover:text-foreground"
-          onClick={onCancel}
-        >
-          Cancel
-        </button>
-        {tried && problems > 1 && (
-          <span className="ml-auto text-xs text-destructive">{problems} things to fix</span>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function TalkForm({
-  sessionId,
-  talk,
-  saving,
-  onSave,
-  onCancel,
-}: {
-  sessionId: string
-  talk: BuilderTalk | null
-  saving: boolean
-  onSave: (v: Partial<BuilderTalk> & { session_id: string; id?: string }) => void
-  onCancel: () => void
-}) {
-  const [form, setForm] = useState({
-    title: talk?.title ?? "",
-    talk_type: talk?.talk_type ?? "talk",
-    start_time: timeValue(talk?.start_time),
-    end_time: timeValue(talk?.end_time),
-  })
-
-  return (
-    <div className="rounded-lg border border-primary/40 bg-background p-3">
-      <div className="grid gap-2 sm:grid-cols-[auto_auto_1fr_auto]">
-        <Input
-          type="time"
-          value={form.start_time}
-          onChange={(e) => setForm({ ...form, start_time: e.target.value })}
-          className="h-8 w-28 text-xs"
-          aria-label="Talk start time"
-        />
-        <Input
-          type="time"
-          value={form.end_time}
-          onChange={(e) => setForm({ ...form, end_time: e.target.value })}
-          className="h-8 w-28 text-xs"
-          aria-label="Talk end time"
-        />
-        <Input
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          placeholder="Talk title"
-          className="h-8 text-xs"
-        />
-        <select
-          value={form.talk_type ?? "talk"}
-          onChange={(e) => setForm({ ...form, talk_type: e.target.value })}
-          className="h-8 rounded-md border bg-background px-2 text-xs"
-          aria-label="Talk type"
-        >
-          {TALK_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="mt-2 flex items-center gap-3">
-        <Button
-          size="sm"
-          className="h-7 text-xs"
-          disabled={saving}
-          onClick={() => onSave({ ...form, session_id: sessionId, id: talk?.id })}
-        >
-          {saving && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
-          Save talk
-        </Button>
-        <button
-          type="button"
-          className="text-xs text-muted-foreground hover:text-foreground"
-          onClick={onCancel}
-        >
+        <button type="button" onClick={onCancel} className="text-sm text-muted-foreground hover:text-foreground">
           Cancel
         </button>
       </div>
-    </div>
-  )
-}
-
-function BlockCard({
-  block,
-  talks,
-  requirements,
-  assignments,
-  locationLabel,
-  isOpen,
-  onToggle,
-  editingTalkId,
-  addingTalk,
-  savingTalk,
-  onEditBlock,
-  onEditTalk,
-  onAddTalk,
-  onCancelTalk,
-  onSaveTalk,
-  onDeleteTalk,
-  onSaveRoles,
-}: {
-  block: Block
-  talks: BuilderTalk[]
-  requirements: BuilderRequirement[]
-  assignments: BuilderAssignment[]
-  locationLabel: Map<string, string>
-  isOpen: boolean
-  onToggle: () => void
-  editingTalkId: string | null
-  addingTalk: boolean
-  savingTalk: boolean
-  onEditBlock: () => void
-  onEditTalk: (id: string) => void
-  onAddTalk: () => void
-  onCancelTalk: () => void
-  onSaveTalk: (v: Partial<BuilderTalk> & { session_id: string; id?: string }) => void
-  onDeleteTalk: (id: string) => void
-  onSaveRoles: (v: { session_id: string; talk_id: string | null; requirements: RoleDraft[] }) => void
-}) {
-  const rollup = rollupBlockRoles(block.id, requirements, assignments)
-  const issues = validateBlockTimes(block, talks)
-  const unscheduled = describeUnscheduled(findUnscheduledRanges(block, talks))
-  const warnings = describeTimeIssues(issues)
-
-  return (
-    <div className="rounded-xl border bg-card">
-      <button type="button" className="flex w-full items-start gap-3 p-4 text-left" onClick={onToggle}>
-        {isOpen ? (
-          <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-        )}
-        <div className="w-20 shrink-0 text-sm tabular-nums text-muted-foreground">
-          {hhmm(block.start_time)}
-          <div>– {hhmm(block.end_time)}</div>
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="font-medium">{block.session_name}</div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            {block.hall_id && (
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {locationLabel.get(block.hall_id) ?? "Unknown location"}
-              </span>
-            )}
-            <span>{describeBlockSummary(talks.length, rollup)}</span>
-          </div>
-        </div>
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium",
-            rollup.required === 0
-              ? "bg-muted text-muted-foreground"
-              : rollup.unfilled === 0
-                ? "bg-emerald-500/10 text-emerald-600"
-                : "bg-amber-500/10 text-amber-600"
-          )}
-        >
-          {describeRollup(rollup)}
-        </span>
-      </button>
-
-      {isOpen && (
-        <div className="space-y-3 border-t px-4 py-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Who this block needs
-            </span>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onEditBlock}>
-              Edit block
-            </Button>
-          </div>
-          <RoleEditor
-            sessionId={block.id}
-            talkId={null}
-            requirements={requirements}
-            assignments={assignments}
-            onSave={onSaveRoles}
-          />
-
-          <div className="pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Talks in this block
-          </div>
-
-          {talks.length === 0 && !addingTalk && (
-            <p className="text-xs text-muted-foreground">
-              No talks yet. Add them one by one — each talk carries its own time, title and roles. A
-              block with no talks is fine too (breaks, lunch).
-            </p>
-          )}
-
-          {talks.map((t) =>
-            editingTalkId === t.id ? (
-              <TalkForm
-                key={t.id}
-                sessionId={block.id}
-                talk={t}
-                saving={savingTalk}
-                onSave={onSaveTalk}
-                onCancel={onCancelTalk}
-              />
-            ) : (
-              <div key={t.id} className="rounded-lg border bg-background p-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-24 shrink-0 text-xs tabular-nums text-muted-foreground">
-                    {hhmm(t.start_time)} – {hhmm(t.end_time)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm">{t.title || "Untitled talk"}</div>
-                    {t.talk_type && t.talk_type !== "talk" && (
-                      <span className="mt-0.5 inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                        {TALK_TYPES.find((x) => x.value === t.talk_type)?.label ?? t.talk_type}
-                      </span>
-                    )}
-                    <div className="mt-2">
-                      <RoleEditor
-                        sessionId={block.id}
-                        talkId={t.id}
-                        requirements={requirements}
-                        assignments={assignments}
-                        onSave={onSaveRoles}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => onEditTalk(t.id)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => onDeleteTalk(t.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      <span className="sr-only">Remove talk</span>
-                    </Button>
-                  </div>
-                </div>
-                {issues
-                  .filter((i) => i.talk_id === t.id)
-                  .map((i) => (
-                    <p
-                      key={i.code}
-                      className="mt-2 flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500"
-                    >
-                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-                      {i.message}
-                    </p>
-                  ))}
-              </div>
-            )
-          )}
-
-          {addingTalk && (
-            <TalkForm
-              sessionId={block.id}
-              talk={null}
-              saving={savingTalk}
-              onSave={onSaveTalk}
-              onCancel={onCancelTalk}
-            />
-          )}
-
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            {!addingTalk && editingTalkId === null && (
-              <button
-                type="button"
-                onClick={onAddTalk}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {talks.length === 0 ? "Add a talk" : "Add another talk"}
-              </button>
-            )}
-            {unscheduled && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                {unscheduled}
-              </span>
-            )}
-            {warnings && (
-              <span className="ml-auto text-xs text-amber-600 dark:text-amber-500">{warnings}</span>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -635,17 +548,26 @@ export default function SessionBuilderPage() {
   const { eventId } = useParams<{ eventId: string }>()
   const queryClient = useQueryClient()
 
-  const [day, setDay] = useState<string | null>(null)
+  const [day, setDay] = useState<string | null | undefined>(undefined)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [editingBlock, setEditingBlock] = useState<string | "new" | null>(null)
-  const [editingTalk, setEditingTalk] = useState<string | null>(null)
-  const [addingTalkTo, setAddingTalkTo] = useState<string | null>(null)
 
   const invalidate = () => {
-    for (const k of ["builder-blocks", "builder-talks", "builder-reqs"]) {
+    for (const k of ["builder-blocks", "builder-talks", "builder-assignments"]) {
       queryClient.invalidateQueries({ queryKey: [k, eventId] })
     }
   }
+
+  const eventQ = useQuery({
+    queryKey: ["builder-event", eventId],
+    queryFn: async () => {
+      const res = await fetch(`/api/events/${eventId}`)
+      if (!res.ok) return { start_date: null, end_date: null }
+      const j = await res.json()
+      const e = j.data ?? j
+      return { start_date: e?.start_date ?? null, end_date: e?.end_date ?? null }
+    },
+  })
 
   const blocksQ = useQuery({
     queryKey: ["builder-blocks", eventId],
@@ -665,21 +587,12 @@ export default function SessionBuilderPage() {
     },
   })
 
-  const reqsQ = useQuery({
-    queryKey: ["builder-reqs", eventId],
-    queryFn: async () => {
-      const res = await fetch(`/api/events/${eventId}/role-requirements`)
-      if (!res.ok) throw new Error("Failed to load role requirements")
-      return ((await res.json()).data ?? []) as BuilderRequirement[]
-    },
-  })
-
   const assignmentsQ = useQuery({
     queryKey: ["builder-assignments", eventId],
     queryFn: async () => {
       const res = await fetch(`/api/events/${eventId}/program/faculty`)
       if (!res.ok) return NO_ASSIGNMENTS
-      return (await res.json()) as BuilderAssignment[]
+      return (await res.json()) as Assignment[]
     },
   })
 
@@ -692,29 +605,22 @@ export default function SessionBuilderPage() {
     },
   })
 
+  const eventWindow = eventQ.data ?? NO_WINDOW
   const blocks = blocksQ.data ?? NO_BLOCKS
   const talks = talksQ.data ?? NO_TALKS
-  const requirements = reqsQ.data ?? NO_REQS
   const assignments = assignmentsQ.data ?? NO_ASSIGNMENTS
   const halls = hallsQ.data ?? NO_HALLS
 
   const locations = useMemo(() => toLocationOptions(buildVenueTree(halls)), [halls])
-  const locationLabel = useMemo(
-    () => new Map(locations.map((o) => [o.id, o.label])),
-    [locations]
-  )
+  const locationLabel = useMemo(() => new Map(locations.map((o) => [o.id, o.label])), [locations])
 
-  const days = useMemo(
-    () => [...new Set(blocks.map((b) => b.session_date).filter(Boolean) as string[])].sort(),
-    [blocks]
-  )
-
-  const activeDay = day ?? days[0] ?? null
+  const days: BuilderDay[] = useMemo(() => buildDays(eventWindow, blocks), [eventWindow, blocks])
+  const activeDay = day === undefined ? defaultDay(days) : day
 
   const dayBlocks = useMemo(
     () =>
       blocks
-        .filter((b) => (activeDay ? b.session_date === activeDay : !b.session_date))
+        .filter((b) => (b.session_date ?? null) === activeDay)
         .sort((a, b) => (a.start_time ?? "99:99").localeCompare(b.start_time ?? "99:99")),
     [blocks, activeDay]
   )
@@ -730,18 +636,10 @@ export default function SessionBuilderPage() {
     return m
   }, [talks])
 
-  const unfilledToday = useMemo(
-    () =>
-      dayBlocks.reduce((n, b) => n + rollupBlockRoles(b.id, requirements, assignments).unfilled, 0),
-    [dayBlocks, requirements, assignments]
-  )
-
   const saveBlock = useMutation({
     mutationFn: async (v: Partial<Block> & { id?: string }) => {
       const res = await fetch(
-        v.id
-          ? `/api/events/${eventId}/program/sessions/${v.id}`
-          : `/api/events/${eventId}/program/sessions`,
+        v.id ? `/api/events/${eventId}/program/sessions/${v.id}` : `/api/events/${eventId}/program/sessions`,
         {
           method: v.id ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -764,64 +662,131 @@ export default function SessionBuilderPage() {
     onError: (e: Error) => toast.error(e.message),
   })
 
-  const saveTalk = useMutation({
-    mutationFn: async (v: Partial<BuilderTalk> & { session_id: string; id?: string }) => {
-      const body: Record<string, unknown> = {
-        title: v.title || null,
-        talk_type: v.talk_type || "talk",
-        start_time: v.start_time || null,
-        end_time: v.end_time || null,
-      }
-      if (!v.id) body.session_id = v.session_id
-      const res = await fetch(
-        v.id ? `/api/events/${eventId}/talks/${v.id}` : `/api/events/${eventId}/talks`,
-        {
-          method: v.id ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }
-      )
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to save talk")
+  /** New rows start where the previous one ended, like the sheet. */
+  const addRow = useMutation({
+    mutationFn: async (blockId: string) => {
+      const existing = talksByBlock.get(blockId) ?? NO_TALKS
+      const block = blocks.find((b) => b.id === blockId)
+      const last = existing.at(-1)
+      const start = hhmm(last?.end_time) || hhmm(block?.start_time) || null
+
+      const res = await fetch(`/api/events/${eventId}/talks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: blockId, talk_type: "talk", start_time: start }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to add row")
     },
-    onSuccess: () => {
-      invalidate()
-      setEditingTalk(null)
-      setAddingTalkTo(null)
+    onSuccess: invalidate,
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const patchTalk = useMutation({
+    mutationFn: async ({ talkId, patch }: { talkId: string; patch: Partial<BuilderTalk> }) => {
+      const res = await fetch(`/api/events/${eventId}/talks/${talkId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to save row")
     },
+    onSuccess: invalidate,
     onError: (e: Error) => toast.error(e.message),
   })
 
   const deleteTalk = useMutation({
     mutationFn: async (talkId: string) => {
       const res = await fetch(`/api/events/${eventId}/talks/${talkId}`, { method: "DELETE" })
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to remove talk")
-      return (await res.json()).removed as { assignments: number; requirements: number }
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to remove row")
     },
-    onSuccess: (removed) => {
+    onSuccess: invalidate,
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const assign = useMutation({
+    mutationFn: async (v: {
+      sessionId: string
+      talkId: string | null
+      role: FacultyRole
+      picked: PickedFaculty
+    }) => {
+      const res = await fetch(`/api/events/${eventId}/session-speakers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: v.sessionId,
+          talk_id: v.talkId,
+          role: v.role,
+          faculty_id: v.picked.faculty_id,
+          faculty_name: v.picked.faculty_name,
+          faculty_email: v.picked.faculty_email,
+          status: "pending",
+        }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to assign")
+    },
+    onSuccess: invalidate,
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const unassign = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const res = await fetch(`/api/events/${eventId}/session-speakers/${assignmentId}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to remove")
+    },
+    onSuccess: invalidate,
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  /** One request for the whole ripple, so the programme is never half-moved. */
+  const applyRetime = async (sessionId: string, changes: Retimed[]) => {
+    if (changes.length === 0) return
+    const res = await fetch(`/api/events/${eventId}/talks/retime`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, changes }),
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to re-time")
+  }
+
+  const changeDuration = useMutation({
+    mutationFn: async (v: { block: Block; talkId: string; minutes: number }) => {
+      const rows = talksByBlock.get(v.block.id) ?? NO_TALKS
+      const result = setDuration(v.block, rows, v.talkId, v.minutes)
+      await applyRetime(v.block.id, result.changes)
+      return result
+    },
+    onSuccess: (result) => {
       invalidate()
-      toast.success(
-        removed.assignments > 0
-          ? `Talk removed, along with ${removed.assignments} assignment${removed.assignments === 1 ? "" : "s"}.`
-          : "Talk removed."
-      )
+      // Say what moved. A silent twenty-row shift is alarming; an unexplained
+      // one that stopped short of lunch is worse.
+      if (result.blockedBy) {
+        toast.warning(
+          result.overflowMinutes > 0
+            ? `Stopped at the break — the rows before it now run ${result.overflowMinutes} min past it.`
+            : "Stopped at the break, which keeps its own time."
+        )
+      } else if (result.changes.length > 1) {
+        toast.success(`${result.changes.length - 1} later row${result.changes.length === 2 ? "" : "s"} moved.`)
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   })
 
-  const saveRoles = useMutation({
-    mutationFn: async (v: {
-      session_id: string
-      talk_id: string | null
-      requirements: RoleDraft[]
-    }) => {
-      const res = await fetch(`/api/events/${eventId}/role-requirements`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(v),
-      })
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to save roles")
+  const distribute = useMutation({
+    mutationFn: async (block: Block) => {
+      const rows = talksByBlock.get(block.id) ?? NO_TALKS
+      const changes = distributeEvenly(block, rows)
+      if (changes.length === 0) throw new Error("Give the session a start and end time first")
+      await applyRetime(block.id, changes)
+      return changes.length
     },
-    onSuccess: invalidate,
+    onSuccess: (n) => {
+      invalidate()
+      toast.success(`${n} row${n === 1 ? "" : "s"} spaced evenly. Adjust any that differ.`)
+    },
     onError: (e: Error) => toast.error(e.message),
   })
 
@@ -833,100 +798,83 @@ export default function SessionBuilderPage() {
     )
   }
 
-  if (blocksQ.isError) {
-    return (
-      <div className="p-6 text-sm text-destructive">
-        Couldn&apos;t load the programme. {(blocksQ.error as Error).message}
-      </div>
-    )
-  }
+  const saving = assign.isPending || unassign.isPending
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 p-4 sm:p-6">
+    <div className="mx-auto max-w-5xl space-y-4 p-4 sm:p-6">
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold sm:text-2xl">Session Builder</h1>
           <p className="text-sm text-muted-foreground">
-            {dayBlocks.length} block{dayBlocks.length === 1 ? "" : "s"}
-            {unfilledToday > 0 &&
-              ` · ${unfilledToday} unfilled role${unfilledToday === 1 ? "" : "s"}`}
+            {dayBlocks.length} session{dayBlocks.length === 1 ? "" : "s"} on this day
           </p>
         </div>
         {editingBlock === null && (
           <Button onClick={() => setEditingBlock("new")}>
             <Plus className="mr-2 h-4 w-4" />
-            Add a block
+            Add a session
           </Button>
         )}
       </div>
 
-      {days.length > 1 && (
+      {days.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {days.map((d, i) => (
+          {days.map((d) => (
             <button
-              key={d}
+              key={d.date ?? "unscheduled"}
               type="button"
-              onClick={() => setDay(d)}
+              onClick={() => setDay(d.date)}
               className={cn(
                 "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                d === activeDay
+                d.date === activeDay
                   ? "bg-primary text-primary-foreground"
-                  : "border text-muted-foreground hover:text-foreground"
+                  : d.withinEvent
+                    ? "border text-muted-foreground hover:text-foreground"
+                    : "border border-amber-500/50 text-amber-600"
               )}
             >
-              Day {i + 1}
-              <span className="ml-1.5 opacity-70">
-                {new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-              </span>
+              {d.label}
+              {d.date && (
+                <span className="ml-1.5 opacity-70">
+                  {new Date(d.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                </span>
+              )}
+              {d.blockCount > 0 && <span className="ml-1.5 opacity-70">· {d.blockCount}</span>}
             </button>
           ))}
         </div>
       )}
 
       {editingBlock === "new" && (
-        <BlockForm
-          block={null}
-          defaultDate={activeDay}
-          locations={locations}
-          saving={saveBlock.isPending}
-          onSave={saveBlock.mutate}
-          onCancel={() => setEditingBlock(null)}
-        />
+        <BlockForm block={null} defaultDate={activeDay} locations={locations}
+          saving={saveBlock.isPending} onSave={saveBlock.mutate} onCancel={() => setEditingBlock(null)} />
       )}
 
       {dayBlocks.length === 0 && editingBlock !== "new" ? (
         <div className="rounded-xl border border-dashed bg-card py-14 text-center">
           <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="mb-4 text-sm text-muted-foreground">
-            Nothing scheduled{activeDay ? " on this day" : ""} yet.
-          </p>
+          <p className="mb-4 text-sm text-muted-foreground">Nothing scheduled on this day yet.</p>
           <Button onClick={() => setEditingBlock("new")}>
             <Plus className="mr-2 h-4 w-4" />
-            Add a block
+            Add a session
           </Button>
         </div>
       ) : (
         <div className="space-y-3">
           {dayBlocks.map((b) =>
             editingBlock === b.id ? (
-              <BlockForm
-                key={b.id}
-                block={b}
-                defaultDate={activeDay}
-                locations={locations}
-                saving={saveBlock.isPending}
-                onSave={saveBlock.mutate}
-                onCancel={() => setEditingBlock(null)}
-              />
+              <BlockForm key={b.id} block={b} defaultDate={activeDay} locations={locations}
+                saving={saveBlock.isPending} onSave={saveBlock.mutate} onCancel={() => setEditingBlock(null)} />
             ) : (
               <BlockCard
                 key={b.id}
                 block={b}
                 talks={talksByBlock.get(b.id) ?? NO_TALKS}
-                requirements={requirements}
-                assignments={assignments}
+                assignments={assignments.filter((a) => a.session_id === b.id)}
                 locationLabel={locationLabel}
+                outOfRange={describeOutOfRange(eventWindow, b.session_date)}
                 isOpen={expanded.has(b.id)}
+                saving={saving}
                 onToggle={() =>
                   setExpanded((s) => {
                     const n = new Set(s)
@@ -935,19 +883,18 @@ export default function SessionBuilderPage() {
                     return n
                   })
                 }
-                editingTalkId={editingTalk}
-                addingTalk={addingTalkTo === b.id}
-                savingTalk={saveTalk.isPending}
                 onEditBlock={() => setEditingBlock(b.id)}
-                onEditTalk={setEditingTalk}
-                onAddTalk={() => setAddingTalkTo(b.id)}
-                onCancelTalk={() => {
-                  setEditingTalk(null)
-                  setAddingTalkTo(null)
-                }}
-                onSaveTalk={saveTalk.mutate}
+                onAddRow={() => addRow.mutate(b.id)}
+                onPatchTalk={(talkId, patch) => patchTalk.mutate({ talkId, patch })}
                 onDeleteTalk={deleteTalk.mutate}
-                onSaveRoles={saveRoles.mutate}
+                onAssign={(talkId, role, picked) =>
+                  assign.mutate({ sessionId: b.id, talkId, role, picked })
+                }
+                onUnassign={unassign.mutate}
+                onDuration={(talkId, minutes) =>
+                  changeDuration.mutate({ block: b, talkId, minutes })
+                }
+                onDistribute={() => distribute.mutate(b)}
               />
             )
           )}
