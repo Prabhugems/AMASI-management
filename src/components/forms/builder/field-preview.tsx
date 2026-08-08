@@ -317,7 +317,7 @@ export function FieldPreview({ field, disabled = true }: FieldPreviewProps) {
         )
 
       case "heading":
-        const HeadingTag = (field.settings?.heading_size || "h2") as keyof JSX.IntrinsicElements
+        const HeadingTag = (field.settings?.heading_size || "h2") as keyof React.JSX.IntrinsicElements
         const headingClasses = {
           h1: "text-3xl font-extrabold text-foreground tracking-tight",
           h2: "text-2xl font-bold text-foreground",

@@ -29,7 +29,7 @@ export function GeneralSection({ eventId, formData, updateField, setFormData }: 
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
   const [slugChecking, setSlugChecking] = useState(false)
   const [slugSuggestion, setSlugSuggestion] = useState<string | null>(null)
-  const slugCheckTimer = useRef<NodeJS.Timeout>()
+  const slugCheckTimer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const checkSlug = useCallback((slug: string) => {
     clearTimeout(slugCheckTimer.current)

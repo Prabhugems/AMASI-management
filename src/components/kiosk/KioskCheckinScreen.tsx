@@ -3129,7 +3129,7 @@ interface CollectionReadyScreenProps {
   handleRegChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
   handleCheckin: (override?: string) => void
-  inputRef: React.RefObject<HTMLInputElement>
+  inputRef: React.RefObject<HTMLInputElement | null>
   isProcessing: boolean
   cacheReady: boolean
   cacheError: string | null

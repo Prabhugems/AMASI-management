@@ -1370,7 +1370,7 @@ export function FormRenderer({ form, fields, onSubmit, isSubmitting, requireEmai
         )
 
       case "heading":
-        const HeadingTag = (field.settings?.heading_size || "h2") as keyof JSX.IntrinsicElements
+        const HeadingTag = (field.settings?.heading_size || "h2") as keyof React.JSX.IntrinsicElements
         const headingSizeClasses: Record<string, string> = {
           h1: "text-2xl font-bold",
           h2: "text-xl font-semibold",
