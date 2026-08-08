@@ -58,6 +58,16 @@ import {
   describeOutOfRange,
   type BuilderDay,
 } from "@/lib/session-builder-days"
+import {
+  buildTimeline,
+  computeFit,
+  describeFit,
+  distributeEvenly,
+  durationOf,
+  setDuration,
+  type Retimed,
+  type TimelineSegment,
+} from "@/lib/session-timeline"
 import { buildVenueTree, toLocationOptions, type VenueRow } from "@/lib/venue-tree"
 
 type Block = BuilderBlock & { session_type: string | null; hall_id: string | null }
@@ -96,6 +106,40 @@ const roleForType = (t: string | null | undefined): FacultyRole =>
 
 // ---------------------------------------------------------------------------
 
+/**
+ * The session as a proportional bar.
+ *
+ * The point of it is the things a table cannot show: a gap reads as a hole, a
+ * long talk reads as a wide block, and an overrun spills past the end. A
+ * coordinator sees the shape of the day without reading twenty pairs of clock
+ * times.
+ */
+function TimelineBar({ segments }: { segments: TimelineSegment[] }) {
+  if (segments.length === 0) return null
+
+  return (
+    <div className="flex h-6 w-full overflow-hidden rounded-md border bg-muted/40">
+      {segments
+        .filter((s) => s.kind !== "overflow")
+        .map((s, i) => (
+          <div
+            key={`${s.kind}-${s.id ?? i}`}
+            title={`${s.label} · ${s.start}–${s.end} (${s.minutes}m)`}
+            style={{ width: `${s.widthPct}%` }}
+            className={cn(
+              "min-w-[2px] border-r border-background/60 last:border-r-0",
+              s.kind === "talk" && "bg-primary/70",
+              s.kind === "break" && "bg-muted-foreground/40",
+              // A gap is left visibly empty rather than filled — the hole IS
+              // the message.
+              s.kind === "gap" && "bg-transparent"
+            )}
+          />
+        ))}
+    </div>
+  )
+}
+
 function TalkRow({
   talk,
   people,
@@ -105,6 +149,7 @@ function TalkRow({
   onDelete,
   onAssign,
   onUnassign,
+  onDuration,
 }: {
   talk: BuilderTalk
   people: Assignment[]
@@ -114,13 +159,15 @@ function TalkRow({
   onDelete: () => void
   onAssign: (picked: PickedFaculty) => void
   onUnassign: (assignmentId: string) => void
+  onDuration: (minutes: number) => void
 }) {
   const isBreak = talk.talk_type === "break"
   const primary = people[0]
+  const mins = durationOf(talk)
 
   return (
     <div className="group border-b last:border-b-0">
-      <div className="grid items-center gap-2 px-3 py-1.5 sm:grid-cols-[76px_76px_1fr_200px_92px_28px]">
+      <div className="grid items-center gap-2 px-3 py-1.5 sm:grid-cols-[76px_64px_60px_1fr_200px_92px_28px]">
         <Input
           type="time"
           defaultValue={hhmm(talk.start_time)}
@@ -128,13 +175,26 @@ function TalkRow({
           className="h-8 text-xs tabular-nums"
           aria-label="Start time"
         />
+        {/*
+          Duration, not an end time. "Twenty minutes" is how a programme is
+          thought about; "09:30 to 09:50" is arithmetic the coordinator should
+          not be doing twenty times a session. Changing it ripples the rest.
+        */}
         <Input
-          type="time"
-          defaultValue={hhmm(talk.end_time)}
-          onBlur={(e) => e.target.value !== hhmm(talk.end_time) && onPatch({ end_time: e.target.value || null })}
+          key={`dur-${talk.id}-${mins ?? ""}`}
+          type="number"
+          min={1}
+          max={600}
+          defaultValue={mins ?? ""}
+          onBlur={(e) => {
+            const v = Number(e.target.value)
+            if (Number.isFinite(v) && v > 0 && v !== mins) onDuration(v)
+          }}
+          placeholder="min"
           className="h-8 text-xs tabular-nums"
-          aria-label="End time"
+          aria-label="Duration in minutes"
         />
+        <span className="text-xs tabular-nums text-muted-foreground">{hhmm(talk.end_time) || "--:--"}</span>
         <Input
           defaultValue={talk.title ?? ""}
           onBlur={(e) => e.target.value !== (talk.title ?? "") && onPatch({ title: e.target.value || null })}
@@ -182,7 +242,7 @@ function TalkRow({
 
       {/* A panel carries more than one person; the extras list under the row. */}
       {people.length > 1 && (
-        <div className="flex flex-wrap gap-1.5 px-3 pb-1.5 pl-[168px]">
+        <div className="flex flex-wrap gap-1.5 px-3 pb-1.5 pl-[212px]">
           {people.slice(1).map((p) => (
             <span
               key={p.id}
@@ -198,7 +258,7 @@ function TalkRow({
       )}
 
       {warnings.map((w) => (
-        <p key={w} className="flex items-start gap-1.5 px-3 pb-1.5 pl-[168px] text-[11px] text-amber-600 dark:text-amber-500">
+        <p key={w} className="flex items-start gap-1.5 px-3 pb-1.5 pl-[212px] text-[11px] text-amber-600 dark:text-amber-500">
           <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
           {w}
         </p>
@@ -222,6 +282,8 @@ function BlockCard({
   onDeleteTalk,
   onAssign,
   onUnassign,
+  onDuration,
+  onDistribute,
 }: {
   block: Block
   talks: BuilderTalk[]
@@ -237,8 +299,12 @@ function BlockCard({
   onDeleteTalk: (talkId: string) => void
   onAssign: (talkId: string | null, role: FacultyRole, picked: PickedFaculty) => void
   onUnassign: (assignmentId: string) => void
+  onDuration: (talkId: string, minutes: number) => void
+  onDistribute: () => void
 }) {
   const issues = validateBlockTimes(block, talks)
+  const fit = computeFit(block, talks)
+  const timeline = buildTimeline(block, talks, (t) => t.title || "Untitled")
   const unscheduled = describeUnscheduled(findUnscheduledRanges(block, talks))
   const chairs = assignments.filter((a) => a.talk_id === null && a.role === "chairperson")
   const staffed = talks.filter((t) => assignments.some((a) => a.talk_id === t.id)).length
@@ -283,6 +349,23 @@ function BlockCard({
 
       {isOpen && (
         <div className="border-t">
+          {timeline.length > 0 && (
+            <div className="space-y-1.5 px-3 pt-3">
+              <TimelineBar segments={timeline} />
+              <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-muted-foreground">
+                <span>{describeFit(fit)}</span>
+                {talks.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={onDistribute}
+                    className="ml-auto font-medium text-primary hover:underline"
+                  >
+                    Space rows evenly
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-2 px-3 py-2">
             <span className="text-xs font-medium text-muted-foreground">Chair</span>
             <div className="w-56">
@@ -298,9 +381,10 @@ function BlockCard({
           </div>
 
           {talks.length > 0 && (
-            <div className="hidden border-y bg-muted/40 px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[76px_76px_1fr_200px_92px_28px] sm:gap-2">
+            <div className="hidden border-y bg-muted/40 px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[76px_64px_60px_1fr_200px_92px_28px] sm:gap-2">
               <span>Start</span>
-              <span>End</span>
+              <span>Mins</span>
+              <span>Ends</span>
               <span>Topic</span>
               <span>Faculty</span>
               <span>Type</span>
@@ -319,6 +403,7 @@ function BlockCard({
               onDelete={() => onDeleteTalk(t.id)}
               onAssign={(p) => onAssign(t.id, roleForType(t.talk_type), p)}
               onUnassign={onUnassign}
+              onDuration={(m) => onDuration(t.id, m)}
             />
           ))}
 
@@ -655,6 +740,56 @@ export default function SessionBuilderPage() {
     onError: (e: Error) => toast.error(e.message),
   })
 
+  /** One request for the whole ripple, so the programme is never half-moved. */
+  const applyRetime = async (sessionId: string, changes: Retimed[]) => {
+    if (changes.length === 0) return
+    const res = await fetch(`/api/events/${eventId}/talks/retime`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, changes }),
+    })
+    if (!res.ok) throw new Error((await res.json()).error || "Failed to re-time")
+  }
+
+  const changeDuration = useMutation({
+    mutationFn: async (v: { block: Block; talkId: string; minutes: number }) => {
+      const rows = talksByBlock.get(v.block.id) ?? NO_TALKS
+      const result = setDuration(v.block, rows, v.talkId, v.minutes)
+      await applyRetime(v.block.id, result.changes)
+      return result
+    },
+    onSuccess: (result) => {
+      invalidate()
+      // Say what moved. A silent twenty-row shift is alarming; an unexplained
+      // one that stopped short of lunch is worse.
+      if (result.blockedBy) {
+        toast.warning(
+          result.overflowMinutes > 0
+            ? `Stopped at the break — the rows before it now run ${result.overflowMinutes} min past it.`
+            : "Stopped at the break, which keeps its own time."
+        )
+      } else if (result.changes.length > 1) {
+        toast.success(`${result.changes.length - 1} later row${result.changes.length === 2 ? "" : "s"} moved.`)
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const distribute = useMutation({
+    mutationFn: async (block: Block) => {
+      const rows = talksByBlock.get(block.id) ?? NO_TALKS
+      const changes = distributeEvenly(block, rows)
+      if (changes.length === 0) throw new Error("Give the session a start and end time first")
+      await applyRetime(block.id, changes)
+      return changes.length
+    },
+    onSuccess: (n) => {
+      invalidate()
+      toast.success(`${n} row${n === 1 ? "" : "s"} spaced evenly. Adjust any that differ.`)
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
   if (blocksQ.isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -756,6 +891,10 @@ export default function SessionBuilderPage() {
                   assign.mutate({ sessionId: b.id, talkId, role, picked })
                 }
                 onUnassign={unassign.mutate}
+                onDuration={(talkId, minutes) =>
+                  changeDuration.mutate({ block: b, talkId, minutes })
+                }
+                onDistribute={() => distribute.mutate(b)}
               />
             )
           )}
