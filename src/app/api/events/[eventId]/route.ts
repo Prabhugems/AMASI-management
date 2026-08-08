@@ -41,8 +41,17 @@ export async function DELETE(
   try {
     const { eventId } = await params
 
-    // Destructive, irreversible action — restrict to admin/super_admin
-    const { error: authError } = await requireAdmin()
+    // Destructive, irreversible action — restrict to admin/super_admin (role
+    // floor) AND require this specific event's ownership/team access (object
+    // check), same as GET. requireAdmin() alone only checks platform_role, so
+    // any global event_admin — even one scoped to a single, unrelated event —
+    // could delete any other event by ID. Chaining both closes that without
+    // loosening deletion to non-admin team members (faculty/staff), which a
+    // bare requireEventAccess() swap would have done.
+    const { error: roleError } = await requireAdmin()
+    if (roleError) return roleError
+
+    const { error: authError } = await requireEventAccess(eventId)
     if (authError) return authError
 
     const supabase = await createAdminClient()

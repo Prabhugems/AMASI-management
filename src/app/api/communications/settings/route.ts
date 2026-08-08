@@ -1,6 +1,61 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/api-auth"
+import dns from "dns/promises"
+import net from "net"
+
+// Blocks SSRF on the webhook-test action below: only plain http(s) URLs whose
+// hostname resolves exclusively to public IPs may be fetched. Checks the
+// *resolved* address, not just the literal string, so a hostname that
+// DNS-rebinds to an internal address (e.g. cloud metadata) is still caught,
+// not just a literal 169.254.x.x/localhost in the request body.
+async function assertPublicHttpUrl(rawUrl: string): Promise<void> {
+  let parsed: URL
+  try {
+    parsed = new URL(rawUrl)
+  } catch {
+    throw new Error("Invalid URL")
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("Only http/https URLs are allowed")
+  }
+
+  const hostname = parsed.hostname
+  const addresses = net.isIP(hostname)
+    ? [hostname]
+    : (await dns.lookup(hostname, { all: true })).map((a) => a.address)
+
+  if (addresses.some(isPrivateOrReservedIp)) {
+    throw new Error("URL resolves to a private/internal address")
+  }
+}
+
+function isPrivateOrReservedIp(address: string): boolean {
+  if (net.isIPv4(address)) {
+    const [a, b] = address.split(".").map(Number)
+    return (
+      a === 10 ||
+      a === 127 ||
+      a === 0 ||
+      (a === 169 && b === 254) || // link-local + cloud metadata (169.254.169.254)
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127) || // CGNAT
+      a >= 224 // multicast + reserved
+    )
+  }
+  if (net.isIPv6(address)) {
+    const normalized = address.toLowerCase()
+    if (normalized === "::1" || normalized === "::") return true
+    if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true // ULA fc00::/7
+    if (/^fe[89ab]/.test(normalized)) return true // link-local fe80::/10
+    if (normalized.startsWith("::ffff:")) {
+      const embeddedV4 = normalized.split(":").pop()!
+      return net.isIPv4(embeddedV4) && isPrivateOrReservedIp(embeddedV4)
+    }
+  }
+  return false
+}
 
 export interface CommunicationSettings {
   id?: string
@@ -257,8 +312,10 @@ export async function POST(request: NextRequest) {
       case "webhook":
         if (credentials.url) {
           try {
+            await assertPublicHttpUrl(credentials.url)
             const response = await fetch(credentials.url, {
               method: "POST",
+              redirect: "manual", // don't let a public URL's redirect pivot to an internal one post-validation
               headers: {
                 "Content-Type": "application/json",
                 ...credentials.headers,
