@@ -228,6 +228,10 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-8px)" },
         },
+        "ecg-trail": {
+          "0%": { strokeDashoffset: "10" },
+          "100%": { strokeDashoffset: "-90" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -262,6 +266,7 @@ const config: Config = {
         "slide-up-fade": "slide-up-fade 0.4s ease-out forwards",
         "progress-fill": "progress-fill 0.5s ease-out forwards",
         "bounce-slow": "bounce-slow 3s ease-in-out infinite",
+        "ecg-trail": "ecg-trail 8s linear infinite",
       },
       transitionTimingFunction: {
         "bounce": "cubic-bezier(0.68, -0.55, 0.265, 1.55)",

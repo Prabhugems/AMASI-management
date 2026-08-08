@@ -180,3 +180,13 @@ Supabase DB `jmdwxymbgxwdsmcwbahp` is **shared by two repos**:
 **Migrations currently committed-but-unapplied (waiting on the pipeline project):**
 - `20260624020000_abstract_presenter_checkins_unique_abstract.sql` — Podium UNIQUE(abstract_id). CAS in the podium route guards races at app layer until the constraint lands.
 - `20260802_event_settings_help_desk_location.sql` — adds `event_settings.help_desk_location TEXT`, nullable, no backfill. Written during a Phase-1 kiosk work-order session (2026-08-02) per that session's brief (§9.3), which explicitly forbade applying migrations without a separate human go-ahead. No hardcoded "Hall A entrance"-style value was found in kiosk code to replace — see `docs/kiosk-phase-1-report.md` — so this is forward-looking, not a bugfix.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
