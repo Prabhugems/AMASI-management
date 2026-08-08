@@ -31,7 +31,12 @@ export async function fetchConflictInputs(supabase: any, eventId: string): Promi
         .select("session_id, faculty_id, faculty_name, status")
         .eq("event_id", eventId)
     ),
-    fetchAllPages<HallCapacity>(supabase.from("halls").select("id, capacity").eq("event_id", eventId)),
+    // parent_id and name are needed by findHallDoubleBookings: without the
+    // parent link it cannot tell two screens of one hall apart from one hall
+    // booked twice, and without the name it cannot say which room.
+    fetchAllPages<HallCapacity>(
+      supabase.from("halls").select("id, capacity, parent_id, name").eq("event_id", eventId)
+    ),
     fetchAllPages<any>(
       supabase
         .from("checkin_records")
